@@ -1,6 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Button, Badge, Loader, Modal, Input, useToast } from '@openfactu/ui';
-import { MapPin, Play, Square, Navigation, CheckCircle2, Route as RouteIcon, ChevronDown, ChevronUp, QrCode, X as XIcon, AlertTriangle, Truck as TruckIconLucide, Warehouse } from 'lucide-react';
+import {
+  MapPin,
+  Play,
+  Square,
+  Navigation,
+  CheckCircle2,
+  Route as RouteIcon,
+  ChevronDown,
+  ChevronUp,
+  QrCode,
+  X as XIcon,
+  AlertTriangle,
+  Truck as TruckIconLucide,
+  Warehouse,
+} from 'lucide-react';
 import { BarcodeCameraModal } from '../../components/scanner/BarcodeCameraModal';
 import { DeliveryProofModal } from './DeliveryProofModal';
 import { Marker, Source, Layer, Popup } from 'react-map-gl/maplibre';
@@ -145,10 +159,7 @@ function buildWhatsAppUrl(phone: string, message: string): string {
 }
 
 /** Devuelve [lat,lng] o null fusionando stop+ship. */
-function resolveCoords(
-  stop: Stop,
-  ship: ShipmentLite | undefined,
-): [number, number] | null {
+function resolveCoords(stop: Stop, ship: ShipmentLite | undefined): [number, number] | null {
   if (stop.lat != null && stop.lng != null) return [stop.lat, stop.lng];
   if (ship?.destinationLat != null && ship?.destinationLng != null)
     return [ship.destinationLat, ship.destinationLng];
@@ -194,10 +205,7 @@ function routeUrl(stops: Stop[], shipmentsById: Map<string, ShipmentLite>) {
   params.set('destination', destination);
   if (waypoints.length) params.set('waypoints', waypoints.join('|'));
   params.set('travelmode', 'driving');
-  return `https://www.google.com/maps/dir/?${params.toString()}`.replace(
-    /%7C/g,
-    '|',
-  );
+  return `https://www.google.com/maps/dir/?${params.toString()}`.replace(/%7C/g, '|');
 }
 
 /**
@@ -216,7 +224,11 @@ export const DriverApp: React.FC = () => {
   const [mapOpen, setMapOpen] = useState(true);
   const [openPopupStopId, setOpenPopupStopId] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
-  const [podFor, setPodFor] = useState<{ stopId: string; shipmentId: string | null; label: string } | null>(null);
+  const [podFor, setPodFor] = useState<{
+    stopId: string;
+    shipmentId: string | null;
+    label: string;
+  } | null>(null);
   const [postponeFor, setPostponeFor] = useState<{
     stopId: string;
     shipmentId: string | null;
@@ -228,29 +240,23 @@ export const DriverApp: React.FC = () => {
     reason: string;
   } | null>(null);
   const [confirmBulkArrive, setConfirmBulkArrive] = useState<number | null>(null);
-  const [packageScan, setPackageScan] = useState<
-    | null
-    | {
-        code: string;
-        status: string;
-        weightKg: number | null;
-        trackingNumber: string | null;
-        destinationAddress: string | null;
-        shipmentStatus: string | null;
-      }
-  >(null);
-  const [scanResult, setScanResult] = useState<
-    | null
-    | {
-        ownership: 'mine' | 'other' | 'unassigned';
-        stagingName: string;
-        stagingCode: string;
-        myRoutes?: { id: string; code: string; name: string }[];
-        otherDriver?: string;
-        otherRouteCode?: string;
-        packagesCount: number;
-      }
-  >(null);
+  const [packageScan, setPackageScan] = useState<null | {
+    code: string;
+    status: string;
+    weightKg: number | null;
+    trackingNumber: string | null;
+    destinationAddress: string | null;
+    shipmentStatus: string | null;
+  }>(null);
+  const [scanResult, setScanResult] = useState<null | {
+    ownership: 'mine' | 'other' | 'unassigned';
+    stagingName: string;
+    stagingCode: string;
+    myRoutes?: { id: string; code: string; name: string }[];
+    otherDriver?: string;
+    otherRouteCode?: string;
+    packagesCount: number;
+  }>(null);
   const watchId = useRef<number | null>(null);
   const mapRef = useRef<BaseMapHandle | null>(null);
 
@@ -542,9 +548,7 @@ export const DriverApp: React.FC = () => {
     if (!selectedId) return;
     const stop = detail?.stops.find((s) => s.id === stopId);
     const ship = stop?.shipmentId ? shipmentsById.get(stop.shipmentId) : undefined;
-    const label = stop
-      ? resolveAddress(stop, ship) || `Parada ${stop.sequence}`
-      : 'Parada';
+    const label = stop ? resolveAddress(stop, ship) || `Parada ${stop.sequence}` : 'Parada';
     setPodFor({ stopId, shipmentId, label });
   };
 
@@ -650,11 +654,7 @@ export const DriverApp: React.FC = () => {
         onConfirm={confirmDelivery}
         stopLabel={podFor?.label}
       />
-      <BarcodeCameraModal
-        open={scanOpen}
-        onClose={() => setScanOpen(false)}
-        onScan={handleScan}
-      />
+      <BarcodeCameraModal open={scanOpen} onClose={() => setScanOpen(false)} onScan={handleScan} />
       <Modal
         isOpen={!!scanResult}
         onClose={() => setScanResult(null)}
@@ -672,7 +672,8 @@ export const DriverApp: React.FC = () => {
                   </div>
                 </div>
                 <div className="text-sm text-slate-700 dark:text-slate-200">
-                  Acopio <b>{scanResult.stagingName}</b> ({scanResult.stagingCode}) — {scanResult.packagesCount} paquete(s).
+                  Acopio <b>{scanResult.stagingName}</b> ({scanResult.stagingCode}) —{' '}
+                  {scanResult.packagesCount} paquete(s).
                 </div>
                 {scanResult.myRoutes && scanResult.myRoutes.length > 0 && (
                   <div className="mt-3 space-y-2">
@@ -711,8 +712,12 @@ export const DriverApp: React.FC = () => {
                 <div className="text-sm text-slate-700 dark:text-slate-200">
                   Está asignado a <b>{scanResult.otherDriver}</b>
                   {scanResult.otherRouteCode && (
-                    <> (ruta <code className="font-mono">{scanResult.otherRouteCode}</code>)</>
-                  )}.
+                    <>
+                      {' '}
+                      (ruta <code className="font-mono">{scanResult.otherRouteCode}</code>)
+                    </>
+                  )}
+                  .
                 </div>
                 <div className="text-xs text-slate-500 mt-2">
                   No cargues este palet. Consulta con el almacén.
@@ -745,8 +750,8 @@ export const DriverApp: React.FC = () => {
       >
         <div className="pt-2 space-y-4">
           <p className="text-sm text-slate-700 dark:text-slate-200">
-            Se marcarán <b>{confirmBulkArrive}</b> parada(s) pendiente(s) como{' '}
-            <b>llegadas</b> con la hora actual.
+            Se marcarán <b>{confirmBulkArrive}</b> parada(s) pendiente(s) como <b>llegadas</b> con
+            la hora actual.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setConfirmBulkArrive(null)}>
@@ -773,9 +778,7 @@ export const DriverApp: React.FC = () => {
               </label>
               <Input
                 value={postponeFor.reason}
-                onChange={(e) =>
-                  setPostponeFor({ ...postponeFor, reason: e.target.value })
-                }
+                onChange={(e) => setPostponeFor({ ...postponeFor, reason: e.target.value })}
                 placeholder="No había nadie para recibirlo"
               />
             </div>
@@ -807,9 +810,7 @@ export const DriverApp: React.FC = () => {
               </label>
               <Input
                 value={exceptionFor.reason}
-                onChange={(e) =>
-                  setExceptionFor({ ...exceptionFor, reason: e.target.value })
-                }
+                onChange={(e) => setExceptionFor({ ...exceptionFor, reason: e.target.value })}
                 placeholder="Describe la incidencia"
               />
             </div>
@@ -901,9 +902,7 @@ export const DriverApp: React.FC = () => {
           type: 'Feature' as const,
           geometry: {
             type: 'LineString' as const,
-            coordinates: mapPoints.map(
-              (p) => [p.coords[1], p.coords[0]] as [number, number],
-            ),
+            coordinates: mapPoints.map((p) => [p.coords[1], p.coords[0]] as [number, number]),
           },
           properties: {},
         }
@@ -1085,18 +1084,9 @@ export const DriverApp: React.FC = () => {
               >
                 <Navigation size={12} /> Centrar
               </button>
-              <BaseMap
-                ref={mapRef}
-                latitude={mapCenterLat}
-                longitude={mapCenterLng}
-                zoom={12}
-              >
+              <BaseMap ref={mapRef} latitude={mapCenterLat} longitude={mapCenterLng} zoom={12}>
                 {lastFix && (
-                  <Marker
-                    longitude={lastFix.lng}
-                    latitude={lastFix.lat}
-                    anchor="center"
-                  >
+                  <Marker longitude={lastFix.lng} latitude={lastFix.lat} anchor="center">
                     <div
                       title="Tu ubicación"
                       style={{
@@ -1121,9 +1111,7 @@ export const DriverApp: React.FC = () => {
                       anchor="center"
                       onClick={(e) => {
                         e.originalEvent.stopPropagation();
-                        setOpenPopupStopId(
-                          openPopupStopId === stop.id ? null : stop.id,
-                        );
+                        setOpenPopupStopId(openPopupStopId === stop.id ? null : stop.id);
                       }}
                     >
                       <NumberedPin n={stop.sequence} done={done} />
@@ -1146,9 +1134,7 @@ export const DriverApp: React.FC = () => {
                         closeOnClick={false}
                       >
                         <div className="text-xs">
-                          <div className="font-black mb-1">
-                            Parada {pt.stop.sequence}
-                          </div>
+                          <div className="font-black mb-1">Parada {pt.stop.sequence}</div>
                           <div className="text-slate-700">
                             {resolveAddress(pt.stop, ship) || '—'}
                           </div>
@@ -1190,8 +1176,8 @@ export const DriverApp: React.FC = () => {
           Repartos · {detail.stops.length}
         </h2>
         <span className="text-[10px] text-slate-400">
-          {detail.stops.filter((s) => s.status === 'delivered').length} /{' '}
-          {detail.stops.length} entregados
+          {detail.stops.filter((s) => s.status === 'delivered').length} / {detail.stops.length}{' '}
+          entregados
         </span>
       </div>
 
@@ -1214,7 +1200,10 @@ export const DriverApp: React.FC = () => {
           const addr = resolveAddress(s, ship);
           const isPickup = ship?.kind === 'pickup_return';
           return (
-            <Card key={s.id} bodyClassName={`p-4 ${isDone ? 'opacity-60' : ''} ${isPickup ? 'border-l-4 border-l-purple-500' : ''}`}>
+            <Card
+              key={s.id}
+              bodyClassName={`p-4 ${isDone ? 'opacity-60' : ''} ${isPickup ? 'border-l-4 border-l-purple-500' : ''}`}
+            >
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center">
                   {s.sequence}
@@ -1222,19 +1211,13 @@ export const DriverApp: React.FC = () => {
                 <Badge variant={isDone ? 'success' : 'neutral'}>
                   {STOP_LABEL[s.status] || s.status}
                 </Badge>
-                {ship && (
-                  <Badge variant="info">{SHIP_LABEL[ship.status] || ship.status}</Badge>
-                )}
-                {isPickup && (
-                  <Badge variant="warning">↩ Recogida de devolución</Badge>
-                )}
+                {ship && <Badge variant="info">{SHIP_LABEL[ship.status] || ship.status}</Badge>}
+                {isPickup && <Badge variant="warning">↩ Recogida de devolución</Badge>}
               </div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
                 {isPickup ? 'Recoger de' : 'Entregar en'}
               </div>
-              <div className="font-semibold text-slate-800 dark:text-slate-100">
-                {addr || '—'}
-              </div>
+              <div className="font-semibold text-slate-800 dark:text-slate-100">{addr || '—'}</div>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 {href && (
                   <a

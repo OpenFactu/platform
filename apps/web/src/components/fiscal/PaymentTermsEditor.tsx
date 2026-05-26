@@ -53,8 +53,7 @@ export const PaymentTermsEditor: React.FC = () => {
   const openEditor = (term: PaymentTerm | null) => {
     popup.show({
       title: term ? `Editar plazo · ${term.name}` : 'Nuevo plazo de pago',
-      subtitle:
-        'Define los splits. La suma de porcentajes debe ser exactamente 100.',
+      subtitle: 'Define los splits. La suma de porcentajes debe ser exactamente 100.',
       maxWidth: '2xl',
       render: (close) => (
         <PaymentTermForm
@@ -91,7 +90,8 @@ export const PaymentTermsEditor: React.FC = () => {
   };
 
   const renderSummary = (t: PaymentTerm) => {
-    if (!t.lines || t.lines.length === 0) return <span className="text-slate-400 italic">sin splits</span>;
+    if (!t.lines || t.lines.length === 0)
+      return <span className="text-slate-400 italic">sin splits</span>;
     if (t.lines.length === 1) {
       const l = t.lines[0];
       return (
@@ -198,9 +198,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
   const [name, setName] = useState(initial?.name || '');
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
   const [lines, setLines] = useState<SplitLine[]>(
-    initial?.lines && initial.lines.length > 0
-      ? initial.lines
-      : [{ days: 0, percentage: 100 }],
+    initial?.lines && initial.lines.length > 0 ? initial.lines : [{ days: 0, percentage: 100 }],
   );
   const [saving, setSaving] = useState(false);
 
@@ -335,9 +333,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
                       type="number"
                       min={0}
                       value={l.days}
-                      onChange={(e) =>
-                        updateLine(i, { days: Number(e.target.value) })
-                      }
+                      onChange={(e) => updateLine(i, { days: Number(e.target.value) })}
                       className="w-28 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono"
                     />
                   </td>
@@ -349,9 +345,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
                         max={100}
                         step={0.01}
                         value={l.percentage}
-                        onChange={(e) =>
-                          updateLine(i, { percentage: Number(e.target.value) })
-                        }
+                        onChange={(e) => updateLine(i, { percentage: Number(e.target.value) })}
                         className="w-24 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono"
                       />
                       <span className="text-slate-400 text-xs">%</span>
@@ -383,11 +377,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
                     }`}
                   >
                     {totalPct.toFixed(2)}%
-                    {balanced ? (
-                      <Check size={14} />
-                    ) : (
-                      <AlertCircle size={14} />
-                    )}
+                    {balanced ? <Check size={14} /> : <AlertCircle size={14} />}
                   </span>
                 </td>
                 <td></td>

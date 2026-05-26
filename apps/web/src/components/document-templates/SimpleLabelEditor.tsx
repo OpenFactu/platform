@@ -53,9 +53,7 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
             // Cambiar el origen reinicia los toggles a defaults sensatos del
             // nuevo tipo para evitar referencias a paths que no existen.
             const base =
-              v === 'article'
-                ? defaultSimpleArticleSettings()
-                : defaultSimpleDocumentSettings();
+              v === 'article' ? defaultSimpleArticleSettings() : defaultSimpleDocumentSettings();
             // Conservamos pageSize/accentColor que no dependen del origen.
             update({
               ...base,
@@ -102,7 +100,9 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
               <input
                 type="number"
                 value={settings.customWidthMm ?? 100}
-                onChange={(e) => update({ customWidthMm: Math.max(10, Number(e.target.value) || 10) })}
+                onChange={(e) =>
+                  update({ customWidthMm: Math.max(10, Number(e.target.value) || 10) })
+                }
                 className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
               />
             </Field>
@@ -110,7 +110,9 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
               <input
                 type="number"
                 value={settings.customHeightMm ?? 60}
-                onChange={(e) => update({ customHeightMm: Math.max(10, Number(e.target.value) || 10) })}
+                onChange={(e) =>
+                  update({ customHeightMm: Math.max(10, Number(e.target.value) || 10) })
+                }
                 className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
               />
             </Field>
@@ -136,7 +138,9 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
           </Field>
         )}
         <ToggleRow
-          label={settings.kind === 'article' ? 'Nombre del artículo' : 'Código del documento (texto)'}
+          label={
+            settings.kind === 'article' ? 'Nombre del artículo' : 'Código del documento (texto)'
+          }
           checked={settings.showName === true}
           onChange={(v) => update({ showName: v })}
         />
@@ -212,8 +216,8 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
       </FormSection>
 
       <p className="text-[11px] text-slate-500 dark:text-slate-400 italic leading-snug border-t border-slate-200 dark:border-slate-800 pt-3">
-        Si necesitas algo más concreto que estos toggles, cambia al editor avanzado
-        — pero ojo: si después vuelves al simple, los cambios manuales se perderán.
+        Si necesitas algo más concreto que estos toggles, cambia al editor avanzado — pero ojo: si
+        después vuelves al simple, los cambios manuales se perderán.
       </p>
     </div>
   );
@@ -221,7 +225,10 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
 
 // ---------- helpers UI ----------
 
-const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+const FormSection: React.FC<{ title: string; children: React.ReactNode }> = ({
+  title,
+  children,
+}) => (
   <div className="space-y-2 border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-white dark:bg-slate-900">
     <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500 dark:text-slate-400">
       {title}

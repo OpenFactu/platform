@@ -104,7 +104,11 @@ export const AccountingPeriods: React.FC = () => {
       tone: 'warning',
       maxWidth: '3xl',
       render: (close) => (
-        <ClosePreviewBody preview={preview} onCancel={() => close(false)} onConfirm={() => close(true)} />
+        <ClosePreviewBody
+          preview={preview}
+          onCancel={() => close(false)}
+          onConfirm={() => close(true)}
+        />
       ),
     });
 
@@ -143,8 +147,18 @@ export const AccountingPeriods: React.FC = () => {
   };
 
   const columns = [
-    { header: 'Código', sortable: true, sortAccessor: (item: any) => item.code || '', accessor: 'code' },
-    { header: 'Nombre', sortable: true, sortAccessor: (item: any) => item.name || '', accessor: 'name' },
+    {
+      header: 'Código',
+      sortable: true,
+      sortAccessor: (item: any) => item.code || '',
+      accessor: 'code',
+    },
+    {
+      header: 'Nombre',
+      sortable: true,
+      sortAccessor: (item: any) => item.name || '',
+      accessor: 'name',
+    },
     { header: 'Inicio', cell: (c: any) => new Date(c.startDate).toLocaleDateString() },
     { header: 'Fin', cell: (c: any) => new Date(c.endDate).toLocaleDateString() },
     {
@@ -316,7 +330,8 @@ const ClosePreviewBody: React.FC<ClosePreviewBodyProps> = ({ preview, onCancel, 
           {preview.nextPeriodEnd})
         </h3>
         <p className="text-sm text-slate-500 mb-2">
-          Se generará asiento de apertura con {preview.openingLines?.length || 0} línea(s) de saldos.
+          Se generará asiento de apertura con {preview.openingLines?.length || 0} línea(s) de
+          saldos.
         </p>
       </div>
 

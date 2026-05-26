@@ -82,8 +82,5 @@ export interface ICarrierAdapter {
     trackingNumber: string,
   ): Promise<TrackingSnapshot>;
 
-  generateLabel(
-    account: CarrierAccountCredentials,
-    trackingNumber: string,
-  ): Promise<Buffer>;
+  generateLabel(account: CarrierAccountCredentials, trackingNumber: string): Promise<Buffer>;
 }

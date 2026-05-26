@@ -56,7 +56,10 @@ export const apiTokenMiddleware = async (req: any, res: Response, next: NextFunc
 
     req.apiToken = {
       id: row.id,
-      scopes: (row.scopes || '').split(',').map((s) => s.trim()).filter(Boolean),
+      scopes: (row.scopes || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
       tenantId: row.tenantId,
       name: row.name,
     };

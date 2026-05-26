@@ -17,7 +17,12 @@ const StatusPill: React.FC<{ status?: string }> = ({ status }) => {
   if (!status || !STATUS_STYLE[status]) return null;
   const label = status[0].toUpperCase() + status.slice(1);
   return (
-    <span className={cn('text-[9px] font-bold uppercase tracking-wider px-1 py-0.5 rounded-xs', STATUS_STYLE[status])}>
+    <span
+      className={cn(
+        'text-[9px] font-bold uppercase tracking-wider px-1 py-0.5 rounded-xs',
+        STATUS_STYLE[status],
+      )}
+    >
       {label}
     </span>
   );
@@ -129,8 +134,10 @@ const GroupDropdown: React.FC<{
     const onDoc = (e: MouseEvent) => {
       const t = e.target as Node;
       if (
-        btnRef.current && !btnRef.current.contains(t) &&
-        menuRef.current && !menuRef.current.contains(t)
+        btnRef.current &&
+        !btnRef.current.contains(t) &&
+        menuRef.current &&
+        !menuRef.current.contains(t)
       ) {
         setOpen(false);
       }

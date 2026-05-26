@@ -52,9 +52,7 @@ export const PreparationButton: React.FC<Props> = ({ docType, docId, size = 14, 
       // caer en la lista genérica de /logistics. Así el usuario ve el
       // mapa, las tareas de picking y puede moverlo al siguiente estado.
       const sid = d.shipmentId;
-      const target = sid
-        ? `/logistics/shipments/${sid}`
-        : '/logistics';
+      const target = sid ? `/logistics/shipments/${sid}` : '/logistics';
       const title = sid ? 'Envío en preparación' : 'Preparación';
       if (tabs && (tabs as any).openTab) {
         (tabs as any).openTab(target, { title });

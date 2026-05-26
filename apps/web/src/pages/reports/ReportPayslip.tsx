@@ -53,14 +53,19 @@ export const ReportPayslip: React.FC = () => {
   return (
     <div className="p-6 w-full space-y-5">
       <div>
-        <button onClick={() => navigate(-1)} className="text-xs font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 mb-2">
+        <button
+          onClick={() => navigate(-1)}
+          className="text-xs font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 mb-2"
+        >
           <ArrowLeft size={12} /> Volver
         </button>
         <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
           <Banknote size={22} className="text-emerald-600" />
           Recibo de nómina
         </h1>
-        <p className="text-slate-500 text-sm mt-0.5">Selecciona una nómina aprobada para descargar el recibo.</p>
+        <p className="text-slate-500 text-sm mt-0.5">
+          Selecciona una nómina aprobada para descargar el recibo.
+        </p>
       </div>
 
       <Card className="overflow-hidden" noPadding>
@@ -77,27 +82,46 @@ export const ReportPayslip: React.FC = () => {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="p-10 text-center text-slate-400 italic">Cargando…</td></tr>
+              <tr>
+                <td colSpan={6} className="p-10 text-center text-slate-400 italic">
+                  Cargando…
+                </td>
+              </tr>
             ) : payrolls.length === 0 ? (
-              <tr><td colSpan={6} className="p-10 text-center text-slate-400 italic">Sin nóminas</td></tr>
+              <tr>
+                <td colSpan={6} className="p-10 text-center text-slate-400 italic">
+                  Sin nóminas
+                </td>
+              </tr>
             ) : (
               payrolls.map((p) => {
                 const emp = employees[p.employeeId];
                 const name = emp ? `${emp.firstName} ${emp.lastName}` : p.employeeId;
                 return (
-                  <tr key={p.id} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
+                  <tr
+                    key={p.id}
+                    className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
+                  >
                     <td className="p-3">{name}</td>
-                    <td className="p-3 font-mono text-xs">{p.periodYear}-{String(p.periodMonth).padStart(2, '0')}</td>
+                    <td className="p-3 font-mono text-xs">
+                      {p.periodYear}-{String(p.periodMonth).padStart(2, '0')}
+                    </td>
                     <td className="p-3 text-right tabular-nums">{fmt.money(p.gross)}</td>
                     <td className="p-3 text-right tabular-nums font-bold">{fmt.money(p.netPay)}</td>
                     <td className="p-3 text-center text-xs">
-                      <span className={`px-2 py-0.5 rounded ${p.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                      <span
+                        className={`px-2 py-0.5 rounded ${p.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
+                      >
                         {p.status}
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <Button size="sm" variant="secondary" onClick={() => downloadPdf(p.id, name, p.periodYear, p.periodMonth)}>
-                        <Download size={14}/>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => downloadPdf(p.id, name, p.periodYear, p.periodMonth)}
+                      >
+                        <Download size={14} />
                       </Button>
                     </td>
                   </tr>

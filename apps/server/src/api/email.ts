@@ -30,7 +30,9 @@ function requireAdmin(req: any, res: any, next: any) {
   next();
 }
 
-function redactPassword(cfg: EmailConfig): Omit<EmailConfig, 'password'> & { passwordSet: boolean } {
+function redactPassword(
+  cfg: EmailConfig,
+): Omit<EmailConfig, 'password'> & { passwordSet: boolean } {
   const { password, ...rest } = cfg;
   return { ...rest, passwordSet: Boolean(password) };
 }
@@ -174,9 +176,8 @@ async function buildPdfAttachment(
   docId: string,
   tenantClient: any,
 ): Promise<{ pdf: Buffer; payload: any; code: string; label: string } | null> {
-  const { PdfRenderer, extractMetaFromHtml, DEFAULT_VISUAL_OPTIONS } = await import(
-    '@openfactu/pdf'
-  );
+  const { PdfRenderer, extractMetaFromHtml, DEFAULT_VISUAL_OPTIONS } =
+    await import('@openfactu/pdf');
   const { PdfPayloadBuilder } = await import('../core/documents/PdfPayloadBuilder');
   const schemaMod = await import('../db/schema');
   const { eq, and } = await import('drizzle-orm');
@@ -214,8 +215,15 @@ async function buildPdfAttachment(
  */
 router.post('/send-document', async (req: any, res) => {
   try {
-    const { docType, docId, to: toOverride, cc, bcc, subject: subjectOverride, body: bodyOverride } =
-      req.body || {};
+    const {
+      docType,
+      docId,
+      to: toOverride,
+      cc,
+      bcc,
+      subject: subjectOverride,
+      body: bodyOverride,
+    } = req.body || {};
     if (!docType || !docId) return res.status(400).json({ error: 'Faltan docType/docId' });
     if (!VALID_DOCTYPES.includes(docType))
       return res.status(400).json({ error: `docType inválido (${VALID_DOCTYPES.join(', ')})` });
@@ -285,7 +293,14 @@ router.post('/send-documents', async (req: any, res) => {
     if (!Array.isArray(items) || items.length === 0)
       return res.status(400).json({ error: 'items vacío' });
 
-    const results: Array<{ docType: string; docId: string; ok: boolean; error?: string; queueId?: string; to?: string }> = [];
+    const results: Array<{
+      docType: string;
+      docId: string;
+      ok: boolean;
+      error?: string;
+      queueId?: string;
+      to?: string;
+    }> = [];
     let queued = 0;
     for (const it of items) {
       const { docType, docId } = it || {};
@@ -305,14 +320,13 @@ router.post('/send-documents', async (req: any, res) => {
           continue;
         }
         const subject = (subjectPrefix ? subjectPrefix + ' ' : '') + `${built.label} ${built.code}`;
-        const text =
-          (bodyTemplate
-            ? bodyTemplate
-                .replace(/\{\{code\}\}/g, built.code)
-                .replace(/\{\{label\}\}/g, built.label)
-                .replace(/\{\{date\}\}/g, built.payload.doc.date)
-                .replace(/\{\{company\}\}/g, built.payload.company.name)
-            : `Hola,\n\nAdjuntamos ${built.label.toLowerCase()} ${built.code}.\n\nSaludos,\n${built.payload.company.name}`);
+        const text = bodyTemplate
+          ? bodyTemplate
+              .replace(/\{\{code\}\}/g, built.code)
+              .replace(/\{\{label\}\}/g, built.label)
+              .replace(/\{\{date\}\}/g, built.payload.doc.date)
+              .replace(/\{\{company\}\}/g, built.payload.company.name)
+          : `Hola,\n\nAdjuntamos ${built.label.toLowerCase()} ${built.code}.\n\nSaludos,\n${built.payload.company.name}`;
         const qid = enqueueMail(
           req.tenantId,
           {

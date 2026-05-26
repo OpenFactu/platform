@@ -81,9 +81,7 @@ export const PayrollConcepts: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const url = isNew
-      ? '/api/hr/payroll-concepts'
-      : `/api/hr/payroll-concepts/${editing.id}`;
+    const url = isNew ? '/api/hr/payroll-concepts' : `/api/hr/payroll-concepts/${editing.id}`;
     const method = isNew ? 'POST' : 'PATCH';
     const res = await fetch(url, {
       method,
@@ -260,18 +258,14 @@ export const PayrollConcepts: React.FC = () => {
                 step="0.01"
                 label="Importe por defecto"
                 value={editing.defaultAmount ?? ''}
-                onChange={(e) =>
-                  setEditing({ ...editing, defaultAmount: e.target.value || null })
-                }
+                onChange={(e) => setEditing({ ...editing, defaultAmount: e.target.value || null })}
               />
               <Input
                 type="number"
                 step="0.001"
                 label="% por defecto"
                 value={editing.defaultPercent ?? ''}
-                onChange={(e) =>
-                  setEditing({ ...editing, defaultPercent: e.target.value || null })
-                }
+                onChange={(e) => setEditing({ ...editing, defaultPercent: e.target.value || null })}
               />
               <div className="flex items-end gap-3 pb-2">
                 <label className="text-sm flex items-center gap-2 select-none">

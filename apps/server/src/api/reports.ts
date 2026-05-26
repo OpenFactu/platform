@@ -9,7 +9,11 @@
 import { Router } from 'express';
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
-import { renderReportPdf, getCompanyHeader, type ReportSection } from '../core/reports/ReportRenderer';
+import {
+  renderReportPdf,
+  getCompanyHeader,
+  type ReportSection,
+} from '../core/reports/ReportRenderer';
 
 const router = Router();
 
@@ -24,7 +28,10 @@ function formatPeriodRange(p: any): string {
 // 1) DIARIO DE ASIENTOS
 // ─────────────────────────────────────────────────────────────────
 
-async function queryJournal(tenantClient: any, filters: { periodId?: string; from?: Date; to?: Date }) {
+async function queryJournal(
+  tenantClient: any,
+  filters: { periodId?: string; from?: Date; to?: Date },
+) {
   const conds: any[] = [eq(schema.journalEntries.status, 'posted')];
   if (filters.periodId) conds.push(eq(schema.journalEntries.periodId, filters.periodId));
   if (filters.from) conds.push(gte(schema.journalEntries.date, filters.from));
@@ -83,10 +90,12 @@ router.get('/journal/pdf', async (req: any, res) => {
       to: req.query.to ? new Date(req.query.to) : undefined,
     });
     const period = req.query.periodId
-      ? (await req.tenantClient
-          .select()
-          .from(schema.accountingPeriods)
-          .where(eq(schema.accountingPeriods.id, req.query.periodId)))[0]
+      ? (
+          await req.tenantClient
+            .select()
+            .from(schema.accountingPeriods)
+            .where(eq(schema.accountingPeriods.id, req.query.periodId))
+        )[0]
       : null;
 
     const totals = rows.reduce(
@@ -266,10 +275,7 @@ async function queryTrialBalance(tenantClient: any, periodId: string) {
       eq(schema.journalEntryLines.accountId, schema.chartOfAccounts.id),
     )
     .where(
-      and(
-        eq(schema.journalEntries.periodId, periodId),
-        eq(schema.journalEntries.status, 'posted'),
-      ),
+      and(eq(schema.journalEntries.periodId, periodId), eq(schema.journalEntries.status, 'posted')),
     )
     .groupBy(schema.chartOfAccounts.code, schema.chartOfAccounts.name, schema.chartOfAccounts.type)
     .orderBy(asc(schema.chartOfAccounts.code));
@@ -595,9 +601,27 @@ router.get('/vat/pdf', async (req: any, res) => {
       { key: 'code', label: 'Nº Factura', width: '14%' },
       { key: 'partnerNif', label: 'NIF', width: '12%' },
       { key: 'partnerName', label: 'Cliente/Proveedor' },
-      { key: 'base', label: 'Base', format: 'money' as const, align: 'right' as const, width: '12%' },
-      { key: 'tax', label: 'Cuota IVA', format: 'money' as const, align: 'right' as const, width: '12%' },
-      { key: 'total', label: 'Total', format: 'money' as const, align: 'right' as const, width: '12%' },
+      {
+        key: 'base',
+        label: 'Base',
+        format: 'money' as const,
+        align: 'right' as const,
+        width: '12%',
+      },
+      {
+        key: 'tax',
+        label: 'Cuota IVA',
+        format: 'money' as const,
+        align: 'right' as const,
+        width: '12%',
+      },
+      {
+        key: 'total',
+        label: 'Total',
+        format: 'money' as const,
+        align: 'right' as const,
+        width: '12%',
+      },
     ];
     const pdf = await renderReportPdf({
       title: 'Libro de IVA',
@@ -670,9 +694,16 @@ router.get('/profit-customer', async (req: any, res) => {
         count: sql<string>`COUNT(DISTINCT ${schema.salesInvoices.id})`,
       })
       .from(schema.salesInvoices)
-      .innerJoin(schema.businessPartners, eq(schema.salesInvoices.partnerId, schema.businessPartners.id))
+      .innerJoin(
+        schema.businessPartners,
+        eq(schema.salesInvoices.partnerId, schema.businessPartners.id),
+      )
       .where(req.query.periodId ? eq(schema.salesInvoices.periodId, req.query.periodId) : sql`TRUE`)
-      .groupBy(schema.businessPartners.id, schema.businessPartners.code, schema.businessPartners.name)
+      .groupBy(
+        schema.businessPartners.id,
+        schema.businessPartners.code,
+        schema.businessPartners.name,
+      )
       .orderBy(sql`COALESCE(SUM(${schema.salesInvoices.subtotal}), 0) DESC`)
       .limit(100);
     res.json(rows.map((r: any) => ({ ...r, total: Number(r.total), count: Number(r.count) })));
@@ -693,7 +724,10 @@ router.get('/profit-item', async (req: any, res) => {
         revenue: sql<string>`COALESCE(SUM(${schema.salesInvoiceLines.lineTotal}), 0)`,
       })
       .from(schema.salesInvoiceLines)
-      .innerJoin(schema.salesInvoices, eq(schema.salesInvoiceLines.invoiceId, schema.salesInvoices.id))
+      .innerJoin(
+        schema.salesInvoices,
+        eq(schema.salesInvoiceLines.invoiceId, schema.salesInvoices.id),
+      )
       .innerJoin(schema.items, eq(schema.salesInvoiceLines.itemId, schema.items.id))
       .where(req.query.periodId ? eq(schema.salesInvoices.periodId, req.query.periodId) : sql`TRUE`)
       .groupBy(schema.items.id, schema.items.code, schema.items.name)
@@ -726,8 +760,12 @@ router.get('/profit-project', async (req: any, res) => {
       .groupBy(schema.purchaseInvoiceLines.internalOrderId);
 
     const projects = await req.tenantClient.select().from(schema.internalOrders);
-    const incMap = new Map<string, number>(income.map((r: any) => [r.internalOrderId as string, Number(r.amount)]));
-    const expMap = new Map<string, number>(expense.map((r: any) => [r.internalOrderId as string, Number(r.amount)]));
+    const incMap = new Map<string, number>(
+      income.map((r: any) => [r.internalOrderId as string, Number(r.amount)]),
+    );
+    const expMap = new Map<string, number>(
+      expense.map((r: any) => [r.internalOrderId as string, Number(r.amount)]),
+    );
     const rows = projects.map((p: any) => {
       const ing = incMap.get(p.id) || 0;
       const gas = expMap.get(p.id) || 0;
@@ -768,12 +806,22 @@ router.get('/profit-cost-center', async (req: any, res) => {
       .where(sql`${schema.purchaseInvoiceLines.costCenterId} IS NOT NULL`)
       .groupBy(schema.purchaseInvoiceLines.costCenterId);
     const ccs = await req.tenantClient.select().from(schema.costCenters);
-    const incMap = new Map<string, number>(income.map((r: any) => [r.id as string, Number(r.amount)]));
-    const expMap = new Map<string, number>(expense.map((r: any) => [r.id as string, Number(r.amount)]));
+    const incMap = new Map<string, number>(
+      income.map((r: any) => [r.id as string, Number(r.amount)]),
+    );
+    const expMap = new Map<string, number>(
+      expense.map((r: any) => [r.id as string, Number(r.amount)]),
+    );
     const rows = ccs.map((c: any) => {
       const ing = incMap.get(c.id) || 0;
       const gas = expMap.get(c.id) || 0;
-      return { code: c.code, name: c.name, income: Number(ing), expense: Number(gas), margin: Number(ing) - Number(gas) };
+      return {
+        code: c.code,
+        name: c.name,
+        income: Number(ing),
+        expense: Number(gas),
+        margin: Number(ing) - Number(gas),
+      };
     });
     res.json(rows);
   } catch (e: any) {
@@ -877,18 +925,22 @@ router.get('/cashflow', async (req: any, res) => {
   try {
     const days = Number(req.query.days || 30);
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const inflow = await req.tenantClient.execute(sql.raw(`
+    const inflow = await req.tenantClient.execute(
+      sql.raw(`
       SELECT to_char("date", 'YYYY-MM-DD') AS day, COALESCE(SUM("amount"::numeric), 0)::float AS total
       FROM "Payment"
       WHERE "salesInvoiceId" IS NOT NULL AND "date" >= '${since}'::date
       GROUP BY 1 ORDER BY 1
-    `));
-    const outflow = await req.tenantClient.execute(sql.raw(`
+    `),
+    );
+    const outflow = await req.tenantClient.execute(
+      sql.raw(`
       SELECT to_char("date", 'YYYY-MM-DD') AS day, COALESCE(SUM("amount"::numeric), 0)::float AS total
       FROM "Payment"
       WHERE "purchaseInvoiceId" IS NOT NULL AND "date" >= '${since}'::date
       GROUP BY 1 ORDER BY 1
-    `));
+    `),
+    );
     const inRows: any[] = inflow.rows || inflow;
     const outRows: any[] = outflow.rows || outflow;
     const inMap = new Map(inRows.map((r: any) => [r.day, Number(r.total)]));
@@ -926,8 +978,18 @@ router.get('/payslip/:payrollId/pdf', async (req: any, res) => {
       .from(schema.employees)
       .where(eq(schema.employees.id, p.employeeId));
     const months = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ];
     const company = await getCompanyHeader(req.tenantClient);
     const gross = Number(p.gross);
@@ -1039,12 +1101,7 @@ router.get('/labor-cost', async (req: any, res) => {
         netPay: sql<string>`COALESCE(SUM(${schema.payrolls.netPay}), 0)`,
       })
       .from(schema.payrolls)
-      .where(
-        and(
-          eq(schema.payrolls.periodYear, year),
-          eq(schema.payrolls.status, 'approved'),
-        ),
-      )
+      .where(and(eq(schema.payrolls.periodYear, year), eq(schema.payrolls.status, 'approved')))
       .groupBy(schema.payrolls.periodMonth)
       .orderBy(asc(schema.payrolls.periodMonth));
     res.json(
@@ -1311,8 +1368,7 @@ router.get('/hr/productivity', async (req: any, res) => {
       const active =
         contracts.find((c: any) => c.isActive) || contracts[contracts.length - 1] || null;
       const weekly = active ? Number(active.workHoursPerWeek || 40) : 40;
-      const days =
-        Math.ceil((toDate.getTime() - fromDate.getTime()) / 86400000) + 1;
+      const days = Math.ceil((toDate.getTime() - fromDate.getTime()) / 86400000) + 1;
       const ratio = active?.isPartTime ? Number(active.partTimeRatio || 1) : 1;
       const hoursContracted = ((weekly * days) / 7) * ratio;
 
@@ -1388,7 +1444,10 @@ router.get('/hr/labor-cost', async (req: any, res) => {
     const departments = await req.tenantClient.select().from(schema.departments);
     const depById = new Map(departments.map((d: any) => [d.id, d]));
 
-    const groups: Record<string, { label: string; gross: number; ssEr: number; total: number; count: number }> = {};
+    const groups: Record<
+      string,
+      { label: string; gross: number; ssEr: number; total: number; count: number }
+    > = {};
     for (const p of inRange) {
       const emp: any = empById.get(p.employeeId);
       let key = 'sin asignar';
@@ -1421,10 +1480,13 @@ router.get('/hr/labor-cost', async (req: any, res) => {
     }
     const rows = Object.entries(groups).map(([key, v]) => ({ key, ...v }));
     rows.sort((a, b) => b.total - a.total);
-    res.json({ rows, totals: rows.reduce(
-      (s, r) => ({ gross: s.gross + r.gross, ssEr: s.ssEr + r.ssEr, total: s.total + r.total }),
-      { gross: 0, ssEr: 0, total: 0 },
-    ) });
+    res.json({
+      rows,
+      totals: rows.reduce(
+        (s, r) => ({ gross: s.gross + r.gross, ssEr: s.ssEr + r.ssEr, total: s.total + r.total }),
+        { gross: 0, ssEr: 0, total: 0 },
+      ),
+    });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -1448,7 +1510,10 @@ router.get('/hr/commissions', async (req: any, res) => {
     });
     if (employeeId) accruals = accruals.filter((a: any) => a.employeeId === employeeId);
     const employees = await req.tenantClient.select().from(schema.employees);
-    const byEmp = new Map<string, { employeeId: string; name: string; base: number; amount: number; count: number }>();
+    const byEmp = new Map<
+      string,
+      { employeeId: string; name: string; base: number; amount: number; count: number }
+    >();
     for (const a of accruals) {
       const emp: any = employees.find((e: any) => e.id === a.employeeId);
       const cur = byEmp.get(a.employeeId) || {

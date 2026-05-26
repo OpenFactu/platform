@@ -24,9 +24,7 @@ function App() {
         // setupNeeded=true. Útil para volver a ver el wizard sin haber tirado
         // los tenants (modo debug).
         const force = new URLSearchParams(window.location.search).get('force') === '1';
-        const res = await fetch(
-          `/api/setup/status?t=${Date.now()}${force ? '&force=1' : ''}`,
-        );
+        const res = await fetch(`/api/setup/status?t=${Date.now()}${force ? '&force=1' : ''}`);
         if (!res.ok) throw new Error('Servidor no disponible');
         const data = await res.json();
         console.log('[App] Setup Status:', data);
@@ -81,10 +79,12 @@ function App() {
     return (
       <>
         <BrowserRouter>
-          <Routes>
-            <Route path="/setup" element={<SetupWizard />} />
-            <Route path="*" element={<Navigate to="/setup" replace />} />
-          </Routes>
+          <PopupProvider>
+            <Routes>
+              <Route path="/setup" element={<SetupWizard />} />
+              <Route path="*" element={<Navigate to="/setup" replace />} />
+            </Routes>
+          </PopupProvider>
         </BrowserRouter>
         <DebugPanel />
       </>

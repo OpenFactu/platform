@@ -79,7 +79,12 @@ export const RowActionsMenu: React.FC<Props> = ({ actions, size = 13 }) => {
           <div
             ref={menuRef}
             role="menu"
-            style={{ top: pos.top, left: pos.left, width: MENU_WIDTH, transformOrigin: 'top right' }}
+            style={{
+              top: pos.top,
+              left: pos.left,
+              width: MENU_WIDTH,
+              transformOrigin: 'top right',
+            }}
             className="fixed z-[9999] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl py-1 row-actions-menu-in"
           >
             {actions.map((a, i) => (

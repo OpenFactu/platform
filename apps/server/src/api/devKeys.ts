@@ -83,10 +83,7 @@ router.delete('/:id', adminMiddleware, async (req: any, res) => {
     const db = ClientFactory.getClient('public');
     const { id } = req.params;
 
-    const [key] = await db
-      .select()
-      .from(schema.devApiKeys)
-      .where(eq(schema.devApiKeys.id, id));
+    const [key] = await db.select().from(schema.devApiKeys).where(eq(schema.devApiKeys.id, id));
 
     if (!key) {
       return res.status(404).json({ error: 'Key no encontrada' });
@@ -113,10 +110,7 @@ router.patch('/:id/toggle', adminMiddleware, async (req: any, res) => {
     const db = ClientFactory.getClient('public');
     const { id } = req.params;
 
-    const [key] = await db
-      .select()
-      .from(schema.devApiKeys)
-      .where(eq(schema.devApiKeys.id, id));
+    const [key] = await db.select().from(schema.devApiKeys).where(eq(schema.devApiKeys.id, id));
 
     if (!key) {
       return res.status(404).json({ error: 'Key no encontrada' });

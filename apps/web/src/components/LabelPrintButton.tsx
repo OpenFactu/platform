@@ -1,8 +1,8 @@
 /**
- * Botón + modal para imprimir etiquetas a partir de plantillas FREE.
+ * Botón + modal para imprimir etiquetas a partir de plantillas LABEL.
  *
  * Flujo:
- *  1. Lista las plantillas con docType=FREE del tenant.
+ *  1. Lista las plantillas con docType=LABEL del tenant.
  *  2. Si hay 1 sola, imprime directamente al hacer click; si hay varias,
  *     muestra un selector dentro del modal.
  *  3. Permite indicar nº de copias y abre el PDF resultante en una pestaña
@@ -58,7 +58,7 @@ export const LabelPrintButton: React.FC<Props> = ({
     if (!open || templates !== null) return;
     (async () => {
       try {
-        const res = await fetch('/api/document-templates?docType=FREE', {
+        const res = await fetch('/api/document-templates?docType=LABEL', {
           headers: {
             Authorization: `Bearer ${token ?? ''}`,
             'x-tenant-id': tenantId ?? '',
@@ -80,18 +80,15 @@ export const LabelPrintButton: React.FC<Props> = ({
     setPrinting(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/document-templates/${selectedId}/render-free`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token ?? ''}`,
-            'x-tenant-id': tenantId ?? '',
-          },
-          body: JSON.stringify({ params, copies }),
+      const res = await fetch(`/api/document-templates/${selectedId}/render-free`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token ?? ''}`,
+          'x-tenant-id': tenantId ?? '',
         },
-      );
+        body: JSON.stringify({ params, copies }),
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
         throw new Error(body.error || `HTTP ${res.status}`);
@@ -212,9 +209,7 @@ export const LabelPrintButton: React.FC<Props> = ({
                     )}
                   </>
                 )}
-                {error && (
-                  <div className="text-red-500 text-xs whitespace-pre-wrap">⚠ {error}</div>
-                )}
+                {error && <div className="text-red-500 text-xs whitespace-pre-wrap">⚠ {error}</div>}
               </div>
               <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end gap-2">
                 <button

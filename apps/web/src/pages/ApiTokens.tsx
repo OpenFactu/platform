@@ -20,7 +20,11 @@ interface ApiToken {
 
 const ALL_SCOPES = [
   { id: 'read:logistics', label: 'Leer logística', description: 'GET /api/logistics/*' },
-  { id: 'write:logistics', label: 'Escribir logística', description: 'POST/PATCH/DELETE /api/logistics/*' },
+  {
+    id: 'write:logistics',
+    label: 'Escribir logística',
+    description: 'POST/PATCH/DELETE /api/logistics/*',
+  },
 ];
 
 export const ApiTokens: React.FC = () => {
@@ -156,9 +160,7 @@ export const ApiTokens: React.FC = () => {
                   </div>
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex gap-3 flex-wrap">
                     <span>Scopes: {t.scopes}</span>
-                    <span>
-                      Creado: {new Date(t.createdAt).toLocaleDateString('es-ES')}
-                    </span>
+                    <span>Creado: {new Date(t.createdAt).toLocaleDateString('es-ES')}</span>
                     {t.lastUsedAt && (
                       <span>Último uso: {new Date(t.lastUsedAt).toLocaleString('es-ES')}</span>
                     )}
@@ -232,19 +234,14 @@ export const ApiTokens: React.FC = () => {
         </div>
       </Modal>
 
-      <Modal
-        isOpen={!!created}
-        onClose={() => setCreated(null)}
-        title="Token creado"
-        maxWidth="md"
-      >
+      <Modal isOpen={!!created} onClose={() => setCreated(null)} title="Token creado" maxWidth="md">
         {created && (
           <div className="space-y-3 pt-4">
             <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
               <AlertCircle className="text-amber-600 dark:text-amber-300 flex-shrink-0" size={16} />
               <div className="text-[12px] text-amber-800 dark:text-amber-200">
-                Guarda este token <b>ahora</b>. No podrá volver a mostrarse. Si lo pierdes, revócalo y
-                crea uno nuevo.
+                Guarda este token <b>ahora</b>. No podrá volver a mostrarse. Si lo pierdes, revócalo
+                y crea uno nuevo.
               </div>
             </div>
             <div>

@@ -7,11 +7,11 @@
 
 html {
   color-scheme: light;
-  background: #FAFBFC;
+  background: #fafbfc;
 }
 html.dark {
   color-scheme: dark;
-  background: #0A1628;
+  background: #0a1628;
 }
 
 /*
@@ -22,10 +22,10 @@ html.dark {
  */
 :root {
   /* Colores en formato RGB (space-separated) para que Tailwind aplique /alpha */
-  --color-primary-rgb: 10 22 40;      /* #0A1628 · ink */
+  --color-primary-rgb: 10 22 40; /* #0A1628 · ink */
   --color-primary-hover-rgb: 45 58 74; /* #2D3A4A · ink-2 */
   --color-primary-fg-rgb: 255 255 255;
-  --color-accent-rgb: 13 148 136;     /* #0D9488 · teal */
+  --color-accent-rgb: 13 148 136; /* #0D9488 · teal */
   --color-accent-fg-rgb: 255 255 255;
 
   /* Alias hex (útiles fuera de Tailwind: inline styles, SVG stroke, etc.) */
@@ -36,46 +36,46 @@ html.dark {
   --color-accent-fg: rgb(var(--color-accent-fg-rgb));
 
   /* Escala semántica Keirost */
-  --k-teal-50:  #F0FAFA;
-  --k-teal-100: #CCEFED;
-  --k-teal-500: #0D9488;
-  --k-teal-600: #0A6E63;
-  --k-ink-900:  #0A1628;
-  --k-ink-700:  #2D3A4A;
-  --k-ink-500:  #64748B;
-  --k-ink-400:  #94A3B8;
-  --k-line:     #E2E8F0;
-  --k-line-2:   #F1F5F9;
-  --k-surface:  #FAFBFC;
-  --k-ink-800:  #1A2535;
-  --k-teal-900: #042B26;
+  --k-teal-50: #f0fafa;
+  --k-teal-100: #ccefed;
+  --k-teal-500: #0d9488;
+  --k-teal-600: #0a6e63;
+  --k-ink-900: #0a1628;
+  --k-ink-700: #2d3a4a;
+  --k-ink-500: #64748b;
+  --k-ink-400: #94a3b8;
+  --k-line: #e2e8f0;
+  --k-line-2: #f1f5f9;
+  --k-surface: #fafbfc;
+  --k-ink-800: #1a2535;
+  --k-teal-900: #042b26;
 
   /* Semánticos */
-  --k-success:  #16A34A;
-  --k-warning:  #D97706;
-  --k-danger:   #DC2626;
-  --k-info:     #2563EB;
+  --k-success: #16a34a;
+  --k-warning: #d97706;
+  --k-danger: #dc2626;
+  --k-info: #2563eb;
 
   /* Tipografía Keirost: Space Grotesk (display), DM Sans (body), JetBrains Mono (code) */
   --font-display: 'Space Grotesk', system-ui, sans-serif;
   --font-sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
   --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, monospace;
 
-  --bg-app: #FAFBFC;
-  --bg-card: #FFFFFF;
-  --bg-sidebar: #0A1628;
-  --fg-default: #0A1628;
-  --fg-muted: #64748B;
-  --border-default: #E2E8F0;
+  --bg-app: #fafbfc;
+  --bg-card: #ffffff;
+  --bg-sidebar: #0a1628;
+  --fg-default: #0a1628;
+  --fg-muted: #64748b;
+  --border-default: #e2e8f0;
 }
 
 html.dark {
-  --bg-app: #0A1628;
-  --bg-card: #1A2535;
-  --bg-sidebar: #042B26;
-  --fg-default: #E2E8F0;
-  --fg-muted: #94A3B8;
-  --border-default: #2D3A4A;
+  --bg-app: #0a1628;
+  --bg-card: #1a2535;
+  --bg-sidebar: #042b26;
+  --fg-default: #e2e8f0;
+  --fg-muted: #94a3b8;
+  --border-default: #2d3a4a;
 }
 
 /*
@@ -83,33 +83,58 @@ html.dark {
  * (#0f172a), casi idéntico al fondo de la app (#0A1628), así los cards
  * desaparecen visualmente. Forzamos ink-800 (#1A2535) y un borde más marcado.
  */
-html.dark [class*="bg-slate-900"].border {
-  background-color: #1A2535 !important;
-  border-color: #2D3A4A !important;
+html.dark [class*='bg-slate-900'].border {
+  background-color: #1a2535 !important;
+  border-color: #2d3a4a !important;
 }
 html.dark .bg-slate-900 {
-  background-color: #1A2535;
+  background-color: #1a2535;
 }
 
 /* ---------- Animación "aurora" del login ---------- */
 @keyframes k-blob-1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%      { transform: translate(40px, -30px) scale(1.15); }
-  66%      { transform: translate(-25px, 35px) scale(0.9); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(40px, -30px) scale(1.15);
+  }
+  66% {
+    transform: translate(-25px, 35px) scale(0.9);
+  }
 }
 @keyframes k-blob-2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33%      { transform: translate(-35px, 40px) scale(1.1); }
-  66%      { transform: translate(30px, -20px) scale(0.95); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(-35px, 40px) scale(1.1);
+  }
+  66% {
+    transform: translate(30px, -20px) scale(0.95);
+  }
 }
 @keyframes k-blob-3 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50%      { transform: translate(20px, 20px) scale(1.2); }
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(20px, 20px) scale(1.2);
+  }
 }
 @keyframes k-shimmer {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .k-aurora {
@@ -129,39 +154,51 @@ html.dark .bg-slate-900 {
   will-change: transform;
 }
 .k-aurora::before {
-  width: 420px; height: 420px;
-  background: radial-gradient(circle, rgba(13,148,136,0.9), transparent 60%);
-  top: -80px; left: -80px;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.9), transparent 60%);
+  top: -80px;
+  left: -80px;
   animation: k-blob-1 18s ease-in-out infinite;
 }
 .k-aurora::after {
-  width: 360px; height: 360px;
-  background: radial-gradient(circle, rgba(37,99,235,0.8), transparent 60%);
-  bottom: -60px; right: -60px;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.8), transparent 60%);
+  bottom: -60px;
+  right: -60px;
   animation: k-blob-2 22s ease-in-out infinite;
 }
 .k-aurora > span {
-  width: 300px; height: 300px;
-  background: radial-gradient(circle, rgba(94,234,212,0.6), transparent 60%);
-  top: 40%; left: 30%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(94, 234, 212, 0.6), transparent 60%);
+  top: 40%;
+  left: 30%;
   animation: k-blob-3 26s ease-in-out infinite;
 }
 
 /* Variante global: más tenue y desplazada, visible sobre el fondo claro/oscuro del form */
 .k-aurora--global::before {
-  width: 520px; height: 520px;
+  width: 520px;
+  height: 520px;
   opacity: 0.28;
-  top: -140px; left: 10%;
+  top: -140px;
+  left: 10%;
 }
 .k-aurora--global::after {
-  width: 460px; height: 460px;
+  width: 460px;
+  height: 460px;
   opacity: 0.25;
-  bottom: -140px; right: 10%;
+  bottom: -140px;
+  right: 10%;
 }
 .k-aurora--global > span {
-  width: 380px; height: 380px;
+  width: 380px;
+  height: 380px;
   opacity: 0.22;
-  top: 45%; left: 55%;
+  top: 45%;
+  left: 55%;
 }
 html.dark .k-aurora--global::before,
 html.dark .k-aurora--global::after,
@@ -171,41 +208,89 @@ html.dark .k-aurora--global > span {
 
 /* Entrada de fila de tabla — visible pero no invasiva */
 @keyframes k-row-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Escalado + fade para cards al montar */
 @keyframes k-card-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
-.k-card-in { animation: k-card-in 0.45s cubic-bezier(0.2, 0, 0, 1) both; }
+.k-card-in {
+  animation: k-card-in 0.45s cubic-bezier(0.2, 0, 0, 1) both;
+}
 
 /* Badge/Chip que pulsa al aparecer */
 @keyframes k-pop-in {
-  0% { opacity: 0; transform: scale(0.4); }
-  60% { opacity: 1; transform: scale(1.15); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
-.k-pop-in { animation: k-pop-in 0.35s cubic-bezier(0.2, 0, 0.2, 1.3) both; }
+.k-pop-in {
+  animation: k-pop-in 0.35s cubic-bezier(0.2, 0, 0.2, 1.3) both;
+}
 
 /* Menú kebab (RowActionsMenu) — abre con fade + scale desde la esquina superior derecha. */
 @keyframes row-actions-menu-in {
-  0%   { opacity: 0; transform: translateY(-6px) scale(0.92); }
-  60%  { opacity: 1; }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
-.row-actions-menu-in { animation: row-actions-menu-in 0.18s cubic-bezier(0.2, 0, 0, 1) both; }
+.row-actions-menu-in {
+  animation: row-actions-menu-in 0.18s cubic-bezier(0.2, 0, 0, 1) both;
+}
 
 /* Sacudida al llegar una nueva notificación */
 @keyframes k-bell-shake {
-  0%, 100% { transform: rotate(0deg); }
-  15% { transform: rotate(-18deg); }
-  30% { transform: rotate(14deg); }
-  45% { transform: rotate(-10deg); }
-  60% { transform: rotate(7deg); }
-  75% { transform: rotate(-4deg); }
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(-18deg);
+  }
+  30% {
+    transform: rotate(14deg);
+  }
+  45% {
+    transform: rotate(-10deg);
+  }
+  60% {
+    transform: rotate(7deg);
+  }
+  75% {
+    transform: rotate(-4deg);
+  }
 }
 .k-bell-shake {
   animation: k-bell-shake 0.9s ease-in-out;
@@ -214,20 +299,35 @@ html.dark .k-aurora--global > span {
 
 /* Pulse del punto rojo de unread */
 @keyframes k-pulse-dot {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
-  70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
 }
-.k-pulse-dot { animation: k-pulse-dot 2s infinite; }
+.k-pulse-dot {
+  animation: k-pulse-dot 2s infinite;
+}
 
 /* Slide-in diagonal para items de lista (notifs, filas) */
 @keyframes k-slide-fade {
-  from { opacity: 0; transform: translateX(-8px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
-.k-slide-fade { animation: k-slide-fade 0.3s ease-out both; }
+.k-slide-fade {
+  animation: k-slide-fade 0.3s ease-out both;
+}
 
 .k-shimmer-text {
-  background: linear-gradient(90deg, #5EEAD4, #60A5FA, #A78BFA, #5EEAD4);
+  background: linear-gradient(90deg, #5eead4, #60a5fa, #a78bfa, #5eead4);
   background-size: 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -242,7 +342,11 @@ html.dark .k-aurora--global > span {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3, h4, h5 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
     font-family: var(--font-display);
     color: var(--fg-default);
     letter-spacing: -0.25px;

@@ -42,7 +42,7 @@ export interface FlagsConfig {
 // partida.
 export const BRANDING_DEFAULTS: BrandingConfig = {
   colorPrimary: '#0A1628', // ink — texto/botones principales
-  colorAccent: '#0D9488',  // teal — acento, links, CTAs
+  colorAccent: '#0D9488', // teal — acento, links, CTAs
   logoUrl: '',
   appName: 'Keirost',
   fontFamily: 'sans',

@@ -2,6 +2,7 @@ import { eq, inArray, desc, and, isNull, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import * as schema from '../../db/schema';
 import { ClientFactory } from '../tenant/ClientFactory';
+import { DocumentRegistry } from './DocumentRegistry';
 import type {
   DocType,
   DocumentPdfPayload,
@@ -11,73 +12,31 @@ import type {
 } from '@openfactu/pdf';
 import { amountToSpanishWords } from '../../utils/numberToWords';
 
-interface DocTypeTables {
-  header: any;
-  lines: any;
-  batches: any | null;
-  lineFk: string;
-  supportsBase: boolean;
-  baseType?: string;
-  baseTable?: any;
+/**
+ * Helper que construye un objeto de tablas desde el registry.
+ * Reemplaza el antiguo TABLE_MAP hardcodeado.
+ */
+function getDocTables(docType: DocType) {
+  const config = DocumentRegistry.get(docType);
+  const baseConfig = config.baseDocType ? DocumentRegistry.get(config.baseDocType) : undefined;
+  return {
+    header: config.schemaTable,
+    lines: config.lineSchemaTable,
+    batches: config.batchSchemaTable,
+    lineFk: config.lineFk,
+    supportsBase: !!config.baseDocType,
+    baseType: config.baseDocType,
+    baseTable: baseConfig?.schemaTable,
+    config,
+  };
 }
 
-const TABLE_MAP: Record<DocType, DocTypeTables> = {
-  SINV: {
-    header: schema.salesInvoices,
-    lines: schema.salesInvoiceLines,
-    batches: schema.salesInvoiceLineBatches,
-    lineFk: 'invoiceId',
-    supportsBase: true,
-    baseType: 'SDN',
-    baseTable: schema.salesDeliveryNotes,
-  },
-  PINV: {
-    header: schema.purchaseInvoices,
-    lines: schema.purchaseInvoiceLines,
-    batches: schema.purchaseInvoiceLineBatches,
-    lineFk: 'invoiceId',
-    supportsBase: true,
-    baseType: 'PDN',
-    baseTable: schema.purchaseDeliveryNotes,
-  },
-  SDN: {
-    header: schema.salesDeliveryNotes,
-    lines: schema.salesDeliveryNoteLines,
-    batches: schema.salesDeliveryNoteLineBatches,
-    lineFk: 'deliveryId',
-    supportsBase: false,
-  },
-  PDN: {
-    header: schema.purchaseDeliveryNotes,
-    lines: schema.purchaseDeliveryNoteLines,
-    batches: schema.purchaseDeliveryNoteLineBatches,
-    lineFk: 'deliveryId',
-    supportsBase: false,
-  },
-  SO: {
-    header: schema.salesOrders,
-    lines: schema.salesOrderLines,
-    batches: null,
-    lineFk: 'orderId',
-    supportsBase: false,
-  },
-  PO: {
-    header: schema.purchaseOrders,
-    lines: schema.purchaseOrderLines,
-    batches: null,
-    lineFk: 'orderId',
-    supportsBase: false,
-  },
-};
-
-// Etiquetas de estado pensadas para salir en el PDF de la factura.
-// "Abierto" sonaba a "sin contabilizar" en documentos ya asentados, lo que
-// confunde al lector. Lo renombramos a "Emitida" para facturas y mantenemos
-// los otros para sus estados.
-const STATUS_LABELS: Record<string, string> = {
-  O: 'Emitida',
-  C: 'Cerrada',
-  X: 'Cancelada',
+// Etiquetas de estado para PDF — se obtienen del registry por docType,
+// pero mantenemos este fallback genérico para estados no registrados.
+const DEFAULT_STATUS_LABELS: Record<string, string> = {
+  O: 'Abierto',
+  C: 'Cerrado',
+  X: 'Cancelado',
   P: 'Parcial',
   D: 'Borrador',
 };
@@ -307,8 +266,8 @@ export class PdfPayloadBuilder {
     documentId: string,
     db: any,
   ): Promise<DocumentPdfPayload> {
-    const map = TABLE_MAP[docType];
-    if (!map) throw new Error(`Tipo de documento no soportado: ${docType}`);
+    const map = getDocTables(docType);
+    const config = map.config;
 
     // 1. Header + series + period
     const [headerRow] = await db
@@ -328,12 +287,7 @@ export class PdfPayloadBuilder {
     // Leer columnas custom `p_*` del header. Drizzle solo proyecta lo que
     // declara en el schema, así que los campos plugin/user se perderían.
     try {
-      const headerPgName =
-        {
-          SINV: 'SalesInvoice', PINV: 'PurchaseInvoice',
-          SDN: 'SalesDeliveryNote', PDN: 'PurchaseDeliveryNote',
-          SO: 'SalesOrder', PO: 'PurchaseOrder',
-        }[docType] || '';
+      const headerPgName = config.headerPgName;
       if (headerPgName) {
         const rawH: any = await db.execute(
           sql.raw(
@@ -401,16 +355,9 @@ export class PdfPayloadBuilder {
 
     // Mergear columnas custom `p_*` en cada línea (Drizzle no las proyecta).
     try {
-      const linePgName =
-        {
-          SINV: 'SalesInvoiceLine', PINV: 'PurchaseInvoiceLine',
-          SDN: 'SalesDeliveryNoteLine', PDN: 'PurchaseDeliveryNoteLine',
-          SO: 'SalesOrderLine', PO: 'PurchaseOrderLine',
-        }[docType] || '';
+      const linePgName = config.linePgName;
       if (linePgName && lineRows.length > 0) {
-        const ids = lineRows
-          .map((l: any) => `'${String(l.id).replace(/'/g, "''")}'`)
-          .join(',');
+        const ids = lineRows.map((l: any) => `'${String(l.id).replace(/'/g, "''")}'`).join(',');
         const rawL: any = await db.execute(
           sql.raw(`SELECT * FROM "${linePgName}" WHERE "id" IN (${ids})`),
         );
@@ -443,10 +390,11 @@ export class PdfPayloadBuilder {
 
     // UoMs: recoger tanto las base de los artículos como las elegidas por línea
     const uomIds = [
-      ...new Set([
-        ...itemList.map((i: any) => i.uomId),
-        ...lineRows.map((l: any) => l.uomId),
-      ].filter(Boolean)),
+      ...new Set(
+        [...itemList.map((i: any) => i.uomId), ...lineRows.map((l: any) => l.uomId)].filter(
+          Boolean,
+        ),
+      ),
     ];
     const uomList =
       uomIds.length > 0
@@ -556,13 +504,11 @@ export class PdfPayloadBuilder {
 
     // 8b. Plugin fields — campos custom de la cabecera
     const pluginFieldRows = await db.select().from(schema.pluginFields);
-    const headerTableName = {
-      SINV: 'SalesInvoice', PINV: 'PurchaseInvoice',
-      SDN: 'SalesDeliveryNote', PDN: 'PurchaseDeliveryNote',
-      SO: 'SalesOrder', PO: 'PurchaseOrder',
-    }[docType] || '';
+    const headerTableName = config.headerPgName;
     const isVisibleInPdf = (pf: any) =>
-      !pf.visibleIn || !Array.isArray(pf.visibleIn) || pf.visibleIn.length === 0 ||
+      !pf.visibleIn ||
+      !Array.isArray(pf.visibleIn) ||
+      pf.visibleIn.length === 0 ||
       pf.visibleIn.includes('pdf');
     const headerPluginFields = pluginFieldRows
       .filter((pf: any) => pf.tableName === headerTableName)
@@ -586,7 +532,9 @@ export class PdfPayloadBuilder {
         const it: any = itemsMap.get(l.itemId);
         // Preferir la UoM elegida en la línea; si no hay, la base del artículo
         const effectiveUomId = l.uomId || it?.uomId;
-        const uomCode = effectiveUomId ? (uomMap.get(effectiveUomId) as string | undefined) || null : null;
+        const uomCode = effectiveUomId
+          ? (uomMap.get(effectiveUomId) as string | undefined) || null
+          : null;
         const category = it?.categoryId
           ? (catMap.get(it.categoryId) as string | undefined) || null
           : null;
@@ -623,7 +571,10 @@ export class PdfPayloadBuilder {
         docCode: formatDocCode(headerRow.seriesPrefix, headerRow.periodCode, header.docNum),
         date: new Date(header.date).toLocaleDateString('es-ES'),
         status: header.status,
-        statusLabel: STATUS_LABELS[header.status] || header.status,
+        statusLabel:
+          config.statusLabels[header.status] ||
+          DEFAULT_STATUS_LABELS[header.status] ||
+          header.status,
         subtotal: Number(header.subtotal),
         taxTotal: Number(header.taxTotal),
         total: Number(header.total),
@@ -700,7 +651,12 @@ export class PdfPayloadBuilder {
         b: l.batches?.map((b: any) => `${b.batchNum}:${b.quantity}`) || [],
       })),
     });
-    const docHash = crypto.createHash('sha256').update(hashSource).digest('hex').slice(0, 12).toUpperCase();
+    const docHash = crypto
+      .createHash('sha256')
+      .update(hashSource)
+      .digest('hex')
+      .slice(0, 12)
+      .toUpperCase();
 
     // `qrPayload` — string compacto verificable. Formato:
     //   KR|{docType}|{docCode}|{hash}|{total}
@@ -804,8 +760,7 @@ export class PdfPayloadBuilder {
   }
 
   public static async findLatestSampleId(docType: DocType, db: any): Promise<string | null> {
-    const map = TABLE_MAP[docType];
-    if (!map) return null;
+    const map = getDocTables(docType);
     const [row] = await db
       .select({ id: map.header.id })
       .from(map.header)

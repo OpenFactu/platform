@@ -34,7 +34,8 @@ function hashToken(token: string) {
 function generateToken(): { raw: string; prefix: string; hash: string } {
   // 32 bytes aleatorios en base64url → 43 chars. Prefijo tk_ para detección.
   const buf = crypto.randomBytes(32);
-  const raw = 'tk_' + buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const raw =
+    'tk_' + buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return { raw, prefix: raw.substring(0, 11), hash: hashToken(raw) };
 }
 
@@ -64,7 +65,9 @@ router.post('/', requireAdmin, async (req: any, res) => {
   try {
     const body = req.body || {};
     if (!body.name) return res.status(400).json({ error: 'El nombre es obligatorio.' });
-    const scopes: string[] = Array.isArray(body.scopes) ? body.scopes : String(body.scopes || '').split(',');
+    const scopes: string[] = Array.isArray(body.scopes)
+      ? body.scopes
+      : String(body.scopes || '').split(',');
     const cleanScopes = scopes.map((s) => String(s).trim()).filter(Boolean);
     if (cleanScopes.length === 0) cleanScopes.push('read:logistics');
 

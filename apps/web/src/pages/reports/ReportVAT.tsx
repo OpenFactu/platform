@@ -46,9 +46,14 @@ export const ReportVAT: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const sum = (arr: any[], k: string) => arr.reduce((s: number, r: any) => s + Number(r[k] || 0), 0);
+  const sum = (arr: any[], k: string) =>
+    arr.reduce((s: number, r: any) => s + Number(r[k] || 0), 0);
 
-  const Table: React.FC<{ title: string; rows: any[]; color: string }> = ({ title, rows, color }) => (
+  const Table: React.FC<{ title: string; rows: any[]; color: string }> = ({
+    title,
+    rows,
+    color,
+  }) => (
     <Card className="p-5 space-y-3">
       <h3 className={`text-xs font-black uppercase tracking-wider ${color}`}>{title}</h3>
       <div className="overflow-x-auto">
@@ -129,14 +134,26 @@ export const ReportVAT: React.FC = () => {
         <Card className="p-10 text-center text-slate-400 italic">Cargando…</Card>
       ) : (
         <>
-          <Table title="IVA Repercutido (ventas)" rows={data.output} color="text-emerald-600 dark:text-emerald-400" />
-          <Table title="IVA Soportado (compras)" rows={data.input} color="text-blue-600 dark:text-blue-400" />
-          <Card className={`p-5 ${saldo >= 0 ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
+          <Table
+            title="IVA Repercutido (ventas)"
+            rows={data.output}
+            color="text-emerald-600 dark:text-emerald-400"
+          />
+          <Table
+            title="IVA Soportado (compras)"
+            rows={data.input}
+            color="text-blue-600 dark:text-blue-400"
+          />
+          <Card
+            className={`p-5 ${saldo >= 0 ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}
+          >
             <div className="flex items-baseline justify-between">
               <span className="text-xs font-black uppercase tracking-widest">
                 {saldo >= 0 ? 'A ingresar a Hacienda' : 'A compensar / devolver'}
               </span>
-              <span className={`text-3xl font-black tabular-nums ${saldo >= 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+              <span
+                className={`text-3xl font-black tabular-nums ${saldo >= 0 ? 'text-rose-700' : 'text-emerald-700'}`}
+              >
                 {fmt.money(Math.abs(saldo))}
               </span>
             </div>

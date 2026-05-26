@@ -1,7 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Button, Badge, Loader, Modal, Input, useToast } from '@openfactu/ui';
-import { ArrowLeft, Copy, RefreshCw, PackageCheck, Warehouse, TruckIcon, MoreVertical } from 'lucide-react';
+import {
+  ArrowLeft,
+  Copy,
+  RefreshCw,
+  PackageCheck,
+  Warehouse,
+  TruckIcon,
+  MoreVertical,
+} from 'lucide-react';
 import { Marker, Source, Layer, type MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import { BaseMap, type BaseMapHandle } from '../../components/maps/BaseMap';
 import { MapSearchBox } from '../../components/maps/MapSearchBox';
@@ -21,8 +29,12 @@ export const ShipmentDetail: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [cancelModal, setCancelModal] = useState<{ reason: string; cancelDn: boolean } | null>(null);
-  const [returnModal, setReturnModal] = useState<{ reason: string; cancelDn: boolean } | null>(null);
+  const [cancelModal, setCancelModal] = useState<{ reason: string; cancelDn: boolean } | null>(
+    null,
+  );
+  const [returnModal, setReturnModal] = useState<{ reason: string; cancelDn: boolean } | null>(
+    null,
+  );
 
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -193,7 +205,9 @@ export const ShipmentDetail: React.FC = () => {
       body: JSON.stringify({ destinationLat: lat, destinationLng: lng }),
     });
     if (r.ok) {
-      setShipment((prev: any) => (prev ? { ...prev, destinationLat: lat, destinationLng: lng } : prev));
+      setShipment((prev: any) =>
+        prev ? { ...prev, destinationLat: lat, destinationLng: lng } : prev,
+      );
       toast.success('Destino actualizado');
     } else {
       toast.error('No se pudo guardar el destino');
@@ -223,10 +237,8 @@ export const ShipmentDetail: React.FC = () => {
   const isInbound = shipment.sourceDocType === 'PDN';
 
   // [lng, lat] — maplibre usa este orden (GeoJSON).
-  const centerLng =
-    shipment.lastLng ?? shipment.destinationLng ?? -3.7038;
-  const centerLat =
-    shipment.lastLat ?? shipment.destinationLat ?? 40.4168;
+  const centerLng = shipment.lastLng ?? shipment.destinationLng ?? -3.7038;
+  const centerLat = shipment.lastLat ?? shipment.destinationLat ?? 40.4168;
 
   const prepBadge = (() => {
     const label =
@@ -270,7 +282,8 @@ export const ShipmentDetail: React.FC = () => {
             )}
             <div>
               <h1 className="text-lg font-black text-slate-900 dark:text-slate-100">
-                {isInbound ? 'Recepción' : 'Envío propio'} · {shipment.trackingNumber || (shipment.id || '').slice(0, 8)}
+                {isInbound ? 'Recepción' : 'Envío propio'} ·{' '}
+                {shipment.trackingNumber || (shipment.id || '').slice(0, 8)}
               </h1>
               <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
                 <Badge variant={prepBadge.variant as any}>{prepBadge.label}</Badge>
@@ -324,10 +337,7 @@ export const ShipmentDetail: React.FC = () => {
             </button>
             {actionsOpen && (
               <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setActionsOpen(false)}
-                />
+                <div className="fixed inset-0 z-40" onClick={() => setActionsOpen(false)} />
                 <div className="absolute right-0 mt-1 z-50 min-w-[220px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg py-1">
                   <button
                     onClick={() => {
@@ -391,8 +401,8 @@ export const ShipmentDetail: React.FC = () => {
                   className="absolute z-[9] bg-amber-50 border border-amber-300 text-amber-900 rounded-lg px-3 py-2 text-xs shadow-md"
                   style={{ top: 66, left: 10, right: 10, maxWidth: 380 }}
                 >
-                  <b>Sin pin de destino.</b> Usa el buscador arriba o toca en el mapa
-                  para colocarlo sobre la puerta del cliente.
+                  <b>Sin pin de destino.</b> Usa el buscador arriba o toca en el mapa para colocarlo
+                  sobre la puerta del cliente.
                 </div>
               )}
             <BaseMap
@@ -411,11 +421,7 @@ export const ShipmentDetail: React.FC = () => {
               }}
             >
               {shipment.lastLat != null && shipment.lastLng != null && (
-                <Marker
-                  longitude={shipment.lastLng}
-                  latitude={shipment.lastLat}
-                  anchor="center"
-                >
+                <Marker longitude={shipment.lastLng} latitude={shipment.lastLat} anchor="center">
                   <div
                     title={`Conductor — ${fmt.date(shipment.lastLocationAt)}`}
                     style={{
@@ -517,9 +523,7 @@ export const ShipmentDetail: React.FC = () => {
                   Recepción
                 </div>
                 <div className="text-xs text-slate-600 dark:text-slate-300">
-                  {shipment.receivedAt
-                    ? fmt.date(shipment.receivedAt)
-                    : 'Pendiente de verificar'}
+                  {shipment.receivedAt ? fmt.date(shipment.receivedAt) : 'Pendiente de verificar'}
                 </div>
               </div>
             </div>
@@ -612,7 +616,9 @@ export const ShipmentDetail: React.FC = () => {
                       </span>
                     </div>
                     {e.description && (
-                      <div className="mt-0.5 text-slate-600 dark:text-slate-300">{e.description}</div>
+                      <div className="mt-0.5 text-slate-600 dark:text-slate-300">
+                        {e.description}
+                      </div>
                     )}
                   </li>
                 ))
@@ -638,9 +644,7 @@ export const ShipmentDetail: React.FC = () => {
               <Input
                 placeholder="Ej: cliente pidió cancelar, error en la preparación…"
                 value={cancelModal.reason}
-                onChange={(e) =>
-                  setCancelModal({ ...cancelModal, reason: e.target.value })
-                }
+                onChange={(e) => setCancelModal({ ...cancelModal, reason: e.target.value })}
               />
             </div>
             {shipment.deliveryNoteId && (
@@ -648,9 +652,7 @@ export const ShipmentDetail: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={cancelModal.cancelDn}
-                  onChange={(e) =>
-                    setCancelModal({ ...cancelModal, cancelDn: e.target.checked })
-                  }
+                  onChange={(e) => setCancelModal({ ...cancelModal, cancelDn: e.target.checked })}
                   className="mt-1"
                 />
                 <span className="text-xs text-slate-700 dark:text-slate-200">
@@ -689,9 +691,7 @@ export const ShipmentDetail: React.FC = () => {
               <Input
                 placeholder="Rechazo del cliente, dañado, dirección errónea…"
                 value={returnModal.reason}
-                onChange={(e) =>
-                  setReturnModal({ ...returnModal, reason: e.target.value })
-                }
+                onChange={(e) => setReturnModal({ ...returnModal, reason: e.target.value })}
               />
             </div>
             {shipment.deliveryNoteId && (
@@ -699,15 +699,14 @@ export const ShipmentDetail: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={returnModal.cancelDn}
-                  onChange={(e) =>
-                    setReturnModal({ ...returnModal, cancelDn: e.target.checked })
-                  }
+                  onChange={(e) => setReturnModal({ ...returnModal, cancelDn: e.target.checked })}
                   className="mt-1"
                 />
                 <span className="text-xs text-slate-700 dark:text-slate-200">
                   Devolución definitiva — anular también el albarán.
                   <span className="block text-[11px] text-slate-500 mt-0.5">
-                    Desmarcado = albarán sigue abierto para poder reintentar el reparto más adelante.
+                    Desmarcado = albarán sigue abierto para poder reintentar el reparto más
+                    adelante.
                   </span>
                 </span>
               </label>

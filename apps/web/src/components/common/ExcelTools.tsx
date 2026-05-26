@@ -216,8 +216,7 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
     headerRow.forEach((h, i) => {
       const norm = String(h).trim().toLowerCase();
       const hit = columns.find(
-        (c) =>
-          c.label.toLowerCase() === norm || c.key.toLowerCase() === norm,
+        (c) => c.label.toLowerCase() === norm || c.key.toLowerCase() === norm,
       );
       auto[i] = hit?.key || null;
     });
@@ -281,8 +280,13 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
               <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0">
                 <tr>
                   {headerRow.map((h, i) => (
-                    <th key={i} className="p-2 text-left border-b border-slate-200 dark:border-slate-700">
-                      <div className="text-slate-500 mb-1 truncate">{hasHeader ? h : `Col ${i + 1}`}</div>
+                    <th
+                      key={i}
+                      className="p-2 text-left border-b border-slate-200 dark:border-slate-700"
+                    >
+                      <div className="text-slate-500 mb-1 truncate">
+                        {hasHeader ? h : `Col ${i + 1}`}
+                      </div>
                       <select
                         value={mapping[i] || ''}
                         onChange={(e) => setMapping({ ...mapping, [i]: e.target.value || null })}

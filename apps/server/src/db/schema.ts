@@ -154,7 +154,9 @@ export const devApiKeys = pgTable('DevApiKey', {
   clientId: text('clientId').notNull().unique(),
   clientSecret: text('clientSecret').notNull(),
   name: text('name').notNull(),
-  createdBy: text('createdBy').notNull().references(() => globalUsers.id),
+  createdBy: text('createdBy')
+    .notNull()
+    .references(() => globalUsers.id),
   tenantId: text('tenantId').references(() => tenants.id),
   permissions: text('permissions').default('plugin:push,plugin:reload'),
   isActive: boolean('isActive').default(true).notNull(),
@@ -1932,7 +1934,9 @@ export const pickingTasks = pgTable('PickingTask', {
 /** Eventos en el ciclo de vida del envío (cambios de estado, incidencias). */
 export const shipmentEvents = pgTable('ShipmentEvent', {
   id: text('id').primaryKey(),
-  shipmentId: text('shipmentId').notNull().references(() => shipments.id, { onDelete: 'cascade' }),
+  shipmentId: text('shipmentId')
+    .notNull()
+    .references(() => shipments.id, { onDelete: 'cascade' }),
   /** `status_change|incident|note|photo` */
   kind: text('kind').default('note').notNull(),
   status: text('status'),
@@ -1944,7 +1948,9 @@ export const shipmentEvents = pgTable('ShipmentEvent', {
 /** Trail de posiciones reportadas por el dispositivo del conductor. */
 export const shipmentPositions = pgTable('ShipmentPosition', {
   id: text('id').primaryKey(),
-  shipmentId: text('shipmentId').notNull().references(() => shipments.id, { onDelete: 'cascade' }),
+  shipmentId: text('shipmentId')
+    .notNull()
+    .references(() => shipments.id, { onDelete: 'cascade' }),
   lat: doublePrecision('lat').notNull(),
   lng: doublePrecision('lng').notNull(),
   /** Velocidad en km/h si el dispositivo la reporta. */
@@ -2034,8 +2040,12 @@ export const packages = pgTable('Package', {
 
 export const packageLines = pgTable('PackageLine', {
   id: text('id').primaryKey(),
-  packageId: text('packageId').notNull().references(() => packages.id, { onDelete: 'cascade' }),
-  itemId: text('itemId').notNull().references(() => items.id),
+  packageId: text('packageId')
+    .notNull()
+    .references(() => packages.id, { onDelete: 'cascade' }),
+  itemId: text('itemId')
+    .notNull()
+    .references(() => items.id),
   quantity: doublePrecision('quantity').notNull(),
   /** Si se quiere guardar qué línea de albarán originó esta asignación. */
   sourceLineId: text('sourceLineId'),
@@ -2091,7 +2101,9 @@ export const routes = pgTable('Route', {
 
 export const routeStops = pgTable('RouteStop', {
   id: text('id').primaryKey(),
-  routeId: text('routeId').notNull().references(() => routes.id, { onDelete: 'cascade' }),
+  routeId: text('routeId')
+    .notNull()
+    .references(() => routes.id, { onDelete: 'cascade' }),
   /** Orden dentro de la ruta. */
   sequence: integer('sequence').notNull(),
   shipmentId: text('shipmentId').references(() => shipments.id, { onDelete: 'set null' }),
@@ -2239,7 +2251,10 @@ export const webhookSubscriptions = pgTable('WebhookSubscription', {
   name: text('name').notNull(),
   url: text('url').notNull(),
   /** Array de nombres de evento (`shipment.delivered`, `shipment.cancelled`, ...). */
-  events: text('events').array().notNull().default([] as any),
+  events: text('events')
+    .array()
+    .notNull()
+    .default([] as any),
   /** Secreto opcional para firmar el payload con HMAC-SHA256. */
   secret: text('secret'),
   isActive: boolean('isActive').default(true).notNull(),

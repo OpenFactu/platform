@@ -74,8 +74,8 @@ export const LaborCost: React.FC = () => {
             <PiggyBank className="text-indigo-600" size={32} /> Coste laboral
           </h1>
           <p className="text-slate-500 text-sm">
-            Bruto + SS empresa, agrupado por dimensión. Datos provenientes de las nóminas
-            aprobadas y sus líneas en el rango.
+            Bruto + SS empresa, agrupado por dimensión. Datos provenientes de las nóminas aprobadas
+            y sus líneas en el rango.
           </p>
         </div>
         <Button size="sm" variant="secondary" onClick={exportCsv}>

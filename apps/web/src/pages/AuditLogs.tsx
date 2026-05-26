@@ -101,9 +101,7 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
                   const changed = JSON.stringify(old[k]) !== JSON.stringify(next[k]);
                   return (
                     <tr key={k} className={changed ? 'bg-amber-50/50' : ''}>
-                      <td className="py-2 font-medium text-slate-600 dark:text-slate-300">
-                        {k}
-                      </td>
+                      <td className="py-2 font-medium text-slate-600 dark:text-slate-300">{k}</td>
                       <td
                         className={`py-2 font-mono text-xs ${changed ? 'text-rose-600 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}`}
                       >

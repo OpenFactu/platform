@@ -145,7 +145,13 @@ export const ChartOfAccounts: React.FC = () => {
   };
 
   const columns = [
-    { header: 'Código', accessor: 'code', sortable: true, sortAccessor: (r: any) => r.code, primary: true },
+    {
+      header: 'Código',
+      accessor: 'code',
+      sortable: true,
+      sortAccessor: (r: any) => r.code,
+      primary: true,
+    },
     { header: 'Nombre', accessor: 'name', sortable: true, sortAccessor: (r: any) => r.name },
     {
       header: 'Tipo',
@@ -161,7 +167,11 @@ export const ChartOfAccounts: React.FC = () => {
     {
       header: 'Estado',
       cell: (r: any) =>
-        r.isActive ? <Badge variant="success">Activa</Badge> : <Badge variant="neutral">Inactiva</Badge>,
+        r.isActive ? (
+          <Badge variant="success">Activa</Badge>
+        ) : (
+          <Badge variant="neutral">Inactiva</Badge>
+        ),
     },
     {
       header: 'Acciones',
@@ -198,7 +208,8 @@ export const ChartOfAccounts: React.FC = () => {
             Plan contable
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Estructura jerárquica de cuentas. Una cuenta analítica obliga a informar centro de coste, beneficio o proyecto en los asientos.
+            Estructura jerárquica de cuentas. Una cuenta analítica obliga a informar centro de
+            coste, beneficio o proyecto en los asientos.
           </p>
         </div>
         {canWrite && (
@@ -364,7 +375,12 @@ export const ChartOfAccounts: React.FC = () => {
       )}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} onRowClick={(r: any) => openEdit(r)} />
+        <Table
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          onRowClick={(r: any) => openEdit(r)}
+        />
       </Card>
     </div>
   );

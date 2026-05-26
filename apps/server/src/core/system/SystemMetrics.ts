@@ -103,7 +103,9 @@ function readCpuUsagePct(): number {
   return 0;
 }
 
-async function readDiskUsage(p: string): Promise<{ totalGB: number; usedGB: number; freeGB: number }> {
+async function readDiskUsage(
+  p: string,
+): Promise<{ totalGB: number; usedGB: number; freeGB: number }> {
   // fs.statfs disponible desde Node 18.15. Caemos a 0 si no.
   const sf: any = (fs as any).promises?.statfs;
   if (typeof sf !== 'function') {

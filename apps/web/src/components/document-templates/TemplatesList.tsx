@@ -29,11 +29,14 @@ export const TemplatesList: React.FC<Props> = ({
   const toast = useToast();
   const [resyncing, setResyncing] = useState(false);
   const handleResyncDefaults = async () => {
-    if (!confirm(
-      '¿Regenerar TODAS las plantillas por defecto con el diseño Keirost actual?\n\n'
-      + 'Esto sustituirá el HTML de las plantillas marcadas como "por defecto" de cada tipo de documento.\n'
-      + 'Tus plantillas personalizadas NO se tocan.',
-    )) return;
+    if (
+      !confirm(
+        '¿Regenerar TODAS las plantillas por defecto con el diseño Keirost actual?\n\n' +
+          'Esto sustituirá el HTML de las plantillas marcadas como "por defecto" de cada tipo de documento.\n' +
+          'Tus plantillas personalizadas NO se tocan.',
+      )
+    )
+      return;
     setResyncing(true);
     try {
       const res = await fetch('/api/document-templates/resync-defaults', {

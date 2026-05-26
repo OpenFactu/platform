@@ -119,7 +119,8 @@ const InvoiceList: React.FC<{
     {
       header: 'Documento',
       sortable: true,
-      sortAccessor: (item: any) => `${item.seriesPrefix||''}-${String(item.docNum||0).padStart(6,'0')}`,
+      sortAccessor: (item: any) =>
+        `${item.seriesPrefix || ''}-${String(item.docNum || 0).padStart(6, '0')}`,
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
@@ -131,7 +132,12 @@ const InvoiceList: React.FC<{
         </div>
       ),
     },
-    { header: 'Fecha', sortable: true, sortAccessor: (item: any) => new Date(item.date).getTime(), accessor: (item: any) => fmt.date(item.date) },
+    {
+      header: 'Fecha',
+      sortable: true,
+      sortAccessor: (item: any) => new Date(item.date).getTime(),
+      accessor: (item: any) => fmt.date(item.date),
+    },
     {
       header: 'Proveedor',
       accessor: (item: any) => (
@@ -289,8 +295,23 @@ const InvoiceList: React.FC<{
           ]}
           searchPlaceholder="Buscar por factura..."
         />
-        <BulkSendToolbar selectedKeys={selectedKeys} rows={filteredData || []} partners={partners} docType="PINV" onClear={() => setSelectedKeys(new Set())} onSent={() => setSelectedKeys(new Set())} />
-        <Table columns={columns} data={filteredData || []} isLoading={loading} onRowClick={onDetail} selectable selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} />
+        <BulkSendToolbar
+          selectedKeys={selectedKeys}
+          rows={filteredData || []}
+          partners={partners}
+          docType="PINV"
+          onClear={() => setSelectedKeys(new Set())}
+          onSent={() => setSelectedKeys(new Set())}
+        />
+        <Table
+          columns={columns}
+          data={filteredData || []}
+          isLoading={loading}
+          onRowClick={onDetail}
+          selectable
+          selectedKeys={selectedKeys}
+          onSelectionChange={setSelectedKeys}
+        />
       </Card>
     </div>
   );
@@ -308,7 +329,18 @@ const InvoiceForm: React.FC<{
   setViewingBatch: (l: any) => void;
   internalOrderId: string | null;
   setInternalOrderId: (id: string | null) => void;
-}> = ({ onBack, onSubmit, state, setState, masters, actions, computations, setViewingBatch, internalOrderId, setInternalOrderId }) => {
+}> = ({
+  onBack,
+  onSubmit,
+  state,
+  setState,
+  masters,
+  actions,
+  computations,
+  setViewingBatch,
+  internalOrderId,
+  setInternalOrderId,
+}) => {
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const fmt = useFormat();
   const itemUoms = useItemUoms();
@@ -339,25 +371,22 @@ const InvoiceForm: React.FC<{
 
   const pluginLineFields = usePluginLineFields('PurchaseInvoiceLine');
   const projectCol = useInternalOrderLineColumn(actions.updateLine);
-  const columns = useMemo(
-    () => {
-      const base = buildFormLineColumns({
-        kind: DocKind.Invoice,
-        side: DocSide.Purchase,
-        state,
-        masters,
-        actions,
-        onAssignBatch: setBatchEditingIdx,
-        onViewBatch: setViewingBatch,
-        onDuplicateLine: duplicateLine,
-        fmt,
-        getItemUoms: itemUoms.get,
-        pluginLineFields,
-      });
-      return [...base.slice(0, -1), projectCol, base[base.length - 1]];
-    },
-    [state.lines, masters.items, masters.taxGroups, pluginLineFields, projectCol],
-  );
+  const columns = useMemo(() => {
+    const base = buildFormLineColumns({
+      kind: DocKind.Invoice,
+      side: DocSide.Purchase,
+      state,
+      masters,
+      actions,
+      onAssignBatch: setBatchEditingIdx,
+      onViewBatch: setViewingBatch,
+      onDuplicateLine: duplicateLine,
+      fmt,
+      getItemUoms: itemUoms.get,
+      pluginLineFields,
+    });
+    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+  }, [state.lines, masters.items, masters.taxGroups, pluginLineFields, projectCol]);
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
@@ -426,10 +455,7 @@ const InvoiceForm: React.FC<{
                 className="font-bold text-slate-700 dark:text-slate-200 h-10 border-slate-200 dark:border-slate-700"
               />
             </div>
-            <InternalOrderHeaderField
-              value={internalOrderId}
-              onChange={setInternalOrderId}
-            />
+            <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
           </div>
         </Card>
 
@@ -600,13 +626,14 @@ const InvoiceDetail: React.FC<{
   const docCode = `${invoice.seriesPrefix}-${invoice.periodCode}-${String(invoice.docNum).padStart(6, '0')}`;
 
   const columns = useMemo(
-    () => buildDetailLineColumns({
-      kind: DocKind.Invoice,
-      side: DocSide.Purchase,
-      masters,
-      onViewBatch: setViewingBatch,
-      fmt,
-    }),
+    () =>
+      buildDetailLineColumns({
+        kind: DocKind.Invoice,
+        side: DocSide.Purchase,
+        masters,
+        onViewBatch: setViewingBatch,
+        fmt,
+      }),
     [invoice.lines, masters.items, masters.taxGroups],
   );
 

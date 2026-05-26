@@ -34,7 +34,7 @@ export const TaxIdInput: React.FC<Props> = ({ countryCode, value, onChange, disa
           onChange={(e) => onChange(e.target.value.toUpperCase())}
           onBlur={() => setTouched(true)}
           disabled={disabled}
-          className={`w-full px-3 py-2 pr-9 border rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm ${
+          className={`w-full px-3 py-2 pr-9 border  bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm ${
             showError
               ? 'border-rose-500 dark:border-rose-500/50'
               : 'border-slate-200 dark:border-slate-700'

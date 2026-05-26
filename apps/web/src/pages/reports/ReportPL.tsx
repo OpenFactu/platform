@@ -88,9 +88,7 @@ export const ReportPL: React.FC = () => {
       </div>
 
       <Card className="p-4">
-        <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mr-2">
-          Período
-        </label>
+        <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mr-2">Período</label>
         <select
           value={periodId}
           onChange={(e) => setPeriodId(e.target.value)}

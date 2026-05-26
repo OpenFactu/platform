@@ -44,32 +44,28 @@ export const BarcodeCameraModal: React.FC<Props> = ({ open, onClose, onScan, con
 
         let lastCode = '';
         let lastTs = 0;
-        controls = await reader.decodeFromVideoDevice(
-          undefined,
-          video,
-          (result, _err, ctrl) => {
-            if (stopped) return;
-            if (result) {
-              const code = result.getText();
-              const now = Date.now();
-              // En modo continuo evitamos relecturas del mismo código en < 1.5s.
-              if (continuous && code === lastCode && now - lastTs < 1500) return;
-              lastCode = code;
-              lastTs = now;
-              if (navigator.vibrate) navigator.vibrate(60);
-              if (onScan) onScan(code);
-              else dispatch(code);
-              if (continuous) {
-                setLastScan(code);
-                setScanCount((n) => n + 1);
-                return; // no cierra
-              }
-              ctrl.stop();
-              stopped = true;
-              onClose();
+        controls = await reader.decodeFromVideoDevice(undefined, video, (result, _err, ctrl) => {
+          if (stopped) return;
+          if (result) {
+            const code = result.getText();
+            const now = Date.now();
+            // En modo continuo evitamos relecturas del mismo código en < 1.5s.
+            if (continuous && code === lastCode && now - lastTs < 1500) return;
+            lastCode = code;
+            lastTs = now;
+            if (navigator.vibrate) navigator.vibrate(60);
+            if (onScan) onScan(code);
+            else dispatch(code);
+            if (continuous) {
+              setLastScan(code);
+              setScanCount((n) => n + 1);
+              return; // no cierra
             }
-          },
-        );
+            ctrl.stop();
+            stopped = true;
+            onClose();
+          }
+        });
         setLoading(false);
       } catch (e: any) {
         setError(

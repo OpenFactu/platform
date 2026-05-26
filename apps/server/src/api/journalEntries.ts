@@ -171,9 +171,7 @@ router.get('/ledger/:accountId', async (req: any, res) => {
         schema.journalEntries,
         eq(schema.journalEntryLines.entryId, schema.journalEntries.id),
       )
-      .where(
-        and(eq(schema.journalEntryLines.accountId, req.params.accountId), and(...headConds)),
-      )
+      .where(and(eq(schema.journalEntryLines.accountId, req.params.accountId), and(...headConds)))
       .orderBy(asc(schema.journalEntries.date), asc(schema.journalEntries.number));
 
     let running = 0;

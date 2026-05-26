@@ -80,9 +80,7 @@ router.patch('/:id', async (req: any, res) => {
 
 router.delete('/:id', async (req: any, res) => {
   try {
-    await req.tenantClient
-      .delete(schema.carriers)
-      .where(eq(schema.carriers.id, req.params.id));
+    await req.tenantClient.delete(schema.carriers).where(eq(schema.carriers.id, req.params.id));
     res.json({ ok: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message });

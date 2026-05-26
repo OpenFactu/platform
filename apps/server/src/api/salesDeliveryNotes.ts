@@ -56,11 +56,7 @@ router.get('/', async (req: any, res) => {
           and(
             eq(schema.shipments.sourceDocType, 'SDN'),
             inArray(schema.shipments.sourceDocId, ids),
-            notInArray(schema.shipments.preparationStatus, [
-              'cancelled',
-              'delivered',
-              'returned',
-            ]),
+            notInArray(schema.shipments.preparationStatus, ['cancelled', 'delivered', 'returned']),
           ),
         );
       for (const s of activeShipments as any[]) {
@@ -204,6 +200,7 @@ router.post('/', async (req: any, res) => {
         taxTotal: '0',
         total: '0',
         taxBreakdown: '{}',
+        createdBy: req.user?.id || null,
       });
 
       // 3. Procesar Líneas y Stock
@@ -230,9 +227,7 @@ router.post('/', async (req: any, res) => {
         const gross = qty * price;
         const discountRate = Number(line.discountRate || 0);
         const discountAmount =
-          line.discountAmount != null
-            ? Number(line.discountAmount)
-            : gross * (discountRate / 100);
+          line.discountAmount != null ? Number(line.discountAmount) : gross * (discountRate / 100);
         const lineSubtotal = gross - discountAmount;
         const taxRate = taxRateMap[line.taxGroupId] || 0;
         const lineTax = lineSubtotal * (taxRate / 100);
@@ -475,9 +470,7 @@ router.post('/:id/cancel', async (req: any, res) => {
             'El envío ya ha sido entregado. Usa "Devolver" en el envío en lugar de cancelar el albarán.',
         });
       }
-      const inRoute = ['in_transit', 'out_for_delivery'].includes(
-        activeShipment.preparationStatus,
-      );
+      const inRoute = ['in_transit', 'out_for_delivery'].includes(activeShipment.preparationStatus);
       if (inRoute && !body.force) {
         return res.status(409).json({
           error:
@@ -651,9 +644,7 @@ router.post('/:id/cancel', async (req: any, res) => {
       // config para no hacer esta ruta async).
       const origin = (req.headers?.origin as string | undefined) || '';
       const baseUrl =
-        process.env.PUBLIC_BASE_URL?.trim() ||
-        origin ||
-        `${req.protocol}://${req.get('host')}`;
+        process.env.PUBLIC_BASE_URL?.trim() || origin || `${req.protocol}://${req.get('host')}`;
       notifyShipmentStageChange(
         req.tenantClient,
         req.tenantId,

@@ -448,10 +448,7 @@ export const Dashboard: React.FC = () => {
                     paddingAngle={2}
                   >
                     {data.invoiceStatus.map((entry, idx) => (
-                      <Cell
-                        key={`cell-${idx}`}
-                        fill={STATUS_COLORS[entry.label] || '#94a3b8'}
-                      />
+                      <Cell key={`cell-${idx}`} fill={STATUS_COLORS[entry.label] || '#94a3b8'} />
                     ))}
                   </Pie>
                   <Tooltip
@@ -483,7 +480,11 @@ export const Dashboard: React.FC = () => {
               />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topCustomersBars} layout="vertical" margin={{ left: 16, right: 16 }}>
+                <BarChart
+                  data={topCustomersBars}
+                  layout="vertical"
+                  margin={{ left: 16, right: 16 }}
+                >
                   <CartesianGrid stroke={gridColor} strokeDasharray="3 3" horizontal={false} />
                   <XAxis
                     type="number"
@@ -525,7 +526,11 @@ export const Dashboard: React.FC = () => {
               />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topSuppliersBars} layout="vertical" margin={{ left: 16, right: 16 }}>
+                <BarChart
+                  data={topSuppliersBars}
+                  layout="vertical"
+                  margin={{ left: 16, right: 16 }}
+                >
                   <CartesianGrid stroke={gridColor} strokeDasharray="3 3" horizontal={false} />
                   <XAxis
                     type="number"
@@ -681,11 +686,7 @@ export const Dashboard: React.FC = () => {
 
       {/* Top artículos + Feed actividad en vivo */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card
-          title="Top artículos"
-          subtitle="Más vendidos del periodo."
-          className="lg:col-span-1"
-        >
+        <Card title="Top artículos" subtitle="Más vendidos del periodo." className="lg:col-span-1">
           {!data.topItems || data.topItems.length === 0 ? (
             <EmptyState icon={Package} title="Sin ventas" hint="Aún no hay líneas facturadas." />
           ) : (
@@ -715,7 +716,11 @@ export const Dashboard: React.FC = () => {
           className="lg:col-span-2"
         >
           {!data.activityFeed || data.activityFeed.length === 0 ? (
-            <EmptyState icon={Clock} title="Sin actividad" hint="Los movimientos aparecerán aquí." />
+            <EmptyState
+              icon={Clock}
+              title="Sin actividad"
+              hint="Los movimientos aparecerán aquí."
+            />
           ) : (
             <ul className="divide-y divide-slate-100 dark:divide-slate-800 max-h-96 overflow-y-auto overflow-x-hidden scrollbar-hide">
               {data.activityFeed.map((ev, i) => {

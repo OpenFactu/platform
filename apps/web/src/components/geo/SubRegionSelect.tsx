@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { SearchableSelect } from '@openfactu/ui';
 import { useGeo, type GeoRow } from '../../hooks/useGeo';
 
 interface Props {
@@ -33,8 +34,6 @@ export const SubRegionSelect: React.FC<Props> = ({
       : loadSubRegionsByCountry(countryCode);
     promise
       .then((data) => {
-        // Si estamos filtrando por region cuyo valor todavía no cambió pero countryCode sí,
-        // descartar resultados que no coincidan con el país.
         setRows(data.filter((r) => !countryCode || r.countryCode === countryCode.toUpperCase()));
       })
       .catch(() => setRows([]))
@@ -42,28 +41,32 @@ export const SubRegionSelect: React.FC<Props> = ({
   }, [countryCode, regionId, loadSubRegionsByCountry, loadSubRegionsByRegion]);
 
   const country = getCountry(countryCode);
-  if (!countryCode) return null;
+
+  const options = useMemo(
+    () =>
+      rows.map((r) => ({
+        value: r.id,
+        label: r.name,
+      })),
+    [rows],
+  );
+
+  if (!countryCode || !country) return null;
 
   return (
-    <div>
-      <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-        {label || country?.subRegionLabel || 'Provincia'}
+    <div className="flex flex-col gap-1.5 w-full">
+      <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300">
+        {label || country.subRegionLabel}
       </label>
-      <select
+      <SearchableSelect
+        options={options}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
+        placeholder={
+          loading ? 'Cargando...' : `Seleccionar ${country.subRegionLabel || 'provincia'}...`
+        }
         disabled={disabled || loading || rows.length === 0}
-        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm"
-      >
-        <option value="">
-          — {loading ? 'Cargando...' : country?.subRegionLabel || 'Provincia'} —
-        </option>
-        {rows.map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.name}
-          </option>
-        ))}
-      </select>
+      />
     </div>
   );
 };

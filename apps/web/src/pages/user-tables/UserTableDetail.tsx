@@ -36,8 +36,7 @@ export const UserTableDetail: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew, id, tblName, user?.tenantId]);
 
-  const setField = (key: string, v: any) =>
-    setValues((prev) => ({ ...prev, [key]: v }));
+  const setField = (key: string, v: any) => setValues((prev) => ({ ...prev, [key]: v }));
 
   const save = async () => {
     setSaving(true);

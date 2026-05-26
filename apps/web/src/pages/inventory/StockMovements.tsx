@@ -15,15 +15,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Card,
-  Button,
-  Input,
-  Badge,
-  Loader,
-  useToast,
-  SearchableSelect,
-} from '@openfactu/ui';
+import { Card, Button, Input, Badge, Loader, useToast, SearchableSelect } from '@openfactu/ui';
 import {
   Plus,
   Trash2,
@@ -155,16 +147,10 @@ export const StockMovements: React.FC = () => {
   const [scanOpen, setScanOpen] = useState(false);
 
   // Mapa rápido itemId → item para consultas (manageBy, uomId, etc.).
-  const itemsById = useMemo(
-    () => new Map(items.map((i) => [i.id, i] as const)),
-    [items],
-  );
+  const itemsById = useMemo(() => new Map(items.map((i) => [i.id, i] as const)), [items]);
 
   // UoM por id para renderizar el nombre/código legible.
-  const uomsById = useMemo(
-    () => new Map(uoms.map((u) => [u.id, u] as const)),
-    [uoms],
-  );
+  const uomsById = useMemo(() => new Map(uoms.map((u) => [u.id, u] as const)), [uoms]);
 
   const headers = useMemo(
     () => ({
@@ -323,8 +309,7 @@ export const StockMovements: React.FC = () => {
     updateLine(i, patch);
     ensureBatchesLoaded(itemId);
     // Para filtrar zonas por stock en salidas y en `fromZone` de traspasos.
-    const sourceWh =
-      kind === 'transfer' ? form.fromWarehouseId : form.warehouseId;
+    const sourceWh = kind === 'transfer' ? form.fromWarehouseId : form.warehouseId;
     if (sourceWh) ensureStockZonesLoaded(itemId, sourceWh);
   };
 
@@ -447,9 +432,7 @@ export const StockMovements: React.FC = () => {
       if (m === 'S') {
         const key = `${l.itemId}::${l.batchNum.trim()}`;
         if (seenSerials.has(key)) {
-          toast.error(
-            `La serie "${l.batchNum.trim()}" aparece repetida en el documento.`,
-          );
+          toast.error(`La serie "${l.batchNum.trim()}" aparece repetida en el documento.`);
           return;
         }
         seenSerials.add(key);
@@ -595,112 +578,124 @@ export const StockMovements: React.FC = () => {
         )}
       </header>
 
-      {!creating && !viewing && (<>
-      <div className="border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
-        <div className="flex gap-1 min-w-max">
-          {(Object.keys(KIND_CFG) as Kind[]).map((k) => {
-            const c = KIND_CFG[k];
-            const active = kind === k;
-            return (
-              <button
-                key={k}
-                onClick={() => setKind(k)}
-                className={
-                  'flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-colors shrink-0 ' +
-                  (active
-                    ? 'text-accent border-accent'
-                    : 'text-slate-500 border-transparent hover:text-accent')
-                }
-              >
-                <c.Icon size={13} />
-                {c.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {!creating && !viewing && (
+        <>
+          <div className="border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
+            <div className="flex gap-1 min-w-max">
+              {(Object.keys(KIND_CFG) as Kind[]).map((k) => {
+                const c = KIND_CFG[k];
+                const active = kind === k;
+                return (
+                  <button
+                    key={k}
+                    onClick={() => setKind(k)}
+                    className={
+                      'flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-colors shrink-0 ' +
+                      (active
+                        ? 'text-accent border-accent'
+                        : 'text-slate-500 border-transparent hover:text-accent')
+                    }
+                  >
+                    <c.Icon size={13} />
+                    {c.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-      {loading ? (
-        <div className="py-10 flex justify-center">
-          <Loader />
-        </div>
-      ) : rows.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">Sin documentos.</Card>
-      ) : (
-        <Card bodyClassName="p-0">
-          <ul>
-            {rows.map((r) => {
-              const sc = STATUS_COPY[r.status] || { label: r.status, variant: 'neutral' };
-              return (
-                <li
-                  key={r.id}
-                  onClick={() => openView(r)}
-                  className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
-                >
-                  <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded shrink-0">
-                    {r.code}
-                  </code>
-                  <Badge variant={sc.variant}>{sc.label}</Badge>
-                  <div className="flex-1 min-w-0 text-xs text-slate-600 dark:text-slate-300">
-                    {kind === 'transfer' ? (
-                      <span className="flex items-center gap-1">
-                        {whName(r.fromWarehouseId)}
-                        <ArrowRight size={11} className="text-slate-400" />
-                        {whName(r.toWarehouseId)}
-                      </span>
-                    ) : (
-                      <span>
-                        {whName(r.warehouseId)}
-                        {r.type && (
-                          <span className="ml-2 text-slate-400">· {r.type}</span>
+          {loading ? (
+            <div className="py-10 flex justify-center">
+              <Loader />
+            </div>
+          ) : rows.length === 0 ? (
+            <Card bodyClassName="py-10 text-center text-sm text-slate-500">Sin documentos.</Card>
+          ) : (
+            <Card bodyClassName="p-0">
+              <ul>
+                {rows.map((r) => {
+                  const sc = STATUS_COPY[r.status] || { label: r.status, variant: 'neutral' };
+                  return (
+                    <li
+                      key={r.id}
+                      onClick={() => openView(r)}
+                      className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                    >
+                      <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded shrink-0">
+                        {r.code}
+                      </code>
+                      <Badge variant={sc.variant}>{sc.label}</Badge>
+                      <div className="flex-1 min-w-0 text-xs text-slate-600 dark:text-slate-300">
+                        {kind === 'transfer' ? (
+                          <span className="flex items-center gap-1">
+                            {whName(r.fromWarehouseId)}
+                            <ArrowRight size={11} className="text-slate-400" />
+                            {whName(r.toWarehouseId)}
+                          </span>
+                        ) : (
+                          <span>
+                            {whName(r.warehouseId)}
+                            {r.type && <span className="ml-2 text-slate-400">· {r.type}</span>}
+                          </span>
                         )}
+                      </div>
+                      <span className="text-[11px] text-slate-500 shrink-0">
+                        {new Date(r.date).toLocaleDateString('es-ES')}
                       </span>
-                    )}
-                  </div>
-                  <span className="text-[11px] text-slate-500 shrink-0">
-                    {new Date(r.date).toLocaleDateString('es-ES')}
-                  </span>
-                  <div className="flex gap-1 shrink-0">
-                    {kind === 'transfer' && r.status === 'draft' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); send(r.id); }}
-                        className="px-2 py-1 text-[11px] rounded bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300"
-                      >
-                        <Send size={11} className="inline" /> Enviar
-                      </button>
-                    )}
-                    {kind === 'transfer' && r.status === 'sent' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); receive(r.id); }}
-                        className="px-2 py-1 text-[11px] rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
-                      >
-                        <CheckCircle2 size={11} className="inline" /> Recibir
-                      </button>
-                    )}
-                    {kind !== 'transfer' && r.status === 'draft' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); post(r.id); }}
-                        className="px-2 py-1 text-[11px] rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
-                      >
-                        <CheckCircle2 size={11} className="inline" /> Postear
-                      </button>
-                    )}
-                    {r.status !== 'posted' && r.status !== 'received' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); remove(r.id); }}
-                        className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </Card>
+                      <div className="flex gap-1 shrink-0">
+                        {kind === 'transfer' && r.status === 'draft' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              send(r.id);
+                            }}
+                            className="px-2 py-1 text-[11px] rounded bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300"
+                          >
+                            <Send size={11} className="inline" /> Enviar
+                          </button>
+                        )}
+                        {kind === 'transfer' && r.status === 'sent' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              receive(r.id);
+                            }}
+                            className="px-2 py-1 text-[11px] rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
+                          >
+                            <CheckCircle2 size={11} className="inline" /> Recibir
+                          </button>
+                        )}
+                        {kind !== 'transfer' && r.status === 'draft' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              post(r.id);
+                            }}
+                            className="px-2 py-1 text-[11px] rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
+                          >
+                            <CheckCircle2 size={11} className="inline" /> Postear
+                          </button>
+                        )}
+                        {r.status !== 'posted' && r.status !== 'received' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              remove(r.id);
+                            }}
+                            className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </Card>
+          )}
+        </>
       )}
-      </>)}
 
       {/* Detalle de un documento seleccionado. */}
       {viewing && (
@@ -745,7 +740,10 @@ export const StockMovements: React.FC = () => {
                 {kind === 'transfer' && viewing.status === 'draft' && (
                   <Button
                     variant="secondary"
-                    onClick={async () => { await send(viewing.id); refreshView(); }}
+                    onClick={async () => {
+                      await send(viewing.id);
+                      refreshView();
+                    }}
                     className="flex items-center gap-2"
                   >
                     <Send size={13} /> Enviar
@@ -753,7 +751,10 @@ export const StockMovements: React.FC = () => {
                 )}
                 {kind === 'transfer' && viewing.status === 'sent' && (
                   <Button
-                    onClick={async () => { await receive(viewing.id); refreshView(); }}
+                    onClick={async () => {
+                      await receive(viewing.id);
+                      refreshView();
+                    }}
                     className="flex items-center gap-2"
                   >
                     <CheckCircle2 size={13} /> Recibir
@@ -761,7 +762,10 @@ export const StockMovements: React.FC = () => {
                 )}
                 {kind !== 'transfer' && viewing.status === 'draft' && (
                   <Button
-                    onClick={async () => { await post(viewing.id); refreshView(); }}
+                    onClick={async () => {
+                      await post(viewing.id);
+                      refreshView();
+                    }}
                     className="flex items-center gap-2"
                   >
                     <CheckCircle2 size={13} /> Postear
@@ -857,14 +861,15 @@ export const StockMovements: React.FC = () => {
                   <tbody>
                     {viewing.lines.map((l: any) => {
                       const it = itemsById.get(l.itemId);
-                      const uom = l.uomId ? uomsById.get(l.uomId) : it?.uomId ? uomsById.get(it.uomId) : null;
+                      const uom = l.uomId
+                        ? uomsById.get(l.uomId)
+                        : it?.uomId
+                          ? uomsById.get(it.uomId)
+                          : null;
                       const zone = (zid: string | null) =>
                         zid ? zones.find((z) => z.id === zid)?.name || '—' : '—';
                       return (
-                        <tr
-                          key={l.id}
-                          className="border-t border-slate-100 dark:border-slate-800"
-                        >
+                        <tr key={l.id} className="border-t border-slate-100 dark:border-slate-800">
                           <td className="px-3 py-2 text-slate-500">{l.lineNum}</td>
                           <td className="px-3 py-2 text-slate-800 dark:text-slate-100">
                             <div className="font-semibold">{it?.name || l.itemId}</div>
@@ -910,8 +915,8 @@ export const StockMovements: React.FC = () => {
 
       {/* Formulario de alta — ocupa la página entera cuando creating=true. */}
       {creating && (
-      <Card bodyClassName="p-4 md:p-6">
-        <div className="space-y-5">
+        <Card bodyClassName="p-4 md:p-6">
+          <div className="space-y-5">
             {/* Cabecera */}
             {kind === 'transfer' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -992,10 +997,7 @@ export const StockMovements: React.FC = () => {
                   >
                     <ScanLine size={12} /> Escanear
                   </button>
-                  <button
-                    onClick={addLine}
-                    className="text-[11px] text-primary hover:underline"
-                  >
+                  <button onClick={addLine} className="text-[11px] text-primary hover:underline">
                     + Añadir línea
                   </button>
                 </div>
@@ -1017,27 +1019,30 @@ export const StockMovements: React.FC = () => {
                     l.itemId && sourceWarehouseId
                       ? stockZonesByItemWh[`${l.itemId}::${sourceWarehouseId}`]
                       : undefined;
-                  const sourceZoneState: 'no-warehouse' | 'no-item' | 'loading' | 'empty' | 'ready' =
-                    !sourceWarehouseId
-                      ? 'no-warehouse'
-                      : !l.itemId
-                        ? 'no-item'
-                        : stockZones === undefined
-                          ? 'loading'
-                          : stockZones.length === 0
-                            ? 'empty'
-                            : 'ready';
+                  const sourceZoneState:
+                    | 'no-warehouse'
+                    | 'no-item'
+                    | 'loading'
+                    | 'empty'
+                    | 'ready' = !sourceWarehouseId
+                    ? 'no-warehouse'
+                    : !l.itemId
+                      ? 'no-item'
+                      : stockZones === undefined
+                        ? 'loading'
+                        : stockZones.length === 0
+                          ? 'empty'
+                          : 'ready';
                   const sourceZoneOpts =
                     sourceZoneState === 'ready'
-                      ? (stockZones || [])
-                          .map((sz) => {
-                            const z = zones.find((zz) => zz.id === sz.zoneId);
-                            return {
-                              value: sz.zoneId,
-                              label: z?.name || sz.zoneId,
-                              secondaryLabel: `${sz.stock} ud.`,
-                            };
-                          })
+                      ? (stockZones || []).map((sz) => {
+                          const z = zones.find((zz) => zz.id === sz.zoneId);
+                          return {
+                            value: sz.zoneId,
+                            label: z?.name || sz.zoneId,
+                            secondaryLabel: `${sz.stock} ud.`,
+                          };
+                        })
                       : [];
                   const item = l.itemId ? itemsById.get(l.itemId) : null;
                   const managedBy = item?.manageBy || 'N';
@@ -1089,7 +1094,9 @@ export const StockMovements: React.FC = () => {
                               disabled={forceQty1}
                               onChange={(e) => updateLine(i, { quantity: e.target.value })}
                               placeholder="0"
-                              title={forceQty1 ? 'Artículo por serie — una línea por unidad' : undefined}
+                              title={
+                                forceQty1 ? 'Artículo por serie — una línea por unidad' : undefined
+                              }
                             />
                           </div>
                           <div className="col-span-4 md:col-span-2">
@@ -1104,78 +1111,101 @@ export const StockMovements: React.FC = () => {
                             </div>
                           </div>
                           {batchRequired && (
-                          <div className="col-span-4 md:col-span-3">
-                            <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                              {batchLabel}
-                              <span className="ml-1 text-rose-500">*</span>
-                            </label>
-                            {(() => {
-                              const known = (l.itemId && batchesByItem[l.itemId]) || [];
-                              const knownOpts = known.map((b) => {
-                                const parts: string[] = [];
-                                if (typeof b.quantity === 'number') parts.push(`${b.quantity} ud.`);
-                                if (b.expiryDate)
-                                  parts.push(`cad. ${new Date(b.expiryDate).toLocaleDateString('es-ES')}`);
-                                return {
-                                  value: b.batchNum,
-                                  label: b.batchNum,
-                                  secondaryLabel: parts.join(' · ') || undefined,
-                                };
-                              });
-                              const hasCurrent = l.batchNum && knownOpts.some((o) => o.value === l.batchNum);
-                              // Solo en entradas (GoodsReceipt) tiene sentido crear un
-                              // lote/serie nuevo: es cuando el stock se origina. En
-                              // traspasos y salidas únicamente se mueve/saca lo existente.
-                              const canCreateNew = kind === 'receipt';
-                              const batchOpts = [
-                                ...(canCreateNew
-                                  ? [
-                                      {
-                                        value: '__new__',
-                                        label: managedBy === 'S' ? '＋ Nueva serie…' : '＋ Nuevo lote…',
-                                        secondaryLabel: 'Introducir manualmente',
-                                      },
-                                    ]
-                                  : []),
-                                ...knownOpts,
-                                // Si el valor actual viene de un documento antiguo y ya no
-                                // está en la lista actual, lo mostramos para no perderlo
-                                // al editar — pero en creación nueva no lo usamos.
-                                ...(l.batchNum && !hasCurrent
-                                  ? [{ value: l.batchNum, label: l.batchNum, secondaryLabel: 'histórico' }]
-                                  : []),
-                              ];
-                              const noKnown =
-                                batchRequired && !canCreateNew && knownOpts.length === 0 && l.itemId;
-                              return (
-                                <div className={batchMissing ? 'ring-2 ring-rose-200 rounded-lg' : ''}>
-                                  <SearchableSelect
-                                    options={batchOpts}
-                                    value={l.batchNum}
-                                    onChange={(v) => {
-                                      if (v === '__new__') {
-                                        const entered = window.prompt(
-                                          managedBy === 'S' ? 'Número de serie' : 'Número de lote',
-                                          l.batchNum || '',
-                                        );
-                                        if (entered !== null) {
-                                          updateLine(i, { batchNum: entered.trim() });
+                            <div className="col-span-4 md:col-span-3">
+                              <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                                {batchLabel}
+                                <span className="ml-1 text-rose-500">*</span>
+                              </label>
+                              {(() => {
+                                const known = (l.itemId && batchesByItem[l.itemId]) || [];
+                                const knownOpts = known.map((b) => {
+                                  const parts: string[] = [];
+                                  if (typeof b.quantity === 'number')
+                                    parts.push(`${b.quantity} ud.`);
+                                  if (b.expiryDate)
+                                    parts.push(
+                                      `cad. ${new Date(b.expiryDate).toLocaleDateString('es-ES')}`,
+                                    );
+                                  return {
+                                    value: b.batchNum,
+                                    label: b.batchNum,
+                                    secondaryLabel: parts.join(' · ') || undefined,
+                                  };
+                                });
+                                const hasCurrent =
+                                  l.batchNum && knownOpts.some((o) => o.value === l.batchNum);
+                                // Solo en entradas (GoodsReceipt) tiene sentido crear un
+                                // lote/serie nuevo: es cuando el stock se origina. En
+                                // traspasos y salidas únicamente se mueve/saca lo existente.
+                                const canCreateNew = kind === 'receipt';
+                                const batchOpts = [
+                                  ...(canCreateNew
+                                    ? [
+                                        {
+                                          value: '__new__',
+                                          label:
+                                            managedBy === 'S'
+                                              ? '＋ Nueva serie…'
+                                              : '＋ Nuevo lote…',
+                                          secondaryLabel: 'Introducir manualmente',
+                                        },
+                                      ]
+                                    : []),
+                                  ...knownOpts,
+                                  // Si el valor actual viene de un documento antiguo y ya no
+                                  // está en la lista actual, lo mostramos para no perderlo
+                                  // al editar — pero en creación nueva no lo usamos.
+                                  ...(l.batchNum && !hasCurrent
+                                    ? [
+                                        {
+                                          value: l.batchNum,
+                                          label: l.batchNum,
+                                          secondaryLabel: 'histórico',
+                                        },
+                                      ]
+                                    : []),
+                                ];
+                                const noKnown =
+                                  batchRequired &&
+                                  !canCreateNew &&
+                                  knownOpts.length === 0 &&
+                                  l.itemId;
+                                return (
+                                  <div
+                                    className={
+                                      batchMissing ? 'ring-2 ring-rose-200 rounded-lg' : ''
+                                    }
+                                  >
+                                    <SearchableSelect
+                                      options={batchOpts}
+                                      value={l.batchNum}
+                                      onChange={(v) => {
+                                        if (v === '__new__') {
+                                          const entered = window.prompt(
+                                            managedBy === 'S'
+                                              ? 'Número de serie'
+                                              : 'Número de lote',
+                                            l.batchNum || '',
+                                          );
+                                          if (entered !== null) {
+                                            updateLine(i, { batchNum: entered.trim() });
+                                          }
+                                        } else {
+                                          updateLine(i, { batchNum: v });
                                         }
-                                      } else {
-                                        updateLine(i, { batchNum: v });
-                                      }
-                                    }}
-                                    placeholder={batchRequired ? 'Obligatorio' : '(opcional)'}
-                                  />
-                                  {noKnown && (
-                                    <p className="text-[10px] text-amber-600 mt-0.5">
-                                      Sin {managedBy === 'S' ? 'series' : 'lotes'} disponibles de este artículo.
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                          </div>
+                                      }}
+                                      placeholder={batchRequired ? 'Obligatorio' : '(opcional)'}
+                                    />
+                                    {noKnown && (
+                                      <p className="text-[10px] text-amber-600 mt-0.5">
+                                        Sin {managedBy === 'S' ? 'series' : 'lotes'} disponibles de
+                                        este artículo.
+                                      </p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
                           )}
 
                           {/* Zonas — orígenes filtrados por stock, destinos muestran todas. */}
@@ -1224,7 +1254,10 @@ export const StockMovements: React.FC = () => {
                                       Zona destino
                                     </label>
                                     <SearchableSelect
-                                      options={[{ value: '', label: '— sin zona —' }, ...toZoneOpts]}
+                                      options={[
+                                        { value: '', label: '— sin zona —' },
+                                        ...toZoneOpts,
+                                      ]}
                                       value={l.toZoneId}
                                       onChange={(v) => updateLine(i, { toZoneId: v })}
                                       placeholder="—"
@@ -1305,14 +1338,14 @@ export const StockMovements: React.FC = () => {
               />
             </div>
 
-          <div className="flex justify-end gap-2 pt-3 mt-2 border-t border-slate-100 dark:border-slate-800">
-            <Button variant="secondary" onClick={cancelCreate}>
-              Cancelar
-            </Button>
-            <Button onClick={create}>Crear borrador</Button>
+            <div className="flex justify-end gap-2 pt-3 mt-2 border-t border-slate-100 dark:border-slate-800">
+              <Button variant="secondary" onClick={cancelCreate}>
+                Cancelar
+              </Button>
+              <Button onClick={create}>Crear borrador</Button>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
       )}
 
       {/* Escáner de códigos — reutiliza el mismo que el resto de la app. */}

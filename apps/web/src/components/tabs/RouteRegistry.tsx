@@ -84,6 +84,7 @@ import { ShipmentDetail } from '../../pages/logistics/ShipmentDetail';
 import { DriverApp } from '../../pages/logistics/DriverApp';
 import { UserTableList } from '../../pages/user-tables/UserTableList';
 import { UserTableDetail } from '../../pages/user-tables/UserTableDetail';
+import Documents from '../../pages/Documents';
 
 export interface RouteMeta {
   title: string;
@@ -302,6 +303,28 @@ export const staticRoutes: RouteEntry[] = [
     iconName: 'FileStack',
     permissionPath: '/sales/invoices',
   },
+  // ── Unified Documents Router ────────────────────────────────────
+  {
+    pattern: '/documents/:docType',
+    Component: Documents,
+    title: 'Documentos',
+    iconName: 'FileText',
+    permissionPath: '/documents',
+  },
+  {
+    pattern: '/documents/:docType/new',
+    Component: Documents,
+    title: 'Nuevo Documento',
+    iconName: 'FileText',
+    permissionPath: '/documents',
+  },
+  {
+    pattern: '/documents/:docType/:id',
+    Component: Documents,
+    title: 'Documento',
+    iconName: 'FileText',
+    permissionPath: '/documents',
+  },
   {
     pattern: '/partner-groups',
     Component: PartnerGroups,
@@ -385,18 +408,50 @@ export const staticRoutes: RouteEntry[] = [
   // Informes contables individuales
   { pattern: '/reports/accounting/journal', Component: ReportJournal, title: 'Diario' },
   { pattern: '/reports/accounting/ledger', Component: ReportLedger, title: 'Mayor' },
-  { pattern: '/reports/accounting/trial-balance', Component: ReportTrialBalance, title: 'Sumas y saldos' },
+  {
+    pattern: '/reports/accounting/trial-balance',
+    Component: ReportTrialBalance,
+    title: 'Sumas y saldos',
+  },
   { pattern: '/reports/accounting/pl', Component: ReportPL, title: 'P&L' },
-  { pattern: '/reports/accounting/balance-sheet', Component: ReportBalanceSheet, title: 'Balance situación' },
+  {
+    pattern: '/reports/accounting/balance-sheet',
+    Component: ReportBalanceSheet,
+    title: 'Balance situación',
+  },
   { pattern: '/reports/accounting/vat', Component: ReportVAT, title: 'Libro IVA' },
   // Ola 3 — Gestión
-  { pattern: '/reports/management/profit-customer', Component: ReportProfitCustomer, title: 'Rent. cliente' },
-  { pattern: '/reports/management/profit-item', Component: ReportProfitItem, title: 'Rent. producto' },
-  { pattern: '/reports/management/profit-project', Component: ReportProfitProject, title: 'Rent. proyecto' },
-  { pattern: '/reports/management/profit-cost-center', Component: ReportProfitCostCenter, title: 'Rent. CC' },
+  {
+    pattern: '/reports/management/profit-customer',
+    Component: ReportProfitCustomer,
+    title: 'Rent. cliente',
+  },
+  {
+    pattern: '/reports/management/profit-item',
+    Component: ReportProfitItem,
+    title: 'Rent. producto',
+  },
+  {
+    pattern: '/reports/management/profit-project',
+    Component: ReportProfitProject,
+    title: 'Rent. proyecto',
+  },
+  {
+    pattern: '/reports/management/profit-cost-center',
+    Component: ReportProfitCostCenter,
+    title: 'Rent. CC',
+  },
   { pattern: '/reports/management/executive', Component: ReportExecutive, title: 'Ejecutivo' },
-  { pattern: '/reports/management/aging-receivables', Component: () => <ReportAging kind="receivables" />, title: 'Aging cobros' },
-  { pattern: '/reports/management/aging-payables', Component: () => <ReportAging kind="payables" />, title: 'Aging pagos' },
+  {
+    pattern: '/reports/management/aging-receivables',
+    Component: () => <ReportAging kind="receivables" />,
+    title: 'Aging cobros',
+  },
+  {
+    pattern: '/reports/management/aging-payables',
+    Component: () => <ReportAging kind="payables" />,
+    title: 'Aging pagos',
+  },
   { pattern: '/reports/management/cashflow', Component: ReportCashflow, title: 'Cash-flow' },
   // Ola 4 — RRHH
   { pattern: '/reports/hr/payslip', Component: ReportPayslip, title: 'Recibo nómina' },

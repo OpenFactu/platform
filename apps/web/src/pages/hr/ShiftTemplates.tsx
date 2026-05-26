@@ -83,10 +83,7 @@ export const ShiftTemplates: React.FC = () => {
     {
       header: 'Color',
       cell: (r: ShiftTemplate) => (
-        <span
-          className="inline-block w-4 h-4 rounded"
-          style={{ background: r.color || '#999' }}
-        />
+        <span className="inline-block w-4 h-4 rounded" style={{ background: r.color || '#999' }} />
       ),
     },
     { header: 'Código', cell: (r: ShiftTemplate) => <code>{r.code}</code> },
@@ -97,7 +94,9 @@ export const ShiftTemplates: React.FC = () => {
         r.secondStartTime && r.secondEndTime ? (
           <span>
             {r.startTime}–{r.endTime}{' '}
-            <span className="text-amber-600 font-bold">+ {r.secondStartTime}–{r.secondEndTime}</span>
+            <span className="text-amber-600 font-bold">
+              + {r.secondStartTime}–{r.secondEndTime}
+            </span>
           </span>
         ) : (
           `${r.startTime} – ${r.endTime}`
@@ -196,8 +195,8 @@ export const ShiftTemplates: React.FC = () => {
                     Turno partido (segundo tramo)
                   </div>
                   <div className="text-xs text-slate-500">
-                    Opcional. Si lo defines, al aplicar la plantilla se generan dos turnos en el mismo
-                    día (mañana + tarde).
+                    Opcional. Si lo defines, al aplicar la plantilla se generan dos turnos en el
+                    mismo día (mañana + tarde).
                   </div>
                 </div>
                 {editing.secondStartTime || editing.secondEndTime ? (

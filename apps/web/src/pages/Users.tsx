@@ -635,15 +635,24 @@ export const Users: React.FC = () => {
                     onChange={(e) => setGlobalRole(e.target.value)}
                     className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   >
-                    <option value="USER">USER — acceso por permisos de empresa</option>
-                    <option value="ADMIN">ADMIN — acceso total a su empresa</option>
+                    <option value="USER">Usuario estándar</option>
+                    <option value="ADMIN">Administrador</option>
+
                     {currentUser?.role === 'SUPERUSER' && (
-                      <option value="SUPERUSER">SUPERUSER — acceso global</option>
+                      <option value="SUPERUSER">Superadministrador</option>
                     )}
                   </select>
                 ) : (
                   <div className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-500 dark:text-slate-400 font-bold">
-                    {globalRole}
+                    {globalRole === 'USER'
+                      ? 'Usuario estándar'
+                      : globalRole === 'ADMIN'
+                        ? 'Administrador'
+                        : globalRole === 'DRIVER'
+                          ? 'Conductor (Reparto)'
+                          : globalRole === 'SUPERUSER'
+                            ? 'Superadministrador'
+                            : globalRole}
                   </div>
                 )}
               </div>
@@ -756,7 +765,9 @@ export const Users: React.FC = () => {
                         <select
                           value={m.role}
                           onChange={(e) =>
-                            updateMembership(idx, { role: e.target.value as 'USER' | 'ADMIN' | 'DRIVER' })
+                            updateMembership(idx, {
+                              role: e.target.value as 'USER' | 'ADMIN' | 'DRIVER',
+                            })
                           }
                           disabled={!isPrivileged}
                           className="bg-white dark:bg-ink-900 border border-line dark:border-ink-700 rounded-xs py-1.5 px-2 text-xs font-bold text-ink-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:bg-line-2 dark:disabled:bg-ink-800"
@@ -888,16 +899,18 @@ export const Users: React.FC = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="p-4 text-sm text-slate-500 dark:text-slate-400">
-                    {u.email}
-                  </td>
+                  <td className="p-4 text-sm text-slate-500 dark:text-slate-400">{u.email}</td>
                   <td className="p-4">
                     <Badge
                       variant={
                         u.role === 'SUPERUSER' ? 'warning' : u.role === 'ADMIN' ? 'info' : 'neutral'
                       }
                     >
-                      {u.role === 'SUPERUSER' ? '⚡ Global' : u.role}
+                      {u.role === 'SUPERUSER'
+                        ? '⚡ Superadmin'
+                        : u.role === 'ADMIN'
+                          ? 'Admin'
+                          : 'Usuario'}
                     </Badge>
                   </td>
                   <td className="p-4">

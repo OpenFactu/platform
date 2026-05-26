@@ -22,7 +22,9 @@ export const ReportStockMovements: React.FC = () => {
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.tenantId]);
+  useEffect(() => {
+    load(); /* eslint-disable-next-line */
+  }, [user?.tenantId]);
 
   const columns = useMemo(
     () => [
@@ -48,7 +50,9 @@ export const ReportStockMovements: React.FC = () => {
       filters={
         <div className="flex items-center gap-3 flex-wrap">
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Desde</label>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+              Desde
+            </label>
             <input
               type="date"
               value={from}
@@ -57,7 +61,9 @@ export const ReportStockMovements: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Hasta</label>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+              Hasta
+            </label>
             <input
               type="date"
               value={to}

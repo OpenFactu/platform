@@ -31,7 +31,13 @@ interface Props {
  * Lee los catálogos desde `/api/document-types`, `/api/payment-methods`,
  * `/api/payment-terms` (populados en el tenant seed).
  */
-export const DocumentFiscalPanel: React.FC<Props> = ({ kind: _kind, state, setState, compact, collapsible }) => {
+export const DocumentFiscalPanel: React.FC<Props> = ({
+  kind: _kind,
+  state,
+  setState,
+  compact,
+  collapsible,
+}) => {
   const [open, setOpen] = useState(!collapsible);
   const { token, user } = useAuth();
   const [docTypes, setDocTypes] = useState<LookupRow[]>([]);
@@ -91,85 +97,85 @@ export const DocumentFiscalPanel: React.FC<Props> = ({ kind: _kind, state, setSt
       )}
 
       {!open ? null : (
-      <>
-      <div className={compact ? 'space-y-3' : 'grid grid-cols-1 md:grid-cols-2 gap-4'}>
-        <Field label="Tipo de documento">
-          <SearchableSelect
-            value={get('documentTypeId')}
-            onChange={(v: string) => set('documentTypeId', v)}
-            options={docTypes.map((d) => ({
-              label: d.code ? `${d.code} · ${d.name}` : d.name,
-              value: d.id,
-            }))}
-            placeholder="—"
-          />
-        </Field>
+        <>
+          <div className={compact ? 'space-y-3' : 'grid grid-cols-1 md:grid-cols-2 gap-4'}>
+            <Field label="Tipo de documento">
+              <SearchableSelect
+                value={get('documentTypeId')}
+                onChange={(v: string) => set('documentTypeId', v)}
+                options={docTypes.map((d) => ({
+                  label: d.code ? `${d.code} · ${d.name}` : d.name,
+                  value: d.id,
+                }))}
+                placeholder="—"
+              />
+            </Field>
 
-        <Field label="Método de pago">
-          <SearchableSelect
-            value={get('paymentMethodId')}
-            onChange={(v: string) => set('paymentMethodId', v)}
-            options={methods.map((m) => ({
-              label: m.code ? `${m.code} · ${m.name}` : m.name,
-              value: m.id,
-            }))}
-            placeholder="—"
-          />
-        </Field>
+            <Field label="Método de pago">
+              <SearchableSelect
+                value={get('paymentMethodId')}
+                onChange={(v: string) => set('paymentMethodId', v)}
+                options={methods.map((m) => ({
+                  label: m.code ? `${m.code} · ${m.name}` : m.name,
+                  value: m.id,
+                }))}
+                placeholder="—"
+              />
+            </Field>
 
-        <Field label="Plazo de pago">
-          <SearchableSelect
-            value={get('paymentTermId')}
-            onChange={(v: string) => set('paymentTermId', v)}
-            options={terms.map((t) => ({ label: t.name, value: t.id }))}
-            placeholder="—"
-          />
-        </Field>
+            <Field label="Plazo de pago">
+              <SearchableSelect
+                value={get('paymentTermId')}
+                onChange={(v: string) => set('paymentTermId', v)}
+                options={terms.map((t) => ({ label: t.name, value: t.id }))}
+                placeholder="—"
+              />
+            </Field>
 
-        <Field label="Vencimiento">
-          <Input
-            type="date"
-            value={get('dueDate') || ''}
-            onChange={(e) => set('dueDate', e.target.value)}
-          />
-        </Field>
+            <Field label="Vencimiento">
+              <Input
+                type="date"
+                value={get('dueDate') || ''}
+                onChange={(e) => set('dueDate', e.target.value)}
+              />
+            </Field>
 
-        <Field label="Fecha de operación">
-          <Input
-            type="date"
-            value={get('supplyDate') || ''}
-            onChange={(e) => set('supplyDate', e.target.value)}
-          />
-        </Field>
+            <Field label="Fecha de operación">
+              <Input
+                type="date"
+                value={get('supplyDate') || ''}
+                onChange={(e) => set('supplyDate', e.target.value)}
+              />
+            </Field>
 
-        <Field label="Retención %">
-          <Input
-            type="number"
-            step="0.01"
-            value={state.withholdingRate ?? 0}
-            onChange={(e) => setState.setWithholdingRate?.(Number(e.target.value) || 0)}
-            placeholder="0.00"
-          />
-        </Field>
-      </div>
+            <Field label="Retención %">
+              <Input
+                type="number"
+                step="0.01"
+                value={state.withholdingRate ?? 0}
+                onChange={(e) => setState.setWithholdingRate?.(Number(e.target.value) || 0)}
+                placeholder="0.00"
+              />
+            </Field>
+          </div>
 
-      <div className="space-y-3">
-        <Field label="Notas (visibles en PDF)">
-          <Input
-            value={get('notes') || ''}
-            onChange={(e) => set('notes', e.target.value)}
-            placeholder="Texto que aparece en la factura…"
-          />
-        </Field>
-        <Field label="Notas internas">
-          <Input
-            value={get('internalNotes') || ''}
-            onChange={(e) => set('internalNotes', e.target.value)}
-            placeholder="Sólo uso interno, nunca en PDF"
-          />
-        </Field>
-      </div>
-      </>
+          <div className="space-y-3">
+            <Field label="Notas (visibles en PDF)">
+              <Input
+                value={get('notes') || ''}
+                onChange={(e) => set('notes', e.target.value)}
+                placeholder="Texto que aparece en la factura…"
+              />
+            </Field>
+            <Field label="Notas internas">
+              <Input
+                value={get('internalNotes') || ''}
+                onChange={(e) => set('internalNotes', e.target.value)}
+                placeholder="Sólo uso interno, nunca en PDF"
+              />
+            </Field>
+          </div>
+        </>
       )}
     </Card>
   );

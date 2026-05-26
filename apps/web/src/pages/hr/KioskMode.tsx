@@ -250,9 +250,7 @@ export const KioskMode: React.FC = () => {
               )}
               <div>
                 <div className="font-bold">{feedback.msg}</div>
-                {feedback.sub && (
-                  <div className="text-sm opacity-80">{feedback.sub}</div>
-                )}
+                {feedback.sub && <div className="text-sm opacity-80">{feedback.sub}</div>}
               </div>
             </div>
           )}

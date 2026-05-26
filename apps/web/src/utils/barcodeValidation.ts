@@ -177,4 +177,3 @@ function simpleNumericHash(input: string, digits: number): string {
   const mod = Math.pow(10, digits);
   return (h % mod).toString().padStart(digits, '0');
 }
-

@@ -155,7 +155,9 @@ export function useDocumentClone(docType: CloneDocType) {
         return null;
       }
       if (parsed.docType !== docType) {
-        toast.error(`El documento copiado es de tipo ${parsed.docType} — esta vista espera ${docType}`);
+        toast.error(
+          `El documento copiado es de tipo ${parsed.docType} — esta vista espera ${docType}`,
+        );
         return null;
       }
       return { header: parsed.header, lines: parsed.lines };

@@ -175,9 +175,7 @@ export const AttachmentsPanel: React.FC<Props> = ({
         {uploading ? 'Subiendo…' : 'Arrastra archivos aquí o haz click para seleccionar'}
       </div>
 
-      {error && (
-        <div className="mt-2 text-xs text-rose-500 dark:text-rose-400">⚠ {error}</div>
-      )}
+      {error && <div className="mt-2 text-xs text-rose-500 dark:text-rose-400">⚠ {error}</div>}
 
       {loading ? (
         <div className="mt-3 text-xs text-slate-400 italic">Cargando adjuntos…</div>

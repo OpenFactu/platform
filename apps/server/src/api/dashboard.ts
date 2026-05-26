@@ -334,15 +334,30 @@ router.get('/summary', async (req: any, res) => {
         }
       };
       await Promise.all([
-        grabDocs(schema.salesInvoices, 'salesInvoice', '/sales/invoices', (p) => `Factura venta a ${p || '—'}`),
+        grabDocs(
+          schema.salesInvoices,
+          'salesInvoice',
+          '/sales/invoices',
+          (p) => `Factura venta a ${p || '—'}`,
+        ),
         grabDocs(
           schema.purchaseInvoices,
           'purchaseInvoice',
           '/purchases/invoices',
           (p) => `Factura compra de ${p || '—'}`,
         ),
-        grabDocs(schema.salesOrders, 'salesOrder', '/sales-orders', (p) => `Pedido venta de ${p || '—'}`),
-        grabDocs(schema.purchaseOrders, 'purchaseOrder', '/purchase-orders', (p) => `Pedido compra a ${p || '—'}`),
+        grabDocs(
+          schema.salesOrders,
+          'salesOrder',
+          '/sales-orders',
+          (p) => `Pedido venta de ${p || '—'}`,
+        ),
+        grabDocs(
+          schema.purchaseOrders,
+          'purchaseOrder',
+          '/purchase-orders',
+          (p) => `Pedido compra a ${p || '—'}`,
+        ),
         grabDocs(
           schema.salesDeliveryNotes,
           'salesDeliveryNote',

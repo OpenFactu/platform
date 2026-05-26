@@ -52,26 +52,32 @@ export function buildPaymentDueLines(
   if (!termLines || termLines.length === 0) return [];
   return termLines.map((tl) => ({
     date: addDaysIso(baseDate, tl.days),
-    amount: Math.round((total * tl.percentage) / 100 * 100) / 100,
+    amount: Math.round(((total * tl.percentage) / 100) * 100) / 100,
   }));
 }
 
 /**
  * Devuelve la fecha de vencimiento final = la fecha más lejana del array.
  */
-export function latestDueDate(
-  dues: Array<{ date: string; amount: number }>,
-): string | null {
+export function latestDueDate(dues: Array<{ date: string; amount: number }>): string | null {
   if (!dues || dues.length === 0) return null;
-  return dues.map((d) => d.date).sort().at(-1) || null;
+  return (
+    dues
+      .map((d) => d.date)
+      .sort()
+      .at(-1) || null
+  );
 }
 
 /**
  * Calcula `withholdingAmount` a partir de subtotal y `withholdingRate`.
  * Si la rate es null/undefined, devuelve null.
  */
-export function computeWithholding(subtotal: number, rate: number | string | null | undefined): number | null {
+export function computeWithholding(
+  subtotal: number,
+  rate: number | string | null | undefined,
+): number | null {
   const r = Number(rate);
   if (!r || Number.isNaN(r)) return null;
-  return Math.round((Number(subtotal) * r) / 100 * 10000) / 10000;
+  return Math.round(((Number(subtotal) * r) / 100) * 10000) / 10000;
 }

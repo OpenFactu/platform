@@ -115,8 +115,8 @@ export const PlatformsTab: React.FC = () => {
         </div>
       ) : rows.length === 0 ? (
         <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-          Sin plataformas. Crea una cuando trabajes con un cross-dock, nave alquilada o hub de
-          un transportista.
+          Sin plataformas. Crea una cuando trabajes con un cross-dock, nave alquilada o hub de un
+          transportista.
         </Card>
       ) : (
         <Card bodyClassName="p-0">

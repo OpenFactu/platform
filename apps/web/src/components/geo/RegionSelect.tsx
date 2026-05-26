@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { SearchableSelect } from '@openfactu/ui';
 import { useGeo, type GeoRow } from '../../hooks/useGeo';
 
 interface Props {
@@ -33,27 +34,31 @@ export const RegionSelect: React.FC<Props> = ({
   }, [countryCode, loadRegions]);
 
   const country = getCountry(countryCode);
-  if (!country?.regionLabel) return null; // país sin nivel de regiones (PT/GB/US)
+
+  const options = useMemo(
+    () =>
+      regions.map((r) => ({
+        value: r.id,
+        label: r.name,
+      })),
+    [regions],
+  );
+
+  if (!country?.regionLabel) return null;
   if (!countryCode) return null;
 
   return (
-    <div>
-      <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
+    <div className="flex flex-col gap-1.5 w-full">
+      <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300">
         {label || country.regionLabel}
       </label>
-      <select
+      <SearchableSelect
+        options={options}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
+        placeholder={loading ? 'Cargando...' : `Seleccionar ${country.regionLabel}...`}
         disabled={disabled || loading}
-        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm"
-      >
-        <option value="">— {loading ? 'Cargando...' : country.regionLabel} —</option>
-        {regions.map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.name}
-          </option>
-        ))}
-      </select>
+      />
     </div>
   );
 };

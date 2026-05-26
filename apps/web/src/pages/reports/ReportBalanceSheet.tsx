@@ -103,9 +103,7 @@ export const ReportBalanceSheet: React.FC = () => {
       </div>
 
       <Card className="p-4">
-        <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mr-2">
-          Período
-        </label>
+        <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mr-2">Período</label>
         <select
           value={periodId}
           onChange={(e) => setPeriodId(e.target.value)}
@@ -124,8 +122,18 @@ export const ReportBalanceSheet: React.FC = () => {
       ) : (
         <>
           {section('Activo', data.asset, data.totalAsset, 'text-emerald-600 dark:text-emerald-400')}
-          {section('Pasivo', data.liability, data.totalLiability, 'text-amber-600 dark:text-amber-400')}
-          {section('Patrimonio Neto', data.equity, data.totalEquity, 'text-blue-600 dark:text-blue-400')}
+          {section(
+            'Pasivo',
+            data.liability,
+            data.totalLiability,
+            'text-amber-600 dark:text-amber-400',
+          )}
+          {section(
+            'Patrimonio Neto',
+            data.equity,
+            data.totalEquity,
+            'text-blue-600 dark:text-blue-400',
+          )}
         </>
       )}
     </div>

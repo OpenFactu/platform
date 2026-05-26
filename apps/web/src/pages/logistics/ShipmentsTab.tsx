@@ -1,14 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
-import {
-  Plus,
-  Trash2,
-  MapPin,
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Mail,
-} from 'lucide-react';
+import { Plus, Trash2, MapPin, Search, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTabs } from '../../context/TabsContext';
 import { useFormat } from '../../hooks/useFormat';
@@ -186,7 +178,9 @@ export const ShipmentsTab: React.FC = () => {
       .catch(() => setWarehouses([]));
     fetch('/api/hr/employees', { headers })
       .then((r) => (r.ok ? r.json() : []))
-      .then((d) => setEmployees(Array.isArray(d) ? d.filter((e: any) => e.status === 'active') : []))
+      .then((d) =>
+        setEmployees(Array.isArray(d) ? d.filter((e: any) => e.status === 'active') : []),
+      )
       .catch(() => setEmployees([]));
     fetch('/api/logistics/vehicles', { headers })
       .then((r) => (r.ok ? r.json() : []))
@@ -260,8 +254,7 @@ export const ShipmentsTab: React.FC = () => {
   };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters =
-    !!q || statuses.length > 0 || !!routeId || !!fromDate || !!toDate;
+  const hasFilters = !!q || statuses.length > 0 || !!routeId || !!fromDate || !!toDate;
 
   return (
     <div className="space-y-3">
@@ -269,10 +262,7 @@ export const ShipmentsTab: React.FC = () => {
       <Card bodyClassName="p-3 space-y-3">
         <div className="flex flex-col md:flex-row gap-2">
           <div className="relative flex-1">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
               value={q}
               onChange={(e) => {
@@ -359,9 +349,7 @@ export const ShipmentsTab: React.FC = () => {
         </div>
       ) : rows.length === 0 ? (
         <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-          {hasFilters
-            ? 'Ningún envío coincide con los filtros.'
-            : 'Sin envíos aún.'}
+          {hasFilters ? 'Ningún envío coincide con los filtros.' : 'Sin envíos aún.'}
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -419,9 +407,7 @@ export const ShipmentsTab: React.FC = () => {
                         {s.destinationAddress || '—'}
                       </td>
                       <td className="px-4 py-2 text-[11px] text-slate-500 dark:text-slate-400">
-                        {s.lastLat != null && s.lastLng != null
-                          ? timeAgo(s.lastLocationAt)
-                          : '—'}
+                        {s.lastLat != null && s.lastLng != null ? timeAgo(s.lastLocationAt) : '—'}
                       </td>
                       <td className="px-4 py-2 text-right whitespace-nowrap">
                         <button
@@ -534,8 +520,8 @@ export const ShipmentsTab: React.FC = () => {
             </div>
             {form.kind === 'pickup_return' && (
               <p className="text-[11px] text-amber-600 mt-1">
-                El conductor recogerá la mercancía en la dirección indicada y
-                al confirmarlo se creará una entrada de stock en borrador.
+                El conductor recogerá la mercancía en la dirección indicada y al confirmarlo se
+                creará una entrada de stock en borrador.
               </p>
             )}
           </div>
@@ -598,77 +584,79 @@ export const ShipmentsTab: React.FC = () => {
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
               Conductor y vehículo
             </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Conductor
-              </label>
-              <select
-                value={form.driverEmployeeId || ''}
-                onChange={(e) => {
-                  const empId = e.target.value;
-                  const emp = employees.find((x: any) => x.id === empId);
-                  setForm({
-                    ...form,
-                    driverEmployeeId: empId || null,
-                    driverName: emp
-                      ? [emp.firstName, emp.lastName].filter(Boolean).join(' ').trim() || null
-                      : null,
-                    driverPhone: emp?.phone || form.driverPhone || null,
-                  });
-                }}
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-              >
-                <option value="">— seleccionar —</option>
-                {employees.map((emp: any) => {
-                  const name = [emp.firstName, emp.lastName].filter(Boolean).join(' ').trim();
-                  return (
-                    <option key={emp.id} value={emp.id}>
-                      {name || emp.code || emp.email || '(sin nombre)'}
-                      {emp.code ? ` · ${emp.code}` : ''}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                  Conductor
+                </label>
+                <select
+                  value={form.driverEmployeeId || ''}
+                  onChange={(e) => {
+                    const empId = e.target.value;
+                    const emp = employees.find((x: any) => x.id === empId);
+                    setForm({
+                      ...form,
+                      driverEmployeeId: empId || null,
+                      driverName: emp
+                        ? [emp.firstName, emp.lastName].filter(Boolean).join(' ').trim() || null
+                        : null,
+                      driverPhone: emp?.phone || form.driverPhone || null,
+                    });
+                  }}
+                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
+                >
+                  <option value="">— seleccionar —</option>
+                  {employees.map((emp: any) => {
+                    const name = [emp.firstName, emp.lastName].filter(Boolean).join(' ').trim();
+                    return (
+                      <option key={emp.id} value={emp.id}>
+                        {name || emp.code || emp.email || '(sin nombre)'}
+                        {emp.code ? ` · ${emp.code}` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+                {employees.length === 0 && (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    No hay empleados activos. Da de alta en RRHH → Empleados.
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                  Vehículo
+                </label>
+                <select
+                  value={form.vehiclePlate || ''}
+                  onChange={(e) => {
+                    const plate = e.target.value;
+                    const v = vehicles.find((x: any) => x.plate === plate);
+                    setForm({
+                      ...form,
+                      vehiclePlate: plate || null,
+                      carrier: form.carrier || (v ? 'propio' : form.carrier),
+                    });
+                  }}
+                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
+                >
+                  <option value="">— seleccionar —</option>
+                  {vehicles.map((v: any) => (
+                    <option key={v.id} value={v.plate}>
+                      {v.plate}
+                      {v.brand || v.model
+                        ? ` · ${[v.brand, v.model].filter(Boolean).join(' ')}`
+                        : ''}
+                      {v.code ? ` (${v.code})` : ''}
                     </option>
-                  );
-                })}
-              </select>
-              {employees.length === 0 && (
-                <p className="text-[11px] text-slate-500 mt-1">
-                  No hay empleados activos. Da de alta en RRHH → Empleados.
-                </p>
-              )}
+                  ))}
+                </select>
+                {vehicles.length === 0 && (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    No hay vehículos activos. Da de alta en Logística → Vehículos.
+                  </p>
+                )}
+              </div>
             </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Vehículo
-              </label>
-              <select
-                value={form.vehiclePlate || ''}
-                onChange={(e) => {
-                  const plate = e.target.value;
-                  const v = vehicles.find((x: any) => x.plate === plate);
-                  setForm({
-                    ...form,
-                    vehiclePlate: plate || null,
-                    carrier: form.carrier || (v ? 'propio' : form.carrier),
-                  });
-                }}
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-              >
-                <option value="">— seleccionar —</option>
-                {vehicles.map((v: any) => (
-                  <option key={v.id} value={v.plate}>
-                    {v.plate}
-                    {v.brand || v.model ? ` · ${[v.brand, v.model].filter(Boolean).join(' ')}` : ''}
-                    {v.code ? ` (${v.code})` : ''}
-                  </option>
-                ))}
-              </select>
-              {vehicles.length === 0 && (
-                <p className="text-[11px] text-slate-500 mt-1">
-                  No hay vehículos activos. Da de alta en Logística → Vehículos.
-                </p>
-              )}
-            </div>
-          </div>
           </div>
 
           {/* ─── Dirección ─── */}
@@ -677,9 +665,7 @@ export const ShipmentsTab: React.FC = () => {
               {form.kind === 'pickup_return' ? 'Recogida' : 'Destino'}
             </div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              {form.kind === 'pickup_return'
-                ? 'Dirección de recogida'
-                : 'Dirección de destino'}
+              {form.kind === 'pickup_return' ? 'Dirección de recogida' : 'Dirección de destino'}
               <span className="text-rose-500 ml-0.5">*</span>
             </label>
             <MapSearchBox
@@ -727,9 +713,7 @@ export const ShipmentsTab: React.FC = () => {
                 </label>
                 <select
                   value={form.returnWarehouseId || ''}
-                  onChange={(e) =>
-                    setForm({ ...form, returnWarehouseId: e.target.value || null })
-                  }
+                  onChange={(e) => setForm({ ...form, returnWarehouseId: e.target.value || null })}
                   className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
                 >
                   <option value="">— seleccionar —</option>
@@ -740,8 +724,8 @@ export const ShipmentsTab: React.FC = () => {
                   ))}
                 </select>
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Al confirmar la recogida, se generará una entrada de stock
-                  (GoodsReceipt draft) sobre este almacén para que la revises.
+                  Al confirmar la recogida, se generará una entrada de stock (GoodsReceipt draft)
+                  sobre este almacén para que la revises.
                 </p>
               </div>
             )}
@@ -788,9 +772,7 @@ export const ShipmentsTab: React.FC = () => {
                 <Input
                   type="datetime-local"
                   value={form.estimatedDelivery || ''}
-                  onChange={(e) =>
-                    setForm({ ...form, estimatedDelivery: e.target.value || null })
-                  }
+                  onChange={(e) => setForm({ ...form, estimatedDelivery: e.target.value || null })}
                 />
               </div>
               <div>

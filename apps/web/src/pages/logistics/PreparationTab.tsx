@@ -4,7 +4,14 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge, Loader, Modal, useToast } from '@openfactu/ui';
-import { Box, Package as PackageIcon, Send, CheckCircle2, ChevronRight, Warehouse } from 'lucide-react';
+import {
+  Box,
+  Package as PackageIcon,
+  Send,
+  CheckCircle2,
+  ChevronRight,
+  Warehouse,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { PickingTasksPanel } from './PickingTasksPanel';
 import { RoutePicker } from '../../components/logistics/RoutePicker';
@@ -60,7 +67,9 @@ export const PreparationTab: React.FC = () => {
   const toast = useToast();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
-  const [stagingAreas, setStagingAreas] = useState<{ id: string; code: string; name: string }[]>([]);
+  const [stagingAreas, setStagingAreas] = useState<{ id: string; code: string; name: string }[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Shipment | null>(null);
   const [showDispatch, setShowDispatch] = useState<Shipment | null>(null);
@@ -216,8 +225,7 @@ export const PreparationTab: React.FC = () => {
                     <ChevronRight size={13} />
                   </Button>
 
-                  {(sh.preparationStatus === 'packed' ||
-                    sh.preparationStatus === 'ready') && (
+                  {(sh.preparationStatus === 'packed' || sh.preparationStatus === 'ready') && (
                     <Button
                       variant="secondary"
                       onClick={() => setShowStaging(sh)}

@@ -92,11 +92,7 @@ export const VehiclesTab: React.FC = () => {
   };
 
   const archive = async (v: Vehicle) => {
-    if (
-      !confirm(
-        `¿Archivar vehículo ${v.plate}? Las rutas pasadas conservarán su registro.`,
-      )
-    )
+    if (!confirm(`¿Archivar vehículo ${v.plate}? Las rutas pasadas conservarán su registro.`))
       return;
     const res = await fetch(`/api/logistics/vehicles/${v.id}`, { method: 'DELETE', headers });
     if (!res.ok) {

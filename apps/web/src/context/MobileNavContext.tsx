@@ -27,7 +27,9 @@ export const MobileNavProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [activeTabId]);
 
   return (
-    <MobileNavContext.Provider value={{ open, setOpen, toggle }}>{children}</MobileNavContext.Provider>
+    <MobileNavContext.Provider value={{ open, setOpen, toggle }}>
+      {children}
+    </MobileNavContext.Provider>
   );
 };
 

@@ -89,7 +89,8 @@ export const IncidentTypes: React.FC = () => {
     { header: 'Nombre', cell: (r: IncidentType) => r.name },
     {
       header: 'Sustitución',
-      cell: (r: IncidentType) => (r.requiresSubstitution ? <Badge variant="warning">Sí</Badge> : '—'),
+      cell: (r: IncidentType) =>
+        r.requiresSubstitution ? <Badge variant="warning">Sí</Badge> : '—',
     },
     {
       header: 'Nómina',
@@ -120,7 +121,9 @@ export const IncidentTypes: React.FC = () => {
           <h1 className="text-3xl font-black flex items-center gap-3">
             <AlertOctagon className="text-amber-600" size={32} /> Tipos de incidencia
           </h1>
-          <p className="text-slate-500">Configura los tipos de ausencia/incidencia y su política.</p>
+          <p className="text-slate-500">
+            Configura los tipos de ausencia/incidencia y su política.
+          </p>
         </div>
         <Button size="sm" onClick={() => setEditing(empty())}>
           <Plus size={14} /> Nuevo tipo

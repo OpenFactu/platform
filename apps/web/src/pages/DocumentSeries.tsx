@@ -108,7 +108,7 @@ export const DocumentSeries: React.FC = () => {
   };
 
   const columns = [
-    { header: 'Serie (Name)', sortable: true, sortAccessor: (i: any) => i.name ?? '',},
+    { header: 'Serie (Name)', sortable: true, sortAccessor: (i: any) => i.name ?? '' },
     {
       header: 'Tipo',
       cell: (c: any) => {

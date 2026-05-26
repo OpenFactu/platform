@@ -151,7 +151,13 @@ export const DimensionCrudPage: React.FC<Props> = ({
   const parentMap = Object.fromEntries(rows.map((r) => [r.id, r]));
 
   const columns = [
-    { header: 'Código', accessor: 'code', sortable: true, sortAccessor: (r: any) => r.code, primary: true },
+    {
+      header: 'Código',
+      accessor: 'code',
+      sortable: true,
+      sortAccessor: (r: any) => r.code,
+      primary: true,
+    },
     { header: 'Nombre', accessor: 'name', sortable: true, sortAccessor: (r: any) => r.name },
     {
       header: 'Padre',
@@ -165,7 +171,11 @@ export const DimensionCrudPage: React.FC<Props> = ({
     {
       header: 'Estado',
       cell: (r: any) =>
-        r.isActive ? <Badge variant="success">Activo</Badge> : <Badge variant="neutral">Inactivo</Badge>,
+        r.isActive ? (
+          <Badge variant="success">Activo</Badge>
+        ) : (
+          <Badge variant="neutral">Inactivo</Badge>
+        ),
     },
     {
       header: 'Acciones',
@@ -291,7 +301,12 @@ export const DimensionCrudPage: React.FC<Props> = ({
       )}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} onRowClick={(r: any) => openEdit(r)} />
+        <Table
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          onRowClick={(r: any) => openEdit(r)}
+        />
       </Card>
     </div>
   );

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, Loader, useToast, Badge, FilterBar } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';

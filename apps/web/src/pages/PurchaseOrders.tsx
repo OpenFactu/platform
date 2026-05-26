@@ -108,7 +108,8 @@ const POList: React.FC<{
     {
       header: 'No. Pedido',
       sortable: true,
-      sortAccessor: (item: any) => `${item.seriesPrefix||''}-${String(item.docNum||0).padStart(6,'0')}`,
+      sortAccessor: (item: any) =>
+        `${item.seriesPrefix || ''}-${String(item.docNum || 0).padStart(6, '0')}`,
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
@@ -120,7 +121,12 @@ const POList: React.FC<{
         </div>
       ),
     },
-    { header: 'Fecha', sortable: true, sortAccessor: (item: any) => new Date(item.date).getTime(), accessor: (item: any) => fmt.date(item.date) },
+    {
+      header: 'Fecha',
+      sortable: true,
+      sortAccessor: (item: any) => new Date(item.date).getTime(),
+      accessor: (item: any) => fmt.date(item.date),
+    },
     {
       header: 'Proveedor',
       sortable: true,
@@ -149,6 +155,7 @@ const POList: React.FC<{
           {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
           {item.status === 'P' && <Badge variant="info">Parcial</Badge>}
           {item.status === 'C' && <Badge variant="success">Cerrado</Badge>}
+          {item.status === 'X' && <Badge variant="error">Cancelado</Badge>}
         </>
       ),
     },
@@ -247,8 +254,23 @@ const POList: React.FC<{
           ]}
           searchPlaceholder="Buscar pedido..."
         />
-        <BulkSendToolbar selectedKeys={selectedKeys} rows={filteredData || []} partners={partners} docType="PO" onClear={() => setSelectedKeys(new Set())} onSent={() => setSelectedKeys(new Set())} />
-        <Table columns={columns} data={filteredData || []} isLoading={loading} onRowClick={onDetail} selectable selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} />
+        <BulkSendToolbar
+          selectedKeys={selectedKeys}
+          rows={filteredData || []}
+          partners={partners}
+          docType="PO"
+          onClear={() => setSelectedKeys(new Set())}
+          onSent={() => setSelectedKeys(new Set())}
+        />
+        <Table
+          columns={columns}
+          data={filteredData || []}
+          isLoading={loading}
+          onRowClick={onDetail}
+          selectable
+          selectedKeys={selectedKeys}
+          onSelectionChange={setSelectedKeys}
+        />
       </Card>
     </div>
   );
@@ -313,25 +335,30 @@ const POForm: React.FC<{
   };
 
   const projectCol = useInternalOrderLineColumn(actions.updateLine);
-  const columns = useMemo(
-    () => {
-      const base = buildFormLineColumns({
-        kind: DocKind.Order,
-        side: DocSide.Purchase,
-        state,
-        masters,
-        zones,
-        actions,
-        onAssignBatch: setBatchEditingIdx,
-        fmt,
-        getItemUoms: itemUoms.get,
-        warehouseLocation,
-        pluginLineFields,
-      });
-      return [...base.slice(0, -1), projectCol, base[base.length - 1]];
-    },
-    [state.lines, masters.items, masters.taxGroups, warehouseLocation, zones, pluginLineFields, projectCol],
-  );
+  const columns = useMemo(() => {
+    const base = buildFormLineColumns({
+      kind: DocKind.Order,
+      side: DocSide.Purchase,
+      state,
+      masters,
+      zones,
+      actions,
+      onAssignBatch: setBatchEditingIdx,
+      fmt,
+      getItemUoms: itemUoms.get,
+      warehouseLocation,
+      pluginLineFields,
+    });
+    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+  }, [
+    state.lines,
+    masters.items,
+    masters.taxGroups,
+    warehouseLocation,
+    zones,
+    pluginLineFields,
+    projectCol,
+  ]);
 
   return (
     <div className="p-4 space-y-6">
@@ -485,13 +512,17 @@ const POForm: React.FC<{
           return (
             <div className="flex items-center justify-between gap-4 p-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
               <div className="flex items-start gap-3 min-w-0">
-                <AlertCircle size={18} className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+                <AlertCircle
+                  size={18}
+                  className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5"
+                />
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
                     Este proveedor tiene retención IRPF por defecto del {partnerRate}%
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
-                    El pedido se registrará sin retención. Si el proveedor es profesional sujeto a IRPF, aplícala — tú eres el retenedor.
+                    El pedido se registrará sin retención. Si el proveedor es profesional sujeto a
+                    IRPF, aplícala — tú eres el retenedor.
                   </p>
                 </div>
               </div>
@@ -538,7 +569,9 @@ const POForm: React.FC<{
             {Number(computations.withholdingAmount) > 0 && (
               <div className="flex justify-between px-2 text-rose-600 dark:text-rose-400">
                 <span className="text-[10px] font-black uppercase">Retención IRPF:</span>
-                <span className="font-bold">− {Number(computations.withholdingAmount).toFixed(2)} €</span>
+                <span className="font-bold">
+                  − {Number(computations.withholdingAmount).toFixed(2)} €
+                </span>
               </div>
             )}
             <div className="flex justify-between px-2 pt-2 mt-1 border-t text-xl font-black text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700">
@@ -567,13 +600,14 @@ const PODetail: React.FC<{
   const canBeReceived = order.status !== 'C' && order.status !== 'X';
 
   const columns = useMemo(
-    () => buildDetailLineColumns({
-      kind: DocKind.Order,
-      side: DocSide.Purchase,
-      masters,
-      onViewBatch: setViewingBatch,
-      fmt,
-    }),
+    () =>
+      buildDetailLineColumns({
+        kind: DocKind.Order,
+        side: DocSide.Purchase,
+        masters,
+        onViewBatch: setViewingBatch,
+        fmt,
+      }),
     [order.lines, masters.items, masters.taxGroups],
   );
 
@@ -854,7 +888,23 @@ export const PurchaseOrders: React.FC = () => {
         shipToAddress,
         internalOrderId,
       });
-      toast.success(`Pedido registrado nº ${data.header.docNum}`);
+      toast.success(`Pedido registrado nº ${data.docNum}`);
+      notifyDocChange(DocType.PurchaseOrder);
+      currentTab.close();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleCancelOrder = async (id: string) => {
+    try {
+      const res = await fetch(`/api/purchases/orders/${id}/cancel`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al cancelar');
+      toast.success('Pedido cancelado');
       notifyDocChange(DocType.PurchaseOrder);
       currentTab.close();
     } catch (err: any) {
@@ -902,6 +952,7 @@ export const PurchaseOrders: React.FC = () => {
             title: `Albarán ← ${formatDocCode(selectedOrder)}`,
           });
         }}
+        onCancel={handleCancelOrder}
         masters={doc.masters}
       />
     );

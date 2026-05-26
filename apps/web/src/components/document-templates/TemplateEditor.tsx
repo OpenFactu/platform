@@ -17,10 +17,7 @@ import { PreviewPane } from './PreviewPane';
 import { usePreview } from './usePreview';
 import { FieldExplorer } from './FieldExplorer';
 import { compileCanvas } from './canvas/compileCanvas';
-import {
-  buildSimpleLabelLayout,
-  defaultSimpleArticleSettings,
-} from './canvas/buildSimpleLabel';
+import { buildSimpleLabelLayout, defaultSimpleArticleSettings } from './canvas/buildSimpleLabel';
 
 interface Props {
   template: TemplateRow | null;
@@ -45,12 +42,12 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   const [name, setName] = useState(template?.name || 'Nueva plantilla');
   const [docType, setDocType] = useState<DocType>(template?.docType || 'SINV');
   const [isDefault, setIsDefault] = useState(!!template?.isDefault);
-  // FREE no tiene modo visual: el editor de visualOptions asume un documento
+  // FREE y LABEL no tienen modo visual: el editor de visualOptions asume un documento
   // con header/totales/líneas que no aplica a una etiqueta libre. Forzamos
   // advanced para que el HTML se construya desde el diseñador canvas (o a mano).
-  const isFreeTemplate = docType === 'FREE';
+  const isFreeOrLabelTemplate = docType === 'FREE' || docType === 'LABEL';
   const [mode, setMode] = useState<EditorMode>(
-    isCanvasTemplate || isFreeTemplate
+    isCanvasTemplate || isFreeOrLabelTemplate
       ? 'advanced'
       : isNewTemplate || initialMeta
         ? 'visual'
@@ -64,9 +61,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   // builder del modo simple (defaults de artículo) para que la plantilla nueva
   // se abra directamente en el editor visual simple, sin necesidad de tocar
   // el canvas avanzado.
-  const initialFreeLayout = React.useRef(
-    buildSimpleLabelLayout(defaultSimpleArticleSettings()),
-  );
+  const initialFreeLayout = React.useRef(buildSimpleLabelLayout(defaultSimpleArticleSettings()));
   const [canvasLayoutForSave, setCanvasLayoutForSave] = useState<any>(
     (template as any)?.canvasLayout ?? null,
   );
@@ -87,7 +82,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   // nunca desde aquí — su html viene del compileCanvas.
   useEffect(() => {
     if (isCanvasTemplate) return;
-    if (isFreeTemplate) {
+    if (isFreeOrLabelTemplate) {
       // Cuando el usuario cambia el tipo a FREE (sobre una plantilla nueva o
       // que tenía html visual previo), regeneramos al layout de etiqueta y
       // cargamos su canvasLayout para que se persista al guardar y el
@@ -99,10 +94,10 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
       return;
     }
     if (mode === 'visual') {
-      setHtml(buildVisualTemplate(docType as Exclude<DocType, 'FREE'>, visualOpts));
+      setHtml(buildVisualTemplate(docType as Exclude<DocType, 'FREE' | 'LABEL'>, visualOpts));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visualOpts, docType, mode, isCanvasTemplate, isFreeTemplate]);
+  }, [visualOpts, docType, mode, isCanvasTemplate, isFreeOrLabelTemplate]);
 
   const { previewUrl, previewing, refresh } = usePreview(html, docType, token, tenantId, (msg) =>
     toast.error(msg),
@@ -125,10 +120,10 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Para FREE persistimos también canvasLayout + legacyHtml=false para
+      // Para FREE y LABEL persistimos también canvasLayout + legacyHtml=false para
       // que el diseñador abra la plantilla con su layout completo.
       const payload: any = { id: template?.id, name, docType, html, isDefault };
-      if (isFreeTemplate && canvasLayoutForSave) {
+      if (isFreeOrLabelTemplate && canvasLayoutForSave) {
         payload.canvasLayout = canvasLayoutForSave;
         payload.legacyHtml = false;
       }
@@ -169,7 +164,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
           name,
           html,
           isDefault,
-          ...(isFreeTemplate && canvasLayoutForSave
+          ...(isFreeOrLabelTemplate && canvasLayoutForSave
             ? { canvasLayout: canvasLayoutForSave, legacyHtml: false }
             : {}),
         }),
@@ -261,9 +256,9 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
 
       {isCanvasTemplate && (
         <div className="flex-shrink-0 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 text-xs text-amber-800 dark:text-amber-200">
-          Esta plantilla se diseñó con el <strong>diseñador canvas</strong>. El HTML
-          mostrado abajo se genera desde ese diseño. Si editas aquí, perderás los
-          cambios al volver a abrir el diseñador. Pulsa <em>«Abrir diseñador»</em>.
+          Esta plantilla se diseñó con el <strong>diseñador canvas</strong>. El HTML mostrado abajo
+          se genera desde ese diseño. Si editas aquí, perderás los cambios al volver a abrir el
+          diseñador. Pulsa <em>«Abrir diseñador»</em>.
         </div>
       )}
 

@@ -141,13 +141,23 @@ export const InternalOrders: React.FC = () => {
   };
 
   const columns = [
-    { header: 'Código', accessor: 'code', sortable: true, sortAccessor: (r: any) => r.code, primary: true },
+    {
+      header: 'Código',
+      accessor: 'code',
+      sortable: true,
+      sortAccessor: (r: any) => r.code,
+      primary: true,
+    },
     { header: 'Nombre', accessor: 'name', sortable: true, sortAccessor: (r: any) => r.name },
-    { header: 'Tipo', cell: (r: any) => <Badge variant="info">{TYPE_LABELS[r.type] || r.type}</Badge> },
+    {
+      header: 'Tipo',
+      cell: (r: any) => <Badge variant="info">{TYPE_LABELS[r.type] || r.type}</Badge>,
+    },
     {
       header: 'Presupuesto',
       align: 'right' as const,
-      cell: (r: any) => (r.budgetAmount ? Number(r.budgetAmount).toLocaleString('es-ES') + ' €' : '—'),
+      cell: (r: any) =>
+        r.budgetAmount ? Number(r.budgetAmount).toLocaleString('es-ES') + ' €' : '—',
     },
     {
       header: 'Estado',
@@ -320,7 +330,12 @@ export const InternalOrders: React.FC = () => {
       )}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} onRowClick={(r: any) => openEdit(r)} />
+        <Table
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          onRowClick={(r: any) => openEdit(r)}
+        />
       </Card>
     </div>
   );

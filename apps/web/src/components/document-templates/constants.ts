@@ -3,10 +3,12 @@ import type { DocType as PdfDocType } from '../../utils/visualTemplateBuilder';
 /**
  * `FREE` es un tipo extendido propio (no existe en el paquete @openfactu/pdf).
  * Identifica plantillas "libres" — sin documento ligado — útiles para
- * etiquetas de artículos, recibos genéricos, etc. El contexto Handlebars
- * sólo trae `queries.<name>` (admin) + parámetros de entrada.
+ * recibos genéricos, cartas, etc.
+ *
+ * `LABEL` identifica plantillas de etiquetas — artículos, lotes, documentos.
+ * Se renderizan con `queries` y `params` sin payload de documento.
  */
-export type DocType = PdfDocType | 'FREE';
+export type DocType = PdfDocType | 'FREE' | 'LABEL';
 
 export const DOC_TYPE_LABELS: Record<DocType, string> = {
   SINV: 'Factura de Venta',
@@ -16,6 +18,7 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
   SO: 'Pedido de Venta',
   PO: 'Pedido de Compra',
   FREE: 'Documento Libre',
+  LABEL: 'Etiqueta',
 };
 
 export const DOC_TYPE_COLORS: Record<DocType, string> = {
@@ -26,6 +29,8 @@ export const DOC_TYPE_COLORS: Record<DocType, string> = {
   SO: 'bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-600',
   PO: 'bg-indigo-50 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-600',
   FREE: 'bg-purple-50 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-600',
+  LABEL:
+    'bg-violet-50 dark:bg-violet-900 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-600',
 };
 
 export const DOC_TYPE_OPTIONS = (Object.keys(DOC_TYPE_LABELS) as DocType[]).map((v) => ({

@@ -212,9 +212,7 @@ router.delete('/:name', requireAdmin, async (req: any, res) => {
 
     const tenantDb = ClientFactory.getClient(schemaName);
     await tenantDb.execute(sql.raw(`DROP TABLE IF EXISTS "${schemaName}"."${prefixed}"`));
-    await db
-      .delete(schema.pluginFields)
-      .where(eq(schema.pluginFields.tableName, prefixed));
+    await db.delete(schema.pluginFields).where(eq(schema.pluginFields.tableName, prefixed));
     await db
       .delete(schema.pluginTables)
       .where(
@@ -245,9 +243,7 @@ router.get('/:name/rows', async (req: any, res) => {
     const prefixed = req.params.name.startsWith('pt_') ? req.params.name : `pt_${req.params.name}`;
     const tenantDb = ClientFactory.getClient(schemaName);
     const r: any = await tenantDb.execute(
-      sql.raw(
-        `SELECT * FROM "${schemaName}"."${prefixed}" ORDER BY "createdAt" DESC LIMIT 500`,
-      ),
+      sql.raw(`SELECT * FROM "${schemaName}"."${prefixed}" ORDER BY "createdAt" DESC LIMIT 500`),
     );
     res.json(r.rows || []);
   } catch (err: any) {

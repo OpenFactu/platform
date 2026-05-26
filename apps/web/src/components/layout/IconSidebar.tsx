@@ -14,18 +14,15 @@ import type { Module } from '../../modules/registry';
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   alpha: {
     label: 'Alpha',
-    className:
-      'text-purple-700 dark:text-purple-300 bg-purple-500/10 border border-purple-500/30',
+    className: 'text-purple-700 dark:text-purple-300 bg-purple-500/10 border border-purple-500/30',
   },
   beta: {
     label: 'Beta',
-    className:
-      'text-sky-700 dark:text-sky-300 bg-sky-500/10 border border-sky-500/30',
+    className: 'text-sky-700 dark:text-sky-300 bg-sky-500/10 border border-sky-500/30',
   },
   dev: {
     label: 'Dev',
-    className:
-      'text-rose-700 dark:text-rose-300 bg-rose-500/10 border border-rose-500/30',
+    className: 'text-rose-700 dark:text-rose-300 bg-rose-500/10 border border-rose-500/30',
   },
 };
 
@@ -126,8 +123,7 @@ export const IconSidebar: React.FC = () => {
     pedido: 'pedidos',
   };
   const searchResults = useMemo(() => {
-    const norm = (s: string) =>
-      s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const raw = query.trim();
     if (!raw) return [];
     const expanded = raw
@@ -203,181 +199,184 @@ export const IconSidebar: React.FC = () => {
           'fixed top-0 left-0 bottom-0 z-40 flex flex-col bg-white dark:bg-ink-900',
           'w-full md:w-[360px] md:border-r md:border-line md:dark:border-ink-700 md:shadow-2xl',
           'transition-transform duration-250 ease-out',
-            mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          )}
-          style={{
-            paddingTop: 'env(safe-area-inset-top, 0px)',
-            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          }}
-          aria-hidden={!mobileOpen}
-        >
-          {/* Header del drawer */}
-          <div className="flex items-center justify-between px-4 h-14 border-b border-line dark:border-ink-700">
-            <span className="font-display text-lg font-bold text-ink-900 dark:text-slate-100">
-              Menú
-            </span>
-            <button
-              onClick={() => setMobileOpen(false)}
-              className="p-2 rounded-xs text-ink-500 dark:text-ink-400 hover:text-accent hover:bg-line-2 dark:hover:bg-ink-700 transition-colors"
-              aria-label="Cerrar menú"
-            >
-              <X size={22} />
-            </button>
-          </div>
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+        style={{
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+        aria-hidden={!mobileOpen}
+      >
+        {/* Header del drawer */}
+        <div className="flex items-center justify-between px-4 h-14 border-b border-line dark:border-ink-700">
+          <span className="font-display text-lg font-bold text-ink-900 dark:text-slate-100">
+            Menú
+          </span>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="p-2 rounded-xs text-ink-500 dark:text-ink-400 hover:text-accent hover:bg-line-2 dark:hover:bg-ink-700 transition-colors"
+            aria-label="Cerrar menú"
+          >
+            <X size={22} />
+          </button>
+        </div>
 
-          {/* Buscador */}
-          <div className="px-3 py-2 border-b border-line dark:border-ink-700">
-            <div className="relative">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 dark:text-ink-500 pointer-events-none"
-              />
-              <input
-                ref={searchRef}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    if (query) setQuery('');
-                    else setMobileOpen(false);
-                  }
-                  if (e.key === 'Enter' && searchResults.length > 0) {
-                    setMobileOpen(false);
-                    openTab(searchResults[0].sub.path);
-                  }
-                }}
-                placeholder="Buscar en el menú…"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-xs bg-line-2/60 dark:bg-ink-800 border border-line dark:border-ink-700 text-ink-900 dark:text-slate-100 placeholder:text-ink-400 dark:placeholder:text-ink-500 focus:outline-none focus:border-accent"
-              />
-            </div>
+        {/* Buscador */}
+        <div className="px-3 py-2 border-b border-line dark:border-ink-700">
+          <div className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 dark:text-ink-500 pointer-events-none"
+            />
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  if (query) setQuery('');
+                  else setMobileOpen(false);
+                }
+                if (e.key === 'Enter' && searchResults.length > 0) {
+                  setMobileOpen(false);
+                  openTab(searchResults[0].sub.path);
+                }
+              }}
+              placeholder="Buscar en el menú…"
+              className="w-full pl-9 pr-3 py-2 text-sm rounded-xs bg-line-2/60 dark:bg-ink-800 border border-line dark:border-ink-700 text-ink-900 dark:text-slate-100 placeholder:text-ink-400 dark:placeholder:text-ink-500 focus:outline-none focus:border-accent"
+            />
           </div>
+        </div>
 
-          {/* Resultados de búsqueda o lista de módulos */}
-          <nav className="flex-1 overflow-y-auto py-2">
-            {query.trim() ? (
-              searchResults.length === 0 ? (
-                <p className="px-5 py-6 text-sm text-ink-500 dark:text-ink-400">
-                  Sin resultados para “{query}”.
-                </p>
-              ) : (
-                searchResults.map(({ modLabel, modIcon, sub, disabled, reason }) => {
-                  const subActive = sub.path === pathname;
-                  return (
-                    <button
-                      key={`${modLabel}-${sub.id}`}
-                      onClick={() => {
-                        setMobileOpen(false);
-                        if (disabled) {
-                          openTab('/settings/company');
-                        } else {
-                          openTab(sub.path);
-                        }
-                      }}
-                      title={disabled ? reason : undefined}
-                      className={cn(
-                        'w-full flex items-center gap-3 px-5 py-2.5 text-left transition-colors',
-                        subActive
-                          ? 'bg-accent/10 text-accent'
-                          : disabled
-                            ? 'text-ink-400 dark:text-ink-500 hover:bg-line-2 dark:hover:bg-ink-700'
-                            : 'text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700',
-                      )}
-                    >
-                      <PluginIcon iconName={modIcon} size={16} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{sub.label}</p>
-                        <p className="text-[11px] text-ink-500 dark:text-ink-400 truncate">
-                          {modLabel}
-                          {sub.group ? ` · ${sub.group}` : ''}
-                        </p>
-                      </div>
-                      <StatusBadge status={sub.status} />
-                      {disabled && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-xs whitespace-nowrap">
-                          Inactivo
-                        </span>
-                      )}
-                    </button>
-                  );
-                })
-              )
+        {/* Resultados de búsqueda o lista de módulos */}
+        <nav className="flex-1 overflow-y-auto py-2">
+          {query.trim() ? (
+            searchResults.length === 0 ? (
+              <p className="px-5 py-6 text-sm text-ink-500 dark:text-ink-400">
+                Sin resultados para “{query}”.
+              </p>
             ) : (
-              modules.map((mod) => (
-                <MobileModuleAccordion
-                  key={mod.id}
-                  mod={mod}
-                  isActive={active?.id === mod.id}
-                  currentPath={pathname}
-                  onNavigate={(path) => {
-                    setMobileOpen(false);
-                    openTab(path);
-                  }}
-                />
-              ))
-            )}
-          </nav>
-
-          {/* Tenant + usuario al pie */}
-          <div className="border-t border-line dark:border-ink-700 p-3 space-y-2">
-            {/* Tenant */}
-            <div>
-              <button
-                onClick={() => {
-                  setTenantOpen((v) => !v);
-                  setUserOpen(false);
+              searchResults.map(({ modLabel, modIcon, sub, disabled, reason }) => {
+                const subActive = sub.path === pathname;
+                return (
+                  <button
+                    key={`${modLabel}-${sub.id}`}
+                    onClick={() => {
+                      setMobileOpen(false);
+                      if (disabled) {
+                        openTab('/settings/company');
+                      } else {
+                        openTab(sub.path);
+                      }
+                    }}
+                    title={disabled ? reason : undefined}
+                    className={cn(
+                      'w-full flex items-center gap-3 px-5 py-2.5 text-left transition-colors',
+                      subActive
+                        ? 'bg-accent/10 text-accent'
+                        : disabled
+                          ? 'text-ink-400 dark:text-ink-500 hover:bg-line-2 dark:hover:bg-ink-700'
+                          : 'text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700',
+                    )}
+                  >
+                    <PluginIcon iconName={modIcon} size={16} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{sub.label}</p>
+                      <p className="text-[11px] text-ink-500 dark:text-ink-400 truncate">
+                        {modLabel}
+                        {sub.group ? ` · ${sub.group}` : ''}
+                      </p>
+                    </div>
+                    <StatusBadge status={sub.status} />
+                    {disabled && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-xs whitespace-nowrap">
+                        Inactivo
+                      </span>
+                    )}
+                  </button>
+                );
+              })
+            )
+          ) : (
+            modules.map((mod) => (
+              <MobileModuleAccordion
+                key={mod.id}
+                mod={mod}
+                isActive={active?.id === mod.id}
+                currentPath={pathname}
+                onNavigate={(path) => {
+                  setMobileOpen(false);
+                  openTab(path);
                 }}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-xs text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700 transition-colors"
-              >
-                <Building2 size={20} />
-                <span className="flex-1 text-left text-sm font-semibold">Cambiar empresa</span>
-                <ChevronDown size={14} className={cn('opacity-60 transition-transform', tenantOpen && 'rotate-90')} />
-              </button>
-              {tenantOpen && (
-                <div className="mt-2 p-3 bg-line-2/60 dark:bg-ink-800 border border-line dark:border-ink-700 rounded-sm">
-                  <TenantSwitcher />
-                </div>
-              )}
-            </div>
+              />
+            ))
+          )}
+        </nav>
 
-            {/* Usuario */}
-            <div className="flex items-center gap-3 px-3 py-2">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-ink-700 to-ink-900 text-white flex items-center justify-center font-bold text-sm border-2 border-transparent">
-                {user?.username?.charAt(0)?.toUpperCase() || 'A'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold truncate" style={{ color: 'var(--fg-default)' }}>
-                  {user?.username || 'Administrador'}
-                </p>
-                <p className="text-xs truncate" style={{ color: 'var(--fg-muted)' }}>
-                  {user?.email || ''}
-                </p>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded-xs">
-                {user?.role || 'USER'}
-              </span>
-            </div>
-
+        {/* Tenant + usuario al pie */}
+        <div className="border-t border-line dark:border-ink-700 p-3 space-y-2">
+          {/* Tenant */}
+          <div>
             <button
               onClick={() => {
-                setMobileOpen(false);
-                logout();
+                setTenantOpen((v) => !v);
+                setUserOpen(false);
               }}
-              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xs text-sm font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xs text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700 transition-colors"
             >
-              <LogOut size={16} />
-              Cerrar sesión
+              <Building2 size={20} />
+              <span className="flex-1 text-left text-sm font-semibold">Cambiar empresa</span>
+              <ChevronDown
+                size={14}
+                className={cn('opacity-60 transition-transform', tenantOpen && 'rotate-90')}
+              />
             </button>
-
-            <div
-              className="flex items-center justify-between pt-2 border-t border-line-2 dark:border-ink-700 text-[10px] font-mono px-1"
-              style={{ color: 'var(--fg-muted)' }}
-            >
-              <span>Keirost</span>
-              <span>v{version || '…'}</span>
-            </div>
+            {tenantOpen && (
+              <div className="mt-2 p-3 bg-line-2/60 dark:bg-ink-800 border border-line dark:border-ink-700 rounded-sm">
+                <TenantSwitcher />
+              </div>
+            )}
           </div>
-        </aside>
-      </>
+
+          {/* Usuario */}
+          <div className="flex items-center gap-3 px-3 py-2">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-ink-700 to-ink-900 text-white flex items-center justify-center font-bold text-sm border-2 border-transparent">
+              {user?.username?.charAt(0)?.toUpperCase() || 'A'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold truncate" style={{ color: 'var(--fg-default)' }}>
+                {user?.username || 'Administrador'}
+              </p>
+              <p className="text-xs truncate" style={{ color: 'var(--fg-muted)' }}>
+                {user?.email || ''}
+              </p>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded-xs">
+              {user?.role || 'USER'}
+            </span>
+          </div>
+
+          <button
+            onClick={() => {
+              setMobileOpen(false);
+              logout();
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xs text-sm font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+          >
+            <LogOut size={16} />
+            Cerrar sesión
+          </button>
+
+          <div
+            className="flex items-center justify-between pt-2 border-t border-line-2 dark:border-ink-700 text-[10px] font-mono px-1"
+            style={{ color: 'var(--fg-muted)' }}
+          >
+            <span>Keirost</span>
+            <span>v{version || '…'}</span>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 
   // ─────── Render ───────
@@ -397,131 +396,131 @@ export const IconSidebar: React.FC = () => {
           'border-r border-line dark:border-ink-700',
         )}
       >
-      {/* Módulos */}
-      <div className="flex-1 flex flex-col items-center gap-1.5 w-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {modules.map((mod) => {
-          const isActive = active?.id === mod.id;
-          return (
+        {/* Módulos */}
+        <div className="flex-1 flex flex-col items-center gap-1.5 w-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {modules.map((mod) => {
+            const isActive = active?.id === mod.id;
+            return (
+              <button
+                key={mod.id}
+                onClick={() => handleClick(mod.id)}
+                title={mod.label}
+                aria-label={mod.label}
+                className={cn(
+                  'group relative w-11 h-11 flex items-center justify-center rounded-xs',
+                  'transition-all duration-200 ease-out',
+                  'hover:scale-110',
+                  isActive
+                    ? 'bg-accent/15 text-accent dark:bg-accent/20 dark:text-accent'
+                    : 'text-ink-500 dark:text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700 hover:text-accent dark:hover:text-accent',
+                )}
+              >
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent" />
+                )}
+                <PluginIcon iconName={mod.icon} size={20} />
+                <span
+                  className={cn(
+                    'absolute left-full ml-2 px-2 py-1 rounded-md',
+                    'bg-slate-900 text-white dark:bg-slate-700 text-xs font-medium whitespace-nowrap',
+                    'opacity-0 pointer-events-none translate-x-1',
+                    'group-hover:opacity-100 group-hover:translate-x-0',
+                    'transition-all duration-150 z-50 shadow-lg',
+                  )}
+                >
+                  {mod.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tenant + Usuario al pie */}
+        <div className="flex flex-col items-center gap-2 w-full pt-2 border-t border-line dark:border-ink-700">
+          <div className="relative" ref={tenantRef}>
             <button
-              key={mod.id}
-              onClick={() => handleClick(mod.id)}
-              title={mod.label}
-              aria-label={mod.label}
+              onClick={() => {
+                setTenantOpen((v) => !v);
+                setUserOpen(false);
+              }}
+              title="Cambiar empresa"
+              aria-label="Cambiar empresa"
               className={cn(
                 'group relative w-11 h-11 flex items-center justify-center rounded-xs',
-                'transition-all duration-200 ease-out',
-                'hover:scale-110',
-                isActive
+                'transition-all duration-200 ease-out hover:scale-110',
+                tenantOpen
                   ? 'bg-accent/15 text-accent dark:bg-accent/20 dark:text-accent'
                   : 'text-ink-500 dark:text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700 hover:text-accent dark:hover:text-accent',
               )}
             >
-              {isActive && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent" />
-              )}
-              <PluginIcon iconName={mod.icon} size={20} />
-              <span
-                className={cn(
-                  'absolute left-full ml-2 px-2 py-1 rounded-md',
-                  'bg-slate-900 text-white dark:bg-slate-700 text-xs font-medium whitespace-nowrap',
-                  'opacity-0 pointer-events-none translate-x-1',
-                  'group-hover:opacity-100 group-hover:translate-x-0',
-                  'transition-all duration-150 z-50 shadow-lg',
-                )}
-              >
-                {mod.label}
-              </span>
+              <Building2 size={20} />
             </button>
-          );
-        })}
-      </div>
-
-      {/* Tenant + Usuario al pie */}
-      <div className="flex flex-col items-center gap-2 w-full pt-2 border-t border-line dark:border-ink-700">
-        <div className="relative" ref={tenantRef}>
-          <button
-            onClick={() => {
-              setTenantOpen((v) => !v);
-              setUserOpen(false);
-            }}
-            title="Cambiar empresa"
-            aria-label="Cambiar empresa"
-            className={cn(
-              'group relative w-11 h-11 flex items-center justify-center rounded-xs',
-              'transition-all duration-200 ease-out hover:scale-110',
-              tenantOpen
-                ? 'bg-accent/15 text-accent dark:bg-accent/20 dark:text-accent'
-                : 'text-ink-500 dark:text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700 hover:text-accent dark:hover:text-accent',
-            )}
-          >
-            <Building2 size={20} />
-          </button>
-          {tenantOpen && (
-            <div className="absolute bottom-0 left-full ml-2 w-72 p-3 bg-white dark:bg-ink-800 border border-line dark:border-ink-700 rounded-sm shadow-xl z-50">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-2">
-                Empresa activa
-              </p>
-              <TenantSwitcher />
-            </div>
-          )}
-        </div>
-
-        <div className="relative" ref={userRef}>
-          <button
-            onClick={() => {
-              setUserOpen((v) => !v);
-              setTenantOpen(false);
-            }}
-            title={user?.username || 'Usuario'}
-            aria-label="Menú de usuario"
-            className={cn(
-              'group relative w-10 h-10 flex items-center justify-center rounded-full',
-              'transition-all duration-200 ease-out hover:scale-110',
-              'bg-gradient-to-br from-ink-700 to-ink-900 text-white',
-              'border-2',
-              userOpen ? 'border-accent' : 'border-transparent',
-            )}
-          >
-            <span className="text-xs font-bold">
-              {user?.username?.charAt(0)?.toUpperCase() || 'A'}
-            </span>
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-ink-900 rounded-full" />
-          </button>
-          {userOpen && (
-            <div className="absolute bottom-0 left-full ml-2 w-56 p-3 bg-white dark:bg-ink-800 border border-line dark:border-ink-700 rounded-sm shadow-xl z-50">
-              <div className="mb-2 pb-2 border-b border-line-2 dark:border-ink-700">
-                <p className="text-sm font-bold truncate" style={{ color: 'var(--fg-default)' }}>
-                  {user?.username || 'Administrador'}
+            {tenantOpen && (
+              <div className="absolute bottom-0 left-full ml-2 w-72 p-3 bg-white dark:bg-ink-800 border border-line dark:border-ink-700 rounded-sm shadow-xl z-50">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-2">
+                  Empresa activa
                 </p>
-                <p className="text-xs" style={{ color: 'var(--fg-muted)' }}>
-                  {user?.email || ''}
-                </p>
-                <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded-xs">
-                  {user?.role || 'USER'}
-                </span>
+                <TenantSwitcher />
               </div>
-              <button
-                onClick={() => {
-                  setUserOpen(false);
-                  logout();
-                }}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xs text-sm font-medium text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
-              >
-                <LogOut size={14} />
-                Cerrar sesión
-              </button>
-              <div
-                className="mt-2 pt-2 border-t border-line-2 dark:border-ink-700 text-[10px] font-mono flex items-center justify-between"
-                style={{ color: 'var(--fg-muted)' }}
-              >
-                <span>Keirost</span>
-                <span>v{version || '…'}</span>
+            )}
+          </div>
+
+          <div className="relative" ref={userRef}>
+            <button
+              onClick={() => {
+                setUserOpen((v) => !v);
+                setTenantOpen(false);
+              }}
+              title={user?.username || 'Usuario'}
+              aria-label="Menú de usuario"
+              className={cn(
+                'group relative w-10 h-10 flex items-center justify-center rounded-full',
+                'transition-all duration-200 ease-out hover:scale-110',
+                'bg-gradient-to-br from-ink-700 to-ink-900 text-white',
+                'border-2',
+                userOpen ? 'border-accent' : 'border-transparent',
+              )}
+            >
+              <span className="text-xs font-bold">
+                {user?.username?.charAt(0)?.toUpperCase() || 'A'}
+              </span>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-ink-900 rounded-full" />
+            </button>
+            {userOpen && (
+              <div className="absolute bottom-0 left-full ml-2 w-56 p-3 bg-white dark:bg-ink-800 border border-line dark:border-ink-700 rounded-sm shadow-xl z-50">
+                <div className="mb-2 pb-2 border-b border-line-2 dark:border-ink-700">
+                  <p className="text-sm font-bold truncate" style={{ color: 'var(--fg-default)' }}>
+                    {user?.username || 'Administrador'}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--fg-muted)' }}>
+                    {user?.email || ''}
+                  </p>
+                  <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded-xs">
+                    {user?.role || 'USER'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setUserOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xs text-sm font-medium text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                >
+                  <LogOut size={14} />
+                  Cerrar sesión
+                </button>
+                <div
+                  className="mt-2 pt-2 border-t border-line-2 dark:border-ink-700 text-[10px] font-mono flex items-center justify-between"
+                  style={{ color: 'var(--fg-muted)' }}
+                >
+                  <span>Keirost</span>
+                  <span>v{version || '…'}</span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
     </>
   );
 };
@@ -586,12 +585,8 @@ const MobileModuleAccordion: React.FC<{
             return (
               <button
                 key={sub.id}
-                onClick={() =>
-                  onNavigate(disabled ? '/settings/company' : sub.path)
-                }
-                title={
-                  disabled ? `Activa "${sub.featureFlag}" en Ajustes` : undefined
-                }
+                onClick={() => onNavigate(disabled ? '/settings/company' : sub.path)}
+                title={disabled ? `Activa "${sub.featureFlag}" en Ajustes` : undefined}
                 className={cn(
                   'w-full flex items-center gap-3 pl-14 pr-5 py-2.5 text-left text-sm transition-colors',
                   subActive

@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Loader, Badge, useToast } from '@openfactu/ui';
-import { Plus, Trash2, QrCode, Edit2, Package as PackageIcon, Boxes, Printer, Tag } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  QrCode,
+  Edit2,
+  Package as PackageIcon,
+  Boxes,
+  Printer,
+  Tag,
+} from 'lucide-react';
 import { RowActionsMenu } from '../../components/logistics/RowActionsMenu';
 import { useAuth } from '../../context/AuthContext';
 
@@ -46,7 +55,12 @@ export const StagingAreasTab: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<StagingArea | null>(null);
   const [form, setForm] = useState<any>({});
-  const [qrFor, setQrFor] = useState<{ id: string; name: string; payload: any; imgUrl: string | null } | null>(null);
+  const [qrFor, setQrFor] = useState<{
+    id: string;
+    name: string;
+    payload: any;
+    imgUrl: string | null;
+  } | null>(null);
   const [itemsFor, setItemsFor] = useState<StagingArea | null>(null);
   const [areaItems, setAreaItems] = useState<StagingAreaItem[]>([]);
   const [pkgsFor, setPkgsFor] = useState<StagingArea | null>(null);
@@ -141,10 +155,7 @@ export const StagingAreasTab: React.FC = () => {
    * backend (mismo que alimenta el QR) para no tocar la API.
    */
   const openPackingList = async (area: StagingArea) => {
-    const payloadRes = await fetch(
-      `/api/logistics/staging-areas/${area.id}/payload`,
-      { headers },
-    );
+    const payloadRes = await fetch(`/api/logistics/staging-areas/${area.id}/payload`, { headers });
     if (!payloadRes.ok) {
       toast.error('No se pudo cargar el acopio');
       return;
@@ -156,16 +167,16 @@ export const StagingAreasTab: React.FC = () => {
       return;
     }
     const esc = (s: any) =>
-      String(s ?? '—').replace(/[&<>"']/g, (c) =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+      String(s ?? '—').replace(
+        /[&<>"']/g,
+        (c) =>
+          ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
       );
     const totalWeight = (p.packages || []).reduce(
       (acc: number, pk: any) => acc + (Number(pk.weightKg) || 0),
       0,
     );
-    const shipmentMap = new Map<string, any>(
-      (p.shipments || []).map((s: any) => [s.id, s]),
-    );
+    const shipmentMap = new Map<string, any>((p.shipments || []).map((s: any) => [s.id, s]));
     const byShipment = new Map<string, any[]>();
     for (const pk of p.packages || []) {
       const key = pk.shipmentId || '__none__';
@@ -286,8 +297,10 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
       return;
     }
     const esc = (s: any) =>
-      String(s ?? '—').replace(/[&<>"']/g, (c) =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
+      String(s ?? '—').replace(
+        /[&<>"']/g,
+        (c) =>
+          ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
       );
     const labels = pkgs
       .map((pk) => {
@@ -519,12 +532,33 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                   {/* Resto — kebab, no rompe en móvil. */}
                   <RowActionsMenu
                     actions={[
-                      { label: 'Artículos esperados', icon: <PackageIcon size={14} />, onClick: () => openItems(a) },
-                      { label: 'Imprimir packing list', icon: <Printer size={14} />, onClick: () => openPackingList(a) },
-                      { label: 'Etiquetas (4 por página)', icon: <Tag size={14} />, onClick: () => openPackageLabels(a, 4) },
-                      { label: 'Etiquetas (1 por página)', icon: <Tag size={14} strokeWidth={2.5} />, onClick: () => openPackageLabels(a, 1) },
+                      {
+                        label: 'Artículos esperados',
+                        icon: <PackageIcon size={14} />,
+                        onClick: () => openItems(a),
+                      },
+                      {
+                        label: 'Imprimir packing list',
+                        icon: <Printer size={14} />,
+                        onClick: () => openPackingList(a),
+                      },
+                      {
+                        label: 'Etiquetas (4 por página)',
+                        icon: <Tag size={14} />,
+                        onClick: () => openPackageLabels(a, 4),
+                      },
+                      {
+                        label: 'Etiquetas (1 por página)',
+                        icon: <Tag size={14} strokeWidth={2.5} />,
+                        onClick: () => openPackageLabels(a, 1),
+                      },
                       { label: 'Editar', icon: <Edit2 size={14} />, onClick: () => openEdit(a) },
-                      { label: 'Eliminar', icon: <Trash2 size={14} />, onClick: () => remove(a.id), destructive: true },
+                      {
+                        label: 'Eliminar',
+                        icon: <Trash2 size={14} />,
+                        onClick: () => remove(a.id),
+                        destructive: true,
+                      },
                     ]}
                   />
                 </li>
@@ -631,9 +665,8 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             </div>
           </div>
           <p className="text-[11px] text-slate-500 -mt-1 leading-relaxed">
-            Elige <b>Almacén propio</b> si es tu muelle/zona, o <b>Plataforma ajena</b> si el
-            acopio vive en un cross-dock o nave alquilada. Puedes dejar ambos vacíos para un
-            acopio neutro.
+            Elige <b>Almacén propio</b> si es tu muelle/zona, o <b>Plataforma ajena</b> si el acopio
+            vive en un cross-dock o nave alquilada. Puedes dejar ambos vacíos para un acopio neutro.
           </p>
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
@@ -645,8 +678,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
               placeholder="Calle Ejemplo 1, 28013 Madrid"
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              Se geolocaliza automáticamente al guardar para mostrarla en el mapa de
-              repartos.
+              Se geolocaliza automáticamente al guardar para mostrarla en el mapa de repartos.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -686,8 +718,8 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             </div>
           </div>
           <p className="text-[11px] text-slate-500 -mt-2">
-            Pega lat/lng de Google Maps si conoces el punto exacto. Si no, se
-            geolocalizará por dirección.
+            Pega lat/lng de Google Maps si conoces el punto exacto. Si no, se geolocalizará por
+            dirección.
           </p>
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
@@ -815,9 +847,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                           {pk.shipmentId && (
                             <span>
                               Envío:{' '}
-                              <span className="font-mono">
-                                {String(pk.shipmentId).slice(0, 8)}
-                              </span>
+                              <span className="font-mono">{String(pk.shipmentId).slice(0, 8)}</span>
                             </span>
                           )}
                           {pk.weightKg != null && <span>· {pk.weightKg} kg</span>}
@@ -839,9 +869,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
               </span>
               <span>
                 Envíos únicos:{' '}
-                <b>
-                  {new Set(areaPackages.map((p) => p.shipmentId).filter(Boolean)).size}
-                </b>
+                <b>{new Set(areaPackages.map((p) => p.shipmentId).filter(Boolean)).size}</b>
               </span>
             </div>
           </div>
@@ -915,7 +943,9 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                 </button>
               )}
               <button
-                onClick={() => qrFor && openPackingList({ id: qrFor.id, name: qrFor.name } as StagingArea)}
+                onClick={() =>
+                  qrFor && openPackingList({ id: qrFor.id, name: qrFor.name } as StagingArea)
+                }
                 className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-white rounded-lg text-sm hover:opacity-90"
               >
                 <Printer size={14} /> Imprimir packing list

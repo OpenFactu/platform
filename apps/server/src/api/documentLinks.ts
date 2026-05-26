@@ -47,11 +47,7 @@ function headerTableFor(type: DocType) {
   }
 }
 
-async function hydrate(
-  tenantClient: any,
-  type: DocType,
-  ids: string[],
-): Promise<DocRef[]> {
+async function hydrate(tenantClient: any, type: DocType, ids: string[]): Promise<DocRef[]> {
   const unique = Array.from(new Set(ids.filter(Boolean)));
   if (unique.length === 0) return [];
   const table = headerTableFor(type);
@@ -163,14 +159,22 @@ async function childrenOf(tenantClient: any, type: DocType, id: string): Promise
       .select({ id: schema.salesDeliveryNotes.id })
       .from(schema.salesDeliveryNotes)
       .where(eq(schema.salesDeliveryNotes.orderId, id));
-    return hydrate(tenantClient, 'SDN', dns.map((d: any) => d.id));
+    return hydrate(
+      tenantClient,
+      'SDN',
+      dns.map((d: any) => d.id),
+    );
   }
   if (type === 'PO') {
     const dns = await tenantClient
       .select({ id: schema.purchaseDeliveryNotes.id })
       .from(schema.purchaseDeliveryNotes)
       .where(eq(schema.purchaseDeliveryNotes.orderId, id));
-    return hydrate(tenantClient, 'PDN', dns.map((d: any) => d.id));
+    return hydrate(
+      tenantClient,
+      'PDN',
+      dns.map((d: any) => d.id),
+    );
   }
   if (type === 'SDN') {
     // Las líneas de SalesInvoice tienen `baseType='SDN'` + `baseId` apuntando
@@ -181,10 +185,7 @@ async function childrenOf(tenantClient: any, type: DocType, id: string): Promise
       .select({ invoiceId: schema.salesInvoiceLines.invoiceId })
       .from(schema.salesInvoiceLines)
       .where(
-        and(
-          eq(schema.salesInvoiceLines.baseType, 'SDN'),
-          eq(schema.salesInvoiceLines.baseId, id),
-        ),
+        and(eq(schema.salesInvoiceLines.baseType, 'SDN'), eq(schema.salesInvoiceLines.baseId, id)),
       );
     let invoiceIds = byHeader.map((l: any) => l.invoiceId);
     if (invoiceIds.length === 0) {
@@ -281,7 +282,8 @@ router.get('/', async (req: any, res) => {
     }
 
     // Pagos vinculados (solo facturas).
-    let payments: Array<{ id: string; date: string; amount: number; reference: string | null }> = [];
+    let payments: Array<{ id: string; date: string; amount: number; reference: string | null }> =
+      [];
     if (type === 'SINV') {
       const ps = await req.tenantClient
         .select()

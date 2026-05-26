@@ -3,7 +3,7 @@ import { ReportPage } from '../../components/reports/ReportPage';
 import { useAuth } from '../../context/AuthContext';
 import { useFormat } from '../../hooks/useFormat';
 
-const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 export const ReportLaborCost: React.FC = () => {
   const { token, user } = useAuth();
@@ -20,7 +20,9 @@ export const ReportLaborCost: React.FC = () => {
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [year, user?.tenantId]);
+  useEffect(() => {
+    load(); /* eslint-disable-next-line */
+  }, [year, user?.tenantId]);
 
   const columns = useMemo(
     () => [

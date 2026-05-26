@@ -192,11 +192,7 @@ function renderConditional(el: ConditionalElement): string {
       // si no, lo tratamos como literal numérico o string entre comillas.
       const isPathLike = /^[a-zA-Z_][\w.]*$/.test(raw);
       const isNumeric = !isPathLike && /^-?\d+(\.\d+)?$/.test(raw);
-      const arg = isPathLike
-        ? raw
-        : isNumeric
-        ? raw
-        : `"${raw.replace(/"/g, '\\"')}"`;
+      const arg = isPathLike ? raw : isNumeric ? raw : `"${raw.replace(/"/g, '\\"')}"`;
       cond = `(${el.operator} ${path} ${arg})`;
       break;
     }
@@ -259,14 +255,15 @@ function renderField(el: FieldElement): string {
 
 function renderLinesTable(el: LinesTableElement): string {
   const cols = normalizeColumnWidths(el.columns);
-  const header = el.showHeader === false
-    ? ''
-    : `<thead><tr>${cols
-        .map((c) => {
-          const hs = styleToCss(c.headerStyle ?? c.style);
-          return `<th style="width:${c.widthPct}%;text-align:${c.align ?? 'left'};${hs}">${escapeHtml(c.label)}</th>`;
-        })
-        .join('')}</tr></thead>`;
+  const header =
+    el.showHeader === false
+      ? ''
+      : `<thead><tr>${cols
+          .map((c) => {
+            const hs = styleToCss(c.headerStyle ?? c.style);
+            return `<th style="width:${c.widthPct}%;text-align:${c.align ?? 'left'};${hs}">${escapeHtml(c.label)}</th>`;
+          })
+          .join('')}</tr></thead>`;
 
   const bodyCells = cols
     .map(

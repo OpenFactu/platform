@@ -95,7 +95,7 @@ interface PhotonHit {
     osm_type?: string;
     osm_key?: string;
     osm_value?: string;
-    type?: string;     // 'house' | 'street' | 'locality' | 'city' | …
+    type?: string; // 'house' | 'street' | 'locality' | 'city' | …
     housenumber?: string;
     street?: string;
     city?: string;
@@ -120,11 +120,7 @@ function photonToResult(h: PhotonHit): GeoResult {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   const t = h.properties?.type;
   const precision: Precision =
-    t === 'house' || h.properties?.housenumber
-      ? 'house'
-      : t === 'street'
-        ? 'street'
-        : 'area';
+    t === 'house' || h.properties?.housenumber ? 'house' : t === 'street' ? 'street' : 'area';
   return { lat, lng, precision };
 }
 
@@ -170,8 +166,7 @@ function pickBestNom(hits: NomHit[], wanted: string | null): GeoResult {
   if (wanted) {
     const exact = hits.find(
       (h) =>
-        h.address?.house_number &&
-        h.address.house_number.toLowerCase() === wanted.toLowerCase(),
+        h.address?.house_number && h.address.house_number.toLowerCase() === wanted.toLowerCase(),
     );
     if (exact) return nomToResult(exact, 'house');
     const anyHouse = hits.find((h) => !!h.address?.house_number);
@@ -179,8 +174,11 @@ function pickBestNom(hits: NomHit[], wanted: string | null): GeoResult {
   }
   const first = hits[0];
   const rank = Number(first.place_rank ?? 30);
-  const precision: Precision =
-    first.address?.house_number ? 'house' : rank >= 26 && rank <= 28 ? 'street' : 'area';
+  const precision: Precision = first.address?.house_number
+    ? 'house'
+    : rank >= 26 && rank <= 28
+      ? 'street'
+      : 'area';
   return nomToResult(first, precision);
 }
 

@@ -40,7 +40,9 @@ router.post('/', async (req: any, res) => {
       return res.status(400).json({ error: 'code, name y type son obligatorios' });
     }
     if (!ALLOWED_TYPES.has(type)) {
-      return res.status(400).json({ error: `type debe ser uno de: ${[...ALLOWED_TYPES].join(', ')}` });
+      return res
+        .status(400)
+        .json({ error: `type debe ser uno de: ${[...ALLOWED_TYPES].join(', ')}` });
     }
     const id = crypto.randomUUID();
     const [row] = await req.tenantClient
@@ -119,9 +121,7 @@ router.delete('/:id', async (req: any, res) => {
       .from(schema.chartOfAccounts)
       .where(eq(schema.chartOfAccounts.id, id));
     if (!old) return res.status(404).json({ error: 'Cuenta no encontrada' });
-    await req.tenantClient
-      .delete(schema.chartOfAccounts)
-      .where(eq(schema.chartOfAccounts.id, id));
+    await req.tenantClient.delete(schema.chartOfAccounts).where(eq(schema.chartOfAccounts.id, id));
     res.json({ success: true });
     logAudit({
       tenantClient: req.tenantClient,

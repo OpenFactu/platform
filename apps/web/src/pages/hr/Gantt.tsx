@@ -115,9 +115,7 @@ export const Gantt: React.FC = () => {
   const goToday = () => {
     const now = new Date();
     const target =
-      view === 'week'
-        ? startOfWeek(now)
-        : new Date(now.getFullYear(), now.getMonth(), 1);
+      view === 'week' ? startOfWeek(now) : new Date(now.getFullYear(), now.getMonth(), 1);
     // Si ya estamos en la fecha, refetch igualmente.
     if (cursor.getTime() === target.getTime()) {
       fetchAll();
@@ -394,9 +392,7 @@ export const Gantt: React.FC = () => {
               <Input
                 label="Título"
                 value={quickCreate.title}
-                onChange={(e) =>
-                  setQuickCreate({ ...quickCreate, title: e.target.value })
-                }
+                onChange={(e) => setQuickCreate({ ...quickCreate, title: e.target.value })}
                 autoFocus
                 required
               />
@@ -406,9 +402,7 @@ export const Gantt: React.FC = () => {
                 </label>
                 <select
                   value={quickCreate.assigneeId}
-                  onChange={(e) =>
-                    setQuickCreate({ ...quickCreate, assigneeId: e.target.value })
-                  }
+                  onChange={(e) => setQuickCreate({ ...quickCreate, assigneeId: e.target.value })}
                   className="w-full px-3 py-2 rounded-xs border border-line dark:border-ink-700 bg-white dark:bg-ink-800 text-sm text-ink-900 dark:text-slate-100 focus:outline-none focus:border-accent"
                 >
                   <option value="">— sin asignar —</option>
@@ -806,9 +800,7 @@ const MonthView: React.FC<{
               <div
                 className={cn(
                   'text-[11px] font-bold',
-                  isToday
-                    ? 'text-accent'
-                    : 'text-ink-700 dark:text-slate-200',
+                  isToday ? 'text-accent' : 'text-ink-700 dark:text-slate-200',
                 )}
               >
                 {d.getDate()}
@@ -896,9 +888,7 @@ const TaskQuickView: React.FC<{
               <div className="text-[10px] font-mono text-ink-400 dark:text-ink-500">
                 {task.code}
               </div>
-              <h3 className="text-base font-bold text-ink-900 dark:text-slate-100">
-                {task.title}
-              </h3>
+              <h3 className="text-base font-bold text-ink-900 dark:text-slate-100">{task.title}</h3>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs text-ink-700 dark:text-slate-300">

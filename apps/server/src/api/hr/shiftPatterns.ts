@@ -183,16 +183,12 @@ router.post('/:id/expand', async (req: any, res) => {
         if (a.validTo && dateStr > String(a.validTo)) continue;
         const cycleWeek = (absWeek - (a.weekOffset || 0)) % cycleWeeks;
         const normalizedWeek = ((cycleWeek % cycleWeeks) + cycleWeeks) % cycleWeeks;
-        const slot = slots.find(
-          (s: any) => s.week === normalizedWeek && s.dayOfWeek === dayOfWeek,
-        );
+        const slot = slots.find((s: any) => s.week === normalizedWeek && s.dayOfWeek === dayOfWeek);
         if (!slot) continue;
         const tpl: any = tplMap.get(slot.shiftTemplateId);
         if (!tpl) continue;
         // Genera 1 ó 2 segmentos según si la plantilla tiene turno partido.
-        const segments: Array<{ s: string; e: string }> = [
-          { s: tpl.startTime, e: tpl.endTime },
-        ];
+        const segments: Array<{ s: string; e: string }> = [{ s: tpl.startTime, e: tpl.endTime }];
         if (tpl.secondStartTime && tpl.secondEndTime) {
           segments.push({ s: tpl.secondStartTime, e: tpl.secondEndTime });
         }

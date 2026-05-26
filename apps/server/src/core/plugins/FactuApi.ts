@@ -112,16 +112,22 @@ export abstract class DiDocument {
     const request = this.toCreateRequest();
     Object.assign(request, pluginFields);
 
-    return DocumentEngine.create(tenantId, db, user, {
-      tableName: this.tableName,
-      schemaTable: this.schemaTable,
-      lineSchemaTable: this.lineSchemaTable,
-      batchSchemaTable: this.batchSchemaTable,
-      eventPrefix: this.eventPrefix,
-      stockAction: this.stockAction,
-      closeBaseDocuments: this.closeBaseDocuments,
-      initialStatus: this.initialStatus,
-    }, request);
+    return DocumentEngine.create(
+      tenantId,
+      db,
+      user,
+      {
+        tableName: this.tableName,
+        schemaTable: this.schemaTable,
+        lineSchemaTable: this.lineSchemaTable,
+        batchSchemaTable: this.batchSchemaTable,
+        eventPrefix: this.eventPrefix,
+        stockAction: this.stockAction,
+        closeBaseDocuments: this.closeBaseDocuments,
+        initialStatus: this.initialStatus,
+      },
+      request,
+    );
   }
 
   /**
@@ -246,17 +252,35 @@ export class FactuApiTransaction {
     private _user: any,
   ) {}
 
-  get tenantId() { return this._tenantId; }
-  get db() { return this._db; }
-  get user() { return this._user; }
+  get tenantId() {
+    return this._tenantId;
+  }
+  get db() {
+    return this._db;
+  }
+  get user() {
+    return this._user;
+  }
 
   // ── Factory de documentos ──────────────────────────────────
-  salesInvoice(): SalesInvoice { return new SalesInvoice(); }
-  purchaseInvoice(): PurchaseInvoice { return new PurchaseInvoice(); }
-  salesOrder(): SalesOrder { return new SalesOrder(); }
-  purchaseOrder(): PurchaseOrder { return new PurchaseOrder(); }
-  salesDeliveryNote(): SalesDeliveryNote { return new SalesDeliveryNote(); }
-  purchaseDeliveryNote(): PurchaseDeliveryNote { return new PurchaseDeliveryNote(); }
+  salesInvoice(): SalesInvoice {
+    return new SalesInvoice();
+  }
+  purchaseInvoice(): PurchaseInvoice {
+    return new PurchaseInvoice();
+  }
+  salesOrder(): SalesOrder {
+    return new SalesOrder();
+  }
+  purchaseOrder(): PurchaseOrder {
+    return new PurchaseOrder();
+  }
+  salesDeliveryNote(): SalesDeliveryNote {
+    return new SalesDeliveryNote();
+  }
+  purchaseDeliveryNote(): PurchaseDeliveryNote {
+    return new PurchaseDeliveryNote();
+  }
   create(docType: DocType): DiDocument {
     const Cls = DOC_CLASSES[docType];
     if (!Cls) throw new Error(`Tipo de documento no soportado en FactuAPI: ${docType}`);
@@ -289,7 +313,10 @@ export class FactuApiTransaction {
   async getItem(idOrCode: string) {
     const [byId] = await this._db.select().from(schema.items).where(eq(schema.items.id, idOrCode));
     if (byId) return byId;
-    const [byCode] = await this._db.select().from(schema.items).where(eq(schema.items.code, idOrCode));
+    const [byCode] = await this._db
+      .select()
+      .from(schema.items)
+      .where(eq(schema.items.code, idOrCode));
     return byCode || null;
   }
 
@@ -336,7 +363,10 @@ export class FactuApiTransaction {
   }
 
   async getOpenPeriods() {
-    return this._db.select().from(schema.accountingPeriods).where(eq(schema.accountingPeriods.status, 'O'));
+    return this._db
+      .select()
+      .from(schema.accountingPeriods)
+      .where(eq(schema.accountingPeriods.status, 'O'));
   }
 
   async getPeriods() {
@@ -349,17 +379,15 @@ export class FactuApiTransaction {
    * (sales=cobro, purchase=pago). Genera asiento automáticamente si hay
    * mapeos y una factura posted. Devuelve { id, journalEntryId }.
    */
-  async registerPayment(
-    opts: {
-      invoiceId: string;
-      direction: 'sales' | 'purchase';
-      amount: number;
-      date?: Date | string;
-      reference: string; // obligatorio
-      paymentMethodId?: string | null;
-      notes?: string | null;
-    },
-  ): Promise<{ id: string; journalEntryId: string | null }> {
+  async registerPayment(opts: {
+    invoiceId: string;
+    direction: 'sales' | 'purchase';
+    amount: number;
+    date?: Date | string;
+    reference: string; // obligatorio
+    paymentMethodId?: string | null;
+    notes?: string | null;
+  }): Promise<{ id: string; journalEntryId: string | null }> {
     if (!opts.reference || !String(opts.reference).trim()) {
       throw new Error('reference es obligatorio');
     }
@@ -510,7 +538,12 @@ export class FactuApiTransaction {
 
   /** Genera y postea asiento desde una factura de compra. */
   async createEntryFromPurchaseInvoice(invoice: any, lines: any[] = []) {
-    const r = await JournalEngine.createFromPurchaseInvoice(this._db, invoice, lines, this._user?.id);
+    const r = await JournalEngine.createFromPurchaseInvoice(
+      this._db,
+      invoice,
+      lines,
+      this._user?.id,
+    );
     if (r) await JournalEngine.post(this._db, r.id, this._user?.id);
     return r;
   }
@@ -666,10 +699,7 @@ export class FactuApiTransaction {
 
   /** Devuelve la nómina con sus líneas resueltas. */
   async getPayroll(id: string) {
-    const [p] = await this._db
-      .select()
-      .from(schema.payrolls)
-      .where(eq(schema.payrolls.id, id));
+    const [p] = await this._db.select().from(schema.payrolls).where(eq(schema.payrolls.id, id));
     if (!p) return null;
     const lines = await this._db
       .select()
@@ -798,7 +828,10 @@ export class FactuApiTransaction {
     if (opts?.status) conds.push(eq(schema.incidents.status, opts.status));
     if (opts?.from)
       conds.push(
-        gte(schema.incidents.startAt, typeof opts.from === 'string' ? new Date(opts.from) : opts.from),
+        gte(
+          schema.incidents.startAt,
+          typeof opts.from === 'string' ? new Date(opts.from) : opts.from,
+        ),
       );
     if (opts?.to)
       conds.push(
@@ -856,11 +889,7 @@ export class FactuApiTransaction {
       .where(conds.length ? and(...conds) : undefined);
   }
 
-  async getTasks(opts?: {
-    assigneeId?: string;
-    status?: string;
-    projectId?: string;
-  }) {
+  async getTasks(opts?: { assigneeId?: string; status?: string; projectId?: string }) {
     const conds: any[] = [];
     if (opts?.assigneeId) conds.push(eq(schema.tasks.assigneeId, opts.assigneeId));
     if (opts?.status) conds.push(eq(schema.tasks.status, opts.status));
@@ -1010,12 +1039,24 @@ export class FactuApi {
     return new Cls();
   }
 
-  static salesInvoice(): SalesInvoice { return new SalesInvoice(); }
-  static purchaseInvoice(): PurchaseInvoice { return new PurchaseInvoice(); }
-  static salesOrder(): SalesOrder { return new SalesOrder(); }
-  static purchaseOrder(): PurchaseOrder { return new PurchaseOrder(); }
-  static salesDeliveryNote(): SalesDeliveryNote { return new SalesDeliveryNote(); }
-  static purchaseDeliveryNote(): PurchaseDeliveryNote { return new PurchaseDeliveryNote(); }
+  static salesInvoice(): SalesInvoice {
+    return new SalesInvoice();
+  }
+  static purchaseInvoice(): PurchaseInvoice {
+    return new PurchaseInvoice();
+  }
+  static salesOrder(): SalesOrder {
+    return new SalesOrder();
+  }
+  static purchaseOrder(): PurchaseOrder {
+    return new PurchaseOrder();
+  }
+  static salesDeliveryNote(): SalesDeliveryNote {
+    return new SalesDeliveryNote();
+  }
+  static purchaseDeliveryNote(): PurchaseDeliveryNote {
+    return new PurchaseDeliveryNote();
+  }
 
   /**
    * Ejecuta un callback dentro de una transacción de BD.
@@ -1122,7 +1163,12 @@ export class FactuApi {
     if (!valid) throw new Error('Contraseña incorrecta');
 
     // Resolver tenants accesibles
-    let accessibleTenants: Array<{ tenantId: string; tenantName: string; role: string; permissions: any }> = [];
+    let accessibleTenants: Array<{
+      tenantId: string;
+      tenantName: string;
+      role: string;
+      permissions: any;
+    }> = [];
 
     if (user.role === 'SUPERUSER') {
       // Superuser accede a todo
@@ -1154,12 +1200,14 @@ export class FactuApi {
         // Fallback legacy: user.tenantId directo
         const tenant = await FactuApi.getTenant(user.tenantId);
         if (tenant) {
-          accessibleTenants = [{
-            tenantId: tenant.id,
-            tenantName: tenant.name,
-            role: user.role,
-            permissions: user.permissions ? JSON.parse(user.permissions) : null,
-          }];
+          accessibleTenants = [
+            {
+              tenantId: tenant.id,
+              tenantName: tenant.name,
+              role: user.role,
+              permissions: user.permissions ? JSON.parse(user.permissions) : null,
+            },
+          ];
         }
       }
     }

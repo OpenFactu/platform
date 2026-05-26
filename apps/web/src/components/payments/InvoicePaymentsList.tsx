@@ -195,9 +195,7 @@ export const InvoicePaymentsList: React.FC<Props> = ({
                     )}
                   </div>
                   {p.notes && (
-                    <div className="text-[10px] text-ink-400 italic truncate mt-0.5">
-                      {p.notes}
-                    </div>
+                    <div className="text-[10px] text-ink-400 italic truncate mt-0.5">{p.notes}</div>
                   )}
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -236,7 +234,12 @@ interface EditPaymentFormProps {
   onSave: (data: Record<string, any>) => void;
 }
 
-const EditPaymentForm: React.FC<EditPaymentFormProps> = ({ initial, methods, onCancel, onSave }) => {
+const EditPaymentForm: React.FC<EditPaymentFormProps> = ({
+  initial,
+  methods,
+  onCancel,
+  onSave,
+}) => {
   const [date, setDate] = useState(() => (initial.date ? initial.date.substring(0, 10) : ''));
   const [reference, setReference] = useState(initial.reference || '');
   const [notes, setNotes] = useState(initial.notes || '');
@@ -257,7 +260,13 @@ const EditPaymentForm: React.FC<EditPaymentFormProps> = ({ initial, methods, onC
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Input type="date" label="Fecha" value={date} onChange={(e) => setDate(e.target.value)} required />
+        <Input
+          type="date"
+          label="Fecha"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          required
+        />
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
             Nº de referencia <span className="text-rose-600 font-black">*</span>

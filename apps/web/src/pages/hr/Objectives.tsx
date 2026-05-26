@@ -288,10 +288,7 @@ export const Objectives: React.FC = () => {
                       {achieved} / {target}
                     </div>
                     <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded mt-1">
-                      <div
-                        className="h-1 bg-emerald-500 rounded"
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className="h-1 bg-emerald-500 rounded" style={{ width: `${pct}%` }} />
                     </div>
                   </td>
                   <td className="p-3">

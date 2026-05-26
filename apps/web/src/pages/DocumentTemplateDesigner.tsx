@@ -163,7 +163,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
           } else {
             setLabelEditMode('advanced');
           }
-        } else if ((data as any).docType === 'FREE') {
+        } else if ((data as any).docType === 'FREE' || (data as any).docType === 'LABEL') {
           // Plantilla FREE nueva → arrancamos en modo simple con defaults
           // de artículo, lo que es la ruta más rápida para tener una etiqueta
           // funcional sin tocar el canvas.
@@ -316,6 +316,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
           html,
           docType: template.docType,
           queries: layout.queries ?? [],
+          params: layout.testParams ?? {},
         }),
       });
       if (!res.ok) {
@@ -419,7 +420,9 @@ export const DocumentTemplateDesigner: React.FC = () => {
       ...prev,
       bands: prev.bands.map((b) => ({
         ...b,
-        elements: b.elements.map((e) => (e.id === elementId ? ({ ...e, ...patch } as CanvasElement) : e)),
+        elements: b.elements.map((e) =>
+          e.id === elementId ? ({ ...e, ...patch } as CanvasElement) : e,
+        ),
       })),
     }));
   };
@@ -430,7 +433,9 @@ export const DocumentTemplateDesigner: React.FC = () => {
       bands: prev.bands.map((b) => ({
         ...b,
         elements: b.elements.map((e) =>
-          e.id === elementId ? ({ ...e, w: Math.max(2, newW), h: Math.max(2, newH) } as CanvasElement) : e,
+          e.id === elementId
+            ? ({ ...e, w: Math.max(2, newW), h: Math.max(2, newH) } as CanvasElement)
+            : e,
         ),
       })),
     }));
@@ -441,7 +446,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
   const selectedElement =
     selectedElementId == null
       ? null
-      : layout.bands.flatMap((b) => b.elements).find((e) => e.id === selectedElementId) ?? null;
+      : (layout.bands.flatMap((b) => b.elements).find((e) => e.id === selectedElementId) ?? null);
 
   if (loading) {
     return (
@@ -452,10 +457,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
   }
 
   return (
-    <div
-      ref={rootRef}
-      className="absolute inset-0 flex flex-col bg-slate-50 dark:bg-slate-950"
-    >
+    <div ref={rootRef} className="absolute inset-0 flex flex-col bg-slate-50 dark:bg-slate-950">
       <Toolbar
         title={template?.name ?? 'Sin título'}
         onBack={handleBack}
@@ -469,7 +471,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
         onPreview={handlePreview}
         previewLoading={previewLoading}
       />
-      {(template as any)?.docType === 'FREE' && (
+      {((template as any)?.docType === 'FREE' || (template as any)?.docType === 'LABEL') && (
         <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-800/40 text-xs flex-wrap">
           <span className="font-bold text-purple-700 dark:text-purple-300">Modo:</span>
           <div className="inline-flex rounded border border-purple-300 dark:border-purple-700 overflow-hidden">
@@ -533,9 +535,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
           )}
         </div>
       )}
-      {previewUrl && (
-        <PreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />
-      )}
+      {previewUrl && <PreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />}
       {importOpen && (
         <ImportFromTemplateDialog
           currentId={template?.id}
@@ -544,13 +544,12 @@ export const DocumentTemplateDesigner: React.FC = () => {
           headers={headers}
         />
       )}
-      {(template as any)?.docType === 'FREE' && labelEditMode === 'simple' ? (
+      {((template as any)?.docType === 'FREE' || (template as any)?.docType === 'LABEL') &&
+      labelEditMode === 'simple' ? (
         <div className="flex flex-1 min-h-0 bg-slate-50 dark:bg-slate-900">
           <div className="flex-1 min-h-0">
             <SimpleLabelEditor
-              settings={
-                (layout as any).simpleLabel ?? defaultSimpleArticleSettings()
-              }
+              settings={(layout as any).simpleLabel ?? defaultSimpleArticleSettings()}
               onChange={(next) => {
                 setLayout(next);
                 setSelectedElementId(null);
@@ -747,9 +746,7 @@ const ToolbarButton: React.FC<{ icon: React.ReactNode; label: string; disabled?:
 
 const PalettePanel: React.FC = () => (
   <aside className="w-56 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
-    <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">
-      Paleta
-    </div>
+    <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">Paleta</div>
     <ul className="px-2 pb-4 space-y-1">
       {PALETTE_ITEMS.map((it) => (
         <PaletteItem key={it.kind} kind={it.kind} label={it.label} />
@@ -943,28 +940,27 @@ const ElementBox: React.FC<ElementBoxProps> = ({
     id: `el-${element.id}`,
     data: { action: 'move', bandId, elementId: element.id },
   });
-  const startResize =
-    (edge: 'e' | 's' | 'se') => (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const startW = element.w;
-      const startH = element.h;
-      const onMove = (ev: MouseEvent) => {
-        const dxMm = (ev.clientX - startX) / PX_PER_MM;
-        const dyMm = (ev.clientY - startY) / PX_PER_MM;
-        const newW = edge === 's' ? startW : Math.max(2, Math.round(startW + dxMm));
-        const newH = edge === 'e' ? startH : Math.max(2, Math.round(startH + dyMm));
-        onResize(newW, newH);
-      };
-      const onUp = () => {
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
-      };
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
+  const startResize = (edge: 'e' | 's' | 'se') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = element.w;
+    const startH = element.h;
+    const onMove = (ev: MouseEvent) => {
+      const dxMm = (ev.clientX - startX) / PX_PER_MM;
+      const dyMm = (ev.clientY - startY) / PX_PER_MM;
+      const newW = edge === 's' ? startW : Math.max(2, Math.round(startW + dxMm));
+      const newH = edge === 'e' ? startH : Math.max(2, Math.round(startH + dyMm));
+      onResize(newW, newH);
     };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
   const style: React.CSSProperties = {
     position: 'absolute',
     left: `${element.x}mm`,
@@ -1117,13 +1113,9 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
       if (element.rich && (element.prefix || element.suffix)) {
         return (
           <div style={base} className="font-mono text-slate-700 dark:text-slate-300">
-            {element.prefix && (
-              <span dangerouslySetInnerHTML={{ __html: element.prefix }} />
-            )}
+            {element.prefix && <span dangerouslySetInnerHTML={{ __html: element.prefix }} />}
             {`{{${element.path || 'campo'}}}`}
-            {element.suffix && (
-              <span dangerouslySetInnerHTML={{ __html: element.suffix }} />
-            )}
+            {element.suffix && <span dangerouslySetInnerHTML={{ __html: element.suffix }} />}
           </div>
         );
       }
@@ -1253,8 +1245,8 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
         op === 'truthy'
           ? `${element.path} ✓`
           : op === 'falsy'
-          ? `${element.path} ✗`
-          : `${element.path} ${op} ${element.value ?? ''}`;
+            ? `${element.path} ✗`
+            : `${element.path} ${op} ${element.value ?? ''}`;
       return (
         <div style={base} className="flex-col items-stretch text-[9pt]">
           <div className="text-[8pt] text-slate-400 font-mono truncate">{`if ${cmp}`}</div>
@@ -1303,11 +1295,7 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({
         linePluginFields={linePluginFields}
       />
     ) : (
-      <PageInspector
-        layout={layout}
-        onUpdatePage={onUpdatePage}
-        onUpdateBand={onUpdateBand}
-      />
+      <PageInspector layout={layout} onUpdatePage={onUpdatePage} onUpdateBand={onUpdateBand} />
     )}
   </aside>
 );
@@ -1318,9 +1306,7 @@ const PageInspector: React.FC<{
   onUpdateBand: (bandId: string, patch: Partial<Band>) => void;
 }> = ({ layout, onUpdatePage, onUpdateBand }) => (
   <div className="px-3 py-3 space-y-4 text-sm">
-    <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500">
-      Página
-    </div>
+    <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500">Página</div>
     <Section title="Formato">
       <Label>Tamaño</Label>
       <select
@@ -1415,7 +1401,9 @@ const PageInspector: React.FC<{
     />
     <QueriesInspector
       queries={layout.queries}
+      testParams={layout.testParams ?? {}}
       onChange={(q) => onUpdatePage({ queries: q })}
+      onTestParamsChange={(p) => onUpdatePage({ testParams: p })}
     />
     <div className="text-[11px] text-slate-400 italic">
       Selecciona un elemento para editar sus propiedades.
@@ -1427,8 +1415,10 @@ const PageInspector: React.FC<{
 
 const QueriesInspector: React.FC<{
   queries: CanvasLayout['queries'];
+  testParams: Record<string, unknown>;
   onChange: (q: CanvasLayout['queries']) => void;
-}> = ({ queries, onChange }) => {
+  onTestParamsChange: (p: Record<string, unknown>) => void;
+}> = ({ queries, testParams, onChange, onTestParamsChange }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
   const list = queries ?? [];
@@ -1466,6 +1456,7 @@ const QueriesInspector: React.FC<{
         <QueryEditor
           key={idx}
           query={q}
+          testParams={testParams}
           readOnly={!isAdmin}
           onChange={(p) => updateAt(idx, p)}
           onRemove={() => removeAt(idx)}
@@ -1480,16 +1471,28 @@ const QueriesInspector: React.FC<{
           + Añadir consulta
         </button>
       )}
+      {list.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+          <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2">
+            Parámetros de prueba
+          </div>
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 mb-2">
+            Valores que se pasan a las queries durante el preview (placeholders <code>:xxx</code>).
+          </div>
+          <TestParamsEditor value={testParams} onChange={onTestParamsChange} readOnly={!isAdmin} />
+        </div>
+      )}
     </Section>
   );
 };
 
 const QueryEditor: React.FC<{
   query: { name: string; sql: string };
+  testParams: Record<string, unknown>;
   readOnly: boolean;
   onChange: (p: Partial<{ name: string; sql: string }>) => void;
   onRemove: () => void;
-}> = ({ query, readOnly, onChange, onRemove }) => {
+}> = ({ query, testParams, readOnly, onChange, onRemove }) => {
   const [result, setResult] = useState<
     | { ok: true; rows: unknown[]; rowCount: number; truncated: boolean }
     | { ok: false; error: string }
@@ -1508,7 +1511,7 @@ const QueryEditor: React.FC<{
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token ?? ''}`,
         },
-        body: JSON.stringify({ name: query.name, sql: query.sql }),
+        body: JSON.stringify({ name: query.name, sql: query.sql, params: testParams }),
       });
       const body = await res.json();
       if (!res.ok || body.ok === false) {
@@ -1561,7 +1564,9 @@ const QueryEditor: React.FC<{
         title={readOnly ? 'Solo lectura' : 'Click para abrir el editor SQL'}
       >
         {preview || <span className="text-slate-400 italic">SELECT * FROM …</span>}
-        {lineCount > 3 && <div className="text-[10px] text-slate-400">…{lineCount - 3} líneas más</div>}
+        {lineCount > 3 && (
+          <div className="text-[10px] text-slate-400">…{lineCount - 3} líneas más</div>
+        )}
       </div>
       {!readOnly && (
         <div className="flex items-center gap-2">
@@ -1638,13 +1643,80 @@ const QueryEditor: React.FC<{
   );
 };
 
+const TestParamsEditor: React.FC<{
+  value: Record<string, unknown>;
+  onChange: (v: Record<string, unknown>) => void;
+  readOnly: boolean;
+}> = ({ value, onChange, readOnly }) => {
+  const entries = Object.entries(value);
+  const add = () => {
+    const key = `param${entries.length + 1}`;
+    onChange({ ...value, [key]: '' });
+  };
+  const update = (k: string, v: unknown) => {
+    onChange({ ...value, [k]: v });
+  };
+  const remove = (k: string) => {
+    const next = { ...value };
+    delete next[k];
+    onChange(next);
+  };
+  return (
+    <div className="space-y-1">
+      {entries.map(([k, v]) => (
+        <div key={k} className="flex items-center gap-1">
+          <input
+            type="text"
+            value={k}
+            onChange={(e) => {
+              const next = { ...value };
+              delete next[k];
+              next[e.target.value] = v;
+              onChange(next);
+            }}
+            disabled={readOnly}
+            placeholder="clave"
+            className="w-24 px-2 py-1 text-[10px] font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+          />
+          <span className="text-slate-400">:</span>
+          <input
+            type="text"
+            value={String(v ?? '')}
+            onChange={(e) => update(k, e.target.value)}
+            disabled={readOnly}
+            placeholder="valor"
+            className="flex-1 px-2 py-1 text-[10px] font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+          />
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => remove(k)}
+              className="text-[10px] px-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      ))}
+      {!readOnly && (
+        <button
+          type="button"
+          onClick={add}
+          className="text-[10px] px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
+        >
+          + Parámetro
+        </button>
+      )}
+    </div>
+  );
+};
+
 const PageNumbersInspector: React.FC<{
   value: CanvasLayout['pageNumbers'];
   onChange: (v: CanvasLayout['pageNumbers']) => void;
 }> = ({ value, onChange }) => {
   const v = value ?? { enabled: false, alignment: 'center' as const };
-  const patch = (p: Partial<NonNullable<CanvasLayout['pageNumbers']>>) =>
-    onChange({ ...v, ...p });
+  const patch = (p: Partial<NonNullable<CanvasLayout['pageNumbers']>>) => onChange({ ...v, ...p });
   return (
     <Section title="Números de página">
       <Toggle
@@ -1686,8 +1758,7 @@ const WatermarkInspector: React.FC<{
     fontSize: 84,
     fontWeight: 'bold' as const,
   };
-  const patch = (p: Partial<NonNullable<CanvasLayout['watermark']>>) =>
-    onChange({ ...w, ...p });
+  const patch = (p: Partial<NonNullable<CanvasLayout['watermark']>>) => onChange({ ...w, ...p });
   return (
     <Section title="Marca de agua">
       <Toggle
@@ -1844,15 +1915,11 @@ const ElementInspector: React.FC<{
           <Toggle
             label="Expresión Handlebars (avanzado)"
             checked={element.raw === true}
-            onChange={(v) =>
-              patch({ raw: v, rich: v ? false : element.rich } as any)
-            }
+            onChange={(v) => patch({ raw: v, rich: v ? false : element.rich } as any)}
           />
           {element.raw && (
             <ExprCommands
-              onInsert={(snippet) =>
-                patch({ text: appendSnippet(element.text, snippet) } as any)
-              }
+              onInsert={(snippet) => patch({ text: appendSnippet(element.text, snippet) } as any)}
             />
           )}
         </Section>
@@ -1951,9 +2018,7 @@ const ElementInspector: React.FC<{
           <Label>Formato</Label>
           <select
             value={element.format ?? ''}
-            onChange={(e) =>
-              patch({ format: (e.target.value || undefined) as any } as any)
-            }
+            onChange={(e) => patch({ format: (e.target.value || undefined) as any } as any)}
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
           >
             <option value="">Sin formato</option>
@@ -2089,9 +2154,8 @@ const ElementInspector: React.FC<{
             </optgroup>
           </select>
           <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
-            Si el valor no encaja con la simbología elegida (ej. EAN-13 con 12
-            dígitos), el render hace fallback automático a Code 128 para que la
-            etiqueta nunca salga en blanco.
+            Si el valor no encaja con la simbología elegida (ej. EAN-13 con 12 dígitos), el render
+            hace fallback automático a Code 128 para que la etiqueta nunca salga en blanco.
           </div>
           <Toggle
             label="Mostrar texto legible"
@@ -2125,8 +2189,8 @@ const ElementInspector: React.FC<{
       {element.kind === 'pageBreak' && (
         <Section title="Salto de página">
           <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-            Fuerza el inicio de una nueva página a partir de este punto en el PDF.
-            En el diseñador se muestra como un marcador visual.
+            Fuerza el inicio de una nueva página a partir de este punto en el PDF. En el diseñador
+            se muestra como un marcador visual.
           </div>
         </Section>
       )}
@@ -2165,8 +2229,8 @@ const ElementInspector: React.FC<{
                 className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
               />
               <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                Números y <code>path.como.este</code> se evalúan; el resto se
-                trata como cadena literal.
+                Números y <code>path.como.este</code> se evalúan; el resto se trata como cadena
+                literal.
               </div>
             </>
           )}
@@ -2202,123 +2266,123 @@ const ElementInspector: React.FC<{
         <Section title="Estilo">
           {element.kind !== 'shape' && element.kind !== 'image' && (
             <>
-          <Label>Fuente</Label>
-          <select
-            value={element.style?.fontFamily ?? ''}
-            onChange={(e) =>
-              patch({
-                style: {
-                  ...(element.style ?? {}),
-                  fontFamily: e.target.value || undefined,
-                },
-              } as any)
-            }
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="">Por defecto del sistema</option>
-            <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
-              Sans-serif
-            </option>
-            <option value="Georgia, 'Times New Roman', serif">Serif (Georgia)</option>
-            <option value="'Times New Roman', Times, serif">Times New Roman</option>
-            <option value="Arial, Helvetica, sans-serif">Arial / Helvetica</option>
-            <option value="'Courier New', Courier, monospace">Courier (mono)</option>
-            <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
-            <option value="Verdana, sans-serif">Verdana</option>
-          </select>
-
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Tamaño (pt)</div>
-              <input
-                type="number"
-                min={4}
-                max={72}
-                value={element.style?.fontSize ?? ''}
+              <Label>Fuente</Label>
+              <select
+                value={element.style?.fontFamily ?? ''}
                 onChange={(e) =>
                   patch({
                     style: {
                       ...(element.style ?? {}),
-                      fontSize: e.target.value ? Number(e.target.value) : undefined,
+                      fontFamily: e.target.value || undefined,
                     },
                   } as any)
                 }
-                className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-              />
-            </label>
-            <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Color</div>
-              <input
-                type="color"
-                value={element.style?.color ?? '#000000'}
-                onChange={(e) =>
-                  patch({ style: { ...(element.style ?? {}), color: e.target.value } } as any)
-                }
-                className="h-8 w-full rounded border border-slate-200 dark:border-slate-700"
-              />
-            </label>
-          </div>
+                className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+              >
+                <option value="">Por defecto del sistema</option>
+                <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+                  Sans-serif
+                </option>
+                <option value="Georgia, 'Times New Roman', serif">Serif (Georgia)</option>
+                <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                <option value="Arial, Helvetica, sans-serif">Arial / Helvetica</option>
+                <option value="'Courier New', Courier, monospace">Courier (mono)</option>
+                <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+              </select>
 
-          <div className="flex gap-1">
-            <StyleToggleButton
-              active={element.style?.fontWeight === 'bold'}
-              onClick={() =>
-                patch({
-                  style: {
-                    ...(element.style ?? {}),
-                    fontWeight: element.style?.fontWeight === 'bold' ? 'normal' : 'bold',
-                  },
-                } as any)
-              }
-              title="Negrita"
-              className="font-bold"
-            >
-              B
-            </StyleToggleButton>
-            <StyleToggleButton
-              active={element.style?.fontStyle === 'italic'}
-              onClick={() =>
-                patch({
-                  style: {
-                    ...(element.style ?? {}),
-                    fontStyle: element.style?.fontStyle === 'italic' ? 'normal' : 'italic',
-                  },
-                } as any)
-              }
-              title="Cursiva"
-              className="italic"
-            >
-              I
-            </StyleToggleButton>
-            <div className="w-px bg-slate-200 dark:bg-slate-700 mx-1" />
-            <StyleToggleButton
-              active={element.style?.textAlign === 'left' || !element.style?.textAlign}
-              onClick={() =>
-                patch({ style: { ...(element.style ?? {}), textAlign: 'left' } } as any)
-              }
-              title="Izquierda"
-            >
-              ⬅
-            </StyleToggleButton>
-            <StyleToggleButton
-              active={element.style?.textAlign === 'center'}
-              onClick={() =>
-                patch({ style: { ...(element.style ?? {}), textAlign: 'center' } } as any)
-              }
-              title="Centro"
-            >
-              ↔
-            </StyleToggleButton>
-            <StyleToggleButton
-              active={element.style?.textAlign === 'right'}
-              onClick={() =>
-                patch({ style: { ...(element.style ?? {}), textAlign: 'right' } } as any)
-              }
-              title="Derecha"
-            >
-              ➡
-            </StyleToggleButton>
-          </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Tamaño (pt)</div>
+                  <input
+                    type="number"
+                    min={4}
+                    max={72}
+                    value={element.style?.fontSize ?? ''}
+                    onChange={(e) =>
+                      patch({
+                        style: {
+                          ...(element.style ?? {}),
+                          fontSize: e.target.value ? Number(e.target.value) : undefined,
+                        },
+                      } as any)
+                    }
+                    className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Color</div>
+                  <input
+                    type="color"
+                    value={element.style?.color ?? '#000000'}
+                    onChange={(e) =>
+                      patch({ style: { ...(element.style ?? {}), color: e.target.value } } as any)
+                    }
+                    className="h-8 w-full rounded border border-slate-200 dark:border-slate-700"
+                  />
+                </label>
+              </div>
+
+              <div className="flex gap-1">
+                <StyleToggleButton
+                  active={element.style?.fontWeight === 'bold'}
+                  onClick={() =>
+                    patch({
+                      style: {
+                        ...(element.style ?? {}),
+                        fontWeight: element.style?.fontWeight === 'bold' ? 'normal' : 'bold',
+                      },
+                    } as any)
+                  }
+                  title="Negrita"
+                  className="font-bold"
+                >
+                  B
+                </StyleToggleButton>
+                <StyleToggleButton
+                  active={element.style?.fontStyle === 'italic'}
+                  onClick={() =>
+                    patch({
+                      style: {
+                        ...(element.style ?? {}),
+                        fontStyle: element.style?.fontStyle === 'italic' ? 'normal' : 'italic',
+                      },
+                    } as any)
+                  }
+                  title="Cursiva"
+                  className="italic"
+                >
+                  I
+                </StyleToggleButton>
+                <div className="w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+                <StyleToggleButton
+                  active={element.style?.textAlign === 'left' || !element.style?.textAlign}
+                  onClick={() =>
+                    patch({ style: { ...(element.style ?? {}), textAlign: 'left' } } as any)
+                  }
+                  title="Izquierda"
+                >
+                  ⬅
+                </StyleToggleButton>
+                <StyleToggleButton
+                  active={element.style?.textAlign === 'center'}
+                  onClick={() =>
+                    patch({ style: { ...(element.style ?? {}), textAlign: 'center' } } as any)
+                  }
+                  title="Centro"
+                >
+                  ↔
+                </StyleToggleButton>
+                <StyleToggleButton
+                  active={element.style?.textAlign === 'right'}
+                  onClick={() =>
+                    patch({ style: { ...(element.style ?? {}), textAlign: 'right' } } as any)
+                  }
+                  title="Derecha"
+                >
+                  ➡
+                </StyleToggleButton>
+              </div>
             </>
           )}
 
@@ -2360,10 +2424,9 @@ const ElementInspector: React.FC<{
                       ...(element.style ?? {}),
                       borderStyle: v,
                       // Al activar un borde, aseguramos valores sensatos.
-                      borderWidth:
-                        v === 'none' ? undefined : element.style?.borderWidth ?? 1,
+                      borderWidth: v === 'none' ? undefined : (element.style?.borderWidth ?? 1),
                       borderColor:
-                        v === 'none' ? undefined : element.style?.borderColor ?? '#000000',
+                        v === 'none' ? undefined : (element.style?.borderColor ?? '#000000'),
                     },
                   } as any);
                 }}
@@ -2728,16 +2791,36 @@ const RichTextEditor: React.FC<{
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center gap-1">
-        <button type="button" onClick={() => exec('bold')} className={`${btnCls} font-bold`} title="Negrita (Ctrl+B)">
+        <button
+          type="button"
+          onClick={() => exec('bold')}
+          className={`${btnCls} font-bold`}
+          title="Negrita (Ctrl+B)"
+        >
           B
         </button>
-        <button type="button" onClick={() => exec('italic')} className={`${btnCls} italic`} title="Cursiva (Ctrl+I)">
+        <button
+          type="button"
+          onClick={() => exec('italic')}
+          className={`${btnCls} italic`}
+          title="Cursiva (Ctrl+I)"
+        >
           I
         </button>
-        <button type="button" onClick={() => exec('underline')} className={`${btnCls} underline`} title="Subrayado (Ctrl+U)">
+        <button
+          type="button"
+          onClick={() => exec('underline')}
+          className={`${btnCls} underline`}
+          title="Subrayado (Ctrl+U)"
+        >
           U
         </button>
-        <button type="button" onClick={() => exec('strikeThrough')} className={`${btnCls} line-through`} title="Tachado">
+        <button
+          type="button"
+          onClick={() => exec('strikeThrough')}
+          className={`${btnCls} line-through`}
+          title="Tachado"
+        >
           S
         </button>
         <span className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
@@ -2774,13 +2857,28 @@ const RichTextEditor: React.FC<{
           </button>
         </label>
         <span className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-        <button type="button" onClick={() => setBlockAlign('left')} className={btnCls} title="Alinear izquierda">
+        <button
+          type="button"
+          onClick={() => setBlockAlign('left')}
+          className={btnCls}
+          title="Alinear izquierda"
+        >
           ⯇
         </button>
-        <button type="button" onClick={() => setBlockAlign('center')} className={btnCls} title="Centrar">
+        <button
+          type="button"
+          onClick={() => setBlockAlign('center')}
+          className={btnCls}
+          title="Centrar"
+        >
           ≡
         </button>
-        <button type="button" onClick={() => setBlockAlign('right')} className={btnCls} title="Alinear derecha">
+        <button
+          type="button"
+          onClick={() => setBlockAlign('right')}
+          className={btnCls}
+          title="Alinear derecha"
+        >
           ⯈
         </button>
         <span className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
@@ -2805,8 +2903,8 @@ const RichTextEditor: React.FC<{
         style={{ lineHeight: 1.4 }}
       />
       <div className="text-[10px] text-slate-400 leading-snug">
-        Selecciona texto y aplica formato. Ctrl+B/I/U también funcionan. El
-        formato se exporta como HTML al PDF.
+        Selecciona texto y aplica formato. Ctrl+B/I/U también funcionan. El formato se exporta como
+        HTML al PDF.
       </div>
     </div>
   );
@@ -2851,7 +2949,10 @@ const FieldPicker: React.FC<{
         {filteredGroups.map((g) => {
           const expanded = normalizedQuery ? true : openGroup === g.group;
           return (
-            <div key={g.group} className="border-b border-slate-200 dark:border-slate-700 last:border-0">
+            <div
+              key={g.group}
+              className="border-b border-slate-200 dark:border-slate-700 last:border-0"
+            >
               <button
                 type="button"
                 onClick={() => setOpenGroup(expanded ? null : g.group)}
@@ -2973,24 +3074,63 @@ interface ExprCommand {
 }
 
 const EXPR_COMMANDS: ExprCommand[] = [
-  { group: 'Campos', label: 'Campo simple', snippet: '{{doc.docCode}}', hint: 'Imprime el valor tal cual' },
-  { group: 'Campos', label: 'Campo (HTML crudo)', snippet: '{{{company.logoUrl}}}', hint: 'No escapa el HTML' },
+  {
+    group: 'Campos',
+    label: 'Campo simple',
+    snippet: '{{doc.docCode}}',
+    hint: 'Imprime el valor tal cual',
+  },
+  {
+    group: 'Campos',
+    label: 'Campo (HTML crudo)',
+    snippet: '{{{company.logoUrl}}}',
+    hint: 'No escapa el HTML',
+  },
   { group: 'Formato', label: 'Moneda', snippet: '{{formatCurrency doc.total}}' },
   { group: 'Formato', label: 'Número', snippet: '{{formatNumber valor 2}}', hint: '2 = decimales' },
   { group: 'Formato', label: 'Fecha', snippet: '{{formatDate doc.issueDate}}' },
-  { group: 'Formato', label: 'Dirección (multilínea)', snippet: '{{{formatAddress partner.billingAddress}}}' },
+  {
+    group: 'Formato',
+    label: 'Dirección (multilínea)',
+    snippet: '{{{formatAddress partner.billingAddress}}}',
+  },
   { group: 'Formato', label: 'Padding a la izquierda', snippet: '{{padLeft valor 6 "0"}}' },
   { group: 'Matemáticas', label: 'Multiplicar', snippet: '{{multiply precio cantidad}}' },
-  { group: 'Condicional', label: 'Si / si no', snippet: '{{#if doc.paid}}Pagada{{else}}Pendiente{{/if}}' },
+  {
+    group: 'Condicional',
+    label: 'Si / si no',
+    snippet: '{{#if doc.paid}}Pagada{{else}}Pendiente{{/if}}',
+  },
   { group: 'Condicional', label: 'Si NO (unless)', snippet: '{{#unless doc.notes}}—{{/unless}}' },
   { group: 'Condicional', label: 'Igual a', snippet: '{{#if (eq doc.status "paid")}}OK{{/if}}' },
-  { group: 'Condicional', label: 'Distinto de', snippet: '{{#if (neq doc.status "paid")}}!{{/if}}' },
+  {
+    group: 'Condicional',
+    label: 'Distinto de',
+    snippet: '{{#if (neq doc.status "paid")}}!{{/if}}',
+  },
   { group: 'Condicional', label: 'Mayor que', snippet: '{{#if (gt doc.total 100)}}grande{{/if}}' },
   { group: 'Condicional', label: 'Menor que', snippet: '{{#if (lt doc.total 100)}}pequeño{{/if}}' },
-  { group: 'Iteración', label: 'Líneas del documento', snippet: '{{#each lines}}{{itemName}} x{{quantity}}\n{{/each}}' },
-  { group: 'Iteración', label: 'Desglose de IVA', snippet: '{{#each doc.taxBreakdown}}IVA {{rate}}%: {{formatCurrency amount}}\n{{/each}}' },
-  { group: 'Códigos', label: 'QR (data URI)', snippet: '<img src="{{{qrCode doc.docCode}}}" style="width:25mm;height:25mm" />' },
-  { group: 'Códigos', label: 'Código de barras', snippet: '<img src="{{{barcode doc.docCode symbology="code128" includeText=true}}}" style="width:60mm;height:15mm" />' },
+  {
+    group: 'Iteración',
+    label: 'Líneas del documento',
+    snippet: '{{#each lines}}{{itemName}} x{{quantity}}\n{{/each}}',
+  },
+  {
+    group: 'Iteración',
+    label: 'Desglose de IVA',
+    snippet: '{{#each doc.taxBreakdown}}IVA {{rate}}%: {{formatCurrency amount}}\n{{/each}}',
+  },
+  {
+    group: 'Códigos',
+    label: 'QR (data URI)',
+    snippet: '<img src="{{{qrCode doc.docCode}}}" style="width:25mm;height:25mm" />',
+  },
+  {
+    group: 'Códigos',
+    label: 'Código de barras',
+    snippet:
+      '<img src="{{{barcode doc.docCode symbology="code128" includeText=true}}}" style="width:60mm;height:15mm" />',
+  },
 ];
 
 const ExprCommands: React.FC<{ onInsert: (snippet: string) => void; label?: string }> = ({
@@ -3025,7 +3165,8 @@ const ExprCommands: React.FC<{ onInsert: (snippet: string) => void; label?: stri
           </div>
         ))}
         <div className="text-[10px] text-slate-400 dark:text-slate-500 pt-1">
-          Al pulsar un comando se añade su plantilla al final del texto. Edítala después para usar tus paths.
+          Al pulsar un comando se añade su plantilla al final del texto. Edítala después para usar
+          tus paths.
         </div>
       </div>
     </details>
@@ -3100,7 +3241,9 @@ const ExpandableTextarea: React.FC<{
                 autoFocus
               />
               <div className="flex justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">
-                <span className="self-center">{value.length} car · {value.split('\n').length} líneas</span>
+                <span className="self-center">
+                  {value.length} car · {value.split('\n').length} líneas
+                </span>
                 <button
                   type="button"
                   onClick={() => setExpanded(false)}

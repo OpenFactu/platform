@@ -27,7 +27,9 @@ const VALID_TYPES = new Set<string>(['SINV', 'PINV', 'SO', 'PO', 'SDN', 'PDN']);
 router.post('/:docType', async (req: any, res) => {
   const { docType } = req.params;
   if (!VALID_TYPES.has(docType)) {
-    return res.status(400).json({ error: `Tipo de documento inválido: ${docType}. Válidos: ${[...VALID_TYPES].join(', ')}` });
+    return res.status(400).json({
+      error: `Tipo de documento inválido: ${docType}. Válidos: ${[...VALID_TYPES].join(', ')}`,
+    });
   }
 
   try {
@@ -76,12 +78,17 @@ router.post('/:docType/:id/post', async (req: any, res) => {
     };
     const table = tableMap[docType];
     if (!table) {
-      return res.status(400).json({ error: `El tipo ${docType} no soporta asentamiento (sólo facturas).` });
+      return res
+        .status(400)
+        .json({ error: `El tipo ${docType} no soporta asentamiento (sólo facturas).` });
     }
 
     const [header] = await req.tenantClient.select().from(table).where(eq(table.id, id));
     if (!header) return res.status(404).json({ error: 'Documento no encontrado' });
-    if (header.status !== 'D') return res.status(400).json({ error: 'Sólo se pueden asentar documentos en estado Borrador.' });
+    if (header.status !== 'D')
+      return res
+        .status(400)
+        .json({ error: 'Sólo se pueden asentar documentos en estado Borrador.' });
 
     await req.tenantClient.update(table).set({ status: 'O' }).where(eq(table.id, id));
 

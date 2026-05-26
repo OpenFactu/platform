@@ -136,10 +136,10 @@ export const Commissions: React.FC = () => {
     const start = `${filter.year}-${String(filter.month).padStart(2, '0')}-01`;
     const lastDay = new Date(filter.year, filter.month, 0).getDate();
     const end = `${filter.year}-${String(filter.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    const r = await fetch(
-      `/api/hr/commissions/recalculate?from=${start}&to=${end}`,
-      { method: 'POST', headers },
-    );
+    const r = await fetch(`/api/hr/commissions/recalculate?from=${start}&to=${end}`, {
+      method: 'POST',
+      headers,
+    });
     if (!r.ok) {
       toast.error('Error al recalcular');
       return;
@@ -352,9 +352,7 @@ export const Commissions: React.FC = () => {
                         </span>
                       ) : r.scope === 'department' &&
                         departments.find((d) => d.id === r.departmentId) ? (
-                        <span>
-                          Dpto: {departments.find((d) => d.id === r.departmentId)?.name}
-                        </span>
+                        <span>Dpto: {departments.find((d) => d.id === r.departmentId)?.name}</span>
                       ) : (
                         'Toda la empresa'
                       )}

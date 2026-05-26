@@ -303,7 +303,12 @@ export const CORE_MODULES: Module[] = [
       { id: 'email', label: 'Correo', path: '/settings/company?tab=email' },
       { id: 'data', label: 'Importar/Exportar', path: '/settings/company?tab=data' },
       { id: 'users', label: 'Usuarios', path: '/users' },
-      { id: 'custom-fields', label: 'Campos personalizados', path: '/custom-fields', adminOnly: true },
+      {
+        id: 'custom-fields',
+        label: 'Campos personalizados',
+        path: '/custom-fields',
+        adminOnly: true,
+      },
       { id: 'webhooks', label: 'Webhooks', path: '/settings/webhooks', adminOnly: true },
       { id: 'automations', label: 'Automatizaciones', path: '/automations', adminOnly: true },
       { id: 'audit', label: 'Auditoría', path: '/audit-logs' },

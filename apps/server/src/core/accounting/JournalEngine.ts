@@ -246,11 +246,7 @@ export class JournalEngine {
    * Resuelve una cuenta a partir de un `kind` y opcionalmente un `key`.
    * Busca key específica primero, luego 'default'. Null si no hay mapeo.
    */
-  static async resolveAccount(
-    db: any,
-    kind: string,
-    key?: string | null,
-  ): Promise<string | null> {
+  static async resolveAccount(db: any, kind: string, key?: string | null): Promise<string | null> {
     if (key) {
       const [m] = await db
         .select()

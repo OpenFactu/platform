@@ -320,10 +320,7 @@ export class PeriodCloseEngine {
       .select()
       .from(schema.accountingPeriods)
       .where(
-        and(
-          eq(schema.accountingPeriods.status, 'O'),
-          lte(schema.accountingPeriods.endDate, today),
-        ),
+        and(eq(schema.accountingPeriods.status, 'O'), lte(schema.accountingPeriods.endDate, today)),
       )
       .orderBy(asc(schema.accountingPeriods.endDate));
 

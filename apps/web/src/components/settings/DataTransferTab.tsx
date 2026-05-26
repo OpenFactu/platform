@@ -22,9 +22,11 @@ export const DataTransferTab: React.FC = () => {
   const isSuperuser = role === 'SUPERUSER';
 
   const [busy, setBusy] = useState<string | null>(null);
-  const [progress, setProgress] = useState<{ pct: number; loadedMB: number; totalMB: number } | null>(
-    null,
-  );
+  const [progress, setProgress] = useState<{
+    pct: number;
+    loadedMB: number;
+    totalMB: number;
+  } | null>(null);
   const [includeUploads, setIncludeUploads] = useState(true);
   const [importName, setImportName] = useState('');
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -120,10 +122,7 @@ export const DataTransferTab: React.FC = () => {
     setBusy('import');
     setProgress({ pct: 0, loadedMB: 0, totalMB: importFile.size / 1024 / 1024 });
     const xhr = new XMLHttpRequest();
-    xhr.open(
-      'POST',
-      `/api/admin/tenants/import?name=${encodeURIComponent(importName.trim())}`,
-    );
+    xhr.open('POST', `/api/admin/tenants/import?name=${encodeURIComponent(importName.trim())}`);
     xhr.setRequestHeader('Authorization', `Bearer ${token ?? ''}`);
     xhr.upload.onprogress = (ev) => {
       if (ev.lengthComputable) {
@@ -168,8 +167,8 @@ export const DataTransferTab: React.FC = () => {
         <div className="p-6 flex items-start gap-3 text-sm text-amber-800 dark:text-amber-200">
           <AlertTriangle size={18} className="shrink-0 mt-0.5" />
           <div>
-            <strong>Acceso restringido.</strong> Necesitas rol ADMIN o SUPERUSER para
-            importar y exportar empresas.
+            <strong>Acceso restringido.</strong> Necesitas rol ADMIN o SUPERUSER para importar y
+            exportar empresas.
           </div>
         </div>
       </Card>
@@ -223,8 +222,8 @@ export const DataTransferTab: React.FC = () => {
               className="w-4 h-4"
             />
             <span>
-              Incluir archivos adjuntos (storage/uploads). Desactiva si solo quieres datos y el
-              zip pesa demasiado.
+              Incluir archivos adjuntos (storage/uploads). Desactiva si solo quieres datos y el zip
+              pesa demasiado.
             </span>
           </label>
           {busy === 'Exportar empresa' && progress && <ProgressBar progress={progress} />}
@@ -239,8 +238,8 @@ export const DataTransferTab: React.FC = () => {
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
             Crea una empresa nueva a partir de un export. Puedes elegir un nombre distinto al
-            original — se aplicará al nuevo schema y al display name. Útil para tener una copia
-            de debug ("Empresa-test", "Empresa-2026", etc.) sin tocar la original.
+            original — se aplicará al nuevo schema y al display name. Útil para tener una copia de
+            debug ("Empresa-test", "Empresa-2026", etc.) sin tocar la original.
           </p>
           <Input
             label="Nombre de la nueva empresa"
@@ -271,9 +270,8 @@ export const DataTransferTab: React.FC = () => {
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
             Descarga un zip con un CSV por cada entidad principal (clientes, items, facturas,
-            albaranes, pedidos…). Formato genérico para que cualquier otro ERP importe los
-            datos. Una vez exportado, ya no es responsabilidad nuestra cómo los procesa el
-            destino.
+            albaranes, pedidos…). Formato genérico para que cualquier otro ERP importe los datos.
+            Una vez exportado, ya no es responsabilidad nuestra cómo los procesa el destino.
           </p>
           <Button
             onClick={() =>

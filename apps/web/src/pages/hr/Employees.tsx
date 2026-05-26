@@ -53,7 +53,9 @@ export const Employees: React.FC = () => {
   const [rows, setRows] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
   const [costCenters, setCostCenters] = useState<any[]>([]);
-  const [usersAvailable, setUsersAvailable] = useState<Array<{ id: string; username: string; email: string }>>([]);
+  const [usersAvailable, setUsersAvailable] = useState<
+    Array<{ id: string; username: string; email: string }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Employee | null>(null);
   const [form, setForm] = useState<Partial<Employee>>({});
@@ -154,7 +156,10 @@ export const Employees: React.FC = () => {
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/hr/employees/${id}`, { method: 'DELETE', headers: authHeaders });
+      const res = await fetch(`/api/hr/employees/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
       if (res.ok) {
         toast.success('Empleado eliminado');
         fetchAll();
@@ -170,7 +175,13 @@ export const Employees: React.FC = () => {
   const deptMap = Object.fromEntries(departments.map((d) => [d.id, d]));
 
   const columns = [
-    { header: 'Código', accessor: 'code', sortable: true, sortAccessor: (r: any) => r.code, primary: true },
+    {
+      header: 'Código',
+      accessor: 'code',
+      sortable: true,
+      sortAccessor: (r: any) => r.code,
+      primary: true,
+    },
     {
       header: 'Nombre completo',
       cell: (r: Employee) => `${r.firstName} ${r.lastName}`,
@@ -264,9 +275,22 @@ export const Employees: React.FC = () => {
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input label="DNI" value={form.dni || ''} onChange={(e) => setForm({ ...form, dni: e.target.value })} />
-              <Input label="Email" type="email" value={form.email || ''} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-              <Input label="Teléfono" value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <Input
+                label="DNI"
+                value={form.dni || ''}
+                onChange={(e) => setForm({ ...form, dni: e.target.value })}
+              />
+              <Input
+                label="Email"
+                type="email"
+                value={form.email || ''}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+              />
+              <Input
+                label="Teléfono"
+                value={form.phone || ''}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
@@ -290,7 +314,9 @@ export const Employees: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Departamento</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Departamento
+                </label>
                 <select
                   value={form.departmentId || ''}
                   onChange={(e) => setForm({ ...form, departmentId: e.target.value || null })}
@@ -305,7 +331,9 @@ export const Employees: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Centro de coste</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Centro de coste
+                </label>
                 <select
                   value={form.costCenterId || ''}
                   onChange={(e) => setForm({ ...form, costCenterId: e.target.value || null })}
@@ -320,7 +348,9 @@ export const Employees: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Estado</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Estado
+                </label>
                 <select
                   value={form.status || 'active'}
                   onChange={(e) => setForm({ ...form, status: e.target.value as any })}
@@ -349,7 +379,8 @@ export const Employees: React.FC = () => {
                 ))}
               </select>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Vincula este empleado a un usuario del sistema. Si el empleado es repartidor, crea primero el usuario con rol <b>DRIVER</b> en Usuarios y selecciónalo aquí.
+                Vincula este empleado a un usuario del sistema. Si el empleado es repartidor, crea
+                primero el usuario con rol <b>DRIVER</b> en Usuarios y selecciónalo aquí.
               </p>
             </div>
             <div>
@@ -370,9 +401,7 @@ export const Employees: React.FC = () => {
                 }}
               />
               {form.iban && !validateIban(form.iban).ok && (
-                <p className="text-xs text-red-600 mt-1">
-                  {validateIban(form.iban).reason}
-                </p>
+                <p className="text-xs text-red-600 mt-1">{validateIban(form.iban).reason}</p>
               )}
             </div>
             <div>
@@ -417,7 +446,12 @@ export const Employees: React.FC = () => {
       )}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} onRowClick={(r: any) => openEdit(r)} />
+        <Table
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          onRowClick={(r: any) => openEdit(r)}
+        />
       </Card>
     </div>
   );

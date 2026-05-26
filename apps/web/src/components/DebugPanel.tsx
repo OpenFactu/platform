@@ -78,14 +78,8 @@ export const DebugPanel: React.FC = () => {
     if (!d.moved && Math.abs(dx) + Math.abs(dy) < 4) return;
     d.moved = true;
     // Movimiento: X derecha negativa mueve hacia la izquierda (aumenta `right`).
-    const nextRight = Math.max(
-      8,
-      Math.min(window.innerWidth - 80, d.startRight - dx),
-    );
-    const nextBottom = Math.max(
-      8,
-      Math.min(window.innerHeight - 80, d.startBottom - dy),
-    );
+    const nextRight = Math.max(8, Math.min(window.innerWidth - 80, d.startRight - dx));
+    const nextBottom = Math.max(8, Math.min(window.innerHeight - 80, d.startBottom - dy));
     setPos({ right: nextRight, bottom: nextBottom });
   };
 
@@ -180,10 +174,7 @@ export const DebugPanel: React.FC = () => {
   };
 
   return (
-    <div
-      className="fixed z-[99999] font-sans"
-      style={{ right: pos.right, bottom: pos.bottom }}
-    >
+    <div className="fixed z-[99999] font-sans" style={{ right: pos.right, bottom: pos.bottom }}>
       {open ? (
         <div className="w-80 rounded-xl shadow-2xl bg-amber-50 dark:bg-amber-950 border-2 border-amber-300 dark:border-amber-700 overflow-hidden">
           <div
@@ -212,7 +203,8 @@ export const DebugPanel: React.FC = () => {
             <div className="rounded bg-white/70 dark:bg-amber-950/40 border border-amber-300/60 dark:border-amber-800/60 p-2 space-y-1.5">
               <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider">
                 <ScanLine size={12} />
-                Simular escáner <span className="font-mono opacity-60 normal-case">Ctrl+Shift+B</span>
+                Simular escáner{' '}
+                <span className="font-mono opacity-60 normal-case">Ctrl+Shift+B</span>
               </div>
               <div className="flex gap-1">
                 <input
@@ -242,8 +234,7 @@ export const DebugPanel: React.FC = () => {
             <div className="flex items-start gap-2 text-[10px] leading-snug">
               <AlertTriangle size={12} className="mt-0.5 shrink-0" />
               <span>
-                Acciones destructivas — solo úsalas en desarrollo. Pondrán la
-                app en estado inicial.
+                Acciones destructivas — solo úsalas en desarrollo. Pondrán la app en estado inicial.
               </span>
             </div>
             <button

@@ -102,12 +102,16 @@ const AlternativeUomsPanel: React.FC<{
       <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-xl">
         <Scale size={16} className="text-blue-600 dark:text-blue-300 shrink-0" />
         <p className="text-xs text-blue-800 dark:text-blue-200 font-medium leading-tight">
-          UoM base: <strong>{baseUom?.code || '?'}</strong> ({baseUom?.name || '?'}). Las alternativas definen factores de conversión para permitir introducir cantidades en otras unidades.
+          UoM base: <strong>{baseUom?.code || '?'}</strong> ({baseUom?.name || '?'}). Las
+          alternativas definen factores de conversión para permitir introducir cantidades en otras
+          unidades.
         </p>
       </div>
 
       {loading ? (
-        <div className="p-4 text-center"><Loader size="sm" /></div>
+        <div className="p-4 text-center">
+          <Loader size="sm" />
+        </div>
       ) : (
         <>
           {alternatives.length > 0 && (
@@ -124,9 +128,13 @@ const AlternativeUomsPanel: React.FC<{
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {alternatives.map((a: any) => (
                   <tr key={a.id} className="group">
-                    <td className="py-2 font-mono font-bold text-slate-700 dark:text-slate-200">{a.code}</td>
+                    <td className="py-2 font-mono font-bold text-slate-700 dark:text-slate-200">
+                      {a.code}
+                    </td>
                     <td className="py-2 text-slate-600 dark:text-slate-300">{a.name}</td>
-                    <td className="py-2 text-right font-bold tabular-nums text-slate-700 dark:text-slate-200">{Number(a.factor).toFixed(4)}</td>
+                    <td className="py-2 text-right font-bold tabular-nums text-slate-700 dark:text-slate-200">
+                      {Number(a.factor).toFixed(4)}
+                    </td>
                     <td className="py-2 text-right text-[10px] text-slate-400 dark:text-slate-500 italic">
                       1 {a.code} = {Number(a.factor).toFixed(2)} {baseUom?.code || 'base'}
                     </td>
@@ -169,13 +177,20 @@ const AlternativeUomsPanel: React.FC<{
                   inputMode="decimal"
                   value={newFactor}
                   onChange={(e) => setNewFactor(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAdd();
+                    }
+                  }}
                   placeholder="24"
                   className="text-center font-bold tabular-nums"
                 />
               </div>
               <div>
-                <label className="text-[9px] font-black uppercase tracking-wider text-transparent mb-1 block">+</label>
+                <label className="text-[9px] font-black uppercase tracking-wider text-transparent mb-1 block">
+                  +
+                </label>
                 <Button
                   onClick={handleAdd}
                   disabled={!newUomId || !newFactor || saving}
@@ -245,10 +260,13 @@ export const Items: React.FC = () => {
 
   // Escáner de código de barras (HID externo o cámara desde bottom-nav móvil)
   useBarcodeScanner(
-    React.useCallback((code: string) => {
-      setSearchTerm(code);
-      toast.success(`Escaneado: ${code}`);
-    }, [toast]),
+    React.useCallback(
+      (code: string) => {
+        setSearchTerm(code);
+        toast.success(`Escaneado: ${code}`);
+      },
+      [toast],
+    ),
   );
 
   const fetchData = async () => {
@@ -365,10 +383,8 @@ export const Items: React.FC = () => {
           boxLengthMm: kind === 'box' && boxLengthMm ? Number(boxLengthMm) : null,
           boxWidthMm: kind === 'box' && boxWidthMm ? Number(boxWidthMm) : null,
           boxHeightMm: kind === 'box' && boxHeightMm ? Number(boxHeightMm) : null,
-          boxMaxWeightKg:
-            kind === 'box' && boxMaxWeightKg ? Number(boxMaxWeightKg) : null,
-          boxTareWeightKg:
-            kind === 'box' && boxTareWeightKg ? Number(boxTareWeightKg) : null,
+          boxMaxWeightKg: kind === 'box' && boxMaxWeightKg ? Number(boxMaxWeightKg) : null,
+          boxTareWeightKg: kind === 'box' && boxTareWeightKg ? Number(boxTareWeightKg) : null,
           defaultWarehouseId: defaultWarehouseId || null,
           defaultZoneId: defaultZoneId || null,
           ...customValues, // campos personalizados p_*
@@ -881,11 +897,7 @@ export const Items: React.FC = () => {
                         // check), completamos preservando lo que escribió. Si
                         // está vacío o no es numérico, generamos uno nuevo
                         // determinista a partir del code/name del artículo.
-                        const seed =
-                          barcode.trim() ||
-                          code ||
-                          name ||
-                          (selectedItem?.id ?? '');
+                        const seed = barcode.trim() || code || name || (selectedItem?.id ?? '');
                         const generated = generateEan13(seed);
                         setBarcode(generated);
                       }}
@@ -1128,7 +1140,8 @@ export const Items: React.FC = () => {
                     Ubicación por defecto
                   </label>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-4">
-                    Cuando selecciones este artículo en un pedido o albarán se rellenará automáticamente su almacén y ubicación. Puedes cambiarlo por línea.
+                    Cuando selecciones este artículo en un pedido o albarán se rellenará
+                    automáticamente su almacén y ubicación. Puedes cambiarlo por línea.
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
@@ -1167,7 +1180,9 @@ export const Items: React.FC = () => {
                       >
                         <option value="">(Sin ubicación)</option>
                         {zones
-                          .filter((z: any) => !defaultWarehouseId || z.warehouseId === defaultWarehouseId)
+                          .filter(
+                            (z: any) => !defaultWarehouseId || z.warehouseId === defaultWarehouseId,
+                          )
                           .map((z: any) => (
                             <option key={z.id} value={z.id}>
                               {z.name}

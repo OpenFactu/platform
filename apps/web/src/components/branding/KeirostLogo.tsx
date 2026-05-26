@@ -64,10 +64,7 @@ export const KeirostLogo: React.FC<Props> = ({
           <polygon points="340,22 416,66 416,154 340,198 264,154 264,66" />
         </clipPath>
       </defs>
-      <polygon
-        points="340,22 416,66 416,154 340,198 264,154 264,66"
-        fill={c.bg}
-      />
+      <polygon points="340,22 416,66 416,154 340,198 264,154 264,66" fill={c.bg} />
       <polygon
         points="340,22 416,66 416,154 340,198 264,154 264,66"
         fill="none"
@@ -124,9 +121,7 @@ export const KeirostWordmark: React.FC<{
       style={{ fontSize: `${size * 0.65}px`, fontFamily: "'Syne', sans-serif" }}
     >
       <span style={{ color: variant === 'accent' ? '#FFFFFF' : '#0A1628' }}>Keirost</span>
-      {showErp && (
-        <span style={{ color: '#0D9488', marginLeft: `${size * 0.15}px` }}>ERP</span>
-      )}
+      {showErp && <span style={{ color: '#0D9488', marginLeft: `${size * 0.15}px` }}>ERP</span>}
     </span>
   </span>
 );

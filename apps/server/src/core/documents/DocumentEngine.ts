@@ -2,6 +2,7 @@ import { eq, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import { HookManager } from '../plugins/HookManager';
 import { PluginFieldManager } from '../plugins/PluginFieldManager';
+import { DocumentRegistry } from './DocumentRegistry';
 import * as schema from '../../db/schema';
 
 export interface DocumentLine {
@@ -79,7 +80,9 @@ export class DocumentEngine {
       }, {});
 
       // Helper para aplicar discount a nivel línea (explícito o por rate)
-      const computeLineAmounts = (line: any): {
+      const computeLineAmounts = (
+        line: any,
+      ): {
         bruto: number;
         discount: number;
         neto: number;
@@ -92,9 +95,8 @@ export class DocumentEngine {
         const discAmt = Number(line.discountAmount || 0);
         const discount = discAmt > 0 ? discAmt : (bruto * discRate) / 100;
         const neto = bruto - discount;
-        const taxRate = line.taxRate != null
-          ? Number(line.taxRate)
-          : taxRateMap[line.taxGroupId] || 0;
+        const taxRate =
+          line.taxRate != null ? Number(line.taxRate) : taxRateMap[line.taxGroupId] || 0;
         const taxAmount = (neto * taxRate) / 100;
         const whAmt = Number(line.withholdingAmount || 0);
         const whRate = Number(line.withholdingRate || 0);
@@ -225,11 +227,16 @@ export class DocumentEngine {
 
         // Insertar Línea — incluye los campos de descuento/tax/retención
         // persistidos (se usan en el PDF y en re-cálculos posteriores).
+        // El nombre del campo cantidad varía según la tabla:
+        // SalesOrderLine/PurchaseOrderLine usan "orderedQty",
+        // PurchaseInvoiceLine usa "quantity". Ambas mapean a DB "quantity".
+        const qtyKey = def.lineSchemaTable.orderedQty !== undefined ? 'orderedQty' : 'quantity';
+
         const lineValues: any = {
           id: lineId,
           lineNum: i + 1,
           itemId: line.itemId,
-          quantity: String(line.quantity),
+          [qtyKey]: String(line.quantity),
           price: String(line.price),
           taxGroupId: line.taxGroupId || null,
           lineTotal: String((lineSubtotal + lineTax).toFixed(4)),
@@ -240,24 +247,18 @@ export class DocumentEngine {
           discountAmount: String(amounts.discount.toFixed(4)),
           taxRate: String(taxRate),
           taxAmount: String(lineTax.toFixed(4)),
-          withholdingRate: (line as any).withholdingRate != null
-            ? String(Number((line as any).withholdingRate))
-            : null,
-          withholdingAmount: amounts.withholding > 0
-            ? String(amounts.withholding.toFixed(4))
-            : null,
+          withholdingRate:
+            (line as any).withholdingRate != null
+              ? String(Number((line as any).withholdingRate))
+              : null,
+          withholdingAmount:
+            amounts.withholding > 0 ? String(amounts.withholding.toFixed(4)) : null,
           projectId: (line as any).projectId || null,
         };
 
-        // Mapear el ID de cabecera según la tabla
-        const headerRefKey =
-          def.tableName === 'salesInvoices'
-            ? 'invoiceId'
-            : def.tableName === 'purchaseInvoices'
-              ? 'invoiceId'
-              : def.tableName === 'salesDeliveryNotes'
-                ? 'deliveryId'
-                : 'orderId';
+        // Mapear el ID de cabecera según la tabla — usa el registry
+        const config = DocumentRegistry.getByTableName(def.tableName);
+        const headerRefKey = config?.headerRefKey || 'orderId';
 
         lineValues[headerRefKey] = documentId;
 
@@ -282,15 +283,7 @@ export class DocumentEngine {
         // columnas físicas con prefijo `p_` creadas vía
         // `MigrationEngine.addCustomField`. El tableName esperado por
         // `validateAndExtract` es el nombre PG real (PascalCase singular).
-        const LINE_TABLE_BY_DEF: Record<string, string> = {
-          salesOrders: 'SalesOrderLine',
-          salesDeliveryNotes: 'SalesDeliveryNoteLine',
-          salesInvoices: 'SalesInvoiceLine',
-          purchaseOrders: 'PurchaseOrderLine',
-          purchaseDeliveryNotes: 'PurchaseDeliveryNoteLine',
-          purchaseInvoices: 'PurchaseInvoiceLine',
-        };
-        const pgLineTable = LINE_TABLE_BY_DEF[def.tableName];
+        const pgLineTable = config?.linePgName || '';
         if (pgLineTable) {
           const linePluginFields = await PluginFieldManager.validateAndExtract(
             pgLineTable,
@@ -328,27 +321,28 @@ export class DocumentEngine {
       // Campos fiscales/pago sólo si la tabla los tiene (facturas sí, pedidos/albaranes no)
       if ((def.schemaTable as any).withholdingRate !== undefined) {
         updatePayload.withholdingRate = docWhRate > 0 ? String(docWhRate) : null;
-        updatePayload.withholdingAmount = docWithholding > 0
-          ? String(docWithholding.toFixed(4))
-          : null;
+        updatePayload.withholdingAmount =
+          docWithholding > 0 ? String(docWithholding.toFixed(4)) : null;
       }
       if ((def.schemaTable as any).documentTypeId !== undefined) {
-        if ((request as any).documentTypeId) updatePayload.documentTypeId = (request as any).documentTypeId;
-        if ((request as any).paymentMethodId) updatePayload.paymentMethodId = (request as any).paymentMethodId;
-        if ((request as any).paymentTermId) updatePayload.paymentTermId = (request as any).paymentTermId;
+        if ((request as any).documentTypeId)
+          updatePayload.documentTypeId = (request as any).documentTypeId;
+        if ((request as any).paymentMethodId)
+          updatePayload.paymentMethodId = (request as any).paymentMethodId;
+        if ((request as any).paymentTermId)
+          updatePayload.paymentTermId = (request as any).paymentTermId;
         if ((request as any).currencyId) updatePayload.currencyId = (request as any).currencyId;
         if ((request as any).dueDate) updatePayload.dueDate = (request as any).dueDate;
         if ((request as any).supplyDate) updatePayload.supplyDate = (request as any).supplyDate;
         if ((request as any).notes != null) updatePayload.notes = (request as any).notes;
-        if ((request as any).internalNotes != null) updatePayload.internalNotes = (request as any).internalNotes;
+        if ((request as any).internalNotes != null)
+          updatePayload.internalNotes = (request as any).internalNotes;
         if ((request as any).rectifyRef) updatePayload.rectifyRef = (request as any).rectifyRef;
-        if ((request as any).rectifyReason) updatePayload.rectifyReason = (request as any).rectifyReason;
+        if ((request as any).rectifyReason)
+          updatePayload.rectifyReason = (request as any).rectifyReason;
         if ((request as any).rectifyType) updatePayload.rectifyType = (request as any).rectifyType;
       }
-      await tx
-        .update(def.schemaTable)
-        .set(updatePayload)
-        .where(eq(def.schemaTable.id, documentId));
+      await tx.update(def.schemaTable).set(updatePayload).where(eq(def.schemaTable.id, documentId));
 
       // 8. Cierre de documentos base (si aplica)
       if (def.closeBaseDocuments) {
@@ -358,17 +352,14 @@ export class DocumentEngine {
           if (!baseMap[l.baseType]) baseMap[l.baseType] = new Set();
           baseMap[l.baseType].add(l.baseId);
         }
-        const baseTables: Record<string, any> = {
-          SDN: schema.salesDeliveryNotes,
-          PDN: schema.purchaseDeliveryNotes,
-          SO: schema.salesOrders,
-          PO: schema.purchaseOrders,
-        };
         for (const [baseType, ids] of Object.entries(baseMap)) {
-          const table = baseTables[baseType];
-          if (!table) continue;
+          const baseConfig = DocumentRegistry.get(baseType as any);
+          if (!baseConfig) continue;
           for (const bId of ids) {
-            await tx.update(table).set({ status: 'C' }).where(eq(table.id, bId));
+            await tx
+              .update(baseConfig.schemaTable)
+              .set({ status: 'C' })
+              .where(eq(baseConfig.schemaTable.id, bId));
           }
         }
       }

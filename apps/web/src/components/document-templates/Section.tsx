@@ -37,11 +37,7 @@ export const Section: React.FC<Props> = ({
         )}
       >
         <div className="flex items-center gap-2.5">
-          {icon && (
-            <span className="text-slate-500 dark:text-slate-400 flex-shrink-0">
-              {icon}
-            </span>
-          )}
+          {icon && <span className="text-slate-500 dark:text-slate-400 flex-shrink-0">{icon}</span>}
           <span className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">
             {title}
           </span>

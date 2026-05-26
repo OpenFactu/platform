@@ -208,7 +208,14 @@ router.delete('/:id', async (req: any, res) => {
 // PUT /:id/scores — sobreescribe la matriz de competencias.
 router.put('/:id/scores', async (req: any, res) => {
   try {
-    const { scores } = req.body as { scores: Array<{ competencyId: string; scoreSelf?: number; scoreManager?: number; comments?: string }> };
+    const { scores } = req.body as {
+      scores: Array<{
+        competencyId: string;
+        scoreSelf?: number;
+        scoreManager?: number;
+        comments?: string;
+      }>;
+    };
     if (!Array.isArray(scores)) return res.status(400).json({ error: 'scores debe ser array' });
     await req.tenantClient
       .delete(schema.employeeEvaluationScores)
@@ -238,9 +245,7 @@ router.post('/:id/close', async (req: any, res) => {
       .where(eq(schema.employeeEvaluationScores.evaluationId, req.params.id));
     if (!scores.length) return res.status(400).json({ error: 'No hay puntuaciones' });
     const competencyIds = scores.map((s: any) => s.competencyId);
-    const comps = await req.tenantClient
-      .select()
-      .from(schema.evaluationCompetencies);
+    const comps = await req.tenantClient.select().from(schema.evaluationCompetencies);
     const compById = new Map(comps.map((c: any) => [c.id, c]));
     let weighted = 0;
     let weights = 0;

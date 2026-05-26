@@ -20,7 +20,9 @@ const publicDb = () => ClientFactory.getClient('public');
 router.post('/seed', async (_req, res) => {
   try {
     await seedGeo(publicDb());
-    const result: any = await publicDb().execute(sql.raw(`SELECT COUNT(*)::int AS count FROM "Country"`));
+    const result: any = await publicDb().execute(
+      sql.raw(`SELECT COUNT(*)::int AS count FROM "Country"`),
+    );
     const count = result?.rows?.[0]?.count ?? 0;
     res.json({ ok: true, countries: count });
   } catch (e: any) {

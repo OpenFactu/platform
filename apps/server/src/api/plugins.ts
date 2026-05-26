@@ -46,7 +46,9 @@ router.get('/available', (req: any, res) => {
       loaded,
       ...(loaded
         ? {}
-        : { loadError: 'El plugin tiene manifest pero su index no exporta init() o falló al cargar' }),
+        : {
+            loadError: 'El plugin tiene manifest pero su index no exporta init() o falló al cargar',
+          }),
     });
   }
 
@@ -73,10 +75,12 @@ router.get('/active', (req: any, res) => {
   const tenantId = req.tenantId;
   const activeForTenant = tenantId ? TenantPluginCache.getActivePlugins(tenantId) : [];
 
-  res.json(activePlugins.map((id) => ({
-    id,
-    isActive: activeForTenant.includes(id),
-  })));
+  res.json(
+    activePlugins.map((id) => ({
+      id,
+      isActive: activeForTenant.includes(id),
+    })),
+  );
 });
 
 /**
@@ -231,66 +235,77 @@ router.post('/:pluginId/deactivate', async (req: any, res) => {
  * Sube un plugin como archivo ZIP y lo instala/actualiza.
  * Body: multipart/form-data con campo 'plugin' (archivo .zip)
  */
-router.post('/upload', devKeyOrAdmin('plugin:push'), upload.single('plugin'), async (req: any, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No se recibio ningun archivo' });
-  }
-
-  try {
-    const zip = new AdmZip(req.file.path);
-    const entries = zip.getEntries();
-
-    if (entries.length === 0) {
-      return res.status(400).json({ error: 'El archivo ZIP esta vacio' });
+router.post(
+  '/upload',
+  devKeyOrAdmin('plugin:push'),
+  upload.single('plugin'),
+  async (req: any, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se recibio ningun archivo' });
     }
 
-    // Detectar nombre del plugin: carpeta raiz del zip o nombre del archivo
-    let pluginName = '';
-    const firstEntry = entries[0].entryName;
-    if (firstEntry.includes('/')) {
-      pluginName = firstEntry.split('/')[0];
-    } else {
-      pluginName = path.basename(req.file.originalname, '.zip');
+    try {
+      const zip = new AdmZip(req.file.path);
+      const entries = zip.getEntries();
+
+      if (entries.length === 0) {
+        return res.status(400).json({ error: 'El archivo ZIP esta vacio' });
+      }
+
+      // Detectar nombre del plugin: carpeta raiz del zip o nombre del archivo
+      let pluginName = '';
+      const firstEntry = entries[0].entryName;
+      if (firstEntry.includes('/')) {
+        pluginName = firstEntry.split('/')[0];
+      } else {
+        pluginName = path.basename(req.file.originalname, '.zip');
+      }
+
+      if (!pluginName) {
+        return res.status(400).json({ error: 'No se pudo determinar el nombre del plugin' });
+      }
+
+      const targetDir = path.join(pluginsDir, pluginName);
+
+      // Extraer
+      zip.extractAllTo(pluginsDir, true);
+
+      // Limpiar archivo temporal
+      fs.unlinkSync(req.file.path);
+
+      // Recargar el plugin si ya estaba cargado
+      if (activePlugins.includes(pluginName)) {
+        const { reloadPlugin } = await import('../plugins/loader');
+        await reloadPlugin(pluginName);
+
+        const { broadcastPluginReload } = await import('../plugins/devSocket');
+        broadcastPluginReload(pluginName);
+      }
+
+      // Verificar estructura
+      const hasIndex =
+        fs.existsSync(path.join(targetDir, 'index.ts')) ||
+        fs.existsSync(path.join(targetDir, 'index.js'));
+      const hasManifest = fs.existsSync(path.join(targetDir, 'manifest.json'));
+
+      res.json({
+        success: true,
+        pluginId: pluginName,
+        hasIndex,
+        hasManifest,
+        message: activePlugins.includes(pluginName)
+          ? 'Plugin actualizado y recargado'
+          : 'Plugin instalado. Reinicia el servidor para cargarlo.',
+      });
+    } catch (err: any) {
+      // Limpiar archivo temporal
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {}
+      res.status(500).json({ error: err.message });
     }
-
-    if (!pluginName) {
-      return res.status(400).json({ error: 'No se pudo determinar el nombre del plugin' });
-    }
-
-    const targetDir = path.join(pluginsDir, pluginName);
-
-    // Extraer
-    zip.extractAllTo(pluginsDir, true);
-
-    // Limpiar archivo temporal
-    fs.unlinkSync(req.file.path);
-
-    // Recargar el plugin si ya estaba cargado
-    if (activePlugins.includes(pluginName)) {
-      const { reloadPlugin } = await import('../plugins/loader');
-      await reloadPlugin(pluginName);
-
-      const { broadcastPluginReload } = await import('../plugins/devSocket');
-      broadcastPluginReload(pluginName);
-    }
-
-    // Verificar estructura
-    const hasIndex = fs.existsSync(path.join(targetDir, 'index.ts')) || fs.existsSync(path.join(targetDir, 'index.js'));
-    const hasManifest = fs.existsSync(path.join(targetDir, 'manifest.json'));
-
-    res.json({
-      success: true,
-      pluginId: pluginName,
-      hasIndex,
-      hasManifest,
-      message: activePlugins.includes(pluginName) ? 'Plugin actualizado y recargado' : 'Plugin instalado. Reinicia el servidor para cargarlo.',
-    });
-  } catch (err: any) {
-    // Limpiar archivo temporal
-    try { fs.unlinkSync(req.file.path); } catch {}
-    res.status(500).json({ error: err.message });
-  }
-});
+  },
+);
 
 /**
  * POST /api/plugins/:pluginId/push

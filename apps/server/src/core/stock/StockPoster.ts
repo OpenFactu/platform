@@ -17,12 +17,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 
 /** Upsert en itemWarehouseStocks sumando `delta`. */
-async function addWarehouseStock(
-  client: any,
-  itemId: string,
-  warehouseId: string,
-  delta: number,
-) {
+async function addWarehouseStock(client: any, itemId: string, warehouseId: string, delta: number) {
   if (delta === 0) return;
   const [existing] = await client
     .select()
@@ -155,13 +150,7 @@ export async function postTransferReceived(client: any, transferId: string) {
     .from(schema.transferNoteLines)
     .where(eq(schema.transferNoteLines.transferId, transferId));
   for (const l of lines) {
-    await applyDelta(
-      client,
-      l.itemId,
-      doc.toWarehouseId,
-      l.toZoneId || null,
-      Number(l.quantity),
-    );
+    await applyDelta(client, l.itemId, doc.toWarehouseId, l.toZoneId || null, Number(l.quantity));
   }
 }
 
@@ -177,13 +166,7 @@ export async function postReceipt(client: any, receiptId: string) {
     .from(schema.goodsReceiptLines)
     .where(eq(schema.goodsReceiptLines.receiptId, receiptId));
   for (const l of lines) {
-    await applyDelta(
-      client,
-      l.itemId,
-      doc.warehouseId,
-      l.zoneId || null,
-      Number(l.quantity),
-    );
+    await applyDelta(client, l.itemId, doc.warehouseId, l.zoneId || null, Number(l.quantity));
   }
 }
 
@@ -199,12 +182,6 @@ export async function postIssue(client: any, issueId: string) {
     .from(schema.goodsIssueLines)
     .where(eq(schema.goodsIssueLines.issueId, issueId));
   for (const l of lines) {
-    await applyDelta(
-      client,
-      l.itemId,
-      doc.warehouseId,
-      l.zoneId || null,
-      -Number(l.quantity),
-    );
+    await applyDelta(client, l.itemId, doc.warehouseId, l.zoneId || null, -Number(l.quantity));
   }
 }

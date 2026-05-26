@@ -20,7 +20,10 @@ export async function recalcInvoicePaymentStatus(
   const invoiceTable = kind === 'sales' ? schema.salesInvoices : schema.purchaseInvoices;
   const fkCol = kind === 'sales' ? 'salesInvoiceId' : 'purchaseInvoiceId';
 
-  const [inv] = await tenantClient.select().from(invoiceTable).where(eq(invoiceTable.id, invoiceId));
+  const [inv] = await tenantClient
+    .select()
+    .from(invoiceTable)
+    .where(eq(invoiceTable.id, invoiceId));
   if (!inv) return null;
 
   const [{ sum }] = await tenantClient

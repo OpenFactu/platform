@@ -15,8 +15,7 @@ export const TopHeader: React.FC = () => {
   const { branding, update } = useTheme();
   const { toggle: toggleMobileNav } = useMobileNav();
   const isDark = branding.themeMode === 'dark';
-  const toggleTheme = () =>
-    update('branding', { themeMode: isDark ? 'light' : 'dark' });
+  const toggleTheme = () => update('branding', { themeMode: isDark ? 'light' : 'dark' });
 
   return (
     <header className="h-14 bg-white dark:bg-ink-900 border-b border-line dark:border-ink-700 flex items-center px-3 md:px-4 gap-2 md:gap-4 z-10">

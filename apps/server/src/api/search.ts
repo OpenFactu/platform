@@ -173,10 +173,7 @@ router.get('/', async (req: any, res) => {
       })
       .from(schema.internalOrders)
       .where(
-        or(
-          ilike(schema.internalOrders.code, pattern),
-          ilike(schema.internalOrders.name, pattern),
-        ),
+        or(ilike(schema.internalOrders.code, pattern), ilike(schema.internalOrders.name, pattern)),
       )
       .limit(LIMIT);
 

@@ -351,7 +351,9 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
               (se serializa en el meta y lo lee renderDocumentPdf en el server). */}
           <CheckboxRow
             checked={Boolean((opts as any).showInternalOrder)}
-            onChange={(v) => (updateOpt as unknown as (k: string, val: boolean) => void)('showInternalOrder', v)}
+            onChange={(v) =>
+              (updateOpt as unknown as (k: string, val: boolean) => void)('showInternalOrder', v)
+            }
             title="Mostrar proyecto"
             description="Si el documento tiene un proyecto/orden interna asignado en cabecera"
           />

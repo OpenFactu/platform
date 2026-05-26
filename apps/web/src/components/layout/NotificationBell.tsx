@@ -121,7 +121,9 @@ export const NotificationBell: React.FC = () => {
   const markRead = async (id: string) => {
     try {
       await fetch(`/api/notifications/${id}/read`, { method: 'POST', headers });
-      setNotifs((ns) => ns.map((n) => (n.id === id ? { ...n, readAt: new Date().toISOString() } : n)));
+      setNotifs((ns) =>
+        ns.map((n) => (n.id === id ? { ...n, readAt: new Date().toISOString() } : n)),
+      );
       loadCount();
     } catch {
       /* noop */
@@ -184,9 +186,7 @@ export const NotificationBell: React.FC = () => {
             {notifs.length === 0 ? (
               <div className="py-10 flex flex-col items-center gap-2 text-ink-400">
                 <Inbox size={24} />
-                <p className="text-[10px] font-mono uppercase tracking-wider">
-                  Sin notificaciones
-                </p>
+                <p className="text-[10px] font-mono uppercase tracking-wider">Sin notificaciones</p>
               </div>
             ) : (
               notifs.map((n, idx) => (
@@ -202,7 +202,9 @@ export const NotificationBell: React.FC = () => {
                   <span
                     className={cn(
                       'w-2 h-2 rounded-full shrink-0 mt-1.5',
-                      n.readAt ? 'bg-ink-300 dark:bg-ink-500' : LEVEL_COLORS[n.level] || 'bg-accent',
+                      n.readAt
+                        ? 'bg-ink-300 dark:bg-ink-500'
+                        : LEVEL_COLORS[n.level] || 'bg-accent',
                     )}
                   />
                   <div className="flex-1 min-w-0">

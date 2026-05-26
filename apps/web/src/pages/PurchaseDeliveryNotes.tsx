@@ -75,7 +75,13 @@ const PDNList: React.FC<{
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
-  const tabs = (() => { try { return useTabs(); } catch { return null; } })();
+  const tabs = (() => {
+    try {
+      return useTabs();
+    } catch {
+      return null;
+    }
+  })();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
@@ -121,7 +127,8 @@ const PDNList: React.FC<{
     {
       header: 'No. Albarán',
       sortable: true,
-      sortAccessor: (item: any) => `${item.seriesPrefix||''}-${String(item.docNum||0).padStart(6,'0')}`,
+      sortAccessor: (item: any) =>
+        `${item.seriesPrefix || ''}-${String(item.docNum || 0).padStart(6, '0')}`,
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
@@ -133,7 +140,12 @@ const PDNList: React.FC<{
         </div>
       ),
     },
-    { header: 'Fecha', sortable: true, sortAccessor: (item: any) => new Date(item.date).getTime(), accessor: (item: any) => fmt.date(item.date) },
+    {
+      header: 'Fecha',
+      sortable: true,
+      sortAccessor: (item: any) => new Date(item.date).getTime(),
+      accessor: (item: any) => fmt.date(item.date),
+    },
     {
       header: 'Proveedor',
       sortable: true,
@@ -310,8 +322,23 @@ const PDNList: React.FC<{
           ]}
           searchPlaceholder="Buscar albarán..."
         />
-        <BulkSendToolbar selectedKeys={selectedKeys} rows={filteredData || []} partners={partners} docType="PDN" onClear={() => setSelectedKeys(new Set())} onSent={() => setSelectedKeys(new Set())} />
-        <Table columns={columns} data={filteredData || []} isLoading={loading} onRowClick={onDetail} selectable selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} />
+        <BulkSendToolbar
+          selectedKeys={selectedKeys}
+          rows={filteredData || []}
+          partners={partners}
+          docType="PDN"
+          onClear={() => setSelectedKeys(new Set())}
+          onSent={() => setSelectedKeys(new Set())}
+        />
+        <Table
+          columns={columns}
+          data={filteredData || []}
+          isLoading={loading}
+          onRowClick={onDetail}
+          selectable
+          selectedKeys={selectedKeys}
+          onSelectionChange={setSelectedKeys}
+        />
       </Card>
     </div>
   );
@@ -364,27 +391,32 @@ const PDNForm: React.FC<{
   );
 
   const projectCol = useInternalOrderLineColumn(actions.updateLine);
-  const columns = useMemo(
-    () => {
-      const base = buildFormLineColumns({
-        kind: DocKind.DeliveryNote,
-        side: DocSide.Purchase,
-        state,
-        masters,
-        zones: warehouseLocation === 'line' ? zones : filteredZones,
-        actions,
-        onAssignBatch: setBatchEditingIdx,
-        onViewBatch: setViewingBatch,
-        onDuplicateLine: duplicateLine,
-        warehouseLocation,
-        fmt,
-        getItemUoms: itemUoms.get,
-        pluginLineFields,
-      });
-      return [...base.slice(0, -1), projectCol, base[base.length - 1]];
-    },
-    [state.lines, masters.items, masters.taxGroups, pluginLineFields, warehouseLocation, zones, projectCol],
-  );
+  const columns = useMemo(() => {
+    const base = buildFormLineColumns({
+      kind: DocKind.DeliveryNote,
+      side: DocSide.Purchase,
+      state,
+      masters,
+      zones: warehouseLocation === 'line' ? zones : filteredZones,
+      actions,
+      onAssignBatch: setBatchEditingIdx,
+      onViewBatch: setViewingBatch,
+      onDuplicateLine: duplicateLine,
+      warehouseLocation,
+      fmt,
+      getItemUoms: itemUoms.get,
+      pluginLineFields,
+    });
+    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+  }, [
+    state.lines,
+    masters.items,
+    masters.taxGroups,
+    pluginLineFields,
+    warehouseLocation,
+    zones,
+    projectCol,
+  ]);
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
@@ -465,10 +497,7 @@ const PDNForm: React.FC<{
                 className="font-bold h-10"
               />
             </div>
-            <InternalOrderHeaderField
-              value={internalOrderId}
-              onChange={setInternalOrderId}
-            />
+            <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
           </div>
         </Card>
 
@@ -521,13 +550,17 @@ const PDNForm: React.FC<{
           return (
             <div className="flex items-center justify-between gap-4 p-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
               <div className="flex items-start gap-3 min-w-0">
-                <AlertCircle size={18} className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+                <AlertCircle
+                  size={18}
+                  className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5"
+                />
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
                     Este proveedor tiene retención IRPF por defecto del {partnerRate}%
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
-                    El albarán se registrará sin retención. Si el proveedor es profesional sujeto a IRPF, aplícala.
+                    El albarán se registrará sin retención. Si el proveedor es profesional sujeto a
+                    IRPF, aplícala.
                   </p>
                 </div>
               </div>
@@ -675,14 +708,15 @@ const PDNDetail: React.FC<{
   const partner = masters.partners.find((p: any) => p.id === pdn.partnerId);
 
   const columns = useMemo(
-    () => buildDetailLineColumns({
-      kind: DocKind.DeliveryNote,
-      side: DocSide.Purchase,
-      masters,
-      zones,
-      onViewBatch: setViewingBatch,
-      fmt,
-    }),
+    () =>
+      buildDetailLineColumns({
+        kind: DocKind.DeliveryNote,
+        side: DocSide.Purchase,
+        masters,
+        zones,
+        onViewBatch: setViewingBatch,
+        fmt,
+      }),
     [pdn.lines, masters.items, masters.taxGroups],
   );
 
@@ -954,8 +988,7 @@ export const PurchaseDeliveryNotes: React.FC = () => {
           discountRate: l.discountRate != null ? Number(l.discountRate) : undefined,
           discountAmount: l.discountAmount != null ? Number(l.discountAmount) : undefined,
           withholdingRate: l.withholdingRate != null ? Number(l.withholdingRate) : undefined,
-          withholdingAmount:
-            l.withholdingAmount != null ? Number(l.withholdingAmount) : undefined,
+          withholdingAmount: l.withholdingAmount != null ? Number(l.withholdingAmount) : undefined,
           costCenterId: l.costCenterId,
           profitCenterId: l.profitCenterId,
           internalOrderId: l.internalOrderId,
@@ -983,7 +1016,11 @@ export const PurchaseDeliveryNotes: React.FC = () => {
       '',
     );
     if (reason === null) return;
-    if (flags.confirmBeforeCancel && !confirm('¿Cancelar el albarán? Si hay recepción en curso también se cancelará.')) return;
+    if (
+      flags.confirmBeforeCancel &&
+      !confirm('¿Cancelar el albarán? Si hay recepción en curso también se cancelará.')
+    )
+      return;
     const doCall = async (force: boolean) => {
       return fetch(`/api/purchases/delivery-notes/${id}/cancel`, {
         method: 'POST',

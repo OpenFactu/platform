@@ -95,7 +95,8 @@ export const ShiftPatterns: React.FC = () => {
   };
 
   const slotOf = (week: number, dayOfWeek: number) =>
-    editing?.slots?.find((s) => s.week === week && s.dayOfWeek === dayOfWeek)?.shiftTemplateId || '';
+    editing?.slots?.find((s) => s.week === week && s.dayOfWeek === dayOfWeek)?.shiftTemplateId ||
+    '';
 
   // Rellena varios días de una semana con la misma plantilla (o vacío).
   const fillRow = (week: number, days: number[], shiftTemplateId: string) => {
@@ -330,13 +331,28 @@ export const ShiftPatterns: React.FC = () => {
                   </button>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Button type="button" size="sm" variant="secondary" onClick={() => applyPreset('lunVie')}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => applyPreset('lunVie')}
+                  >
                     <Wand2 size={14} /> Lun-Vie con pincel
                   </Button>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => applyPreset('todos')}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => applyPreset('todos')}
+                  >
                     <Wand2 size={14} /> Toda la semana
                   </Button>
-                  <Button type="button" size="sm" variant="secondary" onClick={() => applyPreset('limpiar')}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => applyPreset('limpiar')}
+                  >
                     <Eraser size={14} /> Vaciar todo
                   </Button>
                 </div>
@@ -371,7 +387,11 @@ export const ShiftPatterns: React.FC = () => {
                           <div className="flex items-center justify-center gap-1">
                             <button
                               type="button"
-                              onClick={() => brush ? fillRow(w, [1, 2, 3, 4, 5], brush) : toast.error('Elige pincel')}
+                              onClick={() =>
+                                brush
+                                  ? fillRow(w, [1, 2, 3, 4, 5], brush)
+                                  : toast.error('Elige pincel')
+                              }
                               className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 font-bold"
                               title="Aplicar pincel a Lun-Vie de esta semana"
                             >
@@ -399,7 +419,9 @@ export const ShiftPatterns: React.FC = () => {
                         </td>
                         {Array.from({ length: 7 }).map((_, d) => {
                           const tplId = slotOf(w, d + 1);
-                          const tpl: any = tplId ? templates.find((t: any) => t.id === tplId) : null;
+                          const tpl: any = tplId
+                            ? templates.find((t: any) => t.id === tplId)
+                            : null;
                           const isWeekend = d >= 5;
                           return (
                             <td
@@ -412,7 +434,9 @@ export const ShiftPatterns: React.FC = () => {
                                 'border-b border-slate-200 dark:border-slate-700 p-1.5 cursor-pointer ' +
                                 (d < 6 ? 'border-r ' : '') +
                                 (isWeekend ? 'bg-slate-100/60 dark:bg-slate-800/40' : '') +
-                                (!tplId && brush ? ' hover:bg-indigo-50 dark:hover:bg-indigo-500/10' : '')
+                                (!tplId && brush
+                                  ? ' hover:bg-indigo-50 dark:hover:bg-indigo-500/10'
+                                  : '')
                               }
                             >
                               <select
@@ -476,7 +500,11 @@ export const ShiftPatterns: React.FC = () => {
                     );
                   })}
                 </ul>
-                <AssignmentForm onAdd={addAssignment} employees={employees} cycleWeeks={editing.cycleWeeks} />
+                <AssignmentForm
+                  onAdd={addAssignment}
+                  employees={employees}
+                  cycleWeeks={editing.cycleWeeks}
+                />
               </div>
             </Card>
           )}

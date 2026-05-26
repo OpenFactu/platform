@@ -51,7 +51,15 @@ router.post('/', async (req: any, res) => {
 
 router.patch('/:id', async (req: any, res) => {
   try {
-    const allow = ['date', 'startAt', 'endAt', 'breakMinutes', 'shiftTemplateId', 'status', 'notes'];
+    const allow = [
+      'date',
+      'startAt',
+      'endAt',
+      'breakMinutes',
+      'shiftTemplateId',
+      'status',
+      'notes',
+    ];
     const patch: Record<string, any> = {};
     for (const k of allow) if (k in req.body) patch[k] = req.body[k];
     if (patch.startAt) patch.startAt = new Date(patch.startAt);

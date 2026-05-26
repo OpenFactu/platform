@@ -34,7 +34,14 @@ interface ReportCardProps {
   bg: string;
 }
 
-const ReportCard: React.FC<ReportCardProps> = ({ title, description, icon: Icon, path, color, bg }) => {
+const ReportCard: React.FC<ReportCardProps> = ({
+  title,
+  description,
+  icon: Icon,
+  path,
+  color,
+  bg,
+}) => {
   const navigate = useNavigate();
   return (
     <button

@@ -158,8 +158,7 @@ export const Warehouses: React.FC = () => {
     const filtered = q
       ? bins.filter(
           (b) =>
-            b.name?.toLowerCase().includes(q) ||
-            (b.description || '').toLowerCase().includes(q),
+            b.name?.toLowerCase().includes(q) || (b.description || '').toLowerCase().includes(q),
         )
       : bins;
     const map = new Map<string, any[]>();
@@ -278,8 +277,8 @@ export const Warehouses: React.FC = () => {
                       {selectedWarehouse.name}
                     </h2>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      {selectedWarehouse.location || 'Sin ubicación geográfica'} ·{' '}
-                      {bins.length} ubicaciones
+                      {selectedWarehouse.location || 'Sin ubicación geográfica'} · {bins.length}{' '}
+                      ubicaciones
                     </p>
                   </div>
                   <Button
@@ -360,9 +359,7 @@ export const Warehouses: React.FC = () => {
                     return (
                       <Card key={prefix} bodyClassName="p-0">
                         <button
-                          onClick={() =>
-                            setOpenGroups((prev) => ({ ...prev, [prefix]: !isOpen }))
-                          }
+                          onClick={() => setOpenGroups((prev) => ({ ...prev, [prefix]: !isOpen }))}
                           className="w-full flex items-center gap-2 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                         >
                           {isOpen ? (

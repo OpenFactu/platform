@@ -29,7 +29,10 @@ export type PageSize =
   | 'Custom';
 
 /** Dimensiones físicas (mm) por preset. Para `Custom`, se ignoran. */
-export const PAGE_SIZE_MM: Record<Exclude<PageSize, 'Custom'>, { width: number; height: number }> = {
+export const PAGE_SIZE_MM: Record<
+  Exclude<PageSize, 'Custom'>,
+  { width: number; height: number }
+> = {
   A4: { width: 210, height: 297 },
   Letter: { width: 216, height: 279 },
   // Tiquets térmicos: ancho fijo, alto razonablemente corto. El usuario puede
@@ -356,6 +359,12 @@ export interface CanvasLayout {
    * Handlebars como `queries.<name>`. Un array vacío o ausente = sin SQL.
    */
   queries?: Array<{ name: string; sql: string }>;
+  /**
+   * Parámetros de prueba para las queries del preview.
+   * Ej: `{ itemId: 'xxx', batch: 'yyy' }`. Se pasan al servidor como
+   * `params` y sustituyen los placeholders `:xxx` en las queries.
+   */
+  testParams?: Record<string, unknown>;
   /** Ancho en mm para `pageSize === 'Custom'`. Ignorado en cualquier otro caso. */
   customWidthMm?: number;
   /** Alto en mm para `pageSize === 'Custom'`. Ignorado en cualquier otro caso. */
@@ -488,7 +497,7 @@ export function createLabelLayout(): CanvasLayout {
         // siga generando un código de barras válido.
         sql:
           'SELECT id, code, name, "basePrice", description, ' +
-          'COALESCE(NULLIF(TRIM(COALESCE("barcode", \'\')), \'\'), code) AS barcode ' +
+          "COALESCE(NULLIF(TRIM(COALESCE(\"barcode\", '')), ''), code) AS barcode " +
           'FROM "Item" WHERE id = :itemId',
       },
     ],

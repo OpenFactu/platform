@@ -27,32 +27,32 @@ El CLI descarga la release, levanta Docker y configura todo.
 
 ## Qué incluye
 
-| Área | Detalles |
-|------|----------|
-| **Facturación** | Pedidos, albaranes, facturas (ventas y compras), series, periodos |
-| **Inventario** | Almacenes, zonas, lotes, series, stock por ubicación |
-| **Partners** | Clientes y proveedores con grupos, direcciones, tarifas |
-| **Impuestos** | IVA configurable por grupo fiscal, desglose por factura |
-| **Plantillas PDF** | Documentos personalizables con HTML+Handlebars y editor visual (drag & drop) |
-| **Trazabilidad** | Lotes/series embebidos en PDFs + QR de verificación + Code-128 + hash SHA-256 del documento |
-| **Escáner** | Soporte HID (USB/Bluetooth) y cámara (ZXing) — lee código → busca artículo → añade línea |
-| **Plugins** | Extensiones activables por empresa, con SDK (`@openfactu/plugin-sdk`) |
-| **API REST** | CRUD completo + FactuAPI (transacciones atómicas, IDs pre-asignados) |
-| **Temas** | 9 presets visuales (Keirost Classic, Midnight, Carbon, Deep Ocean, Forest, Plum, Nebula…). Plugins pueden aportar los suyos. |
-| **Mobile** | UI adaptable con drawer + bottom nav + botón central para escáner |
-| **Audit log** | Registro inmutable de cambios por tenant |
+| Área               | Detalles                                                                                                                     |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Facturación**    | Pedidos, albaranes, facturas (ventas y compras), series, periodos                                                            |
+| **Inventario**     | Almacenes, zonas, lotes, series, stock por ubicación                                                                         |
+| **Partners**       | Clientes y proveedores con grupos, direcciones, tarifas                                                                      |
+| **Impuestos**      | IVA configurable por grupo fiscal, desglose por factura                                                                      |
+| **Plantillas PDF** | Documentos personalizables con HTML+Handlebars y editor visual (drag & drop)                                                 |
+| **Trazabilidad**   | Lotes/series embebidos en PDFs + QR de verificación + Code-128 + hash SHA-256 del documento                                  |
+| **Escáner**        | Soporte HID (USB/Bluetooth) y cámara (ZXing) — lee código → busca artículo → añade línea                                     |
+| **Plugins**        | Extensiones activables por empresa, con SDK (`@openfactu/plugin-sdk`)                                                        |
+| **API REST**       | CRUD completo + FactuAPI (transacciones atómicas, IDs pre-asignados)                                                         |
+| **Temas**          | 9 presets visuales (Keirost Classic, Midnight, Carbon, Deep Ocean, Forest, Plum, Nebula…). Plugins pueden aportar los suyos. |
+| **Mobile**         | UI adaptable con drawer + bottom nav + botón central para escáner                                                            |
+| **Audit log**      | Registro inmutable de cambios por tenant                                                                                     |
 
 ## Stack tecnológico
 
-| Capa | Tecnología |
-|------|------------|
-| Frontend | React 19, Tailwind CSS, Vite |
-| Backend | Express, TypeScript, Drizzle ORM |
-| Base de datos | PostgreSQL 15 (schema por tenant) |
-| PDF | Puppeteer + Handlebars (`@openfactu/pdf`) |
-| Escáner cámara | `@zxing/browser` |
-| Infra | Docker, Docker Compose |
-| CLI | Commander.js, Inquirer |
+| Capa           | Tecnología                                |
+| -------------- | ----------------------------------------- |
+| Frontend       | React 19, Tailwind CSS, Vite              |
+| Backend        | Express, TypeScript, Drizzle ORM          |
+| Base de datos  | PostgreSQL 15 (schema por tenant)         |
+| PDF            | Puppeteer + Handlebars (`@openfactu/pdf`) |
+| Escáner cámara | `@zxing/browser`                          |
+| Infra          | Docker, Docker Compose                    |
+| CLI            | Commander.js, Inquirer                    |
 
 ## Arquitectura: Keirost sobre OpenFactu
 
@@ -105,29 +105,29 @@ npm i -g @openfactu/cli
 
 ### Despliegue y configuración
 
-| Comando | Descripción |
-|---------|-------------|
-| `openfactu install` | Descarga e instala (elige release de GitHub) |
-| `openfactu deploy` | Configura acceso externo (LAN / internet) |
-| `openfactu deploy:status` | Estado de los contenedores |
-| `openfactu setup` | Configuración inicial de BD |
-| `openfactu update` | Actualiza a una nueva versión sin perder datos |
-| `openfactu version` | Muestra las versiones del sistema |
+| Comando                   | Descripción                                    |
+| ------------------------- | ---------------------------------------------- |
+| `openfactu install`       | Descarga e instala (elige release de GitHub)   |
+| `openfactu deploy`        | Configura acceso externo (LAN / internet)      |
+| `openfactu deploy:status` | Estado de los contenedores                     |
+| `openfactu setup`         | Configuración inicial de BD                    |
+| `openfactu update`        | Actualiza a una nueva versión sin perder datos |
+| `openfactu version`       | Muestra las versiones del sistema              |
 
 ### Migraciones
 
-| Comando | Descripción |
-|---------|-------------|
-| `openfactu migrate` | Ejecuta migraciones pendientes |
+| Comando                    | Descripción                      |
+| -------------------------- | -------------------------------- |
+| `openfactu migrate`        | Ejecuta migraciones pendientes   |
 | `openfactu migrate:status` | Estado de migraciones por tenant |
 
 ### Tenants y plugins
 
-| Comando | Descripción |
-|---------|-------------|
-| `openfactu tenant list` | Lista las empresas registradas |
-| `openfactu tenant create` | Crea una empresa nueva |
-| `openfactu plugin list` | Lista plugins y su estado por empresa |
+| Comando                   | Descripción                           |
+| ------------------------- | ------------------------------------- |
+| `openfactu tenant list`   | Lista las empresas registradas        |
+| `openfactu tenant create` | Crea una empresa nueva                |
+| `openfactu plugin list`   | Lista plugins y su estado por empresa |
 
 ## Plugins
 

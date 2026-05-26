@@ -99,17 +99,16 @@ export const RouteMapPlanner: React.FC<Props> = ({
   const byId = useMemo(() => new Map(shipments.map((s) => [s.id, s] as const)), [shipments]);
 
   const withCoords = useMemo(
-    () =>
-      shipments.filter(
-        (s) => s.destinationLat != null && s.destinationLng != null,
-      ),
+    () => shipments.filter((s) => s.destinationLat != null && s.destinationLng != null),
     [shipments],
   );
 
   const center = useMemo<[number, number]>(() => {
     if (withCoords.length === 0) return [40.4168, -3.7038]; // Madrid por defecto
-    const lat = withCoords.reduce((a, s) => a + (s.destinationLat as number), 0) / withCoords.length;
-    const lng = withCoords.reduce((a, s) => a + (s.destinationLng as number), 0) / withCoords.length;
+    const lat =
+      withCoords.reduce((a, s) => a + (s.destinationLat as number), 0) / withCoords.length;
+    const lng =
+      withCoords.reduce((a, s) => a + (s.destinationLng as number), 0) / withCoords.length;
     return [lat, lng];
   }, [withCoords]);
 
@@ -118,8 +117,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
       selectedIds
         .map((id) => byId.get(id))
         .filter(
-          (s): s is UnroutedShipment =>
-            !!s && s.destinationLat != null && s.destinationLng != null,
+          (s): s is UnroutedShipment => !!s && s.destinationLat != null && s.destinationLng != null,
         )
         .map((s) => [s.destinationLat as number, s.destinationLng as number]),
     [selectedIds, byId],
@@ -268,7 +266,8 @@ export const RouteMapPlanner: React.FC<Props> = ({
         )}
         {shipments.length > withCoords.length && (
           <div className="text-[10px] text-amber-600 bg-amber-50 rounded px-2 py-1 border border-amber-200">
-            {shipments.length - withCoords.length} envío(s) no aparecen porque no tienen coordenadas. Edita el envío y coloca el pin en el mapa.
+            {shipments.length - withCoords.length} envío(s) no aparecen porque no tienen
+            coordenadas. Edita el envío y coloca el pin en el mapa.
           </div>
         )}
       </div>

@@ -109,19 +109,13 @@ function registerCanvasHelpers() {
     const detectSymbology = (txt: string): string => {
       if (!/^\d+$/.test(txt)) return 'code128';
       if (txt.length === 13) {
-        return computeMod10(txt.slice(0, 12)) === parseInt(txt[12], 10)
-          ? 'ean13'
-          : 'code128';
+        return computeMod10(txt.slice(0, 12)) === parseInt(txt[12], 10) ? 'ean13' : 'code128';
       }
       if (txt.length === 12) {
-        return computeMod10(txt.slice(0, 11)) === parseInt(txt[11], 10)
-          ? 'upca'
-          : 'code128';
+        return computeMod10(txt.slice(0, 11)) === parseInt(txt[11], 10) ? 'upca' : 'code128';
       }
       if (txt.length === 8) {
-        return computeMod10(txt.slice(0, 7)) === parseInt(txt[7], 10)
-          ? 'ean8'
-          : 'code128';
+        return computeMod10(txt.slice(0, 7)) === parseInt(txt[7], 10) ? 'ean8' : 'code128';
       }
       if (txt.length === 14) return 'itf14';
       return 'code128';
@@ -174,7 +168,9 @@ function registerCanvasHelpers() {
       return new Handlebars.SafeString(tryRender('code128', text));
     } catch (err: any) {
       console.error('[barcode helper] code128 fallback también falló:', err?.message || err);
-      const msg = String(err?.message || err).slice(0, 60).replace(/[<>&]/g, '');
+      const msg = String(err?.message || err)
+        .slice(0, 60)
+        .replace(/[<>&]/g, '');
       const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 40"><rect width="320" height="40" fill="#fee2e2" stroke="#dc2626" stroke-width="1"/><text x="160" y="25" font-family="monospace" font-size="10" fill="#991b1b" text-anchor="middle">⚠ ${msg}</text></svg>`;
       return new Handlebars.SafeString(
         `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
@@ -201,10 +197,10 @@ const router = Router();
  * requieren un documento ligado y se renderizan sólo con `queries`.
  */
 const isValidDocType = (t: any): t is DocType =>
-  ALL_DOC_TYPES.includes(t) || t === 'FREE';
+  ALL_DOC_TYPES.includes(t) || t === 'FREE' || t === 'LABEL';
 
-/** True si la plantilla es de tipo "libre" — sin payload de documento. */
-const isFreeDocType = (t: any): boolean => t === 'FREE';
+/** True si la plantilla es de tipo "libre" — sin payload de documento (FREE o LABEL). */
+const isFreeDocType = (t: any): boolean => t === 'FREE' || t === 'LABEL';
 
 // GET / — lista (opcional filtro por ?docType=SINV)
 router.get('/', async (req: any, res) => {
@@ -260,7 +256,11 @@ router.get('/schema-info', async (req: any, res) => {
     const rows: any[] = result?.rows ?? result ?? [];
     const tablesMap = new Map<
       string,
-      { schema: string; name: string; columns: Array<{ name: string; type: string; nullable: boolean }> }
+      {
+        schema: string;
+        name: string;
+        columns: Array<{ name: string; type: string; nullable: boolean }>;
+      }
     >();
     for (const r of rows) {
       const key = `${r.table_schema}.${r.table_name}`;
@@ -496,8 +496,7 @@ router.post('/preview', async (req: any, res) => {
     if (!isValidDocType(docType)) return res.status(400).json({ error: 'docType inválido' });
 
     // Consultas SQL: solo admins. Si se envían desde un rol no admin, las ignoramos.
-    const safeQueries: TemplateQuery[] =
-      Array.isArray(queries) && isAdminUser(req) ? queries : [];
+    const safeQueries: TemplateQuery[] = Array.isArray(queries) && isAdminUser(req) ? queries : [];
 
     // Resolución del payload: priorizar sampleDocId, luego último documento
     // del tenant, y si cualquier paso explota, fallback a fixture. Un preview
@@ -589,7 +588,7 @@ router.post('/:id/render-free', async (req: any, res) => {
     if (!tpl) return res.status(404).json({ error: 'Plantilla no encontrada' });
     if (!isFreeDocType(tpl.docType)) {
       return res.status(400).json({
-        error: 'Sólo plantillas de tipo FREE pueden renderizarse con render-free',
+        error: 'Sólo plantillas de tipo FREE o LABEL pueden renderizarse con render-free',
       });
     }
     if (!tpl.html) {
@@ -603,7 +602,8 @@ router.post('/:id/render-free', async (req: any, res) => {
     // tiene sentido si las define un admin). En cualquier caso ejecutamos las
     // queries con el contexto plano `params` permitiendo placeholders
     // arbitrarios (:itemId, :lote, :foo) además de los estándar.
-    const layoutQueries: TemplateQuery[] = ((tpl.canvasLayout as any)?.queries ?? []) as TemplateQuery[];
+    const layoutQueries: TemplateQuery[] = ((tpl.canvasLayout as any)?.queries ??
+      []) as TemplateQuery[];
     const queryResults = await runTemplateQueries(req.tenantClient, layoutQueries, {
       // Mapeo flexible: cualquier clave de `params` sirve de placeholder.
       // Mantenemos las claves estándar para retrocompatibilidad si la query
@@ -685,7 +685,7 @@ router.post('/test-query', async (req: any, res) => {
     if (!isAdminUser(req)) {
       return res.status(403).json({ error: 'Solo disponible para administradores' });
     }
-    const { name, sql: rawSql, sampleDocId, sampleDocType } = req.body ?? {};
+    const { name, sql: rawSql, sampleDocId, sampleDocType, params } = req.body ?? {};
     if (typeof rawSql !== 'string' || !rawSql.trim()) {
       return res.status(400).json({ error: 'sql es obligatorio' });
     }
@@ -712,6 +712,7 @@ router.post('/test-query', async (req: any, res) => {
         partnerId: ctxPayload?.partner?.id ?? null,
         companyId: ctxPayload?.company?.id ?? null,
         tenantId: req.tenantId ?? null,
+        ...(params && typeof params === 'object' ? params : {}),
       },
     );
     const key = Object.keys(result.byName)[0];

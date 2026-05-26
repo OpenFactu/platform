@@ -78,9 +78,7 @@ export const PluginFieldsSection: React.FC<Props> = ({
                   disabled={disabled}
                 />
                 {f.helpText && (
-                  <div className="text-[11px] text-slate-400 dark:text-slate-500">
-                    {f.helpText}
-                  </div>
+                  <div className="text-[11px] text-slate-400 dark:text-slate-500">{f.helpText}</div>
                 )}
               </div>
             ))}

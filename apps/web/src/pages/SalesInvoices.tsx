@@ -336,7 +336,18 @@ const InvoiceForm: React.FC<{
   setViewingBatch: (l: any) => void;
   internalOrderId: string | null;
   setInternalOrderId: (id: string | null) => void;
-}> = ({ onBack, onSubmit, state, setState, masters, actions, computations, setViewingBatch, internalOrderId, setInternalOrderId }) => {
+}> = ({
+  onBack,
+  onSubmit,
+  state,
+  setState,
+  masters,
+  actions,
+  computations,
+  setViewingBatch,
+  internalOrderId,
+  setInternalOrderId,
+}) => {
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const fmt = useFormat();
   const toast = useToast();
@@ -371,24 +382,21 @@ const InvoiceForm: React.FC<{
 
   const pluginLineFields = usePluginLineFields('SalesInvoiceLine');
   const projectCol = useInternalOrderLineColumn(actions.updateLine);
-  const columns = useMemo(
-    () => {
-      const base = buildFormLineColumns({
-        kind: DocKind.Invoice,
-        side: DocSide.Sale,
-        state,
-        masters,
-        actions,
-        onAssignBatch: setBatchEditingIdx,
-        onViewBatch: setViewingBatch,
-        fmt,
-        getItemUoms: itemUoms.get,
-        pluginLineFields,
-      });
-      return [...base.slice(0, -1), projectCol, base[base.length - 1]];
-    },
-    [state.lines, masters.items, masters.taxGroups, pluginLineFields, projectCol],
-  );
+  const columns = useMemo(() => {
+    const base = buildFormLineColumns({
+      kind: DocKind.Invoice,
+      side: DocSide.Sale,
+      state,
+      masters,
+      actions,
+      onAssignBatch: setBatchEditingIdx,
+      onViewBatch: setViewingBatch,
+      fmt,
+      getItemUoms: itemUoms.get,
+      pluginLineFields,
+    });
+    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+  }, [state.lines, masters.items, masters.taxGroups, pluginLineFields, projectCol]);
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
@@ -457,10 +465,7 @@ const InvoiceForm: React.FC<{
                 className="font-bold text-slate-700 dark:text-slate-200 h-10 border-slate-200 dark:border-slate-700"
               />
             </div>
-            <InternalOrderHeaderField
-              value={internalOrderId}
-              onChange={setInternalOrderId}
-            />
+            <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
           </div>
         </Card>
 
@@ -472,34 +477,34 @@ const InvoiceForm: React.FC<{
             <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest border-b pb-2">
               Series y Periodo
             </h4>
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                Serie de Numeración *
-              </label>
-              <SearchableSelect
-                value={state.seriesId}
-                onChange={setState.setSeriesId}
-                options={masters.series.map((s: any) => ({ label: s.name, value: s.id }))}
-              />
-              {state.seriesError && (
-                <p className="text-[10px] text-rose-500 font-bold mt-1 italic">
-                  {state.seriesError}
-                </p>
-              )}
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  Serie de Numeración *
+                </label>
+                <SearchableSelect
+                  value={state.seriesId}
+                  onChange={setState.setSeriesId}
+                  options={masters.series.map((s: any) => ({ label: s.name, value: s.id }))}
+                />
+                {state.seriesError && (
+                  <p className="text-[10px] text-rose-500 font-bold mt-1 italic">
+                    {state.seriesError}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                  Periodo Contable *
+                </label>
+                <SearchableSelect
+                  value={state.periodId}
+                  onChange={setState.setPeriodId}
+                  options={masters.periods.map((p: any) => ({ label: p.name, value: p.id }))}
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                Periodo Contable *
-              </label>
-              <SearchableSelect
-                value={state.periodId}
-                onChange={setState.setPeriodId}
-                options={masters.periods.map((p: any) => ({ label: p.name, value: p.id }))}
-              />
-            </div>
-          </div>
-        </Card>
+          </Card>
           <PluginFieldsPanel
             tableName="SalesInvoice"
             values={state.pluginData}
@@ -582,7 +587,17 @@ const InvoiceDetail: React.FC<{
   isCancelling: boolean;
   masters: any;
   setViewingBatch: (l: any) => void;
-}> = ({ invoice, onBack, onCancel, onPost, isPosting, canDelete, isCancelling, masters, setViewingBatch }) => {
+}> = ({
+  invoice,
+  onBack,
+  onCancel,
+  onPost,
+  isPosting,
+  canDelete,
+  isCancelling,
+  masters,
+  setViewingBatch,
+}) => {
   const fmt = useFormat();
   const partner = masters.partners.find((p: any) => p.id === invoice.partnerId);
   const series = masters.series?.find((s: any) => s.id === invoice.seriesId);
@@ -618,14 +633,15 @@ const InvoiceDetail: React.FC<{
 
   const pluginLineFields = usePluginLineFields('SalesInvoiceLine');
   const columns = useMemo(
-    () => buildDetailLineColumns({
-      kind: DocKind.Invoice,
-      side: DocSide.Sale,
-      masters,
-      onViewBatch: setViewingBatch,
-      fmt,
-      pluginLineFields,
-    }),
+    () =>
+      buildDetailLineColumns({
+        kind: DocKind.Invoice,
+        side: DocSide.Sale,
+        masters,
+        onViewBatch: setViewingBatch,
+        fmt,
+        pluginLineFields,
+      }),
     [invoice.lines, masters.items, masters.taxGroups, pluginLineFields],
   );
 
