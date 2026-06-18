@@ -19,6 +19,7 @@
     "@openfactu/pdf": "^0.0.2",
     "@openfactu/ui": "^0.2.1",
     "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
     "lucide-react": "^1.8.0",
     "maplibre-gl": "^5.24.0",
     "react": "^19.2.4",
