@@ -418,17 +418,17 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
       <Section title="Campos personalizados" icon={<Stamp size={14} />}>
         <div className="space-y-2">
           <CheckboxRow
-            checked={!!opts.showCustomFields}
-            onChange={(v) => updateOpt('showCustomFields', v)}
+            checked={!!(opts as any).showCustomFields}
+            onChange={(v) => (updateOpt as unknown as (k: string, val: boolean) => void)('showCustomFields', v)}
             title="Mostrar campos personalizados"
             description="Vuelca automáticamente los campos custom definidos para este documento (`visibleIn=pdf`) al final del PDF."
           />
-          {opts.showCustomFields && (
+          {(opts as any).showCustomFields && (
             <div className="space-y-1">
               <FieldLabel>Título del bloque</FieldLabel>
               <Input
-                value={opts.customFieldsLabel ?? 'Datos adicionales'}
-                onChange={(e) => updateOpt('customFieldsLabel', e.target.value)}
+                value={(opts as any).customFieldsLabel ?? 'Datos adicionales'}
+                onChange={(e) => (updateOpt as unknown as (k: string, val: string) => void)('customFieldsLabel', e.target.value)}
                 placeholder="Datos adicionales"
               />
             </div>

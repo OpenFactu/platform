@@ -416,7 +416,7 @@ export const Automations: React.FC = () => {
             <ul>
               {logs.map((r) => (
                 <li key={r.id} className="px-3 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0 flex items-start gap-3">
-                  <Badge variant={r.status === 'ok' ? 'success' : 'danger'}>{r.status}</Badge>
+                  <Badge variant={r.status === 'ok' ? 'success' : 'error'}>{r.status}</Badge>
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
                       {fmt.date(r.startedAt)} · {r.durationMs ?? 0}ms · {r.triggerSource}

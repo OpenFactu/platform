@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Install postgresql-client for pg_dump (tenant export)
+RUN apk add --no-cache postgresql-client
+
 WORKDIR /app
 
 # 0. Chromium del sistema para Puppeteer (render de PDFs vía @openfactu/pdf).

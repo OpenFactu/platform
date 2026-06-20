@@ -984,7 +984,7 @@ export const PurchaseInvoices: React.FC = () => {
           fiscalFields[k.replace('__fiscal_', '')] = v;
         }
       }
-      if (doc.state.withholdingRate) fiscalFields.withholdingRate = doc.state.withholdingRate;
+      if ((doc.state as any).withholdingRate) fiscalFields.withholdingRate = (doc.state as any).withholdingRate;
       if (internalOrderId) fiscalFields.internalOrderId = internalOrderId;
 
       await doc.actions.submitDocument({ ...fiscalFields, ...extra });

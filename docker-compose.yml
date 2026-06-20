@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: "${VITE_API_URL:-http://localhost:3000}"
     ports:
       - "${WEB_PORT:-8080}:80"
     environment:
@@ -26,6 +28,9 @@ services:
     depends_on:
       - db
     environment:
+      - NODE_ENV=production
+      - OPENFACTU_PG_CONTAINER=db
+      - OPENFACTU_FORCE_DOCKER=1
       - DATABASE_URL=postgresql://${POSTGRES_USER:-openfactu}:${POSTGRES_PASSWORD:-openfactu_pass}@db:5432/${POSTGRES_DB:-openfactudb}
     networks:
       - openfactu_net

@@ -79,7 +79,7 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
   };
 
   return (
-    <Modal isOpen={open} onClose={onClose}>
+    <Modal isOpen={open} onClose={onClose} title="Envío masivo">
       <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xs bg-accent/10 text-accent">

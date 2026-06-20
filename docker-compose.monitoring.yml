@@ -1,0 +1,131 @@
+services:
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: openfactu_pgadmin
+    user: "0"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@openfactu.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+    ports:
+      - "0.0.0.0:${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - ./storage/pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+    restart: unless-stopped
+    networks:
+      - openfactu_net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: openfactu_grafana
+    user: "0"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3001}
+      - GF_INSTALL_PLUGINS=grafana-lokiexplore-app
+    ports:
+      - "0.0.0.0:${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - ./storage/grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+    networks:
+      - openfactu_net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: openfactu_prometheus
+    user: "0"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    ports:
+      - "0.0.0.0:${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./storage/prometheus_data:/prometheus
+    depends_on:
+      - cadvisor
+      - node-exporter
+    restart: unless-stopped
+    networks:
+      - openfactu_net
+
+  loki:
+    image: grafana/loki:latest
+    container_name: openfactu_loki
+    user: "0"
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./storage/loki_data:/loki
+    restart: unless-stopped
+    networks:
+      - openfactu_net
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: openfactu_cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "127.0.0.1:${CADVISOR_PORT:-8081}:8080"
+    restart: unless-stopped
+    networks:
+      - openfactu_net
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: openfactu_node_exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - "127.0.0.1:${NODE_EXPORTER_PORT:-9100}:9100"
+    restart: unless-stopped
+    networks:
+      - openfactu_net
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: openfactu_portainer
+    command: -H unix:///var/run/docker.sock
+    ports:
+      - "0.0.0.0:${PORTAINER_PORT:-9000}:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./storage/portainer_data:/data
+    restart: unless-stopped
+    networks:
+      - openfactu_net
+
+networks:
+  openfactu_net:
+    name: openfactu_net
+    driver: bridge

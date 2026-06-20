@@ -78,7 +78,7 @@ export const IncidentTypes: React.FC = () => {
   };
 
   const remove = async (t: IncidentType) => {
-    const ok = await popup.confirm({ title: `Desactivar ${t.code}?`, tone: 'danger' });
+    const ok = await popup.confirm({ title: `Desactivar ${t.code}?`, message: '¿Desactivar este tipo de incidencia?', tone: 'danger' });
     if (!ok) return;
     await fetch(`/api/hr/incident-types/${t.id}`, { method: 'DELETE', headers: authHeaders });
     fetchAll();

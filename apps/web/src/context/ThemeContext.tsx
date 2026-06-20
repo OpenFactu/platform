@@ -34,6 +34,8 @@ export interface FlagsConfig {
   warehouseLocation: 'header' | 'line';
   /** Activa el módulo de logística (envíos, rutas, mapa en tiempo real). */
   logisticsEnabled: boolean;
+  /** Oculta todos los módulos excepto logística e inventario. */
+  logisticsOnly?: boolean;
 }
 
 // Defaults de la marca Keirost — paleta teal + ink (brand guide v1.0).
@@ -64,6 +66,7 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   enforceWarehouseZones: false,
   warehouseLocation: 'header',
   logisticsEnabled: false,
+  logisticsOnly: false,
 };
 
 export interface ThemePreset {

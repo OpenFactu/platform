@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import type { TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ScrollText, Plus, Trash2, Pencil, CheckCircle, Undo2 } from 'lucide-react';
@@ -242,7 +243,7 @@ export const JournalEntries: React.FC = () => {
     }
   };
 
-  const columns = [
+  const columns: TableColumn<Entry>[] = [
     {
       header: 'Nº',
       cell: (r: Entry) => (r.status === 'draft' ? <span className="text-slate-400">—</span> : <b>{r.number}</b>),

@@ -119,7 +119,6 @@ export const BaseMap = forwardRef<BaseMapHandle, BaseMapProps>(function BaseMap(
         interactive={interactive}
         onClick={onClick}
         attributionControl={false}
-        className={className}
       >
         {showNavControl && interactive && (
           <NavigationControl position="top-right" showCompass={false} />

@@ -126,6 +126,29 @@ function resolvePg(bin: 'pg_dump' | 'psql', conn: ReturnType<typeof parseDatabas
     PGPASSWORD: conn.password,
     PGDATABASE: conn.db,
   };
+  // Si OPENFACTU_FORCE_DOCKER está seteado, ignoramos el binario local y usamos docker exec.
+  // Esto es útil cuando el host tiene un psql antiguo (ej: PG 15) pero el container
+  // tiene uno moderno (PG 16+) y queremos asegurar compatibilidad.
+  if (process.env.OPENFACTU_FORCE_DOCKER === '1' && dockerAvailable()) {
+    const container = findPostgresContainer();
+    if (container) {
+      const dockerEnv = {
+        PGHOST: process.env.OPENFACTU_PG_INTERNAL_HOST || 'localhost',
+        PGPORT: process.env.OPENFACTU_PG_INTERNAL_PORT || '5432',
+        PGUSER: conn.user,
+        PGPASSWORD: conn.password,
+        PGDATABASE: conn.db,
+      };
+      const envFlags = Object.entries(dockerEnv).flatMap(([k, v]) => ['-e', `${k}=${v}`]);
+      return {
+        cmd: 'docker',
+        argsPrefix: ['exec', '-i', ...envFlags, container, bin],
+        env: {},
+        mode: 'docker',
+        container,
+      };
+    }
+  }
   if (localBinaryExists(bin)) {
     return { cmd: bin, argsPrefix: [], env: baseEnv, mode: 'local' };
   }
@@ -241,11 +264,15 @@ export class TenantBackup {
     if (!dbUrl) throw new Error('DATABASE_URL no configurada');
     const conn = parseDatabaseUrl(dbUrl);
 
-    const schemaSql = await runPgDump(
+    const schemaSql = (await runPgDump(
       ['--schema-only', '--no-owner', '--no-privileges', '-n', tenant.schemaName],
       conn,
-    );
-    const dataSql = await runPgDump(
+    ))
+      .replace(/^SET\s+transaction_timeout\s*=.*$/gim, '')
+      .replace(/^SET\s+statement_timeout\s*=.*$/gim, '')
+      .replace(/^SET\s+lock_timeout\s*=.*$/gim, '')
+      .replace(/^SET\s+idle_in_transaction_session_timeout\s*=.*$/gim, '');
+    const dataSql = (await runPgDump(
       [
         '--data-only',
         '--no-owner',
@@ -255,7 +282,11 @@ export class TenantBackup {
         tenant.schemaName,
       ],
       conn,
-    );
+    ))
+      .replace(/^SET\s+transaction_timeout\s*=.*$/gim, '')
+      .replace(/^SET\s+statement_timeout\s*=.*$/gim, '')
+      .replace(/^SET\s+lock_timeout\s*=.*$/gim, '')
+      .replace(/^SET\s+idle_in_transaction_session_timeout\s*=.*$/gim, '');
     console.log(
       `[TenantBackup.export] tenant=${tenant.name} schema=${tenant.schemaName} ` +
         `schemaSql=${schemaSql.length}B dataSql=${dataSql.length}B`,
@@ -407,12 +438,17 @@ export class TenantBackup {
       return out;
     };
 
-    // Los pg_dump modernos (17+) emiten `\restrict <token>` y `\unrestrict
-    // <token>` al abrir/cerrar el dump. Un `psql` 15 no entiende esos
-    // backslash-commands y con ON_ERROR_STOP=1 aborta, dejando el schema a
-    // medias. Los quitamos.
+    // Los pg_dump modernos (16+) emiten `\restrict <token>`, `\unrestrict`,
+    // y `SET transaction_timeout = ...`. Un `psql` 15 no entiende esos
+    // backslash-commands ni el SET, y con ON_ERROR_STOP=1 aborta, dejando el
+    // schema a medias. Los quitamos.
     const stripRestrict = (s: string) =>
-      s.replace(/^\\(?:restrict|unrestrict)\s+\S+\s*$/gim, '');
+      s
+        .replace(/^\\(?:restrict|unrestrict)\s+\S+\s*$/gim, '')
+        .replace(/^SET\s+transaction_timeout\s*=.*$/gim, '')
+        .replace(/^SET\s+statement_timeout\s*=.*$/gim, '')
+        .replace(/^SET\s+lock_timeout\s*=.*$/gim, '')
+        .replace(/^SET\s+idle_in_transaction_session_timeout\s*=.*$/gim, '');
 
     let schemaSql = stripRestrict(rewriteSchema(schemaEntry.getData().toString()));
     const dataSql = stripRestrict(rewriteSchema(dataEntry.getData().toString()));
@@ -520,17 +556,22 @@ export class TenantBackup {
       );
     }
 
-    // Restaurar uploads/.
+    // Restaurar uploads/ — best effort, solo si existe en el zip
     const uploadsBase = defaultUploadsBase();
     const targetUploadsDir = path.join(uploadsBase, slug);
-    fs.mkdirSync(targetUploadsDir, { recursive: true });
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oftenant-import-'));
-    zip.extractEntryTo('uploads/', tmpDir, true, true);
-    const extractedUploads = path.join(tmpDir, 'uploads');
-    if (fs.existsSync(extractedUploads)) {
-      copyDir(extractedUploads, targetUploadsDir);
+    if (zip.getEntry('uploads/')) {
+      fs.mkdirSync(targetUploadsDir, { recursive: true });
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oftenant-import-'));
+      try {
+        zip.extractEntryTo('uploads/', tmpDir, true, true);
+        const extractedUploads = path.join(tmpDir, 'uploads');
+        if (fs.existsSync(extractedUploads)) {
+          copyDir(extractedUploads, targetUploadsDir);
+        }
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
     }
-    fs.rmSync(tmpDir, { recursive: true, force: true });
 
     return { tenantId };
   }

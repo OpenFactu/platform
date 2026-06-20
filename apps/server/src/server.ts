@@ -103,6 +103,7 @@ import { seedGeo } from './core/geo/seedGeo';
 import { PdfRenderer } from '@openfactu/pdf';
 import { requestCounterMiddleware } from './core/system/RequestCounter';
 import { getServerVersion } from './core/system/SystemMetrics';
+import { register, httpRequestsTotal, httpRequestDurationSeconds } from './core/metrics/prometheus';
 
 // El `.env` real vive en el root del monorepo (no hay uno propio en apps/server).
 // Primero intenta el CWD por si alguien lo ha duplicado; luego cae al del root.
@@ -121,6 +122,30 @@ app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 // Contador global de peticiones — alimenta el cockpit (/api/system/metrics).
 // Va antes de las rutas para contar absolutamente todo, incluidos 404.
 app.use(requestCounterMiddleware);
+
+// Middleware de métricas Prometheus — mide duración y cuenta requests
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = (Date.now() - start) / 1000;
+    const route = req.route?.path || req.path || '/';
+    const method = req.method;
+    const status = res.statusCode.toString();
+    httpRequestsTotal.inc({ method, route, status });
+    httpRequestDurationSeconds.observe({ method, route, status }, duration);
+  });
+  next();
+});
+
+// Endpoint de métricas para Prometheus (sin auth, antes del tenant context)
+app.get('/metrics', async (_req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(String(err));
+  }
+});
 
 // 1. Rutas de Configuración y Auth (Fuera del contexto de tenant obligatorio)
 app.use('/api/setup', setupRouter);

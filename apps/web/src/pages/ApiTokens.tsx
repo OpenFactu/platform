@@ -142,7 +142,7 @@ export const ApiTokens: React.FC = () => {
                   t.revokedAt ? 'opacity-50' : ''
                 }`}
               >
-                <Badge variant={t.revokedAt ? 'danger' : 'success'}>
+                <Badge variant={t.revokedAt ? 'error' : 'success'}>
                   {t.revokedAt ? 'Revocado' : 'Activo'}
                 </Badge>
                 <div className="flex-1 min-w-0">

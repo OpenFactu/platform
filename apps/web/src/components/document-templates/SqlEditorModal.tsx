@@ -215,7 +215,7 @@ export const SqlEditorModal: React.FC<Props> = ({
         const text = editor.getValue();
         const formatted = text.replace(
           /\b(select|from|where|and|or|not|in|is|null|as|join|inner|left|right|outer|on|group|by|order|having|limit|offset|union|with|case|when|then|else|end|distinct|exists|count|sum|avg|min|max|coalesce|like|ilike|asc|desc)\b/gi,
-          (m) => m.toUpperCase(),
+          (m: string) => m.toUpperCase(),
         );
         editor.setValue(formatted);
       },

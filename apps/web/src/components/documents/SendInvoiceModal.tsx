@@ -88,7 +88,7 @@ export const SendInvoiceModal: React.FC<Props> = ({
   };
 
   return (
-    <Modal isOpen={open} onClose={onClose}>
+    <Modal isOpen={open} onClose={onClose} title="Enviar factura">
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xs bg-accent/10 text-accent">

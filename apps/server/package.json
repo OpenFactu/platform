@@ -32,7 +32,8 @@
     "nodemailer": "^6.10.1",
     "pg": "^8.20.0",
     "qrcode": "^1.5.4",
-    "ws": "^8.20.0"
+    "ws": "^8.20.0",
+    "prom-client": "^15.0.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

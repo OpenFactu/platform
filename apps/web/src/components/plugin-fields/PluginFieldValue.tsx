@@ -90,19 +90,19 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
       );
 
     case 'DATE':
-      return <span className="text-xs text-slate-700 dark:text-slate-200">{fmt?.date(value) ?? String(value)}</span>;
+      return <span className="text-xs text-slate-700 dark:text-slate-200">{fmt?.date?.(value) ?? String(value)}</span>;
 
     case 'CURRENCY':
       return (
         <span className="font-medium text-slate-700 dark:text-slate-200 tabular-nums">
-          {fmt?.money(value) ?? String(value)}
+          {fmt?.money?.(value) ?? String(value)}
         </span>
       );
 
     case 'PERCENT':
       return (
         <span className="font-medium text-slate-700 dark:text-slate-200 tabular-nums">
-          {fmt?.number(value, 2) ?? String(value)}%
+          {fmt?.number?.(value, 2) ?? String(value)}%
         </span>
       );
 
@@ -114,7 +114,7 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
     case 'DECIMAL':
       return (
         <span className="tabular-nums text-slate-700 dark:text-slate-200">
-          {fmt?.number(value, 4) ?? String(value)}
+          {fmt?.number?.(value, 4) ?? String(value)}
         </span>
       );
 

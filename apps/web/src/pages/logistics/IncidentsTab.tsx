@@ -196,7 +196,7 @@ export const IncidentsTab: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="danger">Incidencia</Badge>
+                        <Badge variant="error">Incidencia</Badge>
                         {s.trackingNumber && (
                           <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
                             {s.trackingNumber}

@@ -122,6 +122,13 @@ export const Partners: React.FC = () => {
         website: partner.website || '',
         priceListId: partner.priceListId || '',
         countryCode: partner.countryCode || 'ES',
+        defaultDocumentTypeId: partner.defaultDocumentTypeId || '',
+        defaultPaymentMethodId: partner.defaultPaymentMethodId || '',
+        defaultPaymentTermId: partner.defaultPaymentTermId || '',
+        defaultWithholdingRate: partner.defaultWithholdingRate ?? '',
+        iban: partner.iban || '',
+        bankName: partner.bankName || '',
+        bankSwift: partner.bankSwift || '',
       });
       setAddresses(partner.addresses?.map((a: any) => ({ ...a })) || []);
     } else {
@@ -137,6 +144,13 @@ export const Partners: React.FC = () => {
         website: '',
         priceListId: '',
         countryCode: 'ES',
+        defaultDocumentTypeId: '',
+        defaultPaymentMethodId: '',
+        defaultPaymentTermId: '',
+        defaultWithholdingRate: '',
+        iban: '',
+        bankName: '',
+        bankSwift: '',
       });
       setAddresses([]);
     }

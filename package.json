@@ -25,6 +25,7 @@
   "dependencies": {
     "@libsql/client": "^0.17.2",
     "@openfactu/pdf": "^0.1.0",
+    "@zxing/library": "^0.21.3",
     "drizzle-orm": "^0.45.2",
     "react-is": "^19.2.6"
   }

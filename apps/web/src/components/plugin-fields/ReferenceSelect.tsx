@@ -33,7 +33,7 @@ export const ReferenceSelect: React.FC<Props> = ({
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'x-tenant-id': user.tenantId,
+            'x-tenant-id': user.tenantId || '',
           },
         },
       )

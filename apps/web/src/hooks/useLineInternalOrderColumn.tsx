@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import type { TableColumn } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
 
 interface InternalOrder {
@@ -37,10 +38,10 @@ export function useInternalOrderLineColumn(updateLine: (idx: number, key: string
       .catch(() => setOrders([]));
   }, [token, user?.tenantId]);
 
-  return useMemo(
+  return useMemo<TableColumn<any>>(
     () => ({
       header: 'Proyecto',
-      width: 220,
+      width: '220px',
       cell: (line: any, idx: number) => (
         <select
           value={line.internalOrderId || ''}
