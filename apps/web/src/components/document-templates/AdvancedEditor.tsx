@@ -13,10 +13,12 @@ export interface AdvancedEditorHandle {
 interface Props {
   value: string;
   onChange: (value: string) => void;
+  /** Lenguaje Monaco. Default `'html'`. Usa `'css'` para el editor de estilos. */
+  language?: string;
 }
 
 export const AdvancedEditor = forwardRef<AdvancedEditorHandle, Props>(
-  ({ value, onChange }, ref) => {
+  ({ value, onChange, language = 'html' }, ref) => {
     const editorRef = useRef<any>(null);
 
     useImperativeHandle(
@@ -47,7 +49,8 @@ export const AdvancedEditor = forwardRef<AdvancedEditorHandle, Props>(
           <MonacoEditor
             height="100%"
             width="100%"
-            defaultLanguage="html"
+            defaultLanguage={language}
+            language={language}
             value={value}
             onChange={(v) => onChange(v || '')}
             onMount={(editor) => {

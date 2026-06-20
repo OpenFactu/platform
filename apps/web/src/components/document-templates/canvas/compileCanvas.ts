@@ -36,6 +36,11 @@ import {
   type ConditionalElement,
   type SignatureElement,
   type PageBreakElement,
+  type DividerElement,
+  type SummaryElement,
+  type BoxElement,
+  type ListElement,
+  type CurrentDateElement,
 } from './types';
 
 export interface CompileOptions {
@@ -57,6 +62,9 @@ export function compileCanvas(layout: CanvasLayout, options: CompileOptions = {}
   //    bandas, sin líneas base ni colapsos de margen imprevistos.
   let cursor = 0;
   const bandsHtml = layout.bands
+    // Las bandas ocultas no se emiten NI acumulan altura (si acumularan, dejarían
+    // un hueco vertical y desplazarían todo lo que va debajo).
+    .filter((b) => !b.hidden)
     .map((b) => {
       const html = renderBand(b, cursor);
       cursor += b.height;
@@ -116,7 +124,10 @@ function renderWatermark(layout: CanvasLayout): string {
 // ---------- bandas y elementos ----------
 
 function renderBand(band: Band, topMm: number): string {
-  const inner = band.elements.map((el) => renderElement(el)).join('\n');
+  const inner = band.elements
+    .filter((el) => !el.hidden)
+    .map((el) => renderElement(el))
+    .join('\n');
   return `<section class="band band-${band.kind}" data-band="${band.kind}" style="position:absolute;left:0;right:0;top:${topMm}mm;height:${band.height}mm;">
 ${inner}
 </section>`;
@@ -148,6 +159,16 @@ function renderElement(el: CanvasElement): string {
       return renderSignature(el);
     case 'pageBreak':
       return renderPageBreak(el);
+    case 'divider':
+      return renderDivider(el);
+    case 'summary':
+      return renderSummary(el);
+    case 'box':
+      return renderBox(el);
+    case 'list':
+      return renderList(el);
+    case 'currentDate':
+      return renderCurrentDate(el);
   }
 }
 
@@ -156,7 +177,7 @@ function renderSignature(el: SignatureElement): string {
   const borderColor = el.style?.borderColor ?? '#334155';
   const color = el.style?.color ?? '#334155';
   const fontSize = el.style?.fontSize ?? 9;
-  return `<div class="el el-signature" style="${positionStyle(el)}display:flex;flex-direction:column;justify-content:flex-end;">
+  return `<div class="${elClass('signature', el)}" style="${positionStyle(el)}display:flex;flex-direction:column;justify-content:flex-end;${elExtra(el)}">
 <div style="flex:1;border-bottom:1px solid ${borderColor};"></div>
 <div style="text-align:center;font-size:${fontSize}pt;color:${color};padding-top:2mm;">${label}</div>
 </div>`;
@@ -166,7 +187,7 @@ function renderPageBreak(el: PageBreakElement): string {
   // `page-break-before: always` funciona incluso dentro de contenedores con
   // overflow hidden cuando Puppeteer está generando el PDF. Ocupa 0px de alto
   // visualmente en el flujo — sólo sirve como marcador de salto.
-  return `<div class="el el-pageBreak" style="${positionStyle(el)}page-break-before:always;break-before:page;"></div>`;
+  return `<div class="${elClass('pageBreak', el)}" style="${positionStyle(el)}page-break-before:always;break-before:page;${elExtra(el)}"></div>`;
 }
 
 function renderConditional(el: ConditionalElement): string {
@@ -202,7 +223,7 @@ function renderConditional(el: ConditionalElement): string {
   const closeBlock = el.operator === 'falsy' ? `{{/unless}}` : `{{/if}}`;
   const elseBlock = el.elseText && el.elseText.length > 0 ? `{{else}}${el.elseText}` : '';
 
-  return `<div class="el el-conditional" style="${positionStyle(el)}${styleToCss(el.style)}">${openBlock}${el.thenText}${elseBlock}${closeBlock}</div>`;
+  return `<div class="${elClass('conditional', el)}" style="${positionStyle(el)}${styleToCss(el.style)}${elExtra(el)}">${openBlock}${el.thenText}${elseBlock}${closeBlock}</div>`;
 }
 
 function renderText(el: TextElement): string {
@@ -220,12 +241,12 @@ function renderText(el: TextElement): string {
   } else {
     content = escapeHtml(el.text).replace(/\n/g, '<br/>');
   }
-  return `<div class="el el-text" style="${positionStyle(el)}${styleToCss(el.style)}">${content}</div>`;
+  return `<div class="${elClass('text', el)}" style="${positionStyle(el)}${textBoxStyle(el)}${elExtra(el)}">${content}</div>`;
 }
 
 function renderImage(el: ImageElement): string {
   const fit = el.fit ?? 'contain';
-  return `<div class="el el-image" style="${positionStyle(el)}">
+  return `<div class="${elClass('image', el)}" style="${positionStyle(el)}${elExtra(el)}">
 <img src="${escapeAttr(el.src)}" style="width:100%;height:100%;object-fit:${fit};" />
 </div>`;
 }
@@ -235,13 +256,13 @@ function renderShape(el: ShapeElement): string {
   const borderColor = style.borderColor ?? '#000';
   const borderWidth = style.borderWidth ?? 1;
   if (el.shape === 'line') {
-    return `<div class="el el-shape" style="${positionStyle(el)}border-top:${borderWidth}px ${style.borderStyle ?? 'solid'} ${borderColor};"></div>`;
+    return `<div class="${elClass('shape', el)}" style="${positionStyle(el)}border-top:${borderWidth}px ${style.borderStyle ?? 'solid'} ${borderColor};${elExtra(el)}"></div>`;
   }
-  return `<div class="el el-shape" style="${positionStyle(el)}border:${borderWidth}px ${style.borderStyle ?? 'solid'} ${borderColor};background:${style.backgroundColor ?? 'transparent'};"></div>`;
+  return `<div class="${elClass('shape', el)}" style="${positionStyle(el)}border:${borderWidth}px ${style.borderStyle ?? 'solid'} ${borderColor};background:${style.backgroundColor ?? 'transparent'};${elExtra(el)}"></div>`;
 }
 
 function renderSpacer(el: { id: string } & CanvasElement): string {
-  return `<div class="el el-spacer" data-id="${el.id}" style="${positionStyle(el as any)}"></div>`;
+  return `<div class="${elClass('spacer', el)}" data-id="${el.id}" style="${positionStyle(el as any)}${elExtra(el)}"></div>`;
 }
 
 function renderField(el: FieldElement): string {
@@ -250,11 +271,46 @@ function renderField(el: FieldElement): string {
   // producidos por el editor de texto rico → se emiten sin escapar.
   const prefix = el.prefix ? (el.rich ? el.prefix : escapeHtml(el.prefix)) : '';
   const suffix = el.suffix ? (el.rich ? el.suffix : escapeHtml(el.suffix)) : '';
-  return `<div class="el el-field" style="${positionStyle(el)}${styleToCss(el.style)}">${prefix}${expr}${suffix}</div>`;
+  return `<div class="${elClass('field', el)}" style="${positionStyle(el)}${textBoxStyle(el)}${elExtra(el)}">${prefix}${expr}${suffix}</div>`;
 }
 
 function renderLinesTable(el: LinesTableElement): string {
   const cols = normalizeColumnWidths(el.columns);
+  // Fuente de iteración: `lines` (default) o una query SQL (source = 'query:NOMBRE').
+  const iter =
+    el.source && el.source.startsWith('query:')
+      ? `queries.${sanitizePath(el.source.slice('query:'.length))}`
+      : 'lines';
+
+  const wrapperStyle = `${positionStyle(el)}${styleToCss(el.style)}${elExtra(el)}`;
+
+  // ----- Layout clave-valor: lista vertical etiqueta:valor (una agrupación por línea) -----
+  if (el.layout === 'keyValue') {
+    const kvRows = cols
+      .map(
+        (c) =>
+          `<div class="kv-row"><span class="kv-label">${escapeHtml(c.label)}</span><span class="kv-value" style="text-align:${c.align ?? 'right'};${styleToCss(c.style)}">${buildFieldExpression(c.path, c.format)}</span></div>`,
+      )
+      .join('');
+    return `<div class="${elClass('linesTable', el)}" style="${wrapperStyle}">
+{{#each ${iter}}}
+<div class="kv-group">${kvRows}</div>
+{{/each}}
+{{#unless ${iter}.length}}
+<div class="lines-empty">Sin líneas</div>
+{{/unless}}
+</div>`;
+  }
+
+  // ----- Tabla clásica con preset visual -----
+  const preset = el.tableStyle ?? 'default';
+  // Overrides por instancia como CSS vars en la <table>; heredan a th/td.
+  const vars = [
+    el.headerBg ? `--lt-header-bg:${cssColor(el.headerBg)};` : '',
+    el.cellPadding != null ? `--lt-cell-pad:${Number(el.cellPadding)}px;` : '',
+    el.borderColor ? `--lt-border:${cssColor(el.borderColor)};` : '',
+  ].join('');
+
   const header =
     el.showHeader === false
       ? ''
@@ -272,14 +328,14 @@ function renderLinesTable(el: LinesTableElement): string {
     )
     .join('');
 
-  return `<div class="el el-linesTable" style="${positionStyle(el)}${styleToCss(el.style)}">
-<table class="lines-table">
+  return `<div class="${elClass('linesTable', el)}" style="${wrapperStyle}">
+<table class="lines-table lines-table--${preset}"${vars ? ` style="${vars}"` : ''}>
 ${header}
 <tbody>
-{{#each lines}}
+{{#each ${iter}}}
 <tr>${bodyCells}</tr>
 {{/each}}
-{{#unless lines.length}}
+{{#unless ${iter}.length}}
 <tr><td colspan="${cols.length}" class="lines-empty">Sin líneas</td></tr>
 {{/unless}}
 </tbody>
@@ -309,31 +365,132 @@ function renderTotals(el: TotalsElement): string {
     );
   }
 
-  return `<div class="el el-totals" style="${positionStyle(el)}${styleToCss(el.style)}">
+  return `<div class="${elClass('totals', el)}" style="${positionStyle(el)}${styleToCss(el.style)}${elExtra(el)}">
 ${rows.join('\n')}
 </div>`;
 }
 
 function renderQR(el: QRElement): string {
   const scale = el.scale ?? 4;
-  // TODO(openfactu/pdf): registrar helper `qrCode` que devuelva data URI SVG.
-  // Hasta entonces, esta expresión renderiza vacío (comportamiento por defecto de Handlebars).
-  return `<div class="el el-qr" style="${positionStyle(el)}">
+  // El helper `qrCode` se registra en el servidor (registerCanvasHelpers, con la
+  // librería `qrcode`) y devuelve un data URI SVG. Aquí solo emitimos la llamada.
+  return `<div class="${elClass('qr', el)}" style="${positionStyle(el)}${elExtra(el)}">
 <img src="{{{qrCode ${asLiteralOrExpr(el.value)} scale=${scale}}}}" style="width:100%;height:100%;object-fit:contain;" />
 </div>`;
 }
 
 function renderBarcode(el: BarcodeElement): string {
-  // TODO(openfactu/pdf): registrar helper `barcode` que devuelva data URI SVG.
-  return `<div class="el el-barcode" style="${positionStyle(el)}">
+  // Los helpers `barcode`/`qrCode` se registran en el servidor (registerCanvasHelpers,
+  // con bwip-js/qrcode) y devuelven un data URI SVG. Aquí solo emitimos la llamada.
+  return `<div class="${elClass('barcode', el)}" style="${positionStyle(el)}${elExtra(el)}">
 <img src="{{{barcode ${asLiteralOrExpr(el.value)} symbology="${el.symbology}" includeText=${el.includeText ? 'true' : 'false'}}}}" style="width:100%;height:100%;object-fit:contain;" />
 </div>`;
+}
+
+/** Resuelve la colección a iterar/agregar: `lines` (default) o `queries.NOMBRE`. */
+function iterSource(source?: string): string {
+  return source && source.startsWith('query:')
+    ? `queries.${sanitizePath(source.slice('query:'.length))}`
+    : 'lines';
+}
+
+function renderDivider(el: DividerElement): string {
+  const s = el.style ?? {};
+  const w = s.borderWidth ?? 1;
+  const color = s.borderColor ?? '#94a3b8';
+  const lineStyle = s.borderStyle && s.borderStyle !== 'none' ? s.borderStyle : 'solid';
+  // Horizontal → línea a media altura (border-top sobre un div que ocupa el alto);
+  // vertical → border-left. Usamos un hijo centrado para que la línea quede en medio.
+  const side = el.orientation === 'vertical' ? 'border-left' : 'border-top';
+  const inner =
+    el.orientation === 'vertical'
+      ? `height:100%;width:0;margin:0 auto;${side}:${w}px ${lineStyle} ${color};`
+      : `width:100%;height:0;${side}:${w}px ${lineStyle} ${color};`;
+  return `<div class="${elClass('divider', el)}" style="${positionStyle(el)}display:flex;align-items:center;justify-content:center;${elExtra(el)}"><div style="${inner}"></div></div>`;
+}
+
+function renderSummary(el: SummaryElement): string {
+  const iter = iterSource(el.source);
+  // Subexpresión del agregado. `count` no usa path.
+  const agg =
+    el.op === 'count'
+      ? `(count ${iter})`
+      : `(${el.op} ${iter} "${sanitizePath(el.path ?? '')}")`;
+  // Envolvemos con el helper de formato si corresponde (reutilizando los mismos
+  // helpers que buildFieldExpression: formatCurrency/formatNumber/formatDate...).
+  let expr: string;
+  switch (el.format) {
+    case 'currency':
+      expr = `{{formatCurrency ${agg}}}`;
+      break;
+    case 'number':
+      expr = `{{formatNumber ${agg}}}`;
+      break;
+    case 'percent':
+      expr = `{{formatNumber ${agg}}}%`;
+      break;
+    case 'date':
+      expr = `{{formatDate ${agg}}}`;
+      break;
+    default:
+      expr = `{{${agg.slice(1, -1)}}}`; // {{op iter "path"}} sin doble paréntesis
+  }
+  const prefix = el.prefix ? escapeHtml(el.prefix) : '';
+  const suffix = el.suffix ? escapeHtml(el.suffix) : '';
+  return `<div class="${elClass('summary', el)}" style="${positionStyle(el)}${textBoxStyle(el)}${elExtra(el)}">${prefix}${expr}${suffix}</div>`;
+}
+
+function renderBox(el: BoxElement): string {
+  // Marco visual: el fondo/borde/radio salen de styleToCss (que ya emite border-radius).
+  return `<div class="${elClass('box', el)}" style="${positionStyle(el)}${styleToCss(el.style)}${elExtra(el)}"></div>`;
+}
+
+function renderList(el: ListElement): string {
+  const iter = iterSource(el.source);
+  const tag = el.ordered ? 'ol' : 'ul';
+  const listStyle =
+    el.marker === 'none' ? 'none' : el.marker === 'number' || el.ordered ? 'decimal' : 'disc';
+  const itemExpr = el.itemPath ? `{{${sanitizePath(el.itemPath)}}}` : '{{this}}';
+  return `<div class="${elClass('list', el)}" style="${positionStyle(el)}${styleToCss(el.style)}${elExtra(el)}">
+<${tag} style="margin:0;padding-left:1.2em;list-style:${listStyle};">
+{{#each ${iter}}}<li>${itemExpr}</li>{{/each}}
+{{#unless ${iter}.length}}<li style="list-style:none;color:#94a3b8;font-style:italic;">Sin datos</li>{{/unless}}
+</${tag}>
+</div>`;
+}
+
+function renderCurrentDate(el: CurrentDateElement): string {
+  const expr = el.mode === 'datetime' ? `{{generatedAt}}` : `{{today}}`;
+  const prefix = el.prefix ? escapeHtml(el.prefix) : '';
+  return `<div class="${elClass('currentDate', el)}" style="${positionStyle(el)}${textBoxStyle(el)}${elExtra(el)}">${prefix}${expr}</div>`;
 }
 
 // ---------- helpers de estilo ----------
 
 function positionStyle(el: { x: number; y: number; w: number; h: number }): string {
   return `position:absolute;left:${el.x}mm;top:${el.y}mm;width:${el.w}mm;height:${el.h}mm;`;
+}
+
+/** Clase CSS del nodo raíz de un elemento, incluyendo su `className` opcional. */
+function elClass(kind: string, el: { className?: string }): string {
+  // Sanitizamos para no romper el atributo class (comillas/ángulos).
+  const extra = el.className ? ` ${el.className.replace(/["'<>]/g, '').trim()}` : '';
+  return `el el-${kind}${extra}`;
+}
+
+/** Declaraciones CSS inline extra de un elemento, listas para anexar al `style`. */
+function elExtra(el: { customCss?: string }): string {
+  if (!el.customCss) return '';
+  // Son declaraciones, no reglas. Quitamos comillas/ángulos que romperían el
+  // atributo style y garantizamos el `;` final.
+  const css = el.customCss.replace(/["<>]/g, '').trim();
+  if (!css) return '';
+  return css.endsWith(';') ? css : `${css};`;
+}
+
+/** Sanea un valor de color para incrustarlo en un atributo style. */
+function cssColor(c: string): string {
+  return c.replace(/[^#\w(),.%\s-]/g, '');
 }
 
 function styleToCss(style?: ElementStyle): string {
@@ -347,12 +504,31 @@ function styleToCss(style?: ElementStyle): string {
   if (style.backgroundColor) parts.push(`background-color:${style.backgroundColor};`);
   if (style.textAlign) parts.push(`text-align:${style.textAlign};`);
   if (style.padding != null) parts.push(`padding:${style.padding}px;`);
-  if (style.borderWidth != null || style.borderStyle || style.borderColor) {
+  // Solo emitimos borde si hay un estilo de línea real, igual que el preview del
+  // canvas. Antes bastaba con que `borderColor`/`borderWidth` estuvieran puestos
+  // (con `borderStyle ?? 'solid'`), por lo que aparecía un borde en el PDF que en
+  // el editor no se veía (p.ej. al tocar solo el color de borde).
+  if (style.borderStyle && style.borderStyle !== 'none') {
     parts.push(
-      `border:${style.borderWidth ?? 1}px ${style.borderStyle ?? 'solid'} ${style.borderColor ?? '#000'};`,
+      `border:${style.borderWidth ?? 1}px ${style.borderStyle} ${style.borderColor ?? '#000'};`,
     );
   }
+  if (style.borderRadius != null) parts.push(`border-radius:${style.borderRadius}px;`);
   return parts.join('');
+}
+
+/**
+ * Estilo de "caja de texto" que replica el preview del canvas (`ElementPreview`):
+ * flexbox con centrado vertical y `justify-content` según `textAlign`, más los
+ * defaults de tamaño (10pt) y padding (2px). Así el texto/campo/resumen/fecha se
+ * ve igual en el editor y en el PDF (incluida la alineación del texto rico).
+ */
+function textBoxStyle(el: { style?: ElementStyle }): string {
+  const a = el.style?.textAlign;
+  const justify = a === 'center' ? 'center' : a === 'right' ? 'flex-end' : 'flex-start';
+  const fs = el.style?.fontSize ? '' : 'font-size:10pt;';
+  const pad = el.style?.padding != null ? '' : 'padding:2px;';
+  return `display:flex;align-items:center;justify-content:${justify};${fs}${pad}${styleToCss(el.style)}`;
 }
 
 function buildPageCss(layout: CanvasLayout): string {
@@ -408,9 +584,17 @@ function buildMetaComment(layout: CanvasLayout): string {
 const BASE_CSS = `.band { position: relative; width: 100%; overflow: hidden; }
 .el { box-sizing: border-box; overflow: hidden; }
 .lines-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.lines-table th, .lines-table td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; font-size: 9pt; }
-.lines-table th { background: #f1f5f9; font-weight: 600; }
+.lines-table th, .lines-table td { padding: var(--lt-cell-pad, 4px 6px); border-bottom: 1px solid var(--lt-border, #e5e7eb); font-size: 9pt; }
+.lines-table th { background: var(--lt-header-bg, #f1f5f9); font-weight: 600; }
+.lines-table--bordered, .lines-table--bordered th, .lines-table--bordered td { border: 1px solid var(--lt-border, #cbd5e1); }
+.lines-table--striped tbody tr:nth-child(even) { background: #f8fafc; }
+.lines-table--compact th, .lines-table--compact td { padding: var(--lt-cell-pad, 1px 4px); font-size: 8pt; }
+.lines-table--borderless th, .lines-table--borderless td { border: none; }
 .lines-empty { text-align: center; color: #94a3b8; font-style: italic; }
+.kv-group { margin-bottom: 4px; }
+.kv-row { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; font-size: 9pt; }
+.kv-label { color: #64748b; font-weight: 600; }
+.kv-value { font-variant-numeric: tabular-nums; }
 .totals-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 10pt; }
 .totals-row-grand { border-top: 1px solid #000; font-weight: 700; font-size: 11pt; }`;
 

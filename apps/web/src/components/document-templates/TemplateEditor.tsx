@@ -18,6 +18,18 @@ import { usePreview } from './usePreview';
 import { FieldExplorer } from './FieldExplorer';
 import { compileCanvas } from './canvas/compileCanvas';
 import { buildSimpleLabelLayout, defaultSimpleArticleSettings } from './canvas/buildSimpleLabel';
+import { createEmptyLayout, type CanvasLayout } from './canvas/types';
+
+/**
+ * Layout-semilla para una plantilla nueva sin documento ligado:
+ *  - LABEL (Etiqueta) → etiqueta de artículo (editor simple).
+ *  - FREE (Documento Libre) → lienzo en blanco A4 que se diseña desde cero.
+ */
+function seedLayoutFor(docType: DocType): CanvasLayout {
+  return docType === 'LABEL'
+    ? buildSimpleLabelLayout(defaultSimpleArticleSettings())
+    : createEmptyLayout();
+}
 
 interface Props {
   template: TemplateRow | null;
@@ -56,20 +68,18 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   const [visualOpts, setVisualOpts] = useState<VisualOptions>(
     initialMeta || DEFAULT_VISUAL_OPTIONS,
   );
-  // Layout del canvas — sólo lo usamos para FREE (etiquetas) en este editor:
-  // si el usuario elige FREE precargamos un layout de etiqueta hecho con el
-  // builder del modo simple (defaults de artículo) para que la plantilla nueva
-  // se abra directamente en el editor visual simple, sin necesidad de tocar
-  // el canvas avanzado.
-  const initialFreeLayout = React.useRef(buildSimpleLabelLayout(defaultSimpleArticleSettings()));
+  // Layout del canvas — sólo lo usamos para FREE/LABEL en este editor: al elegir
+  // uno de esos tipos precargamos su layout-semilla (etiqueta de artículo para
+  // LABEL, lienzo en blanco A4 para FREE) y persistimos su canvasLayout para que
+  // el diseñador lo abra preconfigurado.
   const [canvasLayoutForSave, setCanvasLayoutForSave] = useState<any>(
     (template as any)?.canvasLayout ?? null,
   );
 
   const [html, setHtml] = useState(
     template?.html ||
-      (docType === 'FREE'
-        ? compileCanvas(initialFreeLayout.current, { docType: 'FREE' })
+      (isFreeOrLabelTemplate
+        ? compileCanvas(seedLayoutFor(docType), { docType })
         : buildVisualTemplate('SINV', DEFAULT_VISUAL_OPTIONS)),
   );
   const [saving, setSaving] = useState(false);
@@ -83,13 +93,14 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   useEffect(() => {
     if (isCanvasTemplate) return;
     if (isFreeOrLabelTemplate) {
-      // Cuando el usuario cambia el tipo a FREE (sobre una plantilla nueva o
-      // que tenía html visual previo), regeneramos al layout de etiqueta y
-      // cargamos su canvasLayout para que se persista al guardar y el
+      // Cuando el usuario cambia el tipo a FREE o LABEL (sobre una plantilla
+      // nueva o que tenía html visual previo), regeneramos al layout-semilla del
+      // tipo y cargamos su canvasLayout para que se persista al guardar y el
       // diseñador lo abra preconfigurado.
       if (!template?.html) {
-        setHtml(compileCanvas(initialFreeLayout.current, { docType: 'FREE' }));
-        setCanvasLayoutForSave(initialFreeLayout.current);
+        const seed = seedLayoutFor(docType);
+        setHtml(compileCanvas(seed, { docType }));
+        setCanvasLayoutForSave(seed);
       }
       return;
     }

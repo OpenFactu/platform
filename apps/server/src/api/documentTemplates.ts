@@ -2,10 +2,6 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import fs from 'fs';
 import Handlebars from 'handlebars';
-import QRCode from 'qrcode';
-// bwip-js no tiene @types oficial; import dinámico tolerante.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const bwipjs = require('bwip-js');
 import { eq, and, asc, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { PdfRenderer, ALL_DOC_TYPES, extractMetaFromHtml, type DocType } from '@openfactu/pdf';
@@ -35,14 +31,51 @@ function isAdminUser(req: any): boolean {
  * reiniciar el servidor tras tocar sus fuentes.
  */
 let canvasHelpersRegistered = false;
-function registerCanvasHelpers() {
+export function registerCanvasHelpers() {
   if (canvasHelpersRegistered) return;
   canvasHelpersRegistered = true;
+
+  // Nota: los helpers `barcode` y `qrCode` los registra @openfactu/pdf (>=0.1.3)
+  // dentro de PdfRenderer.registerHelpers(); resuelven symbology 'auto' con
+  // detección EAN/UPC y fallback a code128. Aquí registramos SOLO los helpers que
+  // el paquete no trae, para mantener una única fuente de verdad.
 
   // Comparadores extra usados por el elemento condicional del diseñador.
   // `eq` y `gt` ya los registra @openfactu/pdf; añadimos `neq` y `lt`.
   Handlebars.registerHelper('neq', (a: unknown, b: unknown) => a !== b);
   Handlebars.registerHelper('lt', (a: unknown, b: unknown) => Number(a) < Number(b));
+
+  // Agregados sobre una colección (lo usa el elemento "Resumen" del diseñador).
+  // Se invocan como subexpresión: {{formatCurrency (sum lines "lineTotal")}} o {{count lines}}.
+  const getByPath = (obj: any, path?: string): unknown => {
+    if (!path) return obj;
+    return String(path)
+      .split('.')
+      .reduce((acc: any, k) => (acc == null ? acc : acc[k]), obj);
+  };
+  const toNumbers = (arr: unknown, path?: string): number[] =>
+    (Array.isArray(arr) ? arr : [])
+      .map((item) => Number(getByPath(item, path)))
+      .filter((n) => Number.isFinite(n));
+  Handlebars.registerHelper('count', (arr: unknown) => (Array.isArray(arr) ? arr.length : 0));
+  Handlebars.registerHelper('sum', (arr: unknown, path?: string) =>
+    toNumbers(arr, typeof path === 'string' ? path : undefined).reduce((a, b) => a + b, 0),
+  );
+  Handlebars.registerHelper('avg', (arr: unknown, path?: string) => {
+    const ns = toNumbers(arr, typeof path === 'string' ? path : undefined);
+    return ns.length ? ns.reduce((a, b) => a + b, 0) / ns.length : 0;
+  });
+  Handlebars.registerHelper('min', (arr: unknown, path?: string) => {
+    const ns = toNumbers(arr, typeof path === 'string' ? path : undefined);
+    return ns.length ? Math.min(...ns) : 0;
+  });
+  Handlebars.registerHelper('max', (arr: unknown, path?: string) => {
+    const ns = toNumbers(arr, typeof path === 'string' ? path : undefined);
+    return ns.length ? Math.max(...ns) : 0;
+  });
+
+  // Fecha actual del render (lo usa el elemento "Fecha" en modo solo-fecha).
+  Handlebars.registerHelper('today', () => new Date().toLocaleDateString('es-ES'));
 
   // Formatea una dirección estructurada (PartnerAddressObject) como texto
   // multilínea. Si el valor no es objeto (null, string ya formateada...), se
@@ -62,121 +95,6 @@ function registerCanvasHelpers() {
     return new Handlebars.SafeString(lines.map(escapeHtmlSafe).join('<br/>'));
   });
 
-  Handlebars.registerHelper('qrCode', (value: any) => {
-    try {
-      const text = String(value ?? '');
-      if (!text) return new Handlebars.SafeString('');
-      const qr = QRCode.create(text, { errorCorrectionLevel: 'M' });
-      const size = qr.modules.size;
-      let path = '';
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          if (qr.modules.get(x, y)) path += `M${x},${y}h1v1h-1z`;
-        }
-      }
-      // `preserveAspectRatio="xMidYMid meet"` evita que el QR se estire cuando
-      // el contenedor no es cuadrado; `shape-rendering=crispEdges` mantiene
-      // los bordes nítidos al escalar en PDF.
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path fill="#000" d="${path}"/></svg>`;
-      return new Handlebars.SafeString(
-        `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
-      );
-    } catch {
-      return new Handlebars.SafeString('');
-    }
-  });
-
-  Handlebars.registerHelper('barcode', function (this: any, value: any, options: any) {
-    const hash = (options && options.hash) || {};
-    let symbology = (hash.symbology as string) || 'code128';
-    const includeText = Boolean(hash.includeText);
-    const text = String(value ?? '');
-
-    /**
-     * Detecta la simbología más adecuada según la longitud y forma del valor.
-     * Usa el algoritmo mod-10 estándar de EAN/UPC para validar el dígito de
-     * control. Cualquier cosa que no encaje vuelve a Code 128 (universal).
-     */
-    const computeMod10 = (digits: string): number => {
-      let sum = 0;
-      for (let i = 0; i < digits.length; i++) {
-        const d = parseInt(digits[i], 10);
-        const weight = (digits.length - i) % 2 === 0 ? 1 : 3;
-        sum += d * weight;
-      }
-      return (10 - (sum % 10)) % 10;
-    };
-    const detectSymbology = (txt: string): string => {
-      if (!/^\d+$/.test(txt)) return 'code128';
-      if (txt.length === 13) {
-        return computeMod10(txt.slice(0, 12)) === parseInt(txt[12], 10) ? 'ean13' : 'code128';
-      }
-      if (txt.length === 12) {
-        return computeMod10(txt.slice(0, 11)) === parseInt(txt[11], 10) ? 'upca' : 'code128';
-      }
-      if (txt.length === 8) {
-        return computeMod10(txt.slice(0, 7)) === parseInt(txt[7], 10) ? 'ean8' : 'code128';
-      }
-      if (txt.length === 14) return 'itf14';
-      return 'code128';
-    };
-    if (symbology === 'auto') {
-      symbology = detectSymbology(text);
-    }
-
-    console.log(
-      `[barcode helper] value=${JSON.stringify(value)} symbology=${symbology} text.len=${text.length}`,
-    );
-
-    // Helper interno: dado un bcid intenta generar el SVG. Devuelve el data URI
-    // o lanza con el mensaje de error. Separar nos permite hacer fallback a
-    // code128 cuando una symbology estricta (EAN-13, EAN-8, UPC-A) rechaza el
-    // valor por longitud o checksum.
-    const tryRender = (bcid: string, txt: string): string => {
-      const svg = bwipjs.toSVG({
-        bcid,
-        text: txt,
-        scale: 2,
-        height: 10,
-        includetext: includeText,
-        textxalign: 'center',
-      });
-      return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-    };
-
-    if (!text) {
-      // No hay valor — placeholder rojo claro indicando el campo vacío.
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 40"><rect width="200" height="40" fill="#fee2e2" stroke="#dc2626" stroke-width="1"/><text x="100" y="25" font-family="monospace" font-size="11" fill="#991b1b" text-anchor="middle">barcode vacío</text></svg>`;
-      return new Handlebars.SafeString(
-        `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
-      );
-    }
-
-    // 1) Intento con la symbology pedida.
-    try {
-      return new Handlebars.SafeString(tryRender(symbology, text));
-    } catch (err: any) {
-      console.warn(
-        `[barcode helper] ${symbology} falló para "${text}": ${err?.message || err}. Reintentando con code128.`,
-      );
-    }
-
-    // 2) Fallback: code128 acepta cualquier ASCII y casi nunca falla. Así una
-    // etiqueta nunca sale en blanco por una incompatibilidad de longitud o
-    // checksum entre la symbology y el valor.
-    try {
-      return new Handlebars.SafeString(tryRender('code128', text));
-    } catch (err: any) {
-      console.error('[barcode helper] code128 fallback también falló:', err?.message || err);
-      const msg = String(err?.message || err)
-        .slice(0, 60)
-        .replace(/[<>&]/g, '');
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 40"><rect width="320" height="40" fill="#fee2e2" stroke="#dc2626" stroke-width="1"/><text x="160" y="25" font-family="monospace" font-size="10" fill="#991b1b" text-anchor="middle">⚠ ${msg}</text></svg>`;
-      return new Handlebars.SafeString(
-        `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
-      );
-    }
-  });
 }
 
 function escapeHtmlSafe(s: unknown): string {
@@ -542,7 +460,11 @@ router.post('/preview', async (req: any, res) => {
       tenantId: req.tenantId ?? null,
       ...extraParams,
     } as any);
-    const enrichedPayload = { ...payload, queries: queryResults.byName } as any;
+    const enrichedPayload = {
+      ...payload,
+      queries: queryResults.byName,
+      generatedAt: (payload as any)?.generatedAt ?? new Date().toLocaleString('es-ES'),
+    } as any;
     if (queryResults.errors.length > 0) {
       console.warn(
         '[DocumentTemplates] preview queries with errors:',
@@ -618,6 +540,8 @@ router.post('/:id/render-free', async (req: any, res) => {
     const enrichedPayload: any = {
       params,
       queries: queryResults.byName,
+      // Fecha de generación para el elemento "Fecha" (FREE no trae documento).
+      generatedAt: new Date().toLocaleString('es-ES'),
     };
 
     // Logueamos en consola y en una cabecera de respuesta cualquier error de
@@ -726,6 +650,50 @@ router.post('/test-query', async (req: any, res) => {
       rowCount: rows.length,
       truncated: rows.length >= 1000,
     });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /:id/param-options — opciones (value/label) de un parámetro de tipo lista
+// cuya fuente es una consulta (`optionsQuery` definida por un admin en la
+// plantilla). Disponible para cualquier usuario del tenant (solo lectura): no
+// ejecuta SQL arbitrario del cliente, solo la consulta guardada en la plantilla.
+router.post('/:id/param-options', async (req: any, res) => {
+  try {
+    const paramName = String(req.body?.param ?? '');
+    if (!paramName) return res.status(400).json({ error: 'param es obligatorio' });
+    const [tpl] = await req.tenantClient
+      .select()
+      .from(schema.documentTemplates)
+      .where(eq(schema.documentTemplates.id, req.params.id));
+    if (!tpl) return res.status(404).json({ error: 'Plantilla no encontrada' });
+    const schemaDefs: any[] = (tpl.canvasLayout as any)?.paramsSchema ?? [];
+    const def = schemaDefs.find((p) => p?.name === paramName);
+    const sqlText = def?.optionsQuery;
+    if (!sqlText || typeof sqlText !== 'string') return res.json({ options: [] });
+
+    const validation = validateQuery(sqlText);
+    if (validation) return res.status(400).json({ error: validation });
+
+    const result = await runTemplateQueries(req.tenantClient, [{ name: 'opts', sql: sqlText }], {
+      docId: null,
+      partnerId: null,
+      companyId: null,
+      tenantId: req.tenantId ?? null,
+    } as any);
+    if (result.errors.length > 0) {
+      return res.json({ options: [], error: result.errors[0]?.error });
+    }
+    const rows = (result.byName['opts'] ?? []) as Record<string, unknown>[];
+    // Convención: columnas `value` y `label`. Si faltan, 1ª col = value, 2ª = label.
+    const options = rows.map((r) => {
+      const keys = Object.keys(r);
+      const value = r.value !== undefined ? r.value : r[keys[0]];
+      const label = r.label !== undefined ? r.label : (r[keys[1]] ?? value);
+      return { value: String(value ?? ''), label: String(label ?? '') };
+    });
+    res.json({ options });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

@@ -10,21 +10,7 @@ import {
   FilterBar,
   SearchableSelect,
 } from '@openfactu/ui';
-import { useAuth } from '../context/AuthContext';
-import { CloneDocumentActions } from '../components/common/CloneDocumentActions';
 import { Plus, ArrowLeft, Save, Download } from 'lucide-react';
-import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
-import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
-import {
-  buildDetailLineColumns,
-  buildFormLineColumns,
-  statusBadgeProps,
-} from '../components/documentLineCells';
-import { notifyDocChange, useDataVersion } from '../utils/dataRefresh';
-import { downloadPdf } from '../utils/downloadPdf';
-import { useFormat } from '../hooks/useFormat';
-import { useItemUoms } from '../hooks/useItemUoms';
-import { usePluginLineFields } from '../hooks/usePluginLineFields';
 import {
   useDocument,
   useDataTable,
@@ -35,6 +21,12 @@ import {
   DOC_TYPE_CONFIGS,
   decomposeDocType,
 } from '@openfactu/common';
+import { useAuth } from '../../context/AuthContext';
+import { useFormat } from '../../hooks/useFormat';
+import { downloadPdf } from '../../utils/downloadPdf';
+import { buildDetailLineColumns, buildFormLineColumns, statusBadgeProps } from '../../components/documentLineCells';
+import { useItemUoms } from '../../hooks/useItemUoms';
+import { notifyDocChange, useDataVersion } from '../../utils/dataRefresh';
 
 // ── LISTADO ────────────────────────────────────────────────────────
 

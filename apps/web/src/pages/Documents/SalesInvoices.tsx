@@ -12,9 +12,9 @@ import {
   SearchableSelect,
   cn,
 } from '@openfactu/ui';
-import { useAuth } from '../context/AuthContext';
-import { CloneDocumentActions } from '../components/common/CloneDocumentActions';
-import { useTabs, useCurrentTab } from '../context/TabsContext';
+import { useAuth } from '../../context/AuthContext';
+import { CloneDocumentActions } from '../../components/common/CloneDocumentActions';
+import { useTabs, useCurrentTab } from '../../context/TabsContext';
 import {
   FileStack,
   Plus,
@@ -30,37 +30,37 @@ import {
   CreditCard,
   Mail,
 } from 'lucide-react';
-import { DocumentActionBar } from '../components/DocumentActionBar';
-import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
-import { AttachmentsPanel } from '../components/AttachmentsPanel';
-import { TraceabilityButton } from '../components/common/TraceabilityButton';
-import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
+import { DocumentActionBar } from '../../components/DocumentActionBar';
+import { DocumentDetailLayout } from '../../components/DocumentDetailLayout';
+import { AttachmentsPanel } from '../../components/AttachmentsPanel';
+import { TraceabilityButton } from '../../components/common/TraceabilityButton';
+import { DocumentTotalsBlock } from '../../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
   buildFormLineColumns,
   findFirstIncompleteBatchLine,
   statusBadgeProps,
-} from '../components/documentLineCells';
-import { notifyDocChange, useDataVersion } from '../utils/dataRefresh';
-import { downloadPdf } from '../utils/downloadPdf';
-import { useFormat } from '../hooks/useFormat';
-import { BatchSelectionModal } from '../components/BatchSelectionModal';
-import { BatchAssignmentPanel } from '../components/BatchAssignmentPanel';
-import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
-import { useItemUoms } from '../hooks/useItemUoms';
-import { usePluginLineFields } from '../hooks/usePluginLineFields';
-import { usePluginListColumns } from '../components/plugin-fields';
+} from '../../components/documentLineCells';
+import { notifyDocChange, useDataVersion } from '../../utils/dataRefresh';
+import { downloadPdf } from '../../utils/downloadPdf';
+import { useFormat } from '../../hooks/useFormat';
+import { BatchSelectionModal } from '../../components/BatchSelectionModal';
+import { BatchAssignmentPanel } from '../../components/BatchAssignmentPanel';
+import { PluginFieldsPanel } from '../../components/PluginFieldsPanel';
+import { useItemUoms } from '../../hooks/useItemUoms';
+import { usePluginLineFields } from '../../hooks/usePluginLineFields';
+import { usePluginListColumns } from '../../components/plugin-fields';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
-import { useDocumentScanner } from '../hooks/useDocumentScanner';
-import { InternalOrderHeaderField } from '../components/InternalOrderHeaderField';
-import { InternalOrderChip } from '../components/InternalOrderChip';
-import { useInternalOrderLineColumn } from '../hooks/useLineInternalOrderColumn';
-import { PaymentStatusBadge } from '../components/payments/PaymentStatusBadge';
-import { RegisterPaymentModal } from '../components/payments/RegisterPaymentModal';
-import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
-import { SendInvoiceModal } from '../components/documents/SendInvoiceModal';
-import { InvoicePaymentsList } from '../components/payments/InvoicePaymentsList';
-import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
+import { useDocumentScanner } from '../../hooks/useDocumentScanner';
+import { InternalOrderHeaderField } from '../../components/InternalOrderHeaderField';
+import { InternalOrderChip } from '../../components/InternalOrderChip';
+import { useInternalOrderLineColumn } from '../../hooks/useLineInternalOrderColumn';
+import { PaymentStatusBadge } from '../../components/payments/PaymentStatusBadge';
+import { RegisterPaymentModal } from '../../components/payments/RegisterPaymentModal';
+import { DocumentFiscalPanel } from '../../components/documents/DocumentFiscalPanel';
+import { SendInvoiceModal } from '../../components/documents/SendInvoiceModal';
+import { InvoicePaymentsList } from '../../components/payments/InvoicePaymentsList';
+import { BulkSendToolbar } from '../../components/documents/BulkSendToolbar';
 
 // --- Sub-componente: VISTA DE LISTADO ---
 const InvoiceList: React.FC<{

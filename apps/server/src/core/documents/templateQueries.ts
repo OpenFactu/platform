@@ -93,50 +93,64 @@ export interface QueryResults {
  * Valida sintácticamente (heurística) una consulta antes de ejecutarla.
  * Devuelve null si es válida, o un mensaje de error si no.
  */
+/** Quita comentarios SQL (`-- línea` y `/* bloque *​/`) para validar el código real. */
+function stripSqlComments(sql: string): string {
+  return sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\n]*/g, ' ');
+}
+
 export function validateQuery(rawSql: string): string | null {
-  const trimmed = rawSql.trim();
-  if (!trimmed) return 'La consulta está vacía';
+  if (!rawSql.trim()) return 'La consulta está vacía';
+  // Validamos sobre el código SIN comentarios: así una consulta que empieza con
+  // un bloque comentado (`-- ...`) o que menciona una palabra reservada dentro
+  // de un comentario no se rechaza por error.
+  const code = stripSqlComments(rawSql).trim();
+  if (!code) return 'La consulta está vacía (solo comentarios)';
   // Separador: solo permitimos una sentencia. Un `;` extra al final es OK.
-  const withoutTrailingSemicolon = trimmed.replace(/;\s*$/, '');
+  const withoutTrailingSemicolon = code.replace(/;\s*$/, '');
   if (withoutTrailingSemicolon.includes(';')) {
     return 'Solo se permite una sentencia por consulta';
   }
-  const head = trimmed.toUpperCase().replace(/^\s+/, '');
+  const head = code.toUpperCase().replace(/^\s+/, '');
   if (!head.startsWith('SELECT') && !head.startsWith('WITH')) {
     return 'Solo se permiten consultas SELECT o WITH';
   }
   // Buscamos palabras reservadas de escritura/DDL como palabras completas.
   for (const kw of FORBIDDEN_KEYWORDS) {
     const re = new RegExp(`\\b${kw}\\b`, 'i');
-    if (re.test(trimmed)) {
-      // Hacemos una excepción para `SET` dentro de comentarios o entrecomillado —
-      // aquí el test es conservador: si aparece como palabra, se bloquea.
+    if (re.test(code)) {
       return `La palabra reservada "${kw}" no está permitida en consultas de plantilla`;
     }
   }
   return null;
 }
 
+/** Convierte un escalar a literal SQL seguro (string entrecomillado, número, bool, NULL). */
+function toSqlLiteral(v: unknown): string {
+  if (v === null || v === undefined) return 'NULL';
+  if (typeof v === 'number') return Number.isFinite(v) ? String(v) : 'NULL';
+  if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+  return `'${String(v).replace(/'/g, "''")}'`;
+}
+
 /**
  * Sustituye placeholders `:nombre` por literales SQL seguros. Acepta strings,
- * números, booleanos o null. Cualquier otro tipo se rechaza.
+ * números, booleanos, null y ARRAYS (para `WHERE x IN (:param)`): un array se
+ * expande a una lista de literales separados por comas. Un array vacío → `NULL`.
  */
 function substituteParams(rawSql: string, ctx: QueryExecutionContext): string {
   // Aceptamos cualquier clave del contexto (los 4 estándar + extras como
-  // `itemId`, `lote`, ...). Solo se substituyen escalares; objetos/arrays se
-  // ignoran y dejan el placeholder literal para que Postgres falle con un
-  // mensaje claro.
+  // `itemId`, `lote`, `almacenes`, ...).
   const map: Record<string, unknown> = { ...ctx };
   return rawSql.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, (_, name) => {
     if (!(name in map)) {
       return `:${name}`;
     }
     const v = map[name];
-    if (v === null || v === undefined) return 'NULL';
-    if (typeof v === 'number') return String(v);
-    if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
-    if (typeof v !== 'string') return `:${name}`;
-    return `'${v.replace(/'/g, "''")}'`;
+    if (Array.isArray(v)) {
+      // Multi-valor: lista de literales para usar dentro de un `IN (...)`.
+      return v.length === 0 ? 'NULL' : v.map(toSqlLiteral).join(', ');
+    }
+    return toSqlLiteral(v);
   });
 }
 
@@ -167,9 +181,13 @@ export async function runTemplateQueries(
     }
     try {
       const prepared = substituteParams(q.sql, ctx);
+      // Los saltos de línea alrededor de la subconsulta evitan que un comentario
+      // `-- ...` al final de la query (sin salto) comente el `)` de cierre.
       const wrapped = `
         SELECT *
-        FROM (${prepared.replace(/;\s*$/, '')}) AS _template_query
+        FROM (
+${prepared.replace(/;\s*$/, '')}
+        ) AS _template_query
         LIMIT ${MAX_ROWS}
       `;
       const rows = await tenantClient.transaction(async (tx: any) => {
@@ -180,7 +198,16 @@ export async function runTemplateQueries(
       });
       byName[name] = Array.isArray(rows) ? rows : [];
     } catch (err: any) {
-      errors.push({ name, error: err?.message || String(err) });
+      // Drizzle envuelve el error de pg en `Failed query: <sql>` ocultando la
+      // causa real (relación inexistente, columna mal escrita, tipo inválido…).
+      // La extraemos de `err.cause` para devolver algo accionable, p.ej.
+      // `relation "item" does not exist` cuando la tabla va sin comillas.
+      const detail =
+        (err?.cause?.message as string | undefined) ||
+        (err?.cause?.detail as string | undefined) ||
+        err?.message ||
+        String(err);
+      errors.push({ name, error: detail });
     }
   }
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { FileDigit, Plus, Trash2 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export const DocumentSeries: React.FC = () => {
   const { token, user } = useAuth();

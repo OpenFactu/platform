@@ -11,8 +11,8 @@ import {
   FilterBar,
   SearchableSelect,
 } from '@openfactu/ui';
-import { useAuth } from '../context/AuthContext';
-import { useTabs, useCurrentTab } from '../context/TabsContext';
+import { useAuth } from '../../context/AuthContext';
+import { useTabs, useCurrentTab } from '../../context/TabsContext';
 import {
   Truck,
   Plus,
@@ -29,34 +29,34 @@ import {
   Barcode,
   Download,
 } from 'lucide-react';
-import { DocumentActionBar } from '../components/DocumentActionBar';
-import { InternalOrderHeaderField } from '../components/InternalOrderHeaderField';
-import { InternalOrderChip } from '../components/InternalOrderChip';
-import { useInternalOrderLineColumn } from '../hooks/useLineInternalOrderColumn';
-import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
-import { AttachmentsPanel } from '../components/AttachmentsPanel';
-import { CloneDocumentActions } from '../components/common/CloneDocumentActions';
-import { PreparationButton } from '../components/common/PreparationButton';
-import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
-import { TraceabilityButton } from '../components/common/TraceabilityButton';
-import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
+import { DocumentActionBar } from '../../components/DocumentActionBar';
+import { InternalOrderHeaderField } from '../../components/InternalOrderHeaderField';
+import { InternalOrderChip } from '../../components/InternalOrderChip';
+import { useInternalOrderLineColumn } from '../../hooks/useLineInternalOrderColumn';
+import { DocumentDetailLayout } from '../../components/DocumentDetailLayout';
+import { AttachmentsPanel } from '../../components/AttachmentsPanel';
+import { CloneDocumentActions } from '../../components/common/CloneDocumentActions';
+import { PreparationButton } from '../../components/common/PreparationButton';
+import { DocumentFiscalPanel } from '../../components/documents/DocumentFiscalPanel';
+import { TraceabilityButton } from '../../components/common/TraceabilityButton';
+import { DocumentTotalsBlock } from '../../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
   buildFormLineColumns,
   statusBadgeProps,
-} from '../components/documentLineCells';
-import { notifyDocChange, useDataVersion } from '../utils/dataRefresh';
-import { downloadPdf } from '../utils/downloadPdf';
-import { useFormat } from '../hooks/useFormat';
-import { useTheme } from '../context/ThemeContext';
-import { BatchSelectionModal } from '../components/BatchSelectionModal';
-import { BatchAssignmentPanel } from '../components/BatchAssignmentPanel';
-import { useItemUoms } from '../hooks/useItemUoms';
-import { usePluginLineFields } from '../hooks/usePluginLineFields';
-import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
+} from '../../components/documentLineCells';
+import { notifyDocChange, useDataVersion } from '../../utils/dataRefresh';
+import { downloadPdf } from '../../utils/downloadPdf';
+import { useFormat } from '../../hooks/useFormat';
+import { useTheme } from '../../context/ThemeContext';
+import { BatchSelectionModal } from '../../components/BatchSelectionModal';
+import { BatchAssignmentPanel } from '../../components/BatchAssignmentPanel';
+import { useItemUoms } from '../../hooks/useItemUoms';
+import { usePluginLineFields } from '../../hooks/usePluginLineFields';
+import { PluginFieldsPanel } from '../../components/PluginFieldsPanel';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
-import { useDocumentScanner } from '../hooks/useDocumentScanner';
-import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
+import { useDocumentScanner } from '../../hooks/useDocumentScanner';
+import { BulkSendToolbar } from '../../components/documents/BulkSendToolbar';
 
 // Eliminamos SerialBadges inline para usar el modo Popup
 
