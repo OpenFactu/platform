@@ -20,9 +20,7 @@ export const DriverLayout: React.FC = () => {
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col">
       <header className="flex items-center justify-between px-4 py-2 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="text-xs">
-          <span className="font-bold text-slate-800 dark:text-slate-100">
-            {user?.username}
-          </span>{' '}
+          <span className="font-bold text-slate-800 dark:text-slate-100">{user?.username}</span>{' '}
           <span className="text-slate-500">· repartidor</span>
         </div>
         <button

@@ -107,18 +107,28 @@ function findPostgresContainer(): string | null {
       ['ps', '--filter', 'ancestor=postgres', '--format', '{{.Names}}'],
       { encoding: 'utf8' },
     );
-    const first = r.stdout?.split('\n').map((s) => s.trim()).filter(Boolean)[0];
+    const first = r.stdout
+      ?.split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)[0];
     if (first) return first;
     // Fallback a nombres comunes.
     const r2 = spawnSync('docker', ['ps', '--format', '{{.Names}}'], { encoding: 'utf8' });
-    const names = r2.stdout?.split('\n').map((s) => s.trim()).filter(Boolean) || [];
+    const names =
+      r2.stdout
+        ?.split('\n')
+        .map((s) => s.trim())
+        .filter(Boolean) || [];
     return names.find((n) => /(^|-)db(-\d+)?$/.test(n) || n.includes('postgres')) || null;
   } catch {
     return null;
   }
 }
 
-function resolvePg(bin: 'pg_dump' | 'psql', conn: ReturnType<typeof parseDatabaseUrl>): PgInvocation {
+function resolvePg(
+  bin: 'pg_dump' | 'psql',
+  conn: ReturnType<typeof parseDatabaseUrl>,
+): PgInvocation {
   const baseEnv = {
     PGHOST: conn.host,
     PGPORT: String(conn.port),
@@ -208,11 +218,9 @@ async function runPgDump(
 async function runPsql(input: string, conn: ReturnType<typeof parseDatabaseUrl>): Promise<void> {
   const inv = resolvePg('psql', conn);
   return new Promise((resolve, reject) => {
-    const proc = spawn(
-      inv.cmd,
-      [...inv.argsPrefix, '-d', conn.db, '-v', 'ON_ERROR_STOP=1'],
-      { env: { ...process.env, ...inv.env } },
-    );
+    const proc = spawn(inv.cmd, [...inv.argsPrefix, '-d', conn.db, '-v', 'ON_ERROR_STOP=1'], {
+      env: { ...process.env, ...inv.env },
+    });
     let stderr = '';
     let spawnFailed = false;
     proc.on('error', (err: NodeJS.ErrnoException) => {
@@ -401,7 +409,10 @@ export class TenantBackup {
 
     // Crear tenant + schema vacío. SchemaManager hace migraciones — no lo
     // queremos aquí, así que creamos el schema a mano vía publicDb.
-    const slug = `tenant_${opts.newName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}`;
+    const slug = `tenant_${opts.newName
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '')}`;
     const publicDb = ClientFactory.getClient('public');
 
     const tenantId = await SchemaManager.createTenantSchema(opts.newName, slug, {
@@ -480,10 +491,7 @@ export class TenantBackup {
     // abortar ruidosamente que reventar datos de producción.
     if (origSchema && origSchema !== slug) {
       const escOrig = origSchema.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const leakRegex = new RegExp(
-        `(^|[^A-Za-z0-9_])${escOrig}(\\.|"|$|\\s|;)`,
-        'm',
-      );
+      const leakRegex = new RegExp(`(^|[^A-Za-z0-9_])${escOrig}(\\.|"|$|\\s|;)`, 'm');
       for (const [label, body] of [
         ['schema.sql', cleanedSchemaSql],
         ['data.sql', dataSql],

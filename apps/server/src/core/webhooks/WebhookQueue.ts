@@ -80,9 +80,7 @@ class Queue {
     this.processing = true;
     try {
       const now = Date.now();
-      const next = this.items.find(
-        (i) => i.status === 'queued' && i.nextAttemptAt <= now,
-      );
+      const next = this.items.find((i) => i.status === 'queued' && i.nextAttemptAt <= now);
       if (!next) return;
       next.status = 'sending';
       next.attempts += 1;
@@ -122,9 +120,7 @@ class Queue {
         next.sentAt = Date.now();
         // Purga las entregas antiguas.
         const cutoff = Date.now() - 60 * 60 * 1000;
-        this.items = this.items.filter(
-          (i) => !(i.status === 'sent' && (i.sentAt || 0) < cutoff),
-        );
+        this.items = this.items.filter((i) => !(i.status === 'sent' && (i.sentAt || 0) < cutoff));
       } catch (e: any) {
         next.lastError = e?.message || String(e);
         if (next.attempts >= MAX_ATTEMPTS) {
@@ -166,11 +162,7 @@ webhookQueue.start();
  * API pública: dispara un evento. Busca las subscripciones activas del
  * tenant que escuchan ese evento y encola un POST por cada una.
  */
-export async function dispatchEvent(
-  tenantId: string,
-  event: string,
-  payload: any,
-): Promise<void> {
+export async function dispatchEvent(tenantId: string, event: string, payload: any): Promise<void> {
   try {
     const tenantDb = await ClientFactory.getTenantClient(tenantId);
     const subs = await tenantDb

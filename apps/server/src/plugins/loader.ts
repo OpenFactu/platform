@@ -106,7 +106,10 @@ export const loadPlugins = async (app: Express) => {
   try {
     await TenantPluginCache.loadAll();
   } catch (err) {
-    console.warn('[Plugins] No se pudo cargar la caché de TenantPlugin (tabla aún no existe?):', err);
+    console.warn(
+      '[Plugins] No se pudo cargar la caché de TenantPlugin (tabla aún no existe?):',
+      err,
+    );
   }
 };
 
@@ -117,7 +120,9 @@ export const loadPlugins = async (app: Express) => {
  * 3. Recarga manifest
  * 4. Re-ejecuta init()
  */
-export async function reloadPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
+export async function reloadPlugin(
+  pluginId: string,
+): Promise<{ success: boolean; error?: string }> {
   const pluginPath = path.join(pluginsDir, pluginId);
 
   if (!fs.existsSync(pluginPath)) {

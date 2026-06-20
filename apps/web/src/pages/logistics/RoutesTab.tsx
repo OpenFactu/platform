@@ -152,70 +152,70 @@ export const RoutesTab: React.FC = () => {
             {rows.map((r) => {
               const isDone = r.status === 'completed';
               return (
-              <li
-                key={r.id}
-                className={
-                  'flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 ' +
-                  (isDone
-                    ? 'bg-emerald-50/60 dark:bg-emerald-500/5 border-l-4 border-l-emerald-500 dark:border-l-emerald-400 pl-3'
-                    : '')
-                }
-              >
-                {isDone ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[11px] font-bold shadow-sm">
-                    <CheckCircle2 size={12} strokeWidth={3} />
-                    Completada
-                  </span>
-                ) : (
-                  <Badge variant={STATUS_BADGE[r.status] || 'neutral'}>{r.status}</Badge>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <code
-                      className={
-                        'px-1.5 py-0.5 text-[11px] font-mono rounded ' +
-                        (isDone
-                          ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200'
-                          : 'bg-slate-100 dark:bg-slate-800')
-                      }
-                    >
-                      {r.code}
-                    </code>
-                    <span
-                      className={
-                        'font-semibold text-sm ' +
-                        (isDone
-                          ? 'text-slate-500 dark:text-slate-400 line-through decoration-emerald-500/40'
-                          : 'text-slate-800 dark:text-slate-100')
-                      }
-                    >
-                      {r.name}
+                <li
+                  key={r.id}
+                  className={
+                    'flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 ' +
+                    (isDone
+                      ? 'bg-emerald-50/60 dark:bg-emerald-500/5 border-l-4 border-l-emerald-500 dark:border-l-emerald-400 pl-3'
+                      : '')
+                  }
+                >
+                  {isDone ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[11px] font-bold shadow-sm">
+                      <CheckCircle2 size={12} strokeWidth={3} />
+                      Completada
                     </span>
-                    <span className="text-[11px] text-slate-500">{r.plannedDate}</span>
+                  ) : (
+                    <Badge variant={STATUS_BADGE[r.status] || 'neutral'}>{r.status}</Badge>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <code
+                        className={
+                          'px-1.5 py-0.5 text-[11px] font-mono rounded ' +
+                          (isDone
+                            ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200'
+                            : 'bg-slate-100 dark:bg-slate-800')
+                        }
+                      >
+                        {r.code}
+                      </code>
+                      <span
+                        className={
+                          'font-semibold text-sm ' +
+                          (isDone
+                            ? 'text-slate-500 dark:text-slate-400 line-through decoration-emerald-500/40'
+                            : 'text-slate-800 dark:text-slate-100')
+                        }
+                      >
+                        {r.name}
+                      </span>
+                      <span className="text-[11px] text-slate-500">{r.plannedDate}</span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Conductor:{' '}
+                      {r.driverEmployeeId && empMap.get(r.driverEmployeeId)
+                        ? `${empMap.get(r.driverEmployeeId)!.firstName} ${empMap.get(r.driverEmployeeId)!.lastName}`
+                        : r.driverName || '—'}
+                      {r.vehiclePlate && <> · {r.vehiclePlate}</>}
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Conductor:{' '}
-                    {r.driverEmployeeId && empMap.get(r.driverEmployeeId)
-                      ? `${empMap.get(r.driverEmployeeId)!.firstName} ${empMap.get(r.driverEmployeeId)!.lastName}`
-                      : r.driverName || '—'}
-                    {r.vehiclePlate && <> · {r.vehiclePlate}</>}
-                  </div>
-                </div>
-                <button
-                  onClick={() => openEdit(r)}
-                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
-                  title="Editar"
-                >
-                  <Edit2 size={13} />
-                </button>
-                <button
-                  onClick={() => remove(r.id)}
-                  className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
-                  title="Eliminar"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </li>
+                  <button
+                    onClick={() => openEdit(r)}
+                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
+                    title="Editar"
+                  >
+                    <Edit2 size={13} />
+                  </button>
+                  <button
+                    onClick={() => remove(r.id)}
+                    className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
+                    title="Eliminar"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </li>
               );
             })}
           </ul>
@@ -269,16 +269,17 @@ export const RoutesTab: React.FC = () => {
             >
               <option value="">— sin asignar —</option>
               {employees
-                .filter((e) => e.userId)
+                .filter((e) => e.status === 'active')
                 .map((e) => (
                   <option key={e.id} value={e.id}>
-                    {e.firstName} {e.lastName}{' '}
-                    {e.code ? `(${e.code})` : ''}
+                    {e.firstName} {e.lastName} {e.code ? `(${e.code})` : ''}
+                    {!e.userId ? '  sin usuario' : ''}
                   </option>
                 ))}
             </select>
             <p className="text-[11px] text-slate-500 mt-1">
-              Solo aparecen empleados con usuario asociado (para que puedan loguearse en la app del repartidor).
+              Aparecen todos los empleados activos. Los marcados con ⚠ no tienen cuenta de usuario y
+              no podrán loguearse en la app del repartidor.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">

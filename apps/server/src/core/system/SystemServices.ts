@@ -148,7 +148,12 @@ function checkPgDump(): ServiceCheck {
             ['ps', '--filter', 'ancestor=postgres', '--format', '{{.Names}}'],
             { encoding: 'utf8' },
           );
-          return r.stdout?.split('\n').map((s) => s.trim()).filter(Boolean)[0] || '';
+          return (
+            r.stdout
+              ?.split('\n')
+              .map((s) => s.trim())
+              .filter(Boolean)[0] || ''
+          );
         })();
       if (container) {
         const check = spawnSync('docker', ['exec', container, 'pg_dump', '--version'], {

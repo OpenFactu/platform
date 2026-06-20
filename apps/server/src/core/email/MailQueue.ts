@@ -109,9 +109,7 @@ class Queue {
     try {
       const now = Date.now();
       // Procesamos ítems ready de uno en uno para no saturar el SMTP.
-      const next = this.items.find(
-        (i) => i.status === 'queued' && i.nextAttemptAt <= now,
-      );
+      const next = this.items.find((i) => i.status === 'queued' && i.nextAttemptAt <= now);
       if (!next) return;
       next.status = 'sending';
       next.attempts += 1;
@@ -138,9 +136,7 @@ class Queue {
         }
         // Limpia los sent viejos (>1h) para no crecer infinito.
         const cutoff = Date.now() - 60 * 60 * 1000;
-        this.items = this.items.filter(
-          (i) => !(i.status === 'sent' && (i.sentAt || 0) < cutoff),
-        );
+        this.items = this.items.filter((i) => !(i.status === 'sent' && (i.sentAt || 0) < cutoff));
       } catch (e: any) {
         next.lastError = e?.message || String(e);
         if (next.attempts >= MAX_ATTEMPTS) {

@@ -66,8 +66,8 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
       if (!res.ok) throw new Error(data?.error || 'Error');
       const failed = (data.results || []).filter((r: any) => !r.ok).length;
       toast.success(
-        `${data.queued} encolados · envío desatendido, te llegará una notificación por cada uno.`
-        + (failed ? ` ${failed} sin email/plantilla.` : ''),
+        `${data.queued} encolados · envío desatendido, te llegará una notificación por cada uno.` +
+          (failed ? ` ${failed} sin email/plantilla.` : ''),
       );
       if (data.queued > 0) onSuccess?.();
       onClose();
@@ -97,8 +97,8 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
 
         {missingEmailCount > 0 && (
           <div className="p-2.5 rounded-xs bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-200">
-            ⚠ {missingEmailCount} de {items.length} interlocutor(es) no tienen email registrado — esos
-            se omitirán.
+            ⚠ {missingEmailCount} de {items.length} interlocutor(es) no tienen email registrado —
+            esos se omitirán.
           </div>
         )}
 
@@ -137,9 +137,7 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
           </div>
           <ul className="max-h-48 overflow-y-auto">
             {items.map((it, idx) => {
-              const r = results.find(
-                (x) => x.docType === it.docType && x.docId === it.docId,
-              );
+              const r = results.find((x) => x.docType === it.docType && x.docId === it.docId);
               return (
                 <li
                   key={`${it.docType}-${it.docId}`}
@@ -161,7 +159,10 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
                     r.ok ? (
                       <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
                     ) : (
-                      <span className="flex items-center gap-1 text-rose-600 text-[10px]" title={r.error}>
+                      <span
+                        className="flex items-center gap-1 text-rose-600 text-[10px]"
+                        title={r.error}
+                      >
                         <XCircle size={14} /> {r.error?.slice(0, 20)}
                       </span>
                     )

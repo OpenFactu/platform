@@ -11,9 +11,9 @@ import {
   SearchableSelect,
 } from '@openfactu/ui';
 import { useLocation, useParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useTabs, useCurrentTab } from '../context/TabsContext';
-import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
+import { useTabs, useCurrentTab } from '../../context/TabsContext';
+import { useTheme } from '../../context/ThemeContext';
 import {
   Truck,
   Plus,
@@ -27,33 +27,33 @@ import {
   AlertCircle,
   Download,
 } from 'lucide-react';
-import { DocumentActionBar } from '../components/DocumentActionBar';
-import { InternalOrderHeaderField } from '../components/InternalOrderHeaderField';
-import { InternalOrderChip } from '../components/InternalOrderChip';
-import { useInternalOrderLineColumn } from '../hooks/useLineInternalOrderColumn';
-import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
-import { AttachmentsPanel } from '../components/AttachmentsPanel';
-import { CloneDocumentActions } from '../components/common/CloneDocumentActions';
-import { PreparationButton } from '../components/common/PreparationButton';
-import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
-import { TraceabilityButton } from '../components/common/TraceabilityButton';
-import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
+import { DocumentActionBar } from '../../components/DocumentActionBar';
+import { InternalOrderHeaderField } from '../../components/InternalOrderHeaderField';
+import { InternalOrderChip } from '../../components/InternalOrderChip';
+import { useInternalOrderLineColumn } from '../../hooks/useLineInternalOrderColumn';
+import { DocumentDetailLayout } from '../../components/DocumentDetailLayout';
+import { AttachmentsPanel } from '../../components/AttachmentsPanel';
+import { CloneDocumentActions } from '../../components/common/CloneDocumentActions';
+import { PreparationButton } from '../../components/common/PreparationButton';
+import { DocumentFiscalPanel } from '../../components/documents/DocumentFiscalPanel';
+import { TraceabilityButton } from '../../components/common/TraceabilityButton';
+import { DocumentTotalsBlock } from '../../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
   buildFormLineColumns,
   statusBadgeProps,
-} from '../components/documentLineCells';
-import { notifyDocChange, useDataVersion } from '../utils/dataRefresh';
-import { downloadPdf } from '../utils/downloadPdf';
-import { useFormat } from '../hooks/useFormat';
-import { BatchSelectionModal } from '../components/BatchSelectionModal';
-import { BatchAssignmentPanel } from '../components/BatchAssignmentPanel';
-import { useItemUoms } from '../hooks/useItemUoms';
-import { usePluginLineFields } from '../hooks/usePluginLineFields';
-import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
+} from '../../components/documentLineCells';
+import { notifyDocChange, useDataVersion } from '../../utils/dataRefresh';
+import { downloadPdf } from '../../utils/downloadPdf';
+import { useFormat } from '../../hooks/useFormat';
+import { BatchSelectionModal } from '../../components/BatchSelectionModal';
+import { BatchAssignmentPanel } from '../../components/BatchAssignmentPanel';
+import { useItemUoms } from '../../hooks/useItemUoms';
+import { usePluginLineFields } from '../../hooks/usePluginLineFields';
+import { PluginFieldsPanel } from '../../components/PluginFieldsPanel';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
-import { useDocumentScanner } from '../hooks/useDocumentScanner';
-import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
+import { useDocumentScanner } from '../../hooks/useDocumentScanner';
+import { BulkSendToolbar } from '../../components/documents/BulkSendToolbar';
 
 // --- Sub-componente: VISTA DE LISTADO ---
 const SDNList: React.FC<{
@@ -70,7 +70,13 @@ const SDNList: React.FC<{
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
-  const tabs = (() => { try { return useTabs(); } catch { return null; } })();
+  const tabs = (() => {
+    try {
+      return useTabs();
+    } catch {
+      return null;
+    }
+  })();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
@@ -112,7 +118,8 @@ const SDNList: React.FC<{
     {
       header: 'No. Albarán',
       sortable: true,
-      sortAccessor: (item: any) => `${item.seriesPrefix||''}-${String(item.docNum||0).padStart(6,'0')}`,
+      sortAccessor: (item: any) =>
+        `${item.seriesPrefix || ''}-${String(item.docNum || 0).padStart(6, '0')}`,
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
@@ -124,7 +131,12 @@ const SDNList: React.FC<{
         </div>
       ),
     },
-    { header: 'Fecha', sortable: true, sortAccessor: (item: any) => new Date(item.date).getTime(), accessor: (item: any) => fmt.date(item.date) },
+    {
+      header: 'Fecha',
+      sortable: true,
+      sortAccessor: (item: any) => new Date(item.date).getTime(),
+      accessor: (item: any) => fmt.date(item.date),
+    },
     {
       header: 'Cliente',
       sortable: true,
@@ -301,8 +313,23 @@ const SDNList: React.FC<{
           ]}
           searchPlaceholder="Buscar albarán..."
         />
-        <BulkSendToolbar selectedKeys={selectedKeys} rows={filteredData || []} partners={partners} docType="SDN" onClear={() => setSelectedKeys(new Set())} onSent={() => setSelectedKeys(new Set())} />
-        <Table columns={columns} data={filteredData || []} isLoading={loading} onRowClick={onDetail} selectable selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} />
+        <BulkSendToolbar
+          selectedKeys={selectedKeys}
+          rows={filteredData || []}
+          partners={partners}
+          docType="SDN"
+          onClear={() => setSelectedKeys(new Set())}
+          onSent={() => setSelectedKeys(new Set())}
+        />
+        <Table
+          columns={columns}
+          data={filteredData || []}
+          isLoading={loading}
+          onRowClick={onDetail}
+          selectable
+          selectedKeys={selectedKeys}
+          onSelectionChange={setSelectedKeys}
+        />
       </Card>
     </div>
   );
@@ -348,26 +375,31 @@ const SDNForm: React.FC<{
   );
 
   const projectCol = useInternalOrderLineColumn(actions.updateLine);
-  const columns = useMemo(
-    () => {
-      const base = buildFormLineColumns({
-        kind: DocKind.DeliveryNote,
-        side: DocSide.Sale,
-        state,
-        masters,
-        zones: warehouseLocation === 'line' ? zones : filteredZones,
-        actions,
-        onAssignBatch: setBatchEditingIdx,
-        onViewBatch: setViewingBatch,
-        fmt,
-        getItemUoms: itemUoms.get,
-        warehouseLocation,
-        pluginLineFields,
-      });
-      return [...base.slice(0, -1), projectCol, base[base.length - 1]];
-    },
-    [state.lines, masters.items, masters.taxGroups, warehouseLocation, zones, pluginLineFields, projectCol],
-  );
+  const columns = useMemo(() => {
+    const base = buildFormLineColumns({
+      kind: DocKind.DeliveryNote,
+      side: DocSide.Sale,
+      state,
+      masters,
+      zones: warehouseLocation === 'line' ? zones : filteredZones,
+      actions,
+      onAssignBatch: setBatchEditingIdx,
+      onViewBatch: setViewingBatch,
+      fmt,
+      getItemUoms: itemUoms.get,
+      warehouseLocation,
+      pluginLineFields,
+    });
+    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+  }, [
+    state.lines,
+    masters.items,
+    masters.taxGroups,
+    warehouseLocation,
+    zones,
+    pluginLineFields,
+    projectCol,
+  ]);
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
@@ -448,10 +480,7 @@ const SDNForm: React.FC<{
                 className="font-bold h-10"
               />
             </div>
-            <InternalOrderHeaderField
-              value={internalOrderId}
-              onChange={setInternalOrderId}
-            />
+            <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
           </div>
         </Card>
 
@@ -504,13 +533,17 @@ const SDNForm: React.FC<{
           return (
             <div className="flex items-center justify-between gap-4 p-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
               <div className="flex items-start gap-3 min-w-0">
-                <AlertCircle size={18} className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+                <AlertCircle
+                  size={18}
+                  className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5"
+                />
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
                     Este cliente tiene retención IRPF por defecto del {partnerRate}%
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
-                    El albarán se emitirá sin retención. Si aplica, aplícala aquí para que herede a la factura.
+                    El albarán se emitirá sin retención. Si aplica, aplícala aquí para que herede a
+                    la factura.
                   </p>
                 </div>
               </div>
@@ -641,14 +674,15 @@ const SDNDetail: React.FC<{
   const partner = masters.partners.find((p: any) => p.id === sdn.partnerId);
 
   const columns = useMemo(
-    () => buildDetailLineColumns({
-      kind: DocKind.DeliveryNote,
-      side: DocSide.Sale,
-      masters,
-      zones,
-      onViewBatch: setViewingBatch,
-      fmt,
-    }),
+    () =>
+      buildDetailLineColumns({
+        kind: DocKind.DeliveryNote,
+        side: DocSide.Sale,
+        masters,
+        zones,
+        onViewBatch: setViewingBatch,
+        fmt,
+      }),
     [sdn.lines, masters.items, masters.taxGroups],
   );
 

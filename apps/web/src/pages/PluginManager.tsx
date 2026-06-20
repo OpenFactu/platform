@@ -1,6 +1,19 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Badge, Button, useToast } from '@openfactu/ui';
-import { Puzzle, Database, RefreshCw, Shield, Zap, Power, Key, Copy, Trash2, Eye, EyeOff, Plus } from 'lucide-react';
+import {
+  Puzzle,
+  Database,
+  RefreshCw,
+  Shield,
+  Zap,
+  Power,
+  Key,
+  Copy,
+  Trash2,
+  Eye,
+  EyeOff,
+  Plus,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePlugins } from '../context/PluginContext';
 import { PluginIcon } from '../components/PluginIcon';
@@ -112,9 +125,7 @@ export const PluginManager: React.FC = () => {
       setTables(await parseArray<PluginTable>(tablesRes));
 
       toast.success(
-        currentlyActive
-          ? `Plugin "${pluginId}" desactivado`
-          : `Plugin "${pluginId}" activado`,
+        currentlyActive ? `Plugin "${pluginId}" desactivado` : `Plugin "${pluginId}" activado`,
       );
     } catch (err: any) {
       toast.error(err.message || 'Error al cambiar estado del plugin');
@@ -161,7 +172,9 @@ export const PluginManager: React.FC = () => {
               : 'border-transparent text-ink-500 dark:text-ink-400 hover:text-accent dark:hover:text-accent'
           }`}
         >
-          <span className="flex items-center gap-2"><Puzzle size={15} /> Plugins</span>
+          <span className="flex items-center gap-2">
+            <Puzzle size={15} /> Plugins
+          </span>
         </button>
         {(user?.role === 'ADMIN' || user?.role === 'SUPERUSER') && (
           <button
@@ -172,7 +185,9 @@ export const PluginManager: React.FC = () => {
                 : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}
           >
-            <span className="flex items-center gap-2"><Key size={15} /> Desarrollo</span>
+            <span className="flex items-center gap-2">
+              <Key size={15} /> Desarrollo
+            </span>
           </button>
         )}
       </div>
@@ -180,117 +195,144 @@ export const PluginManager: React.FC = () => {
       {tab === 'dev' ? (
         <DevKeysPanel token={token} user={user} />
       ) : (
-      <>
-
-      {/* Plugin Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-10">
-        {loading
-          ? Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-48 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse"
-              />
-            ))
-          : plugins.map((plugin) => (
-              <PluginCard
-                key={plugin.id}
-                plugin={plugin}
-                fields={fields.filter((f) => f.pluginId === plugin.id)}
-                tables={tables.filter((t) => t.pluginId === plugin.id)}
-                onToggle={() => togglePlugin(plugin.id, plugin.isActive)}
-                isToggling={toggling === plugin.id}
-              />
-            ))}
-      </div>
-
-      {plugins.length === 0 && !loading && (
-        <div className="text-center py-20 text-slate-400 dark:text-slate-500">
-          <Puzzle size={48} className="mx-auto mb-4 opacity-50" />
-          <p className="text-lg font-medium">No hay plugins instalados</p>
-          <p className="text-sm mt-1">
-            Coloca plugins en la carpeta <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">/plugins/</code> del servidor.
-          </p>
-        </div>
-      )}
-
-      {/* DB Extensions */}
-      {fields.length > 0 && (
-        <Card
-          title="Campos de Base de Datos"
-          subtitle="Campos inyectados por plugins activos en los esquemas de tenant."
-        >
-          <div className="flex items-center gap-2 mb-4 p-3 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-200 rounded-lg text-sm">
-            <Database size={16} />
-            <span>
-              Solo se muestran campos de plugins activos para esta empresa.
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Plugin</th>
-                  <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Tabla</th>
-                  <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Campo</th>
-                  <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Tipo</th>
-                  <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Etiqueta</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fields.map((f, i) => (
-                  <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
-                    <td className="py-2 px-3 text-slate-700 dark:text-slate-300">{f.pluginId}</td>
-                    <td className="py-2 px-3 text-slate-700 dark:text-slate-300">{f.tableName}</td>
-                    <td className="py-2 px-3">
-                      <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-xs">{f.fieldName}</code>
-                    </td>
-                    <td className="py-2 px-3">
-                      <Badge variant="neutral">{f.fieldType}</Badge>
-                    </td>
-                    <td className="py-2 px-3 text-slate-500 dark:text-slate-400">{f.label}</td>
-                  </tr>
+        <>
+          {/* Plugin Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-10">
+            {loading
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-48 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse"
+                  />
+                ))
+              : plugins.map((plugin) => (
+                  <PluginCard
+                    key={plugin.id}
+                    plugin={plugin}
+                    fields={fields.filter((f) => f.pluginId === plugin.id)}
+                    tables={tables.filter((t) => t.pluginId === plugin.id)}
+                    onToggle={() => togglePlugin(plugin.id, plugin.isActive)}
+                    isToggling={toggling === plugin.id}
+                  />
                 ))}
-              </tbody>
-            </table>
           </div>
-        </Card>
-      )}
 
-      {tables.length > 0 && (
-        <Card
-          title="Tablas de Plugins"
-          subtitle="Tablas creadas por extensiones activas."
-          className="mt-6"
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-700">
-                  <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Plugin</th>
-                  <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Tabla</th>
-                  <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">Estructura</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tables.map((t, i) => (
-                  <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
-                    <td className="py-2 px-3 text-slate-700 dark:text-slate-300">{t.pluginId}</td>
-                    <td className="py-2 px-3">
-                      <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-xs">{t.tableName}</code>
-                    </td>
-                    <td className="py-2 px-3">
-                      <span className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-xs block">
-                        {t.definition}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-      </>
+          {plugins.length === 0 && !loading && (
+            <div className="text-center py-20 text-slate-400 dark:text-slate-500">
+              <Puzzle size={48} className="mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No hay plugins instalados</p>
+              <p className="text-sm mt-1">
+                Coloca plugins en la carpeta{' '}
+                <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                  /plugins/
+                </code>{' '}
+                del servidor.
+              </p>
+            </div>
+          )}
+
+          {/* DB Extensions */}
+          {fields.length > 0 && (
+            <Card
+              title="Campos de Base de Datos"
+              subtitle="Campos inyectados por plugins activos en los esquemas de tenant."
+            >
+              <div className="flex items-center gap-2 mb-4 p-3 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-200 rounded-lg text-sm">
+                <Database size={16} />
+                <span>Solo se muestran campos de plugins activos para esta empresa.</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700">
+                      <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">
+                        Plugin
+                      </th>
+                      <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">
+                        Tabla
+                      </th>
+                      <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">
+                        Campo
+                      </th>
+                      <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">
+                        Tipo
+                      </th>
+                      <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">
+                        Etiqueta
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fields.map((f, i) => (
+                      <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
+                        <td className="py-2 px-3 text-slate-700 dark:text-slate-300">
+                          {f.pluginId}
+                        </td>
+                        <td className="py-2 px-3 text-slate-700 dark:text-slate-300">
+                          {f.tableName}
+                        </td>
+                        <td className="py-2 px-3">
+                          <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-xs">
+                            {f.fieldName}
+                          </code>
+                        </td>
+                        <td className="py-2 px-3">
+                          <Badge variant="neutral">{f.fieldType}</Badge>
+                        </td>
+                        <td className="py-2 px-3 text-slate-500 dark:text-slate-400">{f.label}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {tables.length > 0 && (
+            <Card
+              title="Tablas de Plugins"
+              subtitle="Tablas creadas por extensiones activas."
+              className="mt-6"
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-700">
+                      <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">
+                        Plugin
+                      </th>
+                      <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">
+                        Tabla
+                      </th>
+                      <th className="text-left py-2 px-3 font-semibold text-slate-600 dark:text-slate-300">
+                        Estructura
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tables.map((t, i) => (
+                      <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
+                        <td className="py-2 px-3 text-slate-700 dark:text-slate-300">
+                          {t.pluginId}
+                        </td>
+                        <td className="py-2 px-3">
+                          <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-xs">
+                            {t.tableName}
+                          </code>
+                        </td>
+                        <td className="py-2 px-3">
+                          <span className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate max-w-xs block">
+                            {t.definition}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </>
       )}
     </div>
   );
@@ -328,12 +370,15 @@ const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ token, us
     try {
       const res = await fetch('/api/dev-keys', { headers });
       if (res.ok) setKeys(await res.json());
-    } catch {} finally {
+    } catch {
+    } finally {
       setLoading(false);
     }
   }, [token]);
 
-  useEffect(() => { fetchKeys(); }, [fetchKeys]);
+  useEffect(() => {
+    fetchKeys();
+  }, [fetchKeys]);
 
   const createKey = async () => {
     if (!newKeyName.trim()) {
@@ -378,7 +423,7 @@ const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ token, us
       const res = await fetch(`/api/dev-keys/${id}/toggle`, { method: 'PATCH', headers });
       const data = await res.json();
       if (res.ok) {
-        setKeys((prev) => prev.map((k) => k.id === id ? { ...k, isActive: data.isActive } : k));
+        setKeys((prev) => prev.map((k) => (k.id === id ? { ...k, isActive: data.isActive } : k)));
       }
     } catch {}
   };
@@ -403,41 +448,66 @@ const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ token, us
           </p>
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Client ID</label>
+              <label className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                Client ID
+              </label>
               <div className="flex items-center gap-2 mt-1">
                 <code className="flex-1 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-800 dark:text-slate-200 select-all">
                   {newKey.clientId}
                 </code>
-                <button onClick={() => copyToClipboard(newKey.clientId, 'clientId')} className="p-2 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors">
-                  <Copy size={14} className={copiedField === 'clientId' ? 'text-emerald-500' : 'text-slate-400'} />
+                <button
+                  onClick={() => copyToClipboard(newKey.clientId, 'clientId')}
+                  className="p-2 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors"
+                >
+                  <Copy
+                    size={14}
+                    className={copiedField === 'clientId' ? 'text-emerald-500' : 'text-slate-400'}
+                  />
                 </button>
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Client Secret</label>
+              <label className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                Client Secret
+              </label>
               <div className="flex items-center gap-2 mt-1">
                 <code className="flex-1 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-800 dark:text-slate-200 select-all">
                   {newKey.clientSecret}
                 </code>
-                <button onClick={() => copyToClipboard(newKey.clientSecret, 'clientSecret')} className="p-2 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors">
-                  <Copy size={14} className={copiedField === 'clientSecret' ? 'text-emerald-500' : 'text-slate-400'} />
+                <button
+                  onClick={() => copyToClipboard(newKey.clientSecret, 'clientSecret')}
+                  className="p-2 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors"
+                >
+                  <Copy
+                    size={14}
+                    className={
+                      copiedField === 'clientSecret' ? 'text-emerald-500' : 'text-slate-400'
+                    }
+                  />
                 </button>
               </div>
             </div>
           </div>
           <div className="mt-4 p-3 bg-white/50 dark:bg-slate-900/50 rounded-lg">
             <p className="text-xs text-emerald-700 dark:text-emerald-300 font-mono">
-              openfactu plugin push --server http://tu-servidor:3000 --client-id {newKey.clientId} --client-secret {newKey.clientSecret}
+              openfactu plugin push --server http://tu-servidor:3000 --client-id {newKey.clientId}{' '}
+              --client-secret {newKey.clientSecret}
             </p>
           </div>
-          <button onClick={() => setNewKey(null)} className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 hover:underline">
+          <button
+            onClick={() => setNewKey(null)}
+            className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
+          >
             Entendido, ya lo he guardado
           </button>
         </div>
       )}
 
       {/* Crear nueva key */}
-      <Card title="Credenciales de desarrollo" subtitle="Genera API Keys para desarrollar y subir plugins desde otros equipos.">
+      <Card
+        title="Credenciales de desarrollo"
+        subtitle="Genera API Keys para desarrollar y subir plugins desde otros equipos."
+      >
         <div className="flex gap-3 mb-6">
           <input
             type="text"
@@ -457,7 +527,10 @@ const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ token, us
         {loading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
-              <div key={i} className="h-16 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />
+              <div
+                key={i}
+                className="h-16 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse"
+              />
             ))}
           </div>
         ) : keys.length === 0 ? (
@@ -478,16 +551,27 @@ const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ token, us
                 }`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                    k.isActive ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                  }`}>
+                  <div
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                      k.isActive
+                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-500'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                    }`}
+                  >
                     <Key size={16} />
                   </div>
                   <div>
-                    <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">{k.name}</div>
+                    <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">
+                      {k.name}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <code className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">{k.clientId}</code>
-                      <button onClick={() => copyToClipboard(k.clientId, k.id)} className="text-slate-300 hover:text-slate-500 transition-colors">
+                      <code className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
+                        {k.clientId}
+                      </code>
+                      <button
+                        onClick={() => copyToClipboard(k.clientId, k.id)}
+                        className="text-slate-300 hover:text-slate-500 transition-colors"
+                      >
                         <Copy size={10} />
                       </button>
                     </div>
@@ -525,10 +609,15 @@ const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ token, us
 
       {/* Instrucciones */}
       <div className="mt-6 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700">
-        <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-3">Como usar las API Keys</h4>
+        <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-3">
+          Como usar las API Keys
+        </h4>
         <div className="space-y-2 text-xs text-slate-500 dark:text-slate-400 font-mono">
           <p># Desde otro ordenador, sube tu plugin al servidor:</p>
-          <p className="text-slate-700 dark:text-slate-300">openfactu plugin push ./mi-plugin --server http://tu-servidor:3000 --client-id ofk_... --client-secret ofs_...</p>
+          <p className="text-slate-700 dark:text-slate-300">
+            openfactu plugin push ./mi-plugin --server http://tu-servidor:3000 --client-id ofk_...
+            --client-secret ofs_...
+          </p>
           <p className="mt-3"># O enlaza un plugin local para desarrollo:</p>
           <p className="text-slate-700 dark:text-slate-300">openfactu plugin link ./mi-plugin</p>
           <p className="text-slate-700 dark:text-slate-300">openfactu plugin dev mi-plugin</p>
@@ -548,16 +637,23 @@ interface PluginCardProps {
   isToggling: boolean;
 }
 
-const PluginCard: React.FC<PluginCardProps> = ({ plugin, fields, tables, onToggle, isToggling }) => {
+const PluginCard: React.FC<PluginCardProps> = ({
+  plugin,
+  fields,
+  tables,
+  onToggle,
+  isToggling,
+}) => {
   const extensionCount = fields.length + tables.length;
 
   return (
     <div
       className={`
         relative bg-white dark:bg-slate-900 rounded-xl border transition-all duration-200
-        ${plugin.isActive
-          ? 'border-emerald-300 dark:border-emerald-700 shadow-sm shadow-emerald-100 dark:shadow-none'
-          : 'border-slate-200 dark:border-slate-800 opacity-75'
+        ${
+          plugin.isActive
+            ? 'border-emerald-300 dark:border-emerald-700 shadow-sm shadow-emerald-100 dark:shadow-none'
+            : 'border-slate-200 dark:border-slate-800 opacity-75'
         }
       `}
     >
@@ -568,16 +664,21 @@ const PluginCard: React.FC<PluginCardProps> = ({ plugin, fields, tables, onToggl
             <div
               className={`
                 w-11 h-11 rounded-xl flex items-center justify-center border shadow-sm overflow-hidden p-2
-                ${plugin.isActive
-                  ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-700'
-                  : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                ${
+                  plugin.isActive
+                    ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-700'
+                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                 }
               `}
             >
               <PluginIcon
                 iconName={plugin.logo}
                 size={24}
-                className={plugin.isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}
+                className={
+                  plugin.isActive
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-slate-400 dark:text-slate-500'
+                }
               />
             </div>
             <div>
@@ -597,9 +698,10 @@ const PluginCard: React.FC<PluginCardProps> = ({ plugin, fields, tables, onToggl
             className={`
               relative w-12 h-7 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
               ${isToggling ? 'opacity-50 cursor-wait' : 'cursor-pointer'}
-              ${plugin.isActive
-                ? 'bg-emerald-500 focus:ring-emerald-400'
-                : 'bg-slate-300 dark:bg-slate-600 focus:ring-slate-400'
+              ${
+                plugin.isActive
+                  ? 'bg-emerald-500 focus:ring-emerald-400'
+                  : 'bg-slate-300 dark:bg-slate-600 focus:ring-slate-400'
               }
             `}
             title={plugin.isActive ? 'Desactivar plugin' : 'Activar plugin'}
@@ -629,8 +731,7 @@ const PluginCard: React.FC<PluginCardProps> = ({ plugin, fields, tables, onToggl
         <div className="flex items-center gap-3 text-xs text-slate-400 dark:text-slate-500">
           {plugin.version && (
             <span className="flex items-center gap-1">
-              <Shield size={12} />
-              v{plugin.version}
+              <Shield size={12} />v{plugin.version}
             </span>
           )}
           {extensionCount > 0 && (

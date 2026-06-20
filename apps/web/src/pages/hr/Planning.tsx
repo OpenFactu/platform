@@ -49,8 +49,7 @@ function ymd(d: Date): string {
 function rangeLabel(start: Date, days: number): string {
   const end = new Date(start);
   end.setDate(end.getDate() + days - 1);
-  const fmt = (d: Date) =>
-    d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  const fmt = (d: Date) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
   return `${fmt(start)} – ${fmt(end)} ${end.getFullYear()}`;
 }
 
@@ -215,7 +214,8 @@ export const Planning: React.FC = () => {
 
   const openCreate = (employeeId: string, date: string, suggestedStart?: string) => {
     const firstTpl = templates.find((t: any) => t.isActive) as any;
-    const start = suggestedStart || (firstTpl ? `${date}T${firstTpl.startTime}:00` : `${date}T08:00:00`);
+    const start =
+      suggestedStart || (firstTpl ? `${date}T${firstTpl.startTime}:00` : `${date}T08:00:00`);
     const end = firstTpl ? `${date}T${firstTpl.endTime}:00` : `${date}T15:00:00`;
     const hasSplit = !!(firstTpl?.secondStartTime && firstTpl?.secondEndTime);
     setModal({ kind: 'create', employeeId, date });
@@ -285,9 +285,7 @@ export const Planning: React.FC = () => {
       notes: form.notes || null,
     };
     const url =
-      modal.kind === 'edit'
-        ? `/api/hr/shift-assignments/${modal.id}`
-        : '/api/hr/shift-assignments';
+      modal.kind === 'edit' ? `/api/hr/shift-assignments/${modal.id}` : '/api/hr/shift-assignments';
     const r = await fetch(url, {
       method: modal.kind === 'edit' ? 'PATCH' : 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
@@ -378,8 +376,8 @@ export const Planning: React.FC = () => {
           </h1>
           <p className="text-slate-500 text-sm">
             {rangeLabel(rangeStart, days)} ·{' '}
-            {assigns.filter((a) => a.status !== 'cancelled').length} turnos · {grandTotal.toFixed(1)} h
-            planificadas
+            {assigns.filter((a) => a.status !== 'cancelled').length} turnos ·{' '}
+            {grandTotal.toFixed(1)} h planificadas
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -487,7 +485,9 @@ export const Planning: React.FC = () => {
                     const isSplit = list.filter((a) => a.status !== 'cancelled').length > 1;
                     const blockingIncident = dayIncidents.find((inc) => {
                       const t: any = itMap[inc.incidentTypeId];
-                      return inc.status !== 'rejected' && (t?.affectsPayroll || t?.requiresSubstitution);
+                      return (
+                        inc.status !== 'rejected' && (t?.affectsPayroll || t?.requiresSubstitution)
+                      );
                     });
                     return (
                       <td
@@ -641,9 +641,9 @@ export const Planning: React.FC = () => {
       <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 p-3 text-xs text-slate-500 space-y-1.5">
         {loading && <div>Cargando…</div>}
         <div>
-          <b className="text-slate-700 dark:text-slate-300">Cómo funciona:</b> click en celda
-          vacía → crear turno. Click en un turno → editar / cancelar / borrar. Hover una celda con
-          turno → "+ partido" para añadir 2º tramo (turno partido).
+          <b className="text-slate-700 dark:text-slate-300">Cómo funciona:</b> click en celda vacía
+          → crear turno. Click en un turno → editar / cancelar / borrar. Hover una celda con turno →
+          "+ partido" para añadir 2º tramo (turno partido).
         </div>
         <div className="flex flex-wrap gap-3 items-center pt-1">
           <span className="inline-flex items-center gap-1.5">
@@ -780,8 +780,7 @@ export const Planning: React.FC = () => {
                         const checked = e.target.checked;
                         const date = modal.date;
                         const tpl: any = form.shiftTemplateId ? tplMap[form.shiftTemplateId] : null;
-                        const defS =
-                          tpl?.secondStartTime || form.endAt.slice(11, 16) || '16:00';
+                        const defS = tpl?.secondStartTime || form.endAt.slice(11, 16) || '16:00';
                         const defE = tpl?.secondEndTime || '20:00';
                         setForm((f) => ({
                           ...f,
@@ -807,9 +806,7 @@ export const Planning: React.FC = () => {
                           label="Inicio 2º"
                           type="datetime-local"
                           value={form.secondStartAt.slice(0, 16)}
-                          onChange={(e) =>
-                            setForm({ ...form, secondStartAt: e.target.value })
-                          }
+                          onChange={(e) => setForm({ ...form, secondStartAt: e.target.value })}
                         />
                         <Input
                           label="Fin 2º"
@@ -829,9 +826,7 @@ export const Planning: React.FC = () => {
                   type="number"
                   min={0}
                   value={form.breakMinutes}
-                  onChange={(e) =>
-                    setForm({ ...form, breakMinutes: Number(e.target.value) || 0 })
-                  }
+                  onChange={(e) => setForm({ ...form, breakMinutes: Number(e.target.value) || 0 })}
                 />
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">
@@ -860,9 +855,7 @@ export const Planning: React.FC = () => {
                     const total = h1 + h2;
                     return (
                       <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800">
-                        <div className="text-lg font-black tabular-nums">
-                          {total.toFixed(2)} h
-                        </div>
+                        <div className="text-lg font-black tabular-nums">{total.toFixed(2)} h</div>
                         {split && (
                           <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold tabular-nums mt-0.5">
                             ① {h1.toFixed(2)}h + ② {h2.toFixed(2)}h

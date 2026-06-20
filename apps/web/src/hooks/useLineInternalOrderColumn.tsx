@@ -19,7 +19,9 @@ interface InternalOrder {
  */
 const cache: { orders: InternalOrder[] | null } = { orders: null };
 
-export function useInternalOrderLineColumn(updateLine: (idx: number, key: string, value: any) => void) {
+export function useInternalOrderLineColumn(
+  updateLine: (idx: number, key: string, value: any) => void,
+) {
   const { token, user } = useAuth();
   const [orders, setOrders] = useState<InternalOrder[]>(cache.orders || []);
 

@@ -1,13 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Badge, useToast } from '@openfactu/ui';
-import {
-  ArrowUp,
-  ArrowDown,
-  ScrollText,
-  CreditCard,
-  Link2,
-  ChevronRight,
-} from 'lucide-react';
+import { ArrowUp, ArrowDown, ScrollText, CreditCard, Link2, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTabs } from '../../context/TabsContext';
 import { useFormat } from '../../hooks/useFormat';
@@ -177,9 +170,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
               >
                 <span className="text-slate-600 dark:text-slate-300 font-mono">
                   {fmt.date(p.date)}
-                  {p.reference && (
-                    <span className="ml-2 text-slate-400">· Ref {p.reference}</span>
-                  )}
+                  {p.reference && <span className="ml-2 text-slate-400">· Ref {p.reference}</span>}
                 </span>
                 <span className="font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
                   {fmt.money(p.amount)}

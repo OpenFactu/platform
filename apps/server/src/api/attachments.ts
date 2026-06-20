@@ -133,9 +133,7 @@ router.get('/:id/download', async (req: any, res) => {
     const [row] = await req.tenantClient
       .select()
       .from(schema.attachments)
-      .where(
-        and(eq(schema.attachments.id, req.params.id), isNull(schema.attachments.deletedAt)),
-      );
+      .where(and(eq(schema.attachments.id, req.params.id), isNull(schema.attachments.deletedAt)));
     if (!row) return res.status(404).json({ error: 'No encontrado' });
 
     const adapter = await StorageResolver.forProvider(

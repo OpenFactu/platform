@@ -69,9 +69,9 @@ interface FiscalConfig {
   company_invoice_footer: string;
   company_invoice_color: string;
   // Firma / representante legal — aparece en el PDF de la factura
-  signature_name: string;        // nombre del firmante (p.ej. "Juan García Pérez")
-  signature_role: string;        // cargo (p.ej. "Administrador único")
-  signature_image_url: string;   // URL a la imagen (rubrica escaneada)
+  signature_name: string; // nombre del firmante (p.ej. "Juan García Pérez")
+  signature_role: string; // cargo (p.ej. "Administrador único")
+  signature_image_url: string; // URL a la imagen (rubrica escaneada)
   signature_show_in_pdf: string; // 'true' | 'false' — flag textual
 }
 const FISCAL_DEFAULTS: FiscalConfig = {

@@ -54,13 +54,14 @@ export class ErpDataExporter {
 
     for (const t of TABLES) {
       try {
-        const res: any = await tenantClient.execute(
-          sql.raw(`SELECT * FROM "${t.table}"`),
-        );
+        const res: any = await tenantClient.execute(sql.raw(`SELECT * FROM "${t.table}"`));
         const rows: any[] = res?.rows ?? res ?? [];
         const csv = toCsv(rows);
         // BOM + CSV para abrir bien en Excel.
-        zip.addFile(`${t.file}.csv`, Buffer.concat([Buffer.from('\uFEFF', 'utf8'), Buffer.from(csv)]));
+        zip.addFile(
+          `${t.file}.csv`,
+          Buffer.concat([Buffer.from('\uFEFF', 'utf8'), Buffer.from(csv)]),
+        );
         manifest.tables.push({ file: `${t.file}.csv`, table: t.table, rows: rows.length });
       } catch (e: any) {
         // Si una tabla no existe en este tenant la saltamos sin abortar.
@@ -92,11 +93,7 @@ function toCsv(rows: any[]): string {
 function esc(v: unknown): string {
   if (v === null || v === undefined) return '';
   const s =
-    v instanceof Date
-      ? v.toISOString()
-      : typeof v === 'object'
-      ? JSON.stringify(v)
-      : String(v);
+    v instanceof Date ? v.toISOString() : typeof v === 'object' ? JSON.stringify(v) : String(v);
   if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
     return '"' + s.replace(/"/g, '""') + '"';
   }

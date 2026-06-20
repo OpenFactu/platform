@@ -92,8 +92,8 @@ export const CollectiveAgreements: React.FC = () => {
             <BookOpen className="text-emerald-600" size={32} /> Convenios colectivos
           </h1>
           <p className="text-slate-500 text-sm">
-            Catálogo de convenios. Asigna uno a cada contrato para que el salario base
-            y los días de vacaciones se sugieran automáticamente.
+            Catálogo de convenios. Asigna uno a cada contrato para que el salario base y los días de
+            vacaciones se sugieran automáticamente.
           </p>
         </div>
         <Button size="sm" onClick={() => setEditing(empty())}>
@@ -198,7 +198,8 @@ export const CollectiveAgreements: React.FC = () => {
                 <td className="p-3 font-medium">{r.name}</td>
                 <td className="p-3 text-slate-500">{r.sector || '—'}</td>
                 <td className="p-3 text-right tabular-nums">
-                  {Number(r.baseSalary || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+                  {Number(r.baseSalary || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}{' '}
+                  €
                 </td>
                 <td className="p-3 text-right tabular-nums">{r.vacationDays}</td>
                 <td className="p-3 text-right tabular-nums">{r.weeklyHours}</td>
@@ -213,10 +214,7 @@ export const CollectiveAgreements: React.FC = () => {
                     >
                       <Pencil size={16} />
                     </button>
-                    <button
-                      onClick={() => remove(r)}
-                      className="text-slate-400 hover:text-red-500"
-                    >
+                    <button onClick={() => remove(r)} className="text-slate-400 hover:text-red-500">
                       <Trash2 size={16} />
                     </button>
                   </div>

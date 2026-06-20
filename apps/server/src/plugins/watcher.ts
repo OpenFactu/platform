@@ -16,11 +16,7 @@ export function startPluginWatcher() {
   console.log('[PluginWatcher] Observando cambios en plugins...');
 
   const watcher = chokidar.watch(pluginsDir, {
-    ignored: [
-      '**/node_modules/**',
-      '**/.git/**',
-      '**/dist/**',
-    ],
+    ignored: ['**/node_modules/**', '**/.git/**', '**/dist/**'],
     ignoreInitial: true,
     persistent: true,
   });
@@ -36,18 +32,21 @@ export function startPluginWatcher() {
     const existing = timers.get(pluginId);
     if (existing) clearTimeout(existing);
 
-    timers.set(pluginId, setTimeout(async () => {
-      timers.delete(pluginId);
-      console.log(`[PluginWatcher] Cambio detectado en ${pluginId}: ${path.basename(filePath)}`);
+    timers.set(
+      pluginId,
+      setTimeout(async () => {
+        timers.delete(pluginId);
+        console.log(`[PluginWatcher] Cambio detectado en ${pluginId}: ${path.basename(filePath)}`);
 
-      const result = await reloadPlugin(pluginId);
+        const result = await reloadPlugin(pluginId);
 
-      if (result.success) {
-        broadcastPluginReload(pluginId);
-      } else {
-        console.error(`[PluginWatcher] Error: ${result.error}`);
-      }
-    }, DEBOUNCE_MS));
+        if (result.success) {
+          broadcastPluginReload(pluginId);
+        } else {
+          console.error(`[PluginWatcher] Error: ${result.error}`);
+        }
+      }, DEBOUNCE_MS),
+    );
   };
 
   watcher.on('change', handleChange);

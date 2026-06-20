@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { SqlEditorModal } from '../components/document-templates/SqlEditorModal';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToast } from '@openfactu/ui';
 import {
@@ -11,50 +10,49 @@ import {
   Undo,
   Redo,
   Eye,
+  EyeOff,
+  ChevronUp,
+  ChevronDown,
+  Trash2,
+  Plus,
+  Copy,
+  ClipboardPaste,
+  BringToFront,
+  SendToBack,
+  Lock,
+  Unlock,
+  Code,
   Maximize2,
   Minimize2,
 } from 'lucide-react';
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
-import { useAuth } from '../context/AuthContext';
-import type { TemplateRow } from '../components/document-templates/constants';
-import {
-  createEmptyLayout,
-  createLabelLayout,
-  createDocumentLabelLayout,
-  PAGE_SIZE_LABELS,
-  resolvePageDimensions,
-  type CanvasLayout,
-  type Band,
-  type BandKind,
-  type CanvasElement,
-  type ElementKind,
-  type LinesTableElement,
-  type LinesTableColumn,
-  type PageSize,
-} from '../components/document-templates/canvas/types';
-import { compileCanvas } from '../components/document-templates/canvas/compileCanvas';
-import {
-  getFieldGroupsForFieldElement,
-  getLineFieldGroup,
-  inferDefaultFormat,
-  type FieldDef,
-  type FieldGroup,
-} from '../components/document-templates/canvas/fieldRegistry';
-import { ImportFromTemplateDialog } from '../components/document-templates/canvas/ImportFromTemplateDialog';
-import { usePluginFields } from '../components/document-templates/canvas/usePluginFields';
-import { SimpleLabelEditor } from '../components/document-templates/SimpleLabelEditor';
-import {
-  buildSimpleLabelLayout,
-  defaultSimpleArticleSettings,
-} from '../components/document-templates/canvas/buildSimpleLabel';
+import { Band, BandKind, CanvasElement, CanvasLayout, createDocumentLabelLayout, createEmptyLayout, createLabelLayout, ElementKind, ElementStyle, LinesTableColumn, LinesTableElement, PAGE_SIZE_LABELS, ParamDef, PageSize, resolvePageDimensions } from '../../components/document-templates/canvas/types';
+import { useAuth } from '../../context/AuthContext';
+import { TemplateRow } from '../../components/document-templates/constants';
+import { buildSimpleLabelLayout, defaultSimpleArticleSettings } from '../../components/document-templates/canvas/buildSimpleLabel';
+import { compileCanvas } from '../../components/document-templates/canvas/compileCanvas';
+import { usePluginFields } from '../../components/document-templates/canvas/usePluginFields';
+import { useQueryFields } from '../../components/document-templates/canvas/useQueryFields';
+import { CanvasContextMenu, CtxItem } from '../../components/document-templates/canvas/CanvasContextMenu';
+import { CssEditorModal } from '../../components/document-templates/canvas/CssEditorModal';
+import { ImportFromTemplateDialog } from '../../components/document-templates/canvas/ImportFromTemplateDialog';
+import { SimpleLabelEditor } from '../../components/document-templates/SimpleLabelEditor';
+import { FieldDef, FieldGroup, getFieldGroupsForFieldElement, getLineFieldGroup, inferDefaultFormat } from '../../components/document-templates/canvas/fieldRegistry';
+import { extractPlaceholders } from '../../components/document-templates/canvas/params';
+import { SqlEditorModal } from '../../components/document-templates/SqlEditorModal';
+
+
+
 
 const BAND_LABELS: Record<BandKind, string> = {
   pageHeader: 'Cabecera de página',
@@ -62,16 +60,25 @@ const BAND_LABELS: Record<BandKind, string> = {
   detail: 'Detalle (líneas)',
   totals: 'Totales',
   pageFooter: 'Pie de página',
+  custom: 'Sección',
 };
+
+/** Etiqueta visible de una banda: su `label` propio o el genérico por `kind`. */
+const bandLabel = (b: Band): string => b.label ?? BAND_LABELS[b.kind];
 
 const PALETTE_ITEMS: { kind: ElementKind; label: string }[] = [
   { kind: 'text', label: 'Texto' },
   { kind: 'image', label: 'Imagen' },
   { kind: 'shape', label: 'Forma' },
-  { kind: 'spacer', label: 'Espaciador' },
+  { kind: 'divider', label: 'Divisor' },
+  { kind: 'box', label: 'Caja' },
+  { kind: 'spacer', label: 'Espacio (hueco)' },
   { kind: 'field', label: 'Campo' },
   { kind: 'linesTable', label: 'Tabla líneas' },
+  { kind: 'list', label: 'Lista' },
+  { kind: 'summary', label: 'Resumen' },
   { kind: 'totals', label: 'Totales' },
+  { kind: 'currentDate', label: 'Fecha' },
   { kind: 'qr', label: 'QR' },
   { kind: 'barcode', label: 'Código barras' },
   { kind: 'conditional', label: 'Condicional' },
@@ -93,13 +100,157 @@ const DEFAULT_SIZE: Record<ElementKind, { w: number; h: number }> = {
   conditional: { w: 60, h: 8 },
   signature: { w: 70, h: 25 },
   pageBreak: { w: 60, h: 4 },
+  divider: { w: 80, h: 4 },
+  summary: { w: 60, h: 8 },
+  box: { w: 80, h: 30 },
+  list: { w: 80, h: 40 },
+  currentDate: { w: 50, h: 8 },
 };
 
 /** Constante CSS: 1mm = 3.779527 px a 96 DPI. */
 const PX_PER_MM = 3.779527559;
 
+/** Tipos sin texto: en la sección Estilo solo muestran fondo/borde, no fuente. */
+const STYLE_NO_FONT = new Set<ElementKind>(['shape', 'image', 'divider', 'box', 'qr', 'barcode']);
+
+/** Umbral de imantado (mm) para las guías de alineación. */
+const SNAP_MM = 1.5;
+
+/** Top acumulado (mm) de una banda, saltando las ocultas. */
+function bandTopMm(layout: CanvasLayout, bandId: string): number {
+  let top = 0;
+  for (const b of layout.bands) {
+    if (b.hidden) continue;
+    if (b.id === bandId) break;
+    top += b.height;
+  }
+  return top;
+}
+
+interface SnapResult {
+  x: number;
+  y: number;
+  /** Guías verticales (x de página, en mm). */
+  v: number[];
+  /** Guías horizontales (y absoluta desde el tope de página, en mm). */
+  h: number[];
+}
+
+/**
+ * Imanta la posición proyectada (`projX`,`projY` en mm) de un elemento a los
+ * bordes/centros de los otros elementos de su banda, a los márgenes y al centro
+ * de página/banda. Devuelve la posición ajustada y las líneas guía a dibujar.
+ */
+function computeSnap(
+  layout: CanvasLayout,
+  bandId: string,
+  el: { id: string; w: number; h: number },
+  projX: number,
+  projY: number,
+): SnapResult {
+  const band = layout.bands.find((b) => b.id === bandId);
+  const { width: pageW } = resolvePageDimensions(layout);
+  const right = pageW - layout.margins.right;
+
+  const xc: { left: number; guide: number }[] = [
+    { left: layout.margins.left, guide: layout.margins.left },
+    { left: right - el.w, guide: right },
+    { left: pageW / 2 - el.w / 2, guide: pageW / 2 },
+  ];
+  const yc: { top: number; guide: number }[] = band
+    ? [
+        { top: 0, guide: 0 },
+        { top: band.height / 2 - el.h / 2, guide: band.height / 2 },
+        { top: band.height - el.h, guide: band.height },
+      ]
+    : [];
+  if (band) {
+    for (const n of band.elements) {
+      if (n.id === el.id) continue;
+      xc.push(
+        { left: n.x, guide: n.x },
+        { left: n.x + n.w / 2 - el.w / 2, guide: n.x + n.w / 2 },
+        { left: n.x + n.w - el.w, guide: n.x + n.w },
+        { left: n.x + n.w, guide: n.x + n.w },
+        { left: n.x - el.w, guide: n.x },
+      );
+      yc.push(
+        { top: n.y, guide: n.y },
+        { top: n.y + n.h / 2 - el.h / 2, guide: n.y + n.h / 2 },
+        { top: n.y + n.h - el.h, guide: n.y + n.h },
+        { top: n.y + n.h, guide: n.y + n.h },
+        { top: n.y - el.h, guide: n.y },
+      );
+    }
+  }
+
+  let x = projX;
+  let guideV: number | null = null;
+  let bestX = SNAP_MM;
+  for (const c of xc) {
+    const d = Math.abs(projX - c.left);
+    if (d <= bestX) {
+      bestX = d;
+      x = c.left;
+      guideV = c.guide;
+    }
+  }
+  let y = projY;
+  let guideH: number | null = null;
+  let bestY = SNAP_MM;
+  for (const c of yc) {
+    const d = Math.abs(projY - c.top);
+    if (d <= bestY) {
+      bestY = d;
+      y = c.top;
+      guideH = c.guide;
+    }
+  }
+  const bandTop = bandTopMm(layout, bandId);
+  return {
+    x: Math.max(0, x),
+    y: Math.max(0, y),
+    v: guideV != null ? [guideV] : [],
+    h: guideH != null ? [bandTop + guideH] : [],
+  };
+}
+
 let nextId = 1;
 const genId = (prefix: string) => `${prefix}_${Date.now().toString(36)}_${nextId++}`;
+
+/**
+ * Campo arrastrable del panel "Campos" (estilo Crystal Reports). Al soltarlo en
+ * el lienzo crea un elemento `field` enlazado a `canvasPath`; al soltarlo sobre
+ * una tabla de líneas añade una columna con `linePath` (y engancha la tabla a
+ * `lineSource` si la columna viene de una query).
+ */
+interface FieldDescriptor {
+  key: string;
+  label: string;
+  group: string;
+  /** Ruta absoluta para un elemento Campo en el lienzo (ej. `doc.docCode`, `queries.q.0.col`). */
+  canvasPath: string;
+  /** Ruta relativa cuando se usa como columna de tabla (ej. `itemName`, `col`). */
+  linePath?: string;
+  /** `query:<nombre>` si la columna proviene de una consulta SQL. */
+  lineSource?: string;
+  format?: 'currency' | 'date' | 'number' | 'percent' | 'address';
+}
+
+/** Objetivo del menú contextual: canvas vacío, una banda o un elemento. */
+type CtxTarget =
+  | { scope: 'canvas'; x: number; y: number }
+  | { scope: 'band'; x: number; y: number; bandId: string; xMm: number; yMm: number }
+  | { scope: 'element'; x: number; y: number; bandId: string; elementId: string };
+
+/** Clona un elemento con un id nuevo (deep-clone para arrays como columns). */
+function cloneElement(el: CanvasElement, dx = 5, dy = 5): CanvasElement {
+  const copy = JSON.parse(JSON.stringify(el)) as CanvasElement;
+  copy.id = genId(el.kind);
+  copy.x = Math.max(0, el.x + dx);
+  copy.y = Math.max(0, el.y + dy);
+  return copy;
+}
 
 export const DocumentTemplateDesigner: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -111,6 +262,11 @@ export const DocumentTemplateDesigner: React.FC = () => {
   const [layout, setLayout] = useState<CanvasLayout>(createEmptyLayout());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Estado del autoguardado: 'saved' = todo guardado; 'dirty' = hay cambios sin
+  // guardar; 'saving' = guardando ahora. `lastSavedRef` guarda la última versión
+  // persistida (serializada) para no guardar si no cambió nada.
+  const [saveState, setSaveState] = useState<'saved' | 'dirty' | 'saving'>('saved');
+  const lastSavedRef = useRef<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   /**
@@ -120,6 +276,19 @@ export const DocumentTemplateDesigner: React.FC = () => {
    */
   const [labelEditMode, setLabelEditMode] = useState<'simple' | 'advanced'>('simple');
   const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // Overlay visual de arrastre (paleta / campos) que sigue al cursor.
+  const [activeDrag, setActiveDrag] = useState<{ kind: 'palette' | 'field'; label: string } | null>(
+    null,
+  );
+  // Líneas guía de alineación mientras se mueve un elemento.
+  const [guides, setGuides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] });
+  // Menú contextual + portapapeles interno (elemento y estilo).
+  const [ctxMenu, setCtxMenu] = useState<CtxTarget | null>(null);
+  const [cssElementId, setCssElementId] = useState<string | null>(null);
+  const [globalCssOpen, setGlobalCssOpen] = useState(false);
+  const clipboardRef = useRef<CanvasElement | null>(null);
+  const styleClipboardRef = useRef<ElementStyle | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -155,21 +324,28 @@ export const DocumentTemplateDesigner: React.FC = () => {
         const data = (await res.json()) as TemplateRow & { canvasLayout?: CanvasLayout | null };
         if (cancelled) return;
         setTemplate(data);
+        let initialLayout: CanvasLayout | null = null;
         if (data.canvasLayout && data.canvasLayout.version === 1) {
-          setLayout(data.canvasLayout);
+          initialLayout = data.canvasLayout;
           // Si el layout fue construido por el modo simple, abrimos en simple.
-          if ((data.canvasLayout as any).simpleLabel) {
-            setLabelEditMode('simple');
-          } else {
-            setLabelEditMode('advanced');
-          }
-        } else if ((data as any).docType === 'FREE') {
-          // Plantilla FREE nueva → arrancamos en modo simple con defaults
-          // de artículo, lo que es la ruta más rápida para tener una etiqueta
-          // funcional sin tocar el canvas.
-          const initial = buildSimpleLabelLayout(defaultSimpleArticleSettings());
-          setLayout(initial);
+          setLabelEditMode((data.canvasLayout as any).simpleLabel ? 'simple' : 'advanced');
+        } else if ((data as any).docType === 'LABEL') {
+          // Etiqueta nueva → arrancamos en modo simple con defaults de artículo,
+          // la ruta más rápida para tener una etiqueta funcional sin tocar el canvas.
+          initialLayout = buildSimpleLabelLayout(defaultSimpleArticleSettings());
           setLabelEditMode('simple');
+        } else if ((data as any).docType === 'FREE') {
+          // Documento Libre nuevo → lienzo en blanco A4 en el diseñador avanzado;
+          // se diseña desde cero, sin formulario de etiqueta.
+          initialLayout = createEmptyLayout();
+          setLabelEditMode('advanced');
+        }
+        if (initialLayout) {
+          setLayout(initialLayout);
+          // Marcamos esta versión como "guardada" para que el autoguardado no
+          // dispare nada más abrir (solo tras una edición real).
+          lastSavedRef.current = JSON.stringify(initialLayout);
+          setSaveState('saved');
         }
       } catch {
         toast.error('No se pudo cargar la plantilla');
@@ -185,11 +361,16 @@ export const DocumentTemplateDesigner: React.FC = () => {
 
   const handleBack = () => navigate('/document-templates');
 
-  const handleSave = async (opts: { returnAfter?: boolean } = {}) => {
+  const handleSave = async (opts: { returnAfter?: boolean; silent?: boolean } = {}) => {
     if (!template) return;
+    const snapshot = JSON.stringify(layout);
     setSaving(true);
+    setSaveState('saving');
     try {
-      const html = compileCanvas(layout, { docType: template.docType });
+      const html = compileCanvas(layout, {
+        docType: template.docType,
+        extraCss: layout.customCss,
+      });
       const res = await fetch(`/api/document-templates/${template.id}`, {
         method: 'PUT',
         headers,
@@ -201,24 +382,250 @@ export const DocumentTemplateDesigner: React.FC = () => {
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      toast.success('Plantilla guardada');
+      lastSavedRef.current = snapshot;
+      // Si entretanto el usuario siguió editando, queda 'dirty'; si no, 'saved'.
+      setSaveState(JSON.stringify(layout) === snapshot ? 'saved' : 'dirty');
+      if (!opts.silent) toast.success('Plantilla guardada');
       if (opts.returnAfter) navigate('/document-templates');
     } catch {
-      toast.error('Error al guardar');
+      setSaveState('dirty');
+      // El autoguardado no molesta con toasts; el manual sí avisa del fallo.
+      if (!opts.silent) toast.error('Error al guardar');
     } finally {
       setSaving(false);
     }
   };
 
+  // Autoguardado: 1,5 s después del último cambio del layout. Solo si hay
+  // cambios reales respecto a lo último guardado y no hay otro guardado en curso.
+  useEffect(() => {
+    if (loading || !template) return;
+    if (JSON.stringify(layout) === lastSavedRef.current) {
+      if (!saving) setSaveState('saved');
+      return;
+    }
+    setSaveState('dirty');
+    const handle = setTimeout(() => {
+      if (!saving) handleSave({ silent: true });
+    }, 1500);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout, loading, template]);
+
+  // ---- Deshacer / Rehacer ----
+  // Pilas de estados de `layout`. Una ráfaga de cambios (arrastre, tecleo) se
+  // agrupa en un solo paso vía debounce: guardamos el estado PRE-ráfaga una vez.
+  const pastRef = useRef<CanvasLayout[]>([]);
+  const futureRef = useRef<CanvasLayout[]>([]);
+  const prevLayoutRef = useRef<CanvasLayout>(layout);
+  const pendingBeforeRef = useRef<CanvasLayout | null>(null);
+  const histTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipHistoryRef = useRef(false);
+  const [, setHistVer] = useState(0);
+  const forceHist = () => setHistVer((v) => v + 1);
+
+  const commitPending = () => {
+    if (histTimerRef.current) {
+      clearTimeout(histTimerRef.current);
+      histTimerRef.current = null;
+    }
+    if (pendingBeforeRef.current) {
+      pastRef.current.push(pendingBeforeRef.current);
+      if (pastRef.current.length > 60) pastRef.current.shift();
+      pendingBeforeRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    if (skipHistoryRef.current) {
+      skipHistoryRef.current = false;
+      prevLayoutRef.current = layout;
+      return;
+    }
+    if (loading || !template) {
+      prevLayoutRef.current = layout;
+      return;
+    }
+    // Arranque de ráfaga: capturamos el estado previo una sola vez y limpiamos redo.
+    if (!histTimerRef.current && !pendingBeforeRef.current) {
+      pendingBeforeRef.current = prevLayoutRef.current;
+      futureRef.current = [];
+      forceHist();
+    }
+    if (histTimerRef.current) clearTimeout(histTimerRef.current);
+    histTimerRef.current = setTimeout(() => {
+      commitPending();
+      forceHist();
+    }, 500);
+    prevLayoutRef.current = layout;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layout, loading, template]);
+
+  const undo = () => {
+    commitPending();
+    if (pastRef.current.length === 0) return;
+    const prev = pastRef.current.pop() as CanvasLayout;
+    futureRef.current.push(prevLayoutRef.current);
+    skipHistoryRef.current = true;
+    prevLayoutRef.current = prev;
+    setLayout(prev);
+    setSelectedElementId(null);
+    forceHist();
+  };
+
+  const redo = () => {
+    if (futureRef.current.length === 0) return;
+    const next = futureRef.current.pop() as CanvasLayout;
+    pastRef.current.push(prevLayoutRef.current);
+    skipHistoryRef.current = true;
+    prevLayoutRef.current = next;
+    setLayout(next);
+    setSelectedElementId(null);
+    forceHist();
+  };
+
+  const canUndo = pastRef.current.length > 0 || pendingBeforeRef.current != null;
+  const canRedo = futureRef.current.length > 0;
+
+  // Atajos de teclado (no interceptamos si el foco está en un input/edición de texto).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || t?.isContentEditable) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((k === 'z' && e.shiftKey) || k === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current as any;
+    if (data?.action === 'create') {
+      const label = PALETTE_ITEMS.find((p) => p.kind === data.kind)?.label ?? String(data.kind);
+      setActiveDrag({ kind: 'palette', label });
+    } else if (data?.action === 'createField') {
+      setActiveDrag({ kind: 'field', label: data.descriptor?.label ?? 'Campo' });
+    } else {
+      setActiveDrag(null);
+    }
+  };
+
+  const handleDragMove = (event: DragEndEvent) => {
+    const data = event.active.data.current as any;
+    if (data?.action !== 'move') return;
+    const band = layout.bands.find((b) => b.id === data.bandId);
+    const el = band?.elements.find((e) => e.id === data.elementId);
+    if (!el) return;
+    const projX = el.x + event.delta.x / PX_PER_MM;
+    const projY = el.y + event.delta.y / PX_PER_MM;
+    const snap = computeSnap(layout, data.bandId, el, projX, projY);
+    setGuides({ v: snap.v, h: snap.h });
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDrag(null);
+    setGuides({ v: [], h: [] });
     const { active, over, delta } = event;
     if (!over) return;
     const targetBandId = String(over.id);
     const data = active.data.current as
       | { action: 'create'; kind: ElementKind }
+      | { action: 'createField'; descriptor: FieldDescriptor }
       | { action: 'move'; bandId: string; elementId: string }
       | undefined;
     if (!data) return;
+
+    // ----- Crystal-style: arrastrar un campo del panel → elemento enlazado o columna -----
+    if (data.action === 'createField') {
+      const desc = data.descriptor;
+      const activatorRect = event.over?.rect;
+      const pointer = (event.activatorEvent as PointerEvent) ?? null;
+      let xMm = 5;
+      let yMm = 5;
+      if (activatorRect && pointer) {
+        xMm = Math.max(0, Math.round((pointer.clientX + delta.x - activatorRect.left) / PX_PER_MM));
+        yMm = Math.max(0, Math.round((pointer.clientY + delta.y - activatorRect.top) / PX_PER_MM));
+      }
+      const targetBand = layout.bands.find((b) => b.id === targetBandId);
+      // ¿Se soltó encima de una tabla de líneas? → añadir columna en vez de elemento.
+      const overTable = targetBand?.elements.find(
+        (e) =>
+          e.kind === 'linesTable' &&
+          xMm >= e.x &&
+          xMm <= e.x + e.w &&
+          yMm >= e.y &&
+          yMm <= e.y + e.h,
+      ) as LinesTableElement | undefined;
+
+      if (overTable && desc.linePath) {
+        const newCol: LinesTableColumn = {
+          id: genId('col'),
+          label: desc.label,
+          path: desc.linePath,
+          widthPct: Math.round(100 / (overTable.columns.length + 1)),
+          align: 'left',
+          format: desc.format,
+        };
+        setLayout((prev) => ({
+          ...prev,
+          bands: prev.bands.map((b) =>
+            b.id === targetBandId
+              ? {
+                  ...b,
+                  elements: b.elements.map((e) =>
+                    e.id === overTable.id
+                      ? ({
+                          ...e,
+                          // Si la columna viene de una query, enganchamos la tabla a esa fuente.
+                          source:
+                            desc.lineSource ?? (e as LinesTableElement).source,
+                          columns: [...(e as LinesTableElement).columns, newCol],
+                        } as LinesTableElement)
+                      : e,
+                  ),
+                }
+              : b,
+          ),
+        }));
+        setSelectedElementId(overTable.id);
+        return;
+      }
+
+      // Si no, creamos un elemento `field` enlazado a la ruta absoluta.
+      const size = DEFAULT_SIZE.field;
+      if (targetBand) {
+        const maxY = Math.max(0, targetBand.height - size.h);
+        if (yMm > maxY) yMm = maxY;
+      }
+      const fieldEl = {
+        id: genId('field'),
+        kind: 'field' as const,
+        x: xMm,
+        y: yMm,
+        w: size.w,
+        h: size.h,
+        path: desc.canvasPath,
+        format: desc.format,
+      } as CanvasElement;
+      setLayout((prev) => ({
+        ...prev,
+        bands: prev.bands.map((b) =>
+          b.id === targetBandId ? { ...b, elements: [...b.elements, fieldEl] } : b,
+        ),
+      }));
+      setSelectedElementId(fieldEl.id);
+      return;
+    }
 
     if (data.action === 'create') {
       const activatorRect = event.over?.rect;
@@ -275,6 +682,11 @@ export const DocumentTemplateDesigner: React.FC = () => {
         newX = Math.max(0, Math.round(pxX / PX_PER_MM) - Math.round(el.w / 2));
         newY = Math.max(0, Math.round(pxY / PX_PER_MM) - Math.round(el.h / 2));
       }
+      // Imantado a guías de alineación (bordes/centros de vecinos, márgenes,
+      // centro de página/banda) al soltar.
+      const snap = computeSnap(prev, targetBandId, el, newX, newY);
+      newX = snap.x;
+      newY = snap.y;
       // Clamp final para que el elemento no quede fuera de la banda destino.
       if (targetBand) {
         const maxY = Math.max(0, targetBand.height - el.h);
@@ -308,7 +720,10 @@ export const DocumentTemplateDesigner: React.FC = () => {
     if (!template) return;
     setPreviewLoading(true);
     try {
-      const html = compileCanvas(layout, { docType: template.docType });
+      const html = compileCanvas(layout, {
+        docType: template.docType,
+        extraCss: layout.customCss,
+      });
       const res = await fetch('/api/document-templates/preview', {
         method: 'POST',
         headers,
@@ -316,6 +731,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
           html,
           docType: template.docType,
           queries: layout.queries ?? [],
+          params: layout.testParams ?? {},
         }),
       });
       if (!res.ok) {
@@ -338,17 +754,6 @@ export const DocumentTemplateDesigner: React.FC = () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
-
-  // Auto-refresh del preview cuando el layout cambia — debounced a 900 ms
-  // para no martillear al server en cada drag.
-  useEffect(() => {
-    if (!template) return;
-    const handle = setTimeout(() => {
-      handlePreview();
-    }, 900);
-    return () => clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layout, template?.docType]);
 
   const handleExportJson = () => {
     const blob = new Blob([JSON.stringify(layout, null, 2)], { type: 'application/json' });
@@ -410,6 +815,38 @@ export const DocumentTemplateDesigner: React.FC = () => {
     }));
   };
 
+  const handleAddBand = () => {
+    setLayout((prev) => ({
+      ...prev,
+      bands: [
+        ...prev.bands,
+        { id: genId('band'), kind: 'custom', height: 20, elements: [], label: 'Sección' },
+      ],
+    }));
+  };
+
+  const handleDeleteBand = (bandId: string) => {
+    setLayout((prev) => {
+      const band = prev.bands.find((b) => b.id === bandId);
+      // Si el elemento seleccionado vivía en esta banda, deseleccionamos.
+      if (band && band.elements.some((e) => e.id === selectedElementId)) {
+        setSelectedElementId(null);
+      }
+      return { ...prev, bands: prev.bands.filter((b) => b.id !== bandId) };
+    });
+  };
+
+  const handleMoveBand = (bandId: string, dir: -1 | 1) => {
+    setLayout((prev) => {
+      const idx = prev.bands.findIndex((b) => b.id === bandId);
+      const target = idx + dir;
+      if (idx < 0 || target < 0 || target >= prev.bands.length) return prev;
+      const bands = [...prev.bands];
+      [bands[idx], bands[target]] = [bands[target], bands[idx]];
+      return { ...prev, bands };
+    });
+  };
+
   const handleUpdatePage = (patch: Partial<CanvasLayout>) => {
     setLayout((prev) => ({ ...prev, ...patch }));
   };
@@ -419,7 +856,9 @@ export const DocumentTemplateDesigner: React.FC = () => {
       ...prev,
       bands: prev.bands.map((b) => ({
         ...b,
-        elements: b.elements.map((e) => (e.id === elementId ? ({ ...e, ...patch } as CanvasElement) : e)),
+        elements: b.elements.map((e) =>
+          e.id === elementId ? ({ ...e, ...patch } as CanvasElement) : e,
+        ),
       })),
     }));
   };
@@ -430,18 +869,172 @@ export const DocumentTemplateDesigner: React.FC = () => {
       bands: prev.bands.map((b) => ({
         ...b,
         elements: b.elements.map((e) =>
-          e.id === elementId ? ({ ...e, w: Math.max(2, newW), h: Math.max(2, newH) } as CanvasElement) : e,
+          e.id === elementId
+            ? ({ ...e, w: Math.max(2, newW), h: Math.max(2, newH) } as CanvasElement)
+            : e,
         ),
       })),
     }));
   };
 
+  // ---- acciones del menú contextual (mutan `layout`) ----
+
+  const findElement = (elementId: string): CanvasElement | null =>
+    layout.bands.flatMap((b) => b.elements).find((e) => e.id === elementId) ?? null;
+
+  const handleDuplicateElement = (bandId: string, elementId: string) => {
+    setLayout((prev) => ({
+      ...prev,
+      bands: prev.bands.map((b) => {
+        if (b.id !== bandId) return b;
+        const idx = b.elements.findIndex((e) => e.id === elementId);
+        if (idx < 0) return b;
+        const clone = cloneElement(b.elements[idx]);
+        const elements = [...b.elements];
+        elements.splice(idx + 1, 0, clone); // tras el original → queda encima
+        setSelectedElementId(clone.id);
+        return { ...b, elements };
+      }),
+    }));
+  };
+
+  const handleCopyElement = (elementId: string) => {
+    const el = findElement(elementId);
+    if (el) clipboardRef.current = JSON.parse(JSON.stringify(el));
+  };
+
+  const handlePasteElement = (bandId: string, xMm?: number, yMm?: number) => {
+    const src = clipboardRef.current;
+    if (!src) return;
+    const clone = cloneElement(src, 0, 0);
+    if (xMm != null) clone.x = Math.max(0, Math.round(xMm));
+    if (yMm != null) clone.y = Math.max(0, Math.round(yMm));
+    setLayout((prev) => ({
+      ...prev,
+      bands: prev.bands.map((b) => (b.id === bandId ? { ...b, elements: [...b.elements, clone] } : b)),
+    }));
+    setSelectedElementId(clone.id);
+  };
+
+  const handleZOrder = (bandId: string, elementId: string, mode: 'front' | 'back') => {
+    setLayout((prev) => ({
+      ...prev,
+      bands: prev.bands.map((b) => {
+        if (b.id !== bandId) return b;
+        const el = b.elements.find((e) => e.id === elementId);
+        if (!el) return b;
+        const rest = b.elements.filter((e) => e.id !== elementId);
+        // El orden del array = orden de pintado (el PDF no usa z-index): final = frente.
+        return { ...b, elements: mode === 'front' ? [...rest, el] : [el, ...rest] };
+      }),
+    }));
+  };
+
+  const handleCopyStyle = (elementId: string) => {
+    const el = findElement(elementId);
+    styleClipboardRef.current = (el && 'style' in el ? el.style : undefined) ?? null;
+  };
+
+  const handlePasteStyle = (elementId: string) => {
+    const s = styleClipboardRef.current;
+    if (!s) return;
+    handleUpdateElement(elementId, { style: { ...s } } as Partial<CanvasElement>);
+  };
+
+  const handleAddElementToBand = (bandId: string, kind: ElementKind, xMm: number, yMm: number) => {
+    const size = DEFAULT_SIZE[kind];
+    const newEl = buildDefaultElement(kind, Math.max(0, Math.round(xMm)), Math.max(0, Math.round(yMm)), size.w, size.h);
+    setLayout((prev) => ({
+      ...prev,
+      bands: prev.bands.map((b) => (b.id === bandId ? { ...b, elements: [...b.elements, newEl] } : b)),
+    }));
+    setSelectedElementId(newEl.id);
+  };
+
   const { pluginGroup, linePluginFields } = usePluginFields(template?.docType, headers);
+  // Para FREE/LABEL no hay catálogo de documento: los campos salen de las
+  // consultas SQL definidas (columnas) + params.
+  const isFreeOrLabel = template?.docType === 'FREE' || template?.docType === 'LABEL';
+  const { fieldGroups: queryFieldGroups, queryColumns } = useQueryFields(
+    layout.queries,
+    layout.testParams,
+    headers,
+    isFreeOrLabel,
+  );
+  const queryNames = (layout.queries ?? []).map((q) => q.name);
+  // Campos arrastrables (estilo Crystal) para el panel lateral.
+  const fieldDescriptors = buildFieldDescriptors({
+    isFreeOrLabel,
+    queryColumns,
+    paramKeys: Object.keys(layout.testParams ?? {}),
+    pluginGroup,
+    linePluginFields,
+  });
 
   const selectedElement =
     selectedElementId == null
       ? null
-      : layout.bands.flatMap((b) => b.elements).find((e) => e.id === selectedElementId) ?? null;
+      : (layout.bands.flatMap((b) => b.elements).find((e) => e.id === selectedElementId) ?? null);
+
+  // Elemento cuyo CSS se edita desde el menú contextual (modal a nivel padre).
+  const cssElement = cssElementId ? findElement(cssElementId) : null;
+
+  /** Construye las opciones del menú contextual según el objetivo. */
+  const buildCtxItems = (t: CtxTarget): CtxItem[] => {
+    const hasClip = !!clipboardRef.current;
+    const hasStyleClip = !!styleClipboardRef.current;
+    if (t.scope === 'element') {
+      const el = findElement(t.elementId);
+      const locked = !!el?.locked;
+      const hidden = !!el?.hidden;
+      const canStyle = !!el && 'style' in el;
+      return [
+        { label: 'Duplicar', icon: <Copy size={14} />, onClick: () => handleDuplicateElement(t.bandId, t.elementId) },
+        { label: 'Copiar', icon: <Copy size={14} />, onClick: () => handleCopyElement(t.elementId) },
+        { label: 'Pegar', icon: <ClipboardPaste size={14} />, disabled: !hasClip, onClick: () => handlePasteElement(t.bandId) },
+        { label: 'Copiar estilo', disabled: !canStyle, onClick: () => handleCopyStyle(t.elementId) },
+        { label: 'Pegar estilo', disabled: !hasStyleClip || !canStyle, onClick: () => handlePasteStyle(t.elementId) },
+        { label: 'Traer al frente', icon: <BringToFront size={14} />, separatorBefore: true, onClick: () => handleZOrder(t.bandId, t.elementId, 'front') },
+        { label: 'Enviar al fondo', icon: <SendToBack size={14} />, onClick: () => handleZOrder(t.bandId, t.elementId, 'back') },
+        { label: hidden ? 'Mostrar' : 'Ocultar', icon: hidden ? <Eye size={14} /> : <EyeOff size={14} />, separatorBefore: true, onClick: () => handleUpdateElement(t.elementId, { hidden: !hidden }) },
+        { label: locked ? 'Desbloquear' : 'Bloquear', icon: locked ? <Unlock size={14} /> : <Lock size={14} />, onClick: () => handleUpdateElement(t.elementId, { locked: !locked }) },
+        { label: 'Editar CSS', icon: <Code size={14} />, onClick: () => setCssElementId(t.elementId) },
+        { label: 'Eliminar', icon: <Trash2 size={14} />, destructive: true, separatorBefore: true, onClick: () => handleDeleteElement(t.bandId, t.elementId) },
+      ];
+    }
+    if (t.scope === 'band') {
+      return [
+        {
+          label: 'Añadir elemento aquí',
+          icon: <Plus size={14} />,
+          submenu: PALETTE_ITEMS.map((p) => ({
+            label: p.label,
+            onClick: () => handleAddElementToBand(t.bandId, p.kind, t.xMm, t.yMm),
+          })),
+        },
+        { label: 'Pegar', icon: <ClipboardPaste size={14} />, disabled: !hasClip, onClick: () => handlePasteElement(t.bandId, t.xMm, t.yMm) },
+        { label: 'Ocultar banda', icon: <EyeOff size={14} />, separatorBefore: true, onClick: () => handleUpdateBand(t.bandId, { hidden: true }) },
+        { label: 'Subir banda', icon: <ChevronUp size={14} />, onClick: () => handleMoveBand(t.bandId, -1) },
+        { label: 'Bajar banda', icon: <ChevronDown size={14} />, onClick: () => handleMoveBand(t.bandId, 1) },
+        {
+          label: 'Eliminar sección',
+          icon: <Trash2 size={14} />,
+          destructive: true,
+          separatorBefore: true,
+          disabled: layout.bands.find((b) => b.id === t.bandId)?.kind !== 'custom',
+          onClick: () => handleDeleteBand(t.bandId),
+        },
+      ];
+    }
+    // canvas vacío
+    return [
+      { label: 'Pegar', icon: <ClipboardPaste size={14} />, disabled: !hasClip, onClick: () => {
+        const firstVisible = layout.bands.find((b) => !b.hidden);
+        if (firstVisible) handlePasteElement(firstVisible.id, 5, 5);
+      } },
+      { label: 'Editar CSS global', icon: <Code size={14} />, separatorBefore: true, onClick: () => setGlobalCssOpen(true) },
+    ];
+  };
 
   if (loading) {
     return (
@@ -452,15 +1045,13 @@ export const DocumentTemplateDesigner: React.FC = () => {
   }
 
   return (
-    <div
-      ref={rootRef}
-      className="absolute inset-0 flex flex-col bg-slate-50 dark:bg-slate-950"
-    >
+    <div ref={rootRef} className="absolute inset-0 flex flex-col bg-slate-50 dark:bg-slate-950">
       <Toolbar
         title={template?.name ?? 'Sin título'}
         onBack={handleBack}
-        onSave={() => handleSave({ returnAfter: true })}
+        onSave={() => handleSave()}
         saving={saving}
+        saveState={saveState}
         onToggleFullscreen={toggleFullscreen}
         isFullscreen={isFullscreen}
         onExport={handleExportJson}
@@ -468,8 +1059,12 @@ export const DocumentTemplateDesigner: React.FC = () => {
         onImportFromTemplate={() => setImportOpen(true)}
         onPreview={handlePreview}
         previewLoading={previewLoading}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
-      {(template as any)?.docType === 'FREE' && (
+      {(template as any)?.docType === 'LABEL' && (
         <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-800/40 text-xs flex-wrap">
           <span className="font-bold text-purple-700 dark:text-purple-300">Modo:</span>
           <div className="inline-flex rounded border border-purple-300 dark:border-purple-700 overflow-hidden">
@@ -533,9 +1128,36 @@ export const DocumentTemplateDesigner: React.FC = () => {
           )}
         </div>
       )}
-      {previewUrl && (
-        <PreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />
+      {previewUrl && <PreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />}
+      {ctxMenu && (
+        <CanvasContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={buildCtxItems(ctxMenu)}
+          onClose={() => setCtxMenu(null)}
+        />
       )}
+      <CssEditorModal
+        open={globalCssOpen}
+        value={layout.customCss ?? ''}
+        onChange={(v) => handleUpdatePage({ customCss: v.trim() ? v : undefined })}
+        onClose={() => setGlobalCssOpen(false)}
+        title="CSS global del documento"
+        helpText="Reglas CSS completas. Se inyectan tras el CSS base; apunta a elementos con la clase que les pongas en su inspector."
+      />
+      <CssEditorModal
+        open={!!cssElement}
+        value={cssElement?.customCss ?? ''}
+        onChange={(v) =>
+          cssElementId &&
+          handleUpdateElement(cssElementId, {
+            customCss: v.trim() ? v : undefined,
+          } as Partial<CanvasElement>)
+        }
+        onClose={() => setCssElementId(null)}
+        title="CSS del elemento"
+        helpText="Propiedades CSS que se anexan al estilo del elemento (sin selector). Ej.: letter-spacing:2px;"
+      />
       {importOpen && (
         <ImportFromTemplateDialog
           currentId={template?.id}
@@ -544,13 +1166,11 @@ export const DocumentTemplateDesigner: React.FC = () => {
           headers={headers}
         />
       )}
-      {(template as any)?.docType === 'FREE' && labelEditMode === 'simple' ? (
+      {(template as any)?.docType === 'LABEL' && labelEditMode === 'simple' ? (
         <div className="flex flex-1 min-h-0 bg-slate-50 dark:bg-slate-900">
           <div className="flex-1 min-h-0">
             <SimpleLabelEditor
-              settings={
-                (layout as any).simpleLabel ?? defaultSimpleArticleSettings()
-              }
+              settings={(layout as any).simpleLabel ?? defaultSimpleArticleSettings()}
               onChange={(next) => {
                 setLayout(next);
                 setSelectedElementId(null);
@@ -567,9 +1187,19 @@ export const DocumentTemplateDesigner: React.FC = () => {
           />
         </div>
       ) : (
-        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragMove={handleDragMove}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => {
+            setActiveDrag(null);
+            setGuides({ v: [], h: [] });
+          }}
+        >
           <div className="flex flex-1 min-h-0">
             <PalettePanel />
+            <FieldsPanel descriptors={fieldDescriptors} isFreeOrLabel={isFreeOrLabel} />
             <CanvasArea
               layout={layout}
               selectedElementId={selectedElementId}
@@ -577,6 +1207,8 @@ export const DocumentTemplateDesigner: React.FC = () => {
               onDeleteElement={handleDeleteElement}
               onResizeBand={(id, h) => handleUpdateBand(id, { height: h })}
               onResizeElement={handleResizeElement}
+              onContext={setCtxMenu}
+              guides={guides}
             />
             <InspectorPanel
               element={selectedElement}
@@ -584,10 +1216,30 @@ export const DocumentTemplateDesigner: React.FC = () => {
               pluginGroup={pluginGroup}
               linePluginFields={linePluginFields}
               layout={layout}
+              docType={template?.docType}
+              queryFieldGroups={queryFieldGroups}
+              queryColumns={queryColumns}
+              queryNames={queryNames}
               onUpdatePage={handleUpdatePage}
               onUpdateBand={handleUpdateBand}
+              onAddBand={handleAddBand}
+              onDeleteBand={handleDeleteBand}
+              onMoveBand={handleMoveBand}
             />
           </div>
+          <DragOverlay dropAnimation={null}>
+            {activeDrag ? (
+              <div
+                className={`px-2 py-1 rounded shadow-lg text-xs font-medium pointer-events-none ${
+                  activeDrag.kind === 'field'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-800 text-white'
+                }`}
+              >
+                {activeDrag.label}
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       )}
     </div>
@@ -601,6 +1253,7 @@ interface ToolbarProps {
   onBack: () => void;
   onSave: () => void;
   saving: boolean;
+  saveState: 'saved' | 'dirty' | 'saving';
   onToggleFullscreen: () => void;
   isFullscreen: boolean;
   onExport: () => void;
@@ -608,6 +1261,10 @@ interface ToolbarProps {
   onImportFromTemplate: () => void;
   onPreview: () => void;
   previewLoading: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -615,6 +1272,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onBack,
   onSave,
   saving,
+  saveState,
   onToggleFullscreen,
   isFullscreen,
   onExport,
@@ -622,6 +1280,10 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onImportFromTemplate,
   onPreview,
   previewLoading,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }) => (
   <header className="flex items-center gap-2 px-4 h-14 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
     <button
@@ -633,8 +1295,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
     </button>
     <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">{title}</div>
     <div className="flex-1" />
-    <ToolbarButton icon={<Undo size={16} />} label="Deshacer" disabled />
-    <ToolbarButton icon={<Redo size={16} />} label="Rehacer" disabled />
+    <ToolbarButton icon={<Undo size={16} />} label="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={onUndo} />
+    <ToolbarButton icon={<Redo size={16} />} label="Rehacer (Ctrl+Y)" disabled={!canRedo} onClick={onRedo} />
     <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
     <button
       type="button"
@@ -690,9 +1352,22 @@ const Toolbar: React.FC<ToolbarProps> = ({
     >
       {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
     </button>
+    <span
+      className={`text-[11px] mr-1 select-none ${
+        saveState === 'saved'
+          ? 'text-emerald-600 dark:text-emerald-400'
+          : saveState === 'saving'
+            ? 'text-slate-400'
+            : 'text-amber-600 dark:text-amber-400'
+      }`}
+      title="Autoguardado activado"
+    >
+      {saveState === 'saving' ? 'Guardando…' : saveState === 'saved' ? '✓ Guardado' : '● Sin guardar'}
+    </span>
     <button
       onClick={onSave}
       disabled={saving}
+      title="Guardar ahora (no cierra el diseñador)"
       className="flex items-center gap-2 px-3 py-1.5 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
     >
       <Save size={16} /> {saving ? 'Guardando…' : 'Guardar'}
@@ -729,13 +1404,16 @@ const PreviewModal: React.FC<{ url: string; onClose: () => void }> = ({ url, onC
   </div>
 );
 
-const ToolbarButton: React.FC<{ icon: React.ReactNode; label: string; disabled?: boolean }> = ({
-  icon,
-  label,
-  disabled,
-}) => (
+const ToolbarButton: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  disabled?: boolean;
+  onClick?: () => void;
+}> = ({ icon, label, disabled, onClick }) => (
   <button
+    type="button"
     disabled={disabled}
+    onClick={onClick}
     title={label}
     className="flex items-center gap-1 px-2 py-1.5 rounded text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
   >
@@ -747,9 +1425,7 @@ const ToolbarButton: React.FC<{ icon: React.ReactNode; label: string; disabled?:
 
 const PalettePanel: React.FC = () => (
   <aside className="w-56 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
-    <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">
-      Paleta
-    </div>
+    <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">Paleta</div>
     <ul className="px-2 pb-4 space-y-1">
       {PALETTE_ITEMS.map((it) => (
         <PaletteItem key={it.kind} kind={it.kind} label={it.label} />
@@ -777,6 +1453,177 @@ const PaletteItem: React.FC<{ kind: ElementKind; label: string }> = ({ kind, lab
   );
 };
 
+// ---------- panel de Campos (drag&drop estilo Crystal) ----------
+
+/** Etiqueta corta y capitalizada a partir de un path (último segmento). */
+function shortLabel(path: string): string {
+  const seg = (path.split('.').pop() ?? path).replace(/_/g, ' ');
+  return seg.charAt(0).toUpperCase() + seg.slice(1);
+}
+
+/** Adivina un formato de columna a partir del nombre (heurística ES/EN). */
+function guessColumnFormat(
+  name: string,
+): 'currency' | 'date' | 'number' | 'percent' | 'address' | undefined {
+  const n = name.toLowerCase();
+  if (/(price|precio|total|amount|importe|subtotal|valor|coste|\bcost\b)/.test(n)) return 'currency';
+  if (/(date|fecha|expiry|caducidad|created|updated|vencimiento)/.test(n)) return 'date';
+  if (/(qty|cantidad|quantity|stock|units|unidades|count|num|cant)/.test(n)) return 'number';
+  return undefined;
+}
+
+/** Construye las columnas de una tabla a partir de los nombres de columna de una query. */
+function columnsFromQueryCols(cols: string[]): LinesTableColumn[] {
+  return cols.map((c) => ({
+    id: genId('col'),
+    label: shortLabel(c),
+    path: c,
+    widthPct: Math.round(100 / Math.max(cols.length, 1)),
+    align: 'left',
+    format: guessColumnFormat(c),
+  }));
+}
+
+/**
+ * Construye los campos arrastrables según el tipo de documento:
+ *  - FREE/LABEL → columnas de las consultas (relativas para tablas, absolutas
+ *    para el lienzo) + params.
+ *  - Documento normal → campos de documento (lienzo) + campos de línea (tabla).
+ */
+function buildFieldDescriptors(args: {
+  isFreeOrLabel: boolean;
+  queryColumns: Record<string, string[]>;
+  paramKeys: string[];
+  pluginGroup: FieldGroup | null;
+  linePluginFields: FieldDef[];
+}): FieldDescriptor[] {
+  const out: FieldDescriptor[] = [];
+  if (args.isFreeOrLabel) {
+    for (const [name, cols] of Object.entries(args.queryColumns)) {
+      for (const c of cols) {
+        out.push({
+          key: `q-${name}-${c}`,
+          label: c,
+          group: `Consulta: ${name}`,
+          canvasPath: `queries.${name}.0.${c}`,
+          linePath: c,
+          lineSource: `query:${name}`,
+        });
+      }
+    }
+    for (const k of args.paramKeys) {
+      out.push({ key: `p-${k}`, label: k, group: 'Parámetros', canvasPath: `params.${k}` });
+    }
+    return out;
+  }
+  const docGroups = args.pluginGroup
+    ? [...getFieldGroupsForFieldElement('docHeader'), args.pluginGroup]
+    : getFieldGroupsForFieldElement('docHeader');
+  for (const g of docGroups) {
+    for (const f of g.fields) {
+      out.push({
+        key: `d-${g.label}-${f.path}`,
+        label: shortLabel(f.path),
+        group: g.label,
+        canvasPath: f.path,
+        format: inferDefaultFormat(f),
+      });
+    }
+  }
+  const baseLine = getLineFieldGroup();
+  const lineFields = baseLine ? [...baseLine.fields, ...args.linePluginFields] : args.linePluginFields;
+  for (const f of lineFields) {
+    out.push({
+      key: `l-${f.path}`,
+      label: shortLabel(f.path),
+      group: 'Líneas (tabla)',
+      canvasPath: `lines.0.${f.path}`,
+      linePath: f.path,
+      format: inferDefaultFormat(f),
+    });
+  }
+  return out;
+}
+
+const FieldsPanel: React.FC<{ descriptors: FieldDescriptor[]; isFreeOrLabel: boolean }> = ({
+  descriptors,
+  isFreeOrLabel,
+}) => {
+  const [q, setQ] = useState('');
+  const nq = q.trim().toLowerCase();
+  const filtered = nq
+    ? descriptors.filter(
+        (d) =>
+          d.label.toLowerCase().includes(nq) ||
+          d.canvasPath.toLowerCase().includes(nq) ||
+          d.group.toLowerCase().includes(nq),
+      )
+    : descriptors;
+  const groups = Array.from(new Set(filtered.map((d) => d.group)));
+  return (
+    <aside className="w-56 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
+      <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">Campos</div>
+      <div className="px-2 pb-1">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar campo…"
+          className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+        />
+      </div>
+      {descriptors.length === 0 && (
+        <div className="px-3 py-2 text-[11px] text-slate-400 italic leading-snug">
+          {isFreeOrLabel
+            ? 'Sin campos. Definí una consulta SQL en el inspector de página para que aparezcan sus columnas.'
+            : 'Sin campos.'}
+        </div>
+      )}
+      {groups.map((g) => (
+        <div key={g} className="pb-1">
+          <div className="px-3 pt-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+            {g}
+          </div>
+          <ul className="px-2 space-y-1">
+            {filtered
+              .filter((d) => d.group === g)
+              .map((d) => (
+                <FieldChip key={d.key} descriptor={d} />
+              ))}
+          </ul>
+        </div>
+      ))}
+      <div className="px-3 py-2 text-[10px] text-slate-400 leading-snug">
+        Arrastra un campo al lienzo (crea un Campo enlazado) o sobre una tabla (añade columna).
+      </div>
+    </aside>
+  );
+};
+
+const FieldChip: React.FC<{ descriptor: FieldDescriptor }> = ({ descriptor }) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `fld-${descriptor.key}`,
+    data: { action: 'createField', descriptor },
+  });
+  return (
+    <li
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      title={descriptor.canvasPath}
+      className={`px-2 py-1 rounded border border-dashed border-slate-300 dark:border-slate-600 cursor-grab select-none active:cursor-grabbing bg-white dark:bg-slate-800 ${
+        isDragging ? 'opacity-40' : ''
+      }`}
+    >
+      <span className="block text-xs text-slate-700 dark:text-slate-200 truncate">
+        {descriptor.label}
+      </span>
+      <span className="block text-[9px] text-slate-400 font-mono truncate">
+        {descriptor.linePath ?? descriptor.canvasPath}
+      </span>
+    </li>
+  );
+};
+
 // ---------- canvas ----------
 
 interface CanvasAreaProps {
@@ -786,6 +1633,8 @@ interface CanvasAreaProps {
   onDeleteElement: (bandId: string, elementId: string) => void;
   onResizeBand: (bandId: string, height: number) => void;
   onResizeElement: (elementId: string, w: number, h: number) => void;
+  onContext?: (t: CtxTarget) => void;
+  guides?: { v: number[]; h: number[] };
 }
 
 const CanvasArea: React.FC<CanvasAreaProps> = ({
@@ -795,6 +1644,8 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
   onDeleteElement,
   onResizeBand,
   onResizeElement,
+  onContext,
+  guides,
 }) => (
   <main
     className="flex-1 min-w-0 overflow-auto flex justify-center py-8 bg-slate-100 dark:bg-slate-900"
@@ -806,6 +1657,13 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
     <div
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onSelectElement(null);
+      }}
+      onContextMenu={(e) => {
+        // Solo sobre el fondo de la página (no sobre una banda/elemento).
+        if (e.target === e.currentTarget && onContext) {
+          e.preventDefault();
+          onContext({ scope: 'canvas', x: e.clientX, y: e.clientY });
+        }
       }}
       className="relative bg-white dark:bg-slate-950 shadow-lg rounded overflow-hidden"
       style={(() => {
@@ -828,15 +1686,33 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({
           {layout.watermark.text}
         </div>
       )}
-      {layout.bands.map((b) => (
-        <BandSlot
-          key={b.id}
-          band={b}
-          selectedElementId={selectedElementId}
-          onSelectElement={onSelectElement}
-          onDeleteElement={onDeleteElement}
-          onResize={(h) => onResizeBand(b.id, h)}
-          onResizeElement={onResizeElement}
+      {layout.bands
+        .filter((b) => !b.hidden)
+        .map((b) => (
+          <BandSlot
+            key={b.id}
+            band={b}
+            selectedElementId={selectedElementId}
+            onSelectElement={onSelectElement}
+            onDeleteElement={onDeleteElement}
+            onResize={(h) => onResizeBand(b.id, h)}
+            onResizeElement={onResizeElement}
+            onContext={onContext}
+          />
+        ))}
+      {/* Líneas guía de alineación (mientras se arrastra un elemento). */}
+      {guides?.v.map((x, i) => (
+        <div
+          key={`gv-${i}`}
+          className="absolute top-0 bottom-0 pointer-events-none z-40"
+          style={{ left: `${x}mm`, borderLeft: '1px dashed #ec4899' }}
+        />
+      ))}
+      {guides?.h.map((y, i) => (
+        <div
+          key={`gh-${i}`}
+          className="absolute left-0 right-0 pointer-events-none z-40"
+          style={{ top: `${y}mm`, borderTop: '1px dashed #ec4899' }}
         />
       ))}
     </div>
@@ -850,6 +1726,7 @@ interface BandSlotProps {
   onDeleteElement: (bandId: string, elementId: string) => void;
   onResize: (heightMm: number) => void;
   onResizeElement: (elementId: string, w: number, h: number) => void;
+  onContext?: (t: CtxTarget) => void;
 }
 
 const BandSlot: React.FC<BandSlotProps> = ({
@@ -859,6 +1736,7 @@ const BandSlot: React.FC<BandSlotProps> = ({
   onDeleteElement,
   onResize,
   onResizeElement,
+  onContext,
 }) => {
   const { setNodeRef, isOver } = useDroppable({ id: band.id });
   const handleResizeDown = (e: React.MouseEvent) => {
@@ -886,6 +1764,16 @@ const BandSlot: React.FC<BandSlotProps> = ({
         // handler de selección.
         if (e.target === e.currentTarget) onSelectElement(null);
       }}
+      onContextMenu={(e) => {
+        if (!onContext) return;
+        // Los elementos detienen la propagación → aquí solo cae el espacio vacío.
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const xMm = Math.max(0, (e.clientX - rect.left) / PX_PER_MM);
+        const yMm = Math.max(0, (e.clientY - rect.top) / PX_PER_MM);
+        onContext({ scope: 'band', x: e.clientX, y: e.clientY, bandId: band.id, xMm, yMm });
+      }}
       className={`relative border-b border-dashed transition-colors ${
         isOver
           ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-400'
@@ -894,7 +1782,7 @@ const BandSlot: React.FC<BandSlotProps> = ({
       style={{ height: `${band.height}mm` }}
     >
       <div className="absolute top-1 left-2 text-[10px] uppercase tracking-wide font-bold text-slate-400 pointer-events-none z-10">
-        {BAND_LABELS[band.kind]}
+        {bandLabel(band)}
       </div>
       {band.elements.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-400 pointer-events-none">
@@ -910,6 +1798,7 @@ const BandSlot: React.FC<BandSlotProps> = ({
           onSelect={() => onSelectElement(el.id)}
           onDelete={() => onDeleteElement(band.id, el.id)}
           onResize={(w, h) => onResizeElement(el.id, w, h)}
+          onContext={onContext}
         />
       ))}
       {/* Handle de resize: arrastra para cambiar el alto de la banda */}
@@ -929,6 +1818,7 @@ interface ElementBoxProps {
   onSelect: () => void;
   onDelete: () => void;
   onResize: (w: number, h: number) => void;
+  onContext?: (t: CtxTarget) => void;
 }
 
 const ElementBox: React.FC<ElementBoxProps> = ({
@@ -938,33 +1828,34 @@ const ElementBox: React.FC<ElementBoxProps> = ({
   onSelect,
   onDelete,
   onResize,
+  onContext,
 }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `el-${element.id}`,
     data: { action: 'move', bandId, elementId: element.id },
+    disabled: element.locked,
   });
-  const startResize =
-    (edge: 'e' | 's' | 'se') => (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const startX = e.clientX;
-      const startY = e.clientY;
-      const startW = element.w;
-      const startH = element.h;
-      const onMove = (ev: MouseEvent) => {
-        const dxMm = (ev.clientX - startX) / PX_PER_MM;
-        const dyMm = (ev.clientY - startY) / PX_PER_MM;
-        const newW = edge === 's' ? startW : Math.max(2, Math.round(startW + dxMm));
-        const newH = edge === 'e' ? startH : Math.max(2, Math.round(startH + dyMm));
-        onResize(newW, newH);
-      };
-      const onUp = () => {
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
-      };
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
+  const startResize = (edge: 'e' | 's' | 'se') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = element.w;
+    const startH = element.h;
+    const onMove = (ev: MouseEvent) => {
+      const dxMm = (ev.clientX - startX) / PX_PER_MM;
+      const dyMm = (ev.clientY - startY) / PX_PER_MM;
+      const newW = edge === 's' ? startW : Math.max(2, Math.round(startW + dxMm));
+      const newH = edge === 'e' ? startH : Math.max(2, Math.round(startH + dyMm));
+      onResize(newW, newH);
     };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
   const style: React.CSSProperties = {
     position: 'absolute',
     left: `${element.x}mm`,
@@ -972,9 +1863,11 @@ const ElementBox: React.FC<ElementBoxProps> = ({
     width: `${element.w}mm`,
     height: `${element.h}mm`,
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-    opacity: isDragging ? 0.6 : 1,
+    // Los ocultos se ven tenues en el diseñador (pero NO se emiten al PDF).
+    opacity: isDragging ? 0.6 : element.hidden ? 0.3 : 1,
     zIndex: isDragging ? 50 : selected ? 20 : 10,
   };
+  const locked = element.locked;
   return (
     <div
       ref={setNodeRef}
@@ -984,6 +1877,13 @@ const ElementBox: React.FC<ElementBoxProps> = ({
         e.stopPropagation();
         onSelect();
       }}
+      onContextMenu={(e) => {
+        if (!onContext) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onSelect(); // seleccionar primero → el menú actúa sobre este elemento
+        onContext({ scope: 'element', x: e.clientX, y: e.clientY, bandId, elementId: element.id });
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault();
@@ -992,7 +1892,9 @@ const ElementBox: React.FC<ElementBoxProps> = ({
       }}
       tabIndex={0}
       style={style}
-      className={`group rounded cursor-move select-none outline-none touch-none overflow-visible ${
+      className={`group rounded select-none outline-none touch-none overflow-visible ${
+        locked ? 'cursor-default' : 'cursor-move'
+      } ${
         selected
           ? 'ring-2 ring-blue-500'
           : 'ring-1 ring-slate-300 dark:ring-slate-600 hover:ring-slate-400'
@@ -1001,7 +1903,7 @@ const ElementBox: React.FC<ElementBoxProps> = ({
       <div className="w-full h-full overflow-hidden rounded">
         <ElementPreview element={element} />
       </div>
-      {selected && (
+      {selected && !locked && (
         <>
           {/* stopPropagation en pointerdown impide que dnd-kit arranque un drag
               al pinchar un handle — dnd-kit escucha pointer events, no mouse. */}
@@ -1117,13 +2019,9 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
       if (element.rich && (element.prefix || element.suffix)) {
         return (
           <div style={base} className="font-mono text-slate-700 dark:text-slate-300">
-            {element.prefix && (
-              <span dangerouslySetInnerHTML={{ __html: element.prefix }} />
-            )}
+            {element.prefix && <span dangerouslySetInnerHTML={{ __html: element.prefix }} />}
             {`{{${element.path || 'campo'}}}`}
-            {element.suffix && (
-              <span dangerouslySetInnerHTML={{ __html: element.suffix }} />
-            )}
+            {element.suffix && <span dangerouslySetInnerHTML={{ __html: element.suffix }} />}
           </div>
         );
       }
@@ -1135,9 +2033,23 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
         </div>
       );
     case 'linesTable':
+      if (element.layout === 'keyValue') {
+        return (
+          <div className="w-full h-full bg-white dark:bg-slate-800 p-1 text-[8pt] space-y-0.5 overflow-hidden">
+            {element.columns.map((c) => (
+              <div key={c.id} className="flex justify-between gap-2">
+                <span className="text-slate-500 font-semibold">{c.label}</span>
+                <span className="text-slate-400 italic font-mono">{`{{${c.path}}}`}</span>
+              </div>
+            ))}
+          </div>
+        );
+      }
       return (
         <div className="w-full h-full bg-white dark:bg-slate-800 p-1">
-          <table className="w-full text-[8pt] border-collapse">
+          <table
+            className={`w-full text-[8pt] border-collapse ${element.tableStyle === 'compact' ? 'leading-tight' : ''}`}
+          >
             {element.showHeader !== false && (
               <thead>
                 <tr className="bg-slate-100 dark:bg-slate-700">
@@ -1253,8 +2165,8 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
         op === 'truthy'
           ? `${element.path} ✓`
           : op === 'falsy'
-          ? `${element.path} ✗`
-          : `${element.path} ${op} ${element.value ?? ''}`;
+            ? `${element.path} ✗`
+            : `${element.path} ${op} ${element.value ?? ''}`;
       return (
         <div style={base} className="flex-col items-stretch text-[9pt]">
           <div className="text-[8pt] text-slate-400 font-mono truncate">{`if ${cmp}`}</div>
@@ -1267,6 +2179,63 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
         </div>
       );
     }
+    case 'divider': {
+      const ds = element.style ?? {};
+      const vertical = element.orientation === 'vertical';
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <div
+            style={{
+              width: vertical ? 0 : '100%',
+              height: vertical ? '100%' : 0,
+              [vertical ? 'borderLeft' : 'borderTop']: `${ds.borderWidth ?? 1}px ${ds.borderStyle && ds.borderStyle !== 'none' ? ds.borderStyle : 'solid'} ${ds.borderColor ?? '#94a3b8'}`,
+            }}
+          />
+        </div>
+      );
+    }
+    case 'box':
+      return (
+        <div
+          className="w-full h-full"
+          style={{
+            backgroundColor: s.backgroundColor ?? 'transparent',
+            border:
+              s.borderStyle && s.borderStyle !== 'none'
+                ? `${s.borderWidth ?? 1}px ${s.borderStyle} ${s.borderColor ?? '#000'}`
+                : '1px dashed #cbd5e1',
+            borderRadius: s.borderRadius ? `${s.borderRadius}px` : undefined,
+          }}
+        />
+      );
+    case 'summary':
+      return (
+        <div style={base} className="font-mono text-slate-700 dark:text-slate-300">
+          {element.prefix}
+          {`Σ ${element.op}(${element.op === 'count' ? element.source ?? 'lines' : element.path ?? ''})`}
+          {element.suffix}
+        </div>
+      );
+    case 'list':
+      return (
+        <div style={base} className="text-[9pt] text-slate-500">
+          <div className="flex gap-1">
+            <span>{element.ordered || element.marker === 'number' ? '1.' : '•'}</span>
+            <span className="font-mono text-slate-400 truncate">{`{{${element.itemPath || 'campo'}}}`}</span>
+          </div>
+          <div className="flex gap-1">
+            <span>{element.ordered || element.marker === 'number' ? '2.' : '•'}</span>
+            <span className="font-mono text-slate-400 truncate">{`{{${element.itemPath || 'campo'}}}`}</span>
+          </div>
+        </div>
+      );
+    case 'currentDate':
+      return (
+        <div style={base} className="text-slate-600 dark:text-slate-300">
+          {element.prefix}
+          {element.mode === 'datetime' ? '📅 dd/mm/aaaa hh:mm' : '📅 dd/mm/aaaa'}
+        </div>
+      );
   }
 };
 
@@ -1278,8 +2247,15 @@ interface InspectorPanelProps {
   pluginGroup: FieldGroup | null;
   linePluginFields: FieldDef[];
   layout: CanvasLayout;
+  docType?: string;
+  queryFieldGroups: FieldGroup[];
+  queryColumns: Record<string, string[]>;
+  queryNames: string[];
   onUpdatePage: (patch: Partial<CanvasLayout>) => void;
   onUpdateBand: (bandId: string, patch: Partial<Band>) => void;
+  onAddBand: () => void;
+  onDeleteBand: (bandId: string) => void;
+  onMoveBand: (bandId: string, dir: -1 | 1) => void;
 }
 
 const InspectorPanel: React.FC<InspectorPanelProps> = ({
@@ -1288,8 +2264,15 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({
   pluginGroup,
   linePluginFields,
   layout,
+  docType,
+  queryFieldGroups,
+  queryColumns,
+  queryNames,
   onUpdatePage,
   onUpdateBand,
+  onAddBand,
+  onDeleteBand,
+  onMoveBand,
 }) => (
   <aside className="w-80 shrink-0 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
     <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">
@@ -1301,12 +2284,20 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({
         onChange={onChange}
         pluginGroup={pluginGroup}
         linePluginFields={linePluginFields}
+        docType={docType}
+        queryFieldGroups={queryFieldGroups}
+        queryColumns={queryColumns}
+        queryNames={queryNames}
+        layout={layout}
       />
     ) : (
       <PageInspector
         layout={layout}
         onUpdatePage={onUpdatePage}
         onUpdateBand={onUpdateBand}
+        onAddBand={onAddBand}
+        onDeleteBand={onDeleteBand}
+        onMoveBand={onMoveBand}
       />
     )}
   </aside>
@@ -1316,11 +2307,14 @@ const PageInspector: React.FC<{
   layout: CanvasLayout;
   onUpdatePage: (patch: Partial<CanvasLayout>) => void;
   onUpdateBand: (bandId: string, patch: Partial<Band>) => void;
-}> = ({ layout, onUpdatePage, onUpdateBand }) => (
+  onAddBand: () => void;
+  onDeleteBand: (bandId: string) => void;
+  onMoveBand: (bandId: string, dir: -1 | 1) => void;
+}> = ({ layout, onUpdatePage, onUpdateBand, onAddBand, onDeleteBand, onMoveBand }) => {
+  const [cssOpen, setCssOpen] = useState(false);
+  return (
   <div className="px-3 py-3 space-y-4 text-sm">
-    <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500">
-      Página
-    </div>
+    <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500">Página</div>
     <Section title="Formato">
       <Label>Tamaño</Label>
       <select
@@ -1384,11 +2378,46 @@ const PageInspector: React.FC<{
       </div>
     </Section>
     <Section title="Bandas (alto en mm)">
-      {layout.bands.map((b) => (
-        <div key={b.id} className="flex items-center gap-2">
-          <div className="flex-1 text-xs text-slate-600 dark:text-slate-300">
-            {BAND_LABELS[b.kind]}
-          </div>
+      {layout.bands.map((b, i) => (
+        <div key={b.id} className={`flex items-center gap-1 ${b.hidden ? 'opacity-50' : ''}`}>
+          {b.kind === 'custom' ? (
+            <input
+              value={b.label ?? ''}
+              placeholder="Sección"
+              onChange={(e) => onUpdateBand(b.id, { label: e.target.value })}
+              className="flex-1 min-w-0 px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+            />
+          ) : (
+            <div className="flex-1 min-w-0 truncate text-xs text-slate-600 dark:text-slate-300">
+              {bandLabel(b)}
+            </div>
+          )}
+          <button
+            type="button"
+            title={b.hidden ? 'Mostrar banda' : 'Ocultar banda'}
+            onClick={() => onUpdateBand(b.id, { hidden: !b.hidden })}
+            className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            {b.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
+          <button
+            type="button"
+            title="Subir"
+            disabled={i === 0}
+            onClick={() => onMoveBand(b.id, -1)}
+            className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
+          >
+            <ChevronUp size={14} />
+          </button>
+          <button
+            type="button"
+            title="Bajar"
+            disabled={i === layout.bands.length - 1}
+            onClick={() => onMoveBand(b.id, 1)}
+            className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
+          >
+            <ChevronDown size={14} />
+          </button>
           <input
             type="number"
             min={0}
@@ -1396,12 +2425,30 @@ const PageInspector: React.FC<{
             onChange={(e) =>
               onUpdateBand(b.id, { height: Math.max(0, Number(e.target.value) || 0) })
             }
-            className="w-20 px-2 py-1 text-xs text-right rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+            className="w-14 px-1.5 py-1 text-xs text-right rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
           />
+          {b.kind === 'custom' && (
+            <button
+              type="button"
+              title="Eliminar sección"
+              onClick={() => onDeleteBand(b.id)}
+              className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       ))}
+      <button
+        type="button"
+        onClick={onAddBand}
+        className="flex items-center gap-1 mt-1 px-2 py-1 text-xs rounded border border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+      >
+        <Plus size={13} /> Añadir banda
+      </button>
       <div className="pt-1 text-[11px] text-slate-400">
-        Total bandas: {layout.bands.reduce((a, b) => a + b.height, 0)}mm. Útil de página:{' '}
+        Total (visibles): {layout.bands.filter((b) => !b.hidden).reduce((a, b) => a + b.height, 0)}mm.
+        Útil de página:{' '}
         {resolvePageDimensions(layout).height - layout.margins.top - layout.margins.bottom}mm.
       </div>
     </Section>
@@ -1415,20 +2462,56 @@ const PageInspector: React.FC<{
     />
     <QueriesInspector
       queries={layout.queries}
+      testParams={layout.testParams ?? {}}
+      paramsSchema={layout.paramsSchema}
       onChange={(q) => onUpdatePage({ queries: q })}
+      onTestParamsChange={(p) => onUpdatePage({ testParams: p })}
     />
+    <ParamsSchemaInspector
+      queries={layout.queries}
+      schema={layout.paramsSchema}
+      onChange={(s) => onUpdatePage({ paramsSchema: s })}
+    />
+    <Section title="CSS personalizado">
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+        Hoja de estilos global del documento. Se aplica al compilar y puede apuntar a las clases
+        que pongas en cada elemento (ej. <code>.mi-clase {'{'} color:red {'}'}</code>).
+      </p>
+      <button
+        type="button"
+        onClick={() => setCssOpen(true)}
+        className="flex items-center gap-2 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+      >
+        <Code size={14} /> Editar CSS global
+        {layout.customCss ? (
+          <span className="text-emerald-600 dark:text-emerald-400">●</span>
+        ) : null}
+      </button>
+    </Section>
     <div className="text-[11px] text-slate-400 italic">
       Selecciona un elemento para editar sus propiedades.
     </div>
+    <CssEditorModal
+      open={cssOpen}
+      value={layout.customCss ?? ''}
+      onChange={(v) => onUpdatePage({ customCss: v.trim() ? v : undefined })}
+      onClose={() => setCssOpen(false)}
+      title="CSS global del documento"
+      helpText="Reglas CSS completas. Se inyectan tras el CSS base, así que pueden sobreescribir estilos por defecto. Apunta a elementos con la clase que les pongas en su inspector."
+    />
   </div>
-);
+  );
+};
 
 // ---------- QueriesInspector: editor de consultas SQL (solo ADMIN/SUPERUSER) ----------
 
 const QueriesInspector: React.FC<{
   queries: CanvasLayout['queries'];
+  testParams: Record<string, unknown>;
+  paramsSchema?: ParamDef[];
   onChange: (q: CanvasLayout['queries']) => void;
-}> = ({ queries, onChange }) => {
+  onTestParamsChange: (p: Record<string, unknown>) => void;
+}> = ({ queries, testParams, paramsSchema, onChange, onTestParamsChange }) => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
   const list = queries ?? [];
@@ -1466,6 +2549,7 @@ const QueriesInspector: React.FC<{
         <QueryEditor
           key={idx}
           query={q}
+          testParams={testParams}
           readOnly={!isAdmin}
           onChange={(p) => updateAt(idx, p)}
           onRemove={() => removeAt(idx)}
@@ -1480,16 +2564,37 @@ const QueriesInspector: React.FC<{
           + Añadir consulta
         </button>
       )}
+      {list.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+          <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2">
+            Parámetros de prueba
+          </div>
+          <div className="text-[10px] text-slate-400 dark:text-slate-500 mb-2">
+            Valores de los placeholders <code>:xxx</code> para “Probar” y la vista previa 👁. Se
+            listan solos al detectarlos en las consultas.
+          </div>
+          <TestParamsEditor
+            queries={queries}
+            value={testParams}
+            onChange={onTestParamsChange}
+            readOnly={!isAdmin}
+            labels={Object.fromEntries(
+              (paramsSchema ?? []).filter((p) => p.label).map((p) => [p.name, p.label as string]),
+            )}
+          />
+        </div>
+      )}
     </Section>
   );
 };
 
 const QueryEditor: React.FC<{
   query: { name: string; sql: string };
+  testParams: Record<string, unknown>;
   readOnly: boolean;
   onChange: (p: Partial<{ name: string; sql: string }>) => void;
   onRemove: () => void;
-}> = ({ query, readOnly, onChange, onRemove }) => {
+}> = ({ query, testParams, readOnly, onChange, onRemove }) => {
   const [result, setResult] = useState<
     | { ok: true; rows: unknown[]; rowCount: number; truncated: boolean }
     | { ok: false; error: string }
@@ -1508,7 +2613,7 @@ const QueryEditor: React.FC<{
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token ?? ''}`,
         },
-        body: JSON.stringify({ name: query.name, sql: query.sql }),
+        body: JSON.stringify({ name: query.name, sql: query.sql, params: testParams }),
       });
       const body = await res.json();
       if (!res.ok || body.ok === false) {
@@ -1561,7 +2666,9 @@ const QueryEditor: React.FC<{
         title={readOnly ? 'Solo lectura' : 'Click para abrir el editor SQL'}
       >
         {preview || <span className="text-slate-400 italic">SELECT * FROM …</span>}
-        {lineCount > 3 && <div className="text-[10px] text-slate-400">…{lineCount - 3} líneas más</div>}
+        {lineCount > 3 && (
+          <div className="text-[10px] text-slate-400">…{lineCount - 3} líneas más</div>
+        )}
       </div>
       {!readOnly && (
         <div className="flex items-center gap-2">
@@ -1638,13 +2745,190 @@ const QueryEditor: React.FC<{
   );
 };
 
+/**
+ * Editor de "Parámetros de prueba" DIRIGIDO POR PLACEHOLDERS: muestra un campo de
+ * valor por cada placeholder `:nombre` detectado en las queries (∪ las claves ya
+ * presentes en `value`). El nombre NO se edita (es etiqueta), por lo que la key de
+ * React es estable y no se pierde el foco al teclear. Estos valores los usan tanto
+ * el botón "Probar" como la preview 👁.
+ */
+const TestParamsEditor: React.FC<{
+  queries: CanvasLayout['queries'];
+  value: Record<string, unknown>;
+  onChange: (v: Record<string, unknown>) => void;
+  readOnly: boolean;
+  labels?: Record<string, string>;
+}> = ({ queries, value, onChange, readOnly, labels }) => {
+  const detected = extractPlaceholders(queries);
+  // Unión de los placeholders detectados y las claves ya guardadas (para no
+  // perder valores de un placeholder que se quitó temporalmente de la query).
+  const names = Array.from(new Set([...detected, ...Object.keys(value)]));
+
+  const setVal = (name: string, v: string) => onChange({ ...value, [name]: v });
+  const remove = (name: string) => {
+    const next = { ...value };
+    delete next[name];
+    onChange(next);
+  };
+
+  if (names.length === 0) {
+    return (
+      <div className="text-[10px] text-slate-400 italic">
+        Sin parámetros: las consultas no usan placeholders <code>:xxx</code>.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      {names.map((name) => {
+        const isDetected = detected.includes(name);
+        return (
+          <div key={name} className="flex items-center gap-2">
+            <span
+              className="w-28 shrink-0 truncate text-[10px] text-slate-500 dark:text-slate-400"
+              title={`:${name}`}
+            >
+              {labels?.[name] ?? name}
+            </span>
+            <input
+              type="text"
+              value={String(value[name] ?? '')}
+              onChange={(e) => setVal(name, e.target.value)}
+              disabled={readOnly}
+              placeholder="valor"
+              className="flex-1 min-w-0 px-2 py-1 text-[10px] font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            />
+            {!readOnly && !isDetected && (
+              <button
+                type="button"
+                title="Quitar parámetro huérfano"
+                onClick={() => remove(name)}
+                className="text-[10px] px-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ---------- ParamsSchemaInspector: metadata de los parámetros de entrada ----------
+// Define cómo se pide cada placeholder de las queries al GENERAR el documento
+// (etiqueta, tipo de campo, obligatorio, valor por defecto). Solo admin.
+
+const ParamsSchemaInspector: React.FC<{
+  queries: CanvasLayout['queries'];
+  schema: ParamDef[] | undefined;
+  onChange: (s: ParamDef[] | undefined) => void;
+}> = ({ queries, schema, onChange }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
+  const detected = extractPlaceholders(queries);
+  if (!isAdmin || detected.length === 0) return null;
+
+  const byName = new Map((schema ?? []).map((p) => [p.name, p]));
+  const update = (name: string, patch: Partial<ParamDef>) => {
+    // Reconstruimos el schema con todos los placeholders detectados, aplicando
+    // el patch al que cambia y conservando la metadata del resto.
+    const next = detected.map((n) => {
+      const base = byName.get(n) ?? { name: n };
+      return n === name ? { ...base, ...patch, name: n } : base;
+    });
+    onChange(next);
+  };
+
+  return (
+    <Section title="Parámetros de entrada">
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+        Cómo se piden estos placeholders al <strong>generar</strong> el documento (botón “Generar”
+        en la lista de plantillas).
+      </p>
+      {detected.map((name) => {
+        const p = byName.get(name) ?? { name };
+        return (
+          <div
+            key={name}
+            className="p-2 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 space-y-1.5"
+          >
+            <div className="font-mono text-[11px] text-slate-500">:{name}</div>
+            <input
+              value={p.label ?? ''}
+              onChange={(e) => update(name, { label: e.target.value || undefined })}
+              placeholder="Etiqueta visible"
+              className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            />
+            <div className="grid grid-cols-2 gap-1">
+              <select
+                value={p.type ?? 'text'}
+                onChange={(e) => update(name, { type: e.target.value as ParamDef['type'] })}
+                className="px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              >
+                <option value="text">Texto</option>
+                <option value="number">Número</option>
+                <option value="date">Fecha</option>
+                <option value="select">Lista (elige uno)</option>
+                <option value="multiselect">Lista múltiple (varios)</option>
+              </select>
+              <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={!!p.required}
+                  onChange={(e) => update(name, { required: e.target.checked })}
+                />
+                Obligatorio
+              </label>
+            </div>
+            <input
+              value={p.default ?? ''}
+              onChange={(e) => update(name, { default: e.target.value || undefined })}
+              placeholder="Valor por defecto"
+              className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            />
+            {(p.type === 'select' || p.type === 'multiselect') && (
+              <>
+                <input
+                  value={(p.options ?? []).join(', ')}
+                  onChange={(e) =>
+                    update(name, {
+                      options: e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                  placeholder="Opciones manuales (coma-separadas, o valor|etiqueta)"
+                  className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                />
+                <textarea
+                  value={p.optionsQuery ?? ''}
+                  onChange={(e) => update(name, { optionsQuery: e.target.value || undefined })}
+                  placeholder={'Consulta de opciones (SELECT value, label …). Tiene prioridad sobre las manuales.'}
+                  rows={2}
+                  className="w-full px-2 py-1 text-[11px] font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                />
+                <div className="text-[10px] text-slate-400 leading-snug">
+                  La consulta debe devolver columnas <code>value</code> y <code>label</code> (ej.{' '}
+                  <code>SELECT id AS value, name AS label FROM "Warehouse" ORDER BY name</code>).
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })}
+    </Section>
+  );
+};
+
 const PageNumbersInspector: React.FC<{
   value: CanvasLayout['pageNumbers'];
   onChange: (v: CanvasLayout['pageNumbers']) => void;
 }> = ({ value, onChange }) => {
   const v = value ?? { enabled: false, alignment: 'center' as const };
-  const patch = (p: Partial<NonNullable<CanvasLayout['pageNumbers']>>) =>
-    onChange({ ...v, ...p });
+  const patch = (p: Partial<NonNullable<CanvasLayout['pageNumbers']>>) => onChange({ ...v, ...p });
   return (
     <Section title="Números de página">
       <Toggle
@@ -1686,8 +2970,7 @@ const WatermarkInspector: React.FC<{
     fontSize: 84,
     fontWeight: 'bold' as const,
   };
-  const patch = (p: Partial<NonNullable<CanvasLayout['watermark']>>) =>
-    onChange({ ...w, ...p });
+  const patch = (p: Partial<NonNullable<CanvasLayout['watermark']>>) => onChange({ ...w, ...p });
   return (
     <Section title="Marca de agua">
       <Toggle
@@ -1767,16 +3050,109 @@ const WatermarkInspector: React.FC<{
   );
 };
 
+/** Selector reutilizable de Fuente de datos + Columna (Resumen, Lista). */
+const SourceColumnPicker: React.FC<{
+  source?: string;
+  path?: string;
+  onSource: (s: string | undefined) => void;
+  onPath: (p: string | undefined) => void;
+  showPath?: boolean;
+  pathLabel?: string;
+  queryNames: string[];
+  queryColumns: Record<string, string[]>;
+}> = ({ source, path, onSource, onPath, showPath = true, pathLabel = 'Columna', queryNames, queryColumns }) => {
+  const queryName = source && source.startsWith('query:') ? source.slice('query:'.length) : null;
+  const cols = queryName ? (queryColumns[queryName] ?? []) : [];
+  return (
+    <>
+      <Label>Fuente de datos</Label>
+      <select
+        value={source ?? ''}
+        onChange={(e) => onSource(e.target.value || undefined)}
+        className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+      >
+        <option value="">Líneas del documento</option>
+        {queryNames.map((n) => (
+          <option key={n} value={`query:${n}`}>
+            Consulta: {n}
+          </option>
+        ))}
+      </select>
+      {showPath && (
+        <>
+          <Label>{pathLabel}</Label>
+          <input
+            value={path ?? ''}
+            onChange={(e) => onPath(e.target.value || undefined)}
+            placeholder={queryName ? 'columna' : 'itemName / lineTotal'}
+            className="w-full px-2 py-1 text-xs font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+          />
+          {cols.length > 0 && (
+            <select
+              value=""
+              onChange={(e) => e.target.value && onPath(e.target.value)}
+              className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+            >
+              <option value="">Elegir columna…</option>
+              {cols.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
+        </>
+      )}
+    </>
+  );
+};
+
 const ElementInspector: React.FC<{
   element: CanvasElement;
   onChange: (id: string, patch: Partial<CanvasElement>) => void;
   pluginGroup: FieldGroup | null;
   linePluginFields: FieldDef[];
-}> = ({ element, onChange, pluginGroup, linePluginFields }) => {
+  docType?: string;
+  queryFieldGroups: FieldGroup[];
+  queryColumns: Record<string, string[]>;
+  queryNames: string[];
+  layout: CanvasLayout;
+}> = ({
+  element,
+  onChange,
+  pluginGroup,
+  linePluginFields,
+  docType,
+  queryFieldGroups,
+  queryColumns,
+  queryNames,
+  layout,
+}) => {
   const patch = (p: Partial<CanvasElement>) => onChange(element.id, p);
-  const fieldGroups = pluginGroup
-    ? [...getFieldGroupsForFieldElement('docHeader'), pluginGroup]
-    : getFieldGroupsForFieldElement('docHeader');
+  // Dimensiones útiles para los botones "ocupar": ancho de página menos
+  // márgenes y alto de la banda que contiene al elemento.
+  const usableWidth = Math.max(
+    10,
+    resolvePageDimensions(layout).width - layout.margins.left - layout.margins.right,
+  );
+  const ownBand = layout.bands.find((b) => b.elements.some((e) => e.id === element.id));
+  const fitWidth = () => patch({ x: layout.margins.left, w: Math.round(usableWidth) } as any);
+  const fitBand = () =>
+    patch({
+      x: layout.margins.left,
+      y: 0,
+      w: Math.round(usableWidth),
+      h: ownBand ? ownBand.height : element.h,
+    } as any);
+  const [cssOpen, setCssOpen] = useState(false);
+  const isFreeOrLabel = docType === 'FREE' || docType === 'LABEL';
+  // FREE/LABEL no tienen documento ligado: su catálogo son las columnas de las
+  // consultas SQL + params. El resto de tipos usa el catálogo de documento.
+  const fieldGroups = isFreeOrLabel
+    ? queryFieldGroups
+    : pluginGroup
+      ? [...getFieldGroupsForFieldElement('docHeader'), pluginGroup]
+      : getFieldGroupsForFieldElement('docHeader');
   return (
     <div className="px-3 py-3 space-y-4 text-sm">
       <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500">
@@ -1799,6 +3175,25 @@ const ElementInspector: React.FC<{
             onChange={(v) => patch({ h: Math.max(1, v) } as any)}
           />
         </NumberGrid>
+        <div className="flex gap-2 pt-1">
+          <button
+            type="button"
+            onClick={fitWidth}
+            className="flex-1 px-2 py-1 text-[11px] rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
+            title="Ocupar todo el ancho útil de la página"
+          >
+            ↔ Ancho completo
+          </button>
+          <button
+            type="button"
+            onClick={fitBand}
+            disabled={!ownBand}
+            className="flex-1 px-2 py-1 text-[11px] rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40"
+            title="Ocupar toda la banda (ancho útil y alto de la banda)"
+          >
+            ⤢ Ocupar banda
+          </button>
+        </div>
       </Section>
 
       {/* Props específicas por tipo */}
@@ -1809,6 +3204,7 @@ const ElementInspector: React.FC<{
               value={element.text}
               onChange={(v) => patch({ text: v } as any)}
               defaultColor={element.style?.color}
+              style={element.style}
             />
           ) : (
             <ExpandableTextarea
@@ -1844,15 +3240,11 @@ const ElementInspector: React.FC<{
           <Toggle
             label="Expresión Handlebars (avanzado)"
             checked={element.raw === true}
-            onChange={(v) =>
-              patch({ raw: v, rich: v ? false : element.rich } as any)
-            }
+            onChange={(v) => patch({ raw: v, rich: v ? false : element.rich } as any)}
           />
           {element.raw && (
             <ExprCommands
-              onInsert={(snippet) =>
-                patch({ text: appendSnippet(element.text, snippet) } as any)
-              }
+              onInsert={(snippet) => patch({ text: appendSnippet(element.text, snippet) } as any)}
             />
           )}
         </Section>
@@ -1951,9 +3343,7 @@ const ElementInspector: React.FC<{
           <Label>Formato</Label>
           <select
             value={element.format ?? ''}
-            onChange={(e) =>
-              patch({ format: (e.target.value || undefined) as any } as any)
-            }
+            onChange={(e) => patch({ format: (e.target.value || undefined) as any } as any)}
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
           >
             <option value="">Sin formato</option>
@@ -2089,9 +3479,8 @@ const ElementInspector: React.FC<{
             </optgroup>
           </select>
           <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
-            Si el valor no encaja con la simbología elegida (ej. EAN-13 con 12
-            dígitos), el render hace fallback automático a Code 128 para que la
-            etiqueta nunca salga en blanco.
+            Si el valor no encaja con la simbología elegida (ej. EAN-13 con 12 dígitos), el render
+            hace fallback automático a Code 128 para que la etiqueta nunca salga en blanco.
           </div>
           <Toggle
             label="Mostrar texto legible"
@@ -2106,6 +3495,9 @@ const ElementInspector: React.FC<{
           element={element}
           onPatch={(p) => patch(p as any)}
           extraLineFields={linePluginFields}
+          queryColumns={queryColumns}
+          queryNames={queryNames}
+          isFreeOrLabel={isFreeOrLabel}
         />
       )}
 
@@ -2125,8 +3517,8 @@ const ElementInspector: React.FC<{
       {element.kind === 'pageBreak' && (
         <Section title="Salto de página">
           <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-            Fuerza el inicio de una nueva página a partir de este punto en el PDF.
-            En el diseñador se muestra como un marcador visual.
+            Fuerza el inicio de una nueva página a partir de este punto en el PDF. En el diseñador
+            se muestra como un marcador visual.
           </div>
         </Section>
       )}
@@ -2165,8 +3557,8 @@ const ElementInspector: React.FC<{
                 className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
               />
               <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                Números y <code>path.como.este</code> se evalúan; el resto se
-                trata como cadena literal.
+                Números y <code>path.como.este</code> se evalúan; el resto se trata como cadena
+                literal.
               </div>
             </>
           )}
@@ -2197,128 +3589,271 @@ const ElementInspector: React.FC<{
         </Section>
       )}
 
-      {/* Estilo común */}
-      {'style' in element && (
-        <Section title="Estilo">
-          {element.kind !== 'shape' && element.kind !== 'image' && (
-            <>
-          <Label>Fuente</Label>
+      {element.kind === 'divider' && (
+        <Section title="Divisor">
+          <Label>Orientación</Label>
           <select
-            value={element.style?.fontFamily ?? ''}
-            onChange={(e) =>
-              patch({
-                style: {
-                  ...(element.style ?? {}),
-                  fontFamily: e.target.value || undefined,
-                },
-              } as any)
-            }
+            value={element.orientation ?? 'horizontal'}
+            onChange={(e) => patch({ orientation: e.target.value as any } as any)}
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
           >
-            <option value="">Por defecto del sistema</option>
-            <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
-              Sans-serif
-            </option>
-            <option value="Georgia, 'Times New Roman', serif">Serif (Georgia)</option>
-            <option value="'Times New Roman', Times, serif">Times New Roman</option>
-            <option value="Arial, Helvetica, sans-serif">Arial / Helvetica</option>
-            <option value="'Courier New', Courier, monospace">Courier (mono)</option>
-            <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
-            <option value="Verdana, sans-serif">Verdana</option>
+            <option value="horizontal">Horizontal</option>
+            <option value="vertical">Vertical</option>
           </select>
+          <div className="text-[10px] text-slate-400 leading-snug">
+            Grosor, color y estilo de línea se ajustan en la sección Estilo (borde).
+          </div>
+        </Section>
+      )}
 
+      {element.kind === 'summary' && (
+        <Section title="Resumen / Agregado">
+          <Label>Operación</Label>
+          <select
+            value={element.op}
+            onChange={(e) => patch({ op: e.target.value as any } as any)}
+            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+          >
+            <option value="sum">Suma</option>
+            <option value="count">Conteo</option>
+            <option value="avg">Promedio</option>
+            <option value="min">Mínimo</option>
+            <option value="max">Máximo</option>
+          </select>
+          <SourceColumnPicker
+            source={element.source}
+            path={element.path}
+            onSource={(s) => patch({ source: s } as any)}
+            onPath={(p) => patch({ path: p } as any)}
+            showPath={element.op !== 'count'}
+            queryNames={queryNames}
+            queryColumns={queryColumns}
+          />
+          <Label>Formato</Label>
+          <select
+            value={element.format ?? ''}
+            onChange={(e) => patch({ format: (e.target.value || undefined) as any } as any)}
+            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+          >
+            <option value="">—</option>
+            <option value="currency">€ Moneda</option>
+            <option value="number"># Número</option>
+            <option value="percent">% Porcentaje</option>
+          </select>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Tamaño (pt)</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">Prefijo</div>
               <input
-                type="number"
-                min={4}
-                max={72}
-                value={element.style?.fontSize ?? ''}
+                value={element.prefix ?? ''}
+                onChange={(e) => patch({ prefix: e.target.value || undefined } as any)}
+                className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+            </label>
+            <label className="block">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">Sufijo</div>
+              <input
+                value={element.suffix ?? ''}
+                onChange={(e) => patch({ suffix: e.target.value || undefined } as any)}
+                className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              />
+            </label>
+          </div>
+        </Section>
+      )}
+
+      {element.kind === 'box' && (
+        <Section title="Caja">
+          <NumberField
+            label="Radio esquinas (px)"
+            value={element.style?.borderRadius ?? 0}
+            onChange={(v) =>
+              patch({
+                style: { ...(element.style ?? {}), borderRadius: Math.max(0, v) },
+              } as any)
+            }
+          />
+          <div className="text-[10px] text-slate-400 leading-snug">
+            Fondo y borde en la sección Estilo. Coloca elementos encima y usa “Traer al frente”
+            (click derecho) para que queden por delante de la caja.
+          </div>
+        </Section>
+      )}
+
+      {element.kind === 'list' && (
+        <Section title="Lista">
+          <SourceColumnPicker
+            source={element.source}
+            path={element.itemPath}
+            onSource={(s) => patch({ source: s } as any)}
+            onPath={(p) => patch({ itemPath: p } as any)}
+            pathLabel="Campo a mostrar"
+            queryNames={queryNames}
+            queryColumns={queryColumns}
+          />
+          <Toggle
+            label="Numerada"
+            checked={!!element.ordered}
+            onChange={(v) => patch({ ordered: v } as any)}
+          />
+          <Label>Marcador</Label>
+          <select
+            value={element.marker ?? 'bullet'}
+            onChange={(e) => patch({ marker: e.target.value as any } as any)}
+            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+          >
+            <option value="bullet">Viñeta</option>
+            <option value="number">Número</option>
+            <option value="none">Ninguno</option>
+          </select>
+        </Section>
+      )}
+
+      {element.kind === 'currentDate' && (
+        <Section title="Fecha">
+          <Label>Modo</Label>
+          <select
+            value={element.mode ?? 'date'}
+            onChange={(e) => patch({ mode: e.target.value as any } as any)}
+            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+          >
+            <option value="date">Solo fecha</option>
+            <option value="datetime">Fecha y hora</option>
+          </select>
+          <Label>Prefijo</Label>
+          <input
+            value={element.prefix ?? ''}
+            onChange={(e) => patch({ prefix: e.target.value || undefined } as any)}
+            placeholder="ej. Emitido el "
+            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+          />
+        </Section>
+      )}
+
+      {/* Estilo común — visible para todos los tipos salvo los que no tienen
+          superficie estilizable (salto de página / espacio). Antes se gateaba
+          por `'style' in element`, que oculta la sección en elementos recién
+          creados sin clave `style` (p.ej. un texto nuevo). */}
+      {element.kind !== 'pageBreak' && element.kind !== 'spacer' && (
+        <Section title="Estilo">
+          {!STYLE_NO_FONT.has(element.kind) && (
+            <>
+              <Label>Fuente</Label>
+              <select
+                value={element.style?.fontFamily ?? ''}
                 onChange={(e) =>
                   patch({
                     style: {
                       ...(element.style ?? {}),
-                      fontSize: e.target.value ? Number(e.target.value) : undefined,
+                      fontFamily: e.target.value || undefined,
                     },
                   } as any)
                 }
-                className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-              />
-            </label>
-            <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Color</div>
-              <input
-                type="color"
-                value={element.style?.color ?? '#000000'}
-                onChange={(e) =>
-                  patch({ style: { ...(element.style ?? {}), color: e.target.value } } as any)
-                }
-                className="h-8 w-full rounded border border-slate-200 dark:border-slate-700"
-              />
-            </label>
-          </div>
+                className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+              >
+                <option value="">Por defecto del sistema</option>
+                <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+                  Sans-serif
+                </option>
+                <option value="Georgia, 'Times New Roman', serif">Serif (Georgia)</option>
+                <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                <option value="Arial, Helvetica, sans-serif">Arial / Helvetica</option>
+                <option value="'Courier New', Courier, monospace">Courier (mono)</option>
+                <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+              </select>
 
-          <div className="flex gap-1">
-            <StyleToggleButton
-              active={element.style?.fontWeight === 'bold'}
-              onClick={() =>
-                patch({
-                  style: {
-                    ...(element.style ?? {}),
-                    fontWeight: element.style?.fontWeight === 'bold' ? 'normal' : 'bold',
-                  },
-                } as any)
-              }
-              title="Negrita"
-              className="font-bold"
-            >
-              B
-            </StyleToggleButton>
-            <StyleToggleButton
-              active={element.style?.fontStyle === 'italic'}
-              onClick={() =>
-                patch({
-                  style: {
-                    ...(element.style ?? {}),
-                    fontStyle: element.style?.fontStyle === 'italic' ? 'normal' : 'italic',
-                  },
-                } as any)
-              }
-              title="Cursiva"
-              className="italic"
-            >
-              I
-            </StyleToggleButton>
-            <div className="w-px bg-slate-200 dark:bg-slate-700 mx-1" />
-            <StyleToggleButton
-              active={element.style?.textAlign === 'left' || !element.style?.textAlign}
-              onClick={() =>
-                patch({ style: { ...(element.style ?? {}), textAlign: 'left' } } as any)
-              }
-              title="Izquierda"
-            >
-              ⬅
-            </StyleToggleButton>
-            <StyleToggleButton
-              active={element.style?.textAlign === 'center'}
-              onClick={() =>
-                patch({ style: { ...(element.style ?? {}), textAlign: 'center' } } as any)
-              }
-              title="Centro"
-            >
-              ↔
-            </StyleToggleButton>
-            <StyleToggleButton
-              active={element.style?.textAlign === 'right'}
-              onClick={() =>
-                patch({ style: { ...(element.style ?? {}), textAlign: 'right' } } as any)
-              }
-              title="Derecha"
-            >
-              ➡
-            </StyleToggleButton>
-          </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Tamaño (pt)</div>
+                  <input
+                    type="number"
+                    min={4}
+                    max={72}
+                    value={element.style?.fontSize ?? ''}
+                    onChange={(e) =>
+                      patch({
+                        style: {
+                          ...(element.style ?? {}),
+                          fontSize: e.target.value ? Number(e.target.value) : undefined,
+                        },
+                      } as any)
+                    }
+                    className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Color</div>
+                  <input
+                    type="color"
+                    value={element.style?.color ?? '#000000'}
+                    onChange={(e) =>
+                      patch({ style: { ...(element.style ?? {}), color: e.target.value } } as any)
+                    }
+                    className="h-8 w-full rounded border border-slate-200 dark:border-slate-700"
+                  />
+                </label>
+              </div>
+
+              <div className="flex gap-1">
+                <StyleToggleButton
+                  active={element.style?.fontWeight === 'bold'}
+                  onClick={() =>
+                    patch({
+                      style: {
+                        ...(element.style ?? {}),
+                        fontWeight: element.style?.fontWeight === 'bold' ? 'normal' : 'bold',
+                      },
+                    } as any)
+                  }
+                  title="Negrita"
+                  className="font-bold"
+                >
+                  B
+                </StyleToggleButton>
+                <StyleToggleButton
+                  active={element.style?.fontStyle === 'italic'}
+                  onClick={() =>
+                    patch({
+                      style: {
+                        ...(element.style ?? {}),
+                        fontStyle: element.style?.fontStyle === 'italic' ? 'normal' : 'italic',
+                      },
+                    } as any)
+                  }
+                  title="Cursiva"
+                  className="italic"
+                >
+                  I
+                </StyleToggleButton>
+                <div className="w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+                <StyleToggleButton
+                  active={element.style?.textAlign === 'left' || !element.style?.textAlign}
+                  onClick={() =>
+                    patch({ style: { ...(element.style ?? {}), textAlign: 'left' } } as any)
+                  }
+                  title="Izquierda"
+                >
+                  ⬅
+                </StyleToggleButton>
+                <StyleToggleButton
+                  active={element.style?.textAlign === 'center'}
+                  onClick={() =>
+                    patch({ style: { ...(element.style ?? {}), textAlign: 'center' } } as any)
+                  }
+                  title="Centro"
+                >
+                  ↔
+                </StyleToggleButton>
+                <StyleToggleButton
+                  active={element.style?.textAlign === 'right'}
+                  onClick={() =>
+                    patch({ style: { ...(element.style ?? {}), textAlign: 'right' } } as any)
+                  }
+                  title="Derecha"
+                >
+                  ➡
+                </StyleToggleButton>
+              </div>
             </>
           )}
 
@@ -2360,10 +3895,9 @@ const ElementInspector: React.FC<{
                       ...(element.style ?? {}),
                       borderStyle: v,
                       // Al activar un borde, aseguramos valores sensatos.
-                      borderWidth:
-                        v === 'none' ? undefined : element.style?.borderWidth ?? 1,
+                      borderWidth: v === 'none' ? undefined : (element.style?.borderWidth ?? 1),
                       borderColor:
-                        v === 'none' ? undefined : element.style?.borderColor ?? '#000000',
+                        v === 'none' ? undefined : (element.style?.borderColor ?? '#000000'),
                     },
                   } as any);
                 }}
@@ -2409,6 +3943,44 @@ const ElementInspector: React.FC<{
           </div>
         </Section>
       )}
+
+      {/* CSS por elemento — disponible para todos los kinds (fuera del guard de estilo). */}
+      <Section title="CSS del elemento">
+        <Label>Clase CSS</Label>
+        <input
+          value={element.className ?? ''}
+          placeholder="ej. destacado total-grande"
+          onChange={(e) => patch({ className: e.target.value || undefined } as any)}
+          className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
+        />
+        <div className="text-[10px] text-slate-400 leading-snug">
+          Apúntale reglas desde el CSS global del documento (botón en el inspector de página).
+        </div>
+        <Label>CSS propio</Label>
+        <button
+          type="button"
+          onClick={() => setCssOpen(true)}
+          className="flex items-center gap-2 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+        >
+          <Code size={13} /> Editar CSS
+          {element.customCss ? (
+            <span className="text-emerald-600 dark:text-emerald-400">●</span>
+          ) : null}
+        </button>
+        <div className="text-[10px] text-slate-400 leading-snug">
+          Propiedades CSS (ej. <code>letter-spacing:2px;text-transform:uppercase</code>), no reglas
+          con selector.
+        </div>
+      </Section>
+
+      <CssEditorModal
+        open={cssOpen}
+        value={element.customCss ?? ''}
+        onChange={(v) => patch({ customCss: v.trim() ? v : undefined } as any)}
+        onClose={() => setCssOpen(false)}
+        title="CSS del elemento"
+        helpText="Propiedades CSS que se anexan al estilo de este elemento (sin selector). Ej.: letter-spacing:2px; text-transform:uppercase;"
+      />
     </div>
   );
 };
@@ -2496,36 +4068,162 @@ const LinesTableEditor: React.FC<{
   element: LinesTableElement;
   onPatch: (p: Partial<LinesTableElement>) => void;
   extraLineFields?: FieldDef[];
-}> = ({ element, onPatch, extraLineFields = [] }) => {
+  queryColumns?: Record<string, string[]>;
+  queryNames?: string[];
+  isFreeOrLabel?: boolean;
+}> = ({
+  element,
+  onPatch,
+  extraLineFields = [],
+  queryColumns = {},
+  queryNames = [],
+  isFreeOrLabel = false,
+}) => {
+  // Fuente actual: 'lines' (documento) o 'query:NOMBRE'.
+  const queryName =
+    element.source && element.source.startsWith('query:')
+      ? element.source.slice('query:'.length)
+      : null;
+  // Opciones de campo para el picker de columnas: si la fuente es una query,
+  // son SUS columnas (paths relativos); si no, los campos de línea del documento.
+  const queryCols = queryName ? (queryColumns[queryName] ?? []) : [];
   const baseLineGroup = getLineFieldGroup();
-  const lineGroup = baseLineGroup
-    ? { ...baseLineGroup, fields: [...baseLineGroup.fields, ...extraLineFields] }
-    : null;
+  const lineGroup = queryName
+    ? queryCols.length > 0
+      ? { group: 'lines' as const, label: `Consulta: ${queryName}`, icon: 'ListOrdered' as const, fields: queryCols.map((c) => ({ path: c, type: 'string' as const, description: c })) }
+      : null
+    : baseLineGroup
+      ? { ...baseLineGroup, fields: [...baseLineGroup.fields, ...extraLineFields] }
+      : null;
   const updateColumn = (idx: number, changes: Partial<LinesTableColumn>) => {
     onPatch({
       columns: element.columns.map((c, i) => (i === idx ? { ...c, ...changes } : c)),
     });
   };
   const addColumn = () => {
+    // Si la fuente es una query, por defecto proponemos su primera columna libre.
+    const used = new Set(element.columns.map((c) => c.path));
+    const nextCol = queryName ? queryCols.find((c) => !used.has(c)) ?? queryCols[0] : null;
+    const base = nextCol
+      ? { label: shortLabel(nextCol), path: nextCol, format: guessColumnFormat(nextCol) }
+      : { label: 'Nueva', path: 'itemName' as string };
     onPatch({
       columns: [
         ...element.columns,
-        {
-          id: `col_${Date.now().toString(36)}`,
-          label: 'Nueva',
-          path: 'itemName',
-          widthPct: 10,
-          align: 'left',
-        },
+        { id: genId('col'), widthPct: 10, align: 'left' as const, ...base },
       ],
     });
   };
   const removeColumn = (idx: number) => {
     onPatch({ columns: element.columns.filter((_, i) => i !== idx) });
   };
+  const moveColumn = (idx: number, dir: -1 | 1) => {
+    const target = idx + dir;
+    if (target < 0 || target >= element.columns.length) return;
+    const cols = [...element.columns];
+    [cols[idx], cols[target]] = [cols[target], cols[idx]];
+    onPatch({ columns: cols });
+  };
 
   return (
     <Section title="Tabla de líneas">
+      {(queryNames.length > 0 || isFreeOrLabel) && (
+        <>
+          <Label>Fuente de datos</Label>
+          <select
+            value={element.source ?? ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (!value) {
+                onPatch({ source: undefined });
+                return;
+              }
+              const name = value.slice('query:'.length);
+              const cols = queryColumns[name] ?? [];
+              // Al elegir una query con columnas conocidas, autocompletamos la
+              // tabla con sus campos. Solo lo hacemos si tiene columnas (si no,
+              // dejamos las actuales para no vaciar el diseño).
+              if (cols.length > 0) {
+                onPatch({ source: value, columns: columnsFromQueryCols(cols) });
+              } else {
+                onPatch({ source: value });
+              }
+            }}
+            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+          >
+            <option value="">Líneas del documento</option>
+            {queryNames.map((n) => (
+              <option key={n} value={`query:${n}`}>
+                Consulta: {n}
+              </option>
+            ))}
+          </select>
+          {isFreeOrLabel && !queryName && (
+            <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-snug">
+              En un Documento Libre no hay “líneas” del documento. Elegí una consulta como fuente
+              para que la tabla itere sus filas.
+            </div>
+          )}
+          {queryName && queryCols.length === 0 && (
+            <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-snug">
+              La consulta “{queryName}” aún no devuelve columnas (¿0 filas o error?). Pruébala en el
+              inspector de página; mientras, podés escribir el path de columna a mano.
+            </div>
+          )}
+        </>
+      )}
+      <Label>Disposición</Label>
+      <select
+        value={element.layout ?? 'table'}
+        onChange={(e) => onPatch({ layout: e.target.value as LinesTableElement['layout'] })}
+        className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+      >
+        <option value="table">Tabla clásica</option>
+        <option value="keyValue">Lista clave: valor</option>
+      </select>
+      {(element.layout ?? 'table') === 'table' && (
+        <>
+          <Label>Preset</Label>
+          <select
+            value={element.tableStyle ?? 'default'}
+            onChange={(e) =>
+              onPatch({ tableStyle: e.target.value as LinesTableElement['tableStyle'] })
+            }
+            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+          >
+            <option value="default">Por defecto</option>
+            <option value="bordered">Con bordes</option>
+            <option value="striped">Filas cebra</option>
+            <option value="compact">Compacta</option>
+            <option value="borderless">Sin bordes</option>
+          </select>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">Fondo cabecera</div>
+              <input
+                type="color"
+                value={element.headerBg ?? '#f1f5f9'}
+                onChange={(e) => onPatch({ headerBg: e.target.value })}
+                className="h-8 w-full rounded border border-slate-200 dark:border-slate-700"
+              />
+            </label>
+            <label className="block">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">Color borde</div>
+              <input
+                type="color"
+                value={element.borderColor ?? '#e5e7eb'}
+                onChange={(e) => onPatch({ borderColor: e.target.value })}
+                className="h-8 w-full rounded border border-slate-200 dark:border-slate-700"
+              />
+            </label>
+          </div>
+          <NumberField
+            label="Padding celda (px)"
+            value={element.cellPadding ?? 4}
+            onChange={(v) => onPatch({ cellPadding: Math.max(0, v) })}
+          />
+        </>
+      )}
       <Toggle
         label="Mostrar cabecera"
         checked={element.showHeader !== false}
@@ -2555,6 +4253,24 @@ const LinesTableEditor: React.FC<{
                 placeholder="Cabecera"
                 className="flex-1 px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
+              <button
+                type="button"
+                onClick={() => moveColumn(idx, -1)}
+                disabled={idx === 0}
+                title="Subir columna"
+                className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30"
+              >
+                <ChevronUp size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveColumn(idx, 1)}
+                disabled={idx === element.columns.length - 1}
+                title="Bajar columna"
+                className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30"
+              >
+                <ChevronDown size={13} />
+              </button>
               <button
                 type="button"
                 onClick={() => removeColumn(idx)}
@@ -2607,7 +4323,9 @@ const LinesTableEditor: React.FC<{
             </div>
             {lineGroup && (
               <details className="text-[11px]">
-                <summary className="cursor-pointer text-slate-500">Elegir campo de línea…</summary>
+                <summary className="cursor-pointer text-slate-500">
+                  {queryName ? 'Elegir columna de la consulta…' : 'Elegir campo de línea…'}
+                </summary>
                 <div className="mt-1 max-h-32 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded">
                   {lineGroup.fields.map((f) => (
                     <button
@@ -2671,20 +4389,19 @@ const RichTextEditor: React.FC<{
   value: string;
   onChange: (html: string) => void;
   defaultColor?: string;
-}> = ({ value, onChange, defaultColor }) => {
+  style?: ElementStyle;
+}> = ({ value, onChange, defaultColor, style }) => {
   const ref = useRef<HTMLDivElement | null>(null);
-  const lastEmitted = useRef<string>(value);
   const [color, setColor] = useState(defaultColor || '#1e40af');
   const [bgColor, setBgColor] = useState('#fef08a');
 
-  // Sincroniza el contenido cuando `value` cambia desde fuera (p.ej. cambias
-  // de elemento seleccionado). Evitamos re-set si lo último emitido por el
-  // editor coincide para no romper la posición del cursor.
+  // Vuelca el HTML al montar y cuando `value` cambia desde fuera (cambio de
+  // elemento). Comparamos contra el contenido REAL del DOM para: (a) inicializar
+  // el contenido al montar, y (b) no pisar el cursor mientras se teclea (al
+  // teclear, value === innerHTML actual → no re-escribimos).
   useEffect(() => {
-    if (!ref.current) return;
-    if (value !== lastEmitted.current) {
+    if (ref.current && value !== ref.current.innerHTML) {
       ref.current.innerHTML = value || '';
-      lastEmitted.current = value;
     }
   }, [value]);
 
@@ -2696,9 +4413,7 @@ const RichTextEditor: React.FC<{
 
   const emit = () => {
     if (!ref.current) return;
-    const html = ref.current.innerHTML;
-    lastEmitted.current = html;
-    onChange(html);
+    onChange(ref.current.innerHTML);
   };
 
   const clearFormat = () => {
@@ -2728,16 +4443,36 @@ const RichTextEditor: React.FC<{
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center gap-1">
-        <button type="button" onClick={() => exec('bold')} className={`${btnCls} font-bold`} title="Negrita (Ctrl+B)">
+        <button
+          type="button"
+          onClick={() => exec('bold')}
+          className={`${btnCls} font-bold`}
+          title="Negrita (Ctrl+B)"
+        >
           B
         </button>
-        <button type="button" onClick={() => exec('italic')} className={`${btnCls} italic`} title="Cursiva (Ctrl+I)">
+        <button
+          type="button"
+          onClick={() => exec('italic')}
+          className={`${btnCls} italic`}
+          title="Cursiva (Ctrl+I)"
+        >
           I
         </button>
-        <button type="button" onClick={() => exec('underline')} className={`${btnCls} underline`} title="Subrayado (Ctrl+U)">
+        <button
+          type="button"
+          onClick={() => exec('underline')}
+          className={`${btnCls} underline`}
+          title="Subrayado (Ctrl+U)"
+        >
           U
         </button>
-        <button type="button" onClick={() => exec('strikeThrough')} className={`${btnCls} line-through`} title="Tachado">
+        <button
+          type="button"
+          onClick={() => exec('strikeThrough')}
+          className={`${btnCls} line-through`}
+          title="Tachado"
+        >
           S
         </button>
         <span className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
@@ -2774,13 +4509,28 @@ const RichTextEditor: React.FC<{
           </button>
         </label>
         <span className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-        <button type="button" onClick={() => setBlockAlign('left')} className={btnCls} title="Alinear izquierda">
+        <button
+          type="button"
+          onClick={() => setBlockAlign('left')}
+          className={btnCls}
+          title="Alinear izquierda"
+        >
           ⯇
         </button>
-        <button type="button" onClick={() => setBlockAlign('center')} className={btnCls} title="Centrar">
+        <button
+          type="button"
+          onClick={() => setBlockAlign('center')}
+          className={btnCls}
+          title="Centrar"
+        >
           ≡
         </button>
-        <button type="button" onClick={() => setBlockAlign('right')} className={btnCls} title="Alinear derecha">
+        <button
+          type="button"
+          onClick={() => setBlockAlign('right')}
+          className={btnCls}
+          title="Alinear derecha"
+        >
           ⯈
         </button>
         <span className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
@@ -2802,11 +4552,20 @@ const RichTextEditor: React.FC<{
           document.execCommand('insertText', false, text);
         }}
         className="min-h-[80px] p-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:border-blue-400 whitespace-pre-wrap break-words"
-        style={{ lineHeight: 1.4 }}
+        style={{
+          lineHeight: 1.4,
+          // Reflejamos el estilo del elemento para que el editor sea WYSIWYG.
+          textAlign: style?.textAlign,
+          fontSize: style?.fontSize ? `${style.fontSize}pt` : undefined,
+          fontFamily: style?.fontFamily,
+          fontWeight: style?.fontWeight,
+          fontStyle: style?.fontStyle,
+          color: style?.color,
+        }}
       />
       <div className="text-[10px] text-slate-400 leading-snug">
-        Selecciona texto y aplica formato. Ctrl+B/I/U también funcionan. El
-        formato se exporta como HTML al PDF.
+        Selecciona texto y aplica formato. Ctrl+B/I/U también funcionan. El formato se exporta como
+        HTML al PDF.
       </div>
     </div>
   );
@@ -2820,7 +4579,9 @@ const FieldPicker: React.FC<{
   onPick: (field: FieldDef) => void;
 }> = ({ value, groups, onPick }) => {
   const [query, setQuery] = useState('');
-  const [openGroup, setOpenGroup] = useState<string | null>(groups[0]?.group ?? null);
+  // Keyeamos por `label` (no por `group`) porque pueden coexistir varios grupos
+  // con el mismo `group` (p.ej. varias consultas SQL para FREE/LABEL).
+  const [openGroup, setOpenGroup] = useState<string | null>(groups[0]?.label ?? null);
 
   const normalizedQuery = query.trim().toLowerCase();
   const filteredGroups = groups
@@ -2849,12 +4610,15 @@ const FieldPicker: React.FC<{
           <div className="px-3 py-3 text-xs text-slate-400 italic">Sin resultados</div>
         )}
         {filteredGroups.map((g) => {
-          const expanded = normalizedQuery ? true : openGroup === g.group;
+          const expanded = normalizedQuery ? true : openGroup === g.label;
           return (
-            <div key={g.group} className="border-b border-slate-200 dark:border-slate-700 last:border-0">
+            <div
+              key={g.label}
+              className="border-b border-slate-200 dark:border-slate-700 last:border-0"
+            >
               <button
                 type="button"
-                onClick={() => setOpenGroup(expanded ? null : g.group)}
+                onClick={() => setOpenGroup(expanded ? null : g.label)}
                 className="w-full flex items-center justify-between px-2 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
               >
                 <span>{g.label}</span>
@@ -2958,6 +4722,46 @@ function buildDefaultElement(
       return { ...base, kind, label: 'Firma y sello' };
     case 'pageBreak':
       return { ...base, kind };
+    case 'divider':
+      return {
+        ...base,
+        kind,
+        orientation: 'horizontal',
+        style: { borderWidth: 1, borderStyle: 'solid', borderColor: '#94a3b8' },
+      };
+    case 'summary':
+      return {
+        ...base,
+        kind,
+        op: 'sum',
+        source: 'lines',
+        path: 'lineTotal',
+        format: 'currency',
+        style: {},
+      };
+    case 'box':
+      return {
+        ...base,
+        kind,
+        style: {
+          backgroundColor: '#f8fafc',
+          borderWidth: 1,
+          borderStyle: 'solid',
+          borderColor: '#e2e8f0',
+          borderRadius: 4,
+        },
+      };
+    case 'list':
+      return {
+        ...base,
+        kind,
+        source: 'lines',
+        itemPath: 'itemName',
+        marker: 'bullet',
+        style: {},
+      };
+    case 'currentDate':
+      return { ...base, kind, mode: 'date', style: {} };
   }
 }
 
@@ -2973,24 +4777,63 @@ interface ExprCommand {
 }
 
 const EXPR_COMMANDS: ExprCommand[] = [
-  { group: 'Campos', label: 'Campo simple', snippet: '{{doc.docCode}}', hint: 'Imprime el valor tal cual' },
-  { group: 'Campos', label: 'Campo (HTML crudo)', snippet: '{{{company.logoUrl}}}', hint: 'No escapa el HTML' },
+  {
+    group: 'Campos',
+    label: 'Campo simple',
+    snippet: '{{doc.docCode}}',
+    hint: 'Imprime el valor tal cual',
+  },
+  {
+    group: 'Campos',
+    label: 'Campo (HTML crudo)',
+    snippet: '{{{company.logoUrl}}}',
+    hint: 'No escapa el HTML',
+  },
   { group: 'Formato', label: 'Moneda', snippet: '{{formatCurrency doc.total}}' },
   { group: 'Formato', label: 'Número', snippet: '{{formatNumber valor 2}}', hint: '2 = decimales' },
   { group: 'Formato', label: 'Fecha', snippet: '{{formatDate doc.issueDate}}' },
-  { group: 'Formato', label: 'Dirección (multilínea)', snippet: '{{{formatAddress partner.billingAddress}}}' },
+  {
+    group: 'Formato',
+    label: 'Dirección (multilínea)',
+    snippet: '{{{formatAddress partner.billingAddress}}}',
+  },
   { group: 'Formato', label: 'Padding a la izquierda', snippet: '{{padLeft valor 6 "0"}}' },
   { group: 'Matemáticas', label: 'Multiplicar', snippet: '{{multiply precio cantidad}}' },
-  { group: 'Condicional', label: 'Si / si no', snippet: '{{#if doc.paid}}Pagada{{else}}Pendiente{{/if}}' },
+  {
+    group: 'Condicional',
+    label: 'Si / si no',
+    snippet: '{{#if doc.paid}}Pagada{{else}}Pendiente{{/if}}',
+  },
   { group: 'Condicional', label: 'Si NO (unless)', snippet: '{{#unless doc.notes}}—{{/unless}}' },
   { group: 'Condicional', label: 'Igual a', snippet: '{{#if (eq doc.status "paid")}}OK{{/if}}' },
-  { group: 'Condicional', label: 'Distinto de', snippet: '{{#if (neq doc.status "paid")}}!{{/if}}' },
+  {
+    group: 'Condicional',
+    label: 'Distinto de',
+    snippet: '{{#if (neq doc.status "paid")}}!{{/if}}',
+  },
   { group: 'Condicional', label: 'Mayor que', snippet: '{{#if (gt doc.total 100)}}grande{{/if}}' },
   { group: 'Condicional', label: 'Menor que', snippet: '{{#if (lt doc.total 100)}}pequeño{{/if}}' },
-  { group: 'Iteración', label: 'Líneas del documento', snippet: '{{#each lines}}{{itemName}} x{{quantity}}\n{{/each}}' },
-  { group: 'Iteración', label: 'Desglose de IVA', snippet: '{{#each doc.taxBreakdown}}IVA {{rate}}%: {{formatCurrency amount}}\n{{/each}}' },
-  { group: 'Códigos', label: 'QR (data URI)', snippet: '<img src="{{{qrCode doc.docCode}}}" style="width:25mm;height:25mm" />' },
-  { group: 'Códigos', label: 'Código de barras', snippet: '<img src="{{{barcode doc.docCode symbology="code128" includeText=true}}}" style="width:60mm;height:15mm" />' },
+  {
+    group: 'Iteración',
+    label: 'Líneas del documento',
+    snippet: '{{#each lines}}{{itemName}} x{{quantity}}\n{{/each}}',
+  },
+  {
+    group: 'Iteración',
+    label: 'Desglose de IVA',
+    snippet: '{{#each doc.taxBreakdown}}IVA {{rate}}%: {{formatCurrency amount}}\n{{/each}}',
+  },
+  {
+    group: 'Códigos',
+    label: 'QR (data URI)',
+    snippet: '<img src="{{{qrCode doc.docCode}}}" style="width:25mm;height:25mm" />',
+  },
+  {
+    group: 'Códigos',
+    label: 'Código de barras',
+    snippet:
+      '<img src="{{{barcode doc.docCode symbology="code128" includeText=true}}}" style="width:60mm;height:15mm" />',
+  },
 ];
 
 const ExprCommands: React.FC<{ onInsert: (snippet: string) => void; label?: string }> = ({
@@ -3025,7 +4868,8 @@ const ExprCommands: React.FC<{ onInsert: (snippet: string) => void; label?: stri
           </div>
         ))}
         <div className="text-[10px] text-slate-400 dark:text-slate-500 pt-1">
-          Al pulsar un comando se añade su plantilla al final del texto. Edítala después para usar tus paths.
+          Al pulsar un comando se añade su plantilla al final del texto. Edítala después para usar
+          tus paths.
         </div>
       </div>
     </details>
@@ -3100,7 +4944,9 @@ const ExpandableTextarea: React.FC<{
                 autoFocus
               />
               <div className="flex justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">
-                <span className="self-center">{value.length} car · {value.split('\n').length} líneas</span>
+                <span className="self-center">
+                  {value.length} car · {value.split('\n').length} líneas
+                </span>
                 <button
                   type="button"
                   onClick={() => setExpanded(false)}

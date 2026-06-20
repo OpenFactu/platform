@@ -50,9 +50,7 @@ router.put('/', async (req: any, res) => {
     const [existing] = await req.tenantClient
       .select()
       .from(schema.accountMappings)
-      .where(
-        and(eq(schema.accountMappings.kind, kind), eq(schema.accountMappings.key, useKey)),
-      );
+      .where(and(eq(schema.accountMappings.kind, kind), eq(schema.accountMappings.key, useKey)));
     let row;
     if (existing) {
       [row] = await req.tenantClient

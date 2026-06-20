@@ -168,8 +168,7 @@ router.post('/kiosk/punch', async (req: any, res) => {
       .select()
       .from(schema.timeclockKiosks)
       .where(eq(schema.timeclockKiosks.token, String(token)));
-    if (!kiosk || !kiosk.isActive)
-      return res.status(401).json({ error: 'Kiosko no autorizado' });
+    if (!kiosk || !kiosk.isActive) return res.status(401).json({ error: 'Kiosko no autorizado' });
 
     const { pin, kind } = req.body;
     if (!pin || !VALID_KIND.has(kind))
@@ -177,7 +176,9 @@ router.post('/kiosk/punch', async (req: any, res) => {
     const [emp] = await req.tenantClient
       .select()
       .from(schema.employees)
-      .where(and(eq(schema.employees.kioskPin, String(pin)), eq(schema.employees.status, 'active')));
+      .where(
+        and(eq(schema.employees.kioskPin, String(pin)), eq(schema.employees.status, 'active')),
+      );
     if (!emp) return res.status(404).json({ error: 'PIN no reconocido' });
 
     const row = await createPunchValidated(req.tenantClient, {
@@ -226,10 +227,7 @@ router.get('/me', async (req: any, res) => {
       .select()
       .from(schema.timeclockEntries)
       .where(
-        and(
-          eq(schema.timeclockEntries.employeeId, emp.id),
-          gte(schema.timeclockEntries.at, since),
-        ),
+        and(eq(schema.timeclockEntries.employeeId, emp.id), gte(schema.timeclockEntries.at, since)),
       )
       .orderBy(desc(schema.timeclockEntries.at));
     res.json({ employee: emp, entries: rows });
@@ -383,16 +381,7 @@ router.get('/export', async (req: any, res) => {
       'Notas',
     ].join(';');
     const lines = enriched.map((r) =>
-      [
-        r.fecha,
-        r.hora,
-        r.empleadoId,
-        r.empleadoCodigo,
-        r.empleadoNombre,
-        r.tipo,
-        r.origen,
-        r.notas,
-      ]
+      [r.fecha, r.hora, r.empleadoId, r.empleadoCodigo, r.empleadoNombre, r.tipo, r.origen, r.notas]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         .join(';'),
     );

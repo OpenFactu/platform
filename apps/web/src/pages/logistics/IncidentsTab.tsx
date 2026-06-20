@@ -156,12 +156,7 @@ export const IncidentsTab: React.FC = () => {
               : `${incidents.length} incidencia(s) activa(s)`}
           </span>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={load}
-          className="flex items-center gap-2"
-        >
+        <Button variant="secondary" size="sm" onClick={load} className="flex items-center gap-2">
           <RefreshCw size={13} /> Refrescar
         </Button>
       </div>
@@ -233,7 +228,11 @@ export const IncidentsTab: React.FC = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => openTab(`/logistics/shipments/${s.id}`, { title: `Envío ${s.trackingNumber || ''}` })}
+                      onClick={() =>
+                        openTab(`/logistics/shipments/${s.id}`, {
+                          title: `Envío ${s.trackingNumber || ''}`,
+                        })
+                      }
                       className="text-primary"
                     >
                       Ver detalle
@@ -278,9 +277,8 @@ export const IncidentsTab: React.FC = () => {
       >
         <div className="space-y-3">
           <div className="text-sm text-slate-700 dark:text-slate-200">
-            El envío volverá al estado <b>En tránsito</b> para que el conductor
-            pueda completar la entrega. La incidencia seguirá visible en el
-            historial del envío.
+            El envío volverá al estado <b>En tránsito</b> para que el conductor pueda completar la
+            entrega. La incidencia seguirá visible en el historial del envío.
           </div>
           {resolveModal?.reason && (
             <div className="rounded-md bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 px-3 py-2 text-xs text-rose-800 dark:text-rose-200">
@@ -317,9 +315,8 @@ export const IncidentsTab: React.FC = () => {
       >
         <div className="space-y-3">
           <div className="text-sm text-slate-700 dark:text-slate-200">
-            Se marcará el envío como <b>devuelto</b> y se creará una entrada
-            de stock (GoodsReceipt) en borrador sobre el almacén origen para
-            que revises y postees el retorno de mercancía.
+            Se marcará el envío como <b>devuelto</b> y se creará una entrada de stock (GoodsReceipt)
+            en borrador sobre el almacén origen para que revises y postees el retorno de mercancía.
           </div>
           {returnModal?.reason && (
             <div className="rounded-md bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 px-3 py-2 text-xs text-rose-800 dark:text-rose-200">

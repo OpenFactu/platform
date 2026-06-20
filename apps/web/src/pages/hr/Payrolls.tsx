@@ -17,8 +17,16 @@ interface Payroll {
   journalEntryId: string | null;
 }
 
-const STATUS_VARIANTS: Record<string, any> = { draft: 'neutral', approved: 'success', paid: 'info' };
-const STATUS_LABELS: Record<string, string> = { draft: 'Borrador', approved: 'Aprobada', paid: 'Pagada' };
+const STATUS_VARIANTS: Record<string, any> = {
+  draft: 'neutral',
+  approved: 'success',
+  paid: 'info',
+};
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Borrador',
+  approved: 'Aprobada',
+  paid: 'Pagada',
+};
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 export const Payrolls: React.FC = () => {
@@ -108,7 +116,8 @@ export const Payrolls: React.FC = () => {
         const contracts = await fetch(`/api/hr/contracts?employeeId=${form.employeeId}`, {
           headers: authHeaders,
         }).then((r) => r.json());
-        const active = (Array.isArray(contracts) ? contracts : []).find((c: any) => c.isActive) ||
+        const active =
+          (Array.isArray(contracts) ? contracts : []).find((c: any) => c.isActive) ||
           (Array.isArray(contracts) ? contracts[0] : null);
         const monthlyGross = active
           ? Number(active.grossSalary || 0) / Number(active.paymentsPerYear || 12)
@@ -181,7 +190,9 @@ export const Payrolls: React.FC = () => {
     setLinesLoading(true);
     try {
       const [conceptsR, payrollR] = await Promise.all([
-        fetch('/api/hr/payroll-concepts?activeOnly=true', { headers: authHeaders }).then((r) => r.json()),
+        fetch('/api/hr/payroll-concepts?activeOnly=true', { headers: authHeaders }).then((r) =>
+          r.json(),
+        ),
         fetch(`/api/hr/payrolls/${p.id}`, { headers: authHeaders }).then((r) => r.json()),
       ]);
       setConcepts(Array.isArray(conceptsR) ? conceptsR : []);
@@ -205,14 +216,19 @@ export const Payrolls: React.FC = () => {
     const c = concepts.find((x) => x.id === conceptId);
     if (!c) return;
     const lineType =
-      c.kind === 'devengo' ? 'earning' : c.kind === 'aportacion_empresa' ? 'employer_cost' : 'deduction';
+      c.kind === 'devengo'
+        ? 'earning'
+        : c.kind === 'aportacion_empresa'
+          ? 'employer_cost'
+          : 'deduction';
     const payload: any = {
       conceptId: c.id,
       concept: c.name,
       type: lineType,
       amount: c.defaultAmount ? Number(c.defaultAmount) : 0,
     };
-    if (c.calculation === 'percent_of_base' && c.defaultPercent) payload.rate = Number(c.defaultPercent);
+    if (c.calculation === 'percent_of_base' && c.defaultPercent)
+      payload.rate = Number(c.defaultPercent);
     const r = await fetch(`/api/hr/payrolls/${editLines.id}/lines`, {
       method: 'POST',
       headers: { ...authHeaders, 'Content-Type': 'application/json' },
@@ -282,7 +298,8 @@ export const Payrolls: React.FC = () => {
     {
       header: 'Bruto',
       align: 'right' as const,
-      cell: (r: Payroll) => Number(r.gross).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €',
+      cell: (r: Payroll) =>
+        Number(r.gross).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €',
     },
     {
       header: 'Neto',
@@ -408,8 +425,7 @@ export const Payrolls: React.FC = () => {
                     (Array.isArray(cs) ? cs : []).find((x: any) => x.isActive) ||
                     (Array.isArray(cs) ? cs[0] : null);
                   if (c) {
-                    const monthly =
-                      Number(c.grossSalary || 0) / Number(c.paymentsPerYear || 12);
+                    const monthly = Number(c.grossSalary || 0) / Number(c.paymentsPerYear || 12);
                     if (monthly > 0) {
                       await fetch(`/api/hr/payrolls/${d.id}/lines`, {
                         method: 'POST',
@@ -583,7 +599,12 @@ export const Payrolls: React.FC = () => {
               </div>
 
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="secondary" size="sm" onClick={() => setCreating(false)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setCreating(false)}
+                >
                   Cancelar
                 </Button>
                 <Button type="submit" size="sm">
@@ -646,10 +667,10 @@ export const Payrolls: React.FC = () => {
                 <button
                   onClick={async () => {
                     if (!editLines) return;
-                    const r = await fetch(
-                      `/api/hr/payrolls/${editLines.id}/auto-deductions`,
-                      { method: 'POST', headers: authHeaders },
-                    );
+                    const r = await fetch(`/api/hr/payrolls/${editLines.id}/auto-deductions`, {
+                      method: 'POST',
+                      headers: authHeaders,
+                    });
                     const d = await r.json().catch(() => ({}));
                     if (!r.ok) {
                       toast.error(d.error || 'No hay conceptos IRPF/SS en el catálogo');
@@ -704,17 +725,15 @@ export const Payrolls: React.FC = () => {
                 const hasSs = lines.some(
                   (l: any) =>
                     l.type === 'deduction' &&
-                    (/^ss/i.test(l.concept || '') ||
-                      /seguridad social/i.test(l.concept || '')),
+                    (/^ss/i.test(l.concept || '') || /seguridad social/i.test(l.concept || '')),
                 );
                 if (hasEarnings && (!hasIrpf || !hasSs)) {
                   return (
                     <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-300">
-                      ⚠ Esta nómina tiene devengos pero le falta{' '}
-                      {!hasIrpf && <b>IRPF</b>}
+                      ⚠ Esta nómina tiene devengos pero le falta {!hasIrpf && <b>IRPF</b>}
                       {!hasIrpf && !hasSs && ' y '}
-                      {!hasSs && <b>SS Empleado</b>}. El neto que ves no es real. Pulsa
-                      "Auto IRPF/SS" o añade los conceptos manualmente.
+                      {!hasSs && <b>SS Empleado</b>}. El neto que ves no es real. Pulsa "Auto
+                      IRPF/SS" o añade los conceptos manualmente.
                     </div>
                   );
                 }
@@ -725,34 +744,39 @@ export const Payrolls: React.FC = () => {
                 <div className="text-center text-sm text-slate-400 py-6">Cargando…</div>
               ) : lines.length === 0 ? (
                 <div className="text-center text-sm text-slate-400 py-6 italic">
-                  Esta nómina aún no tiene líneas. Añade conceptos del catálogo o pulsa
-                  "Auto IRPF/SS".
+                  Esta nómina aún no tiene líneas. Añade conceptos del catálogo o pulsa "Auto
+                  IRPF/SS".
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {([
-                    {
-                      key: 'earning',
-                      title: '➕ Devengos',
-                      desc: 'Lo que cobra el empleado (salario, pluses, horas extra…)',
-                      tone: 'emerald',
-                    },
-                    {
-                      key: 'deduction',
-                      title: '➖ Deducciones',
-                      desc: 'Lo que se le retiene (IRPF, SS empleado, anticipos…)',
-                      tone: 'rose',
-                    },
-                    {
-                      key: 'employer_cost',
-                      title: '🏢 Coste empresa',
-                      desc: 'Aportaciones que paga la empresa (SS empresa)',
-                      tone: 'indigo',
-                    },
-                  ] as const).map((grp) => {
+                  {(
+                    [
+                      {
+                        key: 'earning',
+                        title: '➕ Devengos',
+                        desc: 'Lo que cobra el empleado (salario, pluses, horas extra…)',
+                        tone: 'emerald',
+                      },
+                      {
+                        key: 'deduction',
+                        title: '➖ Deducciones',
+                        desc: 'Lo que se le retiene (IRPF, SS empleado, anticipos…)',
+                        tone: 'rose',
+                      },
+                      {
+                        key: 'employer_cost',
+                        title: '🏢 Coste empresa',
+                        desc: 'Aportaciones que paga la empresa (SS empresa)',
+                        tone: 'indigo',
+                      },
+                    ] as const
+                  ).map((grp) => {
                     const grpLines = lines.filter((l: any) => l.type === grp.key);
                     return (
-                      <div key={grp.key} className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <div
+                        key={grp.key}
+                        className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden"
+                      >
                         <div
                           className={
                             'px-3 py-2 text-xs font-bold flex items-center justify-between ' +
@@ -780,7 +804,10 @@ export const Payrolls: React.FC = () => {
                           <tbody>
                             {grpLines.length === 0 && (
                               <tr>
-                                <td colSpan={6} className="py-3 px-3 text-center text-xs text-slate-400 italic">
+                                <td
+                                  colSpan={6}
+                                  className="py-3 px-3 text-center text-xs text-slate-400 italic"
+                                >
                                   {grp.key === 'earning'
                                     ? 'Aún no hay devengos. Añade "Salario base" desde el desplegable de arriba para que el bruto sea > 0 y los % se calculen.'
                                     : grp.key === 'deduction'

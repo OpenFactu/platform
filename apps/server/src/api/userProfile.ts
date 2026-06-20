@@ -57,10 +57,8 @@ router.patch('/me', async (req: any, res) => {
     const publicDb = ClientFactory.getClient('public');
 
     const payload: any = {};
-    if ('signatureName' in req.body)
-      payload.signatureName = req.body.signatureName?.trim() || null;
-    if ('signatureRole' in req.body)
-      payload.signatureRole = req.body.signatureRole?.trim() || null;
+    if ('signatureName' in req.body) payload.signatureName = req.body.signatureName?.trim() || null;
+    if ('signatureRole' in req.body) payload.signatureRole = req.body.signatureRole?.trim() || null;
 
     if (Object.keys(payload).length === 0) {
       return res.status(400).json({ error: 'Nada que actualizar' });

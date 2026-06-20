@@ -50,12 +50,7 @@ export const RoutePicker: React.FC<RoutePickerProps> = ({
   const options = [
     ...(allowEmpty ? [{ value: '', label: placeholder }] : []),
     ...filtered.map((r) => {
-      const label = [
-        r.code,
-        r.name?.trim() || null,
-      ]
-        .filter(Boolean)
-        .join(' · ');
+      const label = [r.code, r.name?.trim() || null].filter(Boolean).join(' · ');
       const secondary = [
         r.plannedDate || null,
         r.driverName || null,

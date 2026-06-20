@@ -108,10 +108,7 @@ export const Zones: React.FC = () => {
             onClick={() => navigate('/warehouses')}
             className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors shadow-sm"
           >
-            <ArrowLeft
-              size={20}
-              className="text-slate-600 dark:text-slate-300"
-            />
+            <ArrowLeft size={20} className="text-slate-600 dark:text-slate-300" />
           </button>
           <div className="space-y-1">
             <div className="flex items-center gap-2 mb-1">

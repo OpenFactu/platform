@@ -76,9 +76,7 @@ export const SendInvoiceModal: React.FC<Props> = ({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Error');
-      toast.success(
-        `Email encolado → ${data.to || to}. Te notificamos cuando se entregue.`,
-      );
+      toast.success(`Email encolado → ${data.to || to}. Te notificamos cuando se entregue.`);
       onClose();
     } catch (e: any) {
       toast.error(e.message || 'Error al enviar');

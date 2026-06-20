@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import {
   Table,
   Card,
@@ -10,59 +11,59 @@ import {
   FilterBar,
   SearchableSelect,
 } from '@openfactu/ui';
-import { useLocation, useParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useTabs, useCurrentTab } from '../context/TabsContext';
-import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
+import { useTabs, useCurrentTab } from '../../context/TabsContext';
+import { useTheme } from '../../context/ThemeContext';
 import {
   FileDigit,
   Plus,
   Trash2,
   ArrowLeft,
   Save,
-  ShoppingCart,
-  FileText,
-  AlertCircle,
   Copy,
   PlusSquare,
+  Barcode,
+  AlertCircle,
   Download,
 } from 'lucide-react';
-import { DocumentActionBar } from '../components/DocumentActionBar';
-import { InternalOrderHeaderField } from '../components/InternalOrderHeaderField';
-import { InternalOrderChip } from '../components/InternalOrderChip';
-import { useInternalOrderLineColumn } from '../hooks/useLineInternalOrderColumn';
-import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
-import { AttachmentsPanel } from '../components/AttachmentsPanel';
-import { CloneDocumentActions } from '../components/common/CloneDocumentActions';
-import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
-import { TraceabilityButton } from '../components/common/TraceabilityButton';
-import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
+import { DocumentActionBar } from '../../components/DocumentActionBar';
+import { DocumentDetailLayout } from '../../components/DocumentDetailLayout';
+import { AttachmentsPanel } from '../../components/AttachmentsPanel';
+import { CloneDocumentActions } from '../../components/common/CloneDocumentActions';
+import { TraceabilityButton } from '../../components/common/TraceabilityButton';
+import { DocumentFiscalPanel } from '../../components/documents/DocumentFiscalPanel';
+import { InternalOrderHeaderField } from '../../components/InternalOrderHeaderField';
+import { InternalOrderChip } from '../../components/InternalOrderChip';
+import { useInternalOrderLineColumn } from '../../hooks/useLineInternalOrderColumn';
+import { DocumentTotalsBlock } from '../../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
   buildFormLineColumns,
   statusBadgeProps,
-} from '../components/documentLineCells';
-import { downloadPdf } from '../utils/downloadPdf';
-import { useFormat } from '../hooks/useFormat';
-import { useItemUoms } from '../hooks/useItemUoms';
-import { usePluginLineFields } from '../hooks/usePluginLineFields';
-import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
+} from '../../components/documentLineCells';
+import { notifyDocChange, useDataVersion } from '../../utils/dataRefresh';
+import { downloadPdf } from '../../utils/downloadPdf';
+import { useFormat } from '../../hooks/useFormat';
+import { BatchSelectionModal } from '../../components/BatchSelectionModal';
+import { BatchAssignmentPanel } from '../../components/BatchAssignmentPanel';
+import { useItemUoms } from '../../hooks/useItemUoms';
+import { usePluginLineFields } from '../../hooks/usePluginLineFields';
+import { PluginFieldsPanel } from '../../components/PluginFieldsPanel';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
-import { useDocumentScanner } from '../hooks/useDocumentScanner';
-import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
-import { notifyDocChange, useDataVersion } from '../utils/dataRefresh';
+import { useDocumentScanner } from '../../hooks/useDocumentScanner';
+import { BulkSendToolbar } from '../../components/documents/BulkSendToolbar';
 
 // --- Sub-componente: VISTA DE LISTADO ---
-const POList: React.FC<{
+const SOList: React.FC<{
   data: any[];
   loading: boolean;
   partners: any[];
   onCreate: () => void;
   onCreateFromClone?: (payload: { header: any; lines: any[] }) => void;
   onDetail: (order: any) => void;
-  canWrite?: boolean;
+
   doc: any;
-}> = ({ data, loading, partners, onCreate, onCreateFromClone, onDetail, canWrite, doc }) => {
+}> = ({ data, loading, partners, onCreate, onCreateFromClone, onDetail, doc }) => {
   const { token, user } = useAuth();
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
@@ -72,13 +73,14 @@ const POList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`/api/purchases/orders/${id}/pdf`, token || '', user?.tenantId || '');
+      await downloadPdf(`/api/sales/${id}/pdf`, token || '', user?.tenantId || '');
     } catch (e: any) {
       toast.error(e.message || 'Error al descargar PDF');
     } finally {
       setDownloadingId(null);
     }
   };
+
   const { filteredData, searchTerm, setSearchTerm, activeFilters, setFilter, clearFilters } =
     useDataTable({
       data,
@@ -87,7 +89,7 @@ const POList: React.FC<{
         {
           key: 'partnerId',
           type: 'select',
-          label: 'Proveedor',
+          label: 'Cliente',
           options: partners.map((p) => ({ label: p.name, value: p.id })),
         },
         {
@@ -108,7 +110,8 @@ const POList: React.FC<{
     {
       header: 'No. Pedido',
       sortable: true,
-      sortAccessor: (item: any) => `${item.seriesPrefix||''}-${String(item.docNum||0).padStart(6,'0')}`,
+      sortAccessor: (item: any) =>
+        `${item.seriesPrefix || ''}-${String(item.docNum || 0).padStart(6, '0')}`,
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
@@ -120,9 +123,14 @@ const POList: React.FC<{
         </div>
       ),
     },
-    { header: 'Fecha', sortable: true, sortAccessor: (item: any) => new Date(item.date).getTime(), accessor: (item: any) => fmt.date(item.date) },
     {
-      header: 'Proveedor',
+      header: 'Fecha',
+      sortable: true,
+      sortAccessor: (item: any) => new Date(item.date).getTime(),
+      accessor: (item: any) => fmt.date(item.date),
+    },
+    {
+      header: 'Cliente',
       sortable: true,
       sortAccessor: (item: any) => item.partnerName || '',
       accessor: (item: any) =>
@@ -193,10 +201,10 @@ const POList: React.FC<{
             <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl text-blue-600 dark:text-blue-300 shadow-sm border border-blue-100 dark:border-blue-500/20">
               <FileDigit size={32} />
             </div>
-            Pedidos de Compra
+            Pedidos de Venta
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium ml-1">
-            Gestión de aprovisionamiento y órdenes a proveedores.
+            Gestión de preventas y órdenes de clientes.
           </p>
           {doc.state.mastersError && (
             <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-700 dark:text-amber-200 text-xs font-bold animate-in slide-in-from-top">
@@ -206,13 +214,13 @@ const POList: React.FC<{
           )}
         </div>
         <div className="flex items-center gap-3">
-          {canWrite && onCreateFromClone && (
-            <CloneDocumentActions docType="PO" onPaste={onCreateFromClone} show="paste" />
+          {doc.state.canWrite && onCreateFromClone && (
+            <CloneDocumentActions docType="SO" onPaste={onCreateFromClone} show="paste" />
           )}
           <Button
             onClick={onCreate}
-            disabled={!canWrite}
-            className="flex items-center gap-2 h-12 px-6 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:grayscale"
+            disabled={!doc.state.canWrite}
+            className="flex items-center gap-2 h-12 px-6 disabled:opacity-50"
           >
             <Plus size={20} /> Nuevo Pedido
           </Button>
@@ -229,7 +237,7 @@ const POList: React.FC<{
           config={[
             {
               key: 'partnerId',
-              label: 'Proveedor',
+              label: 'Cliente',
               type: 'select',
               options: partners.map((p) => ({ label: p.name, value: p.id })),
             },
@@ -247,15 +255,30 @@ const POList: React.FC<{
           ]}
           searchPlaceholder="Buscar pedido..."
         />
-        <BulkSendToolbar selectedKeys={selectedKeys} rows={filteredData || []} partners={partners} docType="PO" onClear={() => setSelectedKeys(new Set())} onSent={() => setSelectedKeys(new Set())} />
-        <Table columns={columns} data={filteredData || []} isLoading={loading} onRowClick={onDetail} selectable selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys} />
+        <BulkSendToolbar
+          selectedKeys={selectedKeys}
+          rows={filteredData || []}
+          partners={partners}
+          docType="SO"
+          onClear={() => setSelectedKeys(new Set())}
+          onSent={() => setSelectedKeys(new Set())}
+        />
+        <Table
+          columns={columns}
+          data={filteredData || []}
+          isLoading={loading}
+          onRowClick={onDetail}
+          selectable
+          selectedKeys={selectedKeys}
+          onSelectionChange={setSelectedKeys}
+        />
       </Card>
     </div>
   );
 };
 
 // --- Sub-componente: VISTA DE FORMULARIO ---
-const POForm: React.FC<{
+const SOForm: React.FC<{
   onBack: () => void;
   onSubmit: (e: any) => void;
   state: any;
@@ -273,14 +296,25 @@ const POForm: React.FC<{
     shipToAddress: string;
     setShipToAddress: any;
   };
-}> = ({ onBack, onSubmit, state, setState, masters, actions, computations, extraState }) => {
+  setViewingBatch: (l: any) => void;
+}> = ({
+  onBack,
+  onSubmit,
+  state,
+  setState,
+  masters,
+  actions,
+  computations,
+  extraState,
+  setViewingBatch,
+}) => {
+  const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const fmt = useFormat();
   const itemUoms = useItemUoms();
-  const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const { flags } = useTheme();
   const warehouseLocation = flags.warehouseLocation;
   const { token: authToken, user: authUser } = useAuth();
-  const pluginLineFields = usePluginLineFields('PurchaseOrderLine');
+  const pluginLineFields = usePluginLineFields('SalesOrderLine');
   const [zones, setZones] = useState<any[]>([]);
   useEffect(() => {
     if (warehouseLocation !== 'line' || !authToken || !authUser?.tenantId) return;
@@ -313,25 +347,31 @@ const POForm: React.FC<{
   };
 
   const projectCol = useInternalOrderLineColumn(actions.updateLine);
-  const columns = useMemo(
-    () => {
-      const base = buildFormLineColumns({
-        kind: DocKind.Order,
-        side: DocSide.Purchase,
-        state,
-        masters,
-        zones,
-        actions,
-        onAssignBatch: setBatchEditingIdx,
-        fmt,
-        getItemUoms: itemUoms.get,
-        warehouseLocation,
-        pluginLineFields,
-      });
-      return [...base.slice(0, -1), projectCol, base[base.length - 1]];
-    },
-    [state.lines, masters.items, masters.taxGroups, warehouseLocation, zones, pluginLineFields, projectCol],
-  );
+  const columns = useMemo(() => {
+    const base = buildFormLineColumns({
+      kind: DocKind.Order,
+      side: DocSide.Sale,
+      state,
+      masters,
+      zones,
+      actions,
+      onAssignBatch: setBatchEditingIdx,
+      onViewBatch: setViewingBatch,
+      fmt,
+      getItemUoms: itemUoms.get,
+      warehouseLocation,
+      pluginLineFields,
+    });
+    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+  }, [
+    state.lines,
+    masters.items,
+    masters.taxGroups,
+    warehouseLocation,
+    zones,
+    pluginLineFields,
+    projectCol,
+  ]);
 
   return (
     <div className="p-4 space-y-6">
@@ -344,14 +384,14 @@ const POForm: React.FC<{
             <ArrowLeft size={20} />
           </button>
           <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            Nuevo Pedido de Compra
+            Nuevo Pedido de Venta
           </h1>
         </div>
         <Button
           onClick={onSubmit}
           isLoading={state.isSubmitting}
           disabled={!!state.seriesError || !state.canWrite}
-          className="px-8 flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
+          className="shadow-lg px-8 flex items-center gap-2 disabled:opacity-50"
         >
           <Save size={18} /> Confirmar Pedido
         </Button>
@@ -362,7 +402,7 @@ const POForm: React.FC<{
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                Proveedor / Acreedor *
+                Cliente *
               </label>
               <SearchableSelect
                 value={state.partnerId}
@@ -374,7 +414,7 @@ const POForm: React.FC<{
             {warehouseLocation !== 'line' && (
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  Almacén Destino *
+                  Almacén de Salida *
                 </label>
                 <SearchableSelect
                   value={state.warehouseId}
@@ -468,7 +508,7 @@ const POForm: React.FC<{
             </div>
           </Card>
           <PluginFieldsPanel
-            tableName="PurchaseOrder"
+            tableName="SalesOrder"
             values={state.pluginData}
             onChange={setState.setPluginField}
             disabled={state.isSubmitting}
@@ -477,6 +517,7 @@ const POForm: React.FC<{
         </div>
       </div>
 
+      {/* Warning retención IRPF si el cliente la tiene por defecto. */}
       {(() => {
         const p = masters.partners.find((x: any) => x.id === state.partnerId);
         const partnerRate = Number(p?.defaultWithholdingRate || 0);
@@ -485,13 +526,17 @@ const POForm: React.FC<{
           return (
             <div className="flex items-center justify-between gap-4 p-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
               <div className="flex items-start gap-3 min-w-0">
-                <AlertCircle size={18} className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
+                <AlertCircle
+                  size={18}
+                  className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5"
+                />
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
-                    Este proveedor tiene retención IRPF por defecto del {partnerRate}%
+                    Este cliente tiene retención IRPF por defecto del {partnerRate}%
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
-                    El pedido se registrará sin retención. Si el proveedor es profesional sujeto a IRPF, aplícala — tú eres el retenedor.
+                    El pedido se registrará sin retención. Si el cliente es empresa retenedora y tú
+                    eres profesional, debería aplicarse.
                   </p>
                 </div>
               </div>
@@ -509,7 +554,7 @@ const POForm: React.FC<{
         return null;
       })()}
 
-      <DocumentFiscalPanel kind="purchase" state={state} setState={setState} collapsible />
+      <DocumentFiscalPanel kind="sales" state={state} setState={setState} collapsible />
 
       <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
         <Table columns={columns} data={state.lines} />
@@ -538,7 +583,9 @@ const POForm: React.FC<{
             {Number(computations.withholdingAmount) > 0 && (
               <div className="flex justify-between px-2 text-rose-600 dark:text-rose-400">
                 <span className="text-[10px] font-black uppercase">Retención IRPF:</span>
-                <span className="font-bold">− {Number(computations.withholdingAmount).toFixed(2)} €</span>
+                <span className="font-bold">
+                  − {Number(computations.withholdingAmount).toFixed(2)} €
+                </span>
               </div>
             )}
             <div className="flex justify-between px-2 pt-2 mt-1 border-t text-xl font-black text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700">
@@ -548,51 +595,65 @@ const POForm: React.FC<{
           </div>
         </div>
       </Card>
+
+      <BatchAssignmentPanel
+        isOpen={batchEditingIdx !== null}
+        onClose={() => setBatchEditingIdx(null)}
+        lines={state.lines}
+        masters={masters}
+        initialLineIdx={batchEditingIdx}
+        isSale={true}
+        onSave={(updates) => {
+          updates.forEach((u) => actions.updateLine(u.idx, 'batchDetails', u.batchDetails));
+        }}
+      />
     </div>
   );
 };
 
 // --- Sub-componente: VISTA DE DETALLE ---
-const PODetail: React.FC<{
-  order: any;
+const SODetail: React.FC<{
   onBack: () => void;
   onCopyToDelivery: () => void;
-  onCancel?: (id: string) => void;
+  onCancel: (id: string) => void;
   masters: any;
-  setViewingBatch?: (l: any) => void;
+  setViewingBatch: (l: any) => void;
+  order: any;
+  doc: any;
 }> = ({ order, onBack, onCopyToDelivery, onCancel, masters, setViewingBatch }) => {
   const fmt = useFormat();
   const partner = masters.partners.find((p: any) => p.id === order.partnerId);
   const canBeCancelled = order.status === 'O' || order.status === 'P';
-  const canBeReceived = order.status !== 'C' && order.status !== 'X';
+  const canBeDelivered = order.status !== 'C' && order.status !== 'X';
 
   const columns = useMemo(
-    () => buildDetailLineColumns({
-      kind: DocKind.Order,
-      side: DocSide.Purchase,
-      masters,
-      onViewBatch: setViewingBatch,
-      fmt,
-    }),
+    () =>
+      buildDetailLineColumns({
+        kind: DocKind.Order,
+        side: DocSide.Sale,
+        masters,
+        onViewBatch: setViewingBatch,
+        fmt,
+      }),
     [order.lines, masters.items, masters.taxGroups],
   );
 
   return (
     <DocumentDetailLayout
       onBack={onBack}
-      breadcrumb="COMPRAS · PEDIDO"
+      breadcrumb="VENTAS · PEDIDO"
       title={`${order.seriesPrefix}-${order.periodCode}-${String(order.docNum).padStart(6, '0')}`}
       status={statusBadgeProps(order.status, DocKind.Order)}
       actions={
         <DocumentActionBar
-          docType="PO"
-          pdfUrl={`/api/purchases/orders/${order.id}/pdf`}
+          docType="SO"
+          pdfUrl={`/api/sales/${order.id}/pdf`}
           docId={order.id}
           docCode={`${order.seriesPrefix}-${order.periodCode}-${String(order.docNum).padStart(6, '0')}`}
-          onCancel={onCancel ? () => onCancel(order.id) : undefined}
-          showCancel={canBeCancelled && !!onCancel}
+          onCancel={() => onCancel(order.id)}
+          showCancel={canBeCancelled}
           primary={
-            canBeReceived
+            canBeDelivered
               ? { label: 'Generar Albarán', icon: Copy, onClick: onCopyToDelivery }
               : undefined
           }
@@ -600,9 +661,9 @@ const PODetail: React.FC<{
       }
     >
       <div className="flex items-center gap-3 mb-4 -mt-2 flex-wrap">
-        <CloneDocumentActions docType="PO" doc={order} show="copy" size={14} />
+        <CloneDocumentActions docType="SO" doc={order} show="copy" size={14} />
         <TraceabilityButton
-          type="PO"
+          type="SO"
           id={order.id}
           docCode={`${order.seriesPrefix}-${order.periodCode}-${String(order.docNum).padStart(6, '0')}`}
         />
@@ -615,7 +676,7 @@ const PODetail: React.FC<{
         >
           <div>
             <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] mb-2">
-              Proveedor
+              Cliente
             </h4>
             <p className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
               {partner?.name || '—'}
@@ -692,28 +753,27 @@ const PODetail: React.FC<{
       </Card>
 
       <PluginFieldsPanel
-        tableName="PurchaseOrder"
+        tableName="SalesOrder"
         values={order}
         onChange={() => {}}
         disabled
         layout="inline"
         title="Campos de plugin"
       />
-      <AttachmentsPanel entityType="PurchaseOrder" entityId={order.id} />
+      <AttachmentsPanel entityType="SalesOrder" entityId={order.id} />
     </DocumentDetailLayout>
   );
 };
 
 const formatDocCode = (o: any): string =>
-  `${o.seriesPrefix ?? ''}-${o.periodCode ?? ''}-${String(o.docNum ?? '').padStart(6, '0')}`;
+  `${o.seriesPrefix}-${o.periodCode}-${String(o.docNum).padStart(6, '0')}`;
 
-// --- COMPONENTE PRINCIPAL ---
-export const PurchaseOrders: React.FC = () => {
+export const SalesOrders: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
-  const { openTab } = useTabs();
   const params = useParams();
   const location = useLocation();
+  const { openTab } = useTabs();
   const currentTab = useCurrentTab();
 
   const detailId = params.id;
@@ -721,13 +781,14 @@ export const PurchaseOrders: React.FC = () => {
   const isDetail = !!detailId;
   const isList = !isCreate && !isDetail;
 
-  const dataVersion = useDataVersion(DocType.PurchaseOrder);
+  const dataVersion = useDataVersion(DocType.SalesOrder);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(isList);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(isDetail);
+  const [viewingBatch, setViewingBatch] = useState<any>(null);
 
-  // Estados extras del formulario
+  // Extras del formulario
   const [deliveryDate, setDeliveryDate] = useState('');
   const [billToAddress, setBillToAddress] = useState('');
   const [shipToAddress, setShipToAddress] = useState('');
@@ -736,23 +797,22 @@ export const PurchaseOrders: React.FC = () => {
   const doc = useDocument({
     token: token || '',
     tenantId: user?.tenantId || '',
-    docType: DocType.PurchaseOrder,
-    apiEndpoint: '/api/purchases/orders',
-    permissions: (user as any)?.permissions?.['/purchase-orders'],
+    docType: DocType.SalesOrder,
+    apiEndpoint: '/api/sales',
+    permissions: (user as any)?.permissions?.['/sales-orders'],
   });
   useDocumentScanner(doc, isCreate);
 
-  // Clone from clipboard (se dispara cuando entramos en modo create).
+  // Clone from clipboard
   useEffect(() => {
     if (!isCreate) return;
-    const raw = sessionStorage.getItem('keirost:cloneInvoice:PO');
+    const raw = sessionStorage.getItem('keirost:cloneInvoice:SO');
     if (!raw) return;
-    sessionStorage.removeItem('keirost:cloneInvoice:PO');
+    sessionStorage.removeItem('keirost:cloneInvoice:SO');
     try {
       const { header, lines } = JSON.parse(raw);
       if (header?.partnerId) doc.setState.setPartnerId(header.partnerId);
       if (header?.internalOrderId) setInternalOrderId(header.internalOrderId);
-      if (header?.warehouseId) doc.setState.setWarehouseId?.(header.warehouseId);
       if (Array.isArray(lines)) {
         doc.setState.setLines(
           lines.map((l: any) => ({
@@ -776,75 +836,51 @@ export const PurchaseOrders: React.FC = () => {
     }
   }, [isCreate]);
 
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/purchases/orders', {
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      const data = await res.json();
-      const withCode = (Array.isArray(data) ? data : []).map((d: any) => ({
-        ...d,
-        docCode: `${d.seriesPrefix || ''}-${d.periodCode || ''}-${String(d.docNum || '').padStart(6, '0')}`,
-        partnerName: d.partnerName || '',
-      }));
-      setOrders(withCode);
-    } catch {
-      toast.error('Error al cargar pedidos');
-    } finally {
-      setLoading(false);
-    }
+  const authHeaders = {
+    Authorization: `Bearer ${token}`,
+    'x-tenant-id': user?.tenantId || '',
   };
 
+  // Listado
   useEffect(() => {
-    if (!isList) return;
-    if (token && user?.tenantId) {
-      fetchOrders();
-    } else if (token) {
-      setLoading(false);
-    }
-  }, [isList, token, user, dataVersion]);
+    if (!isList || !token || !user?.tenantId) return;
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/sales', { headers: authHeaders });
+        const data = await res.json();
+        const withCode = (Array.isArray(data) ? data : []).map((d: any) => ({
+          ...d,
+          docCode: `${d.seriesPrefix || ''}-${d.periodCode || ''}-${String(d.docNum || '').padStart(6, '0')}`,
+          partnerName: d.partnerName || '',
+        }));
+        setOrders(withCode);
+      } catch {
+        toast.error('Error al cargar pedidos');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [isList, token, user?.tenantId, dataVersion]);
 
-  // Detalle — carga por URL /:id.
+  // Detalle
   useEffect(() => {
     if (!isDetail || !detailId || !token || !user?.tenantId) return;
     (async () => {
       try {
         setDetailLoading(true);
-        const res = await fetch(`/api/purchases/orders/${detailId}`, {
-          headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-        });
+        const res = await fetch(`/api/sales/${detailId}`, { headers: authHeaders });
+        if (!res.ok) throw new Error('No encontrado');
         const data = await res.json();
-        if (!res.ok) {
-          toast.error(data?.error || `Error ${res.status} al cargar el pedido`);
-          return;
-        }
         setSelectedOrder(data);
         currentTab.rename(formatDocCode(data));
-      } catch (err: any) {
-        toast.error(err?.message || 'Error de red al cargar el pedido');
+      } catch (e: any) {
+        toast.error(e.message || 'Error al cargar el pedido');
       } finally {
         setDetailLoading(false);
       }
     })();
   }, [isDetail, detailId, token, user?.tenantId, dataVersion]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCreate) {
-        if (e.key === 'F2') {
-          e.preventDefault();
-          doc.actions.addLine();
-        }
-        if (e.key === 'F10') {
-          e.preventDefault();
-          handleSubmit(e);
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCreate, doc.state.lines, doc.state.partnerId]);
 
   const handleSubmit = async (e: any) => {
     try {
@@ -854,72 +890,128 @@ export const PurchaseOrders: React.FC = () => {
         shipToAddress,
         internalOrderId,
       });
-      toast.success(`Pedido registrado nº ${data.header.docNum}`);
-      notifyDocChange(DocType.PurchaseOrder);
+      toast.success(`Pedido registrado nº ${data.docNum}`);
+      notifyDocChange(DocType.SalesOrder);
       currentTab.close();
     } catch (err: any) {
       toast.error(err.message);
     }
   };
 
-  if (isCreate)
+  const handleCancel = async (id: string) => {
+    if (!confirm('¿Seguro que deseas cancelar este pedido?')) return;
+    try {
+      const res = await fetch(`/api/sales/${id}/cancel`, {
+        method: 'POST',
+        headers: authHeaders,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Error al cancelar');
+      }
+      toast.success('Pedido cancelado');
+      notifyDocChange(DocType.SalesOrder);
+      currentTab.close();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  if (isCreate) {
     return (
-      <POForm
-        onBack={() => currentTab.close()}
-        onSubmit={handleSubmit}
-        state={doc.state}
-        setState={doc.setState}
-        masters={doc.masters}
-        actions={doc.actions}
-        computations={doc.computations}
-        extraState={{
-          deliveryDate,
-          setDeliveryDate,
-          internalOrderId,
-          setInternalOrderId,
-          billToAddress,
-          setBillToAddress,
-          shipToAddress,
-          setShipToAddress,
-        }}
-      />
+      <>
+        <SOForm
+          onBack={() => currentTab.close()}
+          onSubmit={handleSubmit}
+          state={doc.state}
+          setState={doc.setState}
+          masters={doc.masters}
+          actions={doc.actions}
+          computations={doc.computations}
+          extraState={{
+            deliveryDate,
+            setDeliveryDate,
+            internalOrderId,
+            setInternalOrderId,
+            billToAddress,
+            setBillToAddress,
+            shipToAddress,
+            setShipToAddress,
+          }}
+          setViewingBatch={setViewingBatch}
+        />
+        {viewingBatch && (
+          <BatchSelectionModal
+            isOpen={true}
+            onClose={() => setViewingBatch(null)}
+            targetQuantity={viewingBatch.quantity}
+            itemName={doc.masters.items.find((i: any) => i.id === viewingBatch.itemId)?.name || ''}
+            manageBy={
+              doc.masters.items.find((i: any) => i.id === viewingBatch.itemId)?.manageBy || 'B'
+            }
+            initialDetails={viewingBatch.batchDetails || []}
+            onConfirm={() => {}}
+            readOnly
+          />
+        )}
+      </>
     );
+  }
+
   if (isDetail) {
     if (detailLoading || !selectedOrder) {
       return (
-        <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm">
-          Cargando pedido…
+        <div className="p-12 flex items-center justify-center">
+          <Loader />
         </div>
       );
     }
     return (
-      <PODetail
-        order={selectedOrder}
-        onBack={() => currentTab.close()}
-        onCopyToDelivery={() => {
-          localStorage.setItem('copy_order_source', JSON.stringify(selectedOrder));
-          openTab(`/purchases/delivery-notes/new?copyFrom=${selectedOrder.id}`, {
-            title: `Albarán ← ${formatDocCode(selectedOrder)}`,
-          });
-        }}
-        masters={doc.masters}
-      />
+      <>
+        <SODetail
+          doc={doc}
+          order={selectedOrder}
+          onBack={() => currentTab.close()}
+          onCopyToDelivery={() => {
+            localStorage.setItem('copy_order_source', JSON.stringify(selectedOrder));
+            openTab(`/sales/delivery-notes/new?copyFrom=${selectedOrder.id}`, {
+              title: `Albarán ← ${formatDocCode(selectedOrder)}`,
+            });
+          }}
+          onCancel={handleCancel}
+          masters={doc.masters}
+          setViewingBatch={setViewingBatch}
+        />
+        {viewingBatch && (
+          <BatchSelectionModal
+            isOpen={true}
+            onClose={() => setViewingBatch(null)}
+            targetQuantity={viewingBatch.quantity || viewingBatch.orderedQty}
+            itemName={doc.masters.items.find((i: any) => i.id === viewingBatch.itemId)?.name || ''}
+            manageBy={
+              doc.masters.items.find((i: any) => i.id === viewingBatch.itemId)?.manageBy || 'B'
+            }
+            initialDetails={viewingBatch.batchDetails || []}
+            onConfirm={() => {}}
+            readOnly
+          />
+        )}
+      </>
     );
   }
 
   return (
-    <POList
+    <SOList
       doc={doc}
       data={orders}
       loading={loading}
       partners={doc.masters.partners}
-      onCreate={() => openTab('/purchase-orders/new')}
+      onCreate={() => openTab('/sales-orders/new')}
       onCreateFromClone={(payload) => {
-        sessionStorage.setItem('keirost:cloneInvoice:PO', JSON.stringify(payload));
-        openTab('/purchase-orders/new');
+        sessionStorage.setItem('keirost:cloneInvoice:SO', JSON.stringify(payload));
+        openTab('/sales-orders/new');
       }}
-      canWrite={doc.state.canWrite}
-      onDetail={(p) => openTab(`/purchase-orders/${p.id}`, { title: formatDocCode(p) })}
+      onDetail={(p) => openTab(`/sales-orders/${p.id}`, { title: formatDocCode(p) })}
     />
   );
 };

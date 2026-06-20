@@ -130,7 +130,12 @@ class AutomationRunnerImpl {
           output = await executeWebhook(a.actionConfig, actionCtx);
           break;
         case 'notification':
-          output = await executeNotification(a.tenantId, tenantRow.schemaName, a.actionConfig, actionCtx);
+          output = await executeNotification(
+            a.tenantId,
+            tenantRow.schemaName,
+            a.actionConfig,
+            actionCtx,
+          );
           break;
         default:
           throw new Error(`actionType desconocido: ${a.actionType}`);

@@ -29,7 +29,9 @@ export class TenantPluginCache {
       this.cache.get(row.tenantId)!.add(row.pluginId);
     }
 
-    console.log(`[TenantPluginCache] Cargados ${rows.length} registros activos para ${this.cache.size} tenants`);
+    console.log(
+      `[TenantPluginCache] Cargados ${rows.length} registros activos para ${this.cache.size} tenants`,
+    );
   }
 
   /**
@@ -142,7 +144,9 @@ export class TenantPluginCache {
       }
     }
 
-    console.log(`[TenantPluginCache] Defaults creados para tenant ${tenantId}: ${pluginIds.length} plugins (inactivos)`);
+    console.log(
+      `[TenantPluginCache] Defaults creados para tenant ${tenantId}: ${pluginIds.length} plugins (inactivos)`,
+    );
   }
 
   /**

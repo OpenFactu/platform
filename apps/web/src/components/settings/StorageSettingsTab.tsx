@@ -20,8 +20,18 @@ type Provider = 'local' | 'gdrive' | 'onedrive';
 interface StorageConfig {
   provider?: Provider;
   local?: { basePath?: string };
-  gdrive?: { clientId?: string; clientSecret?: string; refreshToken?: string; rootFolderId?: string };
-  onedrive?: { clientId?: string; clientSecret?: string; refreshToken?: string; rootFolderId?: string };
+  gdrive?: {
+    clientId?: string;
+    clientSecret?: string;
+    refreshToken?: string;
+    rootFolderId?: string;
+  };
+  onedrive?: {
+    clientId?: string;
+    clientSecret?: string;
+    refreshToken?: string;
+    rootFolderId?: string;
+  };
 }
 
 export const StorageSettingsTab: React.FC = () => {

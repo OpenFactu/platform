@@ -199,10 +199,7 @@ export const EmailSettingsTab: React.FC = () => {
                 placeholder="usuario@gmail.com"
               />
             </Field>
-            <Field
-              label="Password"
-              hint={cfg.passwordSet ? 'guardada' : undefined}
-            >
+            <Field label="Password" hint={cfg.passwordSet ? 'guardada' : undefined}>
               <Input
                 type="password"
                 value={newPassword}
@@ -262,8 +259,8 @@ export const EmailSettingsTab: React.FC = () => {
             <h2 className="text-lg font-bold">Enviar prueba</h2>
           </div>
           <p className="text-xs text-slate-500">
-            El test se envía de forma sincrónica — verás el resultado al momento. Los envíos
-            reales del ERP (facturas a clientes, etc.) van a una cola desatendida con reintentos.
+            El test se envía de forma sincrónica — verás el resultado al momento. Los envíos reales
+            del ERP (facturas a clientes, etc.) van a una cola desatendida con reintentos.
           </p>
           <div className="flex gap-2 items-end">
             <Field label="Destinatario" className="flex-1">

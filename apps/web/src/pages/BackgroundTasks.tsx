@@ -135,9 +135,7 @@ export const BackgroundTasks: React.FC = () => {
           ) : mails.length === 0 ? (
             <div className="py-10 flex flex-col items-center gap-2 text-ink-400">
               <Mail size={28} />
-              <p className="text-xs font-mono uppercase tracking-wider">
-                No hay emails en la cola
-              </p>
+              <p className="text-xs font-mono uppercase tracking-wider">No hay emails en la cola</p>
             </div>
           ) : (
             <ul className="divide-y divide-line dark:divide-ink-700">

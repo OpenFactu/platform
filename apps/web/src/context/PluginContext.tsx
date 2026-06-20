@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useCallback, useEffect, useState, useRef, useMemo } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useCallback,
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+} from 'react';
 import { CORE_MODULES, findActiveModule, type Module, type SubTab } from '../modules/registry';
 import { useAuth } from './AuthContext';
 
@@ -91,7 +99,13 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { token: authToken, user: authUser } = useAuth();
   const [manifests, setManifests] = useState<PluginManifest[]>([]);
   const [userTables, setUserTables] = useState<
-    Array<{ tableName: string; label: string | null; iconName: string | null; kind: string; menuModule: string | null }>
+    Array<{
+      tableName: string;
+      label: string | null;
+      iconName: string | null;
+      kind: string;
+      menuModule: string | null;
+    }>
   >([]);
   const [loading, setLoading] = useState(true);
   const [reloadTimestamp, setReloadTimestamp] = useState(Date.now());
@@ -282,7 +296,16 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [manifests, userTables]);
 
   return (
-    <PluginContext.Provider value={{ manifests, loading, reload, reloadTimestamp, modules, reloadUserTables: fetchUserTables }}>
+    <PluginContext.Provider
+      value={{
+        manifests,
+        loading,
+        reload,
+        reloadTimestamp,
+        modules,
+        reloadUserTables: fetchUserTables,
+      }}
+    >
       {children}
     </PluginContext.Provider>
   );

@@ -1,5 +1,15 @@
 import React from 'react';
-import { Barcode, Plus, Trash2, Copy as CopyIcon, Tag, Layers3, Package, CheckCircle2, AlertTriangle } from 'lucide-react';
+import {
+  Barcode,
+  Plus,
+  Trash2,
+  Copy as CopyIcon,
+  Tag,
+  Layers3,
+  Package,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react';
 import { Button, Input, SearchableSelect } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { DocKind, DocSide, DocStatus } from '@openfactu/common';
@@ -264,9 +274,11 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
       width: '12%',
       align: 'left',
       cell: (l: any) => {
-        if (!l.internalOrderId) return <span className="text-slate-300 dark:text-slate-600">—</span>;
+        if (!l.internalOrderId)
+          return <span className="text-slate-300 dark:text-slate-600">—</span>;
         const p = masters.internalOrders?.find((x: any) => x.id === l.internalOrderId);
-        if (!p) return <span className="font-mono text-[11px]">{l.internalOrderId.slice(0, 8)}…</span>;
+        if (!p)
+          return <span className="font-mono text-[11px]">{l.internalOrderId.slice(0, 8)}…</span>;
         return (
           <div className="flex flex-col leading-tight">
             <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">
@@ -285,9 +297,7 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
       header: f.label || f.fieldName.replace(/^p_/, ''),
       width: '12%',
       align: 'left',
-      cell: (l: any) => (
-        <PluginFieldValue def={f as any} value={l[f.fieldName]} fmt={fmt as any} />
-      ),
+      cell: (l: any) => <PluginFieldValue def={f as any} value={l[f.fieldName]} fmt={fmt as any} />,
     });
   }
 
@@ -416,19 +426,12 @@ function FormArticleCell({
         (() => {
           const required = Number(line.quantity || 0);
           const assigned = (line.batchDetails ?? []).reduce(
-            (acc: number, b: any) =>
-              acc + (item?.manageBy === 'S' ? 1 : Number(b.quantity || 0)),
+            (acc: number, b: any) => acc + (item?.manageBy === 'S' ? 1 : Number(b.quantity || 0)),
             0,
           );
           const balanced = required > 0 && Math.abs(required - assigned) < 0.0001;
           const partial = hasTrace && !balanced;
-          const tone = balanced
-            ? 'emerald'
-            : partial
-              ? 'amber'
-              : hasTrace
-                ? 'indigo'
-                : 'amber';
+          const tone = balanced ? 'emerald' : partial ? 'amber' : hasTrace ? 'indigo' : 'amber';
           const toneCls: Record<string, string> = {
             emerald:
               'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/20',
@@ -494,7 +497,7 @@ function ZoneSelectCell({
   // mostramos todas (el prefiltrado ya se hace por header en modo 'header').
   const filtered = line.warehouseId
     ? (zones ?? []).filter((z: any) => z.warehouseId === line.warehouseId)
-    : zones ?? [];
+    : (zones ?? []);
   return (
     <select
       value={line.zoneId || ''}
@@ -605,7 +608,9 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
         const currentQty = Number(line.quantity || 0);
         // Convertir cantidad: si tenía 4 UD (factor 1) y pasa a PQ4 (factor 4) → 4*1/4 = 1
         const convertedQty =
-          newFactor > 0 ? Math.round((currentQty * oldFactor) / newFactor * 10000) / 10000 : currentQty;
+          newFactor > 0
+            ? Math.round(((currentQty * oldFactor) / newFactor) * 10000) / 10000
+            : currentQty;
         if (actions.updateLineFields) {
           actions.updateLineFields(idx, {
             uomId: newUomId,
@@ -665,7 +670,10 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
         if (v == null || v === '' || Number(v) === 0) return '';
         const num = Number(v);
         if (!Number.isFinite(num)) return String(v);
-        const s = num.toFixed(4).replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+        const s = num
+          .toFixed(4)
+          .replace(/(\.\d*?[1-9])0+$/, '$1')
+          .replace(/\.0+$/, '');
         return s;
       };
       const displayValue = formatPriceForEdit(line.price);
@@ -740,9 +748,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
           <select
             value={line.internalOrderId || ''}
             disabled={locked}
-            onChange={(e) =>
-              actions.updateLine(idx, 'internalOrderId', e.target.value || null)
-            }
+            onChange={(e) => actions.updateLine(idx, 'internalOrderId', e.target.value || null)}
             className={`h-9 w-full border border-slate-200 dark:border-slate-700 rounded-lg text-xs px-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 ${locked ? disabledInputCls : ''}`}
           >
             <option value="">—</option>

@@ -17,12 +17,12 @@ import { getConfigSection, setConfigSection } from '../config/systemConfigSectio
 export interface EmailConfig {
   host: string;
   port: number;
-  secure: boolean;     // true para 465 (SSL), false para 587 (STARTTLS)
+  secure: boolean; // true para 465 (SSL), false para 587 (STARTTLS)
   user: string;
   password: string;
   fromAddress: string; // "Keirost <noreply@empresa.com>"
-  fromName: string;    // usado si fromAddress no lleva display name
-  enabled: boolean;    // flag maestro — si false, las llamadas fallan con error claro
+  fromName: string; // usado si fromAddress no lleva display name
+  enabled: boolean; // flag maestro — si false, las llamadas fallan con error claro
 }
 
 export const EMAIL_DEFAULTS: EmailConfig = {
@@ -109,8 +109,7 @@ export async function sendMail(
   const cfg = await readConfig(tenantDb);
   const transporter = await getTransporter(tenantId, tenantDb);
   const from =
-    cfg.fromAddress ||
-    (cfg.user ? `${cfg.fromName} <${cfg.user}>` : cfg.fromName || 'Keirost');
+    cfg.fromAddress || (cfg.user ? `${cfg.fromName} <${cfg.user}>` : cfg.fromName || 'Keirost');
   const info = await transporter.sendMail({
     from,
     to: input.to,

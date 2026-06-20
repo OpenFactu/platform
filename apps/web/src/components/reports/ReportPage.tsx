@@ -121,9 +121,7 @@ export function ReportPage<T extends Record<string, any>>({
         </div>
       </div>
 
-      {filters && (
-        <Card className="p-4 border-slate-100 dark:border-slate-800">{filters}</Card>
-      )}
+      {filters && <Card className="p-4 border-slate-100 dark:border-slate-800">{filters}</Card>}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
         <div className="overflow-x-auto">

@@ -111,10 +111,7 @@ router.patch('/:id', async (req: any, res) => {
       .update(schema.automations)
       .set(patch)
       .where(
-        and(
-          eq(schema.automations.id, req.params.id),
-          eq(schema.automations.tenantId, tenantId),
-        ),
+        and(eq(schema.automations.id, req.params.id), eq(schema.automations.tenantId, tenantId)),
       );
     res.json({ ok: true });
   } catch (err: any) {
@@ -129,10 +126,7 @@ router.delete('/:id', async (req: any, res) => {
     await db
       .delete(schema.automations)
       .where(
-        and(
-          eq(schema.automations.id, req.params.id),
-          eq(schema.automations.tenantId, tenantId),
-        ),
+        and(eq(schema.automations.id, req.params.id), eq(schema.automations.tenantId, tenantId)),
       );
     res.json({ ok: true });
   } catch (err: any) {

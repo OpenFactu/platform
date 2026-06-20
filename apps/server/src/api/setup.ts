@@ -22,9 +22,7 @@ const router = Router();
  * peligrosos (reset total) — fuera de él, devuelven 403.
  */
 function isSetupDebugEnabled(): boolean {
-  return (
-    process.env.NODE_ENV !== 'production' || process.env.OPENFACTU_DEBUG_SETUP === '1'
-  );
+  return process.env.NODE_ENV !== 'production' || process.env.OPENFACTU_DEBUG_SETUP === '1';
 }
 
 router.get('/status', async (req, res) => {
@@ -42,6 +40,124 @@ router.get('/status', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Error al comprobar el estado del sistema' });
+  }
+});
+
+/**
+ * POST /api/setup/check-db — Verifica credenciales de BD, si la base de
+ * datos target existe, y si el schema public tiene las tablas de OpenFactu.
+ * Se conecta a la BD 'postgres' (siempre presente) para hacer el check sin
+ * asumir que openfactudb ya existe.
+ */
+router.post('/check-db', async (req, res) => {
+  const { host, port, user, password } = req.body;
+
+  if (!host || !port || !user || !password) {
+    return res.status(400).json({ error: 'Faltan credenciales de base de datos' });
+  }
+
+  let pool: any;
+  let targetPool: any;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { Pool } = require('pg');
+
+    // Conectar a 'postgres' que siempre existe para verificar credenciales
+    const checkUrl = `postgresql://${user}:${password}@${host}:${port}/postgres`;
+    pool = new Pool({ connectionString: checkUrl, connectionTimeoutMillis: 5000 });
+
+    await pool.query('SELECT 1');
+
+    // Verificar si openfactudb existe
+    const dbResult = await pool.query("SELECT 1 FROM pg_database WHERE datname = 'openfactudb'");
+    const databaseExists = dbResult.rowCount > 0;
+
+    await pool.end();
+
+    let hasPublicSchema = false;
+    let hasExistingSetup = false;
+
+    if (databaseExists) {
+      // Conectar a openfactudb para verificar el schema public
+      const targetUrl = `postgresql://${user}:${password}@${host}:${port}/openfactudb`;
+      targetPool = new Pool({ connectionString: targetUrl, connectionTimeoutMillis: 5000 });
+
+      // Verificar si existe el schema public
+      const schemaResult = await targetPool.query(
+        "SELECT 1 FROM information_schema.schemata WHERE schema_name = 'public'",
+      );
+      hasPublicSchema = schemaResult.rowCount > 0;
+
+      if (hasPublicSchema) {
+        // Verificar si existen las tablas clave de OpenFactu
+        const tablesResult = await targetPool.query(
+          `SELECT table_name FROM information_schema.tables 
+           WHERE table_schema = 'public' 
+           AND table_name IN ('Tenant', 'GlobalUser')`,
+        );
+        // Si ambas tablas existen, ya hay un setup previo
+        hasExistingSetup = tablesResult.rowCount >= 2;
+        console.log(
+          `[Setup.check-db] Tablas encontradas: ${tablesResult.rowCount}, hasExistingSetup: ${hasExistingSetup}`,
+        );
+      }
+
+      await targetPool.end();
+    }
+
+    let message = '';
+    if (hasExistingSetup) {
+      message = 'Conexión exitosa. Base de datos con configuración existente detectada.';
+    } else if (databaseExists && hasPublicSchema) {
+      message = 'Conexión exitosa. Base de datos encontrada (schema vacío).';
+    } else if (databaseExists) {
+      message = 'Conexión exitosa. Base de datos encontrada pero sin schema public.';
+    } else {
+      message = 'Conexión exitosa. La base de datos se creará automáticamente.';
+    }
+
+    res.json({
+      connected: true,
+      databaseExists,
+      hasPublicSchema,
+      hasExistingSetup,
+      message,
+    });
+  } catch (error: any) {
+    if (pool) {
+      try {
+        await pool.end();
+      } catch {
+        // ignore cleanup errors
+      }
+    }
+    if (targetPool) {
+      try {
+        await targetPool.end();
+      } catch {
+        // ignore cleanup errors
+      }
+    }
+
+    let message = 'No se pudo conectar a la base de datos.';
+    if (error.message?.includes('password')) {
+      message = 'Contraseña incorrecta.';
+    } else if (error.message?.includes('does not exist')) {
+      message = 'El usuario no existe.';
+    } else if (error.message?.includes('connect') || error.message?.includes('timeout')) {
+      message = 'No se pudo conectar al servidor. Verifica host y puerto.';
+    } else if (error.message?.includes('ECONNREFUSED')) {
+      message = 'El servidor rechazó la conexión. Verifica que PostgreSQL está corriendo.';
+    }
+
+    res.json({
+      connected: false,
+      databaseExists: false,
+      hasPublicSchema: false,
+      hasExistingSetup: false,
+      message,
+      rawError: error.message,
+    });
   }
 });
 
@@ -69,9 +185,7 @@ router.post('/dev-reset', async (req, res) => {
       try {
         await publicDb.execute(
           // eslint-disable-next-line @typescript-eslint/no-var-requires
-          (await import('drizzle-orm')).sql.raw(
-            `DROP SCHEMA IF EXISTS "${t.schemaName}" CASCADE`,
-          ),
+          (await import('drizzle-orm')).sql.raw(`DROP SCHEMA IF EXISTS "${t.schemaName}" CASCADE`),
         );
       } catch (e: any) {
         console.warn(`[Setup.dev-reset] No se pudo dropear ${t.schemaName}: ${e.message}`);

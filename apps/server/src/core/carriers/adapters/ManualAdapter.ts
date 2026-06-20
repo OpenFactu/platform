@@ -19,10 +19,7 @@ export const ManualAdapter: ICarrierAdapter = {
   name: 'Manual (sin integración)',
   credentialFields: [],
 
-  async createShipment(
-    _account,
-    _input: CreateShipmentInput,
-  ): Promise<CreateShipmentResult> {
+  async createShipment(_account, _input: CreateShipmentInput): Promise<CreateShipmentResult> {
     const trackingNumber = `MAN-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
     return { trackingNumber };
   },

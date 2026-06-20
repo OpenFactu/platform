@@ -21,9 +21,7 @@ export const Performance: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const today = new Date();
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-    .toISOString()
-    .slice(0, 10);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
   const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
     .toISOString()
     .slice(0, 10);
@@ -75,9 +73,7 @@ export const Performance: React.FC = () => {
     { contracted: 0, planned: 0, clocked: 0, overtime: 0, absence: 0 },
   );
   const avgCompliance =
-    rows.length > 0
-      ? rows.reduce((s, r) => s + r.compliancePct, 0) / rows.length
-      : 0;
+    rows.length > 0 ? rows.reduce((s, r) => s + r.compliancePct, 0) / rows.length : 0;
 
   const exportCsv = () => {
     const header = [

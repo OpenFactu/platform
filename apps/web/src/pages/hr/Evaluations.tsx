@@ -119,7 +119,9 @@ export const Evaluations: React.FC = () => {
     }
     const isNew = !editingComp.id;
     const r = await fetch(
-      isNew ? '/api/hr/evaluations/competencies' : `/api/hr/evaluations/competencies/${editingComp.id}`,
+      isNew
+        ? '/api/hr/evaluations/competencies'
+        : `/api/hr/evaluations/competencies/${editingComp.id}`,
       {
         method: isNew ? 'POST' : 'PATCH',
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -203,8 +205,8 @@ export const Evaluations: React.FC = () => {
             <ClipboardCheck className="text-indigo-600" size={32} /> Evaluaciones
           </h1>
           <p className="text-slate-500 text-sm">
-            Ciclos de evaluación con competencias ponderadas. Al cerrar una evaluación se
-            calcula la puntuación final como Σ(score × peso) / Σpeso.
+            Ciclos de evaluación con competencias ponderadas. Al cerrar una evaluación se calcula la
+            puntuación final como Σ(score × peso) / Σpeso.
           </p>
         </div>
         <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -391,9 +393,7 @@ export const Evaluations: React.FC = () => {
                         {emp ? `${emp.firstName} ${emp.lastName}` : ev.employeeId}
                       </td>
                       <td className="p-3">
-                        <Badge variant={STATUS_VARIANT[ev.status]}>
-                          {STATUS_LABEL[ev.status]}
-                        </Badge>
+                        <Badge variant={STATUS_VARIANT[ev.status]}>{STATUS_LABEL[ev.status]}</Badge>
                       </td>
                       <td className="p-3 text-right tabular-nums font-bold">
                         {ev.finalScore ? Number(ev.finalScore).toFixed(2) : '—'}
@@ -415,7 +415,10 @@ export const Evaluations: React.FC = () => {
       {tab === 'competencies' && (
         <>
           <div className="flex justify-end">
-            <Button size="sm" onClick={() => setEditingComp({ scaleMax: 5, isActive: true, weight: '1' })}>
+            <Button
+              size="sm"
+              onClick={() => setEditingComp({ scaleMax: 5, isActive: true, weight: '1' })}
+            >
               <Plus size={14} /> Nueva competencia
             </Button>
           </div>
@@ -476,9 +479,7 @@ export const Evaluations: React.FC = () => {
                   <tr key={c.id} className="border-b">
                     <td className="p-3 font-mono text-xs">{c.code}</td>
                     <td className="p-3 font-medium">{c.name}</td>
-                    <td className="p-3 text-right tabular-nums">
-                      {Number(c.weight).toFixed(2)}
-                    </td>
+                    <td className="p-3 text-right tabular-nums">{Number(c.weight).toFixed(2)}</td>
                     <td className="p-3 text-right tabular-nums">{c.scaleMax}</td>
                     <td className="p-3 text-right">
                       <button
@@ -546,7 +547,8 @@ export const Evaluations: React.FC = () => {
                               const next = [...scores];
                               next[i] = {
                                 ...s,
-                                scoreSelf: e.target.value === '' ? undefined : Number(e.target.value),
+                                scoreSelf:
+                                  e.target.value === '' ? undefined : Number(e.target.value),
                               };
                               setScores(next);
                             }}
@@ -564,7 +566,8 @@ export const Evaluations: React.FC = () => {
                               const next = [...scores];
                               next[i] = {
                                 ...s,
-                                scoreManager: e.target.value === '' ? undefined : Number(e.target.value),
+                                scoreManager:
+                                  e.target.value === '' ? undefined : Number(e.target.value),
                               };
                               setScores(next);
                             }}

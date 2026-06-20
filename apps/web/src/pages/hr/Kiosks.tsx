@@ -1,7 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
 import { useAuth } from '../../context/AuthContext';
-import { Tablet, Plus, RefreshCw, Trash2, Copy, Link as LinkIcon, ExternalLink } from 'lucide-react';
+import {
+  Tablet,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Copy,
+  Link as LinkIcon,
+  ExternalLink,
+} from 'lucide-react';
 
 interface Kiosk {
   id: string;

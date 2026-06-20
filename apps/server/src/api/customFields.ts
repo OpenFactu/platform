@@ -50,9 +50,7 @@ async function getTenantTables(schemaName: string): Promise<string[]> {
   const rows: any[] = result.rows || result;
   // Incluimos `pt_*` (tablas de usuario creadas en esta UI) porque
   // también deben poder recibir campos personalizados.
-  return rows
-    .map((r) => r.tablename)
-    .filter((name: string) => !BLOCKED_TABLES.has(name));
+  return rows.map((r) => r.tablename).filter((name: string) => !BLOCKED_TABLES.has(name));
 }
 
 const ALLOWED_TYPES = new Set([
@@ -346,8 +344,7 @@ router.post('/:id/clone', async (req: any, res) => {
   try {
     const { db, tenantId, schemaName } = await ensureTenant(req);
     const targetTable = req.body?.targetTable;
-    if (!targetTable)
-      return res.status(400).json({ error: 'targetTable requerido.' });
+    if (!targetTable) return res.status(400).json({ error: 'targetTable requerido.' });
     const available = await getTenantTables(schemaName);
     if (!available.includes(targetTable))
       return res.status(400).json({ error: 'Tabla destino no permitida.' });
@@ -484,7 +481,12 @@ router.post('/import', async (req: any, res) => {
 });
 
 // ── PACKS predefinidos ─────────────────────────────────────────────
-const PACKS: Record<string, Array<Partial<CreateBody> & { tableName: string; fieldName: string; fieldType: string; label: string }>> = {
+const PACKS: Record<
+  string,
+  Array<
+    Partial<CreateBody> & { tableName: string; fieldName: string; fieldType: string; label: string }
+  >
+> = {
   // NOTA — NO añadir un pack "projects" con `projectCode` TEXT. Los
   // proyectos son una entidad nativa (`InternalOrder`) con FK propia
   // (`internalOrderId`) en todas las líneas de documento y de asiento.
@@ -546,12 +548,7 @@ router.get('/packs', (_req, res) => {
   res.json(
     Object.entries(PACKS).map(([id, fields]) => ({
       id,
-      label:
-        id === 'contacts'
-          ? 'Contacto extra'
-          : id === 'quality'
-            ? 'Control de calidad'
-            : id,
+      label: id === 'contacts' ? 'Contacto extra' : id === 'quality' ? 'Control de calidad' : id,
       count: fields.length,
       fields,
     })),
@@ -634,9 +631,7 @@ router.get('/ref/:tableName', async (req: any, res) => {
 
     const tenantDb = ClientFactory.getClient(schemaName);
     const safeCol = /^[A-Za-z_][A-Za-z0-9_]*$/.test(display) ? display : 'name';
-    const where = q
-      ? `WHERE "${safeCol}"::text ILIKE '%${q.replace(/'/g, "''")}%'`
-      : '';
+    const where = q ? `WHERE "${safeCol}"::text ILIKE '%${q.replace(/'/g, "''")}%'` : '';
     const result: any = await tenantDb.execute(
       sql.raw(
         `SELECT id, "${safeCol}"::text AS label FROM "${schemaName}"."${t}" ${where} ORDER BY label LIMIT 20`,

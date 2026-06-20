@@ -109,9 +109,7 @@ router.get('/:id', async (req: any, res) => {
       });
     }
     const rawHeader: any = await req.tenantClient.execute(
-      sql.raw(
-        `SELECT * FROM "${schemaName}"."SalesInvoice" WHERE "id" = '${req.params.id}'`,
-      ),
+      sql.raw(`SELECT * FROM "${schemaName}"."SalesInvoice" WHERE "id" = '${req.params.id}'`),
     );
     const rawHeaderRow = rawHeader.rows?.[0] || {};
     const pluginCols: Record<string, any> = {};
@@ -122,11 +120,11 @@ router.get('/:id', async (req: any, res) => {
     const lineIds = linesWithBatches.map((l: any) => l.id);
     const linePluginByLineId: Record<string, Record<string, any>> = {};
     if (lineIds.length > 0) {
-      const escapedIds = lineIds.map((id: string) => `'${String(id).replace(/'/g, "''")}'`).join(',');
+      const escapedIds = lineIds
+        .map((id: string) => `'${String(id).replace(/'/g, "''")}'`)
+        .join(',');
       const rawLines: any = await req.tenantClient.execute(
-        sql.raw(
-          `SELECT * FROM "${schemaName}"."SalesInvoiceLine" WHERE "id" IN (${escapedIds})`,
-        ),
+        sql.raw(`SELECT * FROM "${schemaName}"."SalesInvoiceLine" WHERE "id" IN (${escapedIds})`),
       );
       for (const r of rawLines.rows || []) {
         const entry: Record<string, any> = {};

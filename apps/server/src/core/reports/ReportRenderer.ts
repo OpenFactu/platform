@@ -115,12 +115,7 @@ function buildHtml(input: ReportInput): string {
             .map((c, i) => {
               const label = i === 0 ? s.totals!.label : '';
               const tv = s.totals!.values[c.key];
-              const text =
-                tv !== undefined
-                  ? formatValue(tv, c.format)
-                  : i === 0
-                    ? label
-                    : '';
+              const text = tv !== undefined ? formatValue(tv, c.format) : i === 0 ? label : '';
               return `<td style="text-align:${c.align || 'left'};padding:8px 10px;font-size:11px;${c.format === 'money' || c.format === 'integer' || c.format === 'percent' ? 'font-variant-numeric:tabular-nums;' : ''}">${escapeHtml(text)}</td>`;
             })
             .join('')}</tr>`

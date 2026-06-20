@@ -61,18 +61,15 @@ import { Performance } from '../../pages/hr/Performance';
 import { LaborCost } from '../../pages/hr/LaborCost';
 import { Tasks } from '../../pages/hr/Tasks';
 import { Gantt } from '../../pages/hr/Gantt';
-import { DocumentSeries } from '../../pages/DocumentSeries';
-import { PurchaseOrders } from '../../pages/PurchaseOrders';
-import { PurchaseDeliveryNotes } from '../../pages/PurchaseDeliveryNotes';
-import { PurchaseInvoices } from '../../pages/PurchaseInvoices';
-import { SalesOrders } from '../../pages/SalesOrders';
-import { SalesDeliveryNotes } from '../../pages/SalesDeliveryNotes';
-import { SalesInvoices } from '../../pages/SalesInvoices';
+import { PurchaseOrders } from '../../pages/Documents/PurchaseOrders';
+import { PurchaseDeliveryNotes } from '../../pages/Documents/PurchaseDeliveryNotes';
+import { PurchaseInvoices } from '../../pages/Documents/PurchaseInvoices';
+import { SalesOrders } from '../../pages/Documents/SalesOrders';
+import { SalesDeliveryNotes } from '../../pages/Documents/SalesDeliveryNotes';
+import { SalesInvoices } from '../../pages/Documents/SalesInvoices';
 import { Taxes } from '../../pages/Taxes';
 import { AuditLogs } from '../../pages/AuditLogs';
 import { BackgroundTasks } from '../../pages/BackgroundTasks';
-import { DocumentTemplates } from '../../pages/DocumentTemplates';
-import { DocumentTemplateDesigner } from '../../pages/DocumentTemplateDesigner';
 import { CompanySettings } from '../../pages/CompanySettings';
 import { ApiTokens } from '../../pages/ApiTokens';
 import { NewCompany } from '../../pages/NewCompany';
@@ -84,6 +81,10 @@ import { ShipmentDetail } from '../../pages/logistics/ShipmentDetail';
 import { DriverApp } from '../../pages/logistics/DriverApp';
 import { UserTableList } from '../../pages/user-tables/UserTableList';
 import { UserTableDetail } from '../../pages/user-tables/UserTableDetail';
+import Documents from '../../pages/Documents/Documents';
+import { DocumentTemplateDesigner } from '../../pages/Documents/DocumentTemplateDesigner';
+import { DocumentTemplates } from '../../pages/Documents/DocumentTemplates';
+import { DocumentSeries } from '../../pages/Documents/DocumentSeries';
 
 export interface RouteMeta {
   title: string;
@@ -302,6 +303,28 @@ export const staticRoutes: RouteEntry[] = [
     iconName: 'FileStack',
     permissionPath: '/sales/invoices',
   },
+  // ── Unified Documents Router ────────────────────────────────────
+  {
+    pattern: '/documents/:docType',
+    Component: Documents,
+    title: 'Documentos',
+    iconName: 'FileText',
+    permissionPath: '/documents',
+  },
+  {
+    pattern: '/documents/:docType/new',
+    Component: Documents,
+    title: 'Nuevo Documento',
+    iconName: 'FileText',
+    permissionPath: '/documents',
+  },
+  {
+    pattern: '/documents/:docType/:id',
+    Component: Documents,
+    title: 'Documento',
+    iconName: 'FileText',
+    permissionPath: '/documents',
+  },
   {
     pattern: '/partner-groups',
     Component: PartnerGroups,
@@ -385,18 +408,50 @@ export const staticRoutes: RouteEntry[] = [
   // Informes contables individuales
   { pattern: '/reports/accounting/journal', Component: ReportJournal, title: 'Diario' },
   { pattern: '/reports/accounting/ledger', Component: ReportLedger, title: 'Mayor' },
-  { pattern: '/reports/accounting/trial-balance', Component: ReportTrialBalance, title: 'Sumas y saldos' },
+  {
+    pattern: '/reports/accounting/trial-balance',
+    Component: ReportTrialBalance,
+    title: 'Sumas y saldos',
+  },
   { pattern: '/reports/accounting/pl', Component: ReportPL, title: 'P&L' },
-  { pattern: '/reports/accounting/balance-sheet', Component: ReportBalanceSheet, title: 'Balance situación' },
+  {
+    pattern: '/reports/accounting/balance-sheet',
+    Component: ReportBalanceSheet,
+    title: 'Balance situación',
+  },
   { pattern: '/reports/accounting/vat', Component: ReportVAT, title: 'Libro IVA' },
   // Ola 3 — Gestión
-  { pattern: '/reports/management/profit-customer', Component: ReportProfitCustomer, title: 'Rent. cliente' },
-  { pattern: '/reports/management/profit-item', Component: ReportProfitItem, title: 'Rent. producto' },
-  { pattern: '/reports/management/profit-project', Component: ReportProfitProject, title: 'Rent. proyecto' },
-  { pattern: '/reports/management/profit-cost-center', Component: ReportProfitCostCenter, title: 'Rent. CC' },
+  {
+    pattern: '/reports/management/profit-customer',
+    Component: ReportProfitCustomer,
+    title: 'Rent. cliente',
+  },
+  {
+    pattern: '/reports/management/profit-item',
+    Component: ReportProfitItem,
+    title: 'Rent. producto',
+  },
+  {
+    pattern: '/reports/management/profit-project',
+    Component: ReportProfitProject,
+    title: 'Rent. proyecto',
+  },
+  {
+    pattern: '/reports/management/profit-cost-center',
+    Component: ReportProfitCostCenter,
+    title: 'Rent. CC',
+  },
   { pattern: '/reports/management/executive', Component: ReportExecutive, title: 'Ejecutivo' },
-  { pattern: '/reports/management/aging-receivables', Component: () => <ReportAging kind="receivables" />, title: 'Aging cobros' },
-  { pattern: '/reports/management/aging-payables', Component: () => <ReportAging kind="payables" />, title: 'Aging pagos' },
+  {
+    pattern: '/reports/management/aging-receivables',
+    Component: () => <ReportAging kind="receivables" />,
+    title: 'Aging cobros',
+  },
+  {
+    pattern: '/reports/management/aging-payables',
+    Component: () => <ReportAging kind="payables" />,
+    title: 'Aging pagos',
+  },
   { pattern: '/reports/management/cashflow', Component: ReportCashflow, title: 'Cash-flow' },
   // Ola 4 — RRHH
   { pattern: '/reports/hr/payslip', Component: ReportPayslip, title: 'Recibo nómina' },

@@ -14,7 +14,8 @@ export const ReportAging: React.FC<Props> = ({ kind }) => {
   const [loading, setLoading] = useState(false);
   const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
-  const endpoint = kind === 'receivables' ? '/api/reports/aging-receivables' : '/api/reports/aging-payables';
+  const endpoint =
+    kind === 'receivables' ? '/api/reports/aging-receivables' : '/api/reports/aging-payables';
 
   const load = () => {
     setLoading(true);
@@ -23,7 +24,9 @@ export const ReportAging: React.FC<Props> = ({ kind }) => {
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.tenantId]);
+  useEffect(() => {
+    load(); /* eslint-disable-next-line */
+  }, [user?.tenantId]);
 
   const columns = useMemo(
     () => [

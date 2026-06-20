@@ -24,7 +24,7 @@ const ARTICLE_QUERY = {
   name: 'item',
   sql:
     'SELECT id, code, name, "basePrice", description, ' +
-    'COALESCE(NULLIF(TRIM(COALESCE("barcode", \'\')), \'\'), code) AS barcode ' +
+    "COALESCE(NULLIF(TRIM(COALESCE(\"barcode\", '')), ''), code) AS barcode " +
     'FROM "Item" WHERE id = :itemId',
 };
 

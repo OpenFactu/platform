@@ -103,7 +103,6 @@ export const Login: React.FC = () => {
 
       {/* SECTION IZQUIERDA: Brand & Visual (solo en pantallas anchas) */}
       <div className="hidden md:flex md:w-2/5 relative overflow-hidden z-10">
-
         {/* Content Overlay */}
         <div className="relative z-10 w-full flex flex-col p-12 justify-between">
           <div className="flex items-center gap-3">
@@ -297,9 +296,7 @@ export const Login: React.FC = () => {
                                     }
                                   />
                                   <span className="flex-1 truncate">{t.name}</span>
-                                  {isActive && (
-                                    <Check size={14} className="text-[#0D9488]" />
-                                  )}
+                                  {isActive && <Check size={14} className="text-[#0D9488]" />}
                                 </button>
                               </li>
                             );
@@ -313,9 +310,7 @@ export const Login: React.FC = () => {
               {tenants.length === 1 && (
                 <div className="flex items-center gap-2 px-4 py-3 bg-[#0D9488]/10 border border-[#0D9488]/30 rounded-[4px] animate-in fade-in duration-300">
                   <Building size={14} className="text-[#0D9488] shrink-0" />
-                  <span className="text-sm font-bold text-[#0D9488]">
-                    {tenants[0].name}
-                  </span>
+                  <span className="text-sm font-bold text-[#0D9488]">{tenants[0].name}</span>
                 </div>
               )}
 
@@ -378,7 +373,10 @@ export const Login: React.FC = () => {
             <div className="text-center pt-4">
               <p className="text-slate-500 dark:text-slate-300 text-xs font-bold">
                 ¿Dudas con tu acceso?{' '}
-                <button type="button" className="text-[#0D9488] hover:text-[#0A6E63] hover:underline">
+                <button
+                  type="button"
+                  className="text-[#0D9488] hover:text-[#0A6E63] hover:underline"
+                >
                   Contactar soporte
                 </button>
               </p>

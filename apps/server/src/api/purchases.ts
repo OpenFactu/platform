@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { eq, desc, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
-import crypto from 'crypto';
+import { DocumentEngine } from '../core/documents/DocumentEngine';
+import { DocumentRegistry } from '../core/documents/DocumentRegistry';
 import { renderDocumentPdf } from '../core/documents/renderDocumentPdf';
 import { logAudit } from '../utils/audit';
 
 const router = Router();
+const config = DocumentRegistry.get('PO');
 
 // GET /orders/:id/pdf
 router.get('/orders/:id/pdf', async (req: any, res) => {
@@ -53,144 +55,25 @@ router.get('/orders', async (req: any, res) => {
   }
 });
 
-// POST new order (Transaction)
+// POST new order — usa DocumentEngine en vez de lógica inline
 router.post('/orders', async (req: any, res) => {
-  const {
-    seriesId,
-    periodId,
-    partnerId,
-    date,
-    deliveryDate,
-    documentDate,
-    warehouseId,
-    internalOrderId,
-    lines,
-  } = req.body;
-
   try {
-    // 1. Iniciar Transacción
-    const result = await req.tenantClient.transaction(async (tx: any) => {
-      // 2. Obtener y bloquear la Serie Documental
-      const [series] = await tx
-        .select()
-        .from(schema.documentSeries)
-        .where(eq(schema.documentSeries.id, seriesId));
-
-      if (!series) throw new Error('Serie documental no encontrada');
-      if (series.nextNumber > series.lastNumber) {
-        throw new Error(
-          `La serie ${series.name} ha alcanzado su límite numérico final (${series.lastNumber}).`,
-        );
-      }
-
-      const assignedDocNum = series.nextNumber;
-
-      // 3. Actualizar contador autonumérico de la serie
-      await tx
-        .update(schema.documentSeries)
-        .set({ nextNumber: assignedDocNum + 1 })
-        .where(eq(schema.documentSeries.id, seriesId));
-
-      // 4. Calcular totales
-      let calculatedSubtotal = 0;
-      let calculatedTaxTotal = 0;
-      const breakdownMap: Record<string, { base: number; tax: number }> = {};
-
-      const allTaxGroups = await tx.select().from(schema.taxGroups);
-      const taxRateMap = allTaxGroups.reduce((acc: any, curr: any) => {
-        acc[curr.id] = Number(curr.rate);
-        return acc;
-      }, {});
-
-      const linesToInsert = lines.map((line: any, index: number) => {
-        const qty = Number(line.quantity);
-        const price = Number(line.price);
-        const gross = qty * price;
-        const discountRate = Number(line.discountRate || 0);
-        const discountAmount =
-          line.discountAmount != null
-            ? Number(line.discountAmount)
-            : gross * (discountRate / 100);
-        const lineSubtotal = gross - discountAmount;
-        const taxRate = taxRateMap[line.taxGroupId] || 0;
-        const lineTax = lineSubtotal * (taxRate / 100);
-        const withholdingRate = Number(line.withholdingRate || 0);
-        const withholdingAmount =
-          line.withholdingAmount != null
-            ? Number(line.withholdingAmount)
-            : lineSubtotal * (withholdingRate / 100);
-
-        calculatedSubtotal += lineSubtotal;
-        calculatedTaxTotal += lineTax;
-
-        const rateKey = String(taxRate);
-        if (!breakdownMap[rateKey]) breakdownMap[rateKey] = { base: 0, tax: 0 };
-        breakdownMap[rateKey].base += lineSubtotal;
-        breakdownMap[rateKey].tax += lineTax;
-
-        return {
-          id: crypto.randomUUID(),
-          lineNum: index + 1,
-          itemId: line.itemId,
-          warehouseId: line.warehouseId || warehouseId || null,
-          zoneId: line.zoneId || null,
-          batchNum: line.batchNum || null,
-          orderedQty: String(qty),
-          receivedQty: '0',
-          price: String(price),
-          uomId: line.uomId || null,
-          uomFactor: line.uomFactor ? String(line.uomFactor) : '1.0000',
-          taxGroupId: line.taxGroupId || null,
-          lineTotal: String(lineSubtotal + lineTax),
-          // Mig 032 — desglose fiscal por línea.
-          description: line.description || null,
-          discountRate: String(discountRate),
-          discountAmount: String(discountAmount.toFixed(4)),
-          taxRate: String(taxRate),
-          taxAmount: String(lineTax.toFixed(4)),
-          withholdingRate: withholdingRate ? String(withholdingRate) : null,
-          withholdingAmount: withholdingAmount ? String(withholdingAmount.toFixed(4)) : null,
-          costCenterId: line.costCenterId || null,
-          profitCenterId: line.profitCenterId || null,
-          // Las líneas heredan el proyecto de cabecera si no traen propio.
-          internalOrderId: line.internalOrderId || internalOrderId || null,
-        };
-      });
-
-      // 5. Insertar Cabecera (Purchase Order)
-      const orderId = crypto.randomUUID();
-      const finalTotal = calculatedSubtotal + calculatedTaxTotal;
-      const [header] = await tx
-        .insert(schema.purchaseOrders)
-        .values({
-          id: orderId,
-          seriesId,
-          docNum: assignedDocNum,
-          periodId,
-          partnerId,
-          date: new Date(date),
-          deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-          documentDate: documentDate ? new Date(documentDate) : null,
-          billToAddress: req.body.billToAddress || null,
-          shipToAddress: req.body.shipToAddress || null,
-          warehouseId: warehouseId || null,
-          internalOrderId: internalOrderId || null,
-          subtotal: String(calculatedSubtotal.toFixed(4)),
-          taxTotal: String(calculatedTaxTotal.toFixed(4)),
-          total: String(finalTotal.toFixed(4)),
-          taxBreakdown: JSON.stringify(breakdownMap),
-          status: 'O',
-        })
-        .returning();
-
-      // 6. Insertar Líneas
-      if (linesToInsert.length > 0) {
-        const insertPayload = linesToInsert.map((l: any) => ({ ...l, orderId }));
-        await tx.insert(schema.purchaseOrderLines).values(insertPayload);
-      }
-
-      return { header, assignedDocNum };
-    });
+    const result = await DocumentEngine.create(
+      req.tenantId,
+      req.tenantClient,
+      req.user,
+      {
+        tableName: config.tableName,
+        schemaTable: config.schemaTable,
+        lineSchemaTable: config.lineSchemaTable,
+        batchSchemaTable: config.batchSchemaTable,
+        eventPrefix: config.eventPrefix,
+        stockAction: config.stockAction,
+        closeBaseDocuments: config.closeBaseDocuments,
+        initialStatus: config.initialStatus,
+      },
+      req.body,
+    );
 
     res.json(result);
     logAudit({
@@ -198,12 +81,12 @@ router.post('/orders', async (req: any, res) => {
       tenantId: req.tenantId || '',
       userId: req.user?.id,
       entityType: 'PurchaseOrder',
-      entityId: result.header?.id,
+      entityId: result.id,
       action: 'CREATE',
-      newValue: { docNum: result.assignedDocNum, partnerId: req.body.partnerId },
+      newValue: { docNum: result.docNum, partnerId: req.body.partnerId },
     });
   } catch (error: any) {
-    console.error('Error al crear Pedido:', error);
+    console.error('[PurchaseOrder API] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import './core/documents/registerDocumentTypes'; // MUST be first — registers all doc types before routers load
 import express from 'express';
 import cors from 'cors';
 import { sql } from 'drizzle-orm';
@@ -90,6 +91,7 @@ import configRouter from './api/config';
 import searchRouter from './api/search';
 import geoRouter from './api/geo';
 import factuApiRouter from './api/factuapi';
+import documentRouter from './api/documentRouter';
 import { tenantContextMiddleware } from './api/middleware/tenantContext';
 import { MigrationManager } from './core/tenant/MigrationManager';
 import { startPeriodCloseCron } from './core/cron/periodCloseCron';
@@ -223,6 +225,8 @@ app.use('/api/purchases/invoices', purchaseInvoicesRouter);
 app.use('/api/sales/delivery-notes', salesDeliveryNotesRouter);
 app.use('/api/sales/invoices', salesInvoicesRouter);
 app.use('/api/sales', salesOrdersRouter);
+// Generic document router (new unified API)
+app.use('/api/documents', documentRouter);
 app.use('/api/taxes', taxesRouter);
 app.use('/api/audit-logs', auditLogsRouter);
 app.use('/api/memberships', membershipsRouter);
@@ -290,7 +294,8 @@ const start = async () => {
     // Asegurar tablas del schema publico antes de cualquier operacion
     try {
       const publicDb = ClientFactory.getClient('public');
-      await publicDb.execute(sql.raw(`
+      await publicDb.execute(
+        sql.raw(`
         CREATE TABLE IF NOT EXISTS "Tenant" (
           "id" TEXT PRIMARY KEY, "name" TEXT UNIQUE NOT NULL, "schemaName" TEXT UNIQUE NOT NULL,
           "config" TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -412,7 +417,8 @@ const start = async () => {
           "triggerSource" TEXT,
           "contextJson" JSONB
         );
-      `));
+      `),
+      );
       console.log('[Bootstrap] Tablas del schema publico verificadas.');
     } catch (err: any) {
       console.warn('[Bootstrap] No se pudieron verificar tablas publicas:', err.message);
@@ -490,9 +496,7 @@ const start = async () => {
           tenantId: ctx.tenantId,
           tenantClient: ctx.db,
           title: `${DOC_TITLES[prefix]} nº ${docNum}`,
-          body: ctx.data?.total
-            ? `Importe ${Number(ctx.data.total).toFixed(2)} €`
-            : undefined,
+          body: ctx.data?.total ? `Importe ${Number(ctx.data.total).toFixed(2)} €` : undefined,
           level: 'success',
           link: ctx.data?.id ? `${DOC_LINKS[prefix]}/${ctx.data.id}` : DOC_LINKS[prefix],
         });

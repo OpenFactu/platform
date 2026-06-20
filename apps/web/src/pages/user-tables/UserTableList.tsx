@@ -43,9 +43,7 @@ export const UserTableList: React.FC = () => {
         fetch(`/api/user-tables/${tblName}/rows`, { headers }),
       ]);
       const tables = await mRes.json();
-      const m = (Array.isArray(tables) ? tables : []).find(
-        (t: any) => t.tableName === tblName,
-      );
+      const m = (Array.isArray(tables) ? tables : []).find((t: any) => t.tableName === tblName);
       setMeta(m || null);
       setRows(await rRes.json());
     } finally {
@@ -161,10 +159,7 @@ export const UserTableList: React.FC = () => {
             </div>
           </div>
         </div>
-        <Button
-          onClick={() => openTab(`/u/${name}/new`)}
-          className="flex items-center gap-2"
-        >
+        <Button onClick={() => openTab(`/u/${name}/new`)} className="flex items-center gap-2">
           <Plus size={14} /> Nuevo
         </Button>
       </header>

@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Modal, Badge } from '@openfactu/ui';
-import { Plus, Trash2, Wrench, Copy, Download, Upload, Package, Table as TableIcon } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  Wrench,
+  Copy,
+  Download,
+  Upload,
+  Package,
+  Table as TableIcon,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usePlugins } from '../context/PluginContext';
 import { useTabs } from '../context/TabsContext';
@@ -99,15 +108,17 @@ export const CustomFields: React.FC = () => {
   const [rows, setRows] = useState<FieldRow[]>([]);
   const [allowedTables, setAllowedTables] = useState<string[]>([]);
   const [packs, setPacks] = useState<PackInfo[]>([]);
-  const [userTables, setUserTables] = useState<Array<{
-    id: string;
-    tableName: string;
-    label: string | null;
-    kind: string;
-    iconName: string | null;
-    menuModule: string | null;
-    description: string | null;
-  }>>([]);
+  const [userTables, setUserTables] = useState<
+    Array<{
+      id: string;
+      tableName: string;
+      label: string | null;
+      kind: string;
+      iconName: string | null;
+      menuModule: string | null;
+      description: string | null;
+    }>
+  >([]);
   const [editingTable, setEditingTable] = useState<string | null>(null);
   const { reloadUserTables } = usePlugins();
   const { openTab } = useTabs();
@@ -169,7 +180,10 @@ export const CustomFields: React.FC = () => {
       map.get(r.tableName)!.push(r);
     }
     return Array.from(map.entries())
-      .map(([t, list]) => [t, list.sort((a, b) => a.displayOrder - b.displayOrder)] as [string, FieldRow[]])
+      .map(
+        ([t, list]) =>
+          [t, list.sort((a, b) => a.displayOrder - b.displayOrder)] as [string, FieldRow[]],
+      )
       .sort(([a], [b]) => a.localeCompare(b));
   }, [rows, filter]);
 
@@ -296,7 +310,9 @@ export const CustomFields: React.FC = () => {
   };
 
   const remove = async (row: FieldRow) => {
-    if (!confirm(`¿Eliminar "${row.fieldName}" de ${row.tableName}? Se perderán los datos asociados.`))
+    if (
+      !confirm(`¿Eliminar "${row.fieldName}" de ${row.tableName}? Se perderán los datos asociados.`)
+    )
       return;
     const res = await fetch(`/api/custom-fields/${row.id}`, { method: 'DELETE', headers });
     if (!res.ok) {
@@ -387,7 +403,14 @@ export const CustomFields: React.FC = () => {
     toast.success(isEdit ? 'Tabla actualizada' : `Tabla "${data.tableName}" creada`);
     setShowTableModal(false);
     setEditingTable(null);
-    setTableForm({ name: '', label: '', kind: 'master', iconName: 'Table', menuModule: '', description: '' });
+    setTableForm({
+      name: '',
+      label: '',
+      kind: 'master',
+      iconName: 'Table',
+      menuModule: '',
+      description: '',
+    });
     invalidatePluginFields();
     reloadUserTables();
     await load();
@@ -408,7 +431,14 @@ export const CustomFields: React.FC = () => {
 
   const openCreateTable = () => {
     setEditingTable(null);
-    setTableForm({ name: '', label: '', kind: 'master', iconName: 'Table', menuModule: '', description: '' });
+    setTableForm({
+      name: '',
+      label: '',
+      kind: 'master',
+      iconName: 'Table',
+      menuModule: '',
+      description: '',
+    });
     setShowTableModal(true);
   };
 
@@ -460,19 +490,20 @@ export const CustomFields: React.FC = () => {
               Campos personalizados
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Añade campos propios a cualquier tabla sin escribir código. Aparecen en form, detalle y PDF.
+              Añade campos propios a cualquier tabla sin escribir código. Aparecen en form, detalle
+              y PDF.
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={openCreateTable}
-            className="flex items-center gap-2"
-          >
+          <Button variant="secondary" onClick={openCreateTable} className="flex items-center gap-2">
             <TableIcon size={14} /> Nueva tabla
           </Button>
-          <Button variant="secondary" onClick={() => setShowPacksModal(true)} className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => setShowPacksModal(true)}
+            className="flex items-center gap-2"
+          >
             <Package size={14} /> Packs
           </Button>
           <Button variant="secondary" onClick={exportAll} className="flex items-center gap-2">
@@ -515,7 +546,8 @@ export const CustomFields: React.FC = () => {
         </div>
         {userTables.length === 0 ? (
           <div className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
-            Aún no has creado tablas propias. Crea una para tener una entidad nueva con listado, form y menú.
+            Aún no has creado tablas propias. Crea una para tener una entidad nueva con listado,
+            form y menú.
           </div>
         ) : (
           <ul>
@@ -847,7 +879,13 @@ export const CustomFields: React.FC = () => {
                         });
                       }}
                     />
-                    {v === 'form' ? 'Formulario' : v === 'detail' ? 'Detalle' : v === 'list' ? 'Listado' : 'PDF'}
+                    {v === 'form'
+                      ? 'Formulario'
+                      : v === 'detail'
+                        ? 'Detalle'
+                        : v === 'list'
+                          ? 'Listado'
+                          : 'PDF'}
                   </label>
                 ))}
               </div>
@@ -944,7 +982,8 @@ export const CustomFields: React.FC = () => {
               </Field>
             </Row>
             <div className="text-[11px] text-slate-500">
-              Vacío = todos los roles. Si pones solo "ADMIN" en escritura, un USER no podrá modificarlo (aunque envíe el valor se descarta).
+              Vacío = todos los roles. Si pones solo "ADMIN" en escritura, un USER no podrá
+              modificarlo (aunque envíe el valor se descarta).
             </div>
           </Section>
 
@@ -953,7 +992,13 @@ export const CustomFields: React.FC = () => {
               Cancelar
             </Button>
             <Button onClick={save} disabled={submitting}>
-              {submitting ? <Loader size="sm" variant="white" /> : editingId ? 'Guardar cambios' : 'Crear campo'}
+              {submitting ? (
+                <Loader size="sm" variant="white" />
+              ) : editingId ? (
+                'Guardar cambios'
+              ) : (
+                'Crear campo'
+              )}
             </Button>
           </div>
         </div>

@@ -170,7 +170,9 @@ router.post('/', async (req: any, res) => {
   try {
     const { employeeId, contractId, periodYear, periodMonth } = req.body;
     if (!employeeId || !periodYear || !periodMonth) {
-      return res.status(400).json({ error: 'employeeId, periodYear y periodMonth son obligatorios' });
+      return res
+        .status(400)
+        .json({ error: 'employeeId, periodYear y periodMonth son obligatorios' });
     }
 
     // Comprobación previa para devolver un mensaje claro si ya existe la
@@ -310,7 +312,16 @@ router.post('/:id/lines', async (req: any, res) => {
 
 router.patch('/:id/lines/:lineId', async (req: any, res) => {
   try {
-    const allow = ['conceptId', 'concept', 'type', 'quantity', 'rate', 'baseAmount', 'amount', 'accountId'] as const;
+    const allow = [
+      'conceptId',
+      'concept',
+      'type',
+      'quantity',
+      'rate',
+      'baseAmount',
+      'amount',
+      'accountId',
+    ] as const;
     const patch: Record<string, any> = {};
     for (const k of allow) {
       if (k in req.body) {
@@ -453,7 +464,9 @@ router.post('/:id/approve', async (req: any, res) => {
       periodId = open?.id || null;
     }
     if (!periodId)
-      return res.status(400).json({ error: 'No hay período contable abierto para asentar la nómina' });
+      return res
+        .status(400)
+        .json({ error: 'No hay período contable abierto para asentar la nómina' });
 
     let journalEntryId: string | null = null;
     try {

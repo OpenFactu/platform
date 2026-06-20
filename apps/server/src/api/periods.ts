@@ -122,11 +122,7 @@ router.get('/:id/close-preview', async (req: any, res) => {
  */
 router.post('/:id/close', async (req: any, res) => {
   try {
-    const result = await PeriodCloseEngine.close(
-      req.tenantClient,
-      req.params.id,
-      req.user?.id,
-    );
+    const result = await PeriodCloseEngine.close(req.tenantClient, req.params.id, req.user?.id);
     logAudit({
       tenantClient: req.tenantClient,
       tenantId: req.tenantId || '',

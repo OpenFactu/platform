@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useToast } from '@openfactu/ui';
-import { useAuth } from '../context/AuthContext';
-import { TemplatesList } from '../components/document-templates/TemplatesList';
-import { TemplateEditor } from '../components/document-templates/TemplateEditor';
-import type { TemplateRow } from '../components/document-templates/constants';
+import { useAuth } from '../../context/AuthContext';
+import { TemplateEditor } from '../../components/document-templates/TemplateEditor';
+import { TemplatesList } from '../../components/document-templates/TemplatesList';
+import { DocumentGeneratorModal } from '../../components/document-templates/DocumentGeneratorModal';
+import type { TemplateRow } from '../../components/document-templates/constants';
 
 export const DocumentTemplates: React.FC = () => {
   const { token, user } = useAuth();
@@ -12,6 +13,7 @@ export const DocumentTemplates: React.FC = () => {
   const [data, setData] = useState<TemplateRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<TemplateRow | null>(null);
+  const [generating, setGenerating] = useState<{ id: string; name: string } | null>(null);
 
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -126,15 +128,25 @@ export const DocumentTemplates: React.FC = () => {
   }
 
   return (
-    <TemplatesList
-      data={data}
-      loading={loading}
-      onCreate={() => openEditor()}
-      onEdit={(t) => openEditor(t)}
-      onSetDefault={handleSetDefault}
-      onDuplicate={handleDuplicate}
-      onDelete={handleDelete}
-      onReload={fetchList}
-    />
+    <>
+      <TemplatesList
+        data={data}
+        loading={loading}
+        onCreate={() => openEditor()}
+        onEdit={(t) => openEditor(t)}
+        onSetDefault={handleSetDefault}
+        onDuplicate={handleDuplicate}
+        onDelete={handleDelete}
+        onGenerate={(t) => setGenerating({ id: t.id, name: t.name })}
+        onReload={fetchList}
+      />
+      {generating && (
+        <DocumentGeneratorModal
+          templateId={generating.id}
+          templateName={generating.name}
+          onClose={() => setGenerating(null)}
+        />
+      )}
+    </>
   );
 };

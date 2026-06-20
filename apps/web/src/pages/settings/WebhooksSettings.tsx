@@ -10,15 +10,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Card,
-  Button,
-  Input,
-  Modal,
-  Badge,
-  Loader,
-  useToast,
-} from '@openfactu/ui';
+import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, Webhook, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -132,8 +124,8 @@ export const WebhooksSettings: React.FC = () => {
               Webhooks salientes
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Suscríbete a eventos del sistema y recíbelos en tu propia URL con
-              firma HMAC-SHA256 opcional.
+              Suscríbete a eventos del sistema y recíbelos en tu propia URL con firma HMAC-SHA256
+              opcional.
             </p>
           </div>
         </div>
@@ -166,13 +158,9 @@ export const WebhooksSettings: React.FC = () => {
                     {!s.isActive && <Badge variant="neutral">Inactivo</Badge>}
                     {s.secret && <Badge variant="info">Firmado HMAC</Badge>}
                   </div>
-                  <div className="text-[11px] text-slate-500 font-mono truncate">
-                    {s.url}
-                  </div>
+                  <div className="text-[11px] text-slate-500 font-mono truncate">{s.url}</div>
                   <div className="text-[11px] text-slate-400 mt-0.5">
-                    {s.events.length === 0
-                      ? 'Todos los eventos'
-                      : s.events.join(', ')}
+                    {s.events.length === 0 ? 'Todos los eventos' : s.events.join(', ')}
                   </div>
                 </div>
                 <button

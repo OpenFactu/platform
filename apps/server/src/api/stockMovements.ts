@@ -71,12 +71,8 @@ async function validateBatchesForLines(
     .from(schema.items)
     .where(inArray(schema.items.id, ids));
 
-  const manageMap = new Map<string, string>(
-    rows.map((r: any) => [r.id, r.manageBy || 'N']),
-  );
-  const itemLabel = new Map<string, string>(
-    rows.map((r: any) => [r.id, `${r.code} · ${r.name}`]),
-  );
+  const manageMap = new Map<string, string>(rows.map((r: any) => [r.id, r.manageBy || 'N']));
+  const itemLabel = new Map<string, string>(rows.map((r: any) => [r.id, `${r.code} · ${r.name}`]));
 
   // ── Validación estructural ────────────────────────────────────────────
   for (const l of lines) {
@@ -111,16 +107,12 @@ async function validateBatchesForLines(
       })
       .from(schema.itemSerials)
       .where(inArray(schema.itemSerials.serialNum, serialNums));
-    const existsMap = new Map<string, string>(
-      existing.map((r: any) => [r.serialNum, r.itemId]),
-    );
+    const existsMap = new Map<string, string>(existing.map((r: any) => [r.serialNum, r.itemId]));
 
     // Decide si el contexto ESPERA que exista o que NO exista.
     const isCreatingSerial =
       context.kind === 'receipt' &&
-      (context.type === 'internal' ||
-        context.type === 'adjustment' ||
-        !context.type);
+      (context.type === 'internal' || context.type === 'adjustment' || !context.type);
 
     for (const l of serialLines) {
       const serial = l.batchNum!.trim();
@@ -141,9 +133,7 @@ async function validateBatchesForLines(
           );
         }
         if (owner !== l.itemId) {
-          throw new Error(
-            `La serie "${serial}" pertenece a otro artículo, no a ${label}.`,
-          );
+          throw new Error(`La serie "${serial}" pertenece a otro artículo, no a ${label}.`);
         }
       }
     }
@@ -295,9 +285,7 @@ transferNotesRouter.post('/', async (req: any, res) => {
       return res.status(400).json({ error: 'Almacén origen y destino son obligatorios' });
     }
     if (body.fromWarehouseId === body.toWarehouseId) {
-      return res
-        .status(400)
-        .json({ error: 'Origen y destino no pueden ser el mismo almacén' });
+      return res.status(400).json({ error: 'Origen y destino no pueden ser el mismo almacén' });
     }
     if (!Array.isArray(body.lines) || body.lines.length === 0) {
       return res.status(400).json({ error: 'Añade al menos una línea' });
@@ -625,8 +613,6 @@ goodsIssuesRouter.post('/:id/post', async (req: any, res) => {
 });
 
 goodsIssuesRouter.delete('/:id', async (req: any, res) => {
-  await req.tenantClient
-    .delete(schema.goodsIssues)
-    .where(eq(schema.goodsIssues.id, req.params.id));
+  await req.tenantClient.delete(schema.goodsIssues).where(eq(schema.goodsIssues.id, req.params.id));
   res.json({ ok: true });
 });

@@ -212,6 +212,7 @@ router.post('/', async (req: any, res) => {
           taxTotal: '0',
           total: '0',
           taxBreakdown: '{}',
+          createdBy: req.user?.id || null,
         })
         .returning();
 
@@ -255,9 +256,7 @@ router.post('/', async (req: any, res) => {
         const gross = qty * price;
         const discountRate = Number(line.discountRate || 0);
         const discountAmount =
-          line.discountAmount != null
-            ? Number(line.discountAmount)
-            : gross * (discountRate / 100);
+          line.discountAmount != null ? Number(line.discountAmount) : gross * (discountRate / 100);
         const lineSubtotal = gross - discountAmount;
         const taxRate = taxRateMap[line.taxGroupId] || 0;
         const lineTax = lineSubtotal * (taxRate / 100);
@@ -511,8 +510,7 @@ async function cancelPurchaseDeliveryNote(req: any, res: any) {
     if (activeShipment) {
       if (['received', 'delivered'].includes(activeShipment.preparationStatus)) {
         return res.status(409).json({
-          error:
-            'La recepción ya está cerrada. No se puede cancelar el albarán de compra.',
+          error: 'La recepción ya está cerrada. No se puede cancelar el albarán de compra.',
         });
       }
       const inProgress = ['in_transit', 'out_for_delivery', 'receiving'].includes(
@@ -520,8 +518,7 @@ async function cancelPurchaseDeliveryNote(req: any, res: any) {
       );
       if (inProgress && !body.force) {
         return res.status(409).json({
-          error:
-            'Recepción en curso. Confirma con force=true para cancelar.',
+          error: 'Recepción en curso. Confirma con force=true para cancelar.',
           requiresForce: true,
           shipmentId: activeShipment.id,
           shipmentStatus: activeShipment.preparationStatus,

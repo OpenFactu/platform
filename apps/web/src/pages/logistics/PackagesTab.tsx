@@ -349,7 +349,9 @@ export const PackagesTab: React.FC = () => {
               </div>
               <Button
                 onClick={addLine}
-                disabled={!newLineItemId || linesFor.status === 'shipped' || linesFor.status === 'delivered'}
+                disabled={
+                  !newLineItemId || linesFor.status === 'shipped' || linesFor.status === 'delivered'
+                }
                 className="flex items-center gap-1"
               >
                 <Plus size={14} /> Añadir
@@ -364,9 +366,7 @@ export const PackagesTab: React.FC = () => {
 
             {/* Lista de contenido actual */}
             {lines.length === 0 ? (
-              <Card bodyClassName="py-8 text-center text-sm text-slate-500">
-                Caja vacía.
-              </Card>
+              <Card bodyClassName="py-8 text-center text-sm text-slate-500">Caja vacía.</Card>
             ) : (
               <Card bodyClassName="p-0">
                 <ul>
@@ -408,11 +408,7 @@ export const PackagesTab: React.FC = () => {
               </span>
               <span>
                 Total unidades:{' '}
-                <b>
-                  {lines
-                    .reduce((acc, l) => acc + Number(l.quantity || 0), 0)
-                    .toFixed(2)}
-                </b>
+                <b>{lines.reduce((acc, l) => acc + Number(l.quantity || 0), 0).toFixed(2)}</b>
               </span>
             </div>
           </div>

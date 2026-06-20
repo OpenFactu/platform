@@ -49,13 +49,17 @@ export const Ledger: React.FC = () => {
       header: 'Debe',
       align: 'right' as const,
       cell: (r: any) =>
-        Number(r.debit) > 0 ? Number(r.debit).toLocaleString('es-ES', { minimumFractionDigits: 2 }) : '',
+        Number(r.debit) > 0
+          ? Number(r.debit).toLocaleString('es-ES', { minimumFractionDigits: 2 })
+          : '',
     },
     {
       header: 'Haber',
       align: 'right' as const,
       cell: (r: any) =>
-        Number(r.credit) > 0 ? Number(r.credit).toLocaleString('es-ES', { minimumFractionDigits: 2 }) : '',
+        Number(r.credit) > 0
+          ? Number(r.credit).toLocaleString('es-ES', { minimumFractionDigits: 2 })
+          : '',
     },
     {
       header: 'Saldo',

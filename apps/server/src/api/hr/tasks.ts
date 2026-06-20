@@ -82,14 +82,8 @@ router.get('/gantt', async (req: any, res) => {
     // Solapamiento con la ventana, e incluir las tareas sin fechas (sin programar):
     //   (startDate IS NULL OR startDate <= to)
     //   AND (dueDate IS NULL OR dueDate >= from)
-    if (to)
-      conds.push(
-        or(isNull(schema.tasks.startDate), lte(schema.tasks.startDate, String(to))),
-      );
-    if (from)
-      conds.push(
-        or(isNull(schema.tasks.dueDate), gte(schema.tasks.dueDate, String(from))),
-      );
+    if (to) conds.push(or(isNull(schema.tasks.startDate), lte(schema.tasks.startDate, String(to))));
+    if (from) conds.push(or(isNull(schema.tasks.dueDate), gte(schema.tasks.dueDate, String(from))));
     const tasks = await req.tenantClient
       .select()
       .from(schema.tasks)

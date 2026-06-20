@@ -45,18 +45,102 @@ const STATUS_COPY: Record<
   string,
   { label: string; tone: string; accent: string; Icon: any; hero: string; sub: string }
 > = {
-  pending:          { label: 'Preparándose',       tone: 'bg-slate-100 text-slate-700',  accent: 'bg-slate-500',    Icon: Package,        hero: 'Estamos preparando tu pedido',              sub: 'Te avisaremos cuando salga del almacén.' },
-  picking:          { label: 'En preparación',     tone: 'bg-amber-100 text-amber-800',  accent: 'bg-amber-500',    Icon: Package,        hero: 'Estamos empaquetando tu pedido',            sub: 'En cuanto esté listo, saldrá a reparto.' },
-  packed:           { label: 'Empaquetado',        tone: 'bg-amber-100 text-amber-800',  accent: 'bg-amber-500',    Icon: Package,        hero: 'Tu pedido está empaquetado',                sub: 'Esperando a ser despachado.' },
-  ready:            { label: 'Listo para salir',   tone: 'bg-blue-100 text-blue-800',    accent: 'bg-blue-500',     Icon: Package,        hero: 'Tu pedido está listo para salir',           sub: 'Saldrá en cuanto el repartidor lo recoja.' },
-  dispatched:       { label: 'Despachado',         tone: 'bg-blue-100 text-blue-800',    accent: 'bg-blue-500',     Icon: Truck,          hero: 'Tu pedido ha sido despachado',              sub: 'En ruta hacia ti.' },
-  in_transit:       { label: 'En camino',          tone: 'bg-indigo-100 text-indigo-800',accent: 'bg-indigo-500',   Icon: Truck,          hero: 'Tu pedido está en camino',                  sub: 'Sigue al repartidor en tiempo real.' },
-  out_for_delivery: { label: 'Sale hoy hacia ti',  tone: 'bg-violet-100 text-violet-800',accent: 'bg-violet-500',   Icon: Truck,          hero: '¡Tu pedido sale hoy hacia ti!',             sub: 'Asegúrate de que haya alguien para recibirlo.' },
-  postponed:        { label: 'Entrega aplazada',   tone: 'bg-amber-100 text-amber-800',  accent: 'bg-amber-500',    Icon: AlertTriangle,  hero: 'Intento de entrega fallido',                 sub: 'No había nadie para recibir el pedido. Lo volveremos a intentar pronto.' },
-  delivered:        { label: 'Entregado',          tone: 'bg-emerald-100 text-emerald-800',accent: 'bg-emerald-500',Icon: CheckCircle2,   hero: '¡Entregado!',                                sub: 'Gracias por confiar en nosotros.' },
-  exception:        { label: 'Incidencia',         tone: 'bg-rose-100 text-rose-800',    accent: 'bg-rose-500',     Icon: AlertTriangle,  hero: 'Ha ocurrido una incidencia',                sub: 'Te contactaremos cuanto antes.' },
-  returned:         { label: 'Devuelto',           tone: 'bg-rose-100 text-rose-800',    accent: 'bg-rose-500',     Icon: AlertTriangle,  hero: 'Tu pedido ha sido devuelto',                sub: 'Consulta el historial para más detalles.' },
-  cancelled:        { label: 'Cancelado',          tone: 'bg-slate-200 text-slate-700',  accent: 'bg-slate-500',    Icon: AlertTriangle,  hero: 'Pedido cancelado',                          sub: '' },
+  pending: {
+    label: 'Preparándose',
+    tone: 'bg-slate-100 text-slate-700',
+    accent: 'bg-slate-500',
+    Icon: Package,
+    hero: 'Estamos preparando tu pedido',
+    sub: 'Te avisaremos cuando salga del almacén.',
+  },
+  picking: {
+    label: 'En preparación',
+    tone: 'bg-amber-100 text-amber-800',
+    accent: 'bg-amber-500',
+    Icon: Package,
+    hero: 'Estamos empaquetando tu pedido',
+    sub: 'En cuanto esté listo, saldrá a reparto.',
+  },
+  packed: {
+    label: 'Empaquetado',
+    tone: 'bg-amber-100 text-amber-800',
+    accent: 'bg-amber-500',
+    Icon: Package,
+    hero: 'Tu pedido está empaquetado',
+    sub: 'Esperando a ser despachado.',
+  },
+  ready: {
+    label: 'Listo para salir',
+    tone: 'bg-blue-100 text-blue-800',
+    accent: 'bg-blue-500',
+    Icon: Package,
+    hero: 'Tu pedido está listo para salir',
+    sub: 'Saldrá en cuanto el repartidor lo recoja.',
+  },
+  dispatched: {
+    label: 'Despachado',
+    tone: 'bg-blue-100 text-blue-800',
+    accent: 'bg-blue-500',
+    Icon: Truck,
+    hero: 'Tu pedido ha sido despachado',
+    sub: 'En ruta hacia ti.',
+  },
+  in_transit: {
+    label: 'En camino',
+    tone: 'bg-indigo-100 text-indigo-800',
+    accent: 'bg-indigo-500',
+    Icon: Truck,
+    hero: 'Tu pedido está en camino',
+    sub: 'Sigue al repartidor en tiempo real.',
+  },
+  out_for_delivery: {
+    label: 'Sale hoy hacia ti',
+    tone: 'bg-violet-100 text-violet-800',
+    accent: 'bg-violet-500',
+    Icon: Truck,
+    hero: '¡Tu pedido sale hoy hacia ti!',
+    sub: 'Asegúrate de que haya alguien para recibirlo.',
+  },
+  postponed: {
+    label: 'Entrega aplazada',
+    tone: 'bg-amber-100 text-amber-800',
+    accent: 'bg-amber-500',
+    Icon: AlertTriangle,
+    hero: 'Intento de entrega fallido',
+    sub: 'No había nadie para recibir el pedido. Lo volveremos a intentar pronto.',
+  },
+  delivered: {
+    label: 'Entregado',
+    tone: 'bg-emerald-100 text-emerald-800',
+    accent: 'bg-emerald-500',
+    Icon: CheckCircle2,
+    hero: '¡Entregado!',
+    sub: 'Gracias por confiar en nosotros.',
+  },
+  exception: {
+    label: 'Incidencia',
+    tone: 'bg-rose-100 text-rose-800',
+    accent: 'bg-rose-500',
+    Icon: AlertTriangle,
+    hero: 'Ha ocurrido una incidencia',
+    sub: 'Te contactaremos cuanto antes.',
+  },
+  returned: {
+    label: 'Devuelto',
+    tone: 'bg-rose-100 text-rose-800',
+    accent: 'bg-rose-500',
+    Icon: AlertTriangle,
+    hero: 'Tu pedido ha sido devuelto',
+    sub: 'Consulta el historial para más detalles.',
+  },
+  cancelled: {
+    label: 'Cancelado',
+    tone: 'bg-slate-200 text-slate-700',
+    accent: 'bg-slate-500',
+    Icon: AlertTriangle,
+    hero: 'Pedido cancelado',
+    sub: '',
+  },
 };
 
 function TruckMarker({ selected = true }: { selected?: boolean }) {
@@ -211,8 +295,7 @@ export const TrackingPage: React.FC = () => {
         {/* Hero — estado actual grande */}
         <section
           className={
-            'relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-lg ' +
-            copy.accent
+            'relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-lg ' + copy.accent
           }
         >
           {/* Blob decorativo */}
@@ -222,17 +305,14 @@ export const TrackingPage: React.FC = () => {
               <copy.Icon size={14} strokeWidth={2.5} />
               {copy.label}
             </div>
-            <h1 className="mt-3 text-2xl sm:text-3xl font-black leading-tight">
-              {copy.hero}
-            </h1>
+            <h1 className="mt-3 text-2xl sm:text-3xl font-black leading-tight">{copy.hero}</h1>
             {copy.sub && <p className="mt-1.5 text-sm text-white/85">{copy.sub}</p>}
 
             {/* ETA o fecha de entrega */}
             {data.estimatedDelivery && !data.deliveredAt && (
               <div className="mt-5 inline-flex items-center gap-2 bg-white/20 px-3 py-2 rounded-xl text-sm backdrop-blur-sm">
                 <Clock size={14} />
-                Llegada estimada:{' '}
-                <b>{new Date(data.estimatedDelivery).toLocaleString('es-ES')}</b>
+                Llegada estimada: <b>{new Date(data.estimatedDelivery).toLocaleString('es-ES')}</b>
               </div>
             )}
             {data.deliveredAt && (
@@ -361,9 +441,7 @@ export const TrackingPage: React.FC = () => {
                     <div
                       className={
                         'absolute left-0 top-1 w-[19px] h-[19px] rounded-full border-2 border-white ' +
-                        (isLatest
-                          ? s?.accent || 'bg-slate-500'
-                          : 'bg-slate-300')
+                        (isLatest ? s?.accent || 'bg-slate-500' : 'bg-slate-300')
                       }
                       style={{
                         boxShadow: isLatest ? '0 0 0 4px rgba(99,102,241,0.15)' : undefined,

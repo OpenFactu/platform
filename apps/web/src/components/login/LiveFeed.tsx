@@ -50,8 +50,7 @@ export const LiveFeed: React.FC = () => {
           key={idx}
           className="text-[13px] font-semibold text-white truncate animate-in fade-in slide-in-from-bottom-1 duration-500"
         >
-          {item.label}{' '}
-          <span className={`font-mono text-[12px] ${item.color}`}>{item.value}</span>
+          {item.label} <span className={`font-mono text-[12px] ${item.color}`}>{item.value}</span>
         </p>
       </div>
       <span className="font-mono text-[10px] text-white/40 tracking-wider tabular-nums shrink-0">

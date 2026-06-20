@@ -30,7 +30,9 @@ export const ReportProfitCustomer: React.FC = () => {
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { if (periodId) load(); /* eslint-disable-next-line */ }, [periodId]);
+  useEffect(() => {
+    if (periodId) load(); /* eslint-disable-next-line */
+  }, [periodId]);
 
   const columns = useMemo(
     () => [

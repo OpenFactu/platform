@@ -34,9 +34,7 @@ export const Timeclock: React.FC = () => {
   const [allEntries, setAllEntries] = useState<any[]>([]);
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
   const today = new Date();
-  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-    .toISOString()
-    .slice(0, 10);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
   const [filters, setFilters] = useState({
     employeeId: '',
     from: monthStart,
@@ -162,29 +160,34 @@ export const Timeclock: React.FC = () => {
             </div>
           )}
           {tab === 'me' && employee && (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={async () => {
-              const r = await fetch(
-                `/api/hr/timeclock/export?employeeId=${employee.id}&from=${monthStart}&format=csv`,
-                { headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' } },
-              );
-              if (!r.ok) {
-                toast.error('No se pudo exportar');
-                return;
-              }
-              const blob = await r.blob();
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `mis_fichajes_${monthStart}.csv`;
-              a.click();
-              URL.revokeObjectURL(url);
-            }}
-          >
-            <Download size={14} /> Exportar mes
-          </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                const r = await fetch(
+                  `/api/hr/timeclock/export?employeeId=${employee.id}&from=${monthStart}&format=csv`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      'x-tenant-id': user?.tenantId || '',
+                    },
+                  },
+                );
+                if (!r.ok) {
+                  toast.error('No se pudo exportar');
+                  return;
+                }
+                const blob = await r.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mis_fichajes_${monthStart}.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download size={14} /> Exportar mes
+            </Button>
           )}
           {tab === 'all' && isAdmin && (
             <Button
@@ -217,75 +220,75 @@ export const Timeclock: React.FC = () => {
       </div>
 
       {tab === 'me' && (
-      <>
-      <Card className="p-6" noPadding>
-        <div className="p-6 space-y-4">
-          <div className="text-sm text-slate-500">
-            Último fichaje:{' '}
-            {last ? (
-              <span>
-                <Badge variant={KIND_VARIANT[last.kind]}>{KIND_LABEL[last.kind]}</Badge>{' '}
-                <span className="font-mono">{new Date(last.at).toLocaleString('es-ES')}</span>
-              </span>
-            ) : (
-              <span className="italic">aún no has fichado en los últimos 31 días</span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button onClick={() => punch('in')} className="flex items-center gap-2">
-              <LogIn size={18} /> Entrada
-            </Button>
-            <Button onClick={() => punch('break_start')} variant="secondary">
-              <Coffee size={18} /> Inicio pausa
-            </Button>
-            <Button onClick={() => punch('break_end')} variant="secondary">
-              <RotateCcw size={18} /> Fin pausa
-            </Button>
-            <Button onClick={() => punch('out')} className="flex items-center gap-2">
-              <LogOut size={18} /> Salida
-            </Button>
-          </div>
-        </div>
-      </Card>
+        <>
+          <Card className="p-6" noPadding>
+            <div className="p-6 space-y-4">
+              <div className="text-sm text-slate-500">
+                Último fichaje:{' '}
+                {last ? (
+                  <span>
+                    <Badge variant={KIND_VARIANT[last.kind]}>{KIND_LABEL[last.kind]}</Badge>{' '}
+                    <span className="font-mono">{new Date(last.at).toLocaleString('es-ES')}</span>
+                  </span>
+                ) : (
+                  <span className="italic">aún no has fichado en los últimos 31 días</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Button onClick={() => punch('in')} className="flex items-center gap-2">
+                  <LogIn size={18} /> Entrada
+                </Button>
+                <Button onClick={() => punch('break_start')} variant="secondary">
+                  <Coffee size={18} /> Inicio pausa
+                </Button>
+                <Button onClick={() => punch('break_end')} variant="secondary">
+                  <RotateCcw size={18} /> Fin pausa
+                </Button>
+                <Button onClick={() => punch('out')} className="flex items-center gap-2">
+                  <LogOut size={18} /> Salida
+                </Button>
+              </div>
+            </div>
+          </Card>
 
-      <Card noPadding>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="p-3">Fecha y hora</th>
-              <th className="p-3">Tipo</th>
-              <th className="p-3">Origen</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={3} className="p-6 text-center text-slate-400">
-                  Cargando…
-                </td>
-              </tr>
-            )}
-            {!loading &&
-              entries.map((e) => (
-                <tr key={e.id} className="border-b">
-                  <td className="p-3 font-mono">{new Date(e.at).toLocaleString('es-ES')}</td>
-                  <td className="p-3">
-                    <Badge variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Badge>
-                  </td>
-                  <td className="p-3 text-xs text-slate-500">{e.source}</td>
+          <Card noPadding>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-slate-500 border-b">
+                  <th className="p-3">Fecha y hora</th>
+                  <th className="p-3">Tipo</th>
+                  <th className="p-3">Origen</th>
                 </tr>
-              ))}
-            {!loading && entries.length === 0 && (
-              <tr>
-                <td colSpan={3} className="p-6 text-center text-slate-400 italic">
-                  Sin fichajes
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </Card>
-      </>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td colSpan={3} className="p-6 text-center text-slate-400">
+                      Cargando…
+                    </td>
+                  </tr>
+                )}
+                {!loading &&
+                  entries.map((e) => (
+                    <tr key={e.id} className="border-b">
+                      <td className="p-3 font-mono">{new Date(e.at).toLocaleString('es-ES')}</td>
+                      <td className="p-3">
+                        <Badge variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Badge>
+                      </td>
+                      <td className="p-3 text-xs text-slate-500">{e.source}</td>
+                    </tr>
+                  ))}
+                {!loading && entries.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="p-6 text-center text-slate-400 italic">
+                      Sin fichajes
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </Card>
+        </>
       )}
 
       {tab === 'all' && isAdmin && (
@@ -363,9 +366,7 @@ export const Timeclock: React.FC = () => {
                   const emp = allEmployees.find((x) => x.id === e.employeeId);
                   return (
                     <tr key={e.id} className="border-b">
-                      <td className="p-3 font-mono">
-                        {new Date(e.at).toLocaleString('es-ES')}
-                      </td>
+                      <td className="p-3 font-mono">{new Date(e.at).toLocaleString('es-ES')}</td>
                       <td className="p-3">
                         {emp ? (
                           <span>
@@ -382,9 +383,7 @@ export const Timeclock: React.FC = () => {
                         <Badge variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Badge>
                       </td>
                       <td className="p-3 text-xs text-slate-500">{e.source}</td>
-                      <td className="p-3 text-xs text-slate-500 truncate max-w-xs">
-                        {e.notes}
-                      </td>
+                      <td className="p-3 text-xs text-slate-500 truncate max-w-xs">{e.notes}</td>
                     </tr>
                   );
                 })}

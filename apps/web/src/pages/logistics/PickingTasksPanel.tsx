@@ -91,7 +91,8 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
       // Comprueba tras recargar si todo terminó.
       setTimeout(() => {
         setTasks((curr) => {
-          const allDone = curr.length > 0 && curr.every((t) => t.status === 'done' || t.status === 'missing');
+          const allDone =
+            curr.length > 0 && curr.every((t) => t.status === 'done' || t.status === 'missing');
           if (allDone) onAllDone();
           return curr;
         });
@@ -156,10 +157,7 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
           </div>
         </div>
         <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded overflow-hidden">
-          <div
-            className="h-full bg-emerald-500 transition-all"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-full bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
@@ -191,10 +189,16 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                     {hasBatch && (
                       <span
                         className="inline-flex items-center gap-1.5 h-6 pl-1.5 pr-2 rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-[10px] font-black uppercase tracking-[0.1em]"
-                        title={manageBy === 'S' ? 'Serie asignada en el albarán' : 'Lote asignado en el albarán'}
+                        title={
+                          manageBy === 'S'
+                            ? 'Serie asignada en el albarán'
+                            : 'Lote asignado en el albarán'
+                        }
                       >
                         <BatchIcon size={11} />
-                        <span className="font-mono normal-case tracking-normal">{t.batchNumber}</span>
+                        <span className="font-mono normal-case tracking-normal">
+                          {t.batchNumber}
+                        </span>
                       </span>
                     )}
                     <span className="flex-1" />
@@ -207,7 +211,9 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                       value={t.pickedQty}
                       onChange={(e) => {
                         const v = Number(e.target.value);
-                        setTasks((xs) => xs.map((x) => (x.id === t.id ? { ...x, pickedQty: v } : x)));
+                        setTasks((xs) =>
+                          xs.map((x) => (x.id === t.id ? { ...x, pickedQty: v } : x)),
+                        );
                       }}
                       onBlur={(e) => {
                         const v = Number(e.target.value);

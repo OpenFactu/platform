@@ -111,28 +111,25 @@ export const NewCompany: React.FC = () => {
             País e identificación
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">País</label>
-              <CountrySelect
-                value={data.country}
-                onChange={(code) =>
-                  setData((prev) => ({
-                    ...prev,
-                    country: code,
-                    regionId: '',
-                    subRegionId: '',
-                    localityId: '',
-                    city: '',
-                  }))
-                }
-              />
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                Nombre de la empresa *
-              </label>
-              <Input value={data.name} onChange={(e) => set('name', e.target.value)} />
-            </div>
+            <CountrySelect
+              label="País"
+              value={data.country}
+              onChange={(code) =>
+                setData((prev) => ({
+                  ...prev,
+                  country: code,
+                  regionId: '',
+                  subRegionId: '',
+                  localityId: '',
+                  city: '',
+                }))
+              }
+            />
+            <Input
+              label="Nombre de la empresa *"
+              value={data.name}
+              onChange={(e) => set('name', e.target.value)}
+            />
             <div className="md:col-span-2">
               <TaxIdInput
                 countryCode={data.country}

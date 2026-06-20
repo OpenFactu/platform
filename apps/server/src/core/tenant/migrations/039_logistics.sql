@@ -15,7 +15,20 @@ CREATE TABLE IF NOT EXISTS "{{schema}}"."StagingArea" (
   "code" TEXT NOT NULL UNIQUE,
   "name" TEXT NOT NULL,
   "warehouseId" TEXT REFERENCES "{{schema}}"."Warehouse"("id") ON DELETE SET NULL,
+  "partnerId" TEXT,
+  "platformId" TEXT,
   "address" TEXT,
+  "lat" DOUBLE PRECISION,
+  "lng" DOUBLE PRECISION,
+  "notes" TEXT,
+  "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS "{{schema}}"."StagingAreaItem" (
+  "id" TEXT PRIMARY KEY,
+  "stagingAreaId" TEXT NOT NULL REFERENCES "{{schema}}"."StagingArea"("id") ON DELETE CASCADE,
+  "itemId" TEXT NOT NULL REFERENCES "{{schema}}"."Item"("id") ON DELETE CASCADE,
+  "expectedQty" DOUBLE PRECISION,
   "notes" TEXT,
   "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -25,8 +38,18 @@ CREATE TABLE IF NOT EXISTS "{{schema}}"."Shipment" (
   "id" TEXT PRIMARY KEY,
   "deliveryNoteId" TEXT,
   "carrier" TEXT NOT NULL DEFAULT 'propio',
+  "carrierAccountId" TEXT,
   "trackingNumber" TEXT,
   "status" TEXT NOT NULL DEFAULT 'pending',
+  "preparationStatus" TEXT NOT NULL DEFAULT 'draft',
+  "sourceDocType" TEXT,
+  "sourceDocId" TEXT,
+  "sourceOrderType" TEXT,
+  "sourceOrderId" TEXT,
+  "preparedAt" TIMESTAMP,
+  "preparedByUserId" TEXT,
+  "dispatchedAt" TIMESTAMP,
+  "receivedAt" TIMESTAMP,
   "driverName" TEXT,
   "driverPhone" TEXT,
   "vehiclePlate" TEXT,
@@ -39,6 +62,11 @@ CREATE TABLE IF NOT EXISTS "{{schema}}"."Shipment" (
   "lastLocationAt" TIMESTAMP,
   "estimatedDelivery" TIMESTAMP,
   "deliveredAt" TIMESTAMP,
+  "kind" TEXT NOT NULL DEFAULT 'delivery',
+  "returnWarehouseId" TEXT,
+  "recipientName" TEXT,
+  "recipientEmail" TEXT,
+  "recipientPhone" TEXT,
   "notes" TEXT,
   "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -76,6 +104,8 @@ CREATE TABLE IF NOT EXISTS "{{schema}}"."Package" (
   "status" TEXT NOT NULL DEFAULT 'open',
   "weightKg" DOUBLE PRECISION,
   "notes" TEXT,
+  "pickedAt" TIMESTAMP,
+  "pickedByUserId" TEXT,
   "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "sealedAt" TIMESTAMP
 );
@@ -98,6 +128,7 @@ CREATE TABLE IF NOT EXISTS "{{schema}}"."Route" (
   "driverName" TEXT,
   "driverPhone" TEXT,
   "vehiclePlate" TEXT,
+  "vehicleId" TEXT,
   "driverEmployeeId" TEXT,
   "startedAt" TIMESTAMP,
   "completedAt" TIMESTAMP,

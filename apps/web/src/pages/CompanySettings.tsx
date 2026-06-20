@@ -12,6 +12,7 @@ import {
   Upload,
   Mail,
   Coins,
+  Link,
 } from 'lucide-react';
 import { StorageSettingsTab } from '../components/settings/StorageSettingsTab';
 import { DataTransferTab } from '../components/settings/DataTransferTab';
@@ -74,7 +75,8 @@ type TabId =
   | 'templates'
   | 'data'
   | 'email'
-  | 'catalogs';
+  | 'catalogs'
+  | 'app';
 
 export const CompanySettings: React.FC = () => {
   const { token, user } = useAuth();
@@ -103,6 +105,7 @@ export const CompanySettings: React.FC = () => {
       'data',
       'email',
       'catalogs',
+      'app',
     ];
     return allowed.includes(t as TabId) ? (t as TabId) : 'fiscal';
   })();
@@ -116,9 +119,23 @@ export const CompanySettings: React.FC = () => {
   const [formatDraft, setFormatDraft] = useState(format);
   const [flagsDraft, setFlagsDraft] = useState(flags);
 
+  // App config (publicBaseUrl)
+  const [appConfig, setAppConfig] = useState({ publicBaseUrl: '' });
+
   useEffect(() => setBrandingDraft(branding), [branding]);
   useEffect(() => setFormatDraft(format), [format]);
   useEffect(() => setFlagsDraft(flags), [flags]);
+
+  useEffect(() => {
+    if (!user?.tenantId || !token) return;
+    const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user.tenantId || '' };
+    fetch('/api/config/app', { headers })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setAppConfig({ publicBaseUrl: d.publicBaseUrl ?? '' });
+      })
+      .catch(() => {});
+  }, [user?.tenantId, token]);
 
   const fetchFiscal = async () => {
     setLoading(true);
@@ -200,6 +217,28 @@ export const CompanySettings: React.FC = () => {
     }
   };
 
+  const saveAppConfig = async () => {
+    setSaving(true);
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        'x-tenant-id': user?.tenantId || '',
+      };
+      const res = await fetch('/api/config/app', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(appConfig),
+      });
+      if (!res.ok) throw new Error('http');
+      toast.success('URL pública guardada');
+    } catch (e: any) {
+      toast.error(e.message || 'Error al guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const setF = <K extends keyof CompanyConfig>(k: K, v: CompanyConfig[K]) =>
     setFiscal((prev) => ({ ...prev, [k]: v }));
 
@@ -216,6 +255,7 @@ export const CompanySettings: React.FC = () => {
     { id: 'format', label: 'Formato', icon: Globe },
     { id: 'flags', label: 'Comportamiento', icon: SlidersHorizontal },
     { id: 'catalogs', label: 'Fiscal / Pagos', icon: Coins },
+    { id: 'app', label: 'Acceso', icon: Link },
     { id: 'templates', label: 'Plantillas', icon: FileBox },
     { id: 'storage', label: 'Almacenamiento', icon: HardDrive },
     { id: 'email', label: 'Correo', icon: Mail },
@@ -266,30 +306,25 @@ export const CompanySettings: React.FC = () => {
                 País e identificación
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    País
-                  </label>
-                  <CountrySelect
-                    value={fiscal.country}
-                    onChange={(code) => {
-                      setFiscal((prev) => ({
-                        ...prev,
-                        country: code,
-                        regionId: '',
-                        subRegionId: '',
-                        localityId: '',
-                        city: '',
-                      }));
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Nombre de la empresa
-                  </label>
-                  <Input value={fiscal.name} onChange={(e) => setF('name', e.target.value)} />
-                </div>
+                <CountrySelect
+                  label="País"
+                  value={fiscal.country}
+                  onChange={(code) => {
+                    setFiscal((prev) => ({
+                      ...prev,
+                      country: code,
+                      regionId: '',
+                      subRegionId: '',
+                      localityId: '',
+                      city: '',
+                    }));
+                  }}
+                />
+                <Input
+                  label="Nombre de la empresa"
+                  value={fiscal.name}
+                  onChange={(e) => setF('name', e.target.value)}
+                />
                 <div className="md:col-span-2">
                   <TaxIdInput
                     countryCode={fiscal.country}
@@ -306,12 +341,11 @@ export const CompanySettings: React.FC = () => {
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Domicilio
               </h2>
-              <div>
-                <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                  Dirección
-                </label>
-                <Input value={fiscal.address} onChange={(e) => setF('address', e.target.value)} />
-              </div>
+              <Input
+                label="Dirección"
+                value={fiscal.address}
+                onChange={(e) => setF('address', e.target.value)}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <RegionSelect
                   countryCode={fiscal.country}
@@ -363,33 +397,27 @@ export const CompanySettings: React.FC = () => {
                 Contacto
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Email
-                  </label>
-                  <Input
-                    type="email"
-                    value={fiscal.email}
-                    onChange={(e) => setF('email', e.target.value)}
-                  />
-                </div>
+                <Input
+                  label="Email"
+                  type="email"
+                  value={fiscal.email}
+                  onChange={(e) => setF('email', e.target.value)}
+                />
                 <PhoneInput
                   countryCode={fiscal.country}
                   value={fiscal.phone}
                   onChange={(v) => setF('phone', v)}
                 />
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Web
-                  </label>
-                  <Input value={fiscal.website} onChange={(e) => setF('website', e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    URL del logo (datos fiscales)
-                  </label>
-                  <Input value={fiscal.logoUrl} onChange={(e) => setF('logoUrl', e.target.value)} />
-                </div>
+                <Input
+                  label="Web"
+                  value={fiscal.website}
+                  onChange={(e) => setF('website', e.target.value)}
+                />
+                <Input
+                  label="URL del logo (datos fiscales)"
+                  value={fiscal.logoUrl}
+                  onChange={(e) => setF('logoUrl', e.target.value)}
+                />
               </div>
             </div>
           </Card>
@@ -400,12 +428,12 @@ export const CompanySettings: React.FC = () => {
                 Preferencias
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300">
                     Moneda
                   </label>
                   <select
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                    className="w-full rounded-[2px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[13px] px-3 py-2"
                     value={fiscal.currency}
                     onChange={(e) => setF('currency', e.target.value)}
                   >
@@ -414,16 +442,12 @@ export const CompanySettings: React.FC = () => {
                     <option value="GBP">£ GBP</option>
                   </select>
                 </div>
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Inicio del año fiscal (MM-DD)
-                  </label>
-                  <Input
-                    value={fiscal.fiscalYearStart}
-                    onChange={(e) => setF('fiscalYearStart', e.target.value)}
-                    placeholder="01-01"
-                  />
-                </div>
+                <Input
+                  label="Inicio del año fiscal (MM-DD)"
+                  value={fiscal.fiscalYearStart}
+                  onChange={(e) => setF('fiscalYearStart', e.target.value)}
+                  placeholder="01-01"
+                />
               </div>
             </div>
           </Card>
@@ -447,7 +471,8 @@ export const CompanySettings: React.FC = () => {
                     Presets de tema
                   </h2>
                   <p className="text-[12px] text-[var(--k-ink-500)] mt-1">
-                    Elige un tema de marca prediseñado. También puedes ajustar los colores manualmente abajo.
+                    Elige un tema de marca prediseñado. También puedes ajustar los colores
+                    manualmente abajo.
                   </p>
                 </div>
                 {activePresetId === 'custom' && (
@@ -753,17 +778,13 @@ export const CompanySettings: React.FC = () => {
                 </p>
                 <div className="space-y-1 text-sm text-slate-800 dark:text-slate-200">
                   <p>
-                    <span className="text-slate-500 dark:text-slate-400">
-                      Importe:
-                    </span>{' '}
+                    <span className="text-slate-500 dark:text-slate-400">Importe:</span>{' '}
                     <span className="font-bold">
                       {formatCurrency(1234.56, formatDraft, fiscal.currency || 'EUR')}
                     </span>
                   </p>
                   <p>
-                    <span className="text-slate-500 dark:text-slate-400">
-                      Fecha:
-                    </span>{' '}
+                    <span className="text-slate-500 dark:text-slate-400">Fecha:</span>{' '}
                     <span className="font-bold">{formatDate(new Date(), formatDraft)}</span>
                   </p>
                 </div>
@@ -868,7 +889,8 @@ export const CompanySettings: React.FC = () => {
                     Ubicación del almacén en documentos
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Elige si el almacén se captura una vez en la cabecera del documento o por línea (junto con la ubicación/zona).
+                    Elige si el almacén se captura una vez en la cabecera del documento o por línea
+                    (junto con la ubicación/zona).
                   </div>
                 </div>
                 <select
@@ -895,6 +917,46 @@ export const CompanySettings: React.FC = () => {
             <Button onClick={saveFlags} disabled={saving}>
               <Save size={16} className="mr-2" />
               {saving ? 'Guardando...' : 'Guardar comportamiento'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'app' && (
+        <div className="space-y-6">
+          <Card>
+            <div className="p-6 space-y-4">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                URL pública
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Esta URL se usa en los emails de seguimiento de envíos, webhooks y enlaces
+                compartidos con clientes. Debe ser accesible desde internet.
+              </p>
+              <div>
+                <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
+                  URL base
+                </label>
+                <Input
+                  value={appConfig.publicBaseUrl}
+                  onChange={(e) => setAppConfig({ ...appConfig, publicBaseUrl: e.target.value })}
+                  placeholder="https://miempresa.com"
+                />
+              </div>
+            </div>
+          </Card>
+
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setAppConfig({ publicBaseUrl: appConfig.publicBaseUrl })}
+              disabled={saving}
+            >
+              Descartar
+            </Button>
+            <Button onClick={saveAppConfig} disabled={saving}>
+              <Save size={16} className="mr-2" />
+              {saving ? 'Guardando...' : 'Guardar URL'}
             </Button>
           </div>
         </div>

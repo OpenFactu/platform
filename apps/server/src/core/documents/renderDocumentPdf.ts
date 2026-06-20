@@ -10,6 +10,7 @@ import {
   type VisualOptions,
 } from '@openfactu/pdf';
 import { PdfPayloadBuilder } from './PdfPayloadBuilder';
+import { registerCanvasHelpers } from '../../api/documentTemplates';
 import { getConfigSection } from '../config/systemConfigSection';
 import { FLAGS_DEFAULTS } from '../config/appConfig';
 
@@ -121,6 +122,9 @@ export async function renderDocumentPdf(
   if (finalOpts.showDocQr || finalOpts.showDocBarcode) {
     renderOptions.pageFooter = PdfRenderer.pageFooterFromPayload(payload, finalOpts.footer.text);
   }
+  // Plantillas canvas usan helpers propios (sum/count/avg/today/neq/lt/formatAddress)
+  // que registramos aquí para que también funcionen al imprimir un documento real.
+  registerCanvasHelpers();
   const buffer = await PdfRenderer.render(finalHtml, payload, renderOptions);
 
   // 4. Responder

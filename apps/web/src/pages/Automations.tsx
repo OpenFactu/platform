@@ -273,19 +273,37 @@ export const Automations: React.FC = () => {
                     {a.triggerType === 'schedule' && `cron: ${a.triggerConfig?.cron || ''}`}
                     {a.triggerType === 'event' && `event: ${a.triggerConfig?.event || ''}`}
                     {a.triggerType === 'manual' && 'ejecución manual'}
-                    {a.description && <span className="ml-2 italic text-slate-400">— {a.description}</span>}
+                    {a.description && (
+                      <span className="ml-2 italic text-slate-400">— {a.description}</span>
+                    )}
                   </div>
                 </div>
-                <button onClick={() => runNow(a)} title="Ejecutar ahora" className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded">
+                <button
+                  onClick={() => runNow(a)}
+                  title="Ejecutar ahora"
+                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
+                >
                   <Play size={14} />
                 </button>
-                <button onClick={() => openLogs(a)} title="Historial" className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded">
+                <button
+                  onClick={() => openLogs(a)}
+                  title="Historial"
+                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
+                >
                   <History size={14} />
                 </button>
-                <button onClick={() => openEdit(a)} title="Editar" className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded">
+                <button
+                  onClick={() => openEdit(a)}
+                  title="Editar"
+                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
+                >
                   <Edit2 size={14} />
                 </button>
-                <button onClick={() => remove(a)} title="Eliminar" className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded">
+                <button
+                  onClick={() => remove(a)}
+                  title="Eliminar"
+                  className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
+                >
                   <Trash2 size={14} />
                 </button>
               </li>
@@ -295,26 +313,45 @@ export const Automations: React.FC = () => {
       )}
 
       {/* ── Modal editor ────────────────────────────────────────── */}
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={form.id ? 'Editar automatización' : 'Nueva automatización'} maxWidth="2xl">
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title={form.id ? 'Editar automatización' : 'Nueva automatización'}
+        maxWidth="2xl"
+      >
         <div className="space-y-5 pt-4 max-h-[70vh] overflow-y-auto pr-2">
           <Grid2>
             <FieldBox label="Nombre">
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Input
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
             </FieldBox>
             <FieldBox label="Activada">
               <label className="flex items-center gap-2 h-10">
-                <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} />
+                <input
+                  type="checkbox"
+                  checked={form.enabled}
+                  onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
+                />
                 <span className="text-sm">Sí, se ejecuta</span>
               </label>
             </FieldBox>
           </Grid2>
           <FieldBox label="Descripción (opcional)">
-            <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <Input
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
           </FieldBox>
 
           <SectionTitle>Trigger</SectionTitle>
           <FieldBox label="Cuándo se ejecuta">
-            <select value={form.triggerType} onChange={(e) => setForm({ ...form, triggerType: e.target.value })} className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3">
+            <select
+              value={form.triggerType}
+              onChange={(e) => setForm({ ...form, triggerType: e.target.value })}
+              className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
+            >
               <option value="schedule">Programado (cron)</option>
               <option value="event">Evento del sistema</option>
               <option value="manual">Manual (solo botón)</option>
@@ -322,14 +359,24 @@ export const Automations: React.FC = () => {
           </FieldBox>
           {form.triggerType === 'schedule' && (
             <FieldBox label="Cron (m h dom mon dow). Ejemplos: '0 9 * * 1' = lunes 9:00; '*/15 * * * *' = cada 15 min">
-              <Input value={form.cron} onChange={(e) => setForm({ ...form, cron: e.target.value })} className="font-mono" />
+              <Input
+                value={form.cron}
+                onChange={(e) => setForm({ ...form, cron: e.target.value })}
+                className="font-mono"
+              />
             </FieldBox>
           )}
           {form.triggerType === 'event' && (
             <FieldBox label="Evento">
-              <select value={form.event} onChange={(e) => setForm({ ...form, event: e.target.value })} className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3">
+              <select
+                value={form.event}
+                onChange={(e) => setForm({ ...form, event: e.target.value })}
+                className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
+              >
                 {EVENT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
                 ))}
               </select>
             </FieldBox>
@@ -337,7 +384,11 @@ export const Automations: React.FC = () => {
 
           <SectionTitle>Acción</SectionTitle>
           <FieldBox label="Qué hace">
-            <select value={form.actionType} onChange={(e) => setForm({ ...form, actionType: e.target.value })} className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3">
+            <select
+              value={form.actionType}
+              onChange={(e) => setForm({ ...form, actionType: e.target.value })}
+              className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
+            >
               <option value="email">Enviar email</option>
               <option value="webhook">Llamar a webhook (HTTP POST)</option>
               <option value="notification">Notificación interna</option>
@@ -347,13 +398,31 @@ export const Automations: React.FC = () => {
           {form.actionType === 'email' && (
             <>
               <FieldBox label="Para (acepta {{ path }})">
-                <Input value={form.email.to} onChange={(e) => setForm({ ...form, email: { ...form.email, to: e.target.value } })} placeholder="admin@empresa.com ó {{ partner.email }}" />
+                <Input
+                  value={form.email.to}
+                  onChange={(e) =>
+                    setForm({ ...form, email: { ...form.email, to: e.target.value } })
+                  }
+                  placeholder="admin@empresa.com ó {{ partner.email }}"
+                />
               </FieldBox>
               <FieldBox label="Asunto">
-                <Input value={form.email.subject} onChange={(e) => setForm({ ...form, email: { ...form.email, subject: e.target.value } })} />
+                <Input
+                  value={form.email.subject}
+                  onChange={(e) =>
+                    setForm({ ...form, email: { ...form.email, subject: e.target.value } })
+                  }
+                />
               </FieldBox>
               <FieldBox label="Cuerpo">
-                <textarea value={form.email.body} onChange={(e) => setForm({ ...form, email: { ...form.email, body: e.target.value } })} rows={6} className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 font-mono" />
+                <textarea
+                  value={form.email.body}
+                  onChange={(e) =>
+                    setForm({ ...form, email: { ...form.email, body: e.target.value } })
+                  }
+                  rows={6}
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 font-mono"
+                />
               </FieldBox>
             </>
           )}
@@ -362,16 +431,37 @@ export const Automations: React.FC = () => {
             <>
               <Grid2>
                 <FieldBox label="URL">
-                  <Input value={form.webhook.url} onChange={(e) => setForm({ ...form, webhook: { ...form.webhook, url: e.target.value } })} placeholder="https://..." />
+                  <Input
+                    value={form.webhook.url}
+                    onChange={(e) =>
+                      setForm({ ...form, webhook: { ...form.webhook, url: e.target.value } })
+                    }
+                    placeholder="https://..."
+                  />
                 </FieldBox>
                 <FieldBox label="Método">
-                  <select value={form.webhook.method} onChange={(e) => setForm({ ...form, webhook: { ...form.webhook, method: e.target.value } })} className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3">
-                    <option>POST</option><option>PUT</option><option>GET</option>
+                  <select
+                    value={form.webhook.method}
+                    onChange={(e) =>
+                      setForm({ ...form, webhook: { ...form.webhook, method: e.target.value } })
+                    }
+                    className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
+                  >
+                    <option>POST</option>
+                    <option>PUT</option>
+                    <option>GET</option>
                   </select>
                 </FieldBox>
               </Grid2>
               <FieldBox label="Body (JSON — soporta {{ path }})">
-                <textarea value={form.webhook.body} onChange={(e) => setForm({ ...form, webhook: { ...form.webhook, body: e.target.value } })} rows={6} className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 font-mono" />
+                <textarea
+                  value={form.webhook.body}
+                  onChange={(e) =>
+                    setForm({ ...form, webhook: { ...form.webhook, body: e.target.value } })
+                  }
+                  rows={6}
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 font-mono"
+                />
               </FieldBox>
             </>
           )}
@@ -379,17 +469,44 @@ export const Automations: React.FC = () => {
           {form.actionType === 'notification' && (
             <>
               <FieldBox label="Destinatarios">
-                <select value={form.notification.role} onChange={(e) => setForm({ ...form, notification: { ...form.notification, role: e.target.value } })} className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3">
+                <select
+                  value={form.notification.role}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      notification: { ...form.notification, role: e.target.value },
+                    })
+                  }
+                  className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
+                >
                   <option value="ADMIN">Administradores</option>
                   <option value="USER">Todos los usuarios</option>
                   <option value="SUPERUSER">Superusers</option>
                 </select>
               </FieldBox>
               <FieldBox label="Título">
-                <Input value={form.notification.title} onChange={(e) => setForm({ ...form, notification: { ...form.notification, title: e.target.value } })} />
+                <Input
+                  value={form.notification.title}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      notification: { ...form.notification, title: e.target.value },
+                    })
+                  }
+                />
               </FieldBox>
               <FieldBox label="Cuerpo">
-                <textarea value={form.notification.body} onChange={(e) => setForm({ ...form, notification: { ...form.notification, body: e.target.value } })} rows={4} className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2" />
+                <textarea
+                  value={form.notification.body}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      notification: { ...form.notification, body: e.target.value },
+                    })
+                  }
+                  rows={4}
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2"
+                />
               </FieldBox>
             </>
           )}
@@ -406,10 +523,17 @@ export const Automations: React.FC = () => {
       </Modal>
 
       {/* ── Modal de logs ──────────────────────────────────────── */}
-      <Modal isOpen={!!logsFor} onClose={() => setLogsFor(null)} title={`Historial · ${logsFor?.name || ''}`} maxWidth="2xl">
+      <Modal
+        isOpen={!!logsFor}
+        onClose={() => setLogsFor(null)}
+        title={`Historial · ${logsFor?.name || ''}`}
+        maxWidth="2xl"
+      >
         <div className="space-y-3 pt-4 max-h-[70vh] overflow-y-auto">
           {loadingLogs ? (
-            <div className="py-10 flex justify-center"><Loader /></div>
+            <div className="py-10 flex justify-center">
+              <Loader />
+            </div>
           ) : logs.length === 0 ? (
             <div className="text-center text-xs text-slate-400 py-10">Sin ejecuciones aún.</div>
           ) : (

@@ -126,9 +126,7 @@ export const ServerCockpit: React.FC = () => {
         // sample no tenemos referencia, así que metemos 0.
         const prevTotal = prevTotalRef.current;
         const reqPerSec =
-          prevTotal != null
-            ? Math.max(0, (data.requests.total - prevTotal) / 3)
-            : 0;
+          prevTotal != null ? Math.max(0, (data.requests.total - prevTotal) / 3) : 0;
         prevTotalRef.current = data.requests.total;
         // Añadir sample al anillo.
         setHistory((h) => ({
@@ -252,9 +250,7 @@ export const ServerCockpit: React.FC = () => {
             value={`${m.process.heapUsedMB.toFixed(1)} MB`}
             subtitle={`de ${m.process.heapTotalMB.toFixed(1)} MB reservados · RSS ${m.process.rssMB.toFixed(0)} MB`}
             barPct={
-              m.process.heapTotalMB
-                ? (m.process.heapUsedMB * 100) / m.process.heapTotalMB
-                : 0
+              m.process.heapTotalMB ? (m.process.heapUsedMB * 100) / m.process.heapTotalMB : 0
             }
             history={history.heap}
           />
@@ -348,14 +344,9 @@ export const ServerCockpit: React.FC = () => {
               </thead>
               <tbody>
                 {m.tenants.schemas.map((t) => (
-                  <tr
-                    key={t.name}
-                    className="border-t border-slate-100 dark:border-slate-800"
-                  >
+                  <tr key={t.name} className="border-t border-slate-100 dark:border-slate-800">
                     <td className="py-1.5 font-mono">{t.name}</td>
-                    <td className="py-1.5 text-right tabular-nums">
-                      {t.sizeMB.toFixed(1)} MB
-                    </td>
+                    <td className="py-1.5 text-right tabular-nums">{t.sizeMB.toFixed(1)} MB</td>
                   </tr>
                 ))}
               </tbody>
@@ -456,10 +447,7 @@ const Sparkline: React.FC<{ data: number[]; maxY?: number; color: string }> = ({
 const Stat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div>
     <div className="text-[10px] text-slate-400 uppercase tracking-wider">{label}</div>
-    <div
-      className="text-sm font-mono text-slate-700 dark:text-slate-200 truncate"
-      title={value}
-    >
+    <div className="text-sm font-mono text-slate-700 dark:text-slate-200 truncate" title={value}>
       {value}
     </div>
   </div>
@@ -481,9 +469,7 @@ const HostPanel: React.FC<{ host: Metrics['host'] }> = ({ host }) => (
       <>
         <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
           <Network size={12} />
-          <span className="text-[10px] font-bold uppercase tracking-wider">
-            Interfaces de red
-          </span>
+          <span className="text-[10px] font-bold uppercase tracking-wider">Interfaces de red</span>
         </div>
         <ul className="text-[11px] font-mono space-y-0.5">
           {host.interfaces.map((iface, i) => (
@@ -589,14 +575,13 @@ const TrafficPanel: React.FC<{
 };
 
 const ServiceRow: React.FC<{ svc: ServiceCheck }> = ({ svc }) => {
-  const Icon =
-    svc.status === 'ok' ? CheckCircle2 : svc.status === 'warn' ? AlertTriangle : XCircle;
+  const Icon = svc.status === 'ok' ? CheckCircle2 : svc.status === 'warn' ? AlertTriangle : XCircle;
   const cls =
     svc.status === 'ok'
       ? 'text-emerald-600 dark:text-emerald-400'
       : svc.status === 'warn'
-      ? 'text-amber-600 dark:text-amber-400'
-      : 'text-rose-600 dark:text-rose-400';
+        ? 'text-amber-600 dark:text-amber-400'
+        : 'text-rose-600 dark:text-rose-400';
   return (
     <li className="flex items-start gap-2 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
       <Icon size={16} className={`mt-0.5 flex-shrink-0 ${cls}`} />

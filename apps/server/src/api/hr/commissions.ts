@@ -171,12 +171,7 @@ router.post('/recalculate', async (req: any, res) => {
         date: schema.salesInvoices.date,
       })
       .from(schema.salesInvoices)
-      .where(
-        and(
-          gte(schema.salesInvoices.date, fromDate),
-          lte(schema.salesInvoices.date, toDate),
-        ),
-      );
+      .where(and(gte(schema.salesInvoices.date, fromDate), lte(schema.salesInvoices.date, toDate)));
     for (const r of sinvs) {
       if (!r.salesAgentId) continue;
       const d = new Date(r.date as any);
@@ -195,9 +190,7 @@ router.post('/recalculate', async (req: any, res) => {
     for (const d of docs) {
       // Empleado/dpto matching: pick the most specific rule first (employee
       // exact match → departamento → all). Si no hay regla, salta.
-      const empMatch = rules.find(
-        (r) => r.scope === 'employee' && r.employeeId === d.employeeId,
-      );
+      const empMatch = rules.find((r) => r.scope === 'employee' && r.employeeId === d.employeeId);
       // departmentId desde la tabla employees
       let rule: any = empMatch;
       if (!rule) {

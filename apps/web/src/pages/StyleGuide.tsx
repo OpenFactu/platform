@@ -1,13 +1,4 @@
-import {
-  Button,
-  Input,
-  Card,
-  Table,
-  Badge,
-  Loader,
-  KpiCard,
-  useToast,
-} from '@openfactu/ui';
+import { Button, Input, Card, Table, Badge, Loader, KpiCard, useToast } from '@openfactu/ui';
 import { Mail, Search } from 'lucide-react';
 import React from 'react';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
@@ -39,8 +30,18 @@ const INK_SCALE: Array<{ name: string; hex: string }> = [
 ];
 
 const SystemColors: Array<{ name: string; hex: string; token: string; role: string }> = [
-  { name: 'Ink / Brand Black', hex: '#0A1628', token: '--k-ink-900', role: 'Texto principal, fondos oscuros' },
-  { name: 'Teal / Brand Accent', hex: '#0D9488', token: '--k-teal-500', role: 'Acento principal, CTAs' },
+  {
+    name: 'Ink / Brand Black',
+    hex: '#0A1628',
+    token: '--k-ink-900',
+    role: 'Texto principal, fondos oscuros',
+  },
+  {
+    name: 'Teal / Brand Accent',
+    hex: '#0D9488',
+    token: '--k-teal-500',
+    role: 'Acento principal, CTAs',
+  },
   { name: 'White', hex: '#FFFFFF', token: '—', role: 'Fondo base' },
   { name: 'Surface', hex: '#FAFBFC', token: '--k-surface', role: 'Fondos de sección' },
   { name: 'Line / Border', hex: '#E2E8F0', token: '--k-line', role: 'Divisores' },
@@ -72,10 +73,34 @@ export const StyleGuide: React.FC = () => {
   const [showOverlayLoader, setShowOverlayLoader] = React.useState(false);
 
   const tableData = [
-    { id: 'INV-2025-0042', client: 'Transportes García S.L.', date: '12 ene 2025', status: 'Pagado', total: '€ 3.480,00' },
-    { id: 'INV-2025-0041', client: 'Construcciones Pérez', date: '10 ene 2025', status: 'Pendiente', total: '€ 7.200,00' },
-    { id: 'INV-2025-0040', client: 'Logística Norte S.A.', date: '08 ene 2025', status: 'Vencido', total: '€ 1.950,00' },
-    { id: 'INV-2025-0039', client: 'Distribuciones Alva', date: '05 ene 2025', status: 'Pagado', total: '€ 12.600,00' },
+    {
+      id: 'INV-2025-0042',
+      client: 'Transportes García S.L.',
+      date: '12 ene 2025',
+      status: 'Pagado',
+      total: '€ 3.480,00',
+    },
+    {
+      id: 'INV-2025-0041',
+      client: 'Construcciones Pérez',
+      date: '10 ene 2025',
+      status: 'Pendiente',
+      total: '€ 7.200,00',
+    },
+    {
+      id: 'INV-2025-0040',
+      client: 'Logística Norte S.A.',
+      date: '08 ene 2025',
+      status: 'Vencido',
+      total: '€ 1.950,00',
+    },
+    {
+      id: 'INV-2025-0039',
+      client: 'Distribuciones Alva',
+      date: '05 ene 2025',
+      status: 'Pagado',
+      total: '€ 12.600,00',
+    },
   ];
 
   const tableColumns = [
@@ -127,12 +152,42 @@ export const StyleGuide: React.FC = () => {
           <Label>Variantes del monograma</Label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-[var(--k-line)] border border-[var(--k-line)] mb-8">
             {[
-              { bg: '#0A1628', variant: 'dark' as const, label: 'Primary dark', labelColor: 'rgba(255,255,255,.35)' },
-              { bg: '#FAFBFC', variant: 'outline' as const, label: 'Primary light', labelColor: '#94A3B8' },
-              { bg: '#FFFFFF', variant: 'outline' as const, label: 'Outline', labelColor: '#94A3B8' },
-              { bg: '#0D9488', variant: 'accent' as const, label: 'Brand teal', labelColor: 'rgba(255,255,255,.5)' },
-              { bg: '#1E293B', variant: 'dark' as const, label: 'Slate', labelColor: 'rgba(255,255,255,.35)' },
-              { bg: '#F1F5F9', variant: 'mono' as const, label: 'Monochrome', labelColor: '#94A3B8' },
+              {
+                bg: '#0A1628',
+                variant: 'dark' as const,
+                label: 'Primary dark',
+                labelColor: 'rgba(255,255,255,.35)',
+              },
+              {
+                bg: '#FAFBFC',
+                variant: 'outline' as const,
+                label: 'Primary light',
+                labelColor: '#94A3B8',
+              },
+              {
+                bg: '#FFFFFF',
+                variant: 'outline' as const,
+                label: 'Outline',
+                labelColor: '#94A3B8',
+              },
+              {
+                bg: '#0D9488',
+                variant: 'accent' as const,
+                label: 'Brand teal',
+                labelColor: 'rgba(255,255,255,.5)',
+              },
+              {
+                bg: '#1E293B',
+                variant: 'dark' as const,
+                label: 'Slate',
+                labelColor: 'rgba(255,255,255,.35)',
+              },
+              {
+                bg: '#F1F5F9',
+                variant: 'mono' as const,
+                label: 'Monochrome',
+                labelColor: '#94A3B8',
+              },
             ].map((card) => (
               <div
                 key={card.label}
@@ -151,9 +206,18 @@ export const StyleGuide: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--k-line)] border border-[var(--k-line)]">
             {[
-              { title: 'Uso correcto', body: 'Usar siempre sobre fondos sólidos. Mantener zona de exclusión mínima de 1× el tamaño del icono.' },
-              { title: 'Tamaño mínimo', body: 'Digital: 24 × 24 px. Impresión: 8 mm. Por debajo no se garantiza legibilidad.' },
-              { title: 'No hacer', body: 'No rotar, distorsionar, cambiar colores fuera de la paleta ni añadir efectos.' },
+              {
+                title: 'Uso correcto',
+                body: 'Usar siempre sobre fondos sólidos. Mantener zona de exclusión mínima de 1× el tamaño del icono.',
+              },
+              {
+                title: 'Tamaño mínimo',
+                body: 'Digital: 24 × 24 px. Impresión: 8 mm. Por debajo no se garantiza legibilidad.',
+              },
+              {
+                title: 'No hacer',
+                body: 'No rotar, distorsionar, cambiar colores fuera de la paleta ni añadir efectos.',
+              },
             ].map((r) => (
               <div key={r.title} className="bg-white dark:bg-slate-900 p-6">
                 <Label>{r.title}</Label>
@@ -175,7 +239,10 @@ export const StyleGuide: React.FC = () => {
               <div
                 key={c.name}
                 className="flex-1 flex items-end p-1.5 font-mono text-[9px]"
-                style={{ background: c.hex, color: c.hex === '#F0FAFA' || c.hex === '#CCEFED' ? '#0A6E63' : '#fff' }}
+                style={{
+                  background: c.hex,
+                  color: c.hex === '#F0FAFA' || c.hex === '#CCEFED' ? '#0A6E63' : '#fff',
+                }}
               >
                 {c.name}
               </div>
@@ -190,7 +257,9 @@ export const StyleGuide: React.FC = () => {
                 className="flex-1 flex items-end p-1.5 font-mono text-[9px]"
                 style={{
                   background: c.hex,
-                  color: ['#FAFBFC', '#F1F5F9', '#E2E8F0', '#CBD5E1'].includes(c.hex) ? '#334155' : '#fff',
+                  color: ['#FAFBFC', '#F1F5F9', '#E2E8F0', '#CBD5E1'].includes(c.hex)
+                    ? '#334155'
+                    : '#fff',
                 }}
               >
                 {c.name}
@@ -207,12 +276,22 @@ export const StyleGuide: React.FC = () => {
                     <td className="pl-4 py-3 w-10">
                       <div
                         className="w-5 h-5 rounded-[2px]"
-                        style={{ background: c.hex, border: c.hex === '#FFFFFF' ? '1px solid #E2E8F0' : '1px solid rgba(0,0,0,.08)' }}
+                        style={{
+                          background: c.hex,
+                          border:
+                            c.hex === '#FFFFFF' ? '1px solid #E2E8F0' : '1px solid rgba(0,0,0,.08)',
+                        }}
                       />
                     </td>
-                    <td className="py-3 px-4 text-[13px] font-medium text-[var(--k-ink-900)]">{c.name}</td>
-                    <td className="py-3 px-4 font-mono text-[11px] text-[var(--k-ink-500)]">{c.hex}</td>
-                    <td className="py-3 px-4 font-mono text-[10px] text-[var(--k-ink-400)]">{c.token}</td>
+                    <td className="py-3 px-4 text-[13px] font-medium text-[var(--k-ink-900)]">
+                      {c.name}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-[11px] text-[var(--k-ink-500)]">
+                      {c.hex}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-[10px] text-[var(--k-ink-400)]">
+                      {c.token}
+                    </td>
                     <td className="py-3 px-4 text-[12px] text-[var(--k-ink-400)]">{c.role}</td>
                   </tr>
                 ))}
@@ -242,33 +321,73 @@ export const StyleGuide: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[var(--k-line)] border border-[var(--k-line)] mb-8">
             <div className="bg-white dark:bg-slate-900 p-7">
               <Label>Display / Títulos</Label>
-              <div className="font-display text-[28px] font-bold tracking-[-0.5px]">Space Grotesk</div>
-              <div className="font-display text-[13px] text-[var(--k-ink-500)] mt-2">Aa Bb Cc Dd 0123456789</div>
-              <div className="font-mono text-[10px] text-[var(--k-ink-400)] mt-3">Google Fonts · 400 500 600 700</div>
+              <div className="font-display text-[28px] font-bold tracking-[-0.5px]">
+                Space Grotesk
+              </div>
+              <div className="font-display text-[13px] text-[var(--k-ink-500)] mt-2">
+                Aa Bb Cc Dd 0123456789
+              </div>
+              <div className="font-mono text-[10px] text-[var(--k-ink-400)] mt-3">
+                Google Fonts · 400 500 600 700
+              </div>
             </div>
             <div className="bg-white dark:bg-slate-900 p-7">
               <Label>Cuerpo / UI</Label>
               <div className="font-sans text-[28px] font-light">DM Sans</div>
-              <div className="font-sans text-[13px] text-[var(--k-ink-500)] mt-2">Aa Bb Cc Dd 0123456789</div>
-              <div className="font-mono text-[10px] text-[var(--k-ink-400)] mt-3">Google Fonts · 300 400 500</div>
+              <div className="font-sans text-[13px] text-[var(--k-ink-500)] mt-2">
+                Aa Bb Cc Dd 0123456789
+              </div>
+              <div className="font-mono text-[10px] text-[var(--k-ink-400)] mt-3">
+                Google Fonts · 300 400 500
+              </div>
             </div>
           </div>
 
           <div className="border border-[var(--k-line)] px-7">
             {[
-              { meta: 'Display · Space Grotesk 800 · 48px', cls: 'font-display text-[48px] font-extrabold tracking-[-1px] leading-[1.05]', text: 'Gestión empresarial' },
-              { meta: 'H1 · Space Grotesk 700 · 32px', cls: 'font-display text-[32px] font-bold tracking-[-0.5px]', text: 'Panel de control' },
-              { meta: 'H2 · Space Grotesk 600 · 22px', cls: 'font-display text-[22px] font-semibold', text: 'Resumen mensual de facturación' },
-              { meta: 'H3 · Space Grotesk 600 · 16px', cls: 'font-display text-[16px] font-semibold', text: 'Últimas transacciones' },
-              { meta: 'Body · DM Sans 400 · 14px', cls: 'font-sans text-[14px] text-[var(--k-ink-700)] leading-[1.6] max-w-[500px]', text: 'Keirost centraliza todos los procesos de tu empresa: facturación, inventario, contabilidad y gestión de clientes.' },
-              { meta: 'Small · DM Sans · 12px · ink-500', cls: 'font-sans text-[12px] text-[var(--k-ink-500)]', text: 'Última actualización: 12 ene 2026 · 14:32' },
-              { meta: 'Mono · JetBrains Mono · 12px', cls: 'font-mono text-[12px] text-[var(--k-ink-700)]', text: 'INV-2026-0042 · €12.480,00 · --k-teal-500' },
+              {
+                meta: 'Display · Space Grotesk 800 · 48px',
+                cls: 'font-display text-[48px] font-extrabold tracking-[-1px] leading-[1.05]',
+                text: 'Gestión empresarial',
+              },
+              {
+                meta: 'H1 · Space Grotesk 700 · 32px',
+                cls: 'font-display text-[32px] font-bold tracking-[-0.5px]',
+                text: 'Panel de control',
+              },
+              {
+                meta: 'H2 · Space Grotesk 600 · 22px',
+                cls: 'font-display text-[22px] font-semibold',
+                text: 'Resumen mensual de facturación',
+              },
+              {
+                meta: 'H3 · Space Grotesk 600 · 16px',
+                cls: 'font-display text-[16px] font-semibold',
+                text: 'Últimas transacciones',
+              },
+              {
+                meta: 'Body · DM Sans 400 · 14px',
+                cls: 'font-sans text-[14px] text-[var(--k-ink-700)] leading-[1.6] max-w-[500px]',
+                text: 'Keirost centraliza todos los procesos de tu empresa: facturación, inventario, contabilidad y gestión de clientes.',
+              },
+              {
+                meta: 'Small · DM Sans · 12px · ink-500',
+                cls: 'font-sans text-[12px] text-[var(--k-ink-500)]',
+                text: 'Última actualización: 12 ene 2026 · 14:32',
+              },
+              {
+                meta: 'Mono · JetBrains Mono · 12px',
+                cls: 'font-mono text-[12px] text-[var(--k-ink-700)]',
+                text: 'INV-2026-0042 · €12.480,00 · --k-teal-500',
+              },
             ].map((row) => (
               <div
                 key={row.meta}
                 className="grid grid-cols-[160px_1fr] gap-8 items-baseline py-6 border-b border-[var(--k-line)] last:border-b-0"
               >
-                <div className="font-mono text-[10px] text-[var(--k-ink-400)] leading-[1.6]">{row.meta}</div>
+                <div className="font-mono text-[10px] text-[var(--k-ink-400)] leading-[1.6]">
+                  {row.meta}
+                </div>
                 <div className={row.cls}>{row.text}</div>
               </div>
             ))}
@@ -289,12 +408,18 @@ export const StyleGuide: React.FC = () => {
               <Button variant="danger">Eliminar</Button>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
-              <Button variant="primary" size="sm">Confirmar</Button>
-              <Button variant="accent" size="sm">+ Añadir</Button>
+              <Button variant="primary" size="sm">
+                Confirmar
+              </Button>
+              <Button variant="accent" size="sm">
+                + Añadir
+              </Button>
               <Button variant="outline" size="sm">
                 <Mail size={12} /> Enviar
               </Button>
-              <Button variant="ghost" size="sm">Descartar</Button>
+              <Button variant="ghost" size="sm">
+                Descartar
+              </Button>
             </div>
           </div>
 
@@ -403,8 +528,10 @@ export const StyleGuide: React.FC = () => {
                 </div>
               </div>
               <div className="mt-6 font-mono text-[10px] text-[var(--k-ink-400)] leading-[1.8]">
-                Botones / inputs → 2px<br />
-                Cards / modales → 4–8px<br />
+                Botones / inputs → 2px
+                <br />
+                Cards / modales → 4–8px
+                <br />
                 Badges / pills → 999px
               </div>
             </div>
@@ -415,7 +542,7 @@ export const StyleGuide: React.FC = () => {
         <section className="mb-14">
           <SectionHeader num="06" title="Variables CSS" />
           <pre className="bg-[var(--k-ink-900)] text-[#CBD5E1] font-mono text-[12px] leading-[2] p-8 rounded-[2px] overflow-x-auto">
-{`/* Keirost ERP — Design Tokens */
+            {`/* Keirost ERP — Design Tokens */
 :root {
   --k-ink-900:  #0A1628;   /* texto principal */
   --k-ink-700:  #2D3A4A;

@@ -17,7 +17,9 @@ export const ReportProfitCostCenter: React.FC = () => {
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.tenantId]);
+  useEffect(() => {
+    load(); /* eslint-disable-next-line */
+  }, [user?.tenantId]);
 
   const columns = useMemo(
     () => [

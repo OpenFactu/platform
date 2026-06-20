@@ -156,7 +156,11 @@ export const SqlEditorModal: React.FC<Props> = ({
             insertText: t.name,
             detail: `tabla (${t.columns.length} columnas)`,
             documentation: {
-              value: ['```', ...t.columns.slice(0, 20).map((c) => `${c.name} :: ${c.type}`), '```'].join('\n'),
+              value: [
+                '```',
+                ...t.columns.slice(0, 20).map((c) => `${c.name} :: ${c.type}`),
+                '```',
+              ].join('\n'),
             },
             range,
           });
@@ -269,8 +273,8 @@ export const SqlEditorModal: React.FC<Props> = ({
               {schema
                 ? `${schema.length} tablas cargadas · autocompletado activo · Ctrl+Espacio`
                 : schemaError
-                ? `Sin esquema: ${schemaError}`
-                : 'Cargando esquema…'}
+                  ? `Sin esquema: ${schemaError}`
+                  : 'Cargando esquema…'}
             </div>
           </div>
           <button
@@ -310,7 +314,9 @@ export const SqlEditorModal: React.FC<Props> = ({
             <SchemaPanel
               schema={schema}
               error={schemaError}
-              onInsert={(text) => setValue((v) => (v.endsWith('\n') || v === '' ? v + text : v + ' ' + text))}
+              onInsert={(text) =>
+                setValue((v) => (v.endsWith('\n') || v === '' ? v + text : v + ' ' + text))
+              }
             />
           </aside>
         </div>
@@ -453,7 +459,9 @@ const SchemaPanel: React.FC<{
                 className="px-1 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between gap-2"
                 title={c.type}
               >
-                <span className="truncate font-mono text-slate-700 dark:text-slate-200">{c.name}</span>
+                <span className="truncate font-mono text-slate-700 dark:text-slate-200">
+                  {c.name}
+                </span>
                 <span className="text-[10px] text-slate-400 whitespace-nowrap">{c.type}</span>
               </li>
             ))}

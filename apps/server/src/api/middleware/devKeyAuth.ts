@@ -40,7 +40,9 @@ export function devKeyOrAdmin(requiredPermission: string) {
         // Verificar permiso
         const permissions = (key.permissions || '').split(',');
         if (!permissions.includes(requiredPermission)) {
-          return res.status(403).json({ error: `Permiso "${requiredPermission}" no autorizado para esta key` });
+          return res
+            .status(403)
+            .json({ error: `Permiso "${requiredPermission}" no autorizado para esta key` });
         }
 
         // Actualizar ultimo uso

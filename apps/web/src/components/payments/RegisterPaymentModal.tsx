@@ -119,7 +119,9 @@ export const RegisterPaymentModal: React.FC<Props> = ({
           </div>
           <div>
             <h2 className="text-lg font-bold text-ink-900 dark:text-slate-100 font-display">
-              {kind === 'sales' ? t('invoice.registerPayment') : t('invoice.registerPaymentPurchase')}
+              {kind === 'sales'
+                ? t('invoice.registerPayment')
+                : t('invoice.registerPaymentPurchase')}
             </h2>
             <p className="text-xs text-ink-500 dark:text-ink-400 font-mono">{invoiceCode}</p>
           </div>

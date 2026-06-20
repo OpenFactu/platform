@@ -208,8 +208,8 @@ export const CarriersSettings: React.FC = () => {
               Transportistas
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Da de alta cualquier transportista. Si existe un adapter en el core
-              puedes conectarlo; si no, queda como gestión manual.
+              Da de alta cualquier transportista. Si existe un adapter en el core puedes conectarlo;
+              si no, queda como gestión manual.
             </p>
           </div>
         </div>
@@ -238,10 +238,7 @@ export const CarriersSettings: React.FC = () => {
                   className="border-b border-slate-50 dark:border-slate-800/50 last:border-0"
                 >
                   <div className="flex items-center gap-3 px-4 py-2.5">
-                    <div
-                      className="flex-1 min-w-0 cursor-pointer"
-                      onClick={() => toggleExpand(c)}
-                    >
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(c)}>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
                           {c.name}
@@ -261,9 +258,7 @@ export const CarriersSettings: React.FC = () => {
                         )}
                       </div>
                       {c.notes && (
-                        <div className="text-[11px] text-slate-500 mt-0.5 truncate">
-                          {c.notes}
-                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5 truncate">{c.notes}</div>
                       )}
                     </div>
                     <button
@@ -306,12 +301,8 @@ export const CarriersSettings: React.FC = () => {
                                 className="flex items-center gap-2 px-2 py-1.5 rounded bg-white dark:bg-slate-900 text-xs"
                               >
                                 <span className="font-semibold">{a.name}</span>
-                                {a.sandbox && (
-                                  <Badge variant="warning">sandbox</Badge>
-                                )}
-                                {a.isDefault && (
-                                  <Badge variant="info">default</Badge>
-                                )}
+                                {a.sandbox && <Badge variant="warning">sandbox</Badge>}
+                                {a.isDefault && <Badge variant="info">default</Badge>}
                                 <div className="flex-1" />
                                 <button
                                   onClick={() => testAccount(a.id)}
@@ -379,8 +370,8 @@ export const CarriersSettings: React.FC = () => {
               placeholder="— seleccionar —"
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              Si no eliges adapter, el carrier funciona en modo manual —
-              tracking libre, sin llamadas externas.
+              Si no eliges adapter, el carrier funciona en modo manual — tracking libre, sin
+              llamadas externas.
             </p>
           </div>
           <div>
@@ -473,8 +464,7 @@ export const CarriersSettings: React.FC = () => {
           )}
           {!selectedAdapter && accountCarrier && (
             <div className="text-[11px] text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded px-3 py-2">
-              Este carrier es manual. La cuenta servirá solo como etiqueta
-              organizativa.
+              Este carrier es manual. La cuenta servirá solo como etiqueta organizativa.
             </div>
           )}
           <label className="flex items-center gap-2 text-sm">

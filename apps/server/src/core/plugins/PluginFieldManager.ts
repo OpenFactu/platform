@@ -105,8 +105,7 @@ export class PluginFieldManager {
           ),
         );
         const c = Number(res.rows?.[0]?.c ?? 0);
-        if (c > 0)
-          throw new Error(`"${def.label}" ya existe. Debe ser único.`);
+        if (c > 0) throw new Error(`"${def.label}" ya existe. Debe ser único.`);
       }
 
       extracted[def.fieldName] = value;
@@ -134,16 +133,12 @@ export class PluginFieldManager {
       case 'ENUM': {
         if (typeof value !== 'string') return false;
         if (!Array.isArray(options)) return true;
-        return options.some((o: any) =>
-          typeof o === 'string' ? o === value : o?.value === value,
-        );
+        return options.some((o: any) => (typeof o === 'string' ? o === value : o?.value === value));
       }
       case 'MULTISELECT': {
         if (!Array.isArray(value)) return false;
         if (!Array.isArray(options)) return true;
-        const allowed = new Set(
-          options.map((o: any) => (typeof o === 'string' ? o : o?.value)),
-        );
+        const allowed = new Set(options.map((o: any) => (typeof o === 'string' ? o : o?.value)));
         return value.every((v) => allowed.has(v));
       }
       case 'URL':

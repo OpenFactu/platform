@@ -45,7 +45,9 @@ router.post('/', async (req: any, res) => {
   try {
     const { employeeId, incidentTypeId, startAt, endAt, notes, documentUrl } = req.body;
     if (!employeeId || !incidentTypeId || !startAt) {
-      return res.status(400).json({ error: 'employeeId, incidentTypeId y startAt son obligatorios' });
+      return res
+        .status(400)
+        .json({ error: 'employeeId, incidentTypeId y startAt son obligatorios' });
     }
     const id = crypto.randomUUID();
     const [row] = await req.tenantClient

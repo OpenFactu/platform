@@ -29,7 +29,10 @@ export type PageSize =
   | 'Custom';
 
 /** Dimensiones físicas (mm) por preset. Para `Custom`, se ignoran. */
-export const PAGE_SIZE_MM: Record<Exclude<PageSize, 'Custom'>, { width: number; height: number }> = {
+export const PAGE_SIZE_MM: Record<
+  Exclude<PageSize, 'Custom'>,
+  { width: number; height: number }
+> = {
   A4: { width: 210, height: 297 },
   Letter: { width: 216, height: 279 },
   // Tiquets térmicos: ancho fijo, alto razonablemente corto. El usuario puede
@@ -63,7 +66,7 @@ export interface Margins {
   left: number;
 }
 
-export type BandKind = 'pageHeader' | 'docHeader' | 'detail' | 'totals' | 'pageFooter';
+export type BandKind = 'pageHeader' | 'docHeader' | 'detail' | 'totals' | 'pageFooter' | 'custom';
 
 export interface Band {
   id: string;
@@ -71,6 +74,10 @@ export interface Band {
   /** Alto de la banda en mm. */
   height: number;
   elements: CanvasElement[];
+  /** Si `true`, la banda no se emite al compilar y no acumula altura. */
+  hidden?: boolean;
+  /** Etiqueta visible. Requerida para `kind: 'custom'`; override opcional para el resto. */
+  label?: string;
 }
 
 /** Estilo común que puede aplicar cualquier elemento. */
@@ -88,6 +95,8 @@ export interface ElementStyle {
   borderStyle?: 'solid' | 'dashed' | 'dotted' | 'none';
   /** px */
   padding?: number;
+  /** Radio de esquina en px (lo usa sobre todo la Caja/Contenedor). */
+  borderRadius?: number;
 }
 
 /** Base compartida por todos los elementos. Coordenadas en mm respecto al origen de la banda. */
@@ -100,6 +109,21 @@ export interface BaseElement {
   /** Alto en mm. */
   h: number;
   style?: ElementStyle;
+  /**
+   * Clase(s) CSS extra para el nodo raíz del elemento. Permite apuntar a este
+   * elemento desde la hoja de estilos global (`CanvasLayout.customCss`).
+   */
+  className?: string;
+  /**
+   * Declaraciones CSS inline extra que se anexan al `style` del nodo raíz
+   * (ej. "letter-spacing:2px;text-transform:uppercase"). Son DECLARACIONES, no
+   * reglas: para selectores completos usa `className` + la hoja global.
+   */
+  customCss?: string;
+  /** Si `true`, el elemento no se emite al compilar (se puede re-mostrar desde el diseñador). */
+  hidden?: boolean;
+  /** Si `true`, no se puede arrastrar ni redimensionar en el diseñador. */
+  locked?: boolean;
 }
 
 /** Texto fijo. */
@@ -196,6 +220,19 @@ export interface LinesTableElement extends BaseElement {
   showHeader?: boolean;
   /** Fuente de iteración. `'lines'` (default) o `'query:NOMBRE'`. */
   source?: string;
+  /** Preset visual de la tabla. Default `'default'`. */
+  tableStyle?: 'default' | 'bordered' | 'striped' | 'compact' | 'borderless';
+  /** Fondo de la fila de cabecera (override del preset). */
+  headerBg?: string;
+  /** Padding de celda en px (override del preset). */
+  cellPadding?: number;
+  /** Color de los bordes (override del preset). */
+  borderColor?: string;
+  /**
+   * Disposición: `'table'` (tabla clásica, default) o `'keyValue'` (lista
+   * vertical etiqueta:valor que itera las líneas, una agrupación por línea).
+   */
+  layout?: 'table' | 'keyValue';
 }
 
 /**
@@ -295,6 +332,52 @@ export interface PageBreakElement extends BaseElement {
   kind: 'pageBreak';
 }
 
+/** Línea separadora (divisor) horizontal o vertical. Color/grosor/estilo vía `style`. */
+export interface DividerElement extends BaseElement {
+  kind: 'divider';
+  orientation?: 'horizontal' | 'vertical';
+}
+
+/**
+ * Campo de resumen/agregado: aplica una operación sobre una colección. `source`
+ * es `'lines'` (default) o `'query:NOMBRE'`. `path` es la columna a agregar
+ * (relativa a cada fila); se ignora para `count`. El compilador lo traduce a una
+ * subexpresión Handlebars con los helpers `sum/count/avg/min/max` del servidor.
+ */
+export interface SummaryElement extends BaseElement {
+  kind: 'summary';
+  op: 'sum' | 'count' | 'avg' | 'min' | 'max';
+  source?: string;
+  path?: string;
+  format?: FieldElement['format'];
+  prefix?: string;
+  suffix?: string;
+}
+
+/** Caja/contenedor visual: fondo, borde y esquinas redondeadas (vía `style`). */
+export interface BoxElement extends BaseElement {
+  kind: 'box';
+}
+
+/**
+ * Lista (viñetas o numerada) que itera una colección. `source` es `'lines'` o
+ * `'query:NOMBRE'`; `itemPath` es el campo a mostrar por elemento (relativo).
+ */
+export interface ListElement extends BaseElement {
+  kind: 'list';
+  source?: string;
+  itemPath?: string;
+  ordered?: boolean;
+  marker?: 'bullet' | 'number' | 'none';
+}
+
+/** Fecha/hora de generación del documento. */
+export interface CurrentDateElement extends BaseElement {
+  kind: 'currentDate';
+  mode?: 'date' | 'datetime';
+  prefix?: string;
+}
+
 export type CanvasElement =
   | TextElement
   | ImageElement
@@ -307,7 +390,12 @@ export type CanvasElement =
   | BarcodeElement
   | ConditionalElement
   | SignatureElement
-  | PageBreakElement;
+  | PageBreakElement
+  | DividerElement
+  | SummaryElement
+  | BoxElement
+  | ListElement
+  | CurrentDateElement;
 
 export type ElementKind = CanvasElement['kind'];
 
@@ -356,6 +444,12 @@ export interface CanvasLayout {
    * Handlebars como `queries.<name>`. Un array vacío o ausente = sin SQL.
    */
   queries?: Array<{ name: string; sql: string }>;
+  /**
+   * Parámetros de prueba para las queries del preview.
+   * Ej: `{ itemId: 'xxx', batch: 'yyy' }`. Se pasan al servidor como
+   * `params` y sustituyen los placeholders `:xxx` en las queries.
+   */
+  testParams?: Record<string, unknown>;
   /** Ancho en mm para `pageSize === 'Custom'`. Ignorado en cualquier otro caso. */
   customWidthMm?: number;
   /** Alto en mm para `pageSize === 'Custom'`. Ignorado en cualquier otro caso. */
@@ -367,6 +461,47 @@ export interface CanvasLayout {
    * pierden al re-aplicar el modo simple — el editor avisa antes.
    */
   simpleLabel?: SimpleLabelSettings;
+  /**
+   * Hoja de estilos global del documento. Se inyecta en el `<style>` al compilar
+   * (vía la opción `extraCss` de `compileCanvas`), DESPUÉS del CSS base, por lo
+   * que puede sobreescribir cualquier estilo por defecto. Persiste dentro de
+   * `canvasLayout`. Útil para apuntar a clases puestas en `BaseElement.className`.
+   */
+  customCss?: string;
+  /**
+   * Metadata de los parámetros de entrada (placeholders `:nombre` de las
+   * `queries`) para el formulario de generación: etiqueta visible, tipo de
+   * campo, obligatoriedad y valor por defecto. Los placeholders sin entrada aquí
+   * se tratan como texto. No incluye los estándar (docId/partnerId/...).
+   */
+  paramsSchema?: ParamDef[];
+}
+
+/** Definición de un parámetro de entrada para generar el documento. */
+export interface ParamDef {
+  /** Nombre del placeholder (sin `:`). */
+  name: string;
+  /** Etiqueta visible en el formulario. Por defecto, el `name`. */
+  label?: string;
+  /**
+   * Tipo de campo del formulario. Por defecto `'text'`.
+   * - `select`: lista desplegable, se elige UN valor.
+   * - `multiselect`: lista con selección múltiple; se envía como array y se
+   *   expande a `(v1, v2, …)` en SQL (para `WHERE x IN (:param)`).
+   */
+  type?: 'text' | 'number' | 'date' | 'select' | 'multiselect';
+  /** Opciones fijas (para `select`/`multiselect`). Cada opción es `valor` o `valor|etiqueta`. */
+  options?: string[];
+  /**
+   * SQL que provee las opciones de un `select`/`multiselect` (lookup). Debe
+   * devolver una columna `value` y, opcionalmente, `label` (si falta, se usa
+   * `value`). Solo `SELECT`/`WITH`. Tiene prioridad sobre `options`.
+   */
+  optionsQuery?: string;
+  /** Si es obligatorio para generar. */
+  required?: boolean;
+  /** Valor inicial del campo. */
+  default?: string;
 }
 
 /**
@@ -488,7 +623,7 @@ export function createLabelLayout(): CanvasLayout {
         // siga generando un código de barras válido.
         sql:
           'SELECT id, code, name, "basePrice", description, ' +
-          'COALESCE(NULLIF(TRIM(COALESCE("barcode", \'\')), \'\'), code) AS barcode ' +
+          "COALESCE(NULLIF(TRIM(COALESCE(\"barcode\", '')), ''), code) AS barcode " +
           'FROM "Item" WHERE id = :itemId',
       },
     ],

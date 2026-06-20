@@ -46,8 +46,15 @@ router.post('/', async (req: any, res) => {
 router.patch('/:id', async (req: any, res) => {
   try {
     const allow = [
-      'code', 'name', 'requiresSubstitution', 'affectsPayroll', 'consumesLeaveBalance',
-      'requiresDocument', 'paid', 'color', 'isActive',
+      'code',
+      'name',
+      'requiresSubstitution',
+      'affectsPayroll',
+      'consumesLeaveBalance',
+      'requiresDocument',
+      'paid',
+      'color',
+      'isActive',
     ];
     const patch: Record<string, any> = {};
     for (const k of allow) if (k in req.body) patch[k] = req.body[k];

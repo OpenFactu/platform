@@ -81,7 +81,8 @@ router.post('/', async (req: any, res) => {
     // Validación de IBAN si se informa
     if (restBody.iban) {
       const ibanCheck = validateIban(restBody.iban);
-      if (!ibanCheck.ok) return res.status(400).json({ error: `IBAN inválido: ${ibanCheck.reason}` });
+      if (!ibanCheck.ok)
+        return res.status(400).json({ error: `IBAN inválido: ${ibanCheck.reason}` });
       restBody.iban = normalizeIban(restBody.iban);
     }
 
@@ -179,7 +180,8 @@ router.patch('/:id', async (req: any, res) => {
     // Validación de IBAN si se informa
     if (restBody.iban) {
       const ibanCheck = validateIban(restBody.iban);
-      if (!ibanCheck.ok) return res.status(400).json({ error: `IBAN inválido: ${ibanCheck.reason}` });
+      if (!ibanCheck.ok)
+        return res.status(400).json({ error: `IBAN inválido: ${ibanCheck.reason}` });
       restBody.iban = normalizeIban(restBody.iban);
     }
 

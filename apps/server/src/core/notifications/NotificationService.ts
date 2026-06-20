@@ -97,25 +97,19 @@ export class NotificationService {
     await tenantDb
       .update(schema.notifications)
       .set({ readAt: new Date() })
-      .where(
-        and(eq(schema.notifications.id, id), eq(schema.notifications.userId, userId)),
-      );
+      .where(and(eq(schema.notifications.id, id), eq(schema.notifications.userId, userId)));
   }
 
   static async markAllRead(tenantDb: any, userId: string): Promise<void> {
     await tenantDb
       .update(schema.notifications)
       .set({ readAt: new Date() })
-      .where(
-        and(eq(schema.notifications.userId, userId), isNull(schema.notifications.readAt)),
-      );
+      .where(and(eq(schema.notifications.userId, userId), isNull(schema.notifications.readAt)));
   }
 
   static async remove(tenantDb: any, userId: string, id: string): Promise<void> {
     await tenantDb
       .delete(schema.notifications)
-      .where(
-        and(eq(schema.notifications.id, id), eq(schema.notifications.userId, userId)),
-      );
+      .where(and(eq(schema.notifications.id, id), eq(schema.notifications.userId, userId)));
   }
 }

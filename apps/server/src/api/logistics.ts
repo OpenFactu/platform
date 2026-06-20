@@ -15,7 +15,20 @@
  * entrega al conductor (aplicación móvil, tracker GPS, script).
  */
 import { Router } from 'express';
-import { and, asc, desc, eq, inArray, notInArray, isNotNull, ilike, or, gte, lte, sql } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  notInArray,
+  isNotNull,
+  ilike,
+  or,
+  gte,
+  lte,
+  sql,
+} from 'drizzle-orm';
 import crypto from 'crypto';
 import QRCode from 'qrcode';
 import * as schema from '../db/schema';
@@ -162,11 +175,17 @@ router.get('/shipments', async (req: any, res) => {
       );
     }
     if (statusCsv) {
-      const arr = statusCsv.split(',').map((s) => s.trim()).filter(Boolean);
+      const arr = statusCsv
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
       if (arr.length > 0) conds.push(inArray(schema.shipments.status, arr));
     }
     if (prepCsv) {
-      const arr = prepCsv.split(',').map((s) => s.trim()).filter(Boolean);
+      const arr = prepCsv
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
       if (arr.length > 0) conds.push(inArray(schema.shipments.preparationStatus, arr));
     }
     if (fromDate) conds.push(gte(schema.shipments.createdAt, new Date(fromDate)));
@@ -177,9 +196,7 @@ router.get('/shipments', async (req: any, res) => {
         .select({ shipmentId: schema.routeStops.shipmentId })
         .from(schema.routeStops)
         .where(eq(schema.routeStops.routeId, routeId));
-      const ids = stops
-        .map((s: any) => s.shipmentId)
-        .filter((x: any): x is string => !!x);
+      const ids = stops.map((s: any) => s.shipmentId).filter((x: any): x is string => !!x);
       if (ids.length === 0) {
         return res.json({ rows: [], total: 0, page, pageSize });
       }
@@ -225,9 +242,7 @@ router.get('/shipments/unrouted', async (req: any, res) => {
       .select({ shipmentId: schema.routeStops.shipmentId })
       .from(schema.routeStops)
       .where(isNotNull(schema.routeStops.shipmentId));
-    const assignedIds = assigned
-      .map((r: any) => r.shipmentId)
-      .filter((x: any): x is string => !!x);
+    const assignedIds = assigned.map((r: any) => r.shipmentId).filter((x: any): x is string => !!x);
 
     // Sólo interesa los envíos "activos" — ya entregados, cancelados o
     // devueltos no pintamos.
@@ -370,7 +385,9 @@ router.patch('/shipments/:id', async (req: any, res) => {
         if (ship?.kind === 'pickup_return' && ship.returnWarehouseId) {
           await req.tenantClient.insert(schema.goodsReceipts).values({
             id: crypto.randomUUID(),
-            code: `REC-${Math.floor(Math.random() * 999999).toString().padStart(6, '0')}`,
+            code: `REC-${Math.floor(Math.random() * 999999)
+              .toString()
+              .padStart(6, '0')}`,
             warehouseId: ship.returnWarehouseId,
             date: nowIso(),
             type: 'return',
@@ -431,13 +448,7 @@ router.post('/shipments/:id/notify', async (req: any, res) => {
   try {
     const stage = (req.body?.stage || 'in_transit') as ShipmentStage;
     const baseUrl = await publicBaseUrl(req);
-    await notifyShipmentStageChange(
-      req.tenantClient,
-      req.tenantId,
-      req.params.id,
-      stage,
-      baseUrl,
-    );
+    await notifyShipmentStageChange(req.tenantClient, req.tenantId, req.params.id, stage, baseUrl);
     res.json({ ok: true, stage, hint: 'Revisa los logs del server y el cockpit de MailQueue.' });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -481,9 +492,7 @@ router.post('/shipments/:id/cancel', async (req: any, res) => {
     let dnCancelled = false;
     if (body.cancelDeliveryNote && ship.deliveryNoteId) {
       const table =
-        ship.sourceDocType === 'PDN'
-          ? schema.purchaseDeliveryNotes
-          : schema.salesDeliveryNotes;
+        ship.sourceDocType === 'PDN' ? schema.purchaseDeliveryNotes : schema.salesDeliveryNotes;
       try {
         await req.tenantClient
           .update(table)
@@ -541,9 +550,7 @@ router.post('/shipments/:id/return', async (req: any, res) => {
     let warehouseId = body.warehouseId as string | undefined;
     if (!warehouseId && ship.deliveryNoteId) {
       const table =
-        ship.sourceDocType === 'PDN'
-          ? schema.purchaseDeliveryNotes
-          : schema.salesDeliveryNotes;
+        ship.sourceDocType === 'PDN' ? schema.purchaseDeliveryNotes : schema.salesDeliveryNotes;
       const [dn] = await req.tenantClient
         .select({ warehouseId: table.warehouseId })
         .from(table)
@@ -558,7 +565,9 @@ router.post('/shipments/:id/return', async (req: any, res) => {
       receiptId = crypto.randomUUID();
       await req.tenantClient.insert(schema.goodsReceipts).values({
         id: receiptId,
-        code: `DEV-${Math.floor(Math.random() * 999999).toString().padStart(6, '0')}`,
+        code: `DEV-${Math.floor(Math.random() * 999999)
+          .toString()
+          .padStart(6, '0')}`,
         warehouseId,
         date: nowIso(),
         type: 'return',
@@ -611,9 +620,7 @@ router.post('/shipments/:id/return', async (req: any, res) => {
     let dnCancelled = false;
     if (body.cancelDeliveryNote && ship.deliveryNoteId) {
       const table =
-        ship.sourceDocType === 'PDN'
-          ? schema.purchaseDeliveryNotes
-          : schema.salesDeliveryNotes;
+        ship.sourceDocType === 'PDN' ? schema.purchaseDeliveryNotes : schema.salesDeliveryNotes;
       try {
         await req.tenantClient
           .update(table)
@@ -1037,10 +1044,7 @@ router.patch('/routes/:rid/stops/:sid', async (req: any, res) => {
     .update(schema.routeStops)
     .set(patch)
     .where(
-      and(
-        eq(schema.routeStops.id, req.params.sid),
-        eq(schema.routeStops.routeId, req.params.rid),
-      ),
+      and(eq(schema.routeStops.id, req.params.sid), eq(schema.routeStops.routeId, req.params.rid)),
     );
 
   // Al arrancar el stop (status: pending → en_route/arrived) marcamos el
@@ -1050,8 +1054,7 @@ router.patch('/routes/:rid/stops/:sid', async (req: any, res) => {
   const prevStatus = prevStop?.status || 'pending';
   const newStatus = patch.status as string | undefined;
   const startedNow =
-    prevStatus === 'pending' &&
-    (newStatus === 'en_route' || newStatus === 'arrived');
+    prevStatus === 'pending' && (newStatus === 'en_route' || newStatus === 'arrived');
   if (startedNow && prevStop?.shipmentId) {
     try {
       const [ship] = await req.tenantClient
@@ -1152,10 +1155,7 @@ router.delete('/routes/:rid/stops/:sid', async (req: any, res) => {
   await req.tenantClient
     .delete(schema.routeStops)
     .where(
-      and(
-        eq(schema.routeStops.id, req.params.sid),
-        eq(schema.routeStops.routeId, req.params.rid),
-      ),
+      and(eq(schema.routeStops.id, req.params.sid), eq(schema.routeStops.routeId, req.params.rid)),
     );
   res.json({ ok: true });
 });
@@ -1165,7 +1165,10 @@ router.delete('/routes/:rid/stops/:sid', async (req: any, res) => {
 // ─────────────────────────────────────────────────────────────────
 
 router.get('/staging-areas', async (req: any, res) => {
-  const rows = await req.tenantClient.select().from(schema.stagingAreas).orderBy(asc(schema.stagingAreas.name));
+  const rows = await req.tenantClient
+    .select()
+    .from(schema.stagingAreas)
+    .orderBy(asc(schema.stagingAreas.name));
   res.json(rows);
 });
 
@@ -1382,7 +1385,9 @@ router.patch('/staging-areas/:id', async (req: any, res) => {
 });
 
 router.delete('/staging-areas/:id', async (req: any, res) => {
-  await req.tenantClient.delete(schema.stagingAreas).where(eq(schema.stagingAreas.id, req.params.id));
+  await req.tenantClient
+    .delete(schema.stagingAreas)
+    .where(eq(schema.stagingAreas.id, req.params.id));
   res.json({ ok: true });
 });
 
@@ -1471,12 +1476,7 @@ router.get('/my/routes/:id', async (req: any, res) => {
     const [route] = await req.tenantClient
       .select()
       .from(schema.routes)
-      .where(
-        and(
-          eq(schema.routes.id, req.params.id),
-          eq(schema.routes.driverEmployeeId, emp.id),
-        ),
-      );
+      .where(and(eq(schema.routes.id, req.params.id), eq(schema.routes.driverEmployeeId, emp.id)));
     if (!route) return res.status(404).json({ error: 'no encontrado' });
     const stops = await req.tenantClient
       .select()
@@ -1506,11 +1506,17 @@ router.get('/my/routes/:id', async (req: any, res) => {
     if (dnIds.length > 0) {
       const [sdns, pdns] = await Promise.all([
         req.tenantClient
-          .select({ id: schema.salesDeliveryNotes.id, partnerId: schema.salesDeliveryNotes.partnerId })
+          .select({
+            id: schema.salesDeliveryNotes.id,
+            partnerId: schema.salesDeliveryNotes.partnerId,
+          })
           .from(schema.salesDeliveryNotes)
           .where(inArray(schema.salesDeliveryNotes.id, dnIds)),
         req.tenantClient
-          .select({ id: schema.purchaseDeliveryNotes.id, partnerId: schema.purchaseDeliveryNotes.partnerId })
+          .select({
+            id: schema.purchaseDeliveryNotes.id,
+            partnerId: schema.purchaseDeliveryNotes.partnerId,
+          })
           .from(schema.purchaseDeliveryNotes)
           .where(inArray(schema.purchaseDeliveryNotes.id, dnIds)),
       ]);
@@ -1635,9 +1641,7 @@ async function buildStagingPayload(tenantClient: any, tenantId: string, stagingA
     .where(eq(schema.packages.stagingAreaId, stagingAreaId));
 
   // Envíos vinculados a esos paquetes (si los tienen).
-  const shipmentIds = [
-    ...new Set(pkgs.map((p: any) => p.shipmentId).filter(Boolean)),
-  ] as string[];
+  const shipmentIds = [...new Set(pkgs.map((p: any) => p.shipmentId).filter(Boolean))] as string[];
   let shipments: any[] = [];
   if (shipmentIds.length > 0) {
     shipments = await tenantClient
@@ -1744,7 +1748,9 @@ router.post('/staging-areas/:id/scan', async (req: any, res) => {
           .then((r: any[]) => r[0])
       : null;
     const employeeId = employee?.id;
-    const myRoutes = payload.routes.filter((r: any) => r.driverEmployeeId && r.driverEmployeeId === employeeId);
+    const myRoutes = payload.routes.filter(
+      (r: any) => r.driverEmployeeId && r.driverEmployeeId === employeeId,
+    );
     res.json({
       ...payload,
       isAssignedDriver: myRoutes.length > 0,
@@ -1864,10 +1870,7 @@ router.post('/prep/from-sdn/:id', requireScope('write:logistics'), async (req: a
       .select()
       .from(schema.shipments)
       .where(
-        and(
-          eq(schema.shipments.sourceDocType, 'SDN'),
-          eq(schema.shipments.sourceDocId, dnId),
-        ),
+        and(eq(schema.shipments.sourceDocType, 'SDN'), eq(schema.shipments.sourceDocId, dnId)),
       );
     const alive = existing.find(
       (s: any) =>
@@ -2012,7 +2015,12 @@ router.post('/prep/from-sdn/:id', requireScope('write:logistics'), async (req: a
       'shipment.created',
       { sourceDocType: 'SDN', sourceDocId: dnId },
     );
-    await HookManager.trigger('picking.started', { tenantId: req.tenantId, shipmentId, docType: 'SDN', docId: dnId });
+    await HookManager.trigger('picking.started', {
+      tenantId: req.tenantId,
+      shipmentId,
+      docType: 'SDN',
+      docId: dnId,
+    });
 
     res.json({ shipmentId, tasks: taskRows });
   } catch (e: any) {
@@ -2034,14 +2042,10 @@ router.post('/prep/from-pdn/:id', requireScope('write:logistics'), async (req: a
       .select()
       .from(schema.shipments)
       .where(
-        and(
-          eq(schema.shipments.sourceDocType, 'PDN'),
-          eq(schema.shipments.sourceDocId, dnId),
-        ),
+        and(eq(schema.shipments.sourceDocType, 'PDN'), eq(schema.shipments.sourceDocId, dnId)),
       );
     const alive = existing.find(
-      (s: any) =>
-        s.preparationStatus !== 'cancelled' && s.preparationStatus !== 'received',
+      (s: any) => s.preparationStatus !== 'cancelled' && s.preparationStatus !== 'received',
     );
     if (alive) {
       const tasks = await req.tenantClient
@@ -2156,7 +2160,12 @@ router.post('/prep/from-pdn/:id', requireScope('write:logistics'), async (req: a
       'shipment.created',
       { sourceDocType: 'PDN', sourceDocId: dnId },
     );
-    await HookManager.trigger('picking.started', { tenantId: req.tenantId, shipmentId, docType: 'PDN', docId: dnId });
+    await HookManager.trigger('picking.started', {
+      tenantId: req.tenantId,
+      shipmentId,
+      docType: 'PDN',
+      docId: dnId,
+    });
 
     res.json({ shipmentId, tasks: taskRows });
   } catch (e: any) {
@@ -2168,9 +2177,11 @@ router.post('/prep/from-pdn/:id', requireScope('write:logistics'), async (req: a
 router.get('/prep/tasks', requireScope('read:logistics'), async (req: any, res) => {
   try {
     const conditions: any[] = [];
-    if (req.query.shipmentId) conditions.push(eq(schema.pickingTasks.shipmentId, req.query.shipmentId));
+    if (req.query.shipmentId)
+      conditions.push(eq(schema.pickingTasks.shipmentId, req.query.shipmentId));
     if (req.query.status) conditions.push(eq(schema.pickingTasks.status, req.query.status));
-    if (req.query.assignedTo) conditions.push(eq(schema.pickingTasks.assignedUserId, req.query.assignedTo));
+    if (req.query.assignedTo)
+      conditions.push(eq(schema.pickingTasks.assignedUserId, req.query.assignedTo));
     if (req.query.docType && req.query.docId) {
       conditions.push(eq(schema.pickingTasks.docType, req.query.docType));
       conditions.push(eq(schema.pickingTasks.docId, req.query.docId));
@@ -2241,7 +2252,8 @@ router.patch('/prep/tasks/:id', requireScope('write:logistics'), async (req: any
         .select()
         .from(schema.pickingTasks)
         .where(eq(schema.pickingTasks.shipmentId, task.shipmentId));
-      const allDone = all.length > 0 && all.every((t: any) => t.status === 'done' || t.status === 'missing');
+      const allDone =
+        all.length > 0 && all.every((t: any) => t.status === 'done' || t.status === 'missing');
       if (allDone) {
         const [sh] = await req.tenantClient
           .select()
@@ -2291,66 +2303,94 @@ router.patch('/prep/tasks/:id', requireScope('write:logistics'), async (req: any
  * Útil cuando se cambian los lotes/series en el albarán DESPUÉS de iniciar
  * la preparación.
  */
-router.post('/prep/shipments/:id/resync', requireScope('write:logistics'), async (req: any, res) => {
-  try {
-    const [sh] = await req.tenantClient
-      .select()
-      .from(schema.shipments)
-      .where(eq(schema.shipments.id, req.params.id));
-    if (!sh) return res.status(404).json({ error: 'Shipment no encontrado.' });
-    if (!sh.sourceDocType || !sh.sourceDocId)
-      return res.status(400).json({ error: 'El envío no tiene albarán origen.' });
+router.post(
+  '/prep/shipments/:id/resync',
+  requireScope('write:logistics'),
+  async (req: any, res) => {
+    try {
+      const [sh] = await req.tenantClient
+        .select()
+        .from(schema.shipments)
+        .where(eq(schema.shipments.id, req.params.id));
+      if (!sh) return res.status(404).json({ error: 'Shipment no encontrado.' });
+      if (!sh.sourceDocType || !sh.sourceDocId)
+        return res.status(400).json({ error: 'El envío no tiene albarán origen.' });
 
-    // Tareas ya tocadas (conservar).
-    const existingTasks = await req.tenantClient
-      .select()
-      .from(schema.pickingTasks)
-      .where(eq(schema.pickingTasks.shipmentId, sh.id));
-    const preservedTasks = existingTasks.filter(
-      (t: any) => t.status === 'done' || t.status === 'missing' || Number(t.pickedQty) > 0,
-    );
+      // Tareas ya tocadas (conservar).
+      const existingTasks = await req.tenantClient
+        .select()
+        .from(schema.pickingTasks)
+        .where(eq(schema.pickingTasks.shipmentId, sh.id));
+      const preservedTasks = existingTasks.filter(
+        (t: any) => t.status === 'done' || t.status === 'missing' || Number(t.pickedQty) > 0,
+      );
 
-    // Borrar las pending.
-    const deletable = existingTasks
-      .filter((t: any) => !preservedTasks.some((p: any) => p.id === t.id))
-      .map((t: any) => t.id);
-    if (deletable.length) {
-      await req.tenantClient
-        .delete(schema.pickingTasks)
-        .where(inArray(schema.pickingTasks.id, deletable));
-    }
+      // Borrar las pending.
+      const deletable = existingTasks
+        .filter((t: any) => !preservedTasks.some((p: any) => p.id === t.id))
+        .map((t: any) => t.id);
+      if (deletable.length) {
+        await req.tenantClient
+          .delete(schema.pickingTasks)
+          .where(inArray(schema.pickingTasks.id, deletable));
+      }
 
-    // Cargar líneas + batches del albarán actual.
-    const isSdn = sh.sourceDocType === 'SDN';
-    const linesTable = isSdn ? schema.salesDeliveryNoteLines : schema.purchaseDeliveryNoteLines;
-    const linesFk = isSdn ? schema.salesDeliveryNoteLines.deliveryId : schema.purchaseDeliveryNoteLines.deliveryId;
-    const batchesTable = isSdn ? schema.salesDeliveryNoteLineBatches : schema.purchaseDeliveryNoteLineBatches;
-    const batchesFk = isSdn
-      ? schema.salesDeliveryNoteLineBatches.deliveryLineId
-      : schema.purchaseDeliveryNoteLineBatches.deliveryLineId;
+      // Cargar líneas + batches del albarán actual.
+      const isSdn = sh.sourceDocType === 'SDN';
+      const linesTable = isSdn ? schema.salesDeliveryNoteLines : schema.purchaseDeliveryNoteLines;
+      const linesFk = isSdn
+        ? schema.salesDeliveryNoteLines.deliveryId
+        : schema.purchaseDeliveryNoteLines.deliveryId;
+      const batchesTable = isSdn
+        ? schema.salesDeliveryNoteLineBatches
+        : schema.purchaseDeliveryNoteLineBatches;
+      const batchesFk = isSdn
+        ? schema.salesDeliveryNoteLineBatches.deliveryLineId
+        : schema.purchaseDeliveryNoteLineBatches.deliveryLineId;
 
-    const lines = await req.tenantClient.select().from(linesTable).where(eq(linesFk, sh.sourceDocId));
-    const lineIds = lines.map((l: any) => l.id);
-    const batchRows = lineIds.length
-      ? await req.tenantClient.select().from(batchesTable).where(inArray(batchesFk, lineIds))
-      : [];
-    const batchesByLine = new Map<string, any[]>();
-    for (const b of batchRows as any[]) {
-      const arr = batchesByLine.get(b.deliveryLineId) || [];
-      arr.push(b);
-      batchesByLine.set(b.deliveryLineId, arr);
-    }
+      const lines = await req.tenantClient
+        .select()
+        .from(linesTable)
+        .where(eq(linesFk, sh.sourceDocId));
+      const lineIds = lines.map((l: any) => l.id);
+      const batchRows = lineIds.length
+        ? await req.tenantClient.select().from(batchesTable).where(inArray(batchesFk, lineIds))
+        : [];
+      const batchesByLine = new Map<string, any[]>();
+      for (const b of batchRows as any[]) {
+        const arr = batchesByLine.get(b.deliveryLineId) || [];
+        arr.push(b);
+        batchesByLine.set(b.deliveryLineId, arr);
+      }
 
-    // Regenerar tareas pendientes saltando las combinaciones ya preservadas
-    // (mismo docLineId + mismo batchNumber).
-    const preservedKey = (t: any) => `${t.docLineId}::${t.batchNumber || ''}`;
-    const preservedKeys = new Set(preservedTasks.map(preservedKey));
-    const toInsert: any[] = [];
-    for (const l of lines as any[]) {
-      const batches = batchesByLine.get(l.id) || [];
-      if (batches.length > 0) {
-        for (const b of batches) {
-          const k = `${l.id}::${b.batchNum}`;
+      // Regenerar tareas pendientes saltando las combinaciones ya preservadas
+      // (mismo docLineId + mismo batchNumber).
+      const preservedKey = (t: any) => `${t.docLineId}::${t.batchNumber || ''}`;
+      const preservedKeys = new Set(preservedTasks.map(preservedKey));
+      const toInsert: any[] = [];
+      for (const l of lines as any[]) {
+        const batches = batchesByLine.get(l.id) || [];
+        if (batches.length > 0) {
+          for (const b of batches) {
+            const k = `${l.id}::${b.batchNum}`;
+            if (preservedKeys.has(k)) continue;
+            toInsert.push({
+              id: crypto.randomUUID(),
+              docType: sh.sourceDocType,
+              docId: sh.sourceDocId,
+              docLineId: l.id,
+              itemId: l.itemId,
+              warehouseId: l.warehouseId,
+              zoneId: l.zoneId,
+              batchNumber: b.batchNum,
+              requestedQty: Number(b.quantity),
+              pickedQty: 0,
+              status: 'pending',
+              shipmentId: sh.id,
+            });
+          }
+        } else {
+          const k = `${l.id}::`;
           if (preservedKeys.has(k)) continue;
           toInsert.push({
             id: crypto.randomUUID(),
@@ -2360,43 +2400,26 @@ router.post('/prep/shipments/:id/resync', requireScope('write:logistics'), async
             itemId: l.itemId,
             warehouseId: l.warehouseId,
             zoneId: l.zoneId,
-            batchNumber: b.batchNum,
-            requestedQty: Number(b.quantity),
+            requestedQty: Number(l.quantity),
             pickedQty: 0,
             status: 'pending',
             shipmentId: sh.id,
           });
         }
-      } else {
-        const k = `${l.id}::`;
-        if (preservedKeys.has(k)) continue;
-        toInsert.push({
-          id: crypto.randomUUID(),
-          docType: sh.sourceDocType,
-          docId: sh.sourceDocId,
-          docLineId: l.id,
-          itemId: l.itemId,
-          warehouseId: l.warehouseId,
-          zoneId: l.zoneId,
-          requestedQty: Number(l.quantity),
-          pickedQty: 0,
-          status: 'pending',
-          shipmentId: sh.id,
-        });
       }
-    }
-    if (toInsert.length) await req.tenantClient.insert(schema.pickingTasks).values(toInsert);
+      if (toInsert.length) await req.tenantClient.insert(schema.pickingTasks).values(toInsert);
 
-    res.json({
-      ok: true,
-      deleted: deletable.length,
-      added: toInsert.length,
-      preserved: preservedTasks.length,
-    });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
+      res.json({
+        ok: true,
+        deleted: deletable.length,
+        added: toInsert.length,
+        preserved: preservedTasks.length,
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  },
+);
 
 router.post('/prep/tasks/:id/assign', requireScope('write:logistics'), async (req: any, res) => {
   try {
@@ -2447,9 +2470,7 @@ router.post('/shipments/:id/to-staging', requireScope('write:logistics'), async 
         .select()
         .from(schema.pickingTasks)
         .where(eq(schema.pickingTasks.shipmentId, sh.id));
-      const doneTasks = tasks.filter(
-        (t: any) => t.status === 'done' && Number(t.pickedQty) > 0,
-      );
+      const doneTasks = tasks.filter((t: any) => t.status === 'done' && Number(t.pickedQty) > 0);
       if (doneTasks.length === 0) {
         return res.status(400).json({
           error: 'El envío no tiene paquetes ni tareas completadas para materializar.',
@@ -2578,8 +2599,8 @@ router.post('/shipments/:id/dispatch', requireScope('write:logistics'), async (r
             .from(schema.routeStops)
             .where(eq(schema.routeStops.routeId, body.routeId));
           const nextSeq =
-            (existingInTarget.reduce((m: number, s: any) => Math.max(m, s.sequence || 0), 0) ||
-              0) + 1;
+            (existingInTarget.reduce((m: number, s: any) => Math.max(m, s.sequence || 0), 0) || 0) +
+            1;
           await req.tenantClient
             .update(schema.routeStops)
             .set({ routeId: body.routeId, sequence: nextSeq })
@@ -2713,15 +2734,14 @@ router.get('/geocode/suggest', async (req: any, res) => {
           const feats = Array.isArray(data?.features) ? data.features : [];
           const results = feats
             .map((f: any) => {
-              const coords = f.center || (f.geometry?.type === 'Point' ? f.geometry.coordinates : null);
+              const coords =
+                f.center || (f.geometry?.type === 'Point' ? f.geometry.coordinates : null);
               if (!coords || coords.length < 2) return null;
               const ctx: any[] = Array.isArray(f.context) ? f.context : [];
-              const city = ctx.find((x: any) =>
-                (x.id || '').startsWith('place') || (x.id || '').startsWith('locality'),
+              const city = ctx.find(
+                (x: any) => (x.id || '').startsWith('place') || (x.id || '').startsWith('locality'),
               )?.text;
-              const postcode = ctx.find((x: any) =>
-                (x.id || '').startsWith('postal_code'),
-              )?.text;
+              const postcode = ctx.find((x: any) => (x.id || '').startsWith('postal_code'))?.text;
               const types: string[] = Array.isArray(f.place_type) ? f.place_type : [];
               return {
                 label: f.place_name || f.text || '',
@@ -2841,10 +2861,7 @@ router.get('/shipments/:id/track', requireScope('read:logistics'), async (req: a
         .where(eq(schema.shipmentPositions.shipmentId, sh.id))
         .orderBy(desc(schema.shipmentPositions.reportedAt))
         .limit(100),
-      req.tenantClient
-        .select()
-        .from(schema.packages)
-        .where(eq(schema.packages.shipmentId, sh.id)),
+      req.tenantClient.select().from(schema.packages).where(eq(schema.packages.shipmentId, sh.id)),
       req.tenantClient
         .select()
         .from(schema.pickingTasks)
@@ -2934,8 +2951,7 @@ publicTrackRouter.get('/track/:token', async (req: any, res) => {
     };
     const a = s.preparationStatus || s.status;
     const b = s.status || s.preparationStatus;
-    const mostAdvanced =
-      (STAGE_RANK[a || ''] ?? -1) >= (STAGE_RANK[b || ''] ?? -1) ? a : b;
+    const mostAdvanced = (STAGE_RANK[a || ''] ?? -1) >= (STAGE_RANK[b || ''] ?? -1) ? a : b;
 
     res.json({
       status: mostAdvanced || s.status,

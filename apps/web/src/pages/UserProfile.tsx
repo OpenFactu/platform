@@ -175,8 +175,8 @@ export const UserProfile: React.FC = () => {
           <PenLine size={14} /> Firma para PDFs
         </h2>
         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-          Rellena tu nombre y cargo. Opcionalmente sube una imagen de tu firma (PNG o JPG, máx. 5 MB).
-          Si rellenas estos campos, prevalecen sobre la firma de la empresa en tus PDFs.
+          Rellena tu nombre y cargo. Opcionalmente sube una imagen de tu firma (PNG o JPG, máx. 5
+          MB). Si rellenas estos campos, prevalecen sobre la firma de la empresa en tus PDFs.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
@@ -200,16 +200,16 @@ export const UserProfile: React.FC = () => {
           <div className="flex items-center gap-3 flex-wrap">
             {profile?.signatureImageUrl && signaturePreview && (
               <div className="p-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900">
-                <img
-                  src={signaturePreview}
-                  alt="Firma actual"
-                  className="h-14 object-contain"
-                />
+                <img src={signaturePreview} alt="Firma actual" className="h-14 object-contain" />
               </div>
             )}
             <label className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-sm font-bold cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
               <Upload size={14} />
-              {uploading ? 'Subiendo…' : profile?.signatureImageUrl ? 'Reemplazar' : 'Subir PNG/JPG'}
+              {uploading
+                ? 'Subiendo…'
+                : profile?.signatureImageUrl
+                  ? 'Reemplazar'
+                  : 'Subir PNG/JPG'}
               <input
                 type="file"
                 accept="image/png,image/jpeg"

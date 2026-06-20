@@ -17,7 +17,9 @@ export const ReportStockRotation: React.FC = () => {
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [user?.tenantId]);
+  useEffect(() => {
+    load(); /* eslint-disable-next-line */
+  }, [user?.tenantId]);
 
   const columns = useMemo(
     () => [
@@ -25,7 +27,11 @@ export const ReportStockRotation: React.FC = () => {
       { key: 'name', label: 'Artículo' },
       { key: 'stock', label: 'Stock', format: (v: any) => String(v) },
       { key: 'sold', label: 'Vendido (período)', format: (v: any) => String(v) },
-      { key: 'daysOfStock', label: 'Días de stock', format: (v: any) => (v == null ? 'Sin ventas' : String(v)) },
+      {
+        key: 'daysOfStock',
+        label: 'Días de stock',
+        format: (v: any) => (v == null ? 'Sin ventas' : String(v)),
+      },
     ],
     [fmt],
   );

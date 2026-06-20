@@ -32,7 +32,10 @@ export class HookManager {
    */
   public static unregisterPlugin(pluginId: string) {
     for (const [event, entries] of this.hooks) {
-      this.hooks.set(event, entries.filter((e) => e.pluginId !== pluginId));
+      this.hooks.set(
+        event,
+        entries.filter((e) => e.pluginId !== pluginId),
+      );
     }
     console.log(`[HookManager] Hooks de ${pluginId} eliminados`);
   }

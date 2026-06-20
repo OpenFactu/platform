@@ -71,7 +71,9 @@ router.patch('/:id', requireAdmin, async (req: any, res) => {
     await db
       .update(schema.userModules)
       .set(patch)
-      .where(and(eq(schema.userModules.id, req.params.id), eq(schema.userModules.tenantId, tenantId)));
+      .where(
+        and(eq(schema.userModules.id, req.params.id), eq(schema.userModules.tenantId, tenantId)),
+      );
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -83,7 +85,9 @@ router.delete('/:id', requireAdmin, async (req: any, res) => {
     const { db, tenantId } = await ensureTenant(req);
     await db
       .delete(schema.userModules)
-      .where(and(eq(schema.userModules.id, req.params.id), eq(schema.userModules.tenantId, tenantId)));
+      .where(
+        and(eq(schema.userModules.id, req.params.id), eq(schema.userModules.tenantId, tenantId)),
+      );
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

@@ -45,7 +45,11 @@ export const TraceabilityButton: React.FC<Props> = ({ type, id, docCode, iconOnl
   }
 
   return (
-    <Button variant="secondary" onClick={open} className="flex items-center gap-2 whitespace-nowrap">
+    <Button
+      variant="secondary"
+      onClick={open}
+      className="flex items-center gap-2 whitespace-nowrap"
+    >
       <Network size={16} />
       Trazabilidad
     </Button>

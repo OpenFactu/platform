@@ -50,7 +50,16 @@ function renderShell(opts: {
   body: string;
   ctaLabel?: string;
 }): string {
-  const { code, trackUrl, accent, emoji, hero, sub, body, ctaLabel = 'Ver seguimiento en vivo' } = opts;
+  const {
+    code,
+    trackUrl,
+    accent,
+    emoji,
+    hero,
+    sub,
+    body,
+    ctaLabel = 'Ver seguimiento en vivo',
+  } = opts;
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width"/>
 <title>${escapeHtml(hero)}</title></head>
@@ -305,8 +314,15 @@ const COPY: Record<
 };
 
 function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) =>
-    (({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }) as Record<string, string>)[c] as string,
+  return s.replace(
+    /[&<>"']/g,
+    (c) =>
+      (
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }) as Record<
+          string,
+          string
+        >
+      )[c] as string,
   );
 }
 
@@ -315,10 +331,7 @@ function escapeHtml(s: string): string {
  *   1. `shipment.recipientEmail` (modo standalone — rellenado al alta).
  *   2. Partner de la SDN/PDN vinculada.
  */
-async function resolveRecipientEmail(
-  client: any,
-  shipment: any,
-): Promise<string | null> {
+async function resolveRecipientEmail(client: any, shipment: any): Promise<string | null> {
   // 1) Campo directo del shipment.
   if (shipment.recipientEmail?.trim()) return shipment.recipientEmail.trim();
 
@@ -358,7 +371,10 @@ async function resolveRecipientEmail(
  * Resuelve la prueba de entrega (PoD) del envío: busca en `routeStops`
  * alguna parada ENTREGADA con este `shipmentId` y extrae firma/foto.
  */
-async function resolveDeliveryProof(client: any, shipmentId: string): Promise<{
+async function resolveDeliveryProof(
+  client: any,
+  shipmentId: string,
+): Promise<{
   recipientName: string | null;
   recipientDocument: string | null;
   signatureImage: string | null;
@@ -429,7 +445,12 @@ export async function notifyShipmentStageChange(
     const copy = COPY[stage];
 
     // Sólo en `delivered` intentamos adjuntar firma+foto.
-    const attachments: Array<{ filename: string; content: Buffer; contentType?: string; cid?: string }> = [];
+    const attachments: Array<{
+      filename: string;
+      content: Buffer;
+      contentType?: string;
+      cid?: string;
+    }> = [];
     let photoCid: string | undefined;
     let signatureCid: string | undefined;
     let recipientName: string | null = null;

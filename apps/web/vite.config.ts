@@ -21,8 +21,7 @@ export default defineConfig({
       manifest: {
         name: 'Keirost ERP',
         short_name: 'Keirost',
-        description:
-          'Gestión logística, facturación y contabilidad — ERP en tu bolsillo.',
+        description: 'Gestión logística, facturación y contabilidad — ERP en tu bolsillo.',
         theme_color: '#0D9488',
         background_color: '#FAFBFC',
         display: 'standalone',

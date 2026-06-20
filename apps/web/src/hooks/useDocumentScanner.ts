@@ -26,8 +26,9 @@ export function useDocumentScanner(doc: any, enabled = true): void {
 
       const items = doc?.masters?.items || [];
       // Busca por barcode primero (exact), luego por código interno
-      const item = items.find((i: any) => (i.barcode || '') === trimmed)
-        || items.find((i: any) => (i.code || '') === trimmed);
+      const item =
+        items.find((i: any) => (i.barcode || '') === trimmed) ||
+        items.find((i: any) => (i.code || '') === trimmed);
 
       if (!item) {
         toast.error(`Artículo no encontrado: ${trimmed}`);

@@ -1,5 +1,9 @@
 import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import Map, { NavigationControl, type MapRef, type MapLayerMouseEvent } from 'react-map-gl/maplibre';
+import Map, {
+  NavigationControl,
+  type MapRef,
+  type MapLayerMouseEvent,
+} from 'react-map-gl/maplibre';
 
 /**
  * Wrapper común sobre <Map> de react-map-gl/maplibre.
@@ -146,9 +150,7 @@ export const BaseMap = forwardRef<BaseMapHandle, BaseMapProps>(function BaseMap(
             onClick={() => setMode('map')}
             className={
               'px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md transition-colors ' +
-              (mode === 'map'
-                ? 'bg-slate-900 text-white'
-                : 'text-slate-600 hover:bg-slate-100')
+              (mode === 'map' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100')
             }
             title="Mapa"
           >

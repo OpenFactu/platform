@@ -146,14 +146,8 @@ export const JournalEntries: React.FC = () => {
   const updateLine = (i: number, patch: Partial<Line>) =>
     setLines(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
-  const totalDebit = useMemo(
-    () => lines.reduce((s, l) => s + Number(l.debit || 0), 0),
-    [lines],
-  );
-  const totalCredit = useMemo(
-    () => lines.reduce((s, l) => s + Number(l.credit || 0), 0),
-    [lines],
-  );
+  const totalDebit = useMemo(() => lines.reduce((s, l) => s + Number(l.debit || 0), 0), [lines]);
+  const totalCredit = useMemo(() => lines.reduce((s, l) => s + Number(l.credit || 0), 0), [lines]);
   const balanced = Math.abs(totalDebit - totalCredit) < 0.01;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,7 +161,9 @@ export const JournalEntries: React.FC = () => {
       return;
     }
     if (!balanced) {
-      toast.error(`Asiento descuadrado: debe ${totalDebit.toFixed(2)} ≠ haber ${totalCredit.toFixed(2)}`);
+      toast.error(
+        `Asiento descuadrado: debe ${totalDebit.toFixed(2)} ≠ haber ${totalCredit.toFixed(2)}`,
+      );
       return;
     }
     setSubmitting(true);
@@ -246,7 +242,8 @@ export const JournalEntries: React.FC = () => {
   const columns: TableColumn<Entry>[] = [
     {
       header: 'Nº',
-      cell: (r: Entry) => (r.status === 'draft' ? <span className="text-slate-400">—</span> : <b>{r.number}</b>),
+      cell: (r: Entry) =>
+        r.status === 'draft' ? <span className="text-slate-400">—</span> : <b>{r.number}</b>,
     },
     { header: 'Fecha', cell: (r: Entry) => new Date(r.date).toLocaleDateString() },
     { header: 'Concepto', accessor: 'description' },
@@ -412,9 +409,7 @@ export const JournalEntries: React.FC = () => {
                           step="0.01"
                           min="0"
                           value={l.debit || ''}
-                          onChange={(e) =>
-                            updateLine(i, { debit: e.target.value, credit: 0 })
-                          }
+                          onChange={(e) => updateLine(i, { debit: e.target.value, credit: 0 })}
                           disabled={isReadOnly}
                           className="w-28 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-right disabled:opacity-60"
                         />
@@ -425,9 +420,7 @@ export const JournalEntries: React.FC = () => {
                           step="0.01"
                           min="0"
                           value={l.credit || ''}
-                          onChange={(e) =>
-                            updateLine(i, { credit: e.target.value, debit: 0 })
-                          }
+                          onChange={(e) => updateLine(i, { credit: e.target.value, debit: 0 })}
                           disabled={isReadOnly}
                           className="w-28 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-right disabled:opacity-60"
                         />

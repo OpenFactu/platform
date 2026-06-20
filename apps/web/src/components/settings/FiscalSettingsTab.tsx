@@ -110,7 +110,9 @@ export const FiscalSettingsTab: React.FC = () => {
               />
             </div>
             <div>
-              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">SWIFT / BIC</label>
+              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">
+                SWIFT / BIC
+              </label>
               <Input
                 value={bank.company_bank_swift}
                 onChange={(e) =>
@@ -190,8 +192,8 @@ export const FiscalSettingsTab: React.FC = () => {
             </label>
           </div>
           <p className="text-[11px] text-ink-400 dark:text-ink-500">
-            El nombre y cargo aparecen bajo la línea de firma en la factura emitida. Si añades
-            una URL de imagen (rúbrica escaneada), se imprime encima.
+            El nombre y cargo aparecen bajo la línea de firma en la factura emitida. Si añades una
+            URL de imagen (rúbrica escaneada), se imprime encima.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -205,9 +207,7 @@ export const FiscalSettingsTab: React.FC = () => {
               />
             </div>
             <div>
-              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">
-                Cargo
-              </label>
+              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">Cargo</label>
               <Input
                 value={bank.signature_role}
                 onChange={(e) => setBank({ ...bank, signature_role: e.target.value })}
@@ -274,11 +274,7 @@ export const FiscalSettingsTab: React.FC = () => {
                   <span className="text-[10px] text-ink-400 font-mono uppercase tracking-wider">
                     Vista previa
                   </span>
-                  <img
-                    src={bank.signature_image_url}
-                    alt="Firma"
-                    className="h-12 object-contain"
-                  />
+                  <img src={bank.signature_image_url} alt="Firma" className="h-12 object-contain" />
                 </div>
               )}
             </div>
@@ -375,7 +371,11 @@ export const FiscalSettingsTab: React.FC = () => {
                   </span>
                 );
               }
-              return col.type === 'boolean' ? (row[col.key] ? '✓' : '') : String(row[col.key] ?? '');
+              return col.type === 'boolean'
+                ? row[col.key]
+                  ? '✓'
+                  : ''
+                : String(row[col.key] ?? '');
             }}
           />
         </div>

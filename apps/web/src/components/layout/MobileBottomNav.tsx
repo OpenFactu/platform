@@ -47,9 +47,7 @@ export const MobileBottomNav: React.FC = () => {
         onClick={() => handleSlot(s)}
         className={cn(
           'flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors',
-          isActive
-            ? 'text-accent'
-            : 'text-ink-500 dark:text-ink-400 hover:text-accent',
+          isActive ? 'text-accent' : 'text-ink-500 dark:text-ink-400 hover:text-accent',
         )}
         aria-label={s.label}
       >

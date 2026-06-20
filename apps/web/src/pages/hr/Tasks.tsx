@@ -188,8 +188,8 @@ export const Tasks: React.FC = () => {
             </select>
           </div>
           <div className="text-xs text-ink-500 dark:text-ink-400 whitespace-nowrap pb-2">
-            <span className="font-bold text-ink-900 dark:text-slate-100">{rows.length}</span>{' '}
-            tarea{rows.length === 1 ? '' : 's'}
+            <span className="font-bold text-ink-900 dark:text-slate-100">{rows.length}</span> tarea
+            {rows.length === 1 ? '' : 's'}
           </div>
         </div>
       </Card>
@@ -206,9 +206,7 @@ export const Tasks: React.FC = () => {
               onDrop={() => onDrop(col.key)}
               className={cn(
                 'rounded-xs border bg-white dark:bg-ink-900 flex flex-col min-h-[300px]',
-                isDropTarget
-                  ? 'border-accent/50'
-                  : 'border-line dark:border-ink-700',
+                isDropTarget ? 'border-accent/50' : 'border-line dark:border-ink-700',
               )}
             >
               <div className="flex items-center gap-2 px-3 py-2 border-b border-line dark:border-ink-700">
@@ -222,9 +220,7 @@ export const Tasks: React.FC = () => {
               </div>
               <div className="flex-1 p-2 space-y-2">
                 {items.length === 0 ? (
-                  <p className="text-[11px] text-ink-400 dark:text-ink-500 text-center py-6">
-                    —
-                  </p>
+                  <p className="text-[11px] text-ink-400 dark:text-ink-500 text-center py-6">—</p>
                 ) : (
                   items.map((t) => {
                     const emp = employees.find((e) => e.id === t.assigneeId);
@@ -449,7 +445,12 @@ export const Tasks: React.FC = () => {
                 />
               </div>
               <div className="flex justify-end gap-2 pt-3 border-t border-line dark:border-ink-700">
-                <Button type="button" variant="secondary" size="sm" onClick={() => setEditing(null)}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setEditing(null)}
+                >
                   Cancelar
                 </Button>
                 <Button type="submit" size="sm">

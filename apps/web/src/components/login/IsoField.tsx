@@ -75,26 +75,27 @@ export const IsoField: React.FC = () => {
       return { x, y };
     };
 
-    const COLORS: Record<Cube['hue'], { top: string; left: string; right: string; edge: string }> = {
-      teal: {
-        top: 'rgba(45,184,176,0.55)',
-        left: 'rgba(10,110,99,0.65)',
-        right: 'rgba(13,148,136,0.75)',
-        edge: 'rgba(94,234,212,0.85)',
-      },
-      blue: {
-        top: 'rgba(96,165,250,0.45)',
-        left: 'rgba(30,64,175,0.6)',
-        right: 'rgba(59,130,246,0.7)',
-        edge: 'rgba(147,197,253,0.75)',
-      },
-      violet: {
-        top: 'rgba(167,139,250,0.4)',
-        left: 'rgba(91,33,182,0.55)',
-        right: 'rgba(139,92,246,0.65)',
-        edge: 'rgba(196,181,253,0.7)',
-      },
-    };
+    const COLORS: Record<Cube['hue'], { top: string; left: string; right: string; edge: string }> =
+      {
+        teal: {
+          top: 'rgba(45,184,176,0.55)',
+          left: 'rgba(10,110,99,0.65)',
+          right: 'rgba(13,148,136,0.75)',
+          edge: 'rgba(94,234,212,0.85)',
+        },
+        blue: {
+          top: 'rgba(96,165,250,0.45)',
+          left: 'rgba(30,64,175,0.6)',
+          right: 'rgba(59,130,246,0.7)',
+          edge: 'rgba(147,197,253,0.75)',
+        },
+        violet: {
+          top: 'rgba(167,139,250,0.4)',
+          left: 'rgba(91,33,182,0.55)',
+          right: 'rgba(139,92,246,0.65)',
+          edge: 'rgba(196,181,253,0.7)',
+        },
+      };
 
     const drawCube = (cx: number, cy: number, h: number, alpha: number, hue: Cube['hue']) => {
       const half = tileW / 2;

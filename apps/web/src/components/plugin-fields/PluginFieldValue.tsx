@@ -29,7 +29,11 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
 
     case 'ENUM': {
       const opt = (def.options ?? []).find((o) => o.value === value);
-      return <span className="text-xs text-slate-700 dark:text-slate-200">{opt?.label ?? String(value)}</span>;
+      return (
+        <span className="text-xs text-slate-700 dark:text-slate-200">
+          {opt?.label ?? String(value)}
+        </span>
+      );
     }
 
     case 'MULTISELECT': {
@@ -73,7 +77,10 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
 
     case 'PHONE':
       return (
-        <a href={`tel:${String(value).replace(/\s/g, '')}`} className="text-xs text-slate-700 dark:text-slate-200">
+        <a
+          href={`tel:${String(value).replace(/\s/g, '')}`}
+          className="text-xs text-slate-700 dark:text-slate-200"
+        >
           {String(value)}
         </a>
       );
