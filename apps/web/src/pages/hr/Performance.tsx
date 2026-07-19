@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, useToast } from '@openfactu/ui';
 import { useAuth } from '../../context/AuthContext';
 import { TrendingUp, Download } from 'lucide-react';
+import { exportToXlsx } from '../../utils/exportXlsx';
 
 interface Row {
   employeeId: string;
@@ -75,40 +76,32 @@ export const Performance: React.FC = () => {
   const avgCompliance =
     rows.length > 0 ? rows.reduce((s, r) => s + r.compliancePct, 0) / rows.length : 0;
 
-  const exportCsv = () => {
-    const header = [
-      'Código',
-      'Nombre',
-      'h.Contratadas',
-      'h.Planificadas',
-      'h.Fichadas',
-      'h.Extra',
-      '% Cumplimiento',
-      'Días absentismo',
-    ].join(';');
-    const lines = rows.map((r) =>
-      [
-        r.code,
-        r.name,
-        r.hoursContracted,
-        r.hoursPlanned,
-        r.hoursClocked,
-        r.hoursOvertime,
-        r.compliancePct,
-        r.absenceDays,
-      ]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-        .join(';'),
-    );
-    const csv = '﻿' + header + '\n' + lines.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `rendimiento_${filters.from}_${filters.to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportExcel = () =>
+    exportToXlsx({
+      filename: `rendimiento_${filters.from}_${filters.to}`,
+      sheetName: 'Rendimiento',
+      title: `Rendimiento · ${filters.from} a ${filters.to}`,
+      columns: [
+        { key: 'code', label: 'Código', width: 10 },
+        { key: 'name', label: 'Nombre', width: 28 },
+        { key: 'hoursContracted', label: 'h. Contratadas', type: 'number' },
+        { key: 'hoursPlanned', label: 'h. Planificadas', type: 'number' },
+        { key: 'hoursClocked', label: 'h. Fichadas', type: 'number' },
+        { key: 'hoursOvertime', label: 'h. Extra', type: 'number' },
+        { key: 'compliancePct', label: '% Cumplimiento', type: 'percent' },
+        { key: 'absenceDays', label: 'Días absentismo', type: 'integer' },
+      ],
+      rows,
+      totals: {
+        code: 'TOTAL',
+        hoursContracted: totals.contracted,
+        hoursPlanned: totals.planned,
+        hoursClocked: totals.clocked,
+        hoursOvertime: totals.overtime,
+        compliancePct: avgCompliance,
+        absenceDays: totals.absence,
+      },
+    });
 
   return (
     <div className="p-4 w-full space-y-5">
@@ -122,8 +115,8 @@ export const Performance: React.FC = () => {
             horas extra, mapa de incidencias.
           </p>
         </div>
-        <Button size="sm" variant="secondary" onClick={exportCsv}>
-          <Download size={14} /> Exportar CSV
+        <Button size="sm" variant="secondary" onClick={exportExcel}>
+          <Download size={14} /> Exportar Excel
         </Button>
       </div>
 

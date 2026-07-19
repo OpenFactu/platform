@@ -11,6 +11,7 @@ import {
 } from '@openfactu/pdf';
 import { PdfPayloadBuilder } from './PdfPayloadBuilder';
 import { registerCanvasHelpers } from '../../api/documentTemplates';
+import { runTemplateQueries, type TemplateQuery } from './templateQueries';
 import { getConfigSection } from '../config/systemConfigSection';
 import { FLAGS_DEFAULTS } from '../config/appConfig';
 
@@ -46,6 +47,7 @@ export async function renderDocumentPdf(
   templateId: string | undefined,
   tenantClient: any,
   res: Response,
+  tenantId?: string | null,
 ): Promise<void> {
   // 1. Resolver la plantilla
   let template: any = null;
@@ -75,6 +77,28 @@ export async function renderDocumentPdf(
 
   // 2. Construir payload
   const payload = await PdfPayloadBuilder.build(docType, documentId, tenantClient);
+
+  // 2.b Ejecutar las consultas SQL guardadas en la plantilla (canvasLayout.queries)
+  // e inyectar sus filas como `queries.<name>`, igual que hacen el preview del
+  // diseñador y render-free. Solo admins pueden guardar queries, así que
+  // ejecutarlas aquí no amplía permisos. Un fallo de query no aborta el PDF.
+  const layoutQueries: TemplateQuery[] = ((template.canvasLayout as any)?.queries ??
+    []) as TemplateQuery[];
+  if (layoutQueries.length > 0) {
+    const queryResults = await runTemplateQueries(tenantClient, layoutQueries, {
+      docId: (payload as any)?.doc?.id ?? documentId,
+      partnerId: (payload as any)?.partner?.id ?? null,
+      companyId: (payload as any)?.company?.id ?? null,
+      tenantId: tenantId ?? null,
+    });
+    (payload as any).queries = queryResults.byName;
+    if (queryResults.errors.length > 0) {
+      console.warn(
+        `[renderDocumentPdf] ${docType} ${documentId} queries con errores:`,
+        JSON.stringify(queryResults.errors),
+      );
+    }
+  }
 
   // 3. Extraer opciones del meta del HTML
   const meta = extractMetaFromHtml(template.html);

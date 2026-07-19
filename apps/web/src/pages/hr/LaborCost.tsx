@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@openfactu/ui';
 import { useAuth } from '../../context/AuthContext';
 import { PiggyBank, Download } from 'lucide-react';
+import { exportToXlsx } from '../../utils/exportXlsx';
 
 interface Row {
   key: string;
@@ -46,22 +47,27 @@ export const LaborCost: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.tenantId, filters.from, filters.to, filters.groupBy]);
 
-  const exportCsv = () => {
-    const header = ['Grupo', 'Bruto', 'SS Empresa', 'Total', 'Nº nóminas'].join(';');
-    const lines = rows.map((r) =>
-      [r.label, r.gross.toFixed(2), r.ssEr.toFixed(2), r.total.toFixed(2), r.count]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-        .join(';'),
-    );
-    const csv = '﻿' + header + '\n' + lines.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `coste_laboral_${filters.from}_${filters.to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportExcel = () =>
+    exportToXlsx({
+      filename: `coste_laboral_${filters.from}_${filters.to}`,
+      sheetName: 'Coste laboral',
+      title: `Coste laboral · ${filters.from} a ${filters.to}`,
+      columns: [
+        { key: 'label', label: 'Grupo', width: 32 },
+        { key: 'gross', label: 'Bruto', type: 'currency' },
+        { key: 'ssEr', label: 'SS Empresa', type: 'currency' },
+        { key: 'total', label: 'Total', type: 'currency' },
+        { key: 'count', label: 'Nº nóminas', type: 'integer' },
+      ],
+      rows,
+      totals: {
+        label: 'TOTAL',
+        gross: totals.gross,
+        ssEr: totals.ssEr,
+        total: totals.total,
+        count: rows.reduce((s, r) => s + r.count, 0),
+      },
+    });
 
   const fmt = (n: number) =>
     n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -78,8 +84,8 @@ export const LaborCost: React.FC = () => {
             y sus líneas en el rango.
           </p>
         </div>
-        <Button size="sm" variant="secondary" onClick={exportCsv}>
-          <Download size={14} /> Exportar CSV
+        <Button size="sm" variant="secondary" onClick={exportExcel}>
+          <Download size={14} /> Exportar Excel
         </Button>
       </div>
 

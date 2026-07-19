@@ -18,6 +18,7 @@ router.get('/orders/:id/pdf', async (req: any, res) => {
       req.query.templateId as string | undefined,
       req.tenantClient,
       res,
+      req.tenantId,
     );
   } catch (error: any) {
     console.error('[PurchaseOrder PDF] Error:', error);

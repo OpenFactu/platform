@@ -157,6 +157,7 @@ router.get('/:id/pdf', async (req: any, res) => {
       req.query.templateId as string | undefined,
       req.tenantClient,
       res,
+      req.tenantId,
     );
   } catch (error: any) {
     console.error('[PurchaseDeliveryNote PDF] Error:', error);
