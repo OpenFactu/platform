@@ -416,8 +416,16 @@ router.get('/load/:pluginId/*', async (req, res) => {
   const ext = path.extname(fullPath).toLowerCase();
 
   try {
+    // Nunca cachear — es código transpilado en caliente y puede cambiar en
+    // cualquier reload/hot-reload. Evita que un caché HTTP o un service
+    // worker (activo también en dev, ver vite.config.ts) sirva una versión vieja.
+    res.setHeader('Cache-Control', 'no-store, must-revalidate');
+
     if (ext === '.tsx' || ext === '.ts' || ext === '.jsx') {
-      const transpiledCode = await transpilePluginFile(fullPath);
+      const transpiledCode = await transpilePluginFile(
+        fullPath,
+        `${req.protocol}://${req.get('host')}`,
+      );
       res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
       return res.send(transpiledCode);
     }
@@ -445,6 +453,7 @@ router.get('/sdk/*', (req, res) => {
     '@openfactu/ui': 'window.OpenFactuUI',
     'react-router-dom': 'window.ReactRouterDOM',
     '@openfactu/common': 'window.OpenFactuCommon',
+    '@openfactu/widget-api': 'window.OpenFactuWidgetAPI',
   };
 
   const globalVar = pkgMap[pkg];
@@ -464,6 +473,7 @@ router.get('/sdk/*', (req, res) => {
       'Button, Card, Table, Badge, Input, NavItem, Loader, Toast, ToastProvider, useToast',
     'react-router-dom': 'Link, useNavigate, useParams, useLocation, NavLink, Outlet',
     '@openfactu/common': 'useDocument, useDataTable',
+    '@openfactu/widget-api': 'get',
   };
 
   const namedExports = namedExportsMap[pkg] || '';
@@ -478,6 +488,7 @@ ${namedExports ? `export const { ${namedExports} } = _pkg;` : ''}
 `;
 
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store, must-revalidate');
   res.send(esmCode);
 });
 

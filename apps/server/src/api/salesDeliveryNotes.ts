@@ -19,6 +19,7 @@ router.get('/', async (req: any, res) => {
         id: schema.salesDeliveryNotes.id,
         docNum: schema.salesDeliveryNotes.docNum,
         seriesPrefix: schema.documentSeries.prefix,
+        numberingMode: schema.documentSeries.numberingMode,
         periodCode: schema.accountingPeriods.code,
         date: schema.salesDeliveryNotes.date,
         partnerId: schema.salesDeliveryNotes.partnerId,
@@ -81,6 +82,7 @@ router.get('/:id', async (req: any, res) => {
       .select({
         header: schema.salesDeliveryNotes,
         seriesPrefix: schema.documentSeries.prefix,
+        numberingMode: schema.documentSeries.numberingMode,
         periodCode: schema.accountingPeriods.code,
         orderDocNum: schema.salesOrders.docNum,
         orderPrefix: sql`(SELECT "prefix" FROM "DocumentSeries" WHERE id = ${schema.salesOrders.seriesId})`,
@@ -124,6 +126,7 @@ router.get('/:id', async (req: any, res) => {
     res.json({
       ...header.header,
       seriesPrefix: header.seriesPrefix,
+      numberingMode: header.numberingMode,
       periodCode: header.periodCode,
       orderDocNum: header.orderDocNum,
       orderPrefix: header.orderPrefix,
@@ -159,17 +162,46 @@ router.post('/', async (req: any, res) => {
     const flags = await getConfigSection(req.tenantClient, 'flags', FLAGS_DEFAULTS);
 
     const result = await req.tenantClient.transaction(async (tx: any) => {
-      // 1. Numeración
+      // 1. Numeración (automática o manual según la serie)
       const [series] = await tx
         .select()
         .from(schema.documentSeries)
         .where(eq(schema.documentSeries.id, seriesId));
       if (!series) throw new Error('Serie no encontrada');
-      const docNum = series.nextNumber;
-      await tx
-        .update(schema.documentSeries)
-        .set({ nextNumber: docNum + 1 })
-        .where(eq(schema.documentSeries.id, seriesId));
+
+      const isManualSeries = series.numberingMode === 'MANUAL';
+      let docNum: number;
+      if (isManualSeries) {
+        const rawDocNum = req.body.docNum;
+        docNum = Number(rawDocNum);
+        if (
+          rawDocNum == null ||
+          rawDocNum === '' ||
+          !Number.isInteger(docNum) ||
+          docNum <= 0
+        ) {
+          throw new Error(
+            'Debes indicar un número de documento válido (entero positivo) para una serie manual.',
+          );
+        }
+        const [dup] = await tx
+          .select({ id: schema.salesDeliveryNotes.id })
+          .from(schema.salesDeliveryNotes)
+          .where(
+            and(
+              eq(schema.salesDeliveryNotes.seriesId, seriesId),
+              eq(schema.salesDeliveryNotes.docNum, docNum),
+            ),
+          )
+          .limit(1);
+        if (dup) throw new Error(`Ya existe un documento con el número ${docNum} en esta serie.`);
+      } else {
+        docNum = series.nextNumber;
+        await tx
+          .update(schema.documentSeries)
+          .set({ nextNumber: docNum + 1 })
+          .where(eq(schema.documentSeries.id, seriesId));
+      }
 
       const deliveryId = crypto.randomUUID();
       let calculatedSubtotal = 0;
@@ -338,6 +370,22 @@ router.post('/', async (req: any, res) => {
               .update(schema.itemBatches)
               .set({ quantity: sql`${schema.itemBatches.quantity} - ${Number(bd.quantity)}` })
               .where(eq(schema.itemBatches.id, existingBatch.id));
+
+            if (targetWarehouse) {
+              await tx
+                .update(schema.itemBatchStocks)
+                .set({
+                  quantity: sql`${schema.itemBatchStocks.quantity} - ${Number(bd.quantity)}`,
+                  updatedAt: new Date(),
+                })
+                .where(
+                  and(
+                    eq(schema.itemBatchStocks.itemId, line.itemId),
+                    eq(schema.itemBatchStocks.batchNum, bd.batchNum),
+                    eq(schema.itemBatchStocks.warehouseId, targetWarehouse),
+                  ),
+                );
+            }
           }
         } else if (itemInfo.manageBy !== 'N') {
           // Sin lotes manuales: auto-asignar FIFO si el flag está activo
@@ -345,14 +393,42 @@ router.post('/', async (req: any, res) => {
             throw new Error(`El artículo ${itemInfo.name} requiere selección de lote/serie.`);
           }
 
-          // Buscar lotes disponibles ordenados por caducidad (más próximos primero, nulls al final)
-          const availableBatches = await tx
-            .select()
-            .from(schema.itemBatches)
-            .where(
-              sql`${schema.itemBatches.itemId} = ${line.itemId} AND ${schema.itemBatches.quantity} > 0`,
-            )
-            .orderBy(sql`${schema.itemBatches.expiryDate} ASC NULLS LAST`);
+          // Buscar lotes disponibles ordenados por caducidad (más próximos primero, nulls al final).
+          // Si conocemos el almacén de origen, restringimos a lotes que REALMENTE tengan stock
+          // ahí (itemBatchStocks) — antes se buscaba por cantidad GLOBAL, pudiendo asignar un
+          // lote físicamente en otro almacén. Sin almacén conocido, caemos al comportamiento
+          // anterior (búsqueda global) para no romper flujos sin almacén configurado.
+          const availableBatches = targetWarehouse
+            ? await tx
+                .select({
+                  id: schema.itemBatches.id,
+                  batchNum: schema.itemBatches.batchNum,
+                  expiryDate: schema.itemBatches.expiryDate,
+                  quantity: schema.itemBatchStocks.quantity,
+                })
+                .from(schema.itemBatchStocks)
+                .innerJoin(
+                  schema.itemBatches,
+                  and(
+                    eq(schema.itemBatchStocks.itemId, schema.itemBatches.itemId),
+                    eq(schema.itemBatchStocks.batchNum, schema.itemBatches.batchNum),
+                  ),
+                )
+                .where(
+                  and(
+                    eq(schema.itemBatchStocks.itemId, line.itemId),
+                    eq(schema.itemBatchStocks.warehouseId, targetWarehouse),
+                    sql`${schema.itemBatchStocks.quantity} > 0`,
+                  ),
+                )
+                .orderBy(sql`${schema.itemBatches.expiryDate} ASC NULLS LAST`)
+            : await tx
+                .select()
+                .from(schema.itemBatches)
+                .where(
+                  sql`${schema.itemBatches.itemId} = ${line.itemId} AND ${schema.itemBatches.quantity} > 0`,
+                )
+                .orderBy(sql`${schema.itemBatches.expiryDate} ASC NULLS LAST`);
 
           let remaining = Number(line.quantity);
           for (const batch of availableBatches) {
@@ -371,6 +447,22 @@ router.post('/', async (req: any, res) => {
               .update(schema.itemBatches)
               .set({ quantity: sql`${schema.itemBatches.quantity} - ${take}` })
               .where(eq(schema.itemBatches.id, batch.id));
+
+            if (targetWarehouse) {
+              await tx
+                .update(schema.itemBatchStocks)
+                .set({
+                  quantity: sql`${schema.itemBatchStocks.quantity} - ${take}`,
+                  updatedAt: new Date(),
+                })
+                .where(
+                  and(
+                    eq(schema.itemBatchStocks.itemId, line.itemId),
+                    eq(schema.itemBatchStocks.batchNum, batch.batchNum),
+                    eq(schema.itemBatchStocks.warehouseId, targetWarehouse),
+                  ),
+                );
+            }
 
             remaining -= take;
           }
@@ -542,6 +634,21 @@ router.post('/:id/cancel', async (req: any, res) => {
             .where(
               sql`${schema.itemBatches.itemId} = ${line.itemId} AND ${schema.itemBatches.batchNum} = ${bd.batchNum}`,
             );
+          if (line.warehouseId) {
+            await tx
+              .update(schema.itemBatchStocks)
+              .set({
+                quantity: sql`${schema.itemBatchStocks.quantity} + ${Number(bd.quantity)}`,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(schema.itemBatchStocks.itemId, line.itemId),
+                  eq(schema.itemBatchStocks.batchNum, bd.batchNum),
+                  eq(schema.itemBatchStocks.warehouseId, line.warehouseId),
+                ),
+              );
+          }
         }
 
         // D. Revertir la cantidad entregada del pedido origen

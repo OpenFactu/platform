@@ -15,10 +15,21 @@
 import { Router } from 'express';
 import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '../db/schema';
+import { DocType } from '@openfactu/common';
+
+// Constantes para los códigos cortos de tipo de documento (valores en runtime)
+const DOC_TYPE = {
+  SO: 'SO' as DocType,
+  PO: 'PO' as DocType,
+  SDN: 'SDN' as DocType,
+  PDN: 'PDN' as DocType,
+  SINV: 'SINV' as DocType,
+  PINV: 'PINV' as DocType,
+} as const;
 
 const router = Router();
 
-type DocType = 'SO' | 'PO' | 'SDN' | 'PDN' | 'SINV' | 'PINV';
+
 
 interface DocRef {
   type: DocType;
@@ -32,17 +43,17 @@ interface DocRef {
 
 function headerTableFor(type: DocType) {
   switch (type) {
-    case 'SO':
+    case DOC_TYPE.SO:
       return schema.salesOrders;
-    case 'PO':
+    case DOC_TYPE.PO:
       return schema.purchaseOrders;
-    case 'SDN':
+    case DOC_TYPE.SDN:
       return schema.salesDeliveryNotes;
-    case 'PDN':
+    case DOC_TYPE.PDN:
       return schema.purchaseDeliveryNotes;
-    case 'SINV':
+    case DOC_TYPE.SINV:
       return schema.salesInvoices;
-    case 'PINV':
+    case DOC_TYPE.PINV:
       return schema.purchaseInvoices;
   }
 }
@@ -82,28 +93,28 @@ async function hydrate(tenantClient: any, type: DocType, ids: string[]): Promise
 }
 
 async function parentsOf(tenantClient: any, type: DocType, id: string): Promise<DocRef[]> {
-  if (type === 'SO' || type === 'PO') return [];
+  if (type === DOC_TYPE.SO || type === DOC_TYPE.PO) return [];
 
-  if (type === 'SDN') {
+  if (type === DOC_TYPE.SDN) {
     const [h] = await tenantClient
       .select()
       .from(schema.salesDeliveryNotes)
       .where(eq(schema.salesDeliveryNotes.id, id));
-    return h?.orderId ? hydrate(tenantClient, 'SO', [h.orderId]) : [];
+    return h?.orderId ? hydrate(tenantClient, DOC_TYPE.SO, [h.orderId]) : [];
   }
-  if (type === 'PDN') {
+  if (type === DOC_TYPE.PDN) {
     const [h] = await tenantClient
       .select()
       .from(schema.purchaseDeliveryNotes)
       .where(eq(schema.purchaseDeliveryNotes.id, id));
-    return h?.orderId ? hydrate(tenantClient, 'PO', [h.orderId]) : [];
+    return h?.orderId ? hydrate(tenantClient, DOC_TYPE.PO, [h.orderId]) : [];
   }
 
   // SINV / PINV → padres vía `line.baseType + baseId`.
   // La UI guarda `baseId = <pdn/sdn id de CABECERA>` (ver PurchaseInvoices.tsx
   // y SalesDeliveryNotes copy flow). Pero en datos antiguos pudo guardarse
   // como id de LÍNEA del albarán — probamos ambos.
-  const lineTable = type === 'SINV' ? schema.salesInvoiceLines : schema.purchaseInvoiceLines;
+  const lineTable = type === DOC_TYPE.SINV ? schema.salesInvoiceLines : schema.purchaseInvoiceLines;
   const lines = await tenantClient
     .select()
     .from(lineTable)
@@ -120,15 +131,15 @@ async function parentsOf(tenantClient: any, type: DocType, id: string): Promise<
   const parents: DocRef[] = [];
   for (const [btype, baseIds] of byType.entries()) {
     const dnHeaderTable =
-      btype === 'SDN'
+      btype === DOC_TYPE.SDN
         ? schema.salesDeliveryNotes
-        : btype === 'PDN'
+        : btype === DOC_TYPE.PDN
           ? schema.purchaseDeliveryNotes
           : null;
     const dnLineTable =
-      btype === 'SDN'
+      btype === DOC_TYPE.SDN
         ? schema.salesDeliveryNoteLines
-        : btype === 'PDN'
+        : btype === DOC_TYPE.PDN
           ? schema.purchaseDeliveryNoteLines
           : null;
     if (!dnHeaderTable || !dnLineTable) continue;
@@ -154,29 +165,29 @@ async function parentsOf(tenantClient: any, type: DocType, id: string): Promise<
 }
 
 async function childrenOf(tenantClient: any, type: DocType, id: string): Promise<DocRef[]> {
-  if (type === 'SO') {
+  if (type === DOC_TYPE.SO) {
     const dns = await tenantClient
       .select({ id: schema.salesDeliveryNotes.id })
       .from(schema.salesDeliveryNotes)
       .where(eq(schema.salesDeliveryNotes.orderId, id));
     return hydrate(
       tenantClient,
-      'SDN',
+      DOC_TYPE.SDN,
       dns.map((d: any) => d.id),
     );
   }
-  if (type === 'PO') {
+  if (type === DOC_TYPE.PO) {
     const dns = await tenantClient
       .select({ id: schema.purchaseDeliveryNotes.id })
       .from(schema.purchaseDeliveryNotes)
       .where(eq(schema.purchaseDeliveryNotes.orderId, id));
     return hydrate(
       tenantClient,
-      'PDN',
+      DOC_TYPE.PDN,
       dns.map((d: any) => d.id),
     );
   }
-  if (type === 'SDN') {
+  if (type === DOC_TYPE.SDN) {
     // Las líneas de SalesInvoice tienen `baseType='SDN'` + `baseId` apuntando
     // al ID de la CABECERA del albarán (así lo guarda la UI al generar factura
     // desde albarán). También admitimos el fallback histórico en que `baseId`
@@ -185,7 +196,7 @@ async function childrenOf(tenantClient: any, type: DocType, id: string): Promise
       .select({ invoiceId: schema.salesInvoiceLines.invoiceId })
       .from(schema.salesInvoiceLines)
       .where(
-        and(eq(schema.salesInvoiceLines.baseType, 'SDN'), eq(schema.salesInvoiceLines.baseId, id)),
+        and(eq(schema.salesInvoiceLines.baseType, DOC_TYPE.SDN), eq(schema.salesInvoiceLines.baseId, id)),
       );
     let invoiceIds = byHeader.map((l: any) => l.invoiceId);
     if (invoiceIds.length === 0) {
@@ -201,22 +212,22 @@ async function childrenOf(tenantClient: any, type: DocType, id: string): Promise
           .from(schema.salesInvoiceLines)
           .where(
             and(
-              eq(schema.salesInvoiceLines.baseType, 'SDN'),
+              eq(schema.salesInvoiceLines.baseType, DOC_TYPE.SDN),
               inArray(schema.salesInvoiceLines.baseId, ids),
             ),
           );
         invoiceIds = byLine.map((l: any) => l.invoiceId);
       }
     }
-    return hydrate(tenantClient, 'SINV', invoiceIds);
+    return hydrate(tenantClient, DOC_TYPE.SINV, invoiceIds);
   }
-  if (type === 'PDN') {
+  if (type === DocType.PurchaseDeliveryNote) {
     const byHeader = await tenantClient
       .select({ invoiceId: schema.purchaseInvoiceLines.invoiceId })
       .from(schema.purchaseInvoiceLines)
       .where(
         and(
-          eq(schema.purchaseInvoiceLines.baseType, 'PDN'),
+          eq(schema.purchaseInvoiceLines.baseType, DocType.PurchaseDeliveryNote),
           eq(schema.purchaseInvoiceLines.baseId, id),
         ),
       );
@@ -233,14 +244,14 @@ async function childrenOf(tenantClient: any, type: DocType, id: string): Promise
           .from(schema.purchaseInvoiceLines)
           .where(
             and(
-              eq(schema.purchaseInvoiceLines.baseType, 'PDN'),
+              eq(schema.purchaseInvoiceLines.baseType, DocType.PurchaseDeliveryNote),
               inArray(schema.purchaseInvoiceLines.baseId, ids),
             ),
           );
         invoiceIds = byLine.map((l: any) => l.invoiceId);
       }
     }
-    return hydrate(tenantClient, 'PINV', invoiceIds);
+    return hydrate(tenantClient, DocType.PurchaseInvoice, invoiceIds);
   }
   return [];
 }
@@ -250,7 +261,7 @@ async function childrenOf(tenantClient: any, type: DocType, id: string): Promise
  */
 router.get('/', async (req: any, res) => {
   try {
-    const type = (req.query.type as DocType) || ('SINV' as DocType);
+    const type = (req.query.type as DocType) || (DOC_TYPE.SINV as DocType);
     const id = req.query.id as string;
     if (!id) return res.status(400).json({ error: 'id obligatorio' });
 
@@ -261,7 +272,7 @@ router.get('/', async (req: any, res) => {
 
     // Asientos contables vinculados (solo para facturas).
     let journalEntries: Array<{ id: string; number: number; date: string; status: string }> = [];
-    if (type === 'SINV' || type === 'PINV') {
+    if (type === DocType.SalesInvoice || type === DocType.PurchaseInvoice) {
       journalEntries = await req.tenantClient
         .select({
           id: schema.journalEntries.id,
@@ -274,7 +285,7 @@ router.get('/', async (req: any, res) => {
           and(
             eq(
               schema.journalEntries.source,
-              type === 'SINV' ? 'sales_invoice' : 'purchase_invoice',
+              type === DocType.SalesInvoice ? 'sales_invoice' : 'purchase_invoice',
             ),
             eq(schema.journalEntries.sourceDocumentId, id),
           ),
@@ -284,7 +295,7 @@ router.get('/', async (req: any, res) => {
     // Pagos vinculados (solo facturas).
     let payments: Array<{ id: string; date: string; amount: number; reference: string | null }> =
       [];
-    if (type === 'SINV') {
+    if (type === DocType.SalesInvoice) {
       const ps = await req.tenantClient
         .select()
         .from(schema.payments)
@@ -295,7 +306,7 @@ router.get('/', async (req: any, res) => {
         amount: Number(p.amount),
         reference: p.reference,
       }));
-    } else if (type === 'PINV') {
+    } else if (type === DocType.PurchaseInvoice) {
       const ps = await req.tenantClient
         .select()
         .from(schema.payments)

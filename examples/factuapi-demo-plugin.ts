@@ -1,5 +1,9 @@
+import { tool } from 'ai';
+import { z } from 'zod';
+import { ne } from 'drizzle-orm';
 import { PluginContext } from '../apps/server/src/plugins/types';
 import { FactuApiTransaction } from '../apps/server/src/core/plugins/FactuApi';
+import type { ChatToolContext } from '../apps/server/src/core/ai/tools';
 import * as schema from '../apps/server/src/db/schema';
 
 // ════════════════════════════════════════════════════════════════
@@ -10,9 +14,10 @@ import * as schema from '../apps/server/src/db/schema';
 //    3. Consultas a la BD del tenant
 //    4. Hooks de documentos
 //    5. Rutas REST personalizadas
+//    6. Tool de chat de IA ("skill") registrada por el plugin
 // ════════════════════════════════════════════════════════════════
 
-export const init = async ({ app, hooks, documents, factuApi }: PluginContext) => {
+export const init = async ({ app, hooks, documents, factuApi, aiTools }: PluginContext) => {
   console.log('[FactuAPI Demo] Inicializando...');
 
   // ─────────────────────────────────────────────────────────────
@@ -309,6 +314,29 @@ export const init = async ({ app, hooks, documents, factuApi }: PluginContext) =
       });
     }
   });
+
+  // ─────────────────────────────────────────────────────────────
+  //  EJEMPLO 7: Tool de chat de IA ("skill") — sin tocar el core.
+  //  aiTools.register(name, factory) recibe una FACTORY porque el
+  //  ChatToolContext (tenant/usuario) cambia en cada mensaje del chat —
+  //  igual que las tools del propio core (ver tools/index.ts).
+  // ─────────────────────────────────────────────────────────────
+
+  aiTools.register('demo_open_sales_invoices_count', (ctx: ChatToolContext) =>
+    tool({
+      description:
+        'Ejemplo de plugin: cuenta cuántas facturas de venta pendientes de cobro tiene el tenant.',
+      inputSchema: z.object({}),
+      execute: async () => {
+        const api = factuApi.connect(ctx.tenantId, ctx.tenantClient, ctx.user);
+        const rows = await ctx.tenantClient
+          .select({ id: schema.salesInvoices.id })
+          .from(schema.salesInvoices)
+          .where(ne(schema.salesInvoices.paymentStatus, 'paid'));
+        return { count: rows.length, tenantId: api.tenantId };
+      },
+    }),
+  );
 
   console.log('[FactuAPI Demo] Rutas registradas:');
   console.log('  GET  /api/plugins/demo/tenant-info');

@@ -17,6 +17,7 @@ router.get('/', async (req: any, res) => {
         id: schema.purchaseDeliveryNotes.id,
         docNum: schema.purchaseDeliveryNotes.docNum,
         seriesPrefix: schema.documentSeries.prefix,
+        numberingMode: schema.documentSeries.numberingMode,
         periodCode: schema.accountingPeriods.code,
         date: schema.purchaseDeliveryNotes.date,
         partnerId: schema.purchaseDeliveryNotes.partnerId,
@@ -85,6 +86,7 @@ router.get('/:id', async (req: any, res) => {
       .select({
         header: schema.purchaseDeliveryNotes,
         seriesPrefix: schema.documentSeries.prefix,
+        numberingMode: schema.documentSeries.numberingMode,
         periodCode: schema.accountingPeriods.code,
         orderDocNum: schema.purchaseOrders.docNum,
         orderPrefix: sql`(SELECT "prefix" FROM "DocumentSeries" WHERE id = ${schema.purchaseOrders.seriesId})`,
@@ -110,6 +112,7 @@ router.get('/:id', async (req: any, res) => {
     const headerData = {
       ...header.header,
       seriesPrefix: header.seriesPrefix,
+      numberingMode: header.numberingMode,
       periodCode: header.periodCode,
       orderDocNum: header.orderDocNum,
       orderPrefix: header.orderPrefix,
@@ -168,17 +171,46 @@ router.post('/', async (req: any, res) => {
 
   try {
     const result = await req.tenantClient.transaction(async (tx: any) => {
-      // 1. Numeración
+      // 1. Numeración (automática o manual según la serie)
       const [series] = await tx
         .select()
         .from(schema.documentSeries)
         .where(eq(schema.documentSeries.id, seriesId));
       if (!series) throw new Error('Serie no encontrada');
-      const docNum = series.nextNumber;
-      await tx
-        .update(schema.documentSeries)
-        .set({ nextNumber: docNum + 1 })
-        .where(eq(schema.documentSeries.id, seriesId));
+
+      const isManualSeries = series.numberingMode === 'MANUAL';
+      let docNum: number;
+      if (isManualSeries) {
+        const rawDocNum = req.body.docNum;
+        docNum = Number(rawDocNum);
+        if (
+          rawDocNum == null ||
+          rawDocNum === '' ||
+          !Number.isInteger(docNum) ||
+          docNum <= 0
+        ) {
+          throw new Error(
+            'Debes indicar un número de documento válido (entero positivo) para una serie manual.',
+          );
+        }
+        const [dup] = await tx
+          .select({ id: schema.purchaseDeliveryNotes.id })
+          .from(schema.purchaseDeliveryNotes)
+          .where(
+            and(
+              eq(schema.purchaseDeliveryNotes.seriesId, seriesId),
+              eq(schema.purchaseDeliveryNotes.docNum, docNum),
+            ),
+          )
+          .limit(1);
+        if (dup) throw new Error(`Ya existe un documento con el número ${docNum} en esta serie.`);
+      } else {
+        docNum = series.nextNumber;
+        await tx
+          .update(schema.documentSeries)
+          .set({ nextNumber: docNum + 1 })
+          .where(eq(schema.documentSeries.id, seriesId));
+      }
 
       const deliveryId = crypto.randomUUID();
       let calculatedSubtotal = 0;
@@ -431,6 +463,43 @@ router.post('/', async (req: any, res) => {
                 expiryDate: bd.expiryDate ? new Date(bd.expiryDate) : null,
               });
             }
+
+            // D.2 Incrementar stock del lote POR ALMACÉN (trazabilidad).
+            if (targetWarehouse) {
+              const [existingBatchStock] = await tx
+                .select()
+                .from(schema.itemBatchStocks)
+                .where(
+                  and(
+                    eq(schema.itemBatchStocks.itemId, line.itemId),
+                    eq(schema.itemBatchStocks.batchNum, bd.batchNum),
+                    eq(schema.itemBatchStocks.warehouseId, targetWarehouse),
+                  ),
+                );
+              if (existingBatchStock) {
+                await tx
+                  .update(schema.itemBatchStocks)
+                  .set({
+                    quantity: sql`${schema.itemBatchStocks.quantity} + ${Number(bd.quantity)}`,
+                    updatedAt: new Date(),
+                  })
+                  .where(
+                    and(
+                      eq(schema.itemBatchStocks.itemId, line.itemId),
+                      eq(schema.itemBatchStocks.batchNum, bd.batchNum),
+                      eq(schema.itemBatchStocks.warehouseId, targetWarehouse),
+                    ),
+                  );
+              } else {
+                await tx.insert(schema.itemBatchStocks).values({
+                  itemId: line.itemId,
+                  batchNum: bd.batchNum,
+                  warehouseId: targetWarehouse,
+                  quantity: Number(bd.quantity),
+                  updatedAt: new Date(),
+                });
+              }
+            }
           }
         }
 
@@ -587,6 +656,21 @@ async function cancelPurchaseDeliveryNote(req: any, res: any) {
             .where(
               sql`${schema.itemBatches.itemId} = ${line.itemId} AND ${schema.itemBatches.batchNum} = ${bd.batchNum}`,
             );
+          if (line.warehouseId) {
+            await tx
+              .update(schema.itemBatchStocks)
+              .set({
+                quantity: sql`${schema.itemBatchStocks.quantity} - ${Number(bd.quantity)}`,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(schema.itemBatchStocks.itemId, line.itemId),
+                  eq(schema.itemBatchStocks.batchNum, bd.batchNum),
+                  eq(schema.itemBatchStocks.warehouseId, line.warehouseId),
+                ),
+              );
+          }
         }
 
         // D. Revertir Pedido (si existe)

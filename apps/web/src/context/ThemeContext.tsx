@@ -28,6 +28,8 @@ export interface FlagsConfig {
   allowNegativeStock: boolean;
   autoConfirmBatches: boolean;
   watermarkDraft: boolean;
+  /** Añade la marca de agua "PAGADA" a los PDFs de facturas ya cobradas. */
+  watermarkPaid: boolean;
   confirmBeforeCancel: boolean;
   enforceWarehouseZones: boolean;
   /** 'header' = un almacén único en la cabecera; 'line' = almacén + ubicación por línea. */
@@ -62,6 +64,7 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   allowNegativeStock: false,
   autoConfirmBatches: false,
   watermarkDraft: true,
+  watermarkPaid: false,
   confirmBeforeCancel: true,
   enforceWarehouseZones: false,
   warehouseLocation: 'header',

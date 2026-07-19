@@ -335,6 +335,24 @@ html.dark .k-aurora--global > span {
   animation: k-shimmer 8s linear infinite;
 }
 
+/* Halo respirando alrededor del lanzador flotante de IA — "brilli brilli". */
+@keyframes k-ai-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgb(var(--color-accent-rgb) / 0.45),
+      0 0 18px 4px rgb(var(--color-accent-rgb) / 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgb(var(--color-accent-rgb) / 0),
+      0 0 30px 10px rgb(var(--color-accent-rgb) / 0.55);
+  }
+}
+.k-ai-glow {
+  animation: k-ai-glow 2.6s ease-in-out infinite;
+}
+
 @layer base {
   body {
     background: var(--bg-app);
@@ -366,8 +384,8 @@ html.dark {
 }
 
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 7px;
+  height: 7px;
 }
 
 *::-webkit-scrollbar-track {
@@ -377,7 +395,7 @@ html.dark {
 *::-webkit-scrollbar-thumb {
   background: rgb(var(--color-primary-rgb) / 0.55);
   border-radius: 10px;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   background-clip: padding-box;
   transition: background-color 0.2s ease;
   min-height: 40px;
@@ -386,13 +404,13 @@ html.dark {
 *::-webkit-scrollbar-thumb:hover {
   background: rgb(var(--color-primary-rgb) / 0.85);
   background-clip: padding-box;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
 }
 
 *::-webkit-scrollbar-thumb:active {
   background: rgb(var(--color-primary-rgb));
   background-clip: padding-box;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
 }
 
 *::-webkit-scrollbar-corner {
@@ -402,13 +420,13 @@ html.dark {
 html.dark *::-webkit-scrollbar-thumb {
   background: rgb(var(--color-primary-rgb) / 0.7);
   background-clip: padding-box;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
 }
 
 html.dark *::-webkit-scrollbar-thumb:hover {
   background: rgb(var(--color-primary-rgb));
   background-clip: padding-box;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
 }
 
 /* Clase utility para contenedores específicos: scrollbar fina con color de marca */

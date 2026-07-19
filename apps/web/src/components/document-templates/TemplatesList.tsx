@@ -1,8 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Badge, Loader, useToast } from '@openfactu/ui';
-import { FileCode, Plus, Trash2, Copy, Star, AlertCircle, RefreshCw, FileDown } from 'lucide-react';
+import {
+  FileCode,
+  Plus,
+  Trash2,
+  Copy,
+  Star,
+  AlertCircle,
+  RefreshCw,
+  FileDown,
+  Pencil,
+  Sparkles,
+} from 'lucide-react';
 import { DOC_TYPE_LABELS, DOC_TYPE_COLORS, type DocType, type TemplateRow } from './constants';
 import { useAuth } from '../../context/AuthContext';
+import { ContextMenu } from '../common/ContextMenu';
+import { withRowContextMenu } from '../common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 
 interface Props {
   data: TemplateRow[];
@@ -13,6 +27,8 @@ interface Props {
   onDuplicate: (t: TemplateRow) => Promise<void>;
   onDelete: (t: TemplateRow) => Promise<void>;
   onGenerate?: (t: TemplateRow) => void;
+  /** Abre el generador de plantillas con IA (solo se pasa si el usuario es admin). */
+  onAiGenerate?: () => void;
   onReload?: () => void;
 }
 
@@ -27,6 +43,7 @@ export const TemplatesList: React.FC<Props> = ({
   onDuplicate,
   onDelete,
   onGenerate,
+  onAiGenerate,
   onReload,
 }) => {
   const { token, user } = useAuth();
@@ -162,6 +179,38 @@ export const TemplatesList: React.FC<Props> = ({
     },
   ];
 
+  const ctxMenu = useContextMenu<TemplateRow>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (item: TemplateRow) => [
+    { label: 'Editar', icon: <Pencil size={14} />, onClick: () => onEdit(item) },
+    ...(onGenerate && (item.docType === 'FREE' || item.docType === 'LABEL')
+      ? [
+          {
+            label: 'Generar documento',
+            icon: <FileDown size={14} />,
+            onClick: () => onGenerate(item),
+          },
+        ]
+      : []),
+    ...(!item.isDefault
+      ? [
+          {
+            label: 'Marcar como default',
+            icon: <Star size={14} />,
+            onClick: () => onSetDefault(item),
+          },
+        ]
+      : []),
+    { label: 'Duplicar', icon: <Copy size={14} />, onClick: () => onDuplicate(item) },
+    {
+      label: 'Borrar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      onClick: () => onDelete(item),
+      separatorBefore: true,
+    },
+  ];
+
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-line dark:border-ink-700 pb-6">
@@ -188,10 +237,17 @@ export const TemplatesList: React.FC<Props> = ({
             <RefreshCw size={16} className={resyncing ? 'animate-spin' : ''} />
             {resyncing ? 'Regenerando…' : 'Regenerar estándares'}
           </Button>
-          <Button
-            onClick={onCreate}
-            className="flex items-center gap-2 shadow-lg shadow-accent/10 h-12 px-6"
-          >
+          {onAiGenerate && (
+            <Button
+              onClick={onAiGenerate}
+              variant="outline"
+              className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
+              title="Describe la plantilla en lenguaje natural y la IA la genera"
+            >
+              <Sparkles size={16} /> Generar con IA
+            </Button>
+          )}
+          <Button onClick={onCreate} className="flex items-center gap-2 h-12 px-6">
             <Plus size={18} /> Nueva Plantilla
           </Button>
         </div>
@@ -268,10 +324,18 @@ export const TemplatesList: React.FC<Props> = ({
                 <AlertCircle size={14} /> Sin plantillas para este tipo
               </div>
             ) : (
-              <Table columns={columns} data={rows} onRowClick={onEdit} />
+              <Table columns={ctxColumns} data={rows} onRowClick={onEdit} />
             )}
           </Card>
         </div>
+      )}
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
       )}
     </div>
   );

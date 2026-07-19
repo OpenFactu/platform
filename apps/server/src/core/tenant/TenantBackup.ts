@@ -101,25 +101,28 @@ function dockerAvailable(): boolean {
 function findPostgresContainer(): string | null {
   if (process.env.OPENFACTU_PG_CONTAINER) return process.env.OPENFACTU_PG_CONTAINER;
   try {
-    // Buscar un container running cuya imagen empiece por "postgres".
-    const r = spawnSync(
-      'docker',
-      ['ps', '--filter', 'ancestor=postgres', '--format', '{{.Names}}'],
-      { encoding: 'utf8' },
-    );
-    const first = r.stdout
-      ?.split('\n')
+    // Buscar por imagen: `{{.Image}} {{.Names}}` para cada container running.
+    // (El filtro `ancestor=postgres` no matchea imágenes tageadas como
+    //  `postgres:15-alpine`, así que inspeccionamos la imagen manualmente.)
+    const r = spawnSync('docker', ['ps', '--format', '{{.Image}}\t{{.Names}}'], {
+      encoding: 'utf8',
+    });
+    const rows = (r.stdout || '')
+      .split('\n')
       .map((s) => s.trim())
-      .filter(Boolean)[0];
-    if (first) return first;
-    // Fallback a nombres comunes.
-    const r2 = spawnSync('docker', ['ps', '--format', '{{.Names}}'], { encoding: 'utf8' });
-    const names =
-      r2.stdout
-        ?.split('\n')
-        .map((s) => s.trim())
-        .filter(Boolean) || [];
-    return names.find((n) => /(^|-)db(-\d+)?$/.test(n) || n.includes('postgres')) || null;
+      .filter(Boolean)
+      .map((line) => {
+        const [image, name] = line.split('\t');
+        return { image: image || '', name: name || '' };
+      });
+    // 1) Cualquier container cuya imagen sea postgres (con o sin tag/registry).
+    const byImage = rows.find((row) => /(^|\/)postgres(:|$)/.test(row.image));
+    if (byImage) return byImage.name;
+    // 2) Fallback por nombre común (…-db-1, contiene "postgres").
+    const byName = rows.find(
+      (row) => /(^|-)db(-\d+)?$/.test(row.name) || row.name.includes('postgres'),
+    );
+    return byName?.name || null;
   } catch {
     return null;
   }

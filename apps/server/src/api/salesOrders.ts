@@ -33,6 +33,7 @@ router.get('/', async (req: any, res) => {
         id: schema.salesOrders.id,
         docNum: schema.salesOrders.docNum,
         seriesPrefix: schema.documentSeries.prefix,
+        numberingMode: schema.documentSeries.numberingMode,
         periodCode: schema.accountingPeriods.code,
         date: schema.salesOrders.date,
         partnerId: schema.salesOrders.partnerId,
@@ -98,6 +99,7 @@ router.get('/:id', async (req: any, res) => {
       .select({
         header: schema.salesOrders,
         seriesPrefix: schema.documentSeries.prefix,
+        numberingMode: schema.documentSeries.numberingMode,
         periodCode: schema.accountingPeriods.code,
       })
       .from(schema.salesOrders)
@@ -118,6 +120,7 @@ router.get('/:id', async (req: any, res) => {
     res.json({
       ...order.header,
       seriesPrefix: order.seriesPrefix,
+      numberingMode: order.numberingMode,
       periodCode: order.periodCode,
       lines,
     });

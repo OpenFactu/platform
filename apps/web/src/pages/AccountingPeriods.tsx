@@ -3,6 +3,9 @@ import { Table, Card, Button, Input, Loader, useToast, Badge, usePopup } from '@
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Calendar, Plus, Trash2, Lock, AlertTriangle } from 'lucide-react';
+import { ContextMenu } from '../components/common/ContextMenu';
+import { withRowContextMenu } from '../components/common/withRowContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
 
 export const AccountingPeriods: React.FC = () => {
   const { token, user } = useAuth();
@@ -200,6 +203,21 @@ export const AccountingPeriods: React.FC = () => {
     },
   ];
 
+  const ctxMenu = useContextMenu<any>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (c: any) => [
+    ...(c.status === 'O' && canWrite
+      ? [{ label: 'Cerrar período', icon: <Lock size={14} />, onClick: () => openClosePreview(c.id) }]
+      : []),
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      disabled: !canDelete,
+      onClick: () => handleDelete(c.id),
+    },
+  ];
+
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
       <div>
@@ -258,8 +276,16 @@ export const AccountingPeriods: React.FC = () => {
       </Card>
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={periods} isLoading={loading} />
+        <Table columns={ctxColumns} data={periods} isLoading={loading} />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };

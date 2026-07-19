@@ -528,7 +528,12 @@ function textBoxStyle(el: { style?: ElementStyle }): string {
   const justify = a === 'center' ? 'center' : a === 'right' ? 'flex-end' : 'flex-start';
   const fs = el.style?.fontSize ? '' : 'font-size:10pt;';
   const pad = el.style?.padding != null ? '' : 'padding:2px;';
-  return `display:flex;align-items:center;justify-content:${justify};${fs}${pad}${styleToCss(el.style)}`;
+  // `white-space:pre-wrap` + `overflow-wrap:break-word` replican las clases
+  // Tailwind `whitespace-pre-wrap break-words` que usa el preview del canvas
+  // (ElementPreview). Sin esto, los espacios múltiples que el usuario ve tal
+  // cual en el editor/canvas se colapsan a uno solo en el PDF (comportamiento
+  // HTML por defecto), rompiendo el WYSIWYG que este helper dice garantizar.
+  return `display:flex;align-items:center;justify-content:${justify};white-space:pre-wrap;overflow-wrap:break-word;${fs}${pad}${styleToCss(el.style)}`;
 }
 
 function buildPageCss(layout: CanvasLayout): string {
@@ -560,7 +565,14 @@ body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "S
  * Emite el comentario OPENFACTU-META que consume el PdfRenderer del paquete
  * @openfactu/pdf. Solo incluimos las claves que realmente usamos desde el
  * diseñador; el resto hereda de DEFAULT_VISUAL_OPTIONS por merge en el
- * servidor. Si no hay config relevante, se omite.
+ * servidor.
+ *
+ * `showDocQr`/`showDocBarcode` se emiten SIEMPRE explícitamente (a diferencia
+ * del resto de claves, que se omiten si no hay override): `DEFAULT_VISUAL_OPTIONS`
+ * las trae activadas por defecto, y ese default es para plantillas legacy, no
+ * para el diseñador canvas. Sin este override explícito a `false`, cualquier
+ * plantilla del diseñador que no las active heredaría igualmente el pie de
+ * QR/código de barras/hash sin que el usuario lo haya pedido.
  */
 function buildMetaComment(layout: CanvasLayout): string {
   const footerOverrides: Record<string, unknown> = {};
@@ -570,11 +582,14 @@ function buildMetaComment(layout: CanvasLayout): string {
       footerOverrides.alignment = layout.pageNumbers.alignment;
     }
   }
-  if (Object.keys(footerOverrides).length === 0) return '';
+  const meta: Record<string, unknown> = {
+    showDocQr: layout.showDocQr === true,
+    showDocBarcode: layout.showDocBarcode === true,
+  };
+  if (Object.keys(footerOverrides).length > 0) meta.footer = footerOverrides;
   // Solo incluimos `pageSize` en el meta si es uno de los formatos estándar
   // que entiende el PdfRenderer (A4/Letter). Para tiquets, etiquetas y Custom
   // confiamos en el @page CSS emitido por buildPageCss + preferCSSPageSize.
-  const meta: Record<string, unknown> = { footer: footerOverrides };
   if (layout.pageSize === 'A4' || layout.pageSize === 'Letter') {
     meta.pageSize = layout.pageSize;
   }

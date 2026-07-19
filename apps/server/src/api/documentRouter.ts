@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { eq, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { DocumentEngine } from '../core/documents/DocumentEngine';
 import {
@@ -45,6 +45,7 @@ async function buildListQuery(config: DocumentTypeConfig, tenantClient: any) {
     id: config.schemaTable.id,
     docNum: config.schemaTable.docNum,
     seriesPrefix: schema.documentSeries.prefix,
+    numberingMode: schema.documentSeries.numberingMode,
     periodCode: schema.accountingPeriods.code,
     date: config.schemaTable.date,
     partnerId: config.schemaTable.partnerId,
@@ -86,6 +87,7 @@ async function getDocumentWithLines(
     .select({
       header: config.schemaTable,
       seriesPrefix: schema.documentSeries.prefix,
+      numberingMode: schema.documentSeries.numberingMode,
       periodCode: schema.accountingPeriods.code,
     })
     .from(config.schemaTable)
@@ -131,6 +133,7 @@ async function getDocumentWithLines(
   let result = {
     ...header.header,
     seriesPrefix: header.seriesPrefix,
+    numberingMode: header.numberingMode,
     periodCode: header.periodCode,
     lines: linesWithBatches,
   };
@@ -172,6 +175,7 @@ async function getDocumentWithLines(
         ...header.header,
         ...pluginCols,
         seriesPrefix: header.seriesPrefix,
+        numberingMode: header.numberingMode,
         periodCode: header.periodCode,
         lines: linesWithBatches.map((l: any) => ({
           ...l,
@@ -466,6 +470,21 @@ router.post('/:docType/:id/cancel', async (req: any, res) => {
                 .where(
                   sql`${schema.itemBatches.itemId} = ${line.itemId} AND ${schema.itemBatches.batchNum} = ${bd.batchNum}`,
                 );
+              if (line.warehouseId) {
+                await tx
+                  .update(schema.itemBatchStocks)
+                  .set({
+                    quantity: sql`${schema.itemBatchStocks.quantity} + ${Number(bd.quantity)}`,
+                    updatedAt: new Date(),
+                  })
+                  .where(
+                    and(
+                      eq(schema.itemBatchStocks.itemId, line.itemId),
+                      eq(schema.itemBatchStocks.batchNum, bd.batchNum),
+                      eq(schema.itemBatchStocks.warehouseId, line.warehouseId),
+                    ),
+                  );
+              }
             }
           }
 
@@ -516,6 +535,21 @@ router.post('/:docType/:id/cancel', async (req: any, res) => {
                 .where(
                   sql`${schema.itemBatches.itemId} = ${line.itemId} AND ${schema.itemBatches.batchNum} = ${bd.batchNum}`,
                 );
+              if (line.warehouseId) {
+                await tx
+                  .update(schema.itemBatchStocks)
+                  .set({
+                    quantity: sql`${schema.itemBatchStocks.quantity} - ${Number(bd.quantity)}`,
+                    updatedAt: new Date(),
+                  })
+                  .where(
+                    and(
+                      eq(schema.itemBatchStocks.itemId, line.itemId),
+                      eq(schema.itemBatchStocks.batchNum, bd.batchNum),
+                      eq(schema.itemBatchStocks.warehouseId, line.warehouseId),
+                    ),
+                  );
+              }
             }
           }
 

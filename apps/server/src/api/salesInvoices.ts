@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { DocumentEngine } from '../core/documents/DocumentEngine';
 import { renderDocumentPdf } from '../core/documents/renderDocumentPdf';
@@ -21,6 +21,7 @@ router.get('/', async (req: any, res) => {
         id: schema.salesInvoices.id,
         docNum: schema.salesInvoices.docNum,
         seriesPrefix: schema.documentSeries.prefix,
+        numberingMode: schema.documentSeries.numberingMode,
         periodCode: schema.accountingPeriods.code,
         date: schema.salesInvoices.date,
         partnerId: schema.salesInvoices.partnerId,
@@ -62,6 +63,7 @@ router.get('/:id', async (req: any, res) => {
       .select({
         header: schema.salesInvoices,
         seriesPrefix: schema.documentSeries.prefix,
+        numberingMode: schema.documentSeries.numberingMode,
         periodCode: schema.accountingPeriods.code,
       })
       .from(schema.salesInvoices)
@@ -104,6 +106,7 @@ router.get('/:id', async (req: any, res) => {
       return res.json({
         ...header.header,
         seriesPrefix: header.seriesPrefix,
+        numberingMode: header.numberingMode,
         periodCode: header.periodCode,
         lines: linesWithBatches,
       });
@@ -139,6 +142,7 @@ router.get('/:id', async (req: any, res) => {
       ...header.header,
       ...pluginCols,
       seriesPrefix: header.seriesPrefix,
+      numberingMode: header.numberingMode,
       periodCode: header.periodCode,
       lines: linesWithBatches.map((l: any) => ({
         ...l,
@@ -345,6 +349,21 @@ async function cancelSalesInvoice(req: any, res: any) {
             .where(
               sql`${schema.itemBatches.itemId} = ${line.itemId} AND ${schema.itemBatches.batchNum} = ${bd.batchNum}`,
             );
+          if (line.warehouseId) {
+            await tx
+              .update(schema.itemBatchStocks)
+              .set({
+                quantity: sql`${schema.itemBatchStocks.quantity} + ${Number(bd.quantity)}`,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(schema.itemBatchStocks.itemId, line.itemId),
+                  eq(schema.itemBatchStocks.batchNum, bd.batchNum),
+                  eq(schema.itemBatchStocks.warehouseId, line.warehouseId),
+                ),
+              );
+          }
         }
       }
 

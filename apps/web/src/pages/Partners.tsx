@@ -28,6 +28,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useGeo, type GeoRow } from '../hooks/useGeo';
 import { TaxIdInput } from '../components/geo/TaxIdInput';
 import { PostalCodeInput } from '../components/geo/PostalCodeInput';
+import { ContextMenu } from '../components/common/ContextMenu';
+import { withRowContextMenu } from '../components/common/withRowContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
 import { PhoneInput } from '../components/geo/PhoneInput';
 import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
 import { usePluginListColumns } from '../components/plugin-fields';
@@ -441,6 +444,11 @@ export const Partners: React.FC = () => {
   const pluginCols = usePluginListColumns('BusinessPartner');
   const actionsCol = columns[columns.length - 1];
   const allColumns = [...columns.slice(0, -1), ...pluginCols, actionsCol];
+  const ctxMenu = useContextMenu<any>();
+  const ctxColumns = withRowContextMenu(allColumns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (p: any) => [
+    { label: 'Editar', icon: <Edit2 size={14} />, disabled: !canWrite, onClick: () => openModal(p) },
+  ];
 
   const countryOptions = countries.map((c) => ({
     label: `${FLAGS[c.code] || ''} ${c.name}`,
@@ -469,8 +477,16 @@ export const Partners: React.FC = () => {
       </div>
 
       <Card className="overflow-hidden" noPadding>
-        <Table columns={allColumns} data={partners} isLoading={loading} />
+        <Table columns={ctxColumns} data={partners} isLoading={loading} />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
 
       <Modal
         isOpen={isModalOpen}

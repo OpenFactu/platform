@@ -21,17 +21,23 @@ router.get('/', async (req: any, res) => {
 router.post('/', async (req: any, res) => {
   try {
     const { firstNumber, lastNumber, nextNumber, ...rest } = req.body;
-    const f = Number(firstNumber);
-    const l = Number(lastNumber);
-    const n = Number(nextNumber);
+    const isManual = rest.numberingMode === 'MANUAL';
+    // En series manuales el rango no aplica (el usuario teclea el número), pero
+    // las columnas son NOT NULL: rellenamos defaults coherentes.
+    const f = firstNumber != null && firstNumber !== '' ? Number(firstNumber) : 1;
+    const l = lastNumber != null && lastNumber !== '' ? Number(lastNumber) : 999999;
+    const n = nextNumber != null && nextNumber !== '' ? Number(nextNumber) : f;
 
-    if (f > l) {
-      return res.status(400).json({
-        error: 'El número de inicio no puede ser mayor al límite final (firstNumber > lastNumber).',
-      });
-    }
-    if (n < f || n > l + 1) {
-      return res.status(400).json({ error: 'El siguiente número asignado está fuera de rango.' });
+    if (!isManual) {
+      if (f > l) {
+        return res.status(400).json({
+          error:
+            'El número de inicio no puede ser mayor al límite final (firstNumber > lastNumber).',
+        });
+      }
+      if (n < f || n > l + 1) {
+        return res.status(400).json({ error: 'El siguiente número asignado está fuera de rango.' });
+      }
     }
 
     const id = crypto.randomUUID();
@@ -63,8 +69,10 @@ router.patch('/:id', async (req: any, res) => {
       .where(eq(schema.documentSeries.id, id));
     const { firstNumber, lastNumber, nextNumber, ...rest } = req.body;
     const payload: any = { ...rest };
+    const isManual =
+      (rest.numberingMode ?? (old as any)?.numberingMode) === 'MANUAL';
     if (firstNumber !== undefined && lastNumber !== undefined) {
-      if (Number(firstNumber) > Number(lastNumber))
+      if (!isManual && Number(firstNumber) > Number(lastNumber))
         return res.status(400).json({ error: 'Rango incoherente: inicio mayor que fin.' });
       payload.firstNumber = Number(firstNumber);
       payload.lastNumber = Number(lastNumber);

@@ -8,12 +8,15 @@
  *   - `itemWarehouseStocks.stock`        (agregado por almacén)
  *   - `itemZoneStocks.stock`             (agregado por almacén+zona, solo si la línea trae zoneId)
  *   - `items.stock`                      (stock global denormalizado)
+ *   - `itemBatchStocks.quantity`         (lote por almacén, solo si la línea trae batchNum)
+ *   - `itemBatches.quantity`             (lote global, solo si la línea trae batchNum)
  *
  * Las funciones se invocan UNA vez por transición (`draft→sent`, `→received`,
  * `→posted`). El router se encarga de no re-ejecutar sobre un doc ya posteado.
  */
 
 import { eq, and, sql } from 'drizzle-orm';
+import crypto from 'crypto';
 import * as schema from '../../db/schema';
 
 /** Upsert en itemWarehouseStocks sumando `delta`. */
@@ -104,6 +107,82 @@ async function bumpGlobalStock(client: any, itemId: string, delta: number) {
     .where(eq(schema.items.id, itemId));
 }
 
+/**
+ * Upsert en itemBatchStocks sumando `delta` para (itemId, batchNum, warehouseId).
+ * Mantiene la ubicación ACTUAL de un lote — a diferencia de itemBatches
+ * (cantidad global), esto es lo que consulta la trazabilidad por almacén.
+ */
+async function addBatchStock(
+  client: any,
+  itemId: string,
+  batchNum: string,
+  warehouseId: string,
+  delta: number,
+) {
+  if (delta === 0) return;
+  const [existing] = await client
+    .select()
+    .from(schema.itemBatchStocks)
+    .where(
+      and(
+        eq(schema.itemBatchStocks.itemId, itemId),
+        eq(schema.itemBatchStocks.batchNum, batchNum),
+        eq(schema.itemBatchStocks.warehouseId, warehouseId),
+      ),
+    );
+  if (existing) {
+    await client
+      .update(schema.itemBatchStocks)
+      .set({
+        quantity: sql`${schema.itemBatchStocks.quantity} + ${delta}`,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(schema.itemBatchStocks.itemId, itemId),
+          eq(schema.itemBatchStocks.batchNum, batchNum),
+          eq(schema.itemBatchStocks.warehouseId, warehouseId),
+        ),
+      );
+  } else {
+    await client.insert(schema.itemBatchStocks).values({
+      itemId,
+      batchNum,
+      warehouseId,
+      quantity: Math.max(0, delta),
+      updatedAt: new Date(),
+    });
+  }
+}
+
+/**
+ * Asegura que exista un registro global en itemBatches para un lote nuevo
+ * (p.ej. una entrada interna de un lote nunca visto), sumando `delta` si ya
+ * existe. `StockPoster` nunca tocaba `itemBatches` — sin esto, un lote creado
+ * únicamente vía traspaso/entrada/salida quedaría con fila en
+ * `itemBatchStocks` pero sin fila global en `itemBatches`.
+ */
+async function ensureBatch(client: any, itemId: string, batchNum: string, delta: number) {
+  if (delta === 0) return;
+  const [existing] = await client
+    .select()
+    .from(schema.itemBatches)
+    .where(and(eq(schema.itemBatches.itemId, itemId), eq(schema.itemBatches.batchNum, batchNum)));
+  if (existing) {
+    await client
+      .update(schema.itemBatches)
+      .set({ quantity: sql`${schema.itemBatches.quantity} + ${delta}` })
+      .where(eq(schema.itemBatches.id, existing.id));
+  } else if (delta > 0) {
+    await client.insert(schema.itemBatches).values({
+      id: crypto.randomUUID(),
+      itemId,
+      batchNum,
+      quantity: delta,
+    });
+  }
+}
+
 /** Aplica un movimiento: warehouse + (opcional zone) + global. */
 async function applyDelta(
   client: any,
@@ -136,6 +215,9 @@ export async function postTransferSent(client: any, transferId: string) {
       l.fromZoneId || null,
       -Number(l.quantity),
     );
+    if (l.batchNum) {
+      await addBatchStock(client, l.itemId, l.batchNum, doc.fromWarehouseId, -Number(l.quantity));
+    }
   }
 }
 
@@ -151,6 +233,9 @@ export async function postTransferReceived(client: any, transferId: string) {
     .where(eq(schema.transferNoteLines.transferId, transferId));
   for (const l of lines) {
     await applyDelta(client, l.itemId, doc.toWarehouseId, l.toZoneId || null, Number(l.quantity));
+    if (l.batchNum) {
+      await addBatchStock(client, l.itemId, l.batchNum, doc.toWarehouseId, Number(l.quantity));
+    }
   }
 }
 
@@ -167,6 +252,10 @@ export async function postReceipt(client: any, receiptId: string) {
     .where(eq(schema.goodsReceiptLines.receiptId, receiptId));
   for (const l of lines) {
     await applyDelta(client, l.itemId, doc.warehouseId, l.zoneId || null, Number(l.quantity));
+    if (l.batchNum) {
+      await ensureBatch(client, l.itemId, l.batchNum, Number(l.quantity));
+      await addBatchStock(client, l.itemId, l.batchNum, doc.warehouseId, Number(l.quantity));
+    }
   }
 }
 
@@ -183,5 +272,8 @@ export async function postIssue(client: any, issueId: string) {
     .where(eq(schema.goodsIssueLines.issueId, issueId));
   for (const l of lines) {
     await applyDelta(client, l.itemId, doc.warehouseId, l.zoneId || null, -Number(l.quantity));
+    if (l.batchNum) {
+      await addBatchStock(client, l.itemId, l.batchNum, doc.warehouseId, -Number(l.quantity));
+    }
   }
 }

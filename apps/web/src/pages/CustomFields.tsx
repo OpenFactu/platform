@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Card, Button, Input, Loader, useToast, Modal, Badge } from '@openfactu/ui';
 import {
   Plus,
@@ -104,6 +104,7 @@ const defaultForm = () => ({
 export const CustomFields: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<FieldRow[]>([]);
   const [allowedTables, setAllowedTables] = useState<string[]>([]);
@@ -506,22 +507,28 @@ export const CustomFields: React.FC = () => {
           >
             <Package size={14} /> Packs
           </Button>
-          <Button variant="secondary" onClick={exportAll} className="flex items-center gap-2">
+          <Button variant="secondary"  onClick={exportAll} className="flex items-center gap-2">
             <Download size={14} /> Exportar
           </Button>
-          <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50">
+          <Button
+            variant="secondary"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2"
+          >
             <Upload size={14} /> Importar
-            <input
-              type="file"
-              accept=".json"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) importFile(f);
-                e.currentTarget.value = '';
-              }}
-            />
-          </label>
+          </Button>
+          {/* SE UTILIZA PARA EL INPUT DE ARCHIVO */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            hidden
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importFile(f);
+              e.currentTarget.value = '';
+            }}
+          />
           <Button onClick={openCreate} className="flex items-center gap-2">
             <Plus size={14} /> Nuevo campo
           </Button>

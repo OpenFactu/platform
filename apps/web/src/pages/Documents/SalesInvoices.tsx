@@ -29,11 +29,15 @@ import {
   Download,
   CreditCard,
   Mail,
+  Eye,
 } from 'lucide-react';
 import { DocumentActionBar } from '../../components/DocumentActionBar';
 import { DocumentDetailLayout } from '../../components/DocumentDetailLayout';
 import { AttachmentsPanel } from '../../components/AttachmentsPanel';
 import { TraceabilityButton } from '../../components/common/TraceabilityButton';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 import { DocumentTotalsBlock } from '../../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
@@ -52,6 +56,7 @@ import { usePluginLineFields } from '../../hooks/usePluginLineFields';
 import { usePluginListColumns } from '../../components/plugin-fields';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
 import { useDocumentScanner } from '../../hooks/useDocumentScanner';
+import { formatDocCode } from '../../utils/docCode';
 import { InternalOrderHeaderField } from '../../components/InternalOrderHeaderField';
 import { InternalOrderChip } from '../../components/InternalOrderChip';
 import { useInternalOrderLineColumn } from '../../hooks/useLineInternalOrderColumn';
@@ -122,7 +127,7 @@ const InvoiceList: React.FC<{
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {item.seriesPrefix}-{item.periodCode}-{String(item.docNum).padStart(6, '0')}
+            {formatDocCode(item)}
           </span>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1 uppercase tracking-tighter">
             ID: {item.id.substring(0, 8)}
@@ -241,6 +246,17 @@ const InvoiceList: React.FC<{
   const restCols = columns.slice(0, -1);
   const allColumns = [...restCols, ...pluginCols, actionsCol];
 
+  const ctxMenu = useContextMenu<any>();
+  const ctxColumns = withRowContextMenu(allColumns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (item: any) => [
+    { label: 'Ver Factura', icon: <Eye size={14} />, onClick: () => onDetail(item) },
+    {
+      label: 'Descargar PDF',
+      icon: <Download size={14} />,
+      onClick: () => handleQuickPdf(item.id),
+    },
+  ];
+
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
@@ -311,7 +327,7 @@ const InvoiceList: React.FC<{
           onSent={() => setSelectedKeys(new Set())}
         />
         <Table
-          columns={allColumns}
+          columns={ctxColumns}
           data={filteredData || []}
           isLoading={loading}
           onRowClick={onDetail}
@@ -320,6 +336,14 @@ const InvoiceList: React.FC<{
           onSelectionChange={setSelectedKeys}
         />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };
@@ -487,6 +511,22 @@ const InvoiceForm: React.FC<{
                   onChange={setState.setSeriesId}
                   options={masters.series.map((s: any) => ({ label: s.name, value: s.id }))}
                 />
+                {state.isManualSeries && (
+                  <div className="mt-2 space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      Número de documento (manual) *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={state.manualNumber}
+                      onChange={(e) => setState.setManualNumber(e.target.value)}
+                      placeholder="Ej: 1050"
+                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    />
+                  </div>
+                )}
                 {state.seriesError && (
                   <p className="text-[10px] text-rose-500 font-bold mt-1 italic">
                     {state.seriesError}
@@ -629,7 +669,7 @@ const InvoiceDetail: React.FC<{
   const [emailModalOpen, setEmailModalOpen] = React.useState(false);
   const [paymentsRefreshKey, setPaymentsRefreshKey] = React.useState(0);
   const remaining = Math.max(0, Number(invoice.total || 0) - Number(invoice.amountPaid || 0));
-  const docCode = `${invoice.seriesPrefix}-${invoice.periodCode}-${String(invoice.docNum).padStart(6, '0')}`;
+  const docCode = formatDocCode(invoice);
 
   const pluginLineFields = usePluginLineFields('SalesInvoiceLine');
   const columns = useMemo(
@@ -649,7 +689,7 @@ const InvoiceDetail: React.FC<{
     <DocumentDetailLayout
       onBack={onBack}
       breadcrumb="VENTAS · FACTURA"
-      title={`${invoice.seriesPrefix}-${invoice.periodCode}-${String(invoice.docNum).padStart(6, '0')}`}
+      title={formatDocCode(invoice)}
       status={statusBadgeProps(invoice.status, DocKind.Invoice)}
       actions={
         <DocumentActionBar
@@ -859,8 +899,6 @@ const InvoiceDetail: React.FC<{
   );
 };
 
-const formatDocCode = (inv: any): string =>
-  `${inv.seriesPrefix}-${inv.periodCode}-${String(inv.docNum).padStart(6, '0')}`;
 
 export const SalesInvoices: React.FC = () => {
   const { token, user } = useAuth();
@@ -912,7 +950,7 @@ export const SalesInvoices: React.FC = () => {
         const data = await res.json();
         const withCode = (Array.isArray(data) ? data : []).map((d: any) => ({
           ...d,
-          docCode: `${d.seriesPrefix || ''}-${d.periodCode || ''}-${String(d.docNum || '').padStart(6, '0')}`,
+          docCode: formatDocCode(d),
           partnerName: d.partnerName || '',
         }));
         setInvoices(withCode);

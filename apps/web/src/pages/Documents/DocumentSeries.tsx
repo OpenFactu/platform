@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
+import { Table, Card, Button, Input, Loader, useToast, Badge, FilterBar } from '@openfactu/ui';
+import { useDataTable } from '@openfactu/common';
 import { useLocation } from 'react-router-dom';
 import { FileDigit, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 
 export const DocumentSeries: React.FC = () => {
   const { token, user } = useAuth();
@@ -21,6 +25,7 @@ export const DocumentSeries: React.FC = () => {
   const [name, setName] = useState('');
   const [periodId, setPeriodId] = useState('');
   const [docType, setDocType] = useState('PO'); // Default Purchase Order
+  const [numberingMode, setNumberingMode] = useState('AUTO'); // AUTO | MANUAL
   const [firstNumber, setFirstNumber] = useState(1);
   const [lastNumber, setLastNumber] = useState(99999);
   const [prefix, setPrefix] = useState('');
@@ -66,9 +71,11 @@ export const DocumentSeries: React.FC = () => {
           description: `Serie ${name}`,
           periodId,
           docType,
-          firstNumber: Number(firstNumber),
-          nextNumber: Number(firstNumber), // Inicialmente el siguiente es el primero
-          lastNumber: Number(lastNumber),
+          numberingMode,
+          // En manual el rango no aplica; enviamos defaults para las columnas NOT NULL.
+          firstNumber: numberingMode === 'MANUAL' ? 1 : Number(firstNumber),
+          nextNumber: numberingMode === 'MANUAL' ? 1 : Number(firstNumber), // Inicialmente el siguiente es el primero
+          lastNumber: numberingMode === 'MANUAL' ? 999999 : Number(lastNumber),
           prefix: prefix.trim() || null,
           suffix: null,
           isDefault: true, // Por defecto lo hacemos default
@@ -77,6 +84,7 @@ export const DocumentSeries: React.FC = () => {
       if (res.ok) {
         setName('');
         setPrefix('');
+        setNumberingMode('AUTO');
         setFirstNumber(1);
         setLastNumber(99999);
         fetchData();
@@ -107,8 +115,50 @@ export const DocumentSeries: React.FC = () => {
     }
   };
 
+  const { filteredData, searchTerm, setSearchTerm, activeFilters, setFilter, clearFilters } =
+    useDataTable({
+      data: series,
+      searchColumns: ['name', 'description'] as any,
+      filters: [
+        {
+          key: 'docType',
+          type: 'select',
+          label: 'Tipo',
+          options: [
+            { label: 'Pedido Compra', value: 'PO' },
+            { label: 'Albarán Compra', value: 'PDN' },
+            { label: 'Factura Compra', value: 'PINV' },
+            { label: 'Pedido Venta', value: 'SO' },
+            { label: 'Albarán Venta', value: 'SDN' },
+            { label: 'Factura Venta', value: 'SINV' },
+          ],
+        },
+        {
+          key: 'numberingMode',
+          type: 'select',
+          label: 'Modo',
+          options: [
+            { label: 'Automática', value: 'AUTO' },
+            { label: 'Manual', value: 'MANUAL' },
+          ],
+        },
+        {
+          key: 'periodId',
+          type: 'select',
+          label: 'Periodo',
+          options: periods.map((p: any) => ({ label: p.code, value: p.id })),
+        },
+      ],
+    });
+
   const columns = [
-    { header: 'Serie (Name)', sortable: true, sortAccessor: (i: any) => i.name ?? '' },
+    {
+      header: 'Serie (Name)',
+      sortable: true,
+      primary: true,
+      sortAccessor: (i: any) => i.name ?? '',
+      cell: (c: any) => c.name || '—',
+    },
     {
       header: 'Tipo',
       cell: (c: any) => {
@@ -123,24 +173,38 @@ export const DocumentSeries: React.FC = () => {
         return types[c.docType] || c.docType;
       },
     },
+    {
+      header: 'Modo',
+      cell: (c: any) => (
+        <Badge variant={c.numberingMode === 'MANUAL' ? 'warning' : 'neutral'}>
+          {c.numberingMode === 'MANUAL' ? 'Manual' : 'Automática'}
+        </Badge>
+      ),
+    },
     { header: 'Periodo', cell: (c: any) => periods.find((p) => p.id === c.periodId)?.code || '-' },
     {
       header: 'Rango Visual',
-      cell: (c: any) => (
-        <span className="font-mono text-xs">
-          {c.prefix ? `${c.prefix}-` : ''}
-          {c.firstNumber} ... {c.prefix ? `${c.prefix}-` : ''}
-          {c.lastNumber}
-        </span>
-      ),
+      cell: (c: any) =>
+        c.numberingMode === 'MANUAL' ? (
+          <span className="text-slate-400 text-xs italic">Manual</span>
+        ) : (
+          <span className="font-mono text-xs">
+            {c.prefix ? `${c.prefix}-` : ''}
+            {c.firstNumber} ... {c.prefix ? `${c.prefix}-` : ''}
+            {c.lastNumber}
+          </span>
+        ),
     },
     {
       header: 'Siguiente Num',
-      cell: (c: any) => (
-        <Badge variant="neutral" className="font-mono">
-          {c.nextNumber}
-        </Badge>
-      ),
+      cell: (c: any) =>
+        c.numberingMode === 'MANUAL' ? (
+          <span className="text-slate-400">—</span>
+        ) : (
+          <Badge variant="neutral" className="font-mono">
+            {c.nextNumber}
+          </Badge>
+        ),
     },
     {
       header: 'Acciones',
@@ -154,6 +218,18 @@ export const DocumentSeries: React.FC = () => {
           <Trash2 size={16} />
         </button>
       ),
+    },
+  ];
+
+  const ctxMenu = useContextMenu<any>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (c: any) => [
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      disabled: !canDelete,
+      onClick: () => handleDelete(c.id),
     },
   ];
 
@@ -206,6 +282,20 @@ export const DocumentSeries: React.FC = () => {
           </div>
           <div className="md:col-span-1">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
+              Numeración
+            </label>
+            <select
+              value={numberingMode}
+              onChange={(e) => setNumberingMode(e.target.value)}
+              required
+              className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 mt-1"
+            >
+              <option value="AUTO">Automática</option>
+              <option value="MANUAL">Manual</option>
+            </select>
+          </div>
+          <div className="md:col-span-1">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
               Aplica al Periodo
             </label>
             <select
@@ -232,28 +322,38 @@ export const DocumentSeries: React.FC = () => {
               onChange={(e) => setPrefix(e.target.value)}
             />
           </div>
-          <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Inicio de Rango
-            </label>
-            <Input
-              type="number"
-              value={firstNumber}
-              onChange={(e) => setFirstNumber(Number(e.target.value))}
-              required
-            />
-          </div>
-          <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Límite Final
-            </label>
-            <Input
-              type="number"
-              value={lastNumber}
-              onChange={(e) => setLastNumber(Number(e.target.value))}
-              required
-            />
-          </div>
+          {numberingMode === 'MANUAL' ? (
+            <div className="md:col-span-2 flex items-end">
+              <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+                Serie manual: el número de cada documento se teclea al crearlo.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="md:col-span-1">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
+                  Inicio de Rango
+                </label>
+                <Input
+                  type="number"
+                  value={firstNumber}
+                  onChange={(e) => setFirstNumber(Number(e.target.value))}
+                  required
+                />
+              </div>
+              <div className="md:col-span-1">
+                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
+                  Límite Final
+                </label>
+                <Input
+                  type="number"
+                  value={lastNumber}
+                  onChange={(e) => setLastNumber(Number(e.target.value))}
+                  required
+                />
+              </div>
+            </>
+          )}
           <div className="md:col-span-2 flex justify-end">
             <Button
               type="submit"
@@ -268,8 +368,54 @@ export const DocumentSeries: React.FC = () => {
       </Card>
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={series} isLoading={loading} />
+        <FilterBar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          activeFilters={activeFilters}
+          onFilterChange={setFilter}
+          onClear={clearFilters}
+          searchPlaceholder="Buscar serie por nombre…"
+          config={[
+            {
+              key: 'docType',
+              label: 'Tipo',
+              type: 'select',
+              options: [
+                { label: 'Pedido Compra', value: 'PO' },
+                { label: 'Albarán Compra', value: 'PDN' },
+                { label: 'Factura Compra', value: 'PINV' },
+                { label: 'Pedido Venta', value: 'SO' },
+                { label: 'Albarán Venta', value: 'SDN' },
+                { label: 'Factura Venta', value: 'SINV' },
+              ],
+            },
+            {
+              key: 'numberingMode',
+              label: 'Modo',
+              type: 'select',
+              options: [
+                { label: 'Automática', value: 'AUTO' },
+                { label: 'Manual', value: 'MANUAL' },
+              ],
+            },
+            {
+              key: 'periodId',
+              label: 'Periodo',
+              type: 'select',
+              options: periods.map((p: any) => ({ label: p.code, value: p.id })),
+            },
+          ]}
+        />
+        <Table columns={ctxColumns} data={filteredData} isLoading={loading} />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };

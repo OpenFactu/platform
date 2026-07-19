@@ -5,6 +5,9 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ScrollText, Plus, Trash2, Pencil, CheckCircle, Undo2 } from 'lucide-react';
 import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
+import { ContextMenu } from '../components/common/ContextMenu';
+import { withRowContextMenu } from '../components/common/withRowContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
 
 interface Line {
   id?: string;
@@ -301,6 +304,18 @@ export const JournalEntries: React.FC = () => {
     },
   ];
 
+  const ctxMenu = useContextMenu<Entry>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (r: Entry) => [
+    ...(r.status === 'draft' && canWrite
+      ? [{ label: 'Postear', icon: <CheckCircle size={14} />, onClick: () => handlePost(r.id) }]
+      : []),
+    ...(r.status === 'posted' && canWrite
+      ? [{ label: 'Reversar', icon: <Undo2 size={14} />, onClick: () => handleReverse(r.id) }]
+      : []),
+    { label: 'Ver / Editar', icon: <Pencil size={14} />, onClick: () => openEdit(r) },
+  ];
+
   const formOpen = editing !== null || lines.length > 0;
   const isReadOnly = !!editing && editing.status !== 'draft';
 
@@ -492,8 +507,16 @@ export const JournalEntries: React.FC = () => {
       )}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} />
+        <Table columns={ctxColumns} data={rows} isLoading={loading} />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };

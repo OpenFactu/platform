@@ -91,12 +91,17 @@ router.post('/check-db', async (req, res) => {
       if (hasPublicSchema) {
         // Verificar si existen las tablas clave de OpenFactu
         const tablesResult = await targetPool.query(
-          `SELECT table_name FROM information_schema.tables 
-           WHERE table_schema = 'public' 
+          `SELECT table_name FROM information_schema.tables
+           WHERE table_schema = 'public'
            AND table_name IN ('Tenant', 'GlobalUser')`,
         );
-        // Si ambas tablas existen, ya hay un setup previo
-        hasExistingSetup = tablesResult.rowCount >= 2;
+        // Las tablas se crean con CREATE TABLE IF NOT EXISTS en cada arranque,
+        // así que su sola existencia no implica que haya un setup previo real.
+        // Solo hay "setup existente" si además hay al menos un Tenant creado.
+        if (tablesResult.rowCount >= 2) {
+          const tenantCountResult = await targetPool.query('SELECT COUNT(*)::int AS count FROM "Tenant"');
+          hasExistingSetup = tenantCountResult.rows[0].count > 0;
+        }
         console.log(
           `[Setup.check-db] Tablas encontradas: ${tablesResult.rowCount}, hasExistingSetup: ${hasExistingSetup}`,
         );

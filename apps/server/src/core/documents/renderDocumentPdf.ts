@@ -4,15 +4,36 @@ import * as schema from '../../db/schema';
 import {
   PdfRenderer,
   extractMetaFromHtml,
-  buildVisualTemplate,
   DEFAULT_VISUAL_OPTIONS,
   type DocType,
   type VisualOptions,
+  type WatermarkOptions,
 } from '@openfactu/pdf';
 import { PdfPayloadBuilder } from './PdfPayloadBuilder';
 import { registerCanvasHelpers } from '../../api/documentTemplates';
 import { getConfigSection } from '../config/systemConfigSection';
 import { FLAGS_DEFAULTS } from '../config/appConfig';
+
+/**
+ * Inyecta un watermark diagonal semitransparente en un HTML de plantilla YA
+ * COMPLETO, como overlay `position:fixed` justo antes de `</body>`.
+ *
+ * A propósito NO usamos `buildVisualTemplate` (que reconstruye la página
+ * entera desde cero a partir de `VisualOptions`): eso descartaba silenciosamente
+ * la plantilla real elegida por el usuario (`?templateId=...` o cualquier
+ * plantilla custom no-default) y siempre renderizaba el diseño genérico de
+ * fábrica en cuanto un documento estaba pagado o en borrador con
+ * `watermarkDraft` activo — independientemente de qué plantilla se hubiera
+ * seleccionado.
+ */
+function injectWatermark(html: string, wm: WatermarkOptions): string {
+  const text = String(wm.text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const overlay = `<div aria-hidden="true" style="position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;z-index:99999;"><span style="color:${wm.color};opacity:${wm.opacity};font-size:${wm.fontSize}pt;font-weight:bold;white-space:nowrap;transform:rotate(${wm.rotation}deg);font-family:-apple-system,'Segoe UI',Roboto,sans-serif;">${text}</span></div>`;
+  return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${overlay}</body>`) : `${html}${overlay}`;
+}
 
 /**
  * Helper reutilizable para el endpoint `GET /:id/pdf` de todos los tipos de documento.
@@ -77,8 +98,8 @@ export async function renderDocumentPdf(
           text: baseOpts.watermark?.text || 'BORRADOR',
         },
       };
-      finalHtml = buildVisualTemplate(docType, finalOpts);
-    } else if ((payload as any).doc?.paymentStatus === 'paid') {
+      finalHtml = injectWatermark(template.html, finalOpts.watermark);
+    } else if (flags.watermarkPaid && (payload as any).doc?.paymentStatus === 'paid') {
       // Si la factura está totalmente pagada, marca de agua "PAGADA" en verde.
       finalOpts = {
         ...baseOpts,
@@ -92,7 +113,7 @@ export async function renderDocumentPdf(
           fontSize: 140,
         },
       };
-      finalHtml = buildVisualTemplate(docType, finalOpts);
+      finalHtml = injectWatermark(template.html, finalOpts.watermark);
     }
   } catch (err: any) {
     console.warn(

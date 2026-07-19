@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { TemplateEditor } from '../../components/document-templates/TemplateEditor';
 import { TemplatesList } from '../../components/document-templates/TemplatesList';
 import { DocumentGeneratorModal } from '../../components/document-templates/DocumentGeneratorModal';
+import { AiTemplateGeneratorModal } from '../../components/document-templates/AiTemplateGeneratorModal';
 import type { TemplateRow } from '../../components/document-templates/constants';
 
 export const DocumentTemplates: React.FC = () => {
@@ -14,6 +15,8 @@ export const DocumentTemplates: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<TemplateRow | null>(null);
   const [generating, setGenerating] = useState<{ id: string; name: string } | null>(null);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
 
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -138,6 +141,7 @@ export const DocumentTemplates: React.FC = () => {
         onDuplicate={handleDuplicate}
         onDelete={handleDelete}
         onGenerate={(t) => setGenerating({ id: t.id, name: t.name })}
+        onAiGenerate={isAdmin ? () => setAiGenerating(true) : undefined}
         onReload={fetchList}
       />
       {generating && (
@@ -146,6 +150,9 @@ export const DocumentTemplates: React.FC = () => {
           templateName={generating.name}
           onClose={() => setGenerating(null)}
         />
+      )}
+      {aiGenerating && (
+        <AiTemplateGeneratorModal onClose={() => setAiGenerating(false)} onSaved={fetchList} />
       )}
     </>
   );

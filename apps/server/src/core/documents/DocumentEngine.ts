@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import { HookManager } from '../plugins/HookManager';
 import { PluginFieldManager } from '../plugins/PluginFieldManager';
@@ -25,6 +25,8 @@ export interface DocumentLine {
 
 export interface DocumentCreateRequest {
   seriesId: string;
+  /** Número tecleado por el usuario cuando la serie es de modo MANUAL. */
+  docNum?: number;
   periodId: string;
   partnerId: string;
   date: Date | string;
@@ -70,7 +72,42 @@ export class DocumentEngine {
         .from(schema.documentSeries)
         .where(eq(schema.documentSeries.id, request.seriesId));
       if (!series) throw new Error('Serie no encontrada');
-      const docNum = series.nextNumber;
+
+      // Series manuales: el número lo teclea el usuario. Series automáticas:
+      // se toma y auto-incrementa `nextNumber`.
+      const isManualSeries = series.numberingMode === 'MANUAL';
+      let docNum: number;
+      if (isManualSeries) {
+        const rawDocNum = (request as any).docNum;
+        docNum = Number(rawDocNum);
+        if (
+          rawDocNum == null ||
+          rawDocNum === '' ||
+          !Number.isInteger(docNum) ||
+          docNum <= 0
+        ) {
+          throw new Error(
+            'Debes indicar un número de documento válido (entero positivo) para una serie manual.',
+          );
+        }
+        // Unicidad dentro de la serie: no permitir dos documentos con el
+        // mismo número en la misma serie.
+        const [dup] = await tx
+          .select({ id: def.schemaTable.id })
+          .from(def.schemaTable)
+          .where(
+            and(
+              eq(def.schemaTable.seriesId, request.seriesId),
+              eq(def.schemaTable.docNum, docNum),
+            ),
+          )
+          .limit(1);
+        if (dup) {
+          throw new Error(`Ya existe un documento con el número ${docNum} en esta serie.`);
+        }
+      } else {
+        docNum = series.nextNumber;
+      }
 
       // 3. Pre-calcular totales para validación de hooks
       const allTaxGroups = await tx.select().from(schema.taxGroups);
@@ -139,11 +176,14 @@ export class DocumentEngine {
         user,
       });
 
-      // Actualizar número de serie
-      await tx
-        .update(schema.documentSeries)
-        .set({ nextNumber: docNum + 1 })
-        .where(eq(schema.documentSeries.id, request.seriesId));
+      // Actualizar número de serie (solo en modo automático; las manuales no
+      // llevan contador porque el número lo aporta el usuario).
+      if (!isManualSeries) {
+        await tx
+          .update(schema.documentSeries)
+          .set({ nextNumber: docNum + 1 })
+          .where(eq(schema.documentSeries.id, request.seriesId));
+      }
 
       const documentId = (request as any).id || crypto.randomUUID();
       let calculatedSubtotal = 0;
@@ -420,7 +460,12 @@ export class DocumentEngine {
         await tx
           .update(schema.itemWarehouseStocks)
           .set({ stock: newStock, updatedAt: new Date() })
-          .where(eq(schema.itemWarehouseStocks.itemId, item.id));
+          .where(
+            and(
+              eq(schema.itemWarehouseStocks.itemId, item.id),
+              eq(schema.itemWarehouseStocks.warehouseId, warehouseId),
+            ),
+          );
       } else if (action === 'IN') {
         await tx.insert(schema.itemWarehouseStocks).values({
           itemId: item.id,
@@ -472,6 +517,46 @@ export class DocumentEngine {
             quantity: bd.quantity,
             expiryDate: bd.expiryDate ? new Date(bd.expiryDate) : null,
           });
+        }
+
+        // C.2 Lotes por almacén — mantiene la ubicación ACTUAL del lote
+        // (itemBatches solo guarda el total global; sin esto la trazabilidad
+        // por almacén se queda con la ubicación de su primera entrada).
+        if (warehouseId) {
+          const [existingBatchStock] = await tx
+            .select()
+            .from(schema.itemBatchStocks)
+            .where(
+              and(
+                eq(schema.itemBatchStocks.itemId, item.id),
+                eq(schema.itemBatchStocks.batchNum, bd.batchNum),
+                eq(schema.itemBatchStocks.warehouseId, warehouseId),
+              ),
+            );
+          const batchDelta = action === 'OUT' ? -bd.quantity : bd.quantity;
+          if (existingBatchStock) {
+            await tx
+              .update(schema.itemBatchStocks)
+              .set({
+                quantity: sql`${schema.itemBatchStocks.quantity} + ${batchDelta}`,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(schema.itemBatchStocks.itemId, item.id),
+                  eq(schema.itemBatchStocks.batchNum, bd.batchNum),
+                  eq(schema.itemBatchStocks.warehouseId, warehouseId),
+                ),
+              );
+          } else if (action === 'IN') {
+            await tx.insert(schema.itemBatchStocks).values({
+              itemId: item.id,
+              batchNum: bd.batchNum,
+              warehouseId,
+              quantity: bd.quantity,
+              updatedAt: new Date(),
+            });
+          }
         }
       }
     }

@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Network, Plus, Trash2, Save, X, UserCheck, ShoppingBag } from 'lucide-react';
+import { Network, Plus, Trash2, Save, X, UserCheck, ShoppingBag, Pencil } from 'lucide-react';
+import { ContextMenu } from '../components/common/ContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
 
 export const PartnerGroups: React.FC = () => {
   const { token, user } = useAuth();
@@ -107,6 +109,23 @@ export const PartnerGroups: React.FC = () => {
     }
   };
 
+  const ctxMenu = useContextMenu<any>();
+  const buildCtxItems = (g: any) => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => setEditingId(g.id),
+    },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      disabled: !canDelete,
+      onClick: () => handleDelete(g.id),
+    },
+  ];
+
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
@@ -209,6 +228,7 @@ export const PartnerGroups: React.FC = () => {
             {groups.map((g) => (
               <tr
                 key={g.id}
+                onContextMenu={(e) => ctxMenu.open(e, g)}
                 className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group"
               >
                 <td className="px-6 py-4">
@@ -361,6 +381,14 @@ export const PartnerGroups: React.FC = () => {
           </tbody>
         </table>
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };

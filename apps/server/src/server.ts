@@ -10,6 +10,7 @@ import customFieldsRouter from './api/customFields';
 import userTablesRouter from './api/userTables';
 import userModulesRouter from './api/userModules';
 import automationsRouter from './api/automations';
+import dashboardWidgetsRouter from './api/dashboardWidgets';
 import logisticsRouter, { publicTrackRouter } from './api/logistics';
 import apiTokensRouter from './api/apiTokens';
 import { apiTokenMiddleware } from './api/middleware/apiToken';
@@ -44,6 +45,7 @@ import accountMappingsRouter from './api/accountMappings';
 import documentLinksRouter from './api/documentLinks';
 import companySignatureRouter from './api/companySignature';
 import userProfileRouter from './api/userProfile';
+import twoFactorRouter from './api/twofa';
 import reportsRouter from './api/reports';
 import hrEmployeesRouter from './api/hr/employees';
 import hrDepartmentsRouter from './api/hr/departments';
@@ -88,6 +90,8 @@ import companyRouter from './api/company';
 import dashboardRouter from './api/dashboard';
 import tenantsRouter from './api/tenants';
 import configRouter from './api/config';
+import aiRouter from './api/ai';
+import mcpRouter from './api/mcp';
 import searchRouter from './api/search';
 import geoRouter from './api/geo';
 import factuApiRouter from './api/factuapi';
@@ -171,6 +175,7 @@ app.use('/api/custom-fields', customFieldsRouter);
 app.use('/api/user-tables', userTablesRouter);
 app.use('/api/user-modules', userModulesRouter);
 app.use('/api/automations', automationsRouter);
+app.use('/api/dashboard-widgets', dashboardWidgetsRouter);
 app.use('/api/logistics', logisticsRouter);
 app.use('/api/dev-keys', devKeysRouter);
 // 4. Rustas de creación y gestion de usarios
@@ -201,6 +206,7 @@ app.use('/api/company/signature', companySignatureRouter);
 // userProfileRouter va ANTES de usersRouter para que /me capture primero.
 // Pero usersRouter ya está montado arriba, así que usamos otro prefix.
 app.use('/api/profile', userProfileRouter);
+app.use('/api/2fa', twoFactorRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/hr/employees', hrEmployeesRouter);
 app.use('/api/hr/departments', hrDepartmentsRouter);
@@ -241,6 +247,8 @@ app.use('/api/company', companyRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/tenants', tenantsRouter);
 app.use('/api/config', configRouter);
+app.use('/api/ai', aiRouter);
+app.use('/api/mcp', mcpRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/geo', geoRouter);
 app.use('/api/factuapi', factuApiRouter);
@@ -311,6 +319,12 @@ const start = async () => {
         ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "signatureName" TEXT;
         ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "signatureRole" TEXT;
         ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "signatureImageUrl" TEXT;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "resetTokenHash" TEXT;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "resetTokenExpiresAt" TIMESTAMP;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpSecret" TEXT;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpEnabled" BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpBackupCodes" TEXT;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "avatarImageUrl" TEXT;
         CREATE TABLE IF NOT EXISTS "UserTenantMembership" (
           "id" TEXT PRIMARY KEY, "userId" TEXT NOT NULL REFERENCES "GlobalUser"("id") ON DELETE CASCADE,
           "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
@@ -370,6 +384,18 @@ const start = async () => {
           "deactivatedAt" TIMESTAMP,
           UNIQUE ("tenantId", "pluginId")
         );
+        CREATE TABLE IF NOT EXISTS "ApiToken" (
+          "id" TEXT PRIMARY KEY,
+          "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+          "name" TEXT NOT NULL,
+          "tokenHash" TEXT UNIQUE NOT NULL,
+          "prefix" TEXT NOT NULL,
+          "scopes" TEXT NOT NULL,
+          "createdByUserId" TEXT,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "lastUsedAt" TIMESTAMP,
+          "revokedAt" TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS "DevApiKey" (
           "id" TEXT PRIMARY KEY,
           "clientId" TEXT UNIQUE NOT NULL,
@@ -417,6 +443,33 @@ const start = async () => {
           "triggerSource" TEXT,
           "contextJson" JSONB
         );
+        CREATE TABLE IF NOT EXISTS "UserDashboardWidget" (
+          "id" TEXT PRIMARY KEY,
+          "tenantId" TEXT NOT NULL,
+          "title" TEXT NOT NULL,
+          "subtitle" TEXT,
+          "metricKey" TEXT,
+          "size" TEXT NOT NULL DEFAULT 'md',
+          "displayOrder" INTEGER NOT NULL DEFAULT 100,
+          "createdBy" TEXT,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        ALTER TABLE "UserDashboardWidget" ALTER COLUMN "metricKey" DROP NOT NULL;
+        ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "kind" TEXT NOT NULL DEFAULT 'metric';
+        ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "sourceCode" TEXT;
+        ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "queryConfig" JSONB;
+        CREATE TABLE IF NOT EXISTS "AiConversation" (
+          "id" TEXT PRIMARY KEY,
+          "tenantId" TEXT NOT NULL,
+          "userId" TEXT NOT NULL,
+          "title" TEXT,
+          "messages" JSONB NOT NULL DEFAULT '[]',
+          "model" TEXT,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS "AiConversation_tenant_user_idx" ON "AiConversation" ("tenantId", "userId");
       `),
       );
       console.log('[Bootstrap] Tablas del schema publico verificadas.');

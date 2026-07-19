@@ -2,6 +2,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Card } from '@openfactu/ui';
 import { usePlugins } from '../../context/PluginContext';
+import { getDynamicImportApiBase } from '../../utils/dynamicImportBase';
 
 interface PluginComponentLoaderProps {
   pluginId: string;
@@ -32,7 +33,7 @@ export const PluginComponentLoader: React.FC<PluginComponentLoaderProps> = ({
       try {
         // URL absoluta al servidor API para evitar que Vite intercepte el import() dinámico.
         // Vite no puede proxiar imports dinámicos de módulos ESM — solo HTTP fetch normal.
-        const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        const apiBase = getDynamicImportApiBase();
         const url = `${apiBase}/api/plugins/load/${pluginId}/${componentPath}?t=${reloadTimestamp}`;
 
         console.log(`[PluginLoader] Intentando importar módulo ESM desde: ${url}`);

@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-export interface CtxItem {
+export interface ContextMenuItem {
   label: string;
   icon?: React.ReactNode;
   onClick?: () => void;
@@ -9,27 +9,27 @@ export interface CtxItem {
   disabled?: boolean;
   separatorBefore?: boolean;
   /** Submenú (un nivel). Si está presente se ignora `onClick`. */
-  submenu?: CtxItem[];
+  submenu?: ContextMenuItem[];
 }
 
-interface CanvasContextMenuProps {
+interface ContextMenuProps {
   x: number;
   y: number;
-  items: CtxItem[];
+  items: ContextMenuItem[];
   onClose: () => void;
 }
 
 const MENU_WIDTH = 220;
 
 /**
- * Menú contextual posicionado en las coordenadas del cursor (createPortal a
- * `document.body`, `position:fixed`). Se clampa al viewport y se cierra al
- * hacer click fuera, hacer scroll, redimensionar, pulsar Escape o abrir otro
- * menú contextual. Soporta un nivel de submenú.
+ * Menú contextual genérico posicionado en las coordenadas del cursor
+ * (createPortal a `document.body`, `position:fixed`). Se clampa al viewport
+ * y se cierra al hacer click fuera, hacer scroll, redimensionar, pulsar
+ * Escape o abrir otro menú contextual. Soporta un nivel de submenú.
  *
- * Modelado sobre `RowActionsMenu` pero anclado al cursor en vez de a un botón.
+ * Reutilizable en cualquier parte de la app: listas, tablas, canvas, etc.
  */
-export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({ x, y, items, onClose }) => {
+export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number }>({ top: y, left: x });
   const [openSub, setOpenSub] = useState<number | null>(null);
@@ -66,7 +66,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({ x, y, item
     };
   }, [onClose]);
 
-  const renderItem = (it: CtxItem, i: number) => {
+  const renderItem = (it: ContextMenuItem, i: number) => {
     const base =
       'w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left transition-colors ' +
       (it.destructive
@@ -147,7 +147,7 @@ export const CanvasContextMenu: React.FC<CanvasContextMenuProps> = ({ x, y, item
       ref={menuRef}
       role="menu"
       style={{ top: pos.top, left: pos.left, width: MENU_WIDTH }}
-      className="fixed z-[9999] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl py-1"
+      className="fixed z-[9999] overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl py-1"
       onContextMenu={(e) => e.preventDefault()}
     >
       {items.map(renderItem)}

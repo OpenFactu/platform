@@ -3,6 +3,7 @@ import { eq, asc } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import crypto from 'crypto';
 import { logAudit } from '../utils/audit';
+import { requireScope } from './middleware/apiToken';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import { validateTaxId } from '@openfactu/common';
 import { HookManager } from '../core/plugins/HookManager';
@@ -38,7 +39,7 @@ async function checkTaxId(
 /**
  * GET /api/partners
  */
-router.get('/', async (req: any, res) => {
+router.get('/', requireScope('read:maestros'), async (req: any, res) => {
   try {
     const addresses = await req.tenantClient.select().from(schema.partnerAddresses);
     const partners = await req.tenantClient
@@ -70,7 +71,7 @@ router.get('/', async (req: any, res) => {
 /**
  * POST /api/partners
  */
-router.post('/', async (req: any, res) => {
+router.post('/', requireScope('write:maestros'), async (req: any, res) => {
   try {
     const { groupId, code, addresses, ...restBody } = req.body;
 
@@ -160,7 +161,7 @@ router.post('/', async (req: any, res) => {
 /**
  * PATCH /api/partners/:id
  */
-router.patch('/:id', async (req: any, res) => {
+router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
   const { id } = req.params;
   try {
     // Capturar estado anterior
@@ -236,7 +237,7 @@ router.patch('/:id', async (req: any, res) => {
 /**
  * DELETE /api/partners/:id
  */
-router.delete('/:id', async (req: any, res) => {
+router.delete('/:id', requireScope('write:maestros'), async (req: any, res) => {
   const { id } = req.params;
   try {
     const [oldPartner] = await req.tenantClient

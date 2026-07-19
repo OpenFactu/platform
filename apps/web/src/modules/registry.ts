@@ -286,6 +286,12 @@ export const CORE_MODULES: Module[] = [
     ],
   },
   {
+    id: 'assistant',
+    label: 'Asistente IA',
+    icon: 'Bot',
+    subTabs: [{ id: 'ai-chat', label: 'Keiro', path: '/ai/chat', status: 'beta' }],
+  },
+  {
     id: 'plugins',
     label: 'Plugins',
     icon: 'Puzzle',
@@ -299,9 +305,6 @@ export const CORE_MODULES: Module[] = [
       { id: 'profile', label: 'Mi perfil', path: '/profile' },
       { id: 'company', label: 'Empresa', path: '/settings/company' },
       { id: 'templates', label: 'Plantillas PDF', path: '/document-templates' },
-      { id: 'storage', label: 'Almacenamiento', path: '/settings/company?tab=storage' },
-      { id: 'email', label: 'Correo', path: '/settings/company?tab=email' },
-      { id: 'data', label: 'Importar/Exportar', path: '/settings/company?tab=data' },
       { id: 'users', label: 'Usuarios', path: '/users' },
       {
         id: 'custom-fields',
@@ -309,7 +312,14 @@ export const CORE_MODULES: Module[] = [
         path: '/custom-fields',
         adminOnly: true,
       },
+      {
+        id: 'dashboard-widgets',
+        label: 'Widgets de dashboard',
+        path: '/dashboard-widgets',
+        adminOnly: true,
+      },
       { id: 'webhooks', label: 'Webhooks', path: '/settings/webhooks', adminOnly: true },
+      { id: 'api-tokens', label: 'Tokens de API', path: '/settings/api-tokens', adminOnly: true },
       { id: 'automations', label: 'Automatizaciones', path: '/automations', adminOnly: true },
       { id: 'audit', label: 'Auditoría', path: '/audit-logs' },
       { id: 'tasks', label: 'Tareas', path: '/background-tasks' },

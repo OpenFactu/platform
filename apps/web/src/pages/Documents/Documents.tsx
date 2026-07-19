@@ -10,7 +10,10 @@ import {
   FilterBar,
   SearchableSelect,
 } from '@openfactu/ui';
-import { Plus, ArrowLeft, Save, Download } from 'lucide-react';
+import { Plus, ArrowLeft, Save, Download, Eye } from 'lucide-react';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 import {
   useDocument,
   useDataTable,
@@ -24,6 +27,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useFormat } from '../../hooks/useFormat';
 import { downloadPdf } from '../../utils/downloadPdf';
+import { formatDocCode } from '../../utils/docCode';
 import { buildDetailLineColumns, buildFormLineColumns, statusBadgeProps } from '../../components/documentLineCells';
 import { useItemUoms } from '../../hooks/useItemUoms';
 import { notifyDocChange, useDataVersion } from '../../utils/dataRefresh';
@@ -86,7 +90,7 @@ const DocumentList: React.FC<{
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {item.seriesPrefix}-{item.periodCode}-{String(item.docNum).padStart(6, '0')}
+            {formatDocCode(item)}
           </span>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
             ID: {item.id.substring(0, 8)}
@@ -170,6 +174,17 @@ const DocumentList: React.FC<{
     },
   ];
 
+  const ctxMenu = useContextMenu<any>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (item: any) => [
+    { label: 'Ver', icon: <Eye size={14} />, onClick: () => onDetail(item) },
+    {
+      label: 'Descargar PDF',
+      icon: <Download size={14} />,
+      onClick: () => handleQuickPdf(item.id),
+    },
+  ];
+
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
@@ -203,7 +218,7 @@ const DocumentList: React.FC<{
       </div>
 
       <Table
-        columns={columns}
+        columns={ctxColumns}
         data={filteredData || []}
         isLoading={loading}
         onRowClick={onDetail}
@@ -211,6 +226,14 @@ const DocumentList: React.FC<{
         selectedKeys={selectedKeys}
         onSelectionChange={setSelectedKeys}
       />
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };
@@ -277,6 +300,21 @@ const DocumentForm: React.FC<{
               placeholder="Seleccionar serie..."
             />
           </div>
+          {state.isManualSeries && (
+            <div>
+              <label className="block text-xs font-mono uppercase text-slate-500 mb-1">
+                Nº documento (manual) *
+              </label>
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={state.manualNumber}
+                onChange={(e) => setState.setManualNumber(e.target.value)}
+                placeholder="Ej: 1050"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-xs font-mono uppercase text-slate-500 mb-1">
               Período *
@@ -439,7 +477,7 @@ const Documents: React.FC = () => {
         setListData(
           (Array.isArray(data) ? data : []).map((d: any) => ({
             ...d,
-            docCode: `${d.seriesPrefix || ''}-${d.periodCode || ''}-${String(d.docNum || '').padStart(6, '0')}`,
+            docCode: formatDocCode(d),
             partnerName: d.partnerName || '',
           })),
         );

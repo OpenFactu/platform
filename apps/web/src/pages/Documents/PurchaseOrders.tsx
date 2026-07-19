@@ -14,6 +14,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTabs, useCurrentTab } from '../../context/TabsContext';
 import { useTheme } from '../../context/ThemeContext';
+import { formatDocCode } from '../../utils/docCode';
 import {
   FileDigit,
   Plus,
@@ -26,6 +27,8 @@ import {
   Copy,
   PlusSquare,
   Download,
+  Eye,
+  Ban,
 } from 'lucide-react';
 import { DocumentActionBar } from '../../components/DocumentActionBar';
 import { InternalOrderHeaderField } from '../../components/InternalOrderHeaderField';
@@ -36,6 +39,9 @@ import { AttachmentsPanel } from '../../components/AttachmentsPanel';
 import { CloneDocumentActions } from '../../components/common/CloneDocumentActions';
 import { DocumentFiscalPanel } from '../../components/documents/DocumentFiscalPanel';
 import { TraceabilityButton } from '../../components/common/TraceabilityButton';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 import { DocumentTotalsBlock } from '../../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
@@ -60,9 +66,22 @@ const POList: React.FC<{
   onCreate: () => void;
   onCreateFromClone?: (payload: { header: any; lines: any[] }) => void;
   onDetail: (order: any) => void;
+  onCopyToDelivery: (order: any) => void;
+  onCancel: (id: string) => void;
   canWrite?: boolean;
   doc: any;
-}> = ({ data, loading, partners, onCreate, onCreateFromClone, onDetail, canWrite, doc }) => {
+}> = ({
+  data,
+  loading,
+  partners,
+  onCreate,
+  onCreateFromClone,
+  onDetail,
+  onCopyToDelivery,
+  onCancel,
+  canWrite,
+  doc,
+}) => {
   const { token, user } = useAuth();
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
@@ -108,12 +127,11 @@ const POList: React.FC<{
     {
       header: 'No. Pedido',
       sortable: true,
-      sortAccessor: (item: any) =>
-        `${item.seriesPrefix || ''}-${String(item.docNum || 0).padStart(6, '0')}`,
+      sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {item.seriesPrefix}-{item.periodCode}-{String(item.docNum).padStart(6, '0')}
+            {formatDocCode(item)}
           </span>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
             ID: {item.id.substring(0, 8)}
@@ -192,6 +210,42 @@ const POList: React.FC<{
     },
   ];
 
+  const ctxMenu = useContextMenu<any>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (item: any) => {
+    const canBeCancelled = item.status === 'O' || item.status === 'P';
+    const canBeReceived = item.status !== 'C' && item.status !== 'X';
+    return [
+      { label: 'Ver Pedido', icon: <Eye size={14} />, onClick: () => onDetail(item) },
+      {
+        label: 'Descargar PDF',
+        icon: <Download size={14} />,
+        onClick: () => handleQuickPdf(item.id),
+      },
+      ...(canBeReceived
+        ? [
+            {
+              label: 'Generar Albarán',
+              icon: <Copy size={14} />,
+              onClick: () => onCopyToDelivery(item),
+              separatorBefore: true,
+            },
+          ]
+        : []),
+      ...(canBeCancelled
+        ? [
+            {
+              label: 'Anular pedido',
+              icon: <Ban size={14} />,
+              destructive: true,
+              onClick: () => onCancel(item.id),
+              separatorBefore: !canBeReceived,
+            },
+          ]
+        : []),
+    ];
+  };
+
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
@@ -263,7 +317,7 @@ const POList: React.FC<{
           onSent={() => setSelectedKeys(new Set())}
         />
         <Table
-          columns={columns}
+          columns={ctxColumns}
           data={filteredData || []}
           isLoading={loading}
           onRowClick={onDetail}
@@ -272,6 +326,14 @@ const POList: React.FC<{
           onSelectionChange={setSelectedKeys}
         />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };
@@ -478,6 +540,22 @@ const POForm: React.FC<{
                   onChange={setState.setSeriesId}
                   options={masters.series.map((s: any) => ({ label: s.name, value: s.id }))}
                 />
+                {state.isManualSeries && (
+                  <div className="mt-2 space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      Número de documento (manual) *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={state.manualNumber}
+                      onChange={(e) => setState.setManualNumber(e.target.value)}
+                      placeholder="Ej: 1050"
+                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    />
+                  </div>
+                )}
                 {state.seriesError && (
                   <p className="text-[10px] text-rose-500 font-bold mt-1">{state.seriesError}</p>
                 )}
@@ -615,14 +693,14 @@ const PODetail: React.FC<{
     <DocumentDetailLayout
       onBack={onBack}
       breadcrumb="COMPRAS · PEDIDO"
-      title={`${order.seriesPrefix}-${order.periodCode}-${String(order.docNum).padStart(6, '0')}`}
+      title={formatDocCode(order)}
       status={statusBadgeProps(order.status, DocKind.Order)}
       actions={
         <DocumentActionBar
           docType="PO"
           pdfUrl={`/api/purchases/orders/${order.id}/pdf`}
           docId={order.id}
-          docCode={`${order.seriesPrefix}-${order.periodCode}-${String(order.docNum).padStart(6, '0')}`}
+          docCode={formatDocCode(order)}
           onCancel={onCancel ? () => onCancel(order.id) : undefined}
           showCancel={canBeCancelled && !!onCancel}
           primary={
@@ -638,7 +716,7 @@ const PODetail: React.FC<{
         <TraceabilityButton
           type="PO"
           id={order.id}
-          docCode={`${order.seriesPrefix}-${order.periodCode}-${String(order.docNum).padStart(6, '0')}`}
+          docCode={formatDocCode(order)}
         />
         <InternalOrderChip internalOrderId={order.internalOrderId} />
       </div>
@@ -738,9 +816,6 @@ const PODetail: React.FC<{
   );
 };
 
-const formatDocCode = (o: any): string =>
-  `${o.seriesPrefix ?? ''}-${o.periodCode ?? ''}-${String(o.docNum ?? '').padStart(6, '0')}`;
-
 // --- COMPONENTE PRINCIPAL ---
 export const PurchaseOrders: React.FC = () => {
   const { token, user } = useAuth();
@@ -819,7 +894,7 @@ export const PurchaseOrders: React.FC = () => {
       const data = await res.json();
       const withCode = (Array.isArray(data) ? data : []).map((d: any) => ({
         ...d,
-        docCode: `${d.seriesPrefix || ''}-${d.periodCode || ''}-${String(d.docNum || '').padStart(6, '0')}`,
+        docCode: formatDocCode(d),
         partnerName: d.partnerName || '',
       }));
       setOrders(withCode);
@@ -971,6 +1046,13 @@ export const PurchaseOrders: React.FC = () => {
       }}
       canWrite={doc.state.canWrite}
       onDetail={(p) => openTab(`/purchase-orders/${p.id}`, { title: formatDocCode(p) })}
+      onCopyToDelivery={(order) => {
+        localStorage.setItem('copy_order_source', JSON.stringify(order));
+        openTab(`/purchases/delivery-notes/new?copyFrom=${order.id}`, {
+          title: `Albarán ← ${formatDocCode(order)}`,
+        });
+      }}
+      onCancel={handleCancelOrder}
     />
   );
 };

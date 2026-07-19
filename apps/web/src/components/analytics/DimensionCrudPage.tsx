@@ -4,6 +4,9 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Plus, Trash2, Pencil } from 'lucide-react';
 import { PluginFieldsPanel } from '../PluginFieldsPanel';
+import { ContextMenu } from '../common/ContextMenu';
+import { withRowContextMenu } from '../common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 
 interface DimensionRow {
   id: string;
@@ -207,6 +210,19 @@ export const DimensionCrudPage: React.FC<Props> = ({
     },
   ];
 
+  const ctxMenu = useContextMenu<DimensionRow>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (r: DimensionRow) => [
+    { label: 'Editar', icon: <Pencil size={14} />, disabled: !canWrite, onClick: () => openEdit(r) },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      disabled: !canDelete,
+      onClick: () => handleDelete(r.id),
+    },
+  ];
+
   const formOpen = editing !== null || Object.keys(form).length > 0;
 
   return (
@@ -302,12 +318,20 @@ export const DimensionCrudPage: React.FC<Props> = ({
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
         <Table
-          columns={columns}
+          columns={ctxColumns}
           data={rows}
           isLoading={loading}
           onRowClick={(r: any) => openEdit(r)}
         />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };

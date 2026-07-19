@@ -3,6 +3,8 @@ import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Percent, Plus, Trash2, Edit3, Save, X, Info } from 'lucide-react';
+import { ContextMenu } from '../components/common/ContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
 
 export const Taxes: React.FC = () => {
   const { token, user } = useAuth();
@@ -103,6 +105,23 @@ export const Taxes: React.FC = () => {
     }
   };
 
+  const ctxMenu = useContextMenu<any>();
+  const buildCtxItems = (t: any) => [
+    {
+      label: 'Editar',
+      icon: <Edit3 size={14} />,
+      disabled: !canWrite,
+      onClick: () => setEditingId(t.id),
+    },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      disabled: !canDelete,
+      onClick: () => handleDelete(t.id),
+    },
+  ];
+
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
@@ -194,6 +213,7 @@ export const Taxes: React.FC = () => {
             {taxes.map((t) => (
               <tr
                 key={t.id}
+                onContextMenu={(e) => ctxMenu.open(e, t)}
                 className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group"
               >
                 <td className="p-6">
@@ -312,6 +332,14 @@ export const Taxes: React.FC = () => {
           </tbody>
         </table>
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };

@@ -18,6 +18,55 @@ import { PluginFieldInput, PluginFieldValue } from './plugin-fields';
 
 export type { DocKind, DocSide } from '@openfactu/common';
 
+/**
+ * Input numérico con buffer de texto local mientras está enfocado.
+ *
+ * Permite teclear libremente "0", "0,", "1.50", etc. sin que el valor se
+ * reconvierta a número en cada pulsación (que es lo que impedía escribir
+ * decimales o ceros: el `parseFloat` del hook + el reformateo del value
+ * controlado se comían el punto y los ceros). Al perder el foco se muestra el
+ * valor ya formateado con `format`.
+ */
+const DecimalInput: React.FC<{
+  value: number | string | null | undefined;
+  onCommit: (value: number) => void;
+  format: (v: any) => string;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+}> = ({ value, onCommit, format, disabled, placeholder, className }) => {
+  const [editing, setEditing] = React.useState(false);
+  const [text, setText] = React.useState('');
+
+  const display = editing ? text : format(value);
+
+  return (
+    <Input
+      type="text"
+      inputMode="decimal"
+      value={display}
+      disabled={disabled}
+      onFocus={(e) => {
+        setEditing(true);
+        setText(value == null || value === '' || Number(value) === 0 ? '' : String(value));
+        e.target.select();
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        // Solo dígitos y un separador decimal (coma o punto). Deja escribir
+        // estados intermedios como "", "0", "0,", "1.".
+        if (!/^\d*[.,]?\d*$/.test(raw)) return;
+        setText(raw);
+        const parsed = parseFloat(raw.replace(',', '.'));
+        onCommit(Number.isFinite(parsed) ? parsed : 0);
+      }}
+      onBlur={() => setEditing(false)}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
+};
+
 interface Masters {
   items: any[];
   taxGroups?: any[];
@@ -593,8 +642,6 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
     align: 'right',
     cell: (line: any, idx: number) => {
       const locked = !!line.baseId;
-      const displayValue =
-        line.quantity == null || Number(line.quantity) === 0 ? '' : String(line.quantity);
       const item = masters.items.find((i: any) => i.id === line.itemId);
       const uomCode = item?.uomCode || item?.uom?.code;
       const availUoms = getItemUoms && line.itemId ? getItemUoms(line.itemId) : [];
@@ -624,13 +671,11 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
 
       return (
         <div className="flex items-center justify-end gap-1.5 w-full">
-          <Input
-            type="text"
-            inputMode="decimal"
-            value={displayValue}
+          <DecimalInput
+            value={line.quantity}
+            onCommit={(num) => actions.updateLine(idx, 'quantity', num)}
+            format={(v) => (v == null || v === '' || Number(v) === 0 ? '' : String(v))}
             disabled={locked}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => actions.updateLine(idx, 'quantity', e.target.value)}
             placeholder="0"
             className={`flex-1 min-w-0 text-right font-bold tabular-nums h-9 ${locked ? disabledInputCls : ''}`}
           />
@@ -676,15 +721,12 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
           .replace(/\.0+$/, '');
         return s;
       };
-      const displayValue = formatPriceForEdit(line.price);
       return (
-        <Input
-          type="text"
-          inputMode="decimal"
-          value={displayValue}
+        <DecimalInput
+          value={line.price}
+          onCommit={(num) => actions.updateLine(idx, 'price', num)}
+          format={formatPriceForEdit}
           disabled={locked}
-          onFocus={(e) => e.target.select()}
-          onChange={(e) => actions.updateLine(idx, 'price', e.target.value)}
           placeholder="0,00"
           className={`w-full text-right font-medium tabular-nums h-9 ${locked ? disabledInputCls : ''}`}
         />
@@ -698,17 +740,19 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
     align: 'center',
     cell: (line: any, idx: number) => {
       const locked = !!line.baseId;
+      // Sin IVA asignado ⇒ mostramos el grupo 0% real (evita duplicar un "0%"
+      // placeholder junto al IVA0 del maestro).
+      const zeroGroup = (masters.taxGroups ?? []).find((t: any) => Number(t.rate) === 0);
       return (
         <select
-          value={line.taxGroupId || ''}
+          value={line.taxGroupId || zeroGroup?.id || ''}
           disabled={locked}
           onChange={(e) => actions.updateLine(idx, 'taxGroupId', e.target.value)}
           className={`h-9 w-full border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-center bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 px-2 ${locked ? disabledInputCls : ''}`}
         >
-          <option value="">0%</option>
           {(masters.taxGroups ?? []).map((t: any) => (
             <option key={t.id} value={t.id}>
-              {t.rate}%
+              {Number(t.rate)}%
             </option>
           ))}
         </select>

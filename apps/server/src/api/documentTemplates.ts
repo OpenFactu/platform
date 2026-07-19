@@ -12,6 +12,10 @@ import {
   validateQuery,
   type TemplateQuery,
 } from '../core/documents/templateQueries';
+import { generateObject } from 'ai';
+import { z } from 'zod';
+import { getAiConfig, getLanguageModel } from '../core/ai';
+import { fetchSchemaInfo, schemaInfoToCompactText } from '../core/documents/schemaInfo';
 import { logAudit } from '../utils/audit';
 
 /**
@@ -94,7 +98,6 @@ export function registerCanvasHelpers() {
     const lines = [street, line2, line3].filter((s) => s && String(s).trim().length > 0);
     return new Handlebars.SafeString(lines.map(escapeHtmlSafe).join('<br/>'));
   });
-
 }
 
 function escapeHtmlSafe(s: unknown): string {
@@ -156,46 +159,7 @@ router.get('/schema-info', async (req: any, res) => {
     if (!isAdminUser(req)) {
       return res.status(403).json({ error: 'Solo disponible para administradores' });
     }
-    const result: any = await req.tenantClient.execute(
-      sql.raw(`
-        SELECT
-          c.table_schema,
-          c.table_name,
-          c.column_name,
-          c.data_type,
-          c.is_nullable
-        FROM information_schema.columns c
-        WHERE c.table_schema = ANY (current_schemas(false))
-          AND c.table_schema NOT IN ('pg_catalog', 'information_schema')
-        ORDER BY c.table_schema, c.table_name, c.ordinal_position
-        LIMIT 5000
-      `),
-    );
-    const rows: any[] = result?.rows ?? result ?? [];
-    const tablesMap = new Map<
-      string,
-      {
-        schema: string;
-        name: string;
-        columns: Array<{ name: string; type: string; nullable: boolean }>;
-      }
-    >();
-    for (const r of rows) {
-      const key = `${r.table_schema}.${r.table_name}`;
-      if (!tablesMap.has(key)) {
-        tablesMap.set(key, {
-          schema: r.table_schema,
-          name: r.table_name,
-          columns: [],
-        });
-      }
-      tablesMap.get(key)!.columns.push({
-        name: r.column_name,
-        type: r.data_type,
-        nullable: r.is_nullable === 'YES',
-      });
-    }
-    res.json({ tables: Array.from(tablesMap.values()) });
+    res.json({ tables: await fetchSchemaInfo(req.tenantClient) });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -310,11 +274,13 @@ router.put('/:id', async (req: any, res) => {
 });
 
 /**
- * POST /resync-defaults — regenera el HTML de las plantillas marcadas como
- * `isDefault: true` usando el último `getDefaultTemplate()` de @openfactu/pdf.
- * Se usa tras publicar una versión nueva del paquete (cambio de paleta, nuevos
- * bloques, etc.) para que los tenants ya existentes recojan los cambios sin
- * tocar sus plantillas custom.
+ * POST /resync-defaults — regenera el HTML de la plantilla "de fábrica"
+ * (`isFactoryDefault: true`) de cada tipo, usando el último
+ * `getDefaultTemplate()` de @openfactu/pdf. Se usa tras publicar una versión
+ * nueva del paquete (cambio de paleta, nuevos bloques, etc.) para que los
+ * tenants ya existentes recojan los cambios. Nunca toca plantillas custom,
+ * ni siquiera si el usuario la marcó como predeterminada (`isDefault`) — ver
+ * comentario en MigrationManager.resyncDefaultTemplates.
  *
  * Sólo ADMIN/SUPERUSER.
  */
@@ -652,6 +618,172 @@ router.post('/test-query', async (req: any, res) => {
     });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * POST /generate — admin-only: generador de plantillas con IA (Fase 1).
+ *
+ * El admin describe la plantilla en lenguaje natural y el modelo (configurado
+ * en Ajustes → IA) devuelve `{ html, queries, notes }`:
+ *  - Tipos estándar (SINV/PO/...): el HTML usa SOLO el payload del documento
+ *    (se le pasa el fixture exacto como contexto). Sin queries — en producción
+ *    `renderDocumentPdf` no las ejecuta para estos tipos.
+ *  - FREE/LABEL: los datos salen exclusivamente de consultas SQL de lectura
+ *    (mismo sandbox que el diseñador: validateQuery + transacción READ ONLY),
+ *    con el esquema del tenant como contexto.
+ *
+ * Las queries propuestas se validan con `validateQuery`; si alguna falla se
+ * hace UNA pasada de reparación con los errores y, si persisten, se devuelven
+ * como `warnings` para que el admin las revise en el diseñador.
+ *
+ * Body: { docType, description, currentHtml?, currentQueries?, feedback? }
+ * (currentHtml + feedback = modo "ajustar una generación anterior").
+ */
+router.post('/generate', async (req: any, res) => {
+  try {
+    if (!isAdminUser(req)) {
+      return res.status(403).json({ error: 'Solo disponible para administradores' });
+    }
+    const { docType, description, currentHtml, currentQueries, feedback } = req.body ?? {};
+    if (!isValidDocType(docType)) return res.status(400).json({ error: 'docType inválido' });
+    if (typeof description !== 'string' || !description.trim()) {
+      return res.status(400).json({ error: 'description es obligatoria' });
+    }
+
+    const aiConfig = await getAiConfig(req.tenantClient);
+    if (!aiConfig.enabled) {
+      return res.status(400).json({
+        error: 'El asistente de IA está desactivado. Actívalo en Ajustes → Empresa → IA.',
+      });
+    }
+    const model = getLanguageModel(aiConfig);
+
+    const free = isFreeDocType(docType);
+
+    // ── Contexto: payload de ejemplo (tipos estándar) o esquema SQL (FREE/LABEL) ──
+    let dataContext: string;
+    if (free) {
+      const compact = schemaInfoToCompactText(await fetchSchemaInfo(req.tenantClient));
+      dataContext = [
+        'No hay payload de documento: los datos salen EXCLUSIVAMENTE de consultas SQL que tú defines.',
+        'Cada query { name, sql } se ejecuta al renderizar y sus filas quedan disponibles en el HTML como `{{queries.<name>}}` (array de objetos, itera con {{#each}}).',
+        'Reglas SQL obligatorias: PostgreSQL; UNA sola sentencia SELECT (o WITH ... SELECT); prohibidas palabras de escritura/DDL; nombres de tabla y columna SIEMPRE entre comillas dobles (son case-sensitive, p.ej. "Item", "docCode").',
+        'Placeholders: `:nombre` se sustituye por un literal escapado. Estándar: :docId, :partnerId, :companyId, :tenantId. Puedes usar params propios (p.ej. :itemId) — el usuario los rellena al generar el documento y también están en el HTML como {{params.<nombre>}}.',
+        '',
+        'Esquema del tenant (tabla(columna tipo, ...)):',
+        compact,
+      ].join('\n');
+    } else {
+      const fixture = PdfPayloadBuilder.fixture(docType);
+      dataContext = [
+        'Los datos del documento vienen de un payload fijo. Esta es su estructura EXACTA con valores de ejemplo (usa solo campos que existan aquí):',
+        JSON.stringify(fixture, null, 1),
+        '',
+        'NO definas consultas SQL para este tipo de documento (en producción no se ejecutan): devuelve queries = [].',
+      ].join('\n');
+    }
+
+    const system = [
+      'Eres un experto en plantillas de documentos del ERP Keirost. Generas plantillas HTML con Handlebars que se renderizan a PDF (A4, Puppeteer).',
+      '',
+      'Reglas del HTML:',
+      '- Documento HTML completo (<!DOCTYPE html> ... </html>) con el CSS en un <style> interno. Sin recursos externos (ni fuentes remotas, ni imágenes por URL externa); usa font-family del sistema.',
+      '- Sintaxis Handlebars: {{campo}}, {{#each coleccion}}...{{/each}}, {{#if}}...{{/if}}.',
+      '- Helpers disponibles: formatCurrency, formatDate, eq, gt, neq, lt, count, sum, avg, min, max, today, formatAddress, barcode, qrCode. Los agregados se usan como subexpresión: {{formatCurrency (sum lines "lineTotal")}}.',
+      '- Diseño profesional y limpio, pensado para imprimir: tipografía legible, tablas con cabecera, totales destacados.',
+      `- Tipo de documento: ${docType}.`,
+      '',
+      dataContext,
+      '',
+      // El literal "objeto JSON" es a propósito, no solo descriptivo: varios
+      // proveedores OpenAI-compatible (DeepSeek incluido) exigen que la
+      // palabra "json" aparezca en el prompt para aceptar
+      // response_format=json_object — sin ella rechazan la request entera
+      // con "Prompt must contain the word 'json'...", antes de llegar
+      // siquiera a generar nada.
+      'Responde SOLO con un objeto JSON con los campos pedidos: html (la plantilla completa), queries (array, puede ser vacío) y notes (explicación breve en español de qué hace la plantilla y qué params espera, si aplica).',
+    ].join('\n');
+
+    const userParts: string[] = [`Descripción de la plantilla pedida:\n${description.trim()}`];
+    if (typeof currentHtml === 'string' && currentHtml.trim()) {
+      userParts.push(
+        'Plantilla actual (ajústala en lugar de partir de cero):\n' + currentHtml,
+        Array.isArray(currentQueries) && currentQueries.length
+          ? 'Queries actuales:\n' + JSON.stringify(currentQueries, null, 1)
+          : 'Queries actuales: ninguna.',
+      );
+      if (typeof feedback === 'string' && feedback.trim()) {
+        userParts.push(`Cambios solicitados:\n${feedback.trim()}`);
+      }
+    }
+
+    const resultSchema = z.object({
+      html: z.string(),
+      queries: z.array(z.object({ name: z.string(), sql: z.string() })),
+      notes: z.string().optional(),
+    });
+
+    const start = Date.now();
+    const generation = await generateObject({
+      model,
+      schema: resultSchema,
+      system,
+      prompt: userParts.join('\n\n'),
+      abortSignal: AbortSignal.timeout(180_000),
+    });
+    let { html, queries, notes } = generation.object;
+
+    // ── Validación de queries + una pasada de reparación ──
+    const validate = (qs: Array<{ name: string; sql: string }>) =>
+      qs
+        .map((q) => ({ name: q.name, error: validateQuery(q.sql) }))
+        .filter((r): r is { name: string; error: string } => r.error !== null);
+
+    let warnings = validate(queries);
+    if (warnings.length > 0) {
+      try {
+        const repair = await generateObject({
+          model,
+          schema: resultSchema,
+          system,
+          prompt: [
+            userParts.join('\n\n'),
+            'Tu propuesta anterior:\n' + JSON.stringify({ html, queries }, null, 1),
+            'Estas queries NO pasan la validación del sandbox — corrígelas y devuelve el objeto completo de nuevo:\n' +
+              warnings.map((w) => `- ${w.name}: ${w.error}`).join('\n'),
+          ].join('\n\n'),
+          abortSignal: AbortSignal.timeout(180_000),
+        });
+        html = repair.object.html;
+        queries = repair.object.queries;
+        notes = repair.object.notes ?? notes;
+        warnings = validate(queries);
+      } catch {
+        /* si la reparación falla, devolvemos la 1ª propuesta con sus warnings */
+      }
+    }
+
+    res.json({
+      html,
+      queries,
+      notes: notes ?? '',
+      warnings,
+      provider: aiConfig.provider,
+      ms: Date.now() - start,
+    });
+    logAudit({
+      tenantClient: req.tenantClient,
+      tenantId: req.tenantId || '',
+      userId: req.user?.id,
+      entityType: 'DocumentTemplate',
+      entityId: 'generate',
+      action: 'CREATE',
+      newValue: { docType, description: description.slice(0, 500), warnings: warnings.length },
+    });
+  } catch (e: any) {
+    console.error('[DocumentTemplates.generate]', e);
+    res.status(502).json({ error: e?.message || 'Error al generar la plantilla con IA' });
   }
 });
 

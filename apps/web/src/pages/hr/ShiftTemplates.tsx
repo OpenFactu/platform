@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast } from '@openfactu/ui';
 import { useAuth } from '../../context/AuthContext';
 import { Clock, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 
 interface ShiftTemplate {
   id: string;
@@ -116,6 +119,18 @@ export const ShiftTemplates: React.FC = () => {
           </button>
         </div>
       ),
+    },
+  ];
+
+  const ctxMenu = useContextMenu<ShiftTemplate>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (r: ShiftTemplate) => [
+    { label: 'Editar', icon: <Pencil size={14} />, onClick: () => setEditing(r) },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      onClick: () => remove(r),
     },
   ];
 
@@ -255,8 +270,16 @@ export const ShiftTemplates: React.FC = () => {
       )}
 
       <Card noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} />
+        <Table columns={ctxColumns} data={rows} isLoading={loading} />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };

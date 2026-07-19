@@ -24,6 +24,7 @@ router.get('/', async (req: any, res) => {
           tenantId: schema.globalUsers.tenantId,
           tenantName: schema.tenants.name,
           permissions: schema.globalUsers.permissions,
+          avatarImageUrl: schema.globalUsers.avatarImageUrl,
         })
         .from(schema.globalUsers)
         .leftJoin(schema.tenants, eq(schema.globalUsers.tenantId, schema.tenants.id)),

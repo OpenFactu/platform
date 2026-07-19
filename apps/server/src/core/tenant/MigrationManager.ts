@@ -127,9 +127,18 @@ export class MigrationManager {
   }
 
   /**
-   * Regenera la plantilla marcada como `isDefault` de cada docType, SIN tocar
-   * las plantillas custom. Útil tras un cambio de paleta o de layout del
-   * generador visual (p.ej. al publicar una versión nueva de @openfactu/pdf).
+   * Regenera la plantilla "de fábrica" (`isFactoryDefault=true`) de cada
+   * docType, SIN tocar las plantillas custom. Útil tras un cambio de paleta
+   * o de layout del generador visual (p.ej. al publicar una versión nueva
+   * de @openfactu/pdf).
+   *
+   * A propósito filtra por `isFactoryDefault`, NO por `isDefault`: si un
+   * usuario promueve su plantilla personalizada a predeterminada
+   * (`isDefault=true`), sigue siendo SU plantilla — nunca la fila sembrada
+   * por el sistema — y no debe regenerarse aquí (bug histórico: antes se
+   * filtraba por `isDefault`, así que promover una plantilla custom a
+   * predeterminada la exponía a que el siguiente reinicio le sobreescribiera
+   * html y name con el genérico de fábrica).
    */
   public static async resyncDefaultTemplates(schemaName: string): Promise<number> {
     const db = ClientFactory.getClient(schemaName);
@@ -142,7 +151,7 @@ export class MigrationManager {
         .where(
           and(
             eq(schema.documentTemplates.docType, docType),
-            eq(schema.documentTemplates.isDefault, true),
+            eq(schema.documentTemplates.isFactoryDefault, true),
           ),
         );
       const html = getDefaultTemplate(docType);
@@ -158,12 +167,27 @@ export class MigrationManager {
           .set({ html, name: DEFAULT_TEMPLATE_NAMES[docType] })
           .where(eq(schema.documentTemplates.id, existing.id));
       } else {
+        // No hay fila de fábrica para este docType (tenant nuevo, o backfill
+        // de la migración 060 que no la marcó porque la única fila
+        // isDefault=true era custom). No tocamos cuál es la predeterminada
+        // actual del usuario: solo la marcamos isDefault si de verdad no hay
+        // ninguna otra ya activa para este docType.
+        const [currentDefault] = await db
+          .select({ id: schema.documentTemplates.id })
+          .from(schema.documentTemplates)
+          .where(
+            and(
+              eq(schema.documentTemplates.docType, docType),
+              eq(schema.documentTemplates.isDefault, true),
+            ),
+          );
         await db.insert(schema.documentTemplates).values({
           id: crypto.randomUUID(),
           docType,
           name: DEFAULT_TEMPLATE_NAMES[docType],
           html,
-          isDefault: true,
+          isDefault: !currentDefault,
+          isFactoryDefault: true,
         });
       }
       updated++;
@@ -190,6 +214,7 @@ export class MigrationManager {
           name: DEFAULT_TEMPLATE_NAMES[docType],
           html: getDefaultTemplate(docType),
           isDefault: true,
+          isFactoryDefault: true,
         });
         console.log(`[Templates] Seeded default template for ${docType} in ${schemaName}`);
       }

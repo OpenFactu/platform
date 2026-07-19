@@ -12,6 +12,16 @@ import { initializeSDK } from './sdk/sdk-proxy';
 // Inicializar infra compartida para plugins
 initializeSDK();
 
+// El dev server ahora corre sin service worker por default (ver vite.config.ts,
+// VITE_PWA_DEV). Si el navegador todavía tiene registrado uno de una sesión
+// anterior (con VITE_PWA_DEV=true, o de antes de este cambio), lo
+// desregistramos para que no siga sirviendo bundles viejos en cada reload.
+if (import.meta.env.DEV && !import.meta.env.VITE_PWA_DEV && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    for (const reg of regs) reg.unregister();
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <I18nProvider>

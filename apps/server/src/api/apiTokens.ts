@@ -21,7 +21,7 @@ function requireAdmin(req: any, res: any, next: any) {
   }
   if (!req.user) return res.status(401).json({ error: 'No autenticado.' });
   const role = String(req.user.role || '').toUpperCase();
-  if (role !== 'ADMIN' && role !== 'SUPERADMIN') {
+  if (role !== 'ADMIN' && role !== 'SUPERUSER') {
     return res.status(403).json({ error: 'Solo el administrador puede gestionar tokens.' });
   }
   next();

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { Slot } from '../components/Slot';
 import { DashboardPluginWidgets } from '../components/plugins/DashboardPluginWidgets';
+import { UserDashboardWidgets } from '../components/dashboard/UserDashboardWidgets';
 import { Card, Badge, DashboardSkeleton } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -771,6 +772,10 @@ export const Dashboard: React.FC = () => {
           )}
         </Card>
       </div>
+
+      {/* Widgets: creados desde código (plugins) o sin código (Ajustes → Widgets de dashboard) */}
+      <UserDashboardWidgets />
+      <DashboardPluginWidgets />
 
       <Slot name="dashboard:main:bottom" />
     </div>

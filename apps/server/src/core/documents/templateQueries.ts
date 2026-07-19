@@ -158,15 +158,34 @@ function substituteParams(rawSql: string, ctx: QueryExecutionContext): string {
  * Ejecuta todas las consultas y devuelve los resultados indexados por nombre.
  * Las consultas fallidas no abortan al resto: se registran en `errors`.
  */
+/** Nombre de schema Postgres válido: letras, dígitos, guion bajo, no empieza por dígito. */
+const SAFE_SCHEMA_NAME = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
 export async function runTemplateQueries(
   tenantClient: any,
   queries: TemplateQuery[],
   ctx: QueryExecutionContext = {},
+  /**
+   * Si se indica, la consulta se ejecuta con el `search_path` fijado SOLO a
+   * este schema (dentro de la misma transacción, `SET LOCAL` — no afecta a
+   * nada fuera de esta query). La conexión del tenant incluye `public` en su
+   * search_path por diseño (tablas geográficas compartidas, etc.), lo que
+   * permite que una consulta sin cualificar como `"ApiToken"` resuelva contra
+   * `public.ApiToken` y filtre datos de TODOS los tenants. Los llamantes que
+   * ejecutan SQL generado por un LLM o expuesto vía MCP (`core/ai/tools`)
+   * SIEMPRE deben pasar esto; el diseñador de plantillas (SQL escrito por un
+   * admin humano para su propio tenant) no lo usa, para no romper queries
+   * existentes que unen contra tablas públicas de referencia (Country, etc.).
+   */
+  restrictToSchema?: string,
 ): Promise<QueryResults> {
   const byName: Record<string, unknown[]> = {};
   const errors: QueryExecutionError[] = [];
 
   if (!queries || queries.length === 0) return { byName, errors };
+  if (restrictToSchema && !SAFE_SCHEMA_NAME.test(restrictToSchema)) {
+    throw new Error(`Nombre de schema inválido: ${restrictToSchema}`);
+  }
 
   for (const q of queries) {
     const name = (q.name || '').trim();
@@ -193,6 +212,9 @@ ${prepared.replace(/;\s*$/, '')}
       const rows = await tenantClient.transaction(async (tx: any) => {
         await tx.execute(sql.raw(`SET LOCAL transaction_read_only = ON`));
         await tx.execute(sql.raw(`SET LOCAL statement_timeout = ${STATEMENT_TIMEOUT_MS}`));
+        if (restrictToSchema) {
+          await tx.execute(sql.raw(`SET LOCAL search_path TO "${restrictToSchema}"`));
+        }
         const result: any = await tx.execute(sql.raw(wrapped));
         return (result?.rows ?? result ?? []) as unknown[];
       });

@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useAuth } from '../../context/AuthContext';
 import { AlertOctagon, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 
 interface IncidentType {
   id: string;
@@ -114,6 +117,18 @@ export const IncidentTypes: React.FC = () => {
     },
   ];
 
+  const ctxMenu = useContextMenu<IncidentType>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (r: IncidentType) => [
+    { label: 'Editar', icon: <Pencil size={14} />, onClick: () => setEditing(r) },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      onClick: () => remove(r),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-6 animate-in fade-in duration-500">
       <div className="flex items-start justify-between">
@@ -179,8 +194,16 @@ export const IncidentTypes: React.FC = () => {
       )}
 
       <Card noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} />
+        <Table columns={ctxColumns} data={rows} isLoading={loading} />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };

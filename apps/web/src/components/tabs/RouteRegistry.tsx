@@ -75,6 +75,7 @@ import { ApiTokens } from '../../pages/ApiTokens';
 import { NewCompany } from '../../pages/NewCompany';
 import { ServerCockpit } from '../../pages/ServerCockpit';
 import { CustomFields } from '../../pages/CustomFields';
+import { DashboardWidgets } from '../../pages/DashboardWidgets';
 import { Automations } from '../../pages/Automations';
 import { LogisticsHub } from '../../pages/logistics/LogisticsHub';
 import { ShipmentDetail } from '../../pages/logistics/ShipmentDetail';
@@ -84,6 +85,7 @@ import { UserTableDetail } from '../../pages/user-tables/UserTableDetail';
 import Documents from '../../pages/Documents/Documents';
 import { DocumentTemplateDesigner } from '../../pages/Documents/DocumentTemplateDesigner';
 import { DocumentTemplates } from '../../pages/Documents/DocumentTemplates';
+import { AiChat } from '../../pages/AiChat';
 import { DocumentSeries } from '../../pages/Documents/DocumentSeries';
 
 export interface RouteMeta {
@@ -630,6 +632,13 @@ export const staticRoutes: RouteEntry[] = [
     permissionPath: '/document-templates',
   },
   {
+    pattern: '/ai/chat',
+    Component: AiChat,
+    title: 'Asistente IA',
+    iconName: 'Bot',
+    permissionPath: '/ai/chat',
+  },
+  {
     pattern: '/document-templates/:id/designer',
     Component: DocumentTemplateDesigner,
     title: 'Diseñador de plantilla',
@@ -663,6 +672,13 @@ export const staticRoutes: RouteEntry[] = [
     title: 'Campos personalizados',
     iconName: 'Wrench',
     permissionPath: '/custom-fields',
+  },
+  {
+    pattern: '/dashboard-widgets',
+    Component: DashboardWidgets,
+    title: 'Widgets de dashboard',
+    iconName: 'LayoutGrid',
+    permissionPath: '/dashboard-widgets',
   },
   {
     pattern: '/automations',

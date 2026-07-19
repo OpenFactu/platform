@@ -14,6 +14,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useTabs, useCurrentTab } from '../../context/TabsContext';
 import { useTheme } from '../../context/ThemeContext';
+import { formatDocCode } from '../../utils/docCode';
 import {
   FileDigit,
   Plus,
@@ -25,12 +26,17 @@ import {
   Barcode,
   AlertCircle,
   Download,
+  Eye,
+  Ban,
 } from 'lucide-react';
 import { DocumentActionBar } from '../../components/DocumentActionBar';
 import { DocumentDetailLayout } from '../../components/DocumentDetailLayout';
 import { AttachmentsPanel } from '../../components/AttachmentsPanel';
 import { CloneDocumentActions } from '../../components/common/CloneDocumentActions';
 import { TraceabilityButton } from '../../components/common/TraceabilityButton';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 import { DocumentFiscalPanel } from '../../components/documents/DocumentFiscalPanel';
 import { InternalOrderHeaderField } from '../../components/InternalOrderHeaderField';
 import { InternalOrderChip } from '../../components/InternalOrderChip';
@@ -61,9 +67,11 @@ const SOList: React.FC<{
   onCreate: () => void;
   onCreateFromClone?: (payload: { header: any; lines: any[] }) => void;
   onDetail: (order: any) => void;
+  onCopyToDelivery: (order: any) => void;
+  onCancel: (id: string) => void;
 
   doc: any;
-}> = ({ data, loading, partners, onCreate, onCreateFromClone, onDetail, doc }) => {
+}> = ({ data, loading, partners, onCreate, onCreateFromClone, onDetail, onCopyToDelivery, onCancel, doc }) => {
   const { token, user } = useAuth();
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
@@ -110,12 +118,11 @@ const SOList: React.FC<{
     {
       header: 'No. Pedido',
       sortable: true,
-      sortAccessor: (item: any) =>
-        `${item.seriesPrefix || ''}-${String(item.docNum || 0).padStart(6, '0')}`,
+      sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {item.seriesPrefix}-{item.periodCode}-{String(item.docNum).padStart(6, '0')}
+            {formatDocCode(item)}
           </span>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
             ID: {item.id.substring(0, 8)}
@@ -193,6 +200,42 @@ const SOList: React.FC<{
     },
   ];
 
+  const ctxMenu = useContextMenu<any>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (item: any) => {
+    const canBeCancelled = item.status === 'O' || item.status === 'P';
+    const canBeDelivered = item.status !== 'C' && item.status !== 'X';
+    return [
+      { label: 'Ver Pedido', icon: <Eye size={14} />, onClick: () => onDetail(item) },
+      {
+        label: 'Descargar PDF',
+        icon: <Download size={14} />,
+        onClick: () => handleQuickPdf(item.id),
+      },
+      ...(canBeDelivered
+        ? [
+            {
+              label: 'Generar Albarán',
+              icon: <Copy size={14} />,
+              onClick: () => onCopyToDelivery(item),
+              separatorBefore: true,
+            },
+          ]
+        : []),
+      ...(canBeCancelled
+        ? [
+            {
+              label: 'Anular pedido',
+              icon: <Ban size={14} />,
+              destructive: true,
+              onClick: () => onCancel(item.id),
+              separatorBefore: !canBeDelivered,
+            },
+          ]
+        : []),
+    ];
+  };
+
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
@@ -264,7 +307,7 @@ const SOList: React.FC<{
           onSent={() => setSelectedKeys(new Set())}
         />
         <Table
-          columns={columns}
+          columns={ctxColumns}
           data={filteredData || []}
           isLoading={loading}
           onRowClick={onDetail}
@@ -273,6 +316,14 @@ const SOList: React.FC<{
           onSelectionChange={setSelectedKeys}
         />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };
@@ -491,6 +542,22 @@ const SOForm: React.FC<{
                   onChange={setState.setSeriesId}
                   options={masters.series.map((s: any) => ({ label: s.name, value: s.id }))}
                 />
+                {state.isManualSeries && (
+                  <div className="mt-2 space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      Número de documento (manual) *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={state.manualNumber}
+                      onChange={(e) => setState.setManualNumber(e.target.value)}
+                      placeholder="Ej: 1050"
+                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    />
+                  </div>
+                )}
                 {state.seriesError && (
                   <p className="text-[10px] text-rose-500 font-bold mt-1">{state.seriesError}</p>
                 )}
@@ -642,14 +709,14 @@ const SODetail: React.FC<{
     <DocumentDetailLayout
       onBack={onBack}
       breadcrumb="VENTAS · PEDIDO"
-      title={`${order.seriesPrefix}-${order.periodCode}-${String(order.docNum).padStart(6, '0')}`}
+      title={formatDocCode(order)}
       status={statusBadgeProps(order.status, DocKind.Order)}
       actions={
         <DocumentActionBar
           docType="SO"
           pdfUrl={`/api/sales/${order.id}/pdf`}
           docId={order.id}
-          docCode={`${order.seriesPrefix}-${order.periodCode}-${String(order.docNum).padStart(6, '0')}`}
+          docCode={formatDocCode(order)}
           onCancel={() => onCancel(order.id)}
           showCancel={canBeCancelled}
           primary={
@@ -665,7 +732,7 @@ const SODetail: React.FC<{
         <TraceabilityButton
           type="SO"
           id={order.id}
-          docCode={`${order.seriesPrefix}-${order.periodCode}-${String(order.docNum).padStart(6, '0')}`}
+          docCode={formatDocCode(order)}
         />
         <InternalOrderChip internalOrderId={order.internalOrderId} />
       </div>
@@ -765,8 +832,6 @@ const SODetail: React.FC<{
   );
 };
 
-const formatDocCode = (o: any): string =>
-  `${o.seriesPrefix}-${o.periodCode}-${String(o.docNum).padStart(6, '0')}`;
 
 export const SalesOrders: React.FC = () => {
   const { token, user } = useAuth();
@@ -851,7 +916,7 @@ export const SalesOrders: React.FC = () => {
         const data = await res.json();
         const withCode = (Array.isArray(data) ? data : []).map((d: any) => ({
           ...d,
-          docCode: `${d.seriesPrefix || ''}-${d.periodCode || ''}-${String(d.docNum || '').padStart(6, '0')}`,
+          docCode: formatDocCode(d),
           partnerName: d.partnerName || '',
         }));
         setOrders(withCode);
@@ -1012,6 +1077,13 @@ export const SalesOrders: React.FC = () => {
         openTab('/sales-orders/new');
       }}
       onDetail={(p) => openTab(`/sales-orders/${p.id}`, { title: formatDocCode(p) })}
+      onCopyToDelivery={(order) => {
+        localStorage.setItem('copy_order_source', JSON.stringify(order));
+        openTab(`/sales/delivery-notes/new?copyFrom=${order.id}`, {
+          title: `Albarán ← ${formatDocCode(order)}`,
+        });
+      }}
+      onCancel={handleCancel}
     />
   );
 };
