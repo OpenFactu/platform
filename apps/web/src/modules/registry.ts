@@ -44,7 +44,12 @@ export interface Module {
   hiddenInLogisticsOnly?: boolean;
 }
 
-export const CORE_MODULES: Module[] = [
+/**
+ * Entradas de navbar de módulos AÚN NO migrados a manifiesto propio
+ * (src/modules/<nombre>/module.ts). Cada fase de la modularización mueve su
+ * entrada de aquí a su module.ts. `CORE_MODULES` se compone en ./index.ts.
+ */
+export const LEGACY_NAV: Module[] = [
   {
     id: 'home',
     label: 'Inicio',

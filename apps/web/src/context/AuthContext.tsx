@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { apiClient } from '../shared/http';
 
 interface User {
   id: string;
@@ -72,11 +73,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(userData);
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('openfactu_token');
     setToken(null);
     setUser(null);
-  };
+  }, []);
+
+  // Empuja el estado de auth al cliente HTTP central (único dueño de fetch).
+  useEffect(() => {
+    apiClient.setAuth(token, user?.tenantId ?? null);
+  }, [token, user?.tenantId]);
+
+  // Manejo global de 401: cualquier petición autenticada que devuelva 401 cierra sesión.
+  useEffect(() => {
+    apiClient.setOnUnauthorized(() => logout());
+    return () => apiClient.setOnUnauthorized(null);
+  }, [logout]);
 
   const switchTenant = async (tenantId: string) => {
     if (!token) throw new Error('No autenticado');

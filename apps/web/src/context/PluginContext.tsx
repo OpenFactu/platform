@@ -7,7 +7,7 @@ import React, {
   useRef,
   useMemo,
 } from 'react';
-import { CORE_MODULES, findActiveModule, type Module, type SubTab } from '../modules/registry';
+import { CORE_MODULES, findActiveModule, type Module, type SubTab } from '../modules';
 import { useAuth } from './AuthContext';
 
 interface PluginRoute {

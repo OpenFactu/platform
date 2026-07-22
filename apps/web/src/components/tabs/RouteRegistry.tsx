@@ -1,5 +1,6 @@
-import React from 'react';
 import { matchRoutes } from 'react-router-dom';
+import { moduleRoutes } from '../../modules';
+import type { RouteEntry, RouteMeta } from '../../modules/types';
 import { Dashboard } from '../../pages/Dashboard';
 import { StyleGuide } from '../../pages/StyleGuide';
 import { PluginManager } from '../../pages/PluginManager';
@@ -88,18 +89,14 @@ import { DocumentTemplates } from '../../pages/Documents/DocumentTemplates';
 import { AiChat } from '../../pages/AiChat';
 import { DocumentSeries } from '../../pages/Documents/DocumentSeries';
 
-export interface RouteMeta {
-  title: string;
-  iconName?: string;
-  permissionPath?: string;
-}
+export type { RouteEntry, RouteMeta } from '../../modules/types';
 
-export interface RouteEntry extends RouteMeta {
-  pattern: string;
-  Component: React.ComponentType;
-}
-
-export const staticRoutes: RouteEntry[] = [
+/**
+ * Rutas de módulos AÚN NO migrados a manifiesto propio
+ * (src/modules/<nombre>/module.ts). Cada fase de la modularización mueve las
+ * suyas a su module.ts; `staticRoutes` combina manifiestos + legacy.
+ */
+const legacyRoutes: RouteEntry[] = [
   { pattern: '/', Component: Dashboard, title: 'Dashboard', iconName: 'BarChart3' },
   {
     pattern: '/plugins',
@@ -740,6 +737,8 @@ export const staticRoutes: RouteEntry[] = [
     permissionPath: '/ui',
   },
 ];
+
+export const staticRoutes: RouteEntry[] = [...moduleRoutes, ...legacyRoutes];
 
 const matchCandidates = staticRoutes.map((r) => ({ path: r.pattern }));
 
