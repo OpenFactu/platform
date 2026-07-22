@@ -11,8 +11,10 @@
 
 import path from 'path';
 import { LocalStorageAdapter } from './adapters/LocalStorageAdapter';
+import { GoogleDriveAdapter } from './adapters/GoogleDriveAdapter';
+import { OneDriveAdapter } from './adapters/OneDriveAdapter';
 import type { StorageAdapter, StorageProviderId } from './StorageAdapter';
-import { getStorageConfig } from '../config/storageConfig';
+import { getStorageConfig, type StorageConfig } from '../config/storageConfig';
 
 /**
  * basePath por defecto. En docker el contenedor server tiene `/app/storage`
@@ -34,9 +36,9 @@ export class StorageResolver {
    * Devuelve el adapter activo para un tenant (lo que diga `storage.provider`
    * en su `systemConfigs`). Para FREE/recién creados, `local` por defecto.
    */
-  static async forTenant(tenantClient: any, _schemaName: string): Promise<StorageAdapter> {
+  static async forTenant(tenantClient: any, schemaName: string): Promise<StorageAdapter> {
     const cfg = await getStorageConfig(tenantClient);
-    return this.buildAdapter(cfg.provider || 'local', cfg);
+    return this.buildAdapter(cfg.provider || 'local', cfg, tenantClient, schemaName);
   }
 
   /**
@@ -47,29 +49,38 @@ export class StorageResolver {
   static async forProvider(
     provider: StorageProviderId,
     tenantClient: any,
-    _schemaName: string,
+    schemaName: string,
   ): Promise<StorageAdapter> {
     const cfg = await getStorageConfig(tenantClient);
-    return this.buildAdapter(provider, cfg);
+    return this.buildAdapter(provider, cfg, tenantClient, schemaName);
   }
 
-  private static buildAdapter(provider: StorageProviderId, cfg: any): StorageAdapter {
+  private static buildAdapter(
+    provider: StorageProviderId,
+    cfg: StorageConfig,
+    tenantClient: any,
+    schemaName: string,
+  ): StorageAdapter {
     switch (provider) {
-      case 'local':
-        return new LocalStorageAdapter({
-          basePath: cfg?.local?.basePath || defaultLocalBasePath(),
-        });
       case 'gdrive':
-      case 'onedrive':
-        // Stub: cuando se implementen GoogleDriveAdapter / OneDriveAdapter,
-        // se devolverán aquí. Mientras tanto, fallback transparente a local
-        // para no romper subidas si alguien marca el provider antes de tiempo.
+      case 'onedrive': {
+        // Solo construimos el adapter cloud si el tenant completó el flujo
+        // OAuth y la conexión no está revocada; si no, fallback a local para
+        // no romper subidas (escribir local siempre es seguro).
+        const section = cfg[provider];
+        if (section?.refreshToken && section.status !== 'revoked') {
+          return provider === 'gdrive'
+            ? new GoogleDriveAdapter({ tenantClient, schemaName, cfg })
+            : new OneDriveAdapter({ tenantClient, schemaName, cfg });
+        }
         console.warn(
-          `[StorageResolver] Provider "${provider}" aún no implementado, cayendo a local`,
+          `[StorageResolver] Provider "${provider}" sin conexión OAuth válida, cayendo a local`,
         );
         return new LocalStorageAdapter({
           basePath: cfg?.local?.basePath || defaultLocalBasePath(),
         });
+      }
+      case 'local':
       default:
         return new LocalStorageAdapter({
           basePath: cfg?.local?.basePath || defaultLocalBasePath(),

@@ -36,6 +36,7 @@ import { AI_PROVIDERS, getAiConfig, getLanguageModel, listProviders } from '../c
 import { LOCAL_MODEL_CATALOG } from '../core/ai/localCatalog';
 import { streamChat, AiDisabledError } from '../core/ai/chat/chatEngine';
 import { extractTextFromFile } from '../core/ai/fileProcessing';
+import { resolveEffectivePermissions } from '../core/auth/resolveEffectivePermissions';
 import { logAudit } from '../utils/audit';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import * as schema from '../db/schema';
@@ -77,11 +78,21 @@ router.post('/chat', async (req: any, res) => {
     const cfgForMeta = await getAiConfig(req.tenantClient);
     const effectiveModel = modelOverride || cfgForMeta.model || AI_PROVIDERS[cfgForMeta.provider]?.defaultModel;
 
+    // Permisos granulares reales del usuario (null = ADMIN/SUPERUSER, acceso
+    // total) — sin esto, buildChatTools no puede filtrar qué tools de
+    // lectura/escritura mostrarle a un rol restringido (ver hasModuleAccess).
+    const effectivePermissions = await resolveEffectivePermissions(
+      req.user.id,
+      req.tenantId,
+      req.user.role,
+    );
+
     const result = await streamChat({
       tenantClient: req.tenantClient,
       tenantId: req.tenantId || '',
       tenantSchema: req.tenantSchema,
       user: req.user,
+      effectivePermissions,
       messages,
       modelOverride,
       // Mismo patrón que dashboardWidgets.ts: el host que el navegador usó

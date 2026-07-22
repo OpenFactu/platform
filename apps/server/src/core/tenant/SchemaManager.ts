@@ -101,4 +101,27 @@ export class SchemaManager {
       throw error;
     }
   }
+
+  /**
+   * Borra un tenant por completo: filas en `public` que no cascadean por FK
+   * (GlobalUser.tenantId se pone a null; AuditLog/DevApiKey se borran),
+   * la fila `Tenant`, el schema físico y la conexión cacheada.
+   *
+   * Usado por el borrado explícito de empresa (`DELETE /api/admin/tenants/:id`)
+   * y por el rollback de `TenantBackup.importFromZip` cuando la restauración
+   * del backup falla a medias — sin esto, un fallo tras crear el tenant deja
+   * una empresa fantasma en `public.Tenant` sin schema físico detrás.
+   */
+  public static async deleteTenantCompletely(tenantId: string, schemaName: string): Promise<void> {
+    const publicDb = ClientFactory.getClient('public');
+    await publicDb
+      .update(schema.globalUsers)
+      .set({ tenantId: null })
+      .where(eq(schema.globalUsers.tenantId, tenantId));
+    await publicDb.delete(schema.auditLogs).where(eq(schema.auditLogs.tenantId, tenantId));
+    await publicDb.delete(schema.devApiKeys).where(eq(schema.devApiKeys.tenantId, tenantId));
+    await publicDb.delete(schema.tenants).where(eq(schema.tenants.id, tenantId));
+    await publicDb.execute(sql.raw(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`));
+    await ClientFactory.evict(schemaName);
+  }
 }

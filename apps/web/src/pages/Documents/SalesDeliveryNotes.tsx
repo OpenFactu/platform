@@ -55,6 +55,7 @@ import { useFormat } from '../../hooks/useFormat';
 import { BatchSelectionModal } from '../../components/BatchSelectionModal';
 import { BatchAssignmentPanel } from '../../components/BatchAssignmentPanel';
 import { useItemUoms } from '../../hooks/useItemUoms';
+import { useZonesWithStock } from '../../hooks/useZonesWithStock';
 import { usePluginLineFields } from '../../hooks/usePluginLineFields';
 import { PluginFieldsPanel } from '../../components/PluginFieldsPanel';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
@@ -184,7 +185,12 @@ const SDNList: React.FC<{
           {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
           {item.status === 'C' && <Badge variant="success">Facturado</Badge>}
           {item.status === 'X' && <Badge variant="error">Cancelado</Badge>}
-          {item.hasActiveShipment && <Badge variant="info">En preparación</Badge>}
+          {item.hasActiveShipment && item.activeShipmentStatus === 'delivered' && (
+            <Badge variant="success">Entregado</Badge>
+          )}
+          {item.hasActiveShipment && item.activeShipmentStatus !== 'delivered' && (
+            <Badge variant="info">En preparación</Badge>
+          )}
         </div>
       ),
     },
@@ -221,7 +227,7 @@ const SDNList: React.FC<{
           )}
           {item.status === 'O' && !item.hasActiveShipment && flags.logisticsEnabled && (
             <div onClick={(e) => e.stopPropagation()} className="inline-flex">
-              <PreparationButton docType="SDN" docId={item.id} />
+              <PreparationButton docType="SDN" docId={item.id} compact />
             </div>
           )}
           {item.hasActiveShipment && item.activeShipmentId && (
@@ -417,6 +423,7 @@ const SDNForm: React.FC<{
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const fmt = useFormat();
   const itemUoms = useItemUoms();
+  const zonesWithStock = useZonesWithStock();
   const { flags } = useTheme();
   const warehouseLocation = flags.warehouseLocation;
   const pluginLineFields = usePluginLineFields('SalesDeliveryNoteLine');
@@ -440,10 +447,12 @@ const SDNForm: React.FC<{
       getItemUoms: itemUoms.get,
       warehouseLocation,
       pluginLineFields,
+      getAvailableZones: zonesWithStock.get,
     });
     return [...base.slice(0, -1), projectCol, base[base.length - 1]];
   }, [
     state.lines,
+    state.warehouseId,
     masters.items,
     masters.taxGroups,
     warehouseLocation,
@@ -673,6 +682,7 @@ const SDNForm: React.FC<{
         masters={masters}
         zones={zones}
         warehouseId={state.warehouseId}
+        warehouseLocation={warehouseLocation}
         initialLineIdx={batchEditingIdx}
         isSale={true}
         onSave={(updates) => {
@@ -739,6 +749,7 @@ const SDNDetail: React.FC<{
 }> = ({ sdn, onBack, onCancel, onCopyToInvoice, masters, zones, setViewingBatch }) => {
   const fmt = useFormat();
   const { flags } = useTheme();
+  const tabs = useTabs();
   const partner = masters.partners.find((p: any) => p.id === sdn.partnerId);
 
   const columns = useMemo(
@@ -784,8 +795,23 @@ const SDNDetail: React.FC<{
           docCode={formatDocCode(sdn)}
         />
         <InternalOrderChip internalOrderId={sdn.internalOrderId} />
-        {sdn.status === 'O' && flags.logisticsEnabled && (
+        {sdn.status === 'O' && !sdn.hasActiveShipment && flags.logisticsEnabled && (
           <PreparationButton docType="SDN" docId={sdn.id} />
+        )}
+        {sdn.hasActiveShipment && sdn.activeShipmentId && (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const path = `/logistics/shipments/${sdn.activeShipmentId}`;
+              if (tabs && (tabs as any).openTab) {
+                (tabs as any).openTab(path, { title: 'Envío en preparación' });
+              } else {
+                window.location.href = path;
+              }
+            }}
+          >
+            Ver preparación
+          </Button>
         )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

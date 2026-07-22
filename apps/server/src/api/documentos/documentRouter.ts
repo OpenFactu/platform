@@ -1,19 +1,19 @@
 import { Router, Request, Response } from 'express';
-import { eq, and, sql, desc } from 'drizzle-orm';
-import * as schema from '../db/schema';
-import { DocumentEngine } from '../core/documents/DocumentEngine';
+import { eq, sql, desc } from 'drizzle-orm';
+import * as schema from '../../db/schema';
+import { DocumentEngine } from '../../core/documents/DocumentEngine';
 import {
   DocumentRegistry,
   type DocType,
   type DocumentTypeConfig,
-} from '../core/documents/DocumentRegistry';
-import { renderDocumentPdf } from '../core/documents/renderDocumentPdf';
-import { logAudit } from '../utils/audit';
+} from '../../core/documents/DocumentRegistry';
+import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
+import { logAudit } from '../../utils/audit';
 import {
   buildPaymentDueLines,
   computeWithholding,
   latestDueDate,
-} from '../core/documents/invoiceLock';
+} from '../../core/documents/invoiceLock';
 
 const router = Router();
 
@@ -270,6 +270,7 @@ router.post('/:docType', async (req: any, res) => {
         stockAction: config.stockAction,
         closeBaseDocuments: config.closeBaseDocuments,
         initialStatus: config.initialStatus,
+        hooks: config.hooks,
       },
       req.body,
     );
@@ -351,7 +352,7 @@ router.post('/:docType/:id/post', async (req: any, res) => {
     // Asiento contable (best-effort)
     let journalEntryId: string | null = null;
     try {
-      const { JournalEngine } = await import('../core/accounting/JournalEngine');
+      const { JournalEngine } = await import('../../core/accounting/JournalEngine');
       const fresh = { ...header, isLocked: true };
       const lines = await req.tenantClient
         .select()
@@ -427,151 +428,31 @@ router.post('/:docType/:id/cancel', async (req: any, res) => {
         .where(eq(config.schemaTable.id, req.params.id));
       if (!header) throw new Error('No encontrado');
       if (header.status === 'X') throw new Error('Ya está cancelado');
-
-      const lines = await tx
-        .select()
-        .from(config.lineSchemaTable)
-        .where(eq(config.lineSchemaTable[config.lineFk], req.params.id));
-
-      // Revertir stock
-      if (config.stockAction === 'OUT') {
-        for (const line of lines) {
-          const baseQty = Number(line.quantity) * Number(line.uomFactor || 1);
-          await tx
-            .update(schema.items)
-            .set({ stock: sql`${schema.items.stock} + ${baseQty}` })
-            .where(eq(schema.items.id, line.itemId));
-
-          if (line.warehouseId) {
-            await tx
-              .update(schema.itemWarehouseStocks)
-              .set({
-                stock: sql`${schema.itemWarehouseStocks.stock} + ${baseQty}`,
-                updatedAt: new Date(),
-              })
-              .where(
-                sql`${schema.itemWarehouseStocks.itemId} = ${line.itemId} AND ${schema.itemWarehouseStocks.warehouseId} = ${line.warehouseId}`,
-              );
-          }
-
-          if (config.batchSchemaTable) {
-            const batchFkCol =
-              'invoiceLineId' in config.batchSchemaTable ? 'invoiceLineId' : 'deliveryLineId';
-            const batches = await tx
-              .select()
-              .from(config.batchSchemaTable)
-              .where(eq((config.batchSchemaTable as any)[batchFkCol], line.id));
-            for (const bd of batches) {
-              await tx
-                .update(schema.itemBatches)
-                .set({
-                  quantity: sql`${schema.itemBatches.quantity} + ${Number(bd.quantity)}`,
-                })
-                .where(
-                  sql`${schema.itemBatches.itemId} = ${line.itemId} AND ${schema.itemBatches.batchNum} = ${bd.batchNum}`,
-                );
-              if (line.warehouseId) {
-                await tx
-                  .update(schema.itemBatchStocks)
-                  .set({
-                    quantity: sql`${schema.itemBatchStocks.quantity} + ${Number(bd.quantity)}`,
-                    updatedAt: new Date(),
-                  })
-                  .where(
-                    and(
-                      eq(schema.itemBatchStocks.itemId, line.itemId),
-                      eq(schema.itemBatchStocks.batchNum, bd.batchNum),
-                      eq(schema.itemBatchStocks.warehouseId, line.warehouseId),
-                    ),
-                  );
-              }
-            }
-          }
-
-          // Reabrir documentos base
-          if (line.baseType && line.baseId) {
-            const baseConfig = DocumentRegistry.get(line.baseType as DocType);
-            if (baseConfig) {
-              await tx
-                .update(baseConfig.schemaTable)
-                .set({ status: 'O' })
-                .where(eq(baseConfig.schemaTable.id, line.baseId));
-            }
-          }
-        }
-      } else if (config.stockAction === 'IN') {
-        for (const line of lines) {
-          const baseQty = Number(line.quantity) * Number(line.uomFactor || 1);
-          await tx
-            .update(schema.items)
-            .set({ stock: sql`${schema.items.stock} - ${baseQty}` })
-            .where(eq(schema.items.id, line.itemId));
-
-          if (line.warehouseId) {
-            await tx
-              .update(schema.itemWarehouseStocks)
-              .set({
-                stock: sql`${schema.itemWarehouseStocks.stock} - ${baseQty}`,
-                updatedAt: new Date(),
-              })
-              .where(
-                sql`${schema.itemWarehouseStocks.itemId} = ${line.itemId} AND ${schema.itemWarehouseStocks.warehouseId} = ${line.warehouseId}`,
-              );
-          }
-
-          if (config.batchSchemaTable) {
-            const batchFkCol =
-              'invoiceLineId' in config.batchSchemaTable ? 'invoiceLineId' : 'deliveryLineId';
-            const batches = await tx
-              .select()
-              .from(config.batchSchemaTable)
-              .where(eq((config.batchSchemaTable as any)[batchFkCol], line.id));
-            for (const bd of batches) {
-              await tx
-                .update(schema.itemBatches)
-                .set({
-                  quantity: sql`${schema.itemBatches.quantity} - ${Number(bd.quantity)}`,
-                })
-                .where(
-                  sql`${schema.itemBatches.itemId} = ${line.itemId} AND ${schema.itemBatches.batchNum} = ${bd.batchNum}`,
-                );
-              if (line.warehouseId) {
-                await tx
-                  .update(schema.itemBatchStocks)
-                  .set({
-                    quantity: sql`${schema.itemBatchStocks.quantity} - ${Number(bd.quantity)}`,
-                    updatedAt: new Date(),
-                  })
-                  .where(
-                    and(
-                      eq(schema.itemBatchStocks.itemId, line.itemId),
-                      eq(schema.itemBatchStocks.batchNum, bd.batchNum),
-                      eq(schema.itemBatchStocks.warehouseId, line.warehouseId),
-                    ),
-                  );
-              }
-            }
-          }
-
-          // Reabrir documentos base
-          if (line.baseType && line.baseId) {
-            const baseConfig = DocumentRegistry.get(line.baseType as DocType);
-            if (baseConfig) {
-              await tx
-                .update(baseConfig.schemaTable)
-                .set({ status: 'O' })
-                .where(eq(baseConfig.schemaTable.id, line.baseId));
-            }
-          }
-        }
-      } else {
-        // NONE (orders) — solo marcar cancelado
+      // Antes esta ruta genérica no comprobaba esto — un albarán ya
+      // facturado (status 'C') no debe poder cancelarse por aquí tampoco.
+      if (config.category === 'delivery_note' && header.status === 'C') {
+        throw new Error('No se puede cancelar: el documento ya está facturado.');
       }
 
-      await tx
-        .update(config.schemaTable)
-        .set({ status: 'X' })
-        .where(eq(config.schemaTable.id, req.params.id));
+      // Revierte stock (global/almacén/zona/lotes) respetando
+      // `baseAlreadyMovedStock`, reabre documentos base y marca 'X' — todo
+      // vía DocumentEngine, para los 6 tipos de documento por igual.
+      await DocumentEngine.cancel(
+        tx,
+        req.tenantId,
+        req.user,
+        {
+          tableName: config.tableName,
+          schemaTable: config.schemaTable,
+          lineSchemaTable: config.lineSchemaTable,
+          batchSchemaTable: config.batchSchemaTable,
+          eventPrefix: config.eventPrefix,
+          stockAction: config.stockAction,
+          closeBaseDocuments: config.closeBaseDocuments,
+          hooks: config.hooks,
+        },
+        req.params.id,
+      );
 
       return { success: true };
     });

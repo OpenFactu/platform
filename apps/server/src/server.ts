@@ -64,12 +64,12 @@ import hrShiftAssignmentsRouter from './api/hr/shiftAssignments';
 import hrTimeclockRouter from './api/hr/timeclock';
 import hrKiosksRouter from './api/hr/kiosks';
 import seriesRouter from './api/series';
-import purchasesRouter from './api/purchases';
-import purchaseDeliveryNotesRouter from './api/purchaseDeliveryNotes';
-import purchaseInvoicesRouter from './api/purchaseInvoices';
-import salesOrdersRouter from './api/salesOrders';
-import salesDeliveryNotesRouter from './api/salesDeliveryNotes';
-import salesInvoicesRouter from './api/salesInvoices';
+import purchasesRouter from './api/documentos/purchases';
+import purchaseDeliveryNotesRouter from './api/documentos/purchaseDeliveryNotes';
+import purchaseInvoicesRouter from './api/documentos/purchaseInvoices';
+import salesOrdersRouter from './api/documentos/salesOrders';
+import salesDeliveryNotesRouter from './api/documentos/salesDeliveryNotes';
+import salesInvoicesRouter from './api/documentos/salesInvoices';
 import paymentsRouter from './api/payments';
 import {
   currenciesRouter,
@@ -83,6 +83,7 @@ import membershipsRouter from './api/memberships';
 import documentTemplatesRouter from './api/documentTemplates';
 import attachmentsRouter from './api/attachments';
 import adminRouter from './api/admin';
+import backupsRouter from './api/backups';
 import systemRouter from './api/system';
 import emailRouter from './api/email';
 import notificationsRouter from './api/notifications';
@@ -95,10 +96,11 @@ import mcpRouter from './api/mcp';
 import searchRouter from './api/search';
 import geoRouter from './api/geo';
 import factuApiRouter from './api/factuapi';
-import documentRouter from './api/documentRouter';
+import documentRouter from './api/documentos/documentRouter';
 import { tenantContextMiddleware } from './api/middleware/tenantContext';
 import { MigrationManager } from './core/tenant/MigrationManager';
 import { startPeriodCloseCron } from './core/cron/periodCloseCron';
+import { startBackupCron } from './core/cron/backupCron';
 import { startEventSocket, broadcastEvent } from './core/realtime/EventSocket';
 import { notifyTenant } from './core/realtime/notifyTenant';
 import { HookManager } from './core/plugins/HookManager';
@@ -239,6 +241,7 @@ app.use('/api/memberships', membershipsRouter);
 app.use('/api/document-templates', documentTemplatesRouter);
 app.use('/api/attachments', attachmentsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/backups', backupsRouter);
 app.use('/api/system', systemRouter);
 // Correo saliente por tenant — lee/escribe config SMTP y envía emails.
 app.use('/api/email', emailRouter);
@@ -497,6 +500,10 @@ const start = async () => {
     // Cron de cierre de período — notifica a los admins cuando un periodo
     // vence pero NO cierra automáticamente (requiere confirmación UI).
     startPeriodCloseCron();
+
+    // Cron de backups automáticos — ejecuta los backups programados por
+    // tenant (sección `backup` de SystemConfig) y aplica retención.
+    startBackupCron();
 
     const server = app.listen(PORT, () => {
       console.log(`[Server] Keirost escuchando en puerto ${PORT}`);

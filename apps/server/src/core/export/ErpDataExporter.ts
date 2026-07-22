@@ -4,15 +4,12 @@
  * columnas a su modelo. Una fila por entidad, separador `,`, encoding UTF-8
  * con BOM (Excel friendly).
  *
- * Tablas exportadas:
- *   partners.csv, partner_addresses.csv, partner_groups.csv
- *   items.csv, categories.csv, units_of_measure.csv, tax_groups.csv
- *   sales_orders.csv, sales_order_lines.csv
- *   sales_delivery_notes.csv, sales_delivery_note_lines.csv
- *   sales_invoices.csv, sales_invoice_lines.csv
- *   purchase_orders.csv, purchase_order_lines.csv
- *   purchase_delivery_notes.csv, purchase_delivery_note_lines.csv
- *   purchase_invoices.csv, purchase_invoice_lines.csv
+ * Exporta TODAS las tablas del schema del tenant (descubiertas en pg_tables),
+ * no una lista fija — así ninguna entidad se queda fuera aunque se añadan
+ * tablas nuevas al modelo. Solo se excluyen las tablas internas de
+ * infraestructura (_MigrationHistory). Las entidades principales conservan
+ * su nombre de archivo histórico (partners.csv, items.csv, ...); el resto
+ * usa el nombre de la tabla en snake_case.
  *
  * Cada fila incluye el campo natural y los IDs/relaciones, así otro ERP
  * puede reconciliar.
@@ -21,51 +18,75 @@
 import AdmZip from 'adm-zip';
 import { sql } from 'drizzle-orm';
 
-const TABLES = [
-  { file: 'partner_groups', table: 'PartnerGroup' },
-  { file: 'partners', table: 'BusinessPartner' },
-  { file: 'partner_addresses', table: 'PartnerAddress' },
-  { file: 'categories', table: 'Category' },
-  { file: 'units_of_measure', table: 'UnitOfMeasure' },
-  { file: 'tax_groups', table: 'TaxGroup' },
-  { file: 'items', table: 'Item' },
-  { file: 'sales_orders', table: 'SalesOrder' },
-  { file: 'sales_order_lines', table: 'SalesOrderLine' },
-  { file: 'sales_delivery_notes', table: 'SalesDeliveryNote' },
-  { file: 'sales_delivery_note_lines', table: 'SalesDeliveryNoteLine' },
-  { file: 'sales_invoices', table: 'SalesInvoice' },
-  { file: 'sales_invoice_lines', table: 'SalesInvoiceLine' },
-  { file: 'purchase_orders', table: 'PurchaseOrder' },
-  { file: 'purchase_order_lines', table: 'PurchaseOrderLine' },
-  { file: 'purchase_delivery_notes', table: 'PurchaseDeliveryNote' },
-  { file: 'purchase_delivery_note_lines', table: 'PurchaseDeliveryNoteLine' },
-  { file: 'purchase_invoices', table: 'PurchaseInvoice' },
-  { file: 'purchase_invoice_lines', table: 'PurchaseInvoiceLine' },
-];
+/** Tablas internas que no aportan datos de negocio. */
+const EXCLUDED_TABLES = new Set(['_MigrationHistory']);
+
+/** Nombres de archivo históricos para las entidades principales. */
+const FRIENDLY_NAMES: Record<string, string> = {
+  PartnerGroup: 'partner_groups',
+  BusinessPartner: 'partners',
+  PartnerAddress: 'partner_addresses',
+  Category: 'categories',
+  UnitOfMeasure: 'units_of_measure',
+  TaxGroup: 'tax_groups',
+  Item: 'items',
+  SalesOrder: 'sales_orders',
+  SalesOrderLine: 'sales_order_lines',
+  SalesDeliveryNote: 'sales_delivery_notes',
+  SalesDeliveryNoteLine: 'sales_delivery_note_lines',
+  SalesInvoice: 'sales_invoices',
+  SalesInvoiceLine: 'sales_invoice_lines',
+  PurchaseOrder: 'purchase_orders',
+  PurchaseOrderLine: 'purchase_order_lines',
+  PurchaseDeliveryNote: 'purchase_delivery_notes',
+  PurchaseDeliveryNoteLine: 'purchase_delivery_note_lines',
+  PurchaseInvoice: 'purchase_invoices',
+  PurchaseInvoiceLine: 'purchase_invoice_lines',
+};
+
+/** ItemZoneStock → item_zone_stock */
+function toSnakeFile(table: string): string {
+  return table
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .replace(/^_+/, '')
+    .toLowerCase();
+}
 
 export class ErpDataExporter {
   static async exportToZip(tenantClient: any): Promise<Buffer> {
     const zip = new AdmZip();
     const manifest: any = {
       exportedAt: new Date().toISOString(),
-      version: 1,
+      version: 2,
       tables: [] as Array<{ file: string; table: string; rows: number }>,
     };
 
-    for (const t of TABLES) {
+    // Descubrir todas las tablas del schema activo del tenant (el client ya
+    // nace con search_path al schema correcto).
+    const tablesRes: any = await tenantClient.execute(
+      sql.raw(
+        `SELECT tablename FROM pg_tables WHERE schemaname = current_schema() ORDER BY tablename`,
+      ),
+    );
+    const tableNames: string[] = (tablesRes?.rows ?? [])
+      .map((r: any) => r.tablename as string)
+      .filter((t: string) => !EXCLUDED_TABLES.has(t));
+
+    for (const table of tableNames) {
+      const file = FRIENDLY_NAMES[table] || toSnakeFile(table);
       try {
-        const res: any = await tenantClient.execute(sql.raw(`SELECT * FROM "${t.table}"`));
+        const res: any = await tenantClient.execute(sql.raw(`SELECT * FROM "${table}"`));
         const rows: any[] = res?.rows ?? res ?? [];
         const csv = toCsv(rows);
         // BOM + CSV para abrir bien en Excel.
         zip.addFile(
-          `${t.file}.csv`,
+          `${file}.csv`,
           Buffer.concat([Buffer.from('\uFEFF', 'utf8'), Buffer.from(csv)]),
         );
-        manifest.tables.push({ file: `${t.file}.csv`, table: t.table, rows: rows.length });
+        manifest.tables.push({ file: `${file}.csv`, table, rows: rows.length });
       } catch (e: any) {
-        // Si una tabla no existe en este tenant la saltamos sin abortar.
-        manifest.tables.push({ file: `${t.file}.csv`, table: t.table, rows: 0, error: e?.message });
+        // Si una tabla no puede leerse la registramos sin abortar el export.
+        manifest.tables.push({ file: `${file}.csv`, table, rows: 0, error: e?.message });
       }
     }
 

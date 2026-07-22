@@ -251,6 +251,13 @@ router.delete('/:id', requireScope('write:maestros'), async (req: any, res) => {
  */
 router.get('/:id/batches', requireScope('read:maestros'), async (req: any, res) => {
   const { id } = req.params;
+  // `?warehouseId=` restringe a lotes con stock REAL en ese almacén (vía
+  // itemBatchStocks) y devuelve la cantidad por-almacén en vez de la global
+  // del artículo — antes siempre se devolvía la cantidad global, pudiendo
+  // ofrecer como "disponible" un lote sin stock físico en el almacén pedido
+  // (p. ej. al elegir un lote alternativo durante el picking).
+  const warehouseId =
+    typeof req.query.warehouseId === 'string' && req.query.warehouseId ? req.query.warehouseId : undefined;
   try {
     const serialsQuery = req.tenantClient
       .select({
@@ -266,28 +273,57 @@ router.get('/:id/batches', requireScope('read:maestros'), async (req: any, res) 
       .from(schema.itemSerials)
       .where(eq(schema.itemSerials.itemId, id));
 
-    const batchesQuery = req.tenantClient
-      .select({
-        id: schema.itemBatches.id,
-        batchNum: schema.itemBatches.batchNum,
-        quantity: schema.itemBatches.quantity,
-        expiryDate: schema.itemBatches.expiryDate,
-        warehouseId: schema.itemBatchStocks.warehouseId,
-        warehouseName: schema.warehouses.name,
-        zoneName: sql<string | null>`NULL`,
-        type: sql<string>`'B'`,
-      })
-      .from(schema.itemBatches)
-      .leftJoin(
-        schema.itemBatchStocks,
-        and(
-          eq(schema.itemBatches.itemId, schema.itemBatchStocks.itemId),
-          eq(schema.itemBatches.batchNum, schema.itemBatchStocks.batchNum),
-        ),
-      )
-      .leftJoin(schema.warehouses, eq(schema.itemBatchStocks.warehouseId, schema.warehouses.id))
-      .where(eq(schema.itemBatches.itemId, id))
-      .orderBy(desc(schema.itemBatchStocks.quantity));
+    const batchesQuery = warehouseId
+      ? req.tenantClient
+          .select({
+            id: schema.itemBatches.id,
+            batchNum: schema.itemBatches.batchNum,
+            quantity: schema.itemBatchStocks.quantity,
+            expiryDate: schema.itemBatches.expiryDate,
+            warehouseId: schema.itemBatchStocks.warehouseId,
+            warehouseName: schema.warehouses.name,
+            zoneName: sql<string | null>`NULL`,
+            type: sql<string>`'B'`,
+          })
+          .from(schema.itemBatches)
+          .innerJoin(
+            schema.itemBatchStocks,
+            and(
+              eq(schema.itemBatches.itemId, schema.itemBatchStocks.itemId),
+              eq(schema.itemBatches.batchNum, schema.itemBatchStocks.batchNum),
+            ),
+          )
+          .leftJoin(schema.warehouses, eq(schema.itemBatchStocks.warehouseId, schema.warehouses.id))
+          .where(
+            and(
+              eq(schema.itemBatches.itemId, id),
+              eq(schema.itemBatchStocks.warehouseId, warehouseId),
+              sql`${schema.itemBatchStocks.quantity} > 0`,
+            ),
+          )
+          .orderBy(desc(schema.itemBatchStocks.quantity))
+      : req.tenantClient
+          .select({
+            id: schema.itemBatches.id,
+            batchNum: schema.itemBatches.batchNum,
+            quantity: schema.itemBatches.quantity,
+            expiryDate: schema.itemBatches.expiryDate,
+            warehouseId: schema.itemBatchStocks.warehouseId,
+            warehouseName: schema.warehouses.name,
+            zoneName: sql<string | null>`NULL`,
+            type: sql<string>`'B'`,
+          })
+          .from(schema.itemBatches)
+          .leftJoin(
+            schema.itemBatchStocks,
+            and(
+              eq(schema.itemBatches.itemId, schema.itemBatchStocks.itemId),
+              eq(schema.itemBatches.batchNum, schema.itemBatchStocks.batchNum),
+            ),
+          )
+          .leftJoin(schema.warehouses, eq(schema.itemBatchStocks.warehouseId, schema.warehouses.id))
+          .where(eq(schema.itemBatches.itemId, id))
+          .orderBy(desc(schema.itemBatchStocks.quantity));
 
     const [serials, batches] = await Promise.all([serialsQuery, batchesQuery]);
     let allResults = [...serials, ...batches];

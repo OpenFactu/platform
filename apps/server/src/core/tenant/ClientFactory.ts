@@ -76,6 +76,24 @@ export class ClientFactory {
     return this.getClient(tenant.schemaName);
   }
 
+  /**
+   * Cierra y descarta el pool cacheado de un único schema (p.ej. tras borrar
+   * un tenant). Sin esto, una conexión cacheada seguiría apuntando a un
+   * schema que ya no existe físicamente en Postgres.
+   */
+  public static async evict(schemaName: string): Promise<void> {
+    const pool = this.pools.get(schemaName);
+    this.clients.delete(schemaName);
+    this.pools.delete(schemaName);
+    if (pool) {
+      try {
+        await pool.end();
+      } catch (e: any) {
+        console.warn(`[DrizzleFactory] Error cerrando pool de ${schemaName}:`, e.message);
+      }
+    }
+  }
+
   public static async disconnectAll() {
     const poolCount = this.pools.size;
     if (poolCount > 0) {

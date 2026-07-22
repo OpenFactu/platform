@@ -4,14 +4,13 @@
  * Se enfila (no se envía sincrónico) vía `enqueueMail` — para que un fallo
  * del SMTP no bloquee el PATCH del envío. El MailQueue reintenta.
  *
- * Etapas notificadas:
- *   - pending           → "Pedido preparándose"
- *   - in_transit        → "Tu envío está en camino"
- *   - out_for_delivery  → "Sale hoy hacia ti"
- *   - postponed         → "Intento de entrega fallido — te lo volveremos a intentar"
- *   - delivered         → "Entregado" (adjunta firma + foto de la entrega si existen)
- *   - exception         → "Incidencia en la entrega"
- *   - returned          → "Devuelto"
+ * Se notifica CUALQUIER etapa listada en `NOTIFY_STAGES` (logistics.ts) que
+ * llegue vía `emitTransition` o un PATCH de status — el ciclo típico outbound:
+ *   pending/picking/packed/ready → dispatched ("asignado a reparto")
+ *   → in_transit ("en camino", al pulsar Iniciar ruta el conductor)
+ *   → out_for_delivery ("sale hoy hacia ti", cuando su parada arranca)
+ *   → delivered (adjunta firma + foto si existen)
+ *   más los excepcionales: postponed / exception / returned / cancelled.
  *
  * El email de destino se resuelve desde el partner de la Sales Delivery Note
  * o Purchase Delivery Note vinculada al envío.
@@ -172,10 +171,10 @@ const COPY: Record<
         trackUrl,
         accent: '#6366f1',
         emoji: '🚛',
-        hero: '¡Ya ha salido!',
-        sub: 'Tu pedido acaba de salir de nuestras instalaciones.',
-        body: `<p style="margin:0 0 12px">Sigue su posición en tiempo real y sabrás exactamente cuándo llegará.</p>`,
-        ctaLabel: 'Seguir en el mapa',
+        hero: 'Tu pedido está listo para salir',
+        sub: 'Ya está asignado a una ruta de reparto — saldrá hacia ti muy pronto.',
+        body: `<p style="margin:0 0 12px">Te avisaremos en cuanto salga. Desde el enlace puedes seguir cada paso de tu envío.</p>`,
+        ctaLabel: 'Seguir mi pedido',
       }),
   },
   in_transit: {
@@ -218,18 +217,21 @@ const COPY: Record<
       }),
   },
   postponed: {
-    subject: (c) => `⏸ ${c} · Intento de entrega fallido`,
+    // Texto neutro: se usa tanto cuando el conductor no pudo entregar como
+    // cuando la ruta se finalizó con paradas pendientes — no siempre hubo
+    // un intento en la puerta.
+    subject: (c) => `⏸ ${c} · Entrega aplazada`,
     body: ({ code, trackUrl, address }) =>
       renderShell({
         code,
         trackUrl,
         accent: '#f59e0b',
         emoji: '⏸',
-        hero: 'No había nadie para recibirlo',
-        sub: 'Hemos intentado entregarlo, pero no pudimos.',
+        hero: 'Tu entrega se ha aplazado',
+        sub: 'No hemos podido completarla en esta ruta.',
         body: `
-          <p style="margin:0 0 12px">Hemos pasado por${address ? ` <b>${escapeHtml(address)}</b>` : ' tu dirección'} con tu pedido <b>${escapeHtml(code)}</b>, pero no había nadie para recibirlo.</p>
-          <p style="margin:0 0 12px">Volveremos a intentarlo pronto. Si prefieres coordinar un horario concreto, responde a este correo y lo organizamos.</p>
+          <p style="margin:0 0 12px">No hemos podido entregar tu pedido <b>${escapeHtml(code)}</b>${address ? ` en <b>${escapeHtml(address)}</b>` : ''} en el reparto de hoy.</p>
+          <p style="margin:0 0 12px">Lo reintentaremos pronto. Si prefieres coordinar un horario concreto, responde a este correo y lo organizamos.</p>
         `,
       }),
   },
@@ -309,6 +311,120 @@ const COPY: Record<
         hero: 'Pedido cancelado',
         sub: `El pedido ${escapeHtml(code)} ha sido cancelado.`,
         body: `<p style="margin:0 0 12px">Si necesitas más información sobre la cancelación, respóndenos a este correo y te la facilitamos.</p>`,
+      }),
+  },
+};
+
+/**
+ * Variantes para RECOGIDAS (`shipment.kind === 'pickup_return'`): el sentido
+ * se invierte — no le llevamos un pedido al cliente, vamos a su dirección a
+ * RECOGER un paquete (típicamente por una incidencia o devolución). Solo se
+ * sobreescriben las etapas que una recogida atraviesa de verdad; el resto cae
+ * al copy genérico.
+ */
+const PICKUP_COPY: Partial<typeof COPY> = {
+  pending: {
+    subject: (c) => `📦 Recogida ${c} programada`,
+    body: ({ code, trackUrl }) =>
+      renderShell({
+        code,
+        trackUrl,
+        accent: '#8b5cf6',
+        emoji: '📦',
+        hero: 'Vamos a recoger tu paquete',
+        sub: 'Hemos programado una recogida en tu dirección.',
+        body: `<p style="margin:0 0 12px">Pasaremos a recoger el paquete. Te avisaremos cuando el repartidor salga hacia ti y el día que pase por tu dirección — no hace falta que hagas nada más, solo tenerlo a mano.</p>`,
+      }),
+  },
+  dispatched: {
+    subject: (c) => `🚛 Recogida ${c} · Asignada a ruta`,
+    body: ({ code, trackUrl }) =>
+      renderShell({
+        code,
+        trackUrl,
+        accent: '#6366f1',
+        emoji: '🚛',
+        hero: 'Tu recogida ya está planificada',
+        sub: 'La hemos asignado a una ruta — pasaremos pronto a por el paquete.',
+        body: `<p style="margin:0 0 12px">Te avisaremos cuando el repartidor salga hacia tu dirección. Desde el enlace puedes seguir el estado de la recogida.</p>`,
+        ctaLabel: 'Seguir mi recogida',
+      }),
+  },
+  in_transit: {
+    subject: (c) => `🗺️ Recogida ${c} · El repartidor está en ruta`,
+    body: ({ code, trackUrl }) =>
+      renderShell({
+        code,
+        trackUrl,
+        accent: '#6366f1',
+        emoji: '🗺️',
+        hero: 'Vamos de camino a por tu paquete',
+        sub: 'El repartidor ha salido de ruta.',
+        body: `<p style="margin:0 0 12px">Puedes seguir su posición en tiempo real. Ten el paquete preparado para cuando llegue.</p>`,
+        ctaLabel: 'Ver mapa en vivo',
+      }),
+  },
+  out_for_delivery: {
+    subject: (c) => `🛵 Recogida ${c} · ¡Hoy pasamos a por él!`,
+    body: ({ code, trackUrl, address }) =>
+      renderShell({
+        code,
+        trackUrl,
+        accent: '#8b5cf6',
+        emoji: '🛵',
+        hero: '¡Hoy recogemos tu paquete!',
+        sub: 'El repartidor pasará hoy por tu dirección.',
+        body: `
+          <p style="margin:0 0 12px">Hoy pasamos${address ? ` por <b>${escapeHtml(address)}</b>` : ' por tu dirección'} a recoger el paquete de la recogida <b>${escapeHtml(code)}</b>.</p>
+          <p style="margin:0 0 12px">Por favor, ten el paquete preparado y asegúrate de que haya alguien para entregárselo al repartidor.</p>
+        `,
+      }),
+  },
+  postponed: {
+    subject: (c) => `⏸ Recogida ${c} · Aplazada`,
+    body: ({ code, trackUrl, address }) =>
+      renderShell({
+        code,
+        trackUrl,
+        accent: '#f59e0b',
+        emoji: '⏸',
+        hero: 'Tu recogida se ha aplazado',
+        sub: 'No hemos podido recoger el paquete en esta ruta.',
+        body: `
+          <p style="margin:0 0 12px">No hemos podido recoger tu paquete <b>${escapeHtml(code)}</b>${address ? ` en <b>${escapeHtml(address)}</b>` : ''} en el reparto de hoy.</p>
+          <p style="margin:0 0 12px">Lo reintentaremos pronto. Si prefieres coordinar un horario concreto, responde a este correo y lo organizamos.</p>
+        `,
+      }),
+  },
+  delivered: {
+    subject: (c) => `✅ Recogida ${c} · Paquete recogido`,
+    body: ({ code, trackUrl, recipientName, podNotes, photoCid, signatureCid }) =>
+      renderShell({
+        code,
+        trackUrl,
+        accent: '#10b981',
+        emoji: '✅',
+        hero: '¡Paquete recogido!',
+        sub: 'Ya lo tenemos — gracias por tenerlo preparado.',
+        body: `
+          <p style="margin:0 0 12px">Hemos recogido tu paquete <b>${escapeHtml(code)}</b>${recipientName ? `, entregado por <b>${escapeHtml(recipientName)}</b>` : ''}. Nuestro equipo lo revisará en cuanto llegue al almacén y te contactaremos con la resolución.</p>
+          ${podNotes ? `<p style="margin:0 0 12px;color:#64748b;font-size:13px">Notas del repartidor: ${escapeHtml(podNotes)}</p>` : ''}
+          ${signatureCid ? `<p style="margin:0 0 6px;font-size:12px;color:#64748b">Firma:</p><img src="cid:${signatureCid}" alt="Firma" style="max-width:220px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:12px"/>` : ''}
+          ${photoCid ? `<p style="margin:0 0 6px;font-size:12px;color:#64748b">Comprobante de la recogida:</p><img src="cid:${photoCid}" alt="Foto" style="max-width:100%;border:1px solid #e2e8f0;border-radius:8px"/>` : ''}
+        `,
+      }),
+  },
+  cancelled: {
+    subject: (c) => `🚫 Recogida ${c} · Cancelada`,
+    body: ({ code, trackUrl }) =>
+      renderShell({
+        code,
+        trackUrl,
+        accent: '#64748b',
+        emoji: '🚫',
+        hero: 'Recogida cancelada',
+        sub: `La recogida ${escapeHtml(code)} ha sido cancelada.`,
+        body: `<p style="margin:0 0 12px">Si necesitas más información, respóndenos a este correo y te la facilitamos.</p>`,
       }),
   },
 };
@@ -442,7 +558,8 @@ export async function notifyShipmentStageChange(
 
     const code = ship.trackingNumber || ship.id.slice(0, 8);
     const trackUrl = `${publicBaseUrl.replace(/\/$/, '')}/track/${ship.reportToken}`;
-    const copy = COPY[stage];
+    // Recogidas: copy invertido ("vamos a por tu paquete") si existe variante.
+    const copy = (ship.kind === 'pickup_return' && PICKUP_COPY[stage]) || COPY[stage];
 
     // Sólo en `delivered` intentamos adjuntar firma+foto.
     const attachments: Array<{

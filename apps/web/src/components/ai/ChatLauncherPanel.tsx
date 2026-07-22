@@ -7,6 +7,15 @@
  *
  * Se oculta a sí mismo cuando la pestaña activa YA es /ai/chat — mostrar el
  * lanzador ahí sería redundante con la página que ya está abierta.
+ *
+ * Solo se muestra en desktop (`md:` y superior). En móvil choca con la barra
+ * inferior (`MobileBottomNav`, que también es fixed) y con su botón central
+ * de escaneo — y Keiro ya es accesible desde ahí vía Menú, así que el
+ * lanzador flotante es redundante en pantallas pequeñas.
+ *
+ * En desktop la bolita se puede arrastrar a cualquiera de las 4 esquinas
+ * (arrastre real, no solo click) — al soltar, se ancla a la esquina más
+ * cercana y esa elección se recuerda entre sesiones (localStorage).
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Bot, Loader2, Maximize2, Sparkles, X } from 'lucide-react';
@@ -17,6 +26,33 @@ import { ASSISTANT_NAME } from '../../pages/AiChat/constants';
 import { MessageBubble } from '../../pages/AiChat/MessageBubble';
 import { Composer } from '../../pages/AiChat/Composer';
 import { useComposerState } from '../../pages/AiChat/useComposerState';
+import { PendingQuestionBar } from '../../pages/AiChat/PendingQuestionBar';
+import { findPendingQuestion } from '../../pages/AiChat/pendingQuestion';
+
+type Corner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+const CORNER_STORAGE_KEY = 'keirost:chatBubbleCorner';
+// Anclajes con hueco para no tapar el layout fijo de MainLayout.tsx: el riel
+// de iconos (60px) a la izquierda y la cabecera (56px, h-14) arriba. Abajo y
+// a la derecha no hay nada fijo en desktop, así que ahí sí vale el margen
+// normal de 24px (right-6/bottom-6).
+const CORNER_CLASSES: Record<Corner, string> = {
+  'bottom-right': 'bottom-6 right-6',
+  'bottom-left': 'bottom-6 left-[76px]',
+  'top-right': 'top-[70px] right-6',
+  'top-left': 'top-[70px] left-[76px]',
+};
+/** Umbral en px para distinguir un click de un arrastre. */
+const DRAG_THRESHOLD = 8;
+
+function loadCorner(): Corner {
+  try {
+    const v = localStorage.getItem(CORNER_STORAGE_KEY);
+    if (v && v in CORNER_CLASSES) return v as Corner;
+  } catch {
+    /* localStorage puede fallar en modo privado — usamos el default */
+  }
+  return 'bottom-right';
+}
 
 export const ChatLauncherPanel: React.FC = () => {
   const { user } = useAuth();
@@ -37,8 +73,65 @@ export const ChatLauncherPanel: React.FC = () => {
   } = useAiChatContext();
 
   const [open, setOpen] = useState(false);
+  const [corner, setCorner] = useState<Corner>(loadCorner);
   const composer = useComposerState(sendToContext, headers);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dragRef = useRef<{ startX: number; startY: number; dragging: boolean } | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    dragRef.current = { startX: e.clientX, startY: e.clientY, dragging: false };
+
+    const handleMove = (ev: PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const dx = ev.clientX - drag.startX;
+      const dy = ev.clientY - drag.startY;
+      if (!drag.dragging && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+      drag.dragging = true;
+      // Durante el arrastre, el botón sigue al cursor libremente; al soltar
+      // se limpian estos estilos inline y vuelve a las clases de la esquina.
+      const btn = btnRef.current;
+      if (btn) {
+        btn.style.left = `${ev.clientX - 28}px`;
+        btn.style.top = `${ev.clientY - 28}px`;
+        btn.style.right = 'auto';
+        btn.style.bottom = 'auto';
+      }
+    };
+
+    const handleUp = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      const drag = dragRef.current;
+      dragRef.current = null;
+      const btn = btnRef.current;
+      if (btn) {
+        btn.style.left = '';
+        btn.style.top = '';
+        btn.style.right = '';
+        btn.style.bottom = '';
+      }
+      if (!drag?.dragging) {
+        // Click normal (sin arrastre significativo) → abrir el chat.
+        setOpen(true);
+        return;
+      }
+      // Arrastre real → anclar a la esquina más cercana al soltar.
+      const next: Corner = `${ev.clientY > window.innerHeight / 2 ? 'bottom' : 'top'}-${
+        ev.clientX > window.innerWidth / 2 ? 'right' : 'left'
+      }`;
+      setCorner(next);
+      try {
+        localStorage.setItem(CORNER_STORAGE_KEY, next);
+      } catch {
+        /* no crítico si no se puede persistir */
+      }
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  };
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const onChatTab = Boolean(activeTab?.path?.startsWith('/ai/chat'));
@@ -69,15 +162,19 @@ export const ChatLauncherPanel: React.FC = () => {
   const contextUsed =
     messages.reduce((sum, m) => sum + estimateTokens(m), 0) +
     Math.max(0, Math.round(composer.input.length / 4));
+  // Pregunta de Keiro pendiente de responder — ver comentario en index.tsx.
+  const pendingQuestion = findPendingQuestion(messages);
 
   return (
     <>
       {!open && (
         <button
+          ref={btnRef}
           type="button"
-          onClick={() => setOpen(true)}
-          className="k-ai-glow fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-accent text-white shadow-lg hover:scale-105 active:scale-95 transition-transform flex items-center justify-center"
-          title={`Abrir ${ASSISTANT_NAME}`}
+          onPointerDown={handlePointerDown}
+          className={`k-ai-glow hidden md:flex fixed ${CORNER_CLASSES[corner]} z-40 w-14 h-14 rounded-full bg-accent text-white shadow-lg hover:scale-105 active:scale-95 transition-transform items-center justify-center cursor-grab active:cursor-grabbing`}
+          style={{ touchAction: 'none' }}
+          title={`Abrir ${ASSISTANT_NAME} (arrastra para mover)`}
         >
           <Bot size={26} />
           <Sparkles
@@ -129,7 +226,7 @@ export const ChatLauncherPanel: React.FC = () => {
                 Pregúntame sobre los datos de tu empresa.
               </p>
             )}
-            {messages.map((m) => (
+            {messages.map((m, mi) => (
               <MessageBubble
                 key={m.id}
                 message={m}
@@ -141,6 +238,9 @@ export const ChatLauncherPanel: React.FC = () => {
                 }
                 addToolApprovalResponse={addToolApprovalResponse}
                 onQuoteText={composer.quoteText}
+                onAnswerQuestion={composer.send}
+                busy={busy}
+                isLastMessage={mi === messages.length - 1}
               />
             ))}
 
@@ -160,6 +260,14 @@ export const ChatLauncherPanel: React.FC = () => {
           </div>
 
           <div className="p-3 pt-0 shrink-0">
+            {pendingQuestion && (
+              <PendingQuestionBar
+                key={pendingQuestion.step?.current ?? pendingQuestion.question}
+                question={pendingQuestion}
+                disabled={busy}
+                onAnswer={composer.send}
+              />
+            )}
             <Composer
               {...composer}
               supportsImages={supportsImages}

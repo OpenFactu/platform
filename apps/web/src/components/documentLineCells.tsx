@@ -15,6 +15,7 @@ import type { TableColumn } from '@openfactu/ui';
 import { DocKind, DocSide, DocStatus } from '@openfactu/common';
 import { LabelPrintButton } from './LabelPrintButton';
 import { PluginFieldInput, PluginFieldValue } from './plugin-fields';
+import type { ZoneStock } from '../hooks/useZonesWithStock';
 
 export type { DocKind, DocSide } from '@openfactu/common';
 
@@ -402,6 +403,12 @@ interface FormBuilderOpts {
   getItemUoms?: (itemId: string) => AvailableUom[];
   /** Si 'line' añade columnas Almacén + Ubicación por línea en todos los kinds. */
   warehouseLocation?: 'header' | 'line';
+  /** Getter cacheado (hook useZonesWithStock) de zonas con stock > 0 de un
+   *  artículo en un almacén — solo lo pasan las páginas de venta, para
+   *  restringir el selector de Ubicación a zonas donde el artículo
+   *  realmente tiene existencias. undefined = sin restringir (compra, o
+   *  aún sin datos). */
+  getAvailableZones?: (itemId?: string, warehouseId?: string) => ZoneStock[] | undefined;
   /** Campos de plugin que se pintan como columnas extra al final. Cada
    *  definición trae `fieldName` con prefijo `p_`. */
   pluginLineFields?: Array<{
@@ -535,38 +542,59 @@ function ZoneSelectCell({
   idx,
   zones,
   actions,
+  perLineWarehouse,
+  headerWarehouseId,
+  getAvailableZones,
 }: {
   line: any;
   idx: number;
   zones?: any[];
   actions: FormBuilderOpts['actions'];
+  perLineWarehouse?: boolean;
+  headerWarehouseId?: string;
+  getAvailableZones?: (itemId?: string, warehouseId?: string) => ZoneStock[] | undefined;
 }) {
   const locked = !!line.baseId;
-  // Filtrar por el almacén de la línea; si la línea no tiene warehouse,
-  // mostramos todas (el prefiltrado ya se hace por header en modo 'header').
-  const filtered = line.warehouseId
-    ? (zones ?? []).filter((z: any) => z.warehouseId === line.warehouseId)
-    : (zones ?? []);
+  // En modo 'line' cada línea puede tener su propio almacén, así que
+  // re-filtramos por line.warehouseId. En modo 'header' el `zones` que
+  // llega ya viene prefiltrado por el almacén de cabecera, y line.warehouseId
+  // puede haber quedado desactualizado (p.ej. almacén por defecto del artículo
+  // o almacén de cabecera cambiado tras crear la línea), así que no se reaplica.
+  const base =
+    perLineWarehouse && line.warehouseId
+      ? (zones ?? []).filter((z: any) => z.warehouseId === line.warehouseId)
+      : (zones ?? []);
+  const effectiveWarehouseId = perLineWarehouse ? line.warehouseId : headerWarehouseId;
+  const stockZones = getAvailableZones?.(line.itemId, effectiveWarehouseId);
+  // undefined (compra, o venta sin datos aún) => no restringe, usa `base` tal
+  // cual; [] (venta, ya resuelto) => el artículo no tiene stock en ninguna
+  // zona de este almacén, así que no se ofrece ninguna.
+  const filtered = stockZones
+    ? base.filter((z: any) => stockZones.some((sz) => sz.zoneId === z.id))
+    : base;
+  const options = [
+    { label: '— Sin Ubicación —', value: '' },
+    ...filtered.map((z: any) => {
+      const sz = stockZones?.find((s) => s.zoneId === z.id);
+      return { label: z.name, value: z.id, secondaryLabel: sz ? `${sz.stock} ud.` : undefined };
+    }),
+  ];
   return (
-    <select
+    <SearchableSelect
       value={line.zoneId || ''}
       disabled={locked}
-      onChange={(e) => actions.updateLine(idx, 'zoneId', e.target.value)}
-      className={`h-9 w-full max-w-[160px] border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-left px-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 ${locked ? disabledInputCls : ''}`}
-    >
-      <option value="">(Sin Ubicación)</option>
-      {filtered.map((z: any) => (
-        <option key={z.id} value={z.id}>
-          {z.name}
-        </option>
-      ))}
-    </select>
+      onChange={(val) => actions.updateLine(idx, 'zoneId', val)}
+      options={options}
+      placeholder="Sin Ubicación"
+      className={locked ? 'opacity-60' : ''}
+    />
   );
 }
 
 export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] {
   const {
     kind,
+    state,
     masters,
     zones,
     actions,
@@ -576,6 +604,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
     fmt,
     getItemUoms,
     warehouseLocation,
+    getAvailableZones,
   } = opts;
 
   const perLineWarehouse = warehouseLocation === 'line';
@@ -631,7 +660,15 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
       width: '14%',
       align: 'center',
       cell: (line: any, idx: number) => (
-        <ZoneSelectCell line={line} idx={idx} zones={zones} actions={actions} />
+        <ZoneSelectCell
+          line={line}
+          idx={idx}
+          zones={zones}
+          actions={actions}
+          perLineWarehouse={perLineWarehouse}
+          headerWarehouseId={state?.warehouseId}
+          getAvailableZones={getAvailableZones}
+        />
       ),
     });
   }

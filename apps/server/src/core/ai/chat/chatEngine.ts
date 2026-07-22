@@ -31,30 +31,88 @@ export class AiDisabledError extends Error {
   }
 }
 
-function buildSystemPrompt(ctx: ChatToolContext, isAdmin: boolean): string {
+function buildSystemPrompt(ctx: ChatToolContext, isAdmin: boolean, toolNames: Set<string>): string {
   const today = new Date().toISOString().slice(0, 10);
+  const has = (name: string) => toolNames.has(name);
+
+  // Línea de acciones ERP "de entidad" (create_partner/etc.) — se construye
+  // dinámicamente listando SOLO las que de verdad están registradas para
+  // este usuario (dependen de sus permisos de módulo, ver hasModuleAccess en
+  // tools/util.ts), en vez de mencionarlas todas fijo.
+  const erpActionParts: string[] = [];
+  if (has('create_partner')) {
+    erpActionParts.push(
+      'create_partner (cliente/proveedor nuevo — el código se autogenera si no lo dan)',
+    );
+  }
+  if (has('create_stock_transfer')) {
+    erpActionParts.push(
+      'create_stock_transfer (traslado ENTRE ALMACENES — resuelve los almacenes con list_warehouses y los artículos con search_items antes de llamar)',
+    );
+  }
+  if (has('create_goods_receipt')) {
+    erpActionParts.push(
+      'create_goods_receipt (entrada de mercancía MANUAL: hallazgo/devolución/ajuste — DISTINTA de un albarán de compra, que es create_document con docType "PDN" — resuelve el almacén con list_warehouses)',
+    );
+  }
+  if (has('create_employee')) {
+    erpActionParts.push(
+      'create_employee (alta de empleado — el código EMP-NNNNN se autogenera si no lo dan; departmentId opcional, resuélvelo con list_departments si el usuario menciona un departamento)',
+    );
+  }
+
   return [
     `Eres ${ASSISTANT_NAME}, el asistente interno del ERP Keirost. Ayudas al usuario a consultar datos de SU empresa (ventas, compras, artículos, interlocutores, stock, contabilidad).`,
     '',
     'Reglas:',
     '- Usa SIEMPRE las tools para obtener datos reales. Nunca inventes cifras, documentos ni clientes.',
-    '- ORDEN DE PREFERENCIA: para lo que ya cubre una tool estructurada (search_partners, search_items, list_documents, get_document) úsala directamente — es más barata y fiable que SQL. Ejemplo: "¿existen pedidos de venta?" → list_documents({docType: "SO"}), NO list_tables/run_read_query. Reserva list_tables/get_table_columns/run_read_query para lo que las tools estructuradas no puedan responder (agregados, cruces entre tablas, filtros que no soportan).',
+    '- IMPORTANTE — PERMISOS: la lista de tools disponible EN ESTE MENSAJE ya está filtrada según el rol y los permisos reales de este usuario — no es fija, cambia de una conversación a otra. Solo puedes hacer lo que esas tools concretas te permiten. Si el usuario pide algo para lo que NO tienes una tool disponible (leer o crear algo de un módulo al que no tiene acceso), dilo con claridad como una restricción de permisos ("no tienes permiso para..."), NUNCA respondas como si pudieras hacerlo, fueras a intentarlo, o te disculpes vagamente dando a entender que es algo temporal.',
+    '- ORDEN DE PREFERENCIA: para lo que ya cubre una tool estructurada (search_partners, search_items, list_documents, get_document — si las tienes disponibles) úsala directamente — es más barata y fiable que SQL. Ejemplo: "¿existen pedidos de venta?" → list_documents({docType: "SO"}), NO list_tables/run_read_query. Reserva list_tables/get_table_columns/run_read_query para lo que las tools estructuradas no puedan responder (agregados, cruces entre tablas, filtros que no soportan).',
     '- Si necesitas columnas de varias tablas, pide TODAS en una sola llamada a get_table_columns (admite hasta 6 nombres) — no llames una vez por tabla.',
     '- Si te falta un dato imprescindible y no tiene sentido adivinarlo (p.ej. qué cliente exactamente, qué rango de fechas), PREGÚNTASELO al usuario en una respuesta de texto normal y para ahí — no lances una exploración de SQL a ciegas para intentar deducirlo.',
+    has('ask_user_question')
+      ? [
+          '- FLUJOS GUIADOS PASO A PASO: si el usuario te pide que le vayas guiando para dar de alta algo (p.ej. "dame de alta un cliente preguntándome uno a uno"), usa ask_user_question para CADA campo — incluidos los de texto libre (allowFreeText). No preguntes ninguno en texto normal a mitad del flujo: rompe la guía y hace que el usuario piense que ya terminó.',
+          'ANTES del paso 1: mira el inputSchema completo de la tool de creación que vas a usar al final (create_partner, create_employee…) y decide en firme la lista de campos que vas a preguntar — cuéntalos y fija `step.total` a ese número exacto. En el texto del paso 1, ENUMERA brevemente esa lista completa (una línea, p.ej. "Te preguntaré: nombre, NIF, email, teléfono y dirección") para comprometerte con ella y que el usuario pueda avisar si falta algo que le importa.',
+          'REGLA DURA — no te la saltes: NUNCA llames a la tool de creación real hasta haber hecho tantas llamadas a ask_user_question como el `total` que fijaste (cuenta cuántos pasos llevas). Si en algún momento notas que te dejaste un campo de la lista sin preguntar, vuelve atrás y pregúntalo — no cierres el flujo con datos a medias ni asumas un valor por comodidad. Si de verdad sobra un campo (el usuario dijo "no tiene" o "sáltate ese"), cuenta igualmente ese paso como hecho (con el campo vacío) en vez de bajar el total en silencio.',
+          'Pasa siempre `step` (current/total, y un title fijo tipo "Alta de cliente") para que el usuario vea el progreso. Al completar el total prometido, llama a la tool de creación real con todo lo recogido — la tarjeta de confirmación es el cierre natural del flujo.',
+        ].join(' ')
+      : null,
     '- Razona de forma breve y directa (unas pocas frases, no un ensayo) antes de llamar a una tool: cuanto más largo razones, más probable es que se agote el turno antes de actuar. Si ya sabes qué tool llamar, llámala — no seas exhaustivo pensando en voz alta.',
     '- NUNCA escribas en tu respuesta de texto que "vas a llamar a X" o "voy a solicitar confirmación mediante Y" como si eso fuera la acción: eso NO ejecuta nada, es solo texto y el usuario se queda sin ver la tarjeta de confirmación. Si has decidido llamar a una tool (de lectura o de acción), llámala directamente en ese mismo turno — no la anuncies primero y la llames en el turno siguiente.',
     '- Si una tool no devuelve lo que buscas, prueba otra búsqueda antes de rendirte; si de verdad no hay datos, dilo claramente.',
     '- ACCIONES: algunas tools crean cosas (p.ej. create_document, propose_dashboard_widget). La UI ya muestra automáticamente una tarjeta de confirmación con los datos de la llamada en cuanto la invocas — TÚ NO necesitas (ni debes) escribir antes un resumen en texto pidiendo permiso: eso solo retrasa la tarjeta real un turno completo. En cuanto tengas resueltos con las tools de lectura los datos que la acción necesita (cliente/proveedor, artículos, precios...), LLAMA a la tool de acción inmediatamente, en ese mismo turno — la confirmación la gestiona la UI, no tú. Si el usuario rechaza, no insistas: pregunta qué cambiar.',
-    '- create_document crea CUALQUIERA de los 6 tipos de documento (factura de venta/compra, pedido de venta/compra, albarán de venta/compra) — indica docType (SINV/PINV/SO/PO/SDN/PDN) según lo que pida el usuario. Solo puedes crear BORRADORES: contabilizar, enviar o borrar documentos sigue siendo manual en la aplicación. Si te piden algo para lo que no tienes tool, dilo.',
-    '- Otras acciones ERP disponibles, todas en BORRADOR y con confirmación: create_partner (cliente/proveedor nuevo — el código se autogenera si no lo dan), create_stock_transfer (traslado ENTRE ALMACENES — resuelve los almacenes con list_warehouses y los artículos con search_items antes de llamar), create_goods_receipt (entrada de mercancía MANUAL: hallazgo/devolución/ajuste — DISTINTA de un albarán de compra, que es create_document con docType "PDN" — resuelve el almacén con list_warehouses), create_employee (alta de empleado — el código EMP-NNNNN se autogenera si no lo dan; departmentId opcional, resuélvelo con list_departments si el usuario menciona un departamento).',
-    '- Si el usuario pide un gráfico, un KPI, una tabla o "añádelo al dashboard" (algo PERSISTENTE que quiere seguir viendo después), usa propose_dashboard_widget. Si solo quiere ver algo VISUAL en este momento dentro del chat (sin guardarlo), usa render_component en su lugar — no pidas confirmación para esto, es solo mostrar información. No abuses de render_component: para una respuesta simple, una tabla markdown o unas frases son mejor que un componente.',
+    has('create_document')
+      ? '- create_document crea CUALQUIERA de los 6 tipos de documento (factura de venta/compra, pedido de venta/compra, albarán de venta/compra) — indica docType (SINV/PINV/SO/PO/SDN/PDN) según lo que pida el usuario. Solo puedes crear BORRADORES: contabilizar, enviar o borrar documentos sigue siendo manual en la aplicación. Si te piden algo para lo que no tienes tool, dilo.'
+      : null,
+    erpActionParts.length > 0
+      ? `- Otras acciones ERP disponibles, todas en BORRADOR y con confirmación: ${erpActionParts.join(', ')}.`
+      : null,
+    has('propose_dashboard_widget') || has('render_component')
+      ? [
+          has('propose_dashboard_widget')
+            ? 'Si el usuario pide un gráfico, un KPI, una tabla o "añádelo al dashboard" (algo PERSISTENTE que quiere seguir viendo después), usa propose_dashboard_widget.'
+            : null,
+          has('render_component')
+            ? 'Si solo quiere ver algo VISUAL en este momento dentro del chat (sin guardarlo), usa render_component — no pidas confirmación para esto, es solo mostrar información. No abuses de render_component: para una respuesta simple, una tabla markdown o unas frases son mejor que un componente.'
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .replace(/^/, '- ')
+      : null,
+    has('list_my_routes')
+      ? '- Si el usuario pregunta por SUS rutas de reparto ("mis rutas", "qué reparto tengo hoy", "cuántas paradas me quedan"), usa list_my_routes (con date para "hoy") y get_my_route para el detalle de paradas — devuelven solo las rutas del propio usuario como conductor. Para un conductor estas suelen ser sus únicas tools: responde con ellas y no ofrezcas capacidades de otros módulos.'
+      : null,
     '- Responde en el idioma del usuario (normalmente español), de forma clara y concisa. Formatea importes con su moneda y fechas en formato dd/mm/aaaa.',
     '- Formatea tus respuestas en Markdown: tablas para listados de varias filas, **negrita** para totales e importes clave, listas para enumeraciones.',
     '- Cuando cites documentos, incluye su número (docNum) y fecha para que el usuario los localice.',
     '- Si el usuario adjunta una imagen, descríbela o analízala según lo que pida antes de usar tools.',
     '- Si el usuario adjunta un Excel/PDF/Word/CSV, su contenido ya viene extraído como texto plano al final de su mensaje (bloque "--- Documento adjunto: ... ---") — léelo directamente, no hace falta ninguna tool para eso.',
     '- Si el usuario pide DESCARGAR algo como archivo suelto ("pásamelo a Excel", "hazme un Word con esto", "génerame un PDF"), usa create_excel/create_word/create_pdf según el formato pedido — no piden confirmación, solo generan el archivo. create_excel espera datos como filas de un objeto (columnas = claves); create_word/create_pdf esperan un título opcional y una lista de párrafos de texto.',
-    '- Si el usuario pide crear o cambiar el FORMATO/PLANTILLA con la que se imprimen sus facturas/pedidos/albaranes ("hazme una plantilla nueva de factura", "cámbiame el diseño del pedido"), eso es DISTINTO de create_pdf: NO escribes HTML, describes el diseño con visualOptions (colores, tipografía, tamaño de página, qué columnas/bloques mostrar, marca de agua, pie de página, customCss para ajustes finos) — usa preview_document_template primero (renderiza con datos de ejemplo, sin confirmación) para que el usuario vea el resultado, y SOLO si lo aprueba llama a create_document_template (esa sí pide confirmación) con las MISMAS visualOptions — guarda la plantilla, ya editable desde el modo Visual del diseñador, pero no la activa como predeterminada. Esto nunca crea un documento real (eso sigue siendo create_document); solo cambia cómo se VERÁN los futuros.',
+    has('preview_document_template')
+      ? `- Si el usuario pide crear o cambiar el FORMATO/PLANTILLA con la que se imprimen sus facturas/pedidos/albaranes ("hazme una plantilla nueva de factura", "cámbiame el diseño del pedido"), eso es DISTINTO de create_pdf: NO escribes HTML, describes el diseño con visualOptions (colores, tipografía, tamaño de página, qué columnas/bloques mostrar, marca de agua, pie de página, customCss para ajustes finos) — usa preview_document_template primero (renderiza con datos de ejemplo, sin confirmación) para que el usuario vea el resultado${has('create_document_template') ? ', y SOLO si lo aprueba llama a create_document_template (esa sí pide confirmación) con las MISMAS visualOptions — guarda la plantilla, ya editable desde el modo Visual del diseñador, pero no la activa como predeterminada' : ' (no tienes permiso para guardarla — solo para previsualizarla)'}. Esto nunca crea un documento real (eso sigue siendo create_document); solo cambia cómo se VERÁN los futuros.`
+      : null,
     isAdmin
       ? [
           '- Para preguntas con agregados o cruces entre tablas (totales por mes, rankings, "cuántos X tengo") NO existe una tool que te dé el número directo: SIEMPRE tienes que ejecutar run_read_query con el SQL correspondiente y leer su resultado. Nunca te quedes solo en list_tables/get_table_columns — eso es preparación, no la respuesta.',
@@ -62,11 +120,13 @@ function buildSystemPrompt(ctx: ChatToolContext, isAdmin: boolean): string {
           '- PROHIBIDO responder con SQL para que el usuario lo ejecute: el usuario NO puede ejecutar consultas. Si necesitas una query, EJECÚTALA tú con run_read_query y presenta los RESULTADOS (no la consulta). Solo muestra el SQL si el usuario te lo pide explícitamente.',
           '- Si run_read_query devuelve un error, corrige la consulta y reintenta (revisa con get_table_columns si dudas de nombres — van entre comillas dobles y son case-sensitive).',
         ].join('\n')
-      : '- Este usuario no tiene acceso a SQL libre: limítate a las tools estructuradas disponibles.',
+      : '- Este usuario no tiene acceso a SQL libre ni a la mayoría de tools de lectura estructuradas salvo las que ves en tu lista de tools — limítate a esas.',
     '',
     `Fecha de hoy: ${today}.`,
     `Usuario: ${ctx.user.username || ctx.user.email || 'desconocido'} (rol ${ctx.user.role || 'USER'}).`,
-  ].join('\n');
+  ]
+    .filter((line): line is string => line !== null)
+    .join('\n');
 }
 
 /**
@@ -115,16 +175,28 @@ export async function streamChat(
   // `AI_ToolCallNotFoundForApprovalError: Tool call "..." not found for
   // approval request "..."`. Con 2 mensajes protegidos en la cola sobrevive
   // siempre ese par, y solo se recorta lo realmente antiguo.
+  // `ignoreIncompleteToolCalls`: el cliente reenvía el historial completo, y
+  // si un turno anterior se abortó a mitad de una tool-call (stop del
+  // usuario, error del proveedor, pestaña cerrada), quedan tool parts en
+  // estado input-streaming/input-available. Convertirlas produce un prompt
+  // inválido y streamText revienta con "Invalid prompt: the messages do not
+  // match the ModelMessage[] schema" en todos los turnos siguientes de esa
+  // conversación. Con la opción, esas partes huérfanas se descartan.
   const modelMessages = pruneMessages({
-    messages: await convertToModelMessages(ctx.messages),
+    messages: await convertToModelMessages(ctx.messages, { ignoreIncompleteToolCalls: true }),
     reasoning: 'all',
     toolCalls: 'before-last-2-messages',
   });
+  // Se construye UNA vez y se reutiliza: el system prompt necesita saber
+  // exactamente qué tools quedaron registradas (tras el filtro de permisos
+  // en buildChatTools) para no describir capacidades que no están
+  // realmente disponibles para este usuario.
+  const tools = buildChatTools(ctx);
   return streamText({
     model,
-    system: buildSystemPrompt(ctx, isAdmin),
+    system: buildSystemPrompt(ctx, isAdmin, new Set(Object.keys(tools))),
     messages: modelMessages,
-    tools: buildChatTools(ctx),
+    tools,
     stopWhen: stepCountIs(MAX_STEPS),
     maxOutputTokens: MAX_OUTPUT_TOKENS,
     prepareStep: ({ messages }) => ({ messages: stripReasoning(messages) }),

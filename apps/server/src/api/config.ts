@@ -10,11 +10,16 @@ import {
   type FlagsConfig,
   type AppConfig,
 } from '../core/config/appConfig';
-import { getStorageConfig, setStorageConfig } from '../core/config/storageConfig';
+import { getStorageConfigRedacted, setStorageConfig } from '../core/config/storageConfig';
+import { BACKUP_DEFAULTS, type BackupConfig } from '../core/backup/backupConfig';
 import { StorageResolver } from '../core/storage/StorageResolver';
 import { logAudit } from '../utils/audit';
+import storageOAuthRouter from './storageOAuth';
 
 const router = Router();
+
+// Flujo OAuth de Google Drive / OneDrive (conectar, callback, estado)
+router.use('/storage/oauth', storageOAuthRouter);
 
 function mount<T extends Record<string, any>>(section: string, defaults: T, entityType: string) {
   router.get(`/${section}`, async (req: any, res) => {
@@ -88,6 +93,10 @@ const FISCAL_DEFAULTS: FiscalConfig = {
 };
 mount<FiscalConfig>('fiscal', FISCAL_DEFAULTS, 'FiscalConfig');
 
+// Backups automáticos — programación por tenant (el cron vive en
+// core/cron/backupCron.ts y el historial en /api/backups).
+mount<BackupConfig>('backup', BACKUP_DEFAULTS, 'BackupConfig');
+
 /**
  * GET /api/config/storage — devuelve la config de almacenamiento del tenant
  *   { provider: 'local'|'gdrive'|'onedrive', local: {basePath?}, gdrive: {...}, onedrive: {...} }
@@ -95,7 +104,8 @@ mount<FiscalConfig>('fiscal', FISCAL_DEFAULTS, 'FiscalConfig');
 router.get('/storage', async (req: any, res) => {
   if (!req.tenantId) return res.json({ provider: 'local' });
   try {
-    const cfg = await getStorageConfig(req.tenantClient);
+    // Los secretos (clientSecret/refreshToken) salen redactados como __SET__
+    const cfg = await getStorageConfigRedacted(req.tenantClient);
     res.json(cfg);
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error al leer config de storage' });
@@ -107,9 +117,10 @@ router.put('/storage', async (req: any, res) => {
     return res.status(400).json({ error: 'Se requiere tenant para modificar configuración' });
   }
   try {
-    const before = await getStorageConfig(req.tenantClient);
+    const before = await getStorageConfigRedacted(req.tenantClient);
+    // setStorageConfig ya descarta los centinelas __SET__ y cifra los secretos
     await setStorageConfig(req.tenantClient, req.body || {});
-    const after = await getStorageConfig(req.tenantClient);
+    const after = await getStorageConfigRedacted(req.tenantClient);
     res.json(after);
     logAudit({
       tenantClient: req.tenantClient,

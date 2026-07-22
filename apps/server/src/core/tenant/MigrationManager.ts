@@ -82,7 +82,28 @@ export class MigrationManager {
             .filter((s) => s.length > 0);
 
           for (const statement of statements) {
-            await db.execute(sql.raw(statement));
+            try {
+              await db.execute(sql.raw(statement));
+            } catch (stmtError: any) {
+              // Tenants importados de un backup pueden traer objetos que la
+              // migración intenta crear (la tabla existe en el dump pero su
+              // _MigrationHistory no registró esta migración). Un "ya existe"
+              // no es un fallo real: saltamos el statement y seguimos, para
+              // que el catch-up post-import no aborte la sincronización.
+              const pgCode = stmtError?.cause?.code || stmtError?.code;
+              const alreadyExists =
+                ['42P07', '42701', '42710', '42P06', '42723'].includes(pgCode) ||
+                /already exists|ya existe/i.test(
+                  stmtError?.cause?.message || stmtError?.message || '',
+                );
+              if (alreadyExists) {
+                console.warn(
+                  `   ⚠️  Objeto ya existente en ${file} (${pgCode || 'sin código'}) — statement omitido`,
+                );
+                continue;
+              }
+              throw stmtError;
+            }
           }
 
           // Registrar éxito
@@ -239,7 +260,15 @@ export class MigrationManager {
         .from(schema.tenants);
 
       for (const t of tenantsList) {
-        await this.syncTenant(t.schemaName);
+        try {
+          await this.syncTenant(t.schemaName);
+        } catch (err: any) {
+          // Un tenant con problemas (p.ej. importado con estado inconsistente)
+          // no debe bloquear la sincronización del resto de empresas.
+          console.error(
+            `[MigrationManager] ❌ Sincronización fallida en ${t.schemaName}: ${err?.message}`,
+          );
+        }
       }
       console.log('[MigrationManager] Sincronización finalizada.');
     } catch (error: any) {

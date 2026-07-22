@@ -1,7 +1,17 @@
 import React from 'react';
 import type { FileUIPart } from 'ai';
 import { Button, SearchableSelect } from '@openfactu/ui';
-import { Send, Square, Paperclip, ImageOff, FileUp, FileText, X, Loader2 } from 'lucide-react';
+import {
+  Send,
+  Square,
+  Paperclip,
+  ImageOff,
+  FileUp,
+  FileText,
+  X,
+  Loader2,
+  Quote,
+} from 'lucide-react';
 import { AttachmentThumb } from './AttachmentThumb';
 import { ContextUsageRing } from './ContextUsageRing';
 import { MAX_ATTACHMENTS } from './constants';
@@ -10,6 +20,8 @@ import type { DocumentAttachment } from './useComposerState';
 export const Composer: React.FC<{
   input: string;
   setInput: (v: string) => void;
+  quotedText: string | null;
+  clearQuote: () => void;
   attachments: FileUIPart[];
   removeAttachment: (i: number) => void;
   documents: DocumentAttachment[];
@@ -35,6 +47,8 @@ export const Composer: React.FC<{
 }> = ({
   input,
   setInput,
+  quotedText,
+  clearQuote,
   attachments,
   removeAttachment,
   documents,
@@ -92,6 +106,27 @@ export const Composer: React.FC<{
               <Loader2 size={16} className="animate-spin" />
             </div>
           )}
+        </div>
+      )}
+      {quotedText && (
+        <div className="flex items-start gap-2 mb-2 pl-3 pr-2 py-2 rounded-lg border-l-4 border-accent bg-accent/5 dark:bg-accent/10 animate-in fade-in slide-in-from-bottom-1 duration-150">
+          <Quote size={14} className="text-accent shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
+              Respondiendo a un fragmento
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 break-words">
+              {quotedText}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={clearQuote}
+            className="shrink-0 p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+            title="Quitar cita"
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
       <div

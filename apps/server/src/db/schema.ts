@@ -1815,6 +1815,22 @@ export const notifications = pgTable('Notification', {
   createdAt: timestamp('createdAt').defaultNow().notNull(),
 });
 
+// Mig 062 — Historial de backups (manuales y programados) del tenant
+export const backupRuns = pgTable('BackupRun', {
+  id: text('id').primaryKey(),
+  kind: text('kind').notNull().default('scheduled'), // scheduled | manual
+  status: text('status').notNull().default('running'), // running | ok | error
+  destination: text('destination').notNull(), // local | gdrive | onedrive
+  fileName: text('fileName'),
+  externalId: text('externalId'), // ruta relativa (local) o fileId/itemId (cloud)
+  sizeBytes: bigint('sizeBytes', { mode: 'number' }),
+  includeUploads: boolean('includeUploads').notNull().default(true),
+  error: text('error'),
+  createdByUserId: text('createdByUserId'),
+  startedAt: timestamp('startedAt').defaultNow().notNull(),
+  finishedAt: timestamp('finishedAt'),
+});
+
 // ════════════════════════════════════════════════════════════════════
 // Mig 032 — Fiscalización, pagos, contactos
 // ════════════════════════════════════════════════════════════════════

@@ -53,6 +53,7 @@ import { useFormat } from '../../hooks/useFormat';
 import { BatchSelectionModal } from '../../components/BatchSelectionModal';
 import { BatchAssignmentPanel } from '../../components/BatchAssignmentPanel';
 import { useItemUoms } from '../../hooks/useItemUoms';
+import { useZonesWithStock } from '../../hooks/useZonesWithStock';
 import { usePluginLineFields } from '../../hooks/usePluginLineFields';
 import { PluginFieldsPanel } from '../../components/PluginFieldsPanel';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
@@ -362,6 +363,7 @@ const SOForm: React.FC<{
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const fmt = useFormat();
   const itemUoms = useItemUoms();
+  const zonesWithStock = useZonesWithStock();
   const { flags } = useTheme();
   const warehouseLocation = flags.warehouseLocation;
   const { token: authToken, user: authUser } = useAuth();
@@ -412,6 +414,7 @@ const SOForm: React.FC<{
       getItemUoms: itemUoms.get,
       warehouseLocation,
       pluginLineFields,
+      getAvailableZones: zonesWithStock.get,
     });
     return [...base.slice(0, -1), projectCol, base[base.length - 1]];
   }, [

@@ -59,6 +59,16 @@ export function createMcpServer(auth: McpAuthContext): McpServer {
     // Rol sintético: buildChatTools solo lo usa como fallback si no pasamos
     // `options` explícitas — aquí siempre las pasamos, así que 'USER' es inerte.
     user: { id: `mcp:${auth.tokenId}`, role: 'USER', username: auth.tokenName },
+    // NOTA: los ApiToken de MCP no están ligados a un usuario/membership con
+    // permisos granulares por módulo (ApiToken solo guarda `createdByUserId`
+    // como rastro de auditoría, no una identidad para resolver permisos en
+    // cada request) — tienen su PROPIO sistema de scopes (mcp:read/mcp:sql,
+    // CSV read:logistics/write:...), independiente del `Permissions` por
+    // módulo que usa el chat interno (`hasModuleAccess` en tools/util.ts).
+    // Por eso las tools de lectura siempre-on (search_partners, list_documents...)
+    // NO están filtradas aquí por module-permission como sí lo están para el
+    // chat interno — harían falta un mapeo scope→permissionPath nuevo y
+    // decidir su diseño, fuera del alcance de este cambio.
   };
 
   const tools = buildChatTools(ctx, {

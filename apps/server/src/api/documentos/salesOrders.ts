@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { eq, desc, sql } from 'drizzle-orm';
-import * as schema from '../db/schema';
-import { DocumentEngine } from '../core/documents/DocumentEngine';
-import { DocumentRegistry } from '../core/documents/DocumentRegistry';
-import { renderDocumentPdf } from '../core/documents/renderDocumentPdf';
-import { logAudit } from '../utils/audit';
+import * as schema from '../../db/schema';
+import { DocumentEngine } from '../../core/documents/DocumentEngine';
+import { DocumentRegistry } from '../../core/documents/DocumentRegistry';
+import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
+import { logAudit } from '../../utils/audit';
 
 const router = Router();
 const config = DocumentRegistry.get('SO');
@@ -73,6 +73,7 @@ router.post('/', async (req: any, res) => {
         stockAction: config.stockAction,
         closeBaseDocuments: config.closeBaseDocuments,
         initialStatus: config.initialStatus,
+        hooks: config.hooks,
       },
       req.body,
     );

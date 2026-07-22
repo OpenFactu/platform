@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only --watch ../../node_modules/@openfactu/pdf/dist,../../node_modules/@openfactu/common/dist src/server.ts",
     "build": "tsc --noEmit && tsc && npm run copy-assets",
-    "copy-assets": "mkdir -p dist/core/tenant/migrations dist/seed-data && cp src/core/tenant/migrations/*.sql dist/core/tenant/migrations/ && cp src/seed-data/* dist/seed-data/",
+    "copy-assets": "node scripts/copy-assets.mjs",
     "start": "node dist/server.js",
     "sync": "ts-node src/scripts/sync-all-tenants.ts",
     "db:generate": "drizzle-kit generate",

@@ -9,6 +9,7 @@ import {
   Route as RouteIcon,
   ChevronDown,
   ChevronUp,
+  Maximize2,
   QrCode,
   X as XIcon,
   AlertTriangle,
@@ -70,10 +71,12 @@ interface Stop {
 
 const STOP_LABEL: Record<string, string> = {
   pending: 'Pendiente',
+  en_route: 'En camino',
   arrived: 'En la puerta',
   delivered: 'Entregado',
   postponed: 'Aplazado',
   exception: 'Incidencia',
+  cancelled: 'Cancelado',
 };
 
 const SHIP_LABEL: Record<string, string> = {
@@ -171,16 +174,18 @@ function resolveAddress(stop: Stop, ship: ShipmentLite | undefined): string {
   return stop.address || ship?.destinationAddress || '';
 }
 
-/** URL de Google Maps para navegar hacia un destino (usa coords si hay,
- *  si no cae al texto de la dirección, que Maps geolocaliza). */
+/** URL de Google Maps para navegar hacia un destino. Preferimos la dirección
+ *  TEXTUAL: el geocodificador de Google es mejor que el nuestro (MapTiler/
+ *  Photon/Nominatim) y nuestras coords a veces apuntan a un sitio equivocado.
+ *  Las coords propias solo se usan si no hay dirección escrita. */
 function mapsUrl(stop: Stop, ship: ShipmentLite | undefined) {
-  const coords = resolveCoords(stop, ship);
-  if (coords) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}&travelmode=driving`;
-  }
   const addr = resolveAddress(stop, ship);
-  if (!addr) return null;
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}&travelmode=driving`;
+  if (addr) {
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}&travelmode=driving`;
+  }
+  const coords = resolveCoords(stop, ship);
+  if (!coords) return null;
+  return `https://www.google.com/maps/dir/?api=1&destination=${coords[0]},${coords[1]}&travelmode=driving`;
 }
 
 /** URL de Maps con la ruta COMPLETA: el origen es la ubicación actual del
@@ -188,13 +193,14 @@ function mapsUrl(stop: Stop, ship: ShipmentLite | undefined) {
  *  y la última parada es el destino. */
 function routeUrl(stops: Stop[], shipmentsById: Map<string, ShipmentLite>) {
   const active = stops
-    .filter((s) => s.status !== 'delivered')
+    .filter((s) => s.status !== 'delivered' && s.status !== 'cancelled')
     .map((s) => {
       const ship = s.shipmentId ? shipmentsById.get(s.shipmentId) : undefined;
-      const c = resolveCoords(s, ship);
-      if (c) return `${c[0]},${c[1]}`;
+      // Dirección textual primero — mismo motivo que en mapsUrl.
       const a = resolveAddress(s, ship);
-      return a ? encodeURIComponent(a) : null;
+      if (a) return encodeURIComponent(a);
+      const c = resolveCoords(s, ship);
+      return c ? `${c[0]},${c[1]}` : null;
     })
     .filter((x): x is string => !!x);
   if (active.length === 0) return null;
@@ -206,6 +212,12 @@ function routeUrl(stops: Stop[], shipmentsById: Map<string, ShipmentLite>) {
   if (waypoints.length) params.set('waypoints', waypoints.join('|'));
   params.set('travelmode', 'driving');
   return `https://www.google.com/maps/dir/?${params.toString()}`.replace(/%7C/g, '|');
+}
+
+/** Fecha local yyyy-mm-dd (sin depender de toISOString, que va en UTC). */
+function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /**
@@ -222,8 +234,14 @@ export const DriverApp: React.FC = () => {
   const [tracking, setTracking] = useState(false);
   const [lastFix, setLastFix] = useState<{ lat: number; lng: number; at: number } | null>(null);
   const [mapOpen, setMapOpen] = useState(true);
+  const [mapFullscreen, setMapFullscreen] = useState(false);
   const [openPopupStopId, setOpenPopupStopId] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  /** Petición de iniciar/finalizar ruta en vuelo — evita doble tap. */
+  const [routeBusy, setRouteBusy] = useState(false);
+  const [finishConfirm, setFinishConfirm] = useState(false);
+  /** Filtro de fecha de la lista de rutas — por defecto hoy; '' = todas. */
+  const [dateFilter, setDateFilter] = useState<string>(todayStr());
   const [podFor, setPodFor] = useState<{
     stopId: string;
     shipmentId: string | null;
@@ -259,6 +277,7 @@ export const DriverApp: React.FC = () => {
   }>(null);
   const watchId = useRef<number | null>(null);
   const mapRef = useRef<BaseMapHandle | null>(null);
+  const mapRefFull = useRef<BaseMapHandle | null>(null);
 
   const headers = {
     'Content-Type': 'application/json',
@@ -336,15 +355,15 @@ export const DriverApp: React.FC = () => {
     };
   }, []);
 
-  // Auto-start del GPS al cargar el detalle de una ruta: el repartidor
-  // no debería tener que pulsar "Iniciar tracking" manualmente — cuando
-  // abre su ruta, ya empezamos a reportar posición a los shipments activos.
+  // Auto-start del GPS solo cuando la ruta está ACTIVA: al pulsar "Iniciar
+  // ruta" (el status pasa a active y este efecto dispara) o al reabrir la app
+  // a mitad de reparto. Con la ruta aún planificada no reportamos posición.
   useEffect(() => {
-    if (detail && !tracking) {
+    if (detail && !tracking && detail.route.status === 'active') {
       startGps();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detail?.route?.id]);
+  }, [detail?.route?.id, detail?.route?.status]);
 
   const handleScan = async (raw: string) => {
     setScanOpen(false);
@@ -451,7 +470,7 @@ export const DriverApp: React.FC = () => {
 
   const confirmMarkAllArrived = async () => {
     if (!selectedId || !detail) return;
-    const pending = detail.stops.filter((s) => s.status === 'pending');
+    const pending = detail.stops.filter((s) => s.status === 'pending' || s.status === 'en_route');
     const now = new Date().toISOString();
     await Promise.all(
       pending.map((s) =>
@@ -465,6 +484,56 @@ export const DriverApp: React.FC = () => {
     setConfirmBulkArrive(null);
     loadDetail(selectedId);
     toast.success(`${pending.length} parada(s) marcadas como llegadas`);
+  };
+
+  /**
+   * Inicio explícito de la ruta: el server pone la ruta en `active`, los
+   * envíos pasan a "en camino" (con email al cliente) y la primera parada
+   * arranca en reparto. El GPS se enciende solo vía el efecto de arriba
+   * cuando el detalle recargado llega con status active.
+   */
+  const startRoute = async () => {
+    if (!selectedId || routeBusy) return;
+    setRouteBusy(true);
+    try {
+      const r = await fetch(`/api/logistics/routes/${selectedId}/start`, {
+        method: 'POST',
+        headers,
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        toast.error(d.error || 'No se pudo iniciar la ruta');
+        return;
+      }
+      toast.success('Ruta iniciada — ¡buen reparto!');
+      await loadDetail(selectedId);
+    } finally {
+      setRouteBusy(false);
+    }
+  };
+
+  /** Cierra la ruta aunque queden paradas: las pendientes vuelven aplazadas. */
+  const finishRoute = async () => {
+    if (!selectedId || routeBusy) return;
+    setRouteBusy(true);
+    try {
+      const r = await fetch(`/api/logistics/routes/${selectedId}/finish`, {
+        method: 'POST',
+        headers,
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        toast.error(d.error || 'No se pudo finalizar la ruta');
+        return;
+      }
+      toast.success('Ruta finalizada');
+      setFinishConfirm(false);
+      stopGps();
+      setSelectedId(null);
+      loadRoutes();
+    } finally {
+      setRouteBusy(false);
+    }
   };
 
   const markArrived = async (stopId: string) => {
@@ -828,6 +897,10 @@ export const DriverApp: React.FC = () => {
     </>
   );
 
+  const visibleRoutes = dateFilter
+    ? routes.filter((r) => String(r.plannedDate || '').slice(0, 10) === dateFilter)
+    : routes;
+
   if (!selectedId) {
     return (
       <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-3">
@@ -848,6 +921,37 @@ export const DriverApp: React.FC = () => {
           </button>
         </header>
         {renderScanModals()}
+
+        {/* Filtro de fecha — por defecto solo las rutas de hoy. */}
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            onClick={() => setDateFilter(todayStr())}
+            className={`h-8 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition ${
+              dateFilter === todayStr()
+                ? 'bg-primary text-white shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+            }`}
+          >
+            Hoy
+          </button>
+          <button
+            onClick={() => setDateFilter('')}
+            className={`h-8 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition ${
+              !dateFilter
+                ? 'bg-primary text-white shadow-sm'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+            }`}
+          >
+            Todas
+          </button>
+          <Input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="ml-auto !w-auto"
+          />
+        </div>
+
         {loading ? (
           <div className="py-20 flex justify-center">
             <Loader />
@@ -856,9 +960,14 @@ export const DriverApp: React.FC = () => {
           <Card bodyClassName="py-10 text-center text-sm text-slate-500">
             No tienes rutas asignadas.
           </Card>
+        ) : visibleRoutes.length === 0 ? (
+          <Card bodyClassName="py-10 text-center text-sm text-slate-500">
+            Sin rutas para {dateFilter === todayStr() ? 'hoy' : 'ese día'} — usa «Todas» para ver el
+            resto.
+          </Card>
         ) : (
           <div className="space-y-2">
-            {routes.map((r) => (
+            {visibleRoutes.map((r) => (
               <button
                 key={r.id}
                 onClick={() => setSelectedId(r.id)}
@@ -907,6 +1016,106 @@ export const DriverApp: React.FC = () => {
           properties: {},
         }
       : null;
+
+  // Centra el mapa indicado (el mini-mapa o el del modal ampliado) en mi GPS
+  // si lo tengo; si no, en la 1ª parada.
+  const centerMap = (ref: React.RefObject<BaseMapHandle | null>) => {
+    if (lastFix) {
+      ref.current?.flyTo({ longitude: lastFix.lng, latitude: lastFix.lat, zoom: 15 });
+      return;
+    }
+    const first = mapPoints[0];
+    if (first) {
+      ref.current?.flyTo({ longitude: first.coords[1], latitude: first.coords[0], zoom: 14 });
+    }
+  };
+
+  // Marcadores/popup/polyline compartidos entre el mini-mapa y el mapa
+  // ampliado del modal — cada uno vive en su propia instancia de <BaseMap>.
+  const renderMapMarkers = () => (
+    <>
+      {lastFix && (
+        <Marker longitude={lastFix.lng} latitude={lastFix.lat} anchor="center">
+          <div
+            title="Tu ubicación"
+            style={{
+              background: '#0284c7',
+              color: '#fff',
+              width: 14,
+              height: 14,
+              borderRadius: 7,
+              border: '3px solid white',
+              boxShadow: '0 0 0 4px rgba(2,132,199,0.25)',
+            }}
+          />
+        </Marker>
+      )}
+      {mapPoints.map(({ stop, coords }) => {
+        const done = stop.status === 'delivered';
+        return (
+          <Marker
+            key={stop.id}
+            longitude={coords[1]}
+            latitude={coords[0]}
+            anchor="center"
+            onClick={(e) => {
+              e.originalEvent.stopPropagation();
+              setOpenPopupStopId(openPopupStopId === stop.id ? null : stop.id);
+            }}
+          >
+            <NumberedPin n={stop.sequence} done={done} />
+          </Marker>
+        );
+      })}
+      {openPopupStopId &&
+        (() => {
+          const pt = mapPoints.find((p) => p.stop.id === openPopupStopId);
+          if (!pt) return null;
+          const ship = pt.stop.shipmentId ? shipmentsById.get(pt.stop.shipmentId) : undefined;
+          return (
+            <Popup
+              longitude={pt.coords[1]}
+              latitude={pt.coords[0]}
+              anchor="bottom"
+              onClose={() => setOpenPopupStopId(null)}
+              closeOnClick={false}
+            >
+              <div className="text-xs">
+                <div className="font-black mb-1">Parada {pt.stop.sequence}</div>
+                <div className="text-slate-700">{resolveAddress(pt.stop, ship) || '—'}</div>
+                <a
+                  href={mapsUrl(pt.stop, ship) || '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block mt-2 text-blue-600 underline"
+                >
+                  Abrir en Maps →
+                </a>
+              </div>
+            </Popup>
+          );
+        })()}
+      {stopsPolylineGeoJSON && (
+        <Source id="stops-line" type="geojson" data={stopsPolylineGeoJSON}>
+          <Layer
+            id="stops-line-layer"
+            type="line"
+            paint={{
+              'line-color': '#0D9488',
+              'line-width': 3,
+              'line-opacity': 0.7,
+              'line-dasharray': [2, 2],
+            }}
+          />
+        </Source>
+      )}
+    </>
+  );
+
+  const routeStarted = detail.route.status !== 'planned';
+  const openStopsCount = detail.stops.filter(
+    (s) => !['delivered', 'postponed', 'exception', 'cancelled'].includes(s.status),
+  ).length;
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-3 space-y-3">
@@ -965,6 +1174,35 @@ export const DriverApp: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Inicio/fin explícito de la ruta — el inicio avisa a los clientes
+            ("en camino") y enciende el GPS; hasta entonces las paradas están
+            bloqueadas. */}
+        {!routeStarted && (
+          <>
+            <Button
+              onClick={startRoute}
+              disabled={routeBusy}
+              className="w-full flex items-center justify-center gap-2"
+            >
+              <Play size={16} /> Iniciar ruta
+            </Button>
+            <div className="text-[11px] text-slate-500 text-center">
+              Inicia la ruta para empezar el reparto — avisaremos a los clientes de que su pedido va
+              en camino.
+            </div>
+          </>
+        )}
+        {detail.route.status === 'active' && (
+          <Button
+            variant="secondary"
+            onClick={() => setFinishConfirm(true)}
+            disabled={routeBusy}
+            className="w-full flex items-center justify-center gap-2"
+          >
+            <Square size={14} /> Finalizar ruta
+          </Button>
+        )}
 
         {/* Vehículo detallado */}
         {detail.vehicle && (
@@ -1058,117 +1296,76 @@ export const DriverApp: React.FC = () => {
           </button>
           {mapOpen && (
             <div style={{ height: 320 }} className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  // Centra en mi GPS si lo tengo; si no, en la 1ª parada.
-                  if (lastFix) {
-                    mapRef.current?.flyTo({
-                      longitude: lastFix.lng,
-                      latitude: lastFix.lat,
-                      zoom: 15,
-                    });
-                    return;
-                  }
-                  const first = mapPoints[0];
-                  if (first) {
-                    mapRef.current?.flyTo({
-                      longitude: first.coords[1],
-                      latitude: first.coords[0],
-                      zoom: 14,
-                    });
-                  }
-                }}
-                className="absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition"
-                title={lastFix ? 'Centrar en mi GPS' : 'Centrar en la 1ª parada'}
-              >
-                <Navigation size={12} /> Centrar
-              </button>
+              <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => centerMap(mapRef)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition"
+                  title={lastFix ? 'Centrar en mi GPS' : 'Centrar en la 1ª parada'}
+                >
+                  <Navigation size={12} /> Centrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapFullscreen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition"
+                  title="Ampliar mapa"
+                >
+                  <Maximize2 size={12} /> Ampliar
+                </button>
+              </div>
               <BaseMap ref={mapRef} latitude={mapCenterLat} longitude={mapCenterLng} zoom={12}>
-                {lastFix && (
-                  <Marker longitude={lastFix.lng} latitude={lastFix.lat} anchor="center">
-                    <div
-                      title="Tu ubicación"
-                      style={{
-                        background: '#0284c7',
-                        color: '#fff',
-                        width: 14,
-                        height: 14,
-                        borderRadius: 7,
-                        border: '3px solid white',
-                        boxShadow: '0 0 0 4px rgba(2,132,199,0.25)',
-                      }}
-                    />
-                  </Marker>
-                )}
-                {mapPoints.map(({ stop, coords }) => {
-                  const done = stop.status === 'delivered';
-                  return (
-                    <Marker
-                      key={stop.id}
-                      longitude={coords[1]}
-                      latitude={coords[0]}
-                      anchor="center"
-                      onClick={(e) => {
-                        e.originalEvent.stopPropagation();
-                        setOpenPopupStopId(openPopupStopId === stop.id ? null : stop.id);
-                      }}
-                    >
-                      <NumberedPin n={stop.sequence} done={done} />
-                    </Marker>
-                  );
-                })}
-                {openPopupStopId &&
-                  (() => {
-                    const pt = mapPoints.find((p) => p.stop.id === openPopupStopId);
-                    if (!pt) return null;
-                    const ship = pt.stop.shipmentId
-                      ? shipmentsById.get(pt.stop.shipmentId)
-                      : undefined;
-                    return (
-                      <Popup
-                        longitude={pt.coords[1]}
-                        latitude={pt.coords[0]}
-                        anchor="bottom"
-                        onClose={() => setOpenPopupStopId(null)}
-                        closeOnClick={false}
-                      >
-                        <div className="text-xs">
-                          <div className="font-black mb-1">Parada {pt.stop.sequence}</div>
-                          <div className="text-slate-700">
-                            {resolveAddress(pt.stop, ship) || '—'}
-                          </div>
-                          <a
-                            href={mapsUrl(pt.stop, ship) || '#'}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="block mt-2 text-blue-600 underline"
-                          >
-                            Abrir en Maps →
-                          </a>
-                        </div>
-                      </Popup>
-                    );
-                  })()}
-                {stopsPolylineGeoJSON && (
-                  <Source id="stops-line" type="geojson" data={stopsPolylineGeoJSON}>
-                    <Layer
-                      id="stops-line-layer"
-                      type="line"
-                      paint={{
-                        'line-color': '#0D9488',
-                        'line-width': 3,
-                        'line-opacity': 0.7,
-                        'line-dasharray': [2, 2],
-                      }}
-                    />
-                  </Source>
-                )}
+                {renderMapMarkers()}
               </BaseMap>
             </div>
           )}
         </Card>
       )}
+
+      {/* Mapa ampliado a pantalla completa — misma instancia de marcadores,
+          otro <BaseMap>/ref independiente para no pelear por el mismo mapRef
+          con el mini-mapa de arriba. */}
+      <Modal
+        isOpen={mapFullscreen}
+        onClose={() => setMapFullscreen(false)}
+        title={`Mapa · ${mapPoints.length} parada${mapPoints.length === 1 ? '' : 's'}`}
+        maxWidth="full"
+      >
+        <div style={{ height: '75vh' }} className="relative">
+          <button
+            type="button"
+            onClick={() => centerMap(mapRefFull)}
+            className="absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition"
+            title={lastFix ? 'Centrar en mi GPS' : 'Centrar en la 1ª parada'}
+          >
+            <Navigation size={12} /> Centrar
+          </button>
+          {mapFullscreen && (
+            <BaseMap ref={mapRefFull} latitude={mapCenterLat} longitude={mapCenterLng} zoom={12}>
+              {renderMapMarkers()}
+            </BaseMap>
+          )}
+        </div>
+      </Modal>
+
+      {/* Confirmación de finalizar ruta — avisa si quedan paradas sin cerrar. */}
+      <Modal isOpen={finishConfirm} onClose={() => setFinishConfirm(false)} title="Finalizar ruta">
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {openStopsCount > 0
+              ? `Quedan ${openStopsCount} parada(s) sin entregar. Se marcarán como aplazadas y volverán al almacén para reintentarse.`
+              : 'Todas las paradas están cerradas. ¿Finalizar la ruta?'}
+          </p>
+          <div className="flex gap-2 justify-end">
+            <Button variant="secondary" onClick={() => setFinishConfirm(false)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={finishRoute} disabled={routeBusy}>
+              Finalizar ruta
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Header de la lista de repartos */}
       <div className="flex items-center justify-between mt-2 mb-1 px-1">
@@ -1182,20 +1379,24 @@ export const DriverApp: React.FC = () => {
       </div>
 
       {/* Botón masivo — útil cuando el repartidor empieza la ruta y quiere
-           abrir todas las paradas pendientes de golpe. */}
-      {detail.stops.some((s) => s.status === 'pending') && (
-        <button
-          onClick={markAllArrived}
-          className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-blue-500 text-white text-sm font-black uppercase tracking-wider shadow-sm active:scale-[0.98] transition-all mb-2"
-        >
-          <MapPin size={16} /> Llegué en todas las paradas pendientes
-        </button>
-      )}
+           abrir todas las paradas pendientes de golpe. Bloqueado hasta
+           iniciar la ruta, como el resto de acciones. */}
+      {routeStarted &&
+        detail.stops.some((s) => s.status === 'pending' || s.status === 'en_route') && (
+          <button
+            onClick={markAllArrived}
+            className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-blue-500 text-white text-sm font-black uppercase tracking-wider shadow-sm active:scale-[0.98] transition-all mb-2"
+          >
+            <MapPin size={16} /> Llegué en todas las paradas pendientes
+          </button>
+        )}
 
       <div className="space-y-2">
         {detail.stops.map((s) => {
           const ship = s.shipmentId ? shipmentsById.get(s.shipmentId) : undefined;
-          const isDone = s.status === 'delivered';
+          // Cancelado cuenta como cerrado: el envío se devolvió/canceló y la
+          // parada ya no se puede operar.
+          const isDone = s.status === 'delivered' || s.status === 'cancelled';
           const href = mapsUrl(s, ship);
           const addr = resolveAddress(s, ship);
           const isPickup = ship?.kind === 'pickup_return';
@@ -1208,16 +1409,40 @@ export const DriverApp: React.FC = () => {
                 <span className="w-6 h-6 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center">
                   {s.sequence}
                 </span>
-                <Badge variant={isDone ? 'success' : 'neutral'}>
-                  {STOP_LABEL[s.status] || s.status}
+                <Badge variant={isDone ? 'success' : s.status === 'en_route' ? 'info' : 'neutral'}>
+                  {(isPickup && s.status === 'delivered' ? 'Recogido' : STOP_LABEL[s.status]) ||
+                    s.status}
                 </Badge>
-                {ship && <Badge variant="info">{SHIP_LABEL[ship.status] || ship.status}</Badge>}
+                {ship && (
+                  <Badge variant="info">
+                    {(isPickup && ship.status === 'delivered'
+                      ? 'Recogido'
+                      : isPickup && ship.status === 'out_for_delivery'
+                        ? 'Recogiendo'
+                        : SHIP_LABEL[ship.status]) || ship.status}
+                  </Badge>
+                )}
                 {isPickup && <Badge variant="warning">↩ Recogida de devolución</Badge>}
               </div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
                 {isPickup ? 'Recoger de' : 'Entregar en'}
               </div>
               <div className="font-semibold text-slate-800 dark:text-slate-100">{addr || '—'}</div>
+              {(ship?.recipientName || ship?.recipientEmail) && (
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {ship?.recipientName && (
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                      {ship.recipientName}
+                    </span>
+                  )}
+                  {ship?.recipientName && ship?.recipientEmail && ' · '}
+                  {ship?.recipientEmail && (
+                    <a href={`mailto:${ship.recipientEmail}`} className="underline">
+                      {ship.recipientEmail}
+                    </a>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 {href && (
                   <a
@@ -1242,7 +1467,11 @@ export const DriverApp: React.FC = () => {
                     <a
                       href={buildWhatsAppUrl(
                         ship.recipientPhone,
-                        `Hola${ship.recipientName ? ` ${ship.recipientName}` : ''}, soy el repartidor. Voy de camino con tu pedido.`,
+                        `Hola${ship.recipientName ? ` ${ship.recipientName}` : ''}, soy el repartidor. ${
+                          isPickup
+                            ? 'Voy de camino a recoger tu paquete — tenlo preparado, por favor.'
+                            : 'Voy de camino con tu pedido.'
+                        }`,
                       )}
                       target="_blank"
                       rel="noreferrer"
@@ -1260,6 +1489,7 @@ export const DriverApp: React.FC = () => {
                       <Button
                         size="sm"
                         variant="secondary"
+                        disabled={!routeStarted}
                         onClick={() => markArrived(s.id)}
                         className="flex-1 flex items-center justify-center gap-1"
                       >
@@ -1268,6 +1498,7 @@ export const DriverApp: React.FC = () => {
                     )}
                     <Button
                       size="sm"
+                      disabled={!routeStarted}
                       onClick={() => markDelivered(s.id, s.shipmentId)}
                       className="flex-1 flex items-center justify-center gap-1"
                     >
@@ -1276,14 +1507,16 @@ export const DriverApp: React.FC = () => {
                   </div>
                   <div className="flex gap-2 mt-2">
                     <button
+                      disabled={!routeStarted}
                       onClick={() => markPostponed(s.id, s.shipmentId)}
-                      className="flex-1 inline-flex items-center justify-center gap-1 h-9 px-3 rounded-lg bg-amber-50 text-amber-800 text-[11px] font-bold uppercase tracking-wider border border-amber-200 hover:bg-amber-100 active:scale-[0.97] transition"
+                      className="flex-1 inline-flex items-center justify-center gap-1 h-9 px-3 rounded-lg bg-amber-50 text-amber-800 text-[11px] font-bold uppercase tracking-wider border border-amber-200 hover:bg-amber-100 active:scale-[0.97] transition disabled:opacity-40 disabled:pointer-events-none"
                     >
                       ⏸ Aplazar
                     </button>
                     <button
+                      disabled={!routeStarted}
                       onClick={() => reportException(s.id, s.shipmentId)}
-                      className="flex-1 inline-flex items-center justify-center gap-1 h-9 px-3 rounded-lg bg-rose-50 text-rose-700 text-[11px] font-bold uppercase tracking-wider border border-rose-200 hover:bg-rose-100 active:scale-[0.97] transition"
+                      className="flex-1 inline-flex items-center justify-center gap-1 h-9 px-3 rounded-lg bg-rose-50 text-rose-700 text-[11px] font-bold uppercase tracking-wider border border-rose-200 hover:bg-rose-100 active:scale-[0.97] transition disabled:opacity-40 disabled:pointer-events-none"
                     >
                       ⚠ Incidencia
                     </button>

@@ -21,15 +21,42 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Bot, Loader2, Maximize2, Minimize2 } from 'lucide-react';
+import {
+  Bot,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Sparkles,
+  FileText,
+  Users,
+  Package,
+  LayoutDashboard,
+  AlertTriangle,
+  FileSpreadsheet,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAiChatContext } from '../../context/AiChatContext';
 import { useTabs, useCurrentTab } from '../../context/TabsContext';
-import { ASSISTANT_NAME, SUGGESTIONS } from './constants';
+import { ASSISTANT_NAME } from './constants';
 import { MessageBubble } from './MessageBubble';
 import { Composer } from './Composer';
 import { ConversationSidebar } from './ConversationSidebar';
 import { useComposerState } from './useComposerState';
+import { PendingQuestionBar } from './PendingQuestionBar';
+import { findPendingQuestion } from './pendingQuestion';
+
+/** Sugerencias iniciales del estado vacío — texto + icono representativo. */
+const HERO_SUGGESTIONS: Array<{
+  text: string;
+  icon: React.ComponentType<{ size?: number }>;
+}> = [
+  { text: '¿Cuáles son las últimas facturas de venta?', icon: FileText },
+  { text: '¿Qué clientes tenemos dados de alta?', icon: Users },
+  { text: 'Busca el artículo con más líneas vendidas este año', icon: Package },
+  { text: 'Añade un widget de ventas mensuales al Dashboard', icon: LayoutDashboard },
+  { text: '¿Qué artículos tienen poco stock?', icon: AlertTriangle },
+  { text: 'Genera un Excel con el listado de proveedores', icon: FileSpreadsheet },
+];
 
 export const AiChat: React.FC = () => {
   const { user } = useAuth();
@@ -99,6 +126,11 @@ export const AiChat: React.FC = () => {
   const historyTokens = messages.reduce((sum, m) => sum + estimateTokens(m), 0);
   const contextUsed = historyTokens + Math.max(0, Math.round(composer.input.length / 4));
 
+  // Pregunta de Keiro pendiente de responder (ask_user_question del último
+  // mensaje) — se fija encima del compositor en vez de quedar enterrada en
+  // el hilo. Ver PendingQuestionBar.
+  const pendingQuestion = findPendingQuestion(messages);
+
   const composerProps = {
     ...composer,
     supportsImages,
@@ -144,31 +176,41 @@ export const AiChat: React.FC = () => {
         <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full">
           {messages.length === 0 ? (
             // ── Estado vacío: hero centrado + compositor, estilo ChatGPT ──
-            <div className="flex-1 flex flex-col items-center justify-center gap-6 px-2">
-              <div className="text-center space-y-2">
-                <div className="mx-auto w-14 h-14 rounded-full bg-gradient-to-br from-accent/15 to-accent/5 border border-accent/20 flex items-center justify-center text-accent">
-                  <Bot size={30} />
+            <div className="flex-1 flex flex-col items-center justify-center gap-7 px-2">
+              <div className="text-center space-y-3">
+                <div className="k-ai-glow relative mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 flex items-center justify-center text-accent">
+                  <Bot size={32} />
+                  <Sparkles
+                    size={14}
+                    className="absolute -top-1 -right-1 text-amber-400 fill-amber-300/50 animate-pulse"
+                  />
                 </div>
                 <h2 className="text-2xl font-bold text-ink-900 dark:text-slate-100">
-                  Hola, soy {ASSISTANT_NAME}
+                  Hola, soy <span className="k-shimmer-text">{ASSISTANT_NAME}</span>
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
-                  Pregúntame sobre los datos de tu empresa, o pídeme crear un borrador o un widget
-                  para el Dashboard — cualquier acción te pedirá confirmación antes de ejecutarse.
+                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                  Pregúntame sobre los datos de tu empresa, adjunta un Excel/PDF/Word para que lo
+                  lea, o pídeme crear un borrador o un widget para el Dashboard — cualquier acción
+                  te pedirá confirmación antes de ejecutarse.
                 </p>
               </div>
               <div className="w-full max-w-2xl">
                 <Composer {...composerProps} />
               </div>
-              <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
-                {SUGGESTIONS.map((s) => (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full max-w-2xl">
+                {HERO_SUGGESTIONS.map(({ text, icon: Icon }) => (
                   <button
-                    key={s}
+                    key={text}
                     type="button"
-                    onClick={() => composer.send(s)}
-                    className="text-xs px-3 py-1.5 rounded-full border border-accent/30 text-accent hover:bg-accent/10 hover:border-accent/50 transition-colors"
+                    onClick={() => composer.send(text)}
+                    className="group flex items-start gap-3 text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-accent/40 hover:bg-accent/5 dark:hover:bg-accent/10 hover:-translate-y-0.5 transition-all shadow-sm"
                   >
-                    {s}
+                    <span className="shrink-0 w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center group-hover:bg-accent group-hover:text-white transition-colors">
+                      <Icon size={16} />
+                    </span>
+                    <span className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-snug pt-1.5">
+                      {text}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -177,7 +219,7 @@ export const AiChat: React.FC = () => {
             <>
               {/* ── Mensajes ── */}
               <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
-                {messages.map((m) => (
+                {messages.map((m, mi) => (
                   <MessageBubble
                     key={m.id}
                     message={m}
@@ -189,6 +231,9 @@ export const AiChat: React.FC = () => {
                     }
                     addToolApprovalResponse={addToolApprovalResponse}
                     onQuoteText={composer.quoteText}
+                    onAnswerQuestion={composer.send}
+                    busy={busy}
+                    isLastMessage={mi === messages.length - 1}
                   />
                 ))}
 
@@ -212,6 +257,14 @@ export const AiChat: React.FC = () => {
                 <div ref={bottomRef} />
               </div>
 
+              {pendingQuestion && (
+                <PendingQuestionBar
+                  key={pendingQuestion.step?.current ?? pendingQuestion.question}
+                  question={pendingQuestion}
+                  disabled={busy}
+                  onAnswer={composer.send}
+                />
+              )}
               <Composer {...composerProps} />
             </>
           )}

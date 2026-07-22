@@ -1,9 +1,13 @@
 import * as schema from '../../db/schema';
+import { type DocType } from '@openfactu/common';
+import type { DocumentHooks } from './DocumentEngine';
 
 /**
- * Tipo de documento soportado por el sistema.
+ * Tipo de documento soportado por el sistema — reexportado desde
+ * @openfactu/common (fuente única compartida en todo el monorepo) en vez de
+ * duplicarlo aquí como union literal propio.
  */
-export type DocType = 'SINV' | 'PINV' | 'SO' | 'PO' | 'SDN' | 'PDN';
+export type { DocType };
 
 /**
  * Categoría funcional del documento.
@@ -65,6 +69,9 @@ export interface DocumentTypeConfig {
 
   /** Si true, cierra los documentos base al crear desde ellos */
   closeBaseDocuments: boolean;
+
+  /** Puntos de extensión propios de este tipo (auto-FIFO, validaciones, fulfillment parcial de pedidos, ...) — ver `DocumentEngine.ts`. */
+  hooks?: DocumentHooks;
 
   /** Estado inicial del documento */
   initialStatus: string;

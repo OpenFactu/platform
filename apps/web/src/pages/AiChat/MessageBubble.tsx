@@ -14,7 +14,23 @@ export const MessageBubble: React.FC<{
   addToolApprovalResponse: AddToolApprovalResponse;
   /** Cita un fragmento seleccionado en el compositor — ver SelectionToolbar. */
   onQuoteText?: (text: string) => void;
-}> = ({ message: m, userAvatarUrl, estimate, addToolApprovalResponse, onQuoteText }) => {
+  /** Responde una pregunta de Keiro (ask_user_question) enviándola como el
+   * siguiente mensaje del usuario — ver AskUserQuestionCard. */
+  onAnswerQuestion?: (text: string) => void;
+  /** Deshabilita los botones de respuesta mientras hay un turno en curso. */
+  busy?: boolean;
+  /** Si es el último mensaje del hilo — ver comentario en renderMessagePart. */
+  isLastMessage?: boolean;
+}> = ({
+  message: m,
+  userAvatarUrl,
+  estimate,
+  addToolApprovalResponse,
+  onQuoteText,
+  onAnswerQuestion,
+  busy,
+  isLastMessage,
+}) => {
   const processEntries = m.parts
     .map((part, i) => ({ part, i }))
     .filter(({ part }) => isProcessPart(part));
@@ -50,7 +66,10 @@ export const MessageBubble: React.FC<{
         setSelection(null);
         return;
       }
-      const text = sel.toString().replace(/\n{2,}/g, '\n').trim();
+      const text = sel
+        .toString()
+        .replace(/\n{2,}/g, '\n')
+        .trim();
       if (!text) {
         setSelection(null);
         return;
@@ -107,12 +126,28 @@ export const MessageBubble: React.FC<{
           {processEntries.length > 0 && (
             <ProcessSection active={processActive} count={processEntries.length}>
               {processEntries.map(({ part, i }) =>
-                renderMessagePart(part, i, m.role, addToolApprovalResponse),
+                renderMessagePart(
+                  part,
+                  i,
+                  m.role,
+                  addToolApprovalResponse,
+                  onAnswerQuestion,
+                  busy,
+                  isLastMessage,
+                ),
               )}
             </ProcessSection>
           )}
           {mainEntries.map(({ part, i }) =>
-            renderMessagePart(part, i, m.role, addToolApprovalResponse),
+            renderMessagePart(
+              part,
+              i,
+              m.role,
+              addToolApprovalResponse,
+              onAnswerQuestion,
+              busy,
+              isLastMessage,
+            ),
           )}
         </div>
         {!isUser && <MessageFooter metadata={m.metadata} estimate={estimate} />}

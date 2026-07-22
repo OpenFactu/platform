@@ -1,5 +1,9 @@
 import * as schema from '../../db/schema';
 import { DocumentRegistry, type DocumentTypeConfig } from './DocumentRegistry';
+import { salesDeliveryNoteHooks } from './hooks/salesDeliveryNote';
+import { purchaseDeliveryNoteHooks } from './hooks/purchaseDeliveryNote';
+import { salesInvoiceHooks } from './hooks/salesInvoice';
+import { purchaseInvoiceHooks } from './hooks/purchaseInvoice';
 
 /**
  * Configuraciones de los 6 tipos de documento del sistema.
@@ -20,6 +24,7 @@ const CONFIGS: DocumentTypeConfig[] = [
     eventPrefix: 'salesInvoice',
     stockAction: 'OUT',
     closeBaseDocuments: true,
+    hooks: salesInvoiceHooks,
     initialStatus: 'D',
     headerPgName: 'SalesInvoice',
     linePgName: 'SalesInvoiceLine',
@@ -46,6 +51,7 @@ const CONFIGS: DocumentTypeConfig[] = [
     eventPrefix: 'purchaseInvoice',
     stockAction: 'IN',
     closeBaseDocuments: true,
+    hooks: purchaseInvoiceHooks,
     initialStatus: 'D',
     headerPgName: 'PurchaseInvoice',
     linePgName: 'PurchaseInvoiceLine',
@@ -122,6 +128,7 @@ const CONFIGS: DocumentTypeConfig[] = [
     eventPrefix: 'salesDeliveryNote',
     stockAction: 'OUT',
     closeBaseDocuments: false,
+    hooks: salesDeliveryNoteHooks,
     initialStatus: 'O',
     headerPgName: 'SalesDeliveryNote',
     linePgName: 'SalesDeliveryNoteLine',
@@ -147,6 +154,7 @@ const CONFIGS: DocumentTypeConfig[] = [
     eventPrefix: 'purchaseDeliveryNote',
     stockAction: 'IN',
     closeBaseDocuments: false,
+    hooks: purchaseDeliveryNoteHooks,
     initialStatus: 'O',
     headerPgName: 'PurchaseDeliveryNote',
     linePgName: 'PurchaseDeliveryNoteLine',

@@ -34,6 +34,26 @@ function getTenantSchema(req: any): string | null {
 }
 
 /**
+ * GET /api/attachments/recent?limit=20 — últimos adjuntos subidos en el
+ * tenant, de cualquier entidad. Alimenta el panel "Tareas en segundo plano"
+ * (actividad de subidas), no requiere entityType/entityId.
+ */
+router.get('/recent', async (req: any, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+    const rows = await req.tenantClient
+      .select()
+      .from(schema.attachments)
+      .where(isNull(schema.attachments.deletedAt))
+      .orderBy(desc(schema.attachments.uploadedAt))
+      .limit(limit);
+    res.json(rows);
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Error al listar adjuntos recientes' });
+  }
+});
+
+/**
  * GET /api/attachments?entityType=SalesInvoice&entityId=:id
  */
 router.get('/', async (req: any, res) => {

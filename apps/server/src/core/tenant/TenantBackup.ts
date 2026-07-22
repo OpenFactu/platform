@@ -27,7 +27,7 @@ import { SchemaManager } from './SchemaManager';
 
 const SCHEMA_PLACEHOLDER = '__OFTENANT__';
 
-function defaultUploadsBase(): string {
+export function defaultUploadsBase(): string {
   return (
     process.env.OPENFACTU_UPLOADS_DIR ||
     path.resolve(__dirname, '..', '..', '..', '..', '..', 'storage', 'uploads')
@@ -275,25 +275,29 @@ export class TenantBackup {
     if (!dbUrl) throw new Error('DATABASE_URL no configurada');
     const conn = parseDatabaseUrl(dbUrl);
 
-    const schemaSql = (await runPgDump(
-      ['--schema-only', '--no-owner', '--no-privileges', '-n', tenant.schemaName],
-      conn,
-    ))
+    const schemaSql = (
+      await runPgDump(
+        ['--schema-only', '--no-owner', '--no-privileges', '-n', tenant.schemaName],
+        conn,
+      )
+    )
       .replace(/^SET\s+transaction_timeout\s*=.*$/gim, '')
       .replace(/^SET\s+statement_timeout\s*=.*$/gim, '')
       .replace(/^SET\s+lock_timeout\s*=.*$/gim, '')
       .replace(/^SET\s+idle_in_transaction_session_timeout\s*=.*$/gim, '');
-    const dataSql = (await runPgDump(
-      [
-        '--data-only',
-        '--no-owner',
-        '--no-privileges',
-        '--disable-triggers',
-        '-n',
-        tenant.schemaName,
-      ],
-      conn,
-    ))
+    const dataSql = (
+      await runPgDump(
+        [
+          '--data-only',
+          '--no-owner',
+          '--no-privileges',
+          '--disable-triggers',
+          '-n',
+          tenant.schemaName,
+        ],
+        conn,
+      )
+    )
       .replace(/^SET\s+transaction_timeout\s*=.*$/gim, '')
       .replace(/^SET\s+statement_timeout\s*=.*$/gim, '')
       .replace(/^SET\s+lock_timeout\s*=.*$/gim, '')
@@ -428,143 +432,167 @@ export class TenantBackup {
     // SchemaManager.createTenantSchema ya aplicó migraciones — nuestras
     // tablas existirán. Ahora reemplazamos por el contenido del backup. Para
     // evitar conflictos, primero DROPeamos el schema y lo recreamos vacío.
+    //
+    // Todo lo de aquí en adelante (hasta la validación) va envuelto en un
+    // try/catch: si algo falla a partir de este punto, el tenant ya existe
+    // en `public.Tenant` pero su schema puede haber quedado a medias (o
+    // directamente sin crear, tras el DROP). Sin rollback, eso deja una
+    // "empresa fantasma" — aparece en los listados pero no funciona porque
+    // su schema físico no existe. Revertimos con
+    // `SchemaManager.deleteTenantCompletely` (misma lógica que borrar una
+    // empresa a mano) y relanzamos el error original.
     const dbUrl = process.env.DATABASE_URL || '';
     const conn = parseDatabaseUrl(dbUrl);
 
-    // Solo DROP — schema.sql trae su propio CREATE SCHEMA. Si pre-creamos
-    // aquí, el CREATE dentro del dump choca con `already exists`.
-    await runPsql(`DROP SCHEMA IF EXISTS "${slug}" CASCADE;`, conn);
+    try {
+      // Solo DROP — schema.sql trae su propio CREATE SCHEMA. Si pre-creamos
+      // aquí, el CREATE dentro del dump choca con `already exists`.
+      await runPsql(`DROP SCHEMA IF EXISTS "${slug}" CASCADE;`, conn);
 
-    // Dos pases de reemplazo para cubrir zips exportados antes del fix del
-    // placeholder: primero sustituimos el placeholder oficial, y después
-    // barremos cualquier resto literal del schema original (`meta.schemaName`)
-    // por el nuevo slug. Así funcionan tanto zips "nuevos" como "viejos".
-    const origSchema: string = meta.schemaName || '';
-    const rewriteSchema = (s: string): string => {
-      let out = s.split(placeholder).join(slug);
+      // Dos pases de reemplazo para cubrir zips exportados antes del fix del
+      // placeholder: primero sustituimos el placeholder oficial, y después
+      // barremos cualquier resto literal del schema original
+      // (`meta.schemaName`) por el nuevo slug. Así funcionan tanto zips
+      // "nuevos" como "viejos".
+      const origSchema: string = meta.schemaName || '';
+      const rewriteSchema = (s: string): string => {
+        let out = s.split(placeholder).join(slug);
+        if (origSchema && origSchema !== slug) {
+          const esc = origSchema.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          out = out
+            .replace(new RegExp(`"${esc}"`, 'g'), `"${slug}"`)
+            .replace(new RegExp(`\\b${esc}\\.`, 'g'), `${slug}.`)
+            .replace(new RegExp(`\\b${esc}\\b`, 'g'), slug);
+        }
+        return out;
+      };
+
+      // Los pg_dump modernos (16+) emiten `\restrict <token>`, `\unrestrict`,
+      // y `SET transaction_timeout = ...`. Un `psql` 15 no entiende esos
+      // backslash-commands ni el SET, y con ON_ERROR_STOP=1 aborta, dejando
+      // el schema a medias. Los quitamos.
+      const stripRestrict = (s: string) =>
+        s
+          .replace(/^\\(?:restrict|unrestrict)\s+\S+\s*$/gim, '')
+          .replace(/^SET\s+transaction_timeout\s*=.*$/gim, '')
+          .replace(/^SET\s+statement_timeout\s*=.*$/gim, '')
+          .replace(/^SET\s+lock_timeout\s*=.*$/gim, '')
+          .replace(/^SET\s+idle_in_transaction_session_timeout\s*=.*$/gim, '');
+
+      let schemaSql = stripRestrict(rewriteSchema(schemaEntry.getData().toString()));
+      const dataSql = stripRestrict(rewriteSchema(dataEntry.getData().toString()));
+
+      // Estrategia defensiva para CREATE SCHEMA: en vez de intentar parchar
+      // cada caso con regex, eliminamos TODOS los CREATE SCHEMA del dump y
+      // ponemos uno solo al principio con IF NOT EXISTS contra el slug. Así
+      // evitamos colisiones con schemas antiguos cuando el placeholder no se
+      // aplicó en el export (zips pre-fix).
+      schemaSql = schemaSql.replace(
+        /CREATE SCHEMA\s+(?:IF NOT EXISTS\s+)?(?:"[^"]+"|[A-Za-z0-9_]+)\s*;\s*/gi,
+        '',
+      );
+      const cleanedSchemaSql = `CREATE SCHEMA IF NOT EXISTS "${slug}";\n` + schemaSql;
+
+      // Preview para diagnóstico — vemos qué se va a ejecutar realmente.
+      console.log(
+        `[TenantBackup.import] preview schema.sql:\n---\n${cleanedSchemaSql.slice(0, 400)}\n---`,
+      );
+      console.log(
+        `[TenantBackup.import] slug=${slug} schemaSql=${schemaSql.length}B ` +
+          `dataSql=${dataSql.length}B (placeholder=${placeholder})`,
+      );
+
+      // ── SAFETY CHECK crítico ───────────────────────────────────────────
+      // Antes de ejecutar nada, verificamos que NO queda ninguna referencia
+      // identificativa al schema original en el SQL reescrito. Si la hay,
+      // las inserciones irían al tenant original y lo corromperíamos. Mejor
+      // abortar ruidosamente que reventar datos de producción.
       if (origSchema && origSchema !== slug) {
-        const esc = origSchema.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        out = out
-          .replace(new RegExp(`"${esc}"`, 'g'), `"${slug}"`)
-          .replace(new RegExp(`\\b${esc}\\.`, 'g'), `${slug}.`)
-          .replace(new RegExp(`\\b${esc}\\b`, 'g'), slug);
-      }
-      return out;
-    };
-
-    // Los pg_dump modernos (16+) emiten `\restrict <token>`, `\unrestrict`,
-    // y `SET transaction_timeout = ...`. Un `psql` 15 no entiende esos
-    // backslash-commands ni el SET, y con ON_ERROR_STOP=1 aborta, dejando el
-    // schema a medias. Los quitamos.
-    const stripRestrict = (s: string) =>
-      s
-        .replace(/^\\(?:restrict|unrestrict)\s+\S+\s*$/gim, '')
-        .replace(/^SET\s+transaction_timeout\s*=.*$/gim, '')
-        .replace(/^SET\s+statement_timeout\s*=.*$/gim, '')
-        .replace(/^SET\s+lock_timeout\s*=.*$/gim, '')
-        .replace(/^SET\s+idle_in_transaction_session_timeout\s*=.*$/gim, '');
-
-    let schemaSql = stripRestrict(rewriteSchema(schemaEntry.getData().toString()));
-    const dataSql = stripRestrict(rewriteSchema(dataEntry.getData().toString()));
-
-    // Estrategia defensiva para CREATE SCHEMA: en vez de intentar parchar
-    // cada caso con regex, eliminamos TODOS los CREATE SCHEMA del dump y
-    // ponemos uno solo al principio con IF NOT EXISTS contra el slug. Así
-    // evitamos colisiones con schemas antiguos cuando el placeholder no se
-    // aplicó en el export (zips pre-fix).
-    schemaSql = schemaSql.replace(
-      /CREATE SCHEMA\s+(?:IF NOT EXISTS\s+)?(?:"[^"]+"|[A-Za-z0-9_]+)\s*;\s*/gi,
-      '',
-    );
-    const cleanedSchemaSql = `CREATE SCHEMA IF NOT EXISTS "${slug}";\n` + schemaSql;
-
-    // Preview para diagnóstico — vemos qué se va a ejecutar realmente.
-    console.log(
-      `[TenantBackup.import] preview schema.sql:\n---\n${cleanedSchemaSql.slice(0, 400)}\n---`,
-    );
-    console.log(
-      `[TenantBackup.import] slug=${slug} schemaSql=${schemaSql.length}B ` +
-        `dataSql=${dataSql.length}B (placeholder=${placeholder})`,
-    );
-
-    // ── SAFETY CHECK crítico ─────────────────────────────────────────────
-    // Antes de ejecutar nada, verificamos que NO queda ninguna referencia
-    // identificativa al schema original en el SQL reescrito. Si la hay, las
-    // inserciones irían al tenant original y lo corromperíamos. Mejor
-    // abortar ruidosamente que reventar datos de producción.
-    if (origSchema && origSchema !== slug) {
-      const escOrig = origSchema.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const leakRegex = new RegExp(`(^|[^A-Za-z0-9_])${escOrig}(\\.|"|$|\\s|;)`, 'm');
-      for (const [label, body] of [
-        ['schema.sql', cleanedSchemaSql],
-        ['data.sql', dataSql],
-      ] as const) {
-        const m = body.match(leakRegex);
-        if (m) {
-          const idx = body.indexOf(m[0]);
-          const ctx = body.slice(Math.max(0, idx - 40), idx + 80).replace(/\n/g, '⏎');
-          throw new Error(
-            `Import abortado: ${label} todavía referencia al schema original "${origSchema}". ` +
-              `Contexto: …${ctx}…`,
-          );
+        const escOrig = origSchema.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const leakRegex = new RegExp(`(^|[^A-Za-z0-9_])${escOrig}(\\.|"|$|\\s|;)`, 'm');
+        for (const [label, body] of [
+          ['schema.sql', cleanedSchemaSql],
+          ['data.sql', dataSql],
+        ] as const) {
+          const m = body.match(leakRegex);
+          if (m) {
+            const idx = body.indexOf(m[0]);
+            const ctx = body.slice(Math.max(0, idx - 40), idx + 80).replace(/\n/g, '⏎');
+            throw new Error(
+              `Import abortado: ${label} todavía referencia al schema original "${origSchema}". ` +
+                `Contexto: …${ctx}…`,
+            );
+          }
         }
       }
-    }
 
-    await runPsql(cleanedSchemaSql, conn);
-    console.log('[TenantBackup.import] schema.sql aplicado');
-    await runPsql(dataSql, conn);
-    console.log('[TenantBackup.import] data.sql aplicado');
+      await runPsql(cleanedSchemaSql, conn);
+      console.log('[TenantBackup.import] schema.sql aplicado');
+      await runPsql(dataSql, conn);
+      console.log('[TenantBackup.import] data.sql aplicado');
 
-    // ── Validación del import ─────────────────────────────────────────────
-    // Contamos tablas y filas reales en el nuevo schema y las comparamos
-    // con lo que esperábamos del dump. Si algo no cuadra, dejamos el tenant
-    // creado (el row en public.Tenant sigue vivo para debug) pero lanzamos
-    // para que admin.ts devuelva 500 en vez de "todo bien".
-    const expectedTables = (schemaSql.match(/\bCREATE TABLE\b/gi) || []).length;
-    // Estimación de filas esperadas: cada bloque `COPY ... FROM stdin;` tiene
-    // líneas de datos hasta `\.`. Contamos líneas no-vacías entre ambos.
-    const expectedRows = countCopyRows(dataSql);
+      // ── Validación del import ───────────────────────────────────────────
+      // Contamos tablas y filas reales en el nuevo schema y las comparamos
+      // con lo que esperábamos del dump. Si algo no cuadra, lanzamos para
+      // que el catch de más abajo revierta el tenant y admin.ts devuelva
+      // 500 en vez de "todo bien".
+      const expectedTables = (schemaSql.match(/\bCREATE TABLE\b/gi) || []).length;
+      // Estimación de filas esperadas: cada bloque `COPY ... FROM stdin;`
+      // tiene líneas de datos hasta `\.`. Contamos líneas no-vacías.
+      const expectedRows = countCopyRows(dataSql);
 
-    const tablesAfter: any = await publicDb.execute(
-      sql.raw(
-        `SELECT count(*)::int AS n FROM pg_tables WHERE schemaname = '${slug.replace(/'/g, '')}'`,
-      ),
-    );
-    const actualTables = Number(tablesAfter?.rows?.[0]?.n || 0);
-    // ANALYZE para refrescar pg_stat antes de leer n_live_tup.
-    try {
-      await publicDb.execute(sql.raw(`ANALYZE`));
-    } catch {
-      /* no crítico */
-    }
-    const rowsAfter: any = await publicDb.execute(
-      sql.raw(
-        `SELECT COALESCE(SUM(n_live_tup), 0)::bigint AS n FROM pg_stat_user_tables WHERE schemaname = '${slug.replace(/'/g, '')}'`,
-      ),
-    );
-    const actualRows = Number(rowsAfter?.rows?.[0]?.n || 0);
-
-    console.log(
-      `[TenantBackup.import] validación → tablas=${actualTables}/${expectedTables} ` +
-        `filas=${actualRows}/~${expectedRows}`,
-    );
-
-    if (expectedTables > 0 && actualTables < expectedTables) {
-      throw new Error(
-        `Import inválido: esperábamos ${expectedTables} tablas en "${slug}" pero ` +
-          `solo hay ${actualTables}. Revisa los logs del server (schema.sql).`,
+      const tablesAfter: any = await publicDb.execute(
+        sql.raw(
+          `SELECT count(*)::int AS n FROM pg_tables WHERE schemaname = '${slug.replace(/'/g, '')}'`,
+        ),
       );
-    }
-    // Tolerancia: si el dump tenía datos pero el schema quedó vacío, es fallo.
-    // No exigimos igualdad exacta (ANALYZE estima). Exigimos > 0 cuando se
-    // esperaban filas.
-    if (expectedRows > 0 && actualRows === 0) {
-      throw new Error(
-        `Import inválido: data.sql tenía ~${expectedRows} filas pero la empresa ` +
-          `quedó vacía. Probablemente el reemplazo del schema placeholder no ` +
-          `capturó todas las referencias — revisa los logs del server.`,
+      const actualTables = Number(tablesAfter?.rows?.[0]?.n || 0);
+      // ANALYZE para refrescar pg_stat antes de leer n_live_tup.
+      try {
+        await publicDb.execute(sql.raw(`ANALYZE`));
+      } catch {
+        /* no crítico */
+      }
+      const rowsAfter: any = await publicDb.execute(
+        sql.raw(
+          `SELECT COALESCE(SUM(n_live_tup), 0)::bigint AS n FROM pg_stat_user_tables WHERE schemaname = '${slug.replace(/'/g, '')}'`,
+        ),
       );
+      const actualRows = Number(rowsAfter?.rows?.[0]?.n || 0);
+
+      console.log(
+        `[TenantBackup.import] validación → tablas=${actualTables}/${expectedTables} ` +
+          `filas=${actualRows}/~${expectedRows}`,
+      );
+
+      if (expectedTables > 0 && actualTables < expectedTables) {
+        throw new Error(
+          `Import inválido: esperábamos ${expectedTables} tablas en "${slug}" pero ` +
+            `solo hay ${actualTables}. Revisa los logs del server (schema.sql).`,
+        );
+      }
+      // Tolerancia: si el dump tenía datos pero el schema quedó vacío, es
+      // fallo. No exigimos igualdad exacta (ANALYZE estima). Exigimos > 0
+      // cuando se esperaban filas.
+      if (expectedRows > 0 && actualRows === 0) {
+        throw new Error(
+          `Import inválido: data.sql tenía ~${expectedRows} filas pero la empresa ` +
+            `quedó vacía. Probablemente el reemplazo del schema placeholder no ` +
+            `capturó todas las referencias — revisa los logs del server.`,
+        );
+      }
+    } catch (err: any) {
+      console.error(
+        `[TenantBackup.import] Fallo tras crear el tenant "${slug}" — revirtiendo:`,
+        err?.stack || err,
+      );
+      await SchemaManager.deleteTenantCompletely(tenantId, slug).catch((cleanupErr: any) =>
+        console.error(
+          `[TenantBackup.import] El rollback también falló para "${slug}":`,
+          cleanupErr?.message,
+        ),
+      );
+      throw err;
     }
 
     // Restaurar uploads/ — best effort, solo si existe en el zip

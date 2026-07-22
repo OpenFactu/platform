@@ -125,7 +125,7 @@ function App() {
           </ScannerProvider>
         </MobileNavProvider>
       </TabsProvider>
-      <DebugPanel />
+      {/* <DebugPanel /> */}
     </>
   );
 }

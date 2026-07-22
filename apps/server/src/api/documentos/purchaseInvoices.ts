@@ -1,16 +1,18 @@
 import { Router } from 'express';
-import { eq, and, sql, desc } from 'drizzle-orm';
-import * as schema from '../db/schema';
-import { DocumentEngine } from '../core/documents/DocumentEngine';
-import { renderDocumentPdf } from '../core/documents/renderDocumentPdf';
-import { logAudit } from '../utils/audit';
+import { eq, sql, desc } from 'drizzle-orm';
+import * as schema from '../../db/schema';
+import { DocumentEngine } from '../../core/documents/DocumentEngine';
+import { DocumentRegistry } from '../../core/documents/DocumentRegistry';
+import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
+import { logAudit } from '../../utils/audit';
 import {
   buildPaymentDueLines,
   computeWithholding,
   latestDueDate,
-} from '../core/documents/invoiceLock';
+} from '../../core/documents/invoiceLock';
 
 const router = Router();
+const config = DocumentRegistry.get('PINV');
 
 // GET all invoices
 router.get('/', async (req: any, res) => {
@@ -139,14 +141,15 @@ router.post('/', async (req: any, res) => {
       req.tenantClient,
       req.user,
       {
-        tableName: 'purchaseInvoices',
-        schemaTable: schema.purchaseInvoices,
-        lineSchemaTable: schema.purchaseInvoiceLines,
-        batchSchemaTable: schema.purchaseInvoiceLineBatches,
-        eventPrefix: 'purchaseInvoice',
-        stockAction: 'IN',
-        closeBaseDocuments: true,
-        initialStatus: 'D',
+        tableName: config.tableName,
+        schemaTable: config.schemaTable,
+        lineSchemaTable: config.lineSchemaTable,
+        batchSchemaTable: config.batchSchemaTable,
+        eventPrefix: config.eventPrefix,
+        stockAction: config.stockAction,
+        closeBaseDocuments: config.closeBaseDocuments,
+        initialStatus: config.initialStatus,
+        hooks: config.hooks,
       },
       req.body,
     );
@@ -212,7 +215,7 @@ router.post('/:id/post', async (req: any, res) => {
     // Generación automática de asiento (best-effort).
     let journalEntryId: string | null = null;
     try {
-      const { JournalEngine } = await import('../core/accounting/JournalEngine');
+      const { JournalEngine } = await import('../../core/accounting/JournalEngine');
       const fresh = { ...header, isLocked: true };
       const invoiceLines = await req.tenantClient
         .select()
@@ -263,80 +266,25 @@ async function cancelPurchaseInvoice(req: any, res: any) {
       if (!header) throw new Error('No encontrado');
       if (header.status === 'X') throw new Error('Ya está cancelada');
 
-      const lines = await tx
-        .select()
-        .from(schema.purchaseInvoiceLines)
-        .where(eq(schema.purchaseInvoiceLines.invoiceId, req.params.id));
-      const reopenedPdns = new Set<string>();
-
-      for (const line of lines) {
-        const baseQty = Number(line.quantity) * Number(line.uomFactor || 1);
-
-        // Si la línea vino de un albarán, la factura no movió stock; sólo reabrimos el PDN
-        if (line.baseType === 'PDN' && line.baseId) {
-          reopenedPdns.add(line.baseId);
-          continue;
-        }
-
-        // Factura directa: la creación hizo stock IN, lo deshacemos
-        await tx
-          .update(schema.items)
-          .set({ stock: sql`${schema.items.stock} - ${baseQty}` })
-          .where(eq(schema.items.id, line.itemId));
-
-        if (line.warehouseId) {
-          await tx
-            .update(schema.itemWarehouseStocks)
-            .set({
-              stock: sql`${schema.itemWarehouseStocks.stock} - ${baseQty}`,
-              updatedAt: new Date(),
-            })
-            .where(
-              sql`${schema.itemWarehouseStocks.itemId} = ${line.itemId} AND ${schema.itemWarehouseStocks.warehouseId} = ${line.warehouseId}`,
-            );
-        }
-
-        const batches = await tx
-          .select()
-          .from(schema.purchaseInvoiceLineBatches)
-          .where(eq(schema.purchaseInvoiceLineBatches.invoiceLineId, line.id));
-        for (const bd of batches) {
-          await tx
-            .update(schema.itemBatches)
-            .set({ quantity: sql`${schema.itemBatches.quantity} - ${Number(bd.quantity)}` })
-            .where(
-              sql`${schema.itemBatches.itemId} = ${line.itemId} AND ${schema.itemBatches.batchNum} = ${bd.batchNum}`,
-            );
-          if (line.warehouseId) {
-            await tx
-              .update(schema.itemBatchStocks)
-              .set({
-                quantity: sql`${schema.itemBatchStocks.quantity} - ${Number(bd.quantity)}`,
-                updatedAt: new Date(),
-              })
-              .where(
-                and(
-                  eq(schema.itemBatchStocks.itemId, line.itemId),
-                  eq(schema.itemBatchStocks.batchNum, bd.batchNum),
-                  eq(schema.itemBatchStocks.warehouseId, line.warehouseId),
-                ),
-              );
-          }
-        }
-      }
-
-      // Reabrir PDNs base (estaban en 'C', vuelven a 'O')
-      for (const pdnId of reopenedPdns) {
-        await tx
-          .update(schema.purchaseDeliveryNotes)
-          .set({ status: 'O' })
-          .where(eq(schema.purchaseDeliveryNotes.id, pdnId));
-      }
-
-      await tx
-        .update(schema.purchaseInvoices)
-        .set({ status: 'X' })
-        .where(eq(schema.purchaseInvoices.id, req.params.id));
+      // Revierte stock (global/almacén/zona/lotes) solo para líneas directas
+      // (si vino de un PDN, la factura nunca movió stock, solo reabre el PDN
+      // origen) y marca 'X' — todo vía DocumentEngine.
+      await DocumentEngine.cancel(
+        tx,
+        req.tenantId,
+        req.user,
+        {
+          tableName: config.tableName,
+          schemaTable: config.schemaTable,
+          lineSchemaTable: config.lineSchemaTable,
+          batchSchemaTable: config.batchSchemaTable,
+          eventPrefix: config.eventPrefix,
+          stockAction: config.stockAction,
+          closeBaseDocuments: config.closeBaseDocuments,
+          hooks: config.hooks,
+        },
+        req.params.id,
+      );
       return { success: true };
     });
     res.json(result);

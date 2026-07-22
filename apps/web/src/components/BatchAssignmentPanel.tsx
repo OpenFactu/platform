@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useZonesWithStock } from '../hooks/useZonesWithStock';
 import { BarcodeCameraModal } from './scanner/BarcodeCameraModal';
 
 export interface BatchDetail {
@@ -58,6 +59,13 @@ interface Props {
   zones?: Zone[];
   /** Almacén activo de la cabecera del documento (para filtrar zonas). */
   warehouseId?: string;
+  /** 'line' si el almacén se captura por línea (ahí sí se prioriza
+   *  `line.warehouseId` sobre la cabecera); 'header' o sin especificar si el
+   *  almacén es único para todo el documento — en ese caso SIEMPRE se usa el
+   *  `warehouseId` de cabecera, ignorando un `line.warehouseId` que puede
+   *  haber quedado desincronizado (almacén por defecto del artículo, o
+   *  cabecera cambiada después de crear la línea). */
+  warehouseLocation?: 'header' | 'line';
   initialLineIdx?: number | null;
   isSale?: boolean;
   onSave: (updates: Array<{ idx: number; batchDetails: BatchDetail[] }>) => void;
@@ -70,12 +78,14 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
   masters,
   zones,
   warehouseId: headerWarehouseId,
+  warehouseLocation,
   initialLineIdx = null,
   isSale = false,
   onSave,
 }) => {
   const showZoneColumn = Array.isArray(zones) && zones.length > 0;
   const { token, user } = useAuth();
+  const zonesWithStock = useZonesWithStock();
 
   // --- Líneas relevantes (las que usan lotes/series) ---
   const traceableLines = useMemo(() => {
@@ -143,18 +153,45 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
     ? masters.items.find((i: any) => i.id === selectedLine.itemId)
     : null;
   const manageBy: 'B' | 'S' | undefined = selectedItem?.manageBy === 'S' ? 'S' : 'B';
-  const requiredQty = selectedLine ? Number(selectedLine.quantity || 0) : 0;
+  // En UoM base (cantidad tecleada × factor de conversión) — los lotes
+  // (itemBatches/itemBatchStocks) siempre se contabilizan en unidad base,
+  // igual que el stock global/por-almacén. Si no se convierte aquí, un
+  // artículo vendido en una UoM con factor ≠ 1 asigna lotes por la cantidad
+  // "tecleada" en vez de la física real, descuadrando el stock por lote
+  // frente al stock global (que sí aplica el factor).
+  const requiredQty = selectedLine
+    ? Number(selectedLine.quantity || 0) * Number(selectedLine.uomFactor || 1)
+    : 0;
   const assigned: BatchDetail[] = selectedIdx != null ? (pending[selectedIdx] ?? []) : [];
   const totalAssigned = assigned.reduce((a, b) => a + Number(b.quantity || 0), 0);
   const isBalanced = Math.abs(totalAssigned - requiredQty) < 0.0001;
 
-  // Almacén efectivo (override por línea si existe, si no la cabecera)
-  const lineWarehouseId = selectedLine?.warehouseId || headerWarehouseId;
+  // Almacén efectivo: en modo 'line' cada línea puede tener su propio
+  // almacén, así que se prioriza el de la línea; en modo 'header' (o sin
+  // especificar) el almacén es único para todo el documento, así que se usa
+  // SIEMPRE el de cabecera — `selectedLine.warehouseId` ahí puede haber
+  // quedado desincronizado (almacén por defecto del artículo, o cabecera
+  // cambiada después de crear la línea) y mostraría lotes/zonas de un
+  // almacén que ya no es el seleccionado.
+  const lineWarehouseId =
+    warehouseLocation === 'line' ? selectedLine?.warehouseId || headerWarehouseId : headerWarehouseId;
   const defaultZoneId = selectedLine?.zoneId || '';
-  const availableZones = useMemo(
-    () => (zones ?? []).filter((z) => !lineWarehouseId || z.warehouseId === lineWarehouseId),
-    [zones, lineWarehouseId],
-  );
+  // En venta, el "stock disponible" debe ser el de ESE almacén — un lote
+  // puede existir físicamente en otro almacén distinto al de la línea, y
+  // antes se mostraba igual (cantidad global), dejando elegir un lote que
+  // luego el backend rechaza por no tener stock ahí. En compra no aplica
+  // (no hay "disponible", se listan todos los lotes existentes tal cual).
+  const availabilityKey = selectedItem
+    ? `${selectedItem.id}::${isSale && lineWarehouseId ? lineWarehouseId : ''}`
+    : null;
+  // En venta, restringir a zonas donde el artículo tiene stock > 0 (mismo
+  // criterio que el selector de Ubicación de la línea). En compra no aplica
+  // — la zona es un destino de recepción, no requiere stock previo.
+  const stockZones = isSale ? zonesWithStock.get(selectedItem?.id, lineWarehouseId) : undefined;
+  const availableZones = useMemo(() => {
+    const base = (zones ?? []).filter((z) => !lineWarehouseId || z.warehouseId === lineWarehouseId);
+    return stockZones ? base.filter((z) => stockZones.some((sz) => sz.zoneId === z.id)) : base;
+  }, [zones, lineWarehouseId, stockZones]);
 
   // Auto-advance: cuando la línea actual queda balanceada, saltar a la siguiente incompleta.
   // Sólo se dispara en transición de "no cuadrada" a "cuadrada" para no hacer saltos locos.
@@ -189,10 +226,11 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
   // --- Fetch de batches existentes para el item seleccionado ---
   // (En venta son los disponibles en stock; en compra son los ya existentes en el maestro de lotes.)
   useEffect(() => {
-    if (!isOpen || !selectedItem || !token) return;
-    if (availableByItem[selectedItem.id]) return;
+    if (!isOpen || !selectedItem || !token || !availabilityKey) return;
+    if (availableByItem[availabilityKey]) return;
     setLoadingAvail(true);
-    fetch(`/api/items/${selectedItem.id}/batches`, {
+    const qs = isSale && lineWarehouseId ? `?warehouseId=${lineWarehouseId}` : '';
+    fetch(`/api/items/${selectedItem.id}/batches${qs}`, {
       headers: {
         Authorization: `Bearer ${token}`,
         'x-tenant-id': user?.tenantId || '',
@@ -202,21 +240,21 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
       .then((data: AvailableBatch[]) => {
         setAvailableByItem((prev) => ({
           ...prev,
-          [selectedItem.id]: Array.isArray(data) ? data : [],
+          [availabilityKey]: Array.isArray(data) ? data : [],
         }));
       })
       .catch(() => {
-        setAvailableByItem((prev) => ({ ...prev, [selectedItem.id]: [] }));
+        setAvailableByItem((prev) => ({ ...prev, [availabilityKey]: [] }));
       })
       .finally(() => setLoadingAvail(false));
-  }, [isOpen, selectedItem?.id, token, user?.tenantId]);
+  }, [isOpen, selectedItem?.id, token, user?.tenantId, availabilityKey, isSale, lineWarehouseId]);
 
   // --- Derived: lista izquierda filtrada ---
   // En venta: restamos lo ya asignado para no pasar el stock disponible.
   // En compra: mostramos todos los lotes existentes del maestro tal cual (no hay stock "disponible" porque estamos recibiendo).
   const availableList: AvailableBatch[] = useMemo(() => {
-    if (!selectedItem) return [];
-    const source = availableByItem[selectedItem.id] ?? [];
+    if (!selectedItem || !availabilityKey) return [];
+    const source = availableByItem[availabilityKey] ?? [];
     const q = leftSearch.trim().toLowerCase();
     const filtered = source.filter((ab) => !q || ab.batchNum.toLowerCase().includes(q));
     if (!isSale) return filtered;
@@ -228,7 +266,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
         return { ...ab, quantity: Number(ab.quantity) - assignedQty };
       })
       .filter((ab) => ab.quantity > 0);
-  }, [availableByItem, selectedItem?.id, leftSearch, assigned, isSale]);
+  }, [availableByItem, availabilityKey, leftSearch, assigned, isSale]);
 
   // --- Handlers ---
   const updatePending = (idx: number, next: BatchDetail[]) => {
@@ -436,7 +474,16 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
     if (remaining <= 0) return;
     let left = remaining;
     const additions: BatchDetail[] = [];
-    for (const ab of availableList) {
+    // FIFO real: caducidad más próxima primero (nulls al final) — la lista
+    // que llega de availableList viene ordenada por cantidad desc (así la
+    // devuelve el backend para la búsqueda), no sirve tal cual para "Auto FIFO".
+    const fifoOrder = [...availableList].sort((a, b) => {
+      if (!a.expiryDate && !b.expiryDate) return 0;
+      if (!a.expiryDate) return 1;
+      if (!b.expiryDate) return -1;
+      return a.expiryDate.localeCompare(b.expiryDate);
+    });
+    for (const ab of fifoOrder) {
       if (left <= 0) break;
       const take = manageBy === 'S' ? 1 : Math.min(left, ab.quantity);
       if (take <= 0) continue;

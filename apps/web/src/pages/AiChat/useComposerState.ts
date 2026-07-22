@@ -30,6 +30,7 @@ export function useComposerState(
   headers: Record<string, string>,
 ) {
   const [input, setInput] = useState('');
+  const [quotedText, setQuotedText] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<FileUIPart[]>([]);
   const [documents, setDocuments] = useState<DocumentAttachment[]>([]);
   const [extractingDocs, setExtractingDocs] = useState(false);
@@ -99,32 +100,40 @@ export function useComposerState(
 
   const resetDraft = () => {
     setInput('');
+    setQuotedText(null);
     setAttachments([]);
     setDocuments([]);
   };
 
   const submit = (text: string) => {
+    const quoteBlock = quotedText ? `> ${quotedText.replace(/\n/g, '\n> ')}\n\n` : '';
     const documentBlocks = documents
       .map(
         (d) =>
           `\n\n--- Documento adjunto: ${d.filename}${d.truncated ? ' (truncado)' : ''} ---\n${d.text}`,
       )
       .join('');
-    send(text + documentBlocks, attachments.length > 0 ? attachments : undefined);
+    send(quoteBlock + text + documentBlocks, attachments.length > 0 ? attachments : undefined);
     resetDraft();
   };
 
-  /** Antepone el texto seleccionado (citado) al borrador actual y enfoca el
+  /** Guarda el fragmento seleccionado como cita "en curso" (tarjeta aparte
+   * del textarea, no mezclada con lo que el usuario escribe) y enfoca el
    * textarea — usado por SelectionToolbar cuando el usuario elige "Preguntar
-   * sobre esto" sobre una porción de una respuesta de Keiro. */
+   * sobre esto" sobre una porción de una respuesta de Keiro. Se antepone al
+   * mensaje como blockquote solo al enviar (ver `submit`). */
   const quoteText = (text: string) => {
-    setInput((prev) => `> ${text.replace(/\n/g, '\n> ')}\n\n${prev}`);
+    setQuotedText(text);
     textareaRef.current?.focus();
   };
+
+  const clearQuote = () => setQuotedText(null);
 
   return {
     input,
     setInput,
+    quotedText,
+    clearQuote,
     attachments,
     removeAttachment: (i: number) => setAttachments((prev) => prev.filter((_, j) => j !== i)),
     documents,

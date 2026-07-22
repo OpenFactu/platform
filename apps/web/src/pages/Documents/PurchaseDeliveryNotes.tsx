@@ -230,7 +230,7 @@ const PDNList: React.FC<{
           )}
           {item.status === 'O' && !item.hasActiveShipment && flags.logisticsEnabled && (
             <div onClick={(e) => e.stopPropagation()} className="inline-flex">
-              <PreparationButton docType="PDN" docId={item.id} />
+              <PreparationButton docType="PDN" docId={item.id} compact />
             </div>
           )}
           {item.hasActiveShipment && item.activeShipmentId && (
@@ -461,6 +461,7 @@ const PDNForm: React.FC<{
     return [...base.slice(0, -1), projectCol, base[base.length - 1]];
   }, [
     state.lines,
+    state.warehouseId,
     masters.items,
     masters.taxGroups,
     pluginLineFields,
@@ -710,6 +711,7 @@ const PDNForm: React.FC<{
         masters={masters}
         zones={zones}
         warehouseId={state.warehouseId}
+        warehouseLocation={warehouseLocation}
         initialLineIdx={batchEditingIdx}
         isSale={false}
         onSave={(updates) => {

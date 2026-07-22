@@ -25,6 +25,7 @@ const DISPLAY_TOOL_NAMES = new Set([
   'create_word',
   'create_pdf',
   'preview_document_template',
+  'ask_user_question',
 ]);
 export const isComponentPart = (part: ChatMessagePart): boolean =>
   part.type.startsWith('tool-') && DISPLAY_TOOL_NAMES.has(part.type.slice('tool-'.length));
@@ -42,6 +43,12 @@ export function renderMessagePart(
   i: number,
   role: ChatMessage['role'],
   addToolApprovalResponse: AddToolApprovalResponse,
+  onAnswerQuestion?: (text: string) => void,
+  busy?: boolean,
+  /** Si este mensaje es el último del hilo — una ask_user_question del
+   * último mensaje del asistente está PENDIENTE y se muestra fijada encima
+   * del compositor (ver PendingQuestionBar), no aquí duplicada. */
+  isLastMessage?: boolean,
 ): React.ReactNode {
   if (part.type === 'text') {
     // El usuario escribe texto plano; el asistente responde en Markdown.
@@ -257,6 +264,50 @@ export function renderMessagePart(
       return (
         <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
           <Loader2 size={13} className="animate-spin" /> Generando vista previa…
+        </div>
+      );
+    }
+
+    // ── Pregunta con opciones/texto libre — se responde con un click o
+    //    enviando texto, no exige confirmación (no toca datos). La pregunta
+    //    PENDIENTE (último mensaje del asistente) se muestra fijada encima
+    //    del compositor (PendingQuestionBar) — aquí no se duplica, para no
+    //    tener dos tarjetas interactivas iguales a la vez. Las de pasos ya
+    //    respondidos quedan como un resumen compacto en el hilo. ──
+    if (toolName === 'ask_user_question') {
+      const questionOutput = p.output as
+        | {
+            question?: string;
+            options?: Array<{ label: string; description?: string }>;
+            multiSelect?: boolean;
+            allowFreeText?: boolean;
+            freeTextPlaceholder?: string;
+            step?: { current: number; total: number; title?: string };
+          }
+        | undefined;
+      if (p.state === 'output-available' && questionOutput?.question) {
+        if (isLastMessage) return null; // pendiente → la muestra PendingQuestionBar
+        return (
+          <div
+            key={i}
+            className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400"
+          >
+            <ShieldQuestion size={12} className="text-accent/70 shrink-0" />
+            {questionOutput.step && (
+              <span className="font-mono text-accent/70">
+                Paso {questionOutput.step.current}/{questionOutput.step.total} ·
+              </span>
+            )}
+            {questionOutput.question}
+          </div>
+        );
+      }
+      if (p.state === 'output-error') {
+        return null;
+      }
+      return (
+        <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
+          <Loader2 size={13} className="animate-spin" /> Preguntando…
         </div>
       );
     }

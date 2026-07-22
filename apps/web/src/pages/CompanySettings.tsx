@@ -13,9 +13,11 @@ import {
   Coins,
   Link,
   Sparkles,
+  DatabaseBackup,
 } from 'lucide-react';
 import { StorageSettingsTab } from '../components/settings/StorageSettingsTab';
 import { DataTransferTab } from '../components/settings/DataTransferTab';
+import { BackupsTab } from '../components/settings/BackupsTab';
 import { FiscalSettingsTab } from '../components/settings/FiscalSettingsTab';
 import { EmailSettingsTab } from '../components/settings/EmailSettingsTab';
 import { AiSettingsTab } from '../components/settings/AiSettingsTab';
@@ -74,6 +76,7 @@ type TabId =
   | 'flags'
   | 'storage'
   | 'data'
+  | 'backups'
   | 'email'
   | 'catalogs'
   | 'app'
@@ -103,6 +106,7 @@ export const CompanySettings: React.FC = () => {
       'flags',
       'storage',
       'data',
+      'backups',
       'email',
       'catalogs',
       'app',
@@ -261,6 +265,7 @@ export const CompanySettings: React.FC = () => {
     { id: 'email', label: 'Correo', icon: Mail },
     { id: 'ai', label: 'IA', icon: Sparkles },
     { id: 'data', label: 'Importar/Exportar', icon: Upload },
+    { id: 'backups', label: 'Backups', icon: DatabaseBackup },
   ];
 
   return (
@@ -855,6 +860,12 @@ export const CompanySettings: React.FC = () => {
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, logisticsEnabled: v })}
               />
               <FlagRow
+                label="Chat de Keiro en seguimiento público"
+                hint="Añade un chat de IA a la página pública de seguimiento (/track/:token) para que el cliente pregunte por su envío o reporte una incidencia — sin login, así que actívalo solo si quieres exponer esa superficie públicamente."
+                checked={!!(flagsDraft as any).trackingChatEnabled}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, trackingChatEnabled: v } as any)}
+              />
+              <FlagRow
                 label="Modo sólo logística"
                 hint="Oculta Ventas, Compras, Contabilidad, RRHH y Analítica. Solo quedan Inicio, Inventario, Interlocutores y Logística. Útil para clientes que sólo contratan el módulo de reparto."
                 checked={!!flagsDraft.logisticsOnly}
@@ -978,6 +989,8 @@ export const CompanySettings: React.FC = () => {
       {activeTab === 'ai' && <AiSettingsTab />}
 
       {activeTab === 'data' && <DataTransferTab />}
+
+      {activeTab === 'backups' && <BackupsTab />}
     </div>
   );
 };

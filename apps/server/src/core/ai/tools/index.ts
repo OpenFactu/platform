@@ -34,11 +34,18 @@ import { DocumentRegistry } from '../../documents/DocumentRegistry';
 import { validateQuery } from '../../documents/templateQueries';
 import { fetchTenantTableNames, fetchTenantTableColumns } from '../../documents/schemaInfo';
 import { transpileSource } from '../../../plugins/transpiler';
-import { sandboxQuery, isAdminRole, type ChatToolContext } from './util';
+import {
+  sandboxQuery,
+  isAdminRole,
+  hasModuleAccess,
+  DOC_TYPE_PERMISSION_PATH,
+  type ChatToolContext,
+} from './util';
 import { buildActionTools } from './actionTools';
 import { buildFileGenTools } from './fileGenTools';
 import { buildDocumentTemplateTools } from './documentTemplateTools';
 import { buildErpReadTools } from './erpEntityTools';
+import { buildDriverTools } from './driverTools';
 import { AiToolRegistry } from '../AiToolRegistry';
 
 export type { ChatToolContext } from './util';
@@ -83,42 +90,6 @@ export function buildChatTools(ctx: ChatToolContext, options: BuildChatToolsOpti
   const includeActions = options.includeActions ?? isAdmin;
 
   const tools: Record<string, any> = {
-    search_partners: tool({
-      description:
-        'Busca interlocutores (clientes y proveedores) por nombre, código o NIF. Devuelve hasta 20.',
-      inputSchema: z.object({
-        query: z.string().describe('Texto a buscar en nombre, código o NIF'),
-      }),
-      execute: async ({ query }: { query: string }) =>
-        sandboxQuery(
-          ctx,
-          `SELECT id, code, name, nif, email, phone
-             FROM "BusinessPartner"
-            WHERE name ILIKE :q OR code ILIKE :q OR nif ILIKE :q
-            ORDER BY name
-            LIMIT 20`,
-          { q: `%${query}%` },
-        ),
-    }),
-
-    search_items: tool({
-      description:
-        'Busca artículos del catálogo por nombre, código o código de barras. Devuelve hasta 20.',
-      inputSchema: z.object({
-        query: z.string().describe('Texto a buscar en nombre, código o barcode'),
-      }),
-      execute: async ({ query }: { query: string }) =>
-        sandboxQuery(
-          ctx,
-          `SELECT id, code, barcode, name, description, kind
-             FROM "Item"
-            WHERE name ILIKE :q OR code ILIKE :q OR barcode ILIKE :q
-            ORDER BY name
-            LIMIT 20`,
-          { q: `%${query}%` },
-        ),
-    }),
-
     list_documents: tool({
       description:
         'Lista documentos de un tipo (SINV=factura venta, PINV=factura compra, SO=pedido venta, PO=pedido compra, SDN=albarán venta, PDN=albarán compra), con filtros opcionales. Ordenados por fecha descendente.',
@@ -138,6 +109,12 @@ export function buildChatTools(ctx: ChatToolContext, options: BuildChatToolsOpti
         dateTo?: string;
         limit?: number;
       }) => {
+        // Los 6 tipos comparten una sola tool (no se pueden omitir por
+        // separado como search_partners/search_items) — se comprueba el
+        // permiso de módulo por docType en cada llamada.
+        if (!hasModuleAccess(ctx, DOC_TYPE_PERMISSION_PATH[input.docType])) {
+          return { error: 'No tienes permiso para ver documentos de este tipo' };
+        }
         const config = DocumentRegistry.get(input.docType as any);
         if (!config) throw new Error(`Tipo de documento desconocido: ${input.docType}`);
         const conds: string[] = [];
@@ -181,6 +158,9 @@ export function buildChatTools(ctx: ChatToolContext, options: BuildChatToolsOpti
         id: z.string().describe('Id del documento'),
       }),
       execute: async ({ docType, id }: { docType: (typeof DOC_TYPE_IDS)[number]; id: string }) => {
+        if (!hasModuleAccess(ctx, DOC_TYPE_PERMISSION_PATH[docType])) {
+          return { error: 'No tienes permiso para ver documentos de este tipo' };
+        }
         const config = DocumentRegistry.get(docType as any);
         if (!config) throw new Error(`Tipo de documento desconocido: ${docType}`);
         const [header] = await sandboxQuery(
@@ -228,6 +208,79 @@ export function buildChatTools(ctx: ChatToolContext, options: BuildChatToolsOpti
       },
     }),
 
+    ask_user_question: tool({
+      description: [
+        'Pregunta algo al usuario en una tarjeta interactiva, en vez de en texto plano — con opciones para elegir (options), un campo de texto libre (allowFreeText), o ambos. Úsala cuando falte un dato necesario para completar lo que pide: con opciones si hay un conjunto acotado de candidatos razonable (p.ej. "¿qué almacén?", "¿cuál de estos 3 clientes con nombre parecido?"), con allowFreeText si es un dato abierto (nombre, email, un importe...). Si necesitas ambas cosas en la misma pregunta (p.ej. sugerir 2-3 valores frecuentes pero dejar escribir otro), pasa las dos.',
+        'FLUJOS GUIADOS PASO A PASO: si el usuario te pide que le vayas pidiendo los datos de algo (p.ej. "dame de alta un cliente preguntándome uno a uno") usa ESTA tool para CADA campo, uno por llamada — incluidos los de texto libre (con allowFreeText), no los preguntes en texto normal a mitad de un flujo guiado, rompe la sensación de guía. Indica siempre `step` con el progreso (current/total y, si quieres, un title fijo como "Alta de cliente") para que el usuario vea en qué paso está. Antes de empezar, repasa mentalmente TODOS los campos obligatorios de la entidad que vas a crear para fijar el `total` correcto y no te dejes ninguno a mitad del flujo — si luego necesitas uno extra, está bien ajustar el total en el siguiente paso. Al terminar el último paso, llama a la tool de creación real (create_partner, create_employee…) con todo lo recogido; no la llames a mitad del flujo.',
+        'Se renderiza como una tarjeta — al pulsar una opción, confirmar varias (multiSelect) o enviar el texto libre, esa respuesta se envía como el siguiente mensaje del usuario y la conversación sigue con normalidad. No es una confirmación de acción ni toca datos: solo recoge la respuesta. No la uses para confirmar una acción — para eso ya existe needsApproval en las tools de creación (create_partner, create_document…).',
+      ].join(' '),
+      inputSchema: z.object({
+        question: z.string().describe('La pregunta a mostrar, corta y concreta'),
+        options: z
+          .array(
+            z.object({
+              label: z.string().describe('Texto corto del botón (lo que se envía si se elige)'),
+              description: z.string().optional().describe('Aclaración opcional bajo la etiqueta'),
+            }),
+          )
+          .min(2)
+          .max(6)
+          .optional()
+          .describe(
+            'Entre 2 y 6 opciones. Omite este campo (deja solo allowFreeText) si la respuesta es abierta y no hay candidatos que ofrecer.',
+          ),
+        multiSelect: z.boolean().optional().describe('Permite elegir varias opciones a la vez'),
+        allowFreeText: z
+          .boolean()
+          .optional()
+          .describe(
+            'Añade un campo de texto libre para que el usuario escriba su propia respuesta — obligatorio si no das `options` (preguntas abiertas: nombre, email, importe...)',
+          ),
+        freeTextPlaceholder: z
+          .string()
+          .optional()
+          .describe('Placeholder del campo de texto libre, si allowFreeText'),
+        step: z
+          .object({
+            current: z.number().int().min(1).describe('Número de este paso, empezando en 1'),
+            total: z.number().int().min(1).describe('Total de pasos previstos en el flujo'),
+            title: z
+              .string()
+              .optional()
+              .describe('Título fijo del flujo guiado, p.ej. "Alta de cliente"'),
+          })
+          .optional()
+          .describe(
+            'Solo si esta pregunta forma parte de un flujo guiado paso a paso — muestra "Paso X de Y" con barra de progreso. Omite en preguntas sueltas.',
+          ),
+      }),
+      execute: async (input: {
+        question: string;
+        options?: Array<{ label: string; description?: string }>;
+        multiSelect?: boolean;
+        allowFreeText?: boolean;
+        freeTextPlaceholder?: string;
+        step?: { current: number; total: number; title?: string };
+      }) => {
+        // Sin lógica de servidor — es una directiva de UI. El front la
+        // renderiza como tarjeta de opciones/texto libre (AskUserQuestionCard);
+        // al responder, el texto se envía como el siguiente mensaje del
+        // usuario, igual que si lo hubiera escrito él.
+        const hasOptions = Array.isArray(input.options) && input.options.length >= 2;
+        return {
+          question: input.question,
+          options: input.options || [],
+          multiSelect: Boolean(input.multiSelect),
+          // Fallback de seguridad: si el modelo no dio opciones válidas NI
+          // pidió texto libre, forzamos texto libre para que la tarjeta
+          // siempre tenga una forma de responder.
+          allowFreeText: Boolean(input.allowFreeText) || !hasOptions,
+          freeTextPlaceholder: input.freeTextPlaceholder,
+          step: input.step,
+        };
+      },
+    }),
+
     // Generación de archivos descargables (Excel/Word/PDF) — no son acciones,
     // no piden confirmación (ver comentario en fileGenTools.ts).
     ...buildFileGenTools(),
@@ -240,7 +293,54 @@ export function buildChatTools(ctx: ChatToolContext, options: BuildChatToolsOpti
     // Lectura para resolver ids de las acciones ERP (create_stock_transfer,
     // create_goods_receipt, create_employee) — sin confirmación.
     ...buildErpReadTools(ctx),
+
+    // Rutas propias del conductor — sin gate de módulo, el alcance se
+    // resuelve server-side desde ctx.user.id (ver driverTools.ts). Sin esto,
+    // un rol DRIVER (deny-by-default en módulos) se queda sin ninguna tool.
+    ...buildDriverTools(ctx),
   };
+
+  // Tools de un único módulo — se omiten del todo (no solo fallan al
+  // ejecutarse) si el usuario no tiene permiso de lectura sobre ese path.
+  if (hasModuleAccess(ctx, '/partners')) {
+    tools.search_partners = tool({
+      description:
+        'Busca interlocutores (clientes y proveedores) por nombre, código o NIF. Devuelve hasta 20.',
+      inputSchema: z.object({
+        query: z.string().describe('Texto a buscar en nombre, código o NIF'),
+      }),
+      execute: async ({ query }: { query: string }) =>
+        sandboxQuery(
+          ctx,
+          `SELECT id, code, name, nif, email, phone
+             FROM "BusinessPartner"
+            WHERE name ILIKE :q OR code ILIKE :q OR nif ILIKE :q
+            ORDER BY name
+            LIMIT 20`,
+          { q: `%${query}%` },
+        ),
+    });
+  }
+
+  if (hasModuleAccess(ctx, '/items')) {
+    tools.search_items = tool({
+      description:
+        'Busca artículos del catálogo por nombre, código o código de barras. Devuelve hasta 20.',
+      inputSchema: z.object({
+        query: z.string().describe('Texto a buscar en nombre, código o barcode'),
+      }),
+      execute: async ({ query }: { query: string }) =>
+        sandboxQuery(
+          ctx,
+          `SELECT id, code, barcode, name, description, kind
+             FROM "Item"
+            WHERE name ILIKE :q OR code ILIKE :q OR barcode ILIKE :q
+            ORDER BY name
+            LIMIT 20`,
+          { q: `%${query}%` },
+        ),
+    });
+  }
 
   if (includeSqlTools) {
     tools.list_tables = tool({

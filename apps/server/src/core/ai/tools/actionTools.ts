@@ -32,7 +32,7 @@ import { DocumentRegistry } from '../../documents/DocumentRegistry';
 import * as schema from '../../../db/schema';
 import { CHART_TYPES, resolveQueryWidget, validateWidgetQuery } from '../declarativeWidget';
 import { buildVisualTemplate, type DocType } from '@openfactu/pdf';
-import { sandboxQuery, type ChatToolContext } from './util';
+import { sandboxQuery, hasModuleAccess, DOC_TYPE_PERMISSION_PATH, type ChatToolContext } from './util';
 import {
   TEMPLATE_DOC_TYPE_IDS,
   visualOptionsInputSchema,
@@ -87,6 +87,12 @@ export function buildActionTools(ctx: ChatToolContext) {
         date?: string;
         lines: Array<{ itemId: string; quantity: number; price?: number; description?: string }>;
       }) => {
+        // Los 6 tipos comparten una sola tool — se comprueba el permiso de
+        // escritura de módulo por docType en cada llamada (mismo criterio
+        // que list_documents/get_document en tools/index.ts).
+        if (!hasModuleAccess(ctx, DOC_TYPE_PERMISSION_PATH[input.docType], 'write')) {
+          return { ok: false, error: 'No tienes permiso para crear documentos de este tipo' };
+        }
         const config = DocumentRegistry.get(input.docType);
 
         // ── Validar partner ──

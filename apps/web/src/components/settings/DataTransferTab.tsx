@@ -10,7 +10,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
-import { Download, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Download, Upload, FileSpreadsheet, AlertTriangle, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export const DataTransferTab: React.FC = () => {
@@ -36,7 +36,7 @@ export const DataTransferTab: React.FC = () => {
   const [tenants, setTenants] = useState<Array<{ id: string; name: string }>>([]);
   const [exportTenantId, setExportTenantId] = useState<string>('');
 
-  useEffect(() => {
+  const loadTenants = () =>
     fetch('/api/tenants/mine', {
       headers: { Authorization: `Bearer ${token ?? ''}` },
     })
@@ -44,10 +44,53 @@ export const DataTransferTab: React.FC = () => {
       .then((list) => {
         const arr = Array.isArray(list) ? list : [];
         setTenants(arr);
-        if (arr[0]) setExportTenantId(arr[0].id);
+        setExportTenantId((prev) => (arr.some((t) => t.id === prev) ? prev : arr[0]?.id || ''));
       })
       .catch(() => {});
+
+  useEffect(() => {
+    loadTenants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  // ── Borrado de empresa (zona de peligro) ──────────────────────────────
+  // Selector independiente del de "Exportar" a propósito: elegir la empresa
+  // a borrar nunca debe depender de qué había seleccionado arriba, para no
+  // arriesgarse a borrar la empresa equivocada por descuido.
+  const [deleteTenantId, setDeleteTenantId] = useState<string>('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const deleteTenant = tenants.find((t) => t.id === deleteTenantId);
+
+  useEffect(() => {
+    setDeleteTenantId((prev) => (tenants.some((t) => t.id === prev) ? prev : ''));
+  }, [tenants]);
+
+  const doDelete = async () => {
+    if (!deleteTenant) return;
+    if (deleteConfirmText !== deleteTenant.name) {
+      toast.error('El nombre no coincide');
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/tenants/${deleteTenant.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
+        body: JSON.stringify({ confirmName: deleteConfirmText }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+      toast.success(`Empresa "${deleteTenant.name}" eliminada`);
+      setDeleteConfirmText('');
+      setDeleteTenantId('');
+      await loadTenants();
+    } catch (e: any) {
+      toast.error(`Error al eliminar: ${e?.message || e}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   /**
    * Descarga con barra de progreso real. Lee el cuerpo de la respuesta como
@@ -289,6 +332,59 @@ export const DataTransferTab: React.FC = () => {
           {busy === 'Exportar CSV' && progress && <ProgressBar progress={progress} />}
         </div>
       </Card>
+
+      {isSuperuser && (
+        <Card>
+          <div className="p-6 space-y-3 border-2 border-rose-200 dark:border-rose-900 rounded-lg -m-px">
+            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+              <Trash2 size={18} />
+              <h2 className="text-lg font-bold">Zona de peligro — Eliminar empresa</h2>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
+              Borra la empresa elegida de forma <strong>permanente</strong>: su schema completo
+              (documentos, stock, contabilidad, usuarios asociados…) y sus archivos locales. No hay
+              marcha atrás salvo que tengas un backup — expórtala o haz un backup primero si no
+              estás seguro.
+            </p>
+            <select
+              value={deleteTenantId}
+              onChange={(e) => {
+                setDeleteTenantId(e.target.value);
+                setDeleteConfirmText('');
+              }}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+            >
+              <option value="">— Elige una empresa —</option>
+              {tenants.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            {deleteTenant && (
+              <>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  Para confirmar, escribe el nombre exacto de la empresa:{' '}
+                  <code className="font-bold">{deleteTenant.name}</code>
+                </p>
+                <Input
+                  placeholder={deleteTenant.name}
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                />
+                <Button
+                  variant="danger"
+                  onClick={doDelete}
+                  disabled={deleting || deleteConfirmText !== deleteTenant.name}
+                >
+                  <Trash2 size={14} className="mr-2" />
+                  {deleting ? 'Eliminando…' : `Eliminar "${deleteTenant.name}" definitivamente`}
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
