@@ -48,6 +48,17 @@ export interface FlagsConfig {
   hrPlanningEnabled: boolean;
   /** RRHH avanzado+: convenios, evaluaciones, comisiones, rendimiento, coste laboral, tareas y Gantt. */
   hrAdvancedEnabled: boolean;
+  /** Módulos core activables desde /apps. Default true: preserva el
+   *  comportamiento de cualquier tenant existente. */
+  inventoryEnabled: boolean;
+  salesEnabled: boolean;
+  purchasesEnabled: boolean;
+  partnersEnabled: boolean;
+  accountingEnabled: boolean;
+  analyticsEnabled: boolean;
+  reportsEnabled: boolean;
+  hrEnabled: boolean;
+  assistantEnabled: boolean;
 }
 
 // Defaults de la marca Keirost — paleta teal + ink (brand guide v1.0).
@@ -86,6 +97,15 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   hrIncidentsEnabled: false,
   hrPlanningEnabled: false,
   hrAdvancedEnabled: false,
+  inventoryEnabled: true,
+  salesEnabled: true,
+  purchasesEnabled: true,
+  partnersEnabled: true,
+  accountingEnabled: true,
+  analyticsEnabled: true,
+  reportsEnabled: true,
+  hrEnabled: true,
+  assistantEnabled: true,
 };
 
 export interface ThemePreset {

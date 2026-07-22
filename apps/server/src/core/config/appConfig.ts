@@ -46,6 +46,19 @@ export interface FlagsConfig {
   /** RRHH avanzado+ : convenios, evaluaciones, comisiones, rendimiento,
    *  coste laboral, tareas y Gantt. */
   hrAdvancedEnabled: boolean;
+  /** Módulos core activables desde la pantalla /apps. Cada uno oculta su
+   *  módulo entero del sidebar cuando es false. Default true: preserva el
+   *  comportamiento de cualquier tenant existente hasta que un admin lo
+   *  desactive explícitamente. */
+  inventoryEnabled: boolean;
+  salesEnabled: boolean;
+  purchasesEnabled: boolean;
+  partnersEnabled: boolean;
+  accountingEnabled: boolean;
+  analyticsEnabled: boolean;
+  reportsEnabled: boolean;
+  hrEnabled: boolean;
+  assistantEnabled: boolean;
 }
 
 export const BRANDING_DEFAULTS: BrandingConfig = {
@@ -80,6 +93,15 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   hrIncidentsEnabled: false,
   hrPlanningEnabled: false,
   hrAdvancedEnabled: false,
+  inventoryEnabled: true,
+  salesEnabled: true,
+  purchasesEnabled: true,
+  partnersEnabled: true,
+  accountingEnabled: true,
+  analyticsEnabled: true,
+  reportsEnabled: true,
+  hrEnabled: true,
+  assistantEnabled: true,
 };
 
 /**
