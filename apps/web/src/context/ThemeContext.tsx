@@ -37,8 +37,17 @@ export interface FlagsConfig {
   warehouseLocation: 'header' | 'line';
   /** Activa el módulo de logística (envíos, rutas, mapa en tiempo real). */
   logisticsEnabled: boolean;
+  /** Activa el chat de Keiro en la página pública de seguimiento (/track/:token). */
+  trackingChatEnabled: boolean;
   /** Oculta todos los módulos excepto logística e inventario. */
-  logisticsOnly?: boolean;
+  logisticsOnly: boolean;
+  /** Sub-módulos de RRHH avanzado — cada uno desbloquea un menú/ruta sobre el módulo HR base. */
+  hrShiftsEnabled: boolean;
+  hrTimeclockEnabled: boolean;
+  hrIncidentsEnabled: boolean;
+  hrPlanningEnabled: boolean;
+  /** RRHH avanzado+: convenios, evaluaciones, comisiones, rendimiento, coste laboral, tareas y Gantt. */
+  hrAdvancedEnabled: boolean;
 }
 
 // Defaults de la marca Keirost — paleta teal + ink (brand guide v1.0).
@@ -70,7 +79,13 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   enforceWarehouseZones: false,
   warehouseLocation: 'header',
   logisticsEnabled: false,
+  trackingChatEnabled: false,
   logisticsOnly: false,
+  hrShiftsEnabled: false,
+  hrTimeclockEnabled: false,
+  hrIncidentsEnabled: false,
+  hrPlanningEnabled: false,
+  hrAdvancedEnabled: false,
 };
 
 export interface ThemePreset {

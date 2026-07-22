@@ -849,8 +849,8 @@ export const CompanySettings: React.FC = () => {
               <FlagRow
                 label="Chat de Keiro en seguimiento público"
                 hint="Añade un chat de IA a la página pública de seguimiento (/track/:token) para que el cliente pregunte por su envío o reporte una incidencia — sin login, así que actívalo solo si quieres exponer esa superficie públicamente."
-                checked={!!(flagsDraft as any).trackingChatEnabled}
-                onChange={(v) => setFlagsDraft({ ...flagsDraft, trackingChatEnabled: v } as any)}
+                checked={!!flagsDraft.trackingChatEnabled}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, trackingChatEnabled: v })}
               />
               <FlagRow
                 label="Modo sólo logística"
@@ -861,32 +861,32 @@ export const CompanySettings: React.FC = () => {
               <FlagRow
                 label="RRHH · Turnos y plantillas"
                 hint="Activa el módulo de plantillas de turno y patrones de rotación cíclica."
-                checked={!!(flagsDraft as any).hrShiftsEnabled}
-                onChange={(v) => setFlagsDraft({ ...flagsDraft, hrShiftsEnabled: v } as any)}
+                checked={!!flagsDraft.hrShiftsEnabled}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, hrShiftsEnabled: v })}
               />
               <FlagRow
                 label="RRHH · Planificación"
                 hint="Cuadrante mensual de turnos asignados con vista calendario."
-                checked={!!(flagsDraft as any).hrPlanningEnabled}
-                onChange={(v) => setFlagsDraft({ ...flagsDraft, hrPlanningEnabled: v } as any)}
+                checked={!!flagsDraft.hrPlanningEnabled}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, hrPlanningEnabled: v })}
               />
               <FlagRow
                 label="RRHH · Fichajes"
                 hint="Permite a los empleados fichar entrada/salida desde la web o desde kioskos compartidos."
-                checked={!!(flagsDraft as any).hrTimeclockEnabled}
-                onChange={(v) => setFlagsDraft({ ...flagsDraft, hrTimeclockEnabled: v } as any)}
+                checked={!!flagsDraft.hrTimeclockEnabled}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, hrTimeclockEnabled: v })}
               />
               <FlagRow
                 label="RRHH · Incidencias y sustituciones"
                 hint="Tipos de incidencia configurables y flujo de sustitución asistida cuando aplican."
-                checked={!!(flagsDraft as any).hrIncidentsEnabled}
-                onChange={(v) => setFlagsDraft({ ...flagsDraft, hrIncidentsEnabled: v } as any)}
+                checked={!!flagsDraft.hrIncidentsEnabled}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, hrIncidentsEnabled: v })}
               />
               <FlagRow
                 label="RRHH avanzado+ (rendimientos, costes, evaluaciones, comisiones, tareas)"
                 hint="Activa convenios colectivos, evaluaciones de desempeño, objetivos SMART, comisiones comerciales, dashboard de rendimiento, coste laboral, tareas y Gantt."
-                checked={!!(flagsDraft as any).hrAdvancedEnabled}
-                onChange={(v) => setFlagsDraft({ ...flagsDraft, hrAdvancedEnabled: v } as any)}
+                checked={!!flagsDraft.hrAdvancedEnabled}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, hrAdvancedEnabled: v })}
               />
               <div className="flex items-center justify-between py-3 border-t border-slate-100 dark:border-slate-800">
                 <div className="flex-1 pr-4">
