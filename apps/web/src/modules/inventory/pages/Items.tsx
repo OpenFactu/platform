@@ -1,48 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, Loader, useToast, Badge, Modal } from '@openfactu/ui';
-import { useFormat } from '../hooks/useFormat';
+import { useFormat } from '../../../hooks/useFormat';
 import StockDetailModal from '../components/StockDetailModal';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Package, Plus, Trash2, Search, Settings2, Boxes, Scale, Tag } from 'lucide-react';
-import { usePluginListColumns } from '../components/plugin-fields';
+import { usePluginListColumns } from '../../../components/plugin-fields';
 import { SearchableSelect } from '@openfactu/ui';
-import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
-import { LabelPrintButton } from '../components/LabelPrintButton';
-import { AttachmentsPanel } from '../components/AttachmentsPanel';
-import { validateBarcode, generateEan13 } from '../utils/barcodeValidation';
-import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
-import { BarcodeScanButton } from '../components/scanner/BarcodeScanButton';
-import { ContextMenu } from '../components/common/ContextMenu';
-import { withRowContextMenu } from '../components/common/withRowContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { PluginFieldsPanel } from '../../../components/PluginFieldsPanel';
+import { LabelPrintButton } from '../../../components/LabelPrintButton';
+import { AttachmentsPanel } from '../../../components/AttachmentsPanel';
+import { validateBarcode, generateEan13 } from '../../../utils/barcodeValidation';
+import { useBarcodeScanner } from '../../../hooks/useBarcodeScanner';
+import { BarcodeScanButton } from '../../../components/scanner/BarcodeScanButton';
+import { ContextMenu } from '../../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../../hooks/useContextMenu';
+import { categoriesApi, itemsApi, uomApi, warehousesApi, zonesApi } from '../api';
+import type { Category } from '../domain/category';
+import type { Item } from '../domain/item';
+import type { ItemUomAlternative, Uom } from '../domain/uom';
+import type { Warehouse, Zone } from '../domain/warehouse';
 
 const AlternativeUomsPanel: React.FC<{
   itemId?: string;
   baseUomId: string;
-  uoms: any[];
-  token: string | null;
-  tenantId: string;
-}> = ({ itemId, baseUomId, uoms, token, tenantId }) => {
-  const [alternatives, setAlternatives] = useState<any[]>([]);
+  uoms: Uom[];
+}> = ({ itemId, baseUomId, uoms }) => {
+  const [alternatives, setAlternatives] = useState<ItemUomAlternative[]>([]);
   const [loading, setLoading] = useState(false);
   const [newUomId, setNewUomId] = useState('');
   const [newFactor, setNewFactor] = useState('');
   const [saving, setSaving] = useState(false);
   const toast = useToast();
 
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': tenantId,
-    'Content-Type': 'application/json',
-  };
-
   const fetchAlts = async () => {
     if (!itemId) return setAlternatives([]);
     setLoading(true);
     try {
-      const res = await fetch(`/api/items/${itemId}/uoms`, { headers });
-      const data = await res.json();
+      const data = await itemsApi.listUoms(itemId);
       setAlternatives(Array.isArray(data) ? data : []);
     } catch (err) {
       setAlternatives([]);
@@ -60,22 +56,13 @@ const AlternativeUomsPanel: React.FC<{
     if (!itemId || !newUomId || !newFactor) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/items/${itemId}/uoms`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ uomId: newUomId, factor: Number(newFactor) }),
-      });
-      if (res.ok) {
-        toast.success('Unidad alternativa añadida');
-        setNewUomId('');
-        setNewFactor('');
-        fetchAlts();
-      } else {
-        const d = await res.json().catch(() => ({}));
-        toast.error(d.error || 'Error al añadir unidad alternativa');
-      }
+      await itemsApi.addUom(itemId, { uomId: newUomId, factor: Number(newFactor) });
+      toast.success('Unidad alternativa añadida');
+      setNewUomId('');
+      setNewFactor('');
+      fetchAlts();
     } catch (err) {
-      toast.error('Error de conexión');
+      toast.error((err instanceof Error && err.message) || 'Error al añadir unidad alternativa');
     } finally {
       setSaving(false);
     }
@@ -84,15 +71,11 @@ const AlternativeUomsPanel: React.FC<{
   const handleRemove = async (id: string) => {
     if (!itemId) return;
     try {
-      const res = await fetch(`/api/items/${itemId}/uoms/${id}`, { method: 'DELETE', headers });
-      if (res.ok) {
-        toast.success('Eliminado');
-        fetchAlts();
-      } else {
-        toast.error('Error al eliminar');
-      }
+      await itemsApi.removeUom(itemId, id);
+      toast.success('Eliminado');
+      fetchAlts();
     } catch {
-      toast.error('Error de conexión');
+      toast.error('Error al eliminar');
     }
   };
 
@@ -158,7 +141,7 @@ const AlternativeUomsPanel: React.FC<{
 };
 
 export const Items: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const fmt = useFormat();
   const location = useLocation();
   const canWrite =
@@ -169,14 +152,14 @@ export const Items: React.FC = () => {
     user?.role === 'SUPERUSER' ||
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
-  const [items, setItems] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [uoms, setUoms] = useState<any[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [uoms, setUoms] = useState<Uom[]>([]);
   const [loading, setLoading] = useState(true);
   const [stockDetailLoading, setStockDetailLoading] = useState(false);
-  const [selectedStockItem, setSelectedStockItem] = useState<any | null>(null);
+  const [selectedStockItem, setSelectedStockItem] = useState<Item | null>(null);
   const [stockDetail, setStockDetail] = useState<any>(null);
-  const [zones, setZones] = useState<any[]>([]);
+  const [zones, setZones] = useState<Zone[]>([]);
   // Form State
   const [showItemModal, setShowItemModal] = useState(false);
   const [code, setCode] = useState('');
@@ -194,7 +177,7 @@ export const Items: React.FC = () => {
   const [boxTareWeightKg, setBoxTareWeightKg] = useState<string>('');
   const [defaultWarehouseId, setDefaultWarehouseId] = useState('');
   const [defaultZoneId, setDefaultZoneId] = useState('');
-  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [customValues, setCustomValues] = useState<Record<string, any>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -216,19 +199,13 @@ export const Items: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
-      const [iRes, cRes, uRes, zRes, wRes] = await Promise.all([
-        fetch('/api/items', { headers }),
-        fetch('/api/categories', { headers }),
-        fetch('/api/uom', { headers }),
-        fetch('/api/zones', { headers }),
-        fetch('/api/warehouses', { headers }),
+      const [iData, cData, uData, zData, wData] = await Promise.all([
+        itemsApi.list(),
+        categoriesApi.list(),
+        uomApi.list(),
+        zonesApi.list(),
+        warehousesApi.list(),
       ]);
-      const iData = await iRes.json();
-      const cData = await cRes.json();
-      const uData = await uRes.json();
-      const zData = await zRes.json();
-      const wData = await wRes.json();
 
       setItems(Array.isArray(iData) ? iData : []);
       setCategories(Array.isArray(cData) ? cData : []);
@@ -306,72 +283,52 @@ export const Items: React.FC = () => {
     }
     setIsSubmitting(true);
     try {
-      const method = selectedItem ? 'PATCH' : 'POST';
-      const url = selectedItem ? `/api/items/${selectedItem.id}` : '/api/items';
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-        body: JSON.stringify({
-          code,
-          barcode: barcode.trim() || null,
-          name,
-          uomId,
-          categoryId: categoryId || null,
-          basePrice: parseFloat(basePrice),
-          manageBy,
-          kind,
-          boxLengthMm: kind === 'box' && boxLengthMm ? Number(boxLengthMm) : null,
-          boxWidthMm: kind === 'box' && boxWidthMm ? Number(boxWidthMm) : null,
-          boxHeightMm: kind === 'box' && boxHeightMm ? Number(boxHeightMm) : null,
-          boxMaxWeightKg: kind === 'box' && boxMaxWeightKg ? Number(boxMaxWeightKg) : null,
-          boxTareWeightKg: kind === 'box' && boxTareWeightKg ? Number(boxTareWeightKg) : null,
-          defaultWarehouseId: defaultWarehouseId || null,
-          defaultZoneId: defaultZoneId || null,
-          ...customValues, // campos personalizados p_*
-        }),
-      });
+      const payload = {
+        code,
+        barcode: barcode.trim() || null,
+        name,
+        uomId,
+        categoryId: categoryId || null,
+        basePrice: parseFloat(basePrice),
+        manageBy,
+        kind,
+        boxLengthMm: kind === 'box' && boxLengthMm ? Number(boxLengthMm) : null,
+        boxWidthMm: kind === 'box' && boxWidthMm ? Number(boxWidthMm) : null,
+        boxHeightMm: kind === 'box' && boxHeightMm ? Number(boxHeightMm) : null,
+        boxMaxWeightKg: kind === 'box' && boxMaxWeightKg ? Number(boxMaxWeightKg) : null,
+        boxTareWeightKg: kind === 'box' && boxTareWeightKg ? Number(boxTareWeightKg) : null,
+        defaultWarehouseId: defaultWarehouseId || null,
+        defaultZoneId: defaultZoneId || null,
+        ...customValues, // campos personalizados p_*
+      };
+      const saved = selectedItem
+        ? await itemsApi.update(selectedItem.id, payload)
+        : await itemsApi.create(payload);
 
-      if (res.ok) {
-        // Verificación adicional: leemos lo que devolvió el backend y nos
-        // aseguramos de que el barcode realmente quedó guardado igual a lo que
-        // mandamos. Si difiere (NULL, recortado, etc.) avisamos al usuario.
-        let saved: any = null;
-        try {
-          saved = await res.clone().json();
-        } catch {
-          /* el endpoint puede devolver vacío en algunos métodos */
-        }
-        const sentBarcode = barcode.trim() || null;
-        if (saved && 'barcode' in saved && saved.barcode !== sentBarcode) {
-          toast.error(
-            `Guardado, pero el barcode quedó como ${JSON.stringify(saved.barcode)} (enviaste ${JSON.stringify(sentBarcode)})`,
-          );
-        }
-        if (!selectedItem) {
-          setCode('');
-          setBarcode('');
-          setName('');
-          setBasePrice('0');
-        } else {
-          setSelectedItem(null);
-        }
-        fetchData();
-        toast.success(selectedItem ? 'Artículo actualizado' : 'Artículo maestro creado');
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        // Mostramos el mensaje completo del backend (puede traer el error
-        // SQL real: "column ... does not exist", "duplicate key", etc.).
-        const detailed = errData.error || errData.message || `HTTP ${res.status}`;
-        console.error('[Items.handleSubmit] error:', errData);
-        toast.error(`Error: ${detailed}`);
+      // Verificación adicional: nos aseguramos de que el barcode realmente
+      // quedó guardado igual a lo que mandamos. Si difiere (NULL, recortado,
+      // etc.) avisamos al usuario.
+      const sentBarcode = barcode.trim() || null;
+      if (saved && 'barcode' in saved && saved.barcode !== sentBarcode) {
+        toast.error(
+          `Guardado, pero el barcode quedó como ${JSON.stringify(saved.barcode)} (enviaste ${JSON.stringify(sentBarcode)})`,
+        );
       }
-    } catch (err: any) {
-      console.error('[Items.handleSubmit] network/parse error:', err);
-      toast.error(`Error de conexión: ${err?.message || err}`);
+      if (!selectedItem) {
+        setCode('');
+        setBarcode('');
+        setName('');
+        setBasePrice('0');
+      } else {
+        setSelectedItem(null);
+      }
+      fetchData();
+      toast.success(selectedItem ? 'Artículo actualizado' : 'Artículo maestro creado');
+    } catch (err) {
+      // El mensaje del ApiError trae el error completo del backend (puede
+      // incluir el error SQL real: "column ... does not exist", etc.).
+      console.error('[Items.handleSubmit] error:', err);
+      toast.error(`Error: ${err?.message || err}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -530,15 +487,11 @@ export const Items: React.FC = () => {
     },
   ];
 
-  const handleViewStock = async (item: any) => {
+  const handleViewStock = async (item: Item) => {
     setSelectedStockItem(item);
     setStockDetailLoading(true);
     try {
-      const res = await fetch(`/api/items/${item.id}/stock`, {
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      const data = await res.json();
-      setStockDetail(data);
+      setStockDetail(await itemsApi.stockDetail(item.id));
     } catch {
       toast.error('Error al cargar inventario');
     } finally {
@@ -1015,13 +968,7 @@ export const Items: React.FC = () => {
             )}
 
             {activeTab === 'unidades' && (
-              <AlternativeUomsPanel
-                itemId={selectedItem?.id}
-                baseUomId={uomId}
-                uoms={uoms}
-                token={token}
-                tenantId={user?.tenantId || ''}
-              />
+              <AlternativeUomsPanel itemId={selectedItem?.id} baseUomId={uomId} uoms={uoms} />
             )}
 
             <PluginFieldsPanel

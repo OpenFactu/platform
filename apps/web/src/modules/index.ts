@@ -1,5 +1,6 @@
 import { LEGACY_NAV, type Module } from './registry';
 import type { ModuleManifest, RouteEntry } from './types';
+import { inventoryModule } from './inventory/module';
 
 /**
  * Agregador de módulos (estilo Odoo): compone CORE_MODULES (navbar) y las
@@ -8,7 +9,8 @@ import type { ModuleManifest, RouteEntry } from './types';
  * (./registry.ts) y sus rutas en el bloque legacy de RouteRegistry.tsx.
  */
 export const moduleManifests: ModuleManifest[] = [
-  // Se rellena por fases: inventoryModule, partnersModule, ...
+  // Se rellena por fases: partnersModule, accountingModule, ...
+  inventoryModule,
 ];
 
 /** Orden canónico del navbar (ids de Module). */

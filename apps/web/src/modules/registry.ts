@@ -57,18 +57,6 @@ export const LEGACY_NAV: Module[] = [
     subTabs: [{ id: 'dashboard', label: 'Dashboard', path: '/' }],
   },
   {
-    id: 'inventory',
-    label: 'Inventario',
-    icon: 'Package',
-    subTabs: [
-      { id: 'items', label: 'Catálogo', path: '/items' },
-      { id: 'categories', label: 'Categorías', path: '/categories' },
-      { id: 'uom', label: 'Unidades', path: '/uom' },
-      { id: 'warehouses', label: 'Almacenes', path: '/warehouses' },
-      { id: 'stock-movements', label: 'Movimientos', path: '/inventory/movements' },
-    ],
-  },
-  {
     id: 'sales',
     label: 'Ventas',
     icon: 'ShoppingCart',

@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Hash, Plus, Trash2, ArrowRightLeft, Save, X, Settings2, Pencil } from 'lucide-react';
-import { ContextMenu } from '../components/common/ContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { ContextMenu } from '../../../components/common/ContextMenu';
+import { useContextMenu } from '../../../hooks/useContextMenu';
+import { uomApi } from '../api';
+import type { Uom as UomEntity } from '../domain/uom';
 
 export const Uom: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -18,7 +20,7 @@ export const Uom: React.FC = () => {
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
   const toast = useToast();
-  const [uoms, setUoms] = useState<any[]>([]);
+  const [uoms, setUoms] = useState<UomEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newRow, setNewRow] = useState<any | null>(null);
@@ -26,10 +28,7 @@ export const Uom: React.FC = () => {
   const fetchUoms = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/uom', {
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      const data = await res.json();
+      const data = await uomApi.list();
       setUoms(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Error al cargar unidades');
@@ -45,20 +44,10 @@ export const Uom: React.FC = () => {
   const handleCreate = async () => {
     if (!newRow?.name || !newRow?.symbol) return;
     try {
-      const res = await fetch('/api/uom', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-        body: JSON.stringify(newRow),
-      });
-      if (res.ok) {
-        setNewRow(null);
-        fetchUoms();
-        toast.success('Unidad creada');
-      }
+      await uomApi.create(newRow);
+      setNewRow(null);
+      fetchUoms();
+      toast.success('Unidad creada');
     } catch {
       toast.error('Error al crear');
     }
@@ -66,20 +55,10 @@ export const Uom: React.FC = () => {
 
   const handleUpdate = async (id: string, data: any) => {
     try {
-      const res = await fetch(`/api/uom/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-        body: JSON.stringify(data),
-      });
-      if (res.ok) {
-        setEditingId(null);
-        fetchUoms();
-        toast.success('Unidad actualizada');
-      }
+      await uomApi.update(id, data);
+      setEditingId(null);
+      fetchUoms();
+      toast.success('Unidad actualizada');
     } catch {
       toast.error('Error al actualizar');
     }
@@ -88,14 +67,9 @@ export const Uom: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!confirm('¿Seguro que deseas eliminar esta unidad?')) return;
     try {
-      const res = await fetch(`/api/uom/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      if (res.ok) {
-        fetchUoms();
-        toast.success('Unidad eliminada');
-      }
+      await uomApi.remove(id);
+      fetchUoms();
+      toast.success('Unidad eliminada');
     } catch {
       toast.error('Error al eliminar');
     }

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Modal, Table, Loader, Button, Badge } from '@openfactu/ui';
 import { Tag, Package, Warehouse, Boxes } from 'lucide-react';
-import { useFormat } from '../hooks/useFormat';
+import { useFormat } from '../../../hooks/useFormat';
 
 interface Batch {
   batchNum: string;

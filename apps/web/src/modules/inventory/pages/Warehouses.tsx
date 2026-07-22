@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Modal } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import {
   MapPin,
   Plus,
@@ -14,9 +14,11 @@ import {
   Warehouse as WarehouseIcon,
 } from 'lucide-react';
 import { BinGeneratorModal } from '../components/BinGeneratorModal';
+import { warehousesApi, zonesApi } from '../api';
+import type { Warehouse, Zone } from '../domain/warehouse';
 
 export const Warehouses: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -27,9 +29,9 @@ export const Warehouses: React.FC = () => {
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
 
-  const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<any | null>(null);
-  const [bins, setBins] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
+  const [bins, setBins] = useState<Zone[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingBins, setLoadingBins] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
@@ -45,17 +47,11 @@ export const Warehouses: React.FC = () => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const toast = useToast();
-  const authHeaders = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
 
   const fetchWarehouses = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/warehouses', { headers: authHeaders });
-      const data = await res.json();
+      const data = await warehousesApi.list();
       const list = Array.isArray(data) ? data : [];
       setWarehouses(list);
       if (list.length > 0 && !selectedWarehouse) setSelectedWarehouse(list[0]);
@@ -67,8 +63,7 @@ export const Warehouses: React.FC = () => {
   const fetchBins = async (whId: string) => {
     setLoadingBins(true);
     try {
-      const res = await fetch(`/api/zones?warehouseId=${whId}`, { headers: authHeaders });
-      const data = await res.json();
+      const data = await zonesApi.list(whId);
       setBins(Array.isArray(data) ? data : []);
     } finally {
       setLoadingBins(false);
@@ -89,20 +84,12 @@ export const Warehouses: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/warehouses', {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({ name, location: whLocation }),
-      });
-      if (res.ok) {
-        setName('');
-        setWhLocation('');
-        setShowWarehouseModal(false);
-        await fetchWarehouses();
-        toast.success('Almacén creado');
-      } else {
-        toast.error('Error al crear almacén');
-      }
+      await warehousesApi.create({ name, location: whLocation });
+      setName('');
+      setWhLocation('');
+      setShowWarehouseModal(false);
+      await fetchWarehouses();
+      toast.success('Almacén creado');
     } catch {
       toast.error('Error al crear almacén');
     } finally {
@@ -114,24 +101,17 @@ export const Warehouses: React.FC = () => {
     if (!newBinName.trim() || !selectedWarehouse) return;
     setCreatingBin(true);
     try {
-      const res = await fetch('/api/zones', {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({
-          warehouseId: selectedWarehouse.id,
-          name: newBinName.trim().toUpperCase(),
-          description: newBinDesc.trim() || null,
-        }),
+      await zonesApi.create({
+        warehouseId: selectedWarehouse.id,
+        name: newBinName.trim().toUpperCase(),
+        description: newBinDesc.trim() || null,
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || 'Error al crear ubicación');
-        return;
-      }
       setNewBinName('');
       setNewBinDesc('');
       await fetchBins(selectedWarehouse.id);
       toast.success('Ubicación creada');
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al crear ubicación');
     } finally {
       setCreatingBin(false);
     }
@@ -139,12 +119,11 @@ export const Warehouses: React.FC = () => {
 
   const deleteBin = async (id: string) => {
     if (!confirm('¿Eliminar esta ubicación?')) return;
+    if (!selectedWarehouse) return;
     try {
-      const res = await fetch(`/api/zones/${id}`, { method: 'DELETE', headers: authHeaders });
-      if (res.ok) {
-        fetchBins(selectedWarehouse.id);
-        toast.success('Eliminada');
-      }
+      await zonesApi.remove(id);
+      fetchBins(selectedWarehouse.id);
+      toast.success('Eliminada');
     } catch {
       toast.error('Error');
     }

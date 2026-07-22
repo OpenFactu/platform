@@ -5,12 +5,7 @@ import { Dashboard } from '../../pages/Dashboard';
 import { StyleGuide } from '../../pages/StyleGuide';
 import { PluginManager } from '../../pages/PluginManager';
 import { Users } from '../../pages/Users';
-import { Items } from '../../pages/Items';
-import { Categories } from '../../pages/Categories';
-import { Uom } from '../../pages/Uom';
 import { PriceLists } from '../../pages/PriceLists';
-import { Warehouses } from '../../pages/Warehouses';
-import { StockMovements } from '../../pages/inventory/StockMovements';
 import { CarriersSettings } from '../../pages/settings/CarriersSettings';
 import { WebhooksSettings } from '../../pages/settings/WebhooksSettings';
 import { Partners } from '../../pages/Partners';
@@ -134,34 +129,6 @@ const legacyRoutes: RouteEntry[] = [
     permissionPath: '/pricelists',
   },
   {
-    pattern: '/items',
-    Component: Items,
-    title: 'Catálogo',
-    iconName: 'Grid',
-    permissionPath: '/items',
-  },
-  {
-    pattern: '/categories',
-    Component: Categories,
-    title: 'Categorías',
-    iconName: 'Hash',
-    permissionPath: '/categories',
-  },
-  {
-    pattern: '/warehouses',
-    Component: Warehouses,
-    title: 'Gestión Bins',
-    iconName: 'MapPin',
-    permissionPath: '/warehouses',
-  },
-  {
-    pattern: '/inventory/movements',
-    Component: StockMovements,
-    title: 'Movimientos de stock',
-    iconName: 'ArrowRightLeft',
-    permissionPath: '/inventory/movements',
-  },
-  {
     pattern: '/settings/carriers',
     Component: CarriersSettings,
     title: 'Transportistas',
@@ -175,7 +142,6 @@ const legacyRoutes: RouteEntry[] = [
     iconName: 'Webhook',
     permissionPath: '/settings/webhooks',
   },
-  { pattern: '/uom', Component: Uom, title: 'Unidades', iconName: 'Boxes', permissionPath: '/uom' },
   {
     pattern: '/purchase-orders',
     Component: PurchaseOrders,

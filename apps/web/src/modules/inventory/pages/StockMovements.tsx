@@ -28,28 +28,31 @@ import {
   ScanLine,
   ArrowLeft,
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { BarcodeCameraModal } from '../../components/scanner/BarcodeCameraModal';
-import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
+import { useAuth } from '../../../context/AuthContext';
+import { BarcodeCameraModal } from '../../../components/scanner/BarcodeCameraModal';
+import { useBarcodeScanner } from '../../../hooks/useBarcodeScanner';
+import { ApiError } from '../../../shared/http';
+import { itemsApi, stockApi, stockDocsApi, uomApi, warehousesApi, zonesApi } from '../api';
+import type { StockDocKind } from '../domain/stockMovement';
+import type { Warehouse, Zone } from '../domain/warehouse';
+import type { Item } from '../domain/item';
+import type { Uom } from '../domain/uom';
 
-type Kind = 'transfer' | 'receipt' | 'issue';
+type Kind = StockDocKind;
 
 const KIND_CFG = {
   transfer: {
     label: 'Traspasos',
-    endpoint: '/api/transfer-notes',
     Icon: ArrowRightLeft,
     newTitle: 'Nuevo traspaso',
   },
   receipt: {
     label: 'Entradas',
-    endpoint: '/api/goods-receipts',
     Icon: ArrowDownToLine,
     newTitle: 'Nueva entrada',
   },
   issue: {
     label: 'Salidas',
-    endpoint: '/api/goods-issues',
     Icon: ArrowUpFromLine,
     newTitle: 'Nueva salida',
   },
@@ -62,32 +65,6 @@ const STATUS_COPY: Record<string, { label: string; variant: any }> = {
   posted: { label: 'Posteado', variant: 'success' },
   cancelled: { label: 'Cancelado', variant: 'danger' },
 };
-
-interface Warehouse {
-  id: string;
-  name: string;
-}
-interface Zone {
-  id: string;
-  name: string;
-  warehouseId: string;
-}
-interface Item {
-  id: string;
-  code: string;
-  barcode?: string | null;
-  name: string;
-  uomId?: string | null;
-  defaultWarehouseId?: string | null;
-  defaultZoneId?: string | null;
-  /** 'N' sin gestión · 'B' por lote · 'S' por número de serie. */
-  manageBy?: string | null;
-}
-interface Uom {
-  id: string;
-  code: string;
-  name: string;
-}
 
 /**
  * Una línea del documento. `fromZoneId` y `toZoneId` solo se usan en los
@@ -114,7 +91,7 @@ const emptyLine = (): LineInput => ({
 });
 
 export const StockMovements: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const toast = useToast();
   const [kind, setKind] = useState<Kind>('transfer');
   const [rows, setRows] = useState<any[]>([]);
@@ -152,23 +129,18 @@ export const StockMovements: React.FC = () => {
   // UoM por id para renderizar el nombre/código legible.
   const uomsById = useMemo(() => new Map(uoms.map((u) => [u.id, u] as const)), [uoms]);
 
-  const headers = useMemo(
-    () => ({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      'x-tenant-id': user?.tenantId || '',
-    }),
-    [token, user?.tenantId],
-  );
-
   const cfg = KIND_CFG[kind];
 
   const load = async () => {
     setLoading(true);
-    const r = await fetch(cfg.endpoint, { headers });
-    const d = await r.json().catch(() => []);
-    setRows(Array.isArray(d) ? d : []);
-    setLoading(false);
+    try {
+      const d = await stockDocsApi.list(kind);
+      setRows(Array.isArray(d) ? d : []);
+    } catch {
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -179,10 +151,10 @@ export const StockMovements: React.FC = () => {
   useEffect(() => {
     if (!user?.tenantId) return;
     Promise.all([
-      fetch('/api/warehouses', { headers }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/zones', { headers }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/items', { headers }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/uom', { headers }).then((r) => (r.ok ? r.json() : [])),
+      warehousesApi.list().catch(() => []),
+      zonesApi.list().catch(() => []),
+      itemsApi.list().catch(() => []),
+      uomApi.list().catch(() => []),
     ])
       .then(([w, z, i, u]) => {
         setWarehouses(Array.isArray(w) ? w : []);
@@ -208,12 +180,13 @@ export const StockMovements: React.FC = () => {
 
   /** Abre el detalle de un documento: carga cabecera + líneas. */
   const openView = async (row: any) => {
-    const r = await fetch(`${cfg.endpoint}/${row.id}`, { headers });
-    if (!r.ok) {
+    let full: any;
+    try {
+      full = await stockDocsApi.get(kind, row.id);
+    } catch {
       toast.error('No se pudo cargar el documento');
       return;
     }
-    const full = await r.json();
     setViewing(full);
     // Precargar batches/uoms para renderizar nombres legibles.
     const ids = [...new Set((full.lines || []).map((l: any) => l.itemId))];
@@ -225,8 +198,11 @@ export const StockMovements: React.FC = () => {
   /** Versión "acción + recarga" que respeta la vista detalle abierta. */
   const refreshView = async () => {
     if (!viewing) return;
-    const r = await fetch(`${cfg.endpoint}/${viewing.id}`, { headers });
-    if (r.ok) setViewing(await r.json());
+    try {
+      setViewing(await stockDocsApi.get(kind, viewing.id));
+    } catch {
+      /* mantener la vista anterior si falla la recarga */
+    }
     load();
   };
 
@@ -236,11 +212,7 @@ export const StockMovements: React.FC = () => {
     const key = `${itemId}::${warehouseId}`;
     if (stockZonesByItemWh[key]) return;
     try {
-      const r = await fetch(
-        `/api/stock/items/${itemId}/zones-with-stock?warehouseId=${encodeURIComponent(warehouseId)}`,
-        { headers },
-      );
-      const d = r.ok ? await r.json() : [];
+      const d = await stockApi.zonesWithStock(itemId, warehouseId);
       setStockZonesByItemWh((prev) => ({
         ...prev,
         [key]: Array.isArray(d) ? d : [],
@@ -254,13 +226,11 @@ export const StockMovements: React.FC = () => {
   const ensureBatchesLoaded = async (itemId: string) => {
     if (batchesByItem[itemId]) return;
     const item = items.find((x) => x.id === itemId);
-    const endpoint =
-      item?.manageBy === 'S'
-        ? `/api/stock/items/${itemId}/serials`
-        : `/api/stock/items/${itemId}/batches`;
     try {
-      const r = await fetch(endpoint, { headers });
-      const d = r.ok ? await r.json() : [];
+      const d =
+        item?.manageBy === 'S'
+          ? await stockApi.serials(itemId)
+          : await stockApi.batches(itemId);
       const normalized = Array.isArray(d)
         ? d.map((row: any) => ({
             batchNum: row.batchNum || row.serialNum,
@@ -319,14 +289,16 @@ export const StockMovements: React.FC = () => {
     const code = raw.trim();
     if (!code) return;
     try {
-      const r = await fetch(`/api/stock/items/by-barcode/${encodeURIComponent(code)}`, {
-        headers,
-      });
-      if (!r.ok) {
-        toast.error(`Código "${code}" no encontrado en el catálogo`);
-        return;
+      let item: Item;
+      try {
+        item = await stockApi.itemByBarcode(code);
+      } catch (e) {
+        if (e instanceof ApiError) {
+          toast.error(`Código "${code}" no encontrado en el catálogo`);
+          return;
+        }
+        throw e;
       }
-      const item = await r.json();
       const managed = item.manageBy === 'B' || item.manageBy === 'S';
 
       setLines((xs) => {
@@ -450,14 +422,11 @@ export const StockMovements: React.FC = () => {
 
     const valid = normalized;
     const body = { ...form, lines: valid };
-    const r = await fetch(cfg.endpoint, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-    const d = await r.json();
-    if (!r.ok) {
-      toast.error(d.error || 'Error');
+    let d: any;
+    try {
+      d = await stockDocsApi.create(kind, body);
+    } catch (e) {
+      toast.error((e instanceof Error && e.message) || 'Error');
       return;
     }
     toast.success(`Creado ${d.code}`);
@@ -466,10 +435,10 @@ export const StockMovements: React.FC = () => {
   };
 
   const send = async (id: string) => {
-    const r = await fetch(`${cfg.endpoint}/${id}/send`, { method: 'POST', headers });
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
-      toast.error(d.error || 'No se pudo enviar');
+    try {
+      await stockDocsApi.send(kind, id);
+    } catch (e) {
+      toast.error((e instanceof Error && e.message) || 'No se pudo enviar');
       return;
     }
     toast.success('Enviado — stock descontado del origen');
@@ -477,10 +446,10 @@ export const StockMovements: React.FC = () => {
   };
 
   const receive = async (id: string) => {
-    const r = await fetch(`${cfg.endpoint}/${id}/receive`, { method: 'POST', headers });
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
-      toast.error(d.error || 'No se pudo recibir');
+    try {
+      await stockDocsApi.receive(kind, id);
+    } catch (e) {
+      toast.error((e instanceof Error && e.message) || 'No se pudo recibir');
       return;
     }
     toast.success('Recibido — stock sumado al destino');
@@ -488,10 +457,10 @@ export const StockMovements: React.FC = () => {
   };
 
   const post = async (id: string) => {
-    const r = await fetch(`${cfg.endpoint}/${id}/post`, { method: 'POST', headers });
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
-      toast.error(d.error || 'No se pudo postear');
+    try {
+      await stockDocsApi.post(kind, id);
+    } catch (e) {
+      toast.error((e instanceof Error && e.message) || 'No se pudo postear');
       return;
     }
     toast.success('Posteado — stock actualizado');
@@ -517,7 +486,11 @@ export const StockMovements: React.FC = () => {
 
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar documento?')) return;
-    await fetch(`${cfg.endpoint}/${id}`, { method: 'DELETE', headers });
+    try {
+      await stockDocsApi.remove(kind, id);
+    } catch (e) {
+      toast.error((e instanceof Error && e.message) || 'No se pudo eliminar');
+    }
     load();
   };
 
@@ -776,7 +749,11 @@ export const StockMovements: React.FC = () => {
                     variant="secondary"
                     onClick={async () => {
                       if (!confirm('¿Eliminar documento?')) return;
-                      await fetch(`${cfg.endpoint}/${viewing.id}`, { method: 'DELETE', headers });
+                      try {
+                        await stockDocsApi.remove(kind, viewing.id);
+                      } catch (e) {
+                        toast.error((e instanceof Error && e.message) || 'No se pudo eliminar');
+                      }
                       closeView();
                       load();
                     }}

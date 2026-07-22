@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Layers, Plus, Trash2, Save, X, Network, Pencil } from 'lucide-react';
-import { ContextMenu } from '../components/common/ContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { ContextMenu } from '../../../components/common/ContextMenu';
+import { useContextMenu } from '../../../hooks/useContextMenu';
+import { categoriesApi } from '../api';
+import type { Category } from '../domain/category';
 
 export const Categories: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -18,7 +20,7 @@ export const Categories: React.FC = () => {
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
   const toast = useToast();
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newRow, setNewRow] = useState<any | null>(null);
@@ -26,10 +28,7 @@ export const Categories: React.FC = () => {
   const fetchCategories = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/categories', {
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      const data = await res.json();
+      const data = await categoriesApi.list();
       setCategories(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Error al cargar categorías');
@@ -45,24 +44,14 @@ export const Categories: React.FC = () => {
   const handleCreate = async () => {
     if (!newRow?.name) return;
     try {
-      const res = await fetch('/api/categories', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-        body: JSON.stringify({
-          ...newRow,
-          codePrefix: newRow.codePrefix?.trim().toUpperCase() || null,
-          parentId: newRow.parentId || null,
-        }),
+      await categoriesApi.create({
+        ...newRow,
+        codePrefix: newRow.codePrefix?.trim().toUpperCase() || null,
+        parentId: newRow.parentId || null,
       });
-      if (res.ok) {
-        setNewRow(null);
-        fetchCategories();
-        toast.success('Categoría creada');
-      }
+      setNewRow(null);
+      fetchCategories();
+      toast.success('Categoría creada');
     } catch {
       toast.error('Error al crear');
     }
@@ -70,24 +59,14 @@ export const Categories: React.FC = () => {
 
   const handleUpdate = async (id: string, data: any) => {
     try {
-      const res = await fetch(`/api/categories/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-        body: JSON.stringify({
-          ...data,
-          codePrefix: data.codePrefix?.trim().toUpperCase() || null,
-          parentId: data.parentId || null,
-        }),
+      await categoriesApi.update(id, {
+        ...data,
+        codePrefix: data.codePrefix?.trim().toUpperCase() || null,
+        parentId: data.parentId || null,
       });
-      if (res.ok) {
-        setEditingId(null);
-        fetchCategories();
-        toast.success('Categoría actualizada');
-      }
+      setEditingId(null);
+      fetchCategories();
+      toast.success('Categoría actualizada');
     } catch {
       toast.error('Error al actualizar');
     }
@@ -96,14 +75,9 @@ export const Categories: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!confirm('¿Seguro que deseas eliminar esta categoría?')) return;
     try {
-      const res = await fetch(`/api/categories/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      if (res.ok) {
-        fetchCategories();
-        toast.success('Categoría eliminada');
-      }
+      await categoriesApi.remove(id);
+      fetchCategories();
+      toast.success('Categoría eliminada');
     } catch {
       toast.error('Error al eliminar');
     }

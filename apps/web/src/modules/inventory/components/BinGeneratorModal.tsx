@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Modal } from '@openfactu/ui';
 import { LayoutGrid, Play, X, Info } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { warehousesApi } from '../api';
 
 interface BinGeneratorModalProps {
   warehouseId: string;
@@ -19,40 +19,23 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
   const [aisleRange, setAisleRange] = useState({ start: 1, end: 5, padding: 2 });
   const [stackRange, setStackRange] = useState({ start: 1, end: 10, padding: 2 });
   const [levelRange, setLevelRange] = useState({ start: 1, end: 3, padding: 2 });
-  const { token, user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
   const toast = useToast();
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const tenantId = user?.tenantId || '';
-
-      const res = await fetch(`/api/warehouses/${warehouseId}/generate-bins`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': tenantId || '',
-        },
-        body: JSON.stringify({
-          prefix,
-          separator,
-          aisleRange,
-          stackRange,
-          levelRange,
-        }),
+      const data = await warehousesApi.generateBins(warehouseId, {
+        prefix,
+        separator,
+        aisleRange,
+        stackRange,
+        levelRange,
       });
-
-      const data = await res.json();
-      if (res.ok) {
-        toast.success(data.message);
-        onSuccess();
-      } else {
-        toast.error(data.error);
-      }
+      toast.success(data.message);
+      onSuccess();
     } catch (err) {
-      toast.error('Fallo en la conexión');
+      toast.error((err instanceof Error && err.message) || 'Fallo en la conexión');
     } finally {
       setIsGenerating(false);
     }
