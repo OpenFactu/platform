@@ -1,23 +1,10 @@
-import { hrApi } from '../api';
+import { collectiveAgreementsApi } from '../api';
+import type { CollectiveAgreement as Agreement } from '../domain/collectiveAgreement';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
-
-interface Agreement {
-  id: string;
-  code: string;
-  name: string;
-  sector: string | null;
-  validFrom: string | null;
-  validTo: string | null;
-  baseSalary: string | null;
-  vacationDays: number | null;
-  weeklyHours: string | null;
-  documentUrl: string | null;
-  notes: string | null;
-  isActive: boolean;
-}
+import { ApiError } from '@/shared/http';
 
 const empty = (): Partial<Agreement> => ({
   code: '',
@@ -46,9 +33,12 @@ export const CollectiveAgreements: React.FC = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const r = await hrApi.raw('GET', '/api/hr/collective-agreements');
-    setRows(r.data);
-    setLoading(false);
+    try {
+      const d = await collectiveAgreementsApi.list();
+      setRows(Array.isArray(d) ? d : []);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     if (user?.tenantId) fetchAll();
@@ -61,20 +51,23 @@ export const CollectiveAgreements: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/collective-agreements' : `/api/hr/collective-agreements/${editing.id}`, editing);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      if (isNew) {
+        await collectiveAgreementsApi.create(editing);
+      } else {
+        await collectiveAgreementsApi.update(editing.id!, editing);
+      }
+      toast.success('Guardado');
+      setEditing(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    toast.success('Guardado');
-    setEditing(null);
-    fetchAll();
   };
 
   const remove = async (a: Agreement) => {
     if (!confirm(`¿Borrar convenio ${a.code}?`)) return;
-    await hrApi.raw('DELETE', `/api/hr/collective-agreements/${a.id}`);
+    await collectiveAgreementsApi.remove(a.id);
     fetchAll();
   };
 

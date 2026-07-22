@@ -1,18 +1,10 @@
-import { hrApi } from '../api';
+import { hrReportsApi } from '../api';
+import type { LaborCostRow as Row } from '../api/hrReportsApi';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { PiggyBank, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
-
-interface Row {
-  key: string;
-  label: string;
-  gross: number;
-  ssEr: number;
-  total: number;
-  count: number;
-}
 
 export const LaborCost: React.FC = () => {
   const { token, user } = useAuth();
@@ -32,13 +24,11 @@ export const LaborCost: React.FC = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const params = new URLSearchParams({
+    const d = await hrReportsApi.laborCost({
       from: filters.from,
       to: filters.to,
       groupBy: filters.groupBy,
     });
-    const r = await hrApi.raw('GET', `/api/reports/hr/labor-cost?${params}`);
-    const d = r.data;
     setRows(d.rows || []);
     setTotals(d.totals || { gross: 0, ssEr: 0, total: 0 });
     setLoading(false);

@@ -1,16 +1,12 @@
-import { hrApi } from '../api';
+import { timeclockApi, employeesApi } from '../api';
+import type { TimeclockEntry as Entry } from '../domain/timeclock';
+import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge, useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Timer, LogIn, LogOut, Coffee, RotateCcw, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
-
-interface Entry {
-  id: string;
-  kind: 'in' | 'out' | 'break_start' | 'break_end';
-  at: string;
-  source: 'web' | 'kiosk' | 'admin';
-}
+import { ApiError } from '@/shared/http';
 
 const KIND_LABEL: Record<string, string> = {
   in: 'Entrada',
@@ -33,8 +29,8 @@ export const Timeclock: React.FC = () => {
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   // Vista admin: todos los fichajes con filtros.
-  const [allEntries, setAllEntries] = useState<any[]>([]);
-  const [allEmployees, setAllEmployees] = useState<any[]>([]);
+  const [allEntries, setAllEntries] = useState<Entry[]>([]);
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const today = new Date();
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
   const [filters, setFilters] = useState({
@@ -51,13 +47,13 @@ export const Timeclock: React.FC = () => {
   // Descarga los fichajes como .xlsx con formato: pide el JSON al endpoint de
   // export y genera la hoja en cliente (utils/exportXlsx).
   const exportEntriesExcel = async (params: URLSearchParams, filename: string, title: string) => {
-    params.set('format', 'json');
-    const r = await hrApi.raw('GET', `/api/hr/timeclock/export?${params}`);
-    if (!r.ok) {
+    let data;
+    try {
+      data = await timeclockApi.exportJson(Object.fromEntries(params));
+    } catch {
       toast.error('No se pudo exportar');
       return;
     }
-    const data = r.data;
     await exportToXlsx({
       filename,
       sheetName: 'Fichajes',
@@ -78,15 +74,13 @@ export const Timeclock: React.FC = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const r = await hrApi.raw('GET', '/api/hr/timeclock/me');
-      if (!r.ok) {
-        const d = r.data;
-        toast.error(d.error || 'No hay empleado vinculado');
-        return;
-      }
-      const d = r.data;
+      const d = await timeclockApi.me();
       setEmployee(d.employee);
       setEntries(Array.isArray(d.entries) ? d.entries : []);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'No hay empleado vinculado',
+      );
     } finally {
       setLoading(false);
     }
@@ -97,13 +91,13 @@ export const Timeclock: React.FC = () => {
 
   const fetchAllAdmin = async () => {
     if (!isAdmin) return;
-    const params = new URLSearchParams();
-    if (filters.employeeId) params.set('employeeId', filters.employeeId);
-    if (filters.from) params.set('from', filters.from);
-    if (filters.to) params.set('to', filters.to + 'T23:59:59');
     const [e, en] = await Promise.all([
-      hrApi.get('/api/hr/employees'),
-      hrApi.get(`/api/hr/timeclock/entries?${params.toString()}`),
+      employeesApi.list(),
+      timeclockApi.entries({
+        employeeId: filters.employeeId || undefined,
+        from: filters.from || undefined,
+        to: filters.to ? filters.to + 'T23:59:59' : undefined,
+      }),
     ]);
     setAllEmployees(Array.isArray(e) ? e : []);
     setAllEntries(Array.isArray(en) ? en : []);
@@ -129,14 +123,13 @@ export const Timeclock: React.FC = () => {
         // sin geo
       }
     }
-    const r = await hrApi.raw('POST', '/api/hr/timeclock/punch', { kind, ...coords, device: navigator.userAgent });
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error);
-      return;
+    try {
+      await timeclockApi.punch({ kind, ...coords, device: navigator.userAgent });
+      toast.success(`Fichaje "${KIND_LABEL[kind]}" registrado`);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    toast.success(`Fichaje "${KIND_LABEL[kind]}" registrado`);
-    fetchAll();
   };
 
   const last = entries[0];

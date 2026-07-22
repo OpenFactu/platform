@@ -1,4 +1,5 @@
-import { hrApi } from '../api';
+import { employeesApi, departmentsApi } from '../api';
+import type { Employee } from '../domain/employee';
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
@@ -9,27 +10,9 @@ import { validateIban, formatIban, normalizeIban } from '@/utils/bankValidation'
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
-
-interface Employee {
-  id: string;
-  code: string;
-  firstName: string;
-  lastName: string;
-  dni: string | null;
-  email: string | null;
-  phone: string | null;
-  birthDate: string | null;
-  hireDate: string | null;
-  terminationDate: string | null;
-  iban: string | null;
-  kioskPin: string | null;
-  departmentId: string | null;
-  costCenterId: string | null;
-  profitCenterId: string | null;
-  status: 'active' | 'leave' | 'terminated';
-  notes: string | null;
-  [k: string]: any;
-}
+import { ApiError } from '@/shared/http';
+import { crudApi } from '@/shared/api';
+import { costCentersApi } from '@/modules/analytics/api/internalOrdersApi';
 
 const STATUS_VARIANTS: Record<string, any> = {
   active: 'success',
@@ -73,10 +56,12 @@ export const Employees: React.FC = () => {
     setLoading(true);
     try {
       const [e, d, c, u] = await Promise.all([
-        hrApi.get('/api/hr/employees'),
-        hrApi.get('/api/hr/departments'),
-        hrApi.get('/api/cost-centers'),
-        hrApi.get('/api/users').catch(() => []),
+        employeesApi.list(),
+        departmentsApi.list(),
+        costCentersApi.list(),
+        crudApi
+          .list<{ id: string; username: string; email: string }>('/api/users')
+          .catch(() => []),
       ]);
       setRows(Array.isArray(e) ? e : []);
       setDepartments(Array.isArray(d) ? d : []);
@@ -123,24 +108,24 @@ export const Employees: React.FC = () => {
       }
     }
     setSubmitting(true);
-    const url = editing ? `/api/hr/employees/${editing.id}` : '/api/hr/employees';
-    const method = editing ? 'PATCH' : 'POST';
     try {
       // `pluginValues` puede contener los mismos campos del core al cargar el
       // registro (ver openEdit → setPluginValues(r)). Si los spreads se ponen
       // como `{...form, ...pluginValues}` machaca los cambios del formulario
       // con los valores originales. Form tiene que ganar.
-      const res = await hrApi.raw(method, url, { ...pluginValues, ...form });
-      const data = res.data;
-      if (!res.ok) {
-        toast.error(data.error || 'Error al guardar');
-        return;
+      const payload = { ...pluginValues, ...form };
+      if (editing) {
+        await employeesApi.update(editing.id, payload);
+      } else {
+        await employeesApi.create(payload);
       }
       toast.success(editing ? 'Empleado actualizado' : 'Empleado creado');
       closeForm();
       fetchAll();
-    } catch {
-      toast.error('Error de red');
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error de red',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -155,16 +140,13 @@ export const Employees: React.FC = () => {
     });
     if (!ok) return;
     try {
-      const res = await hrApi.raw('DELETE', `/api/hr/employees/${id}`);
-      if (res.ok) {
-        toast.success('Empleado eliminado');
-        fetchAll();
-      } else {
-        const d = res.data;
-        toast.error(d.error || 'Error al eliminar');
-      }
-    } catch {
-      toast.error('Error de red');
+      await employeesApi.remove(id);
+      toast.success('Empleado eliminado');
+      fetchAll();
+    } catch (e) {
+      toast.error(
+        e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al eliminar',
+      );
     }
   };
 

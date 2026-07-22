@@ -1,22 +1,11 @@
-import { hrApi } from '../api';
+import { objectivesApi, employeesApi } from '../api';
+import type { Objective } from '../domain/evaluation';
+import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Target, Plus, Pencil, Trash2 } from 'lucide-react';
-
-interface Objective {
-  id: string;
-  employeeId: string;
-  cycleId: string | null;
-  title: string;
-  description: string | null;
-  targetMetric: string | null;
-  targetValue: string | null;
-  achievedValue: string | null;
-  weight: string | null;
-  status: 'pending' | 'in_progress' | 'achieved' | 'missed';
-  dueDate: string | null;
-}
+import { ApiError } from '@/shared/http';
 
 const STATUS_VARIANT: Record<string, any> = {
   pending: 'neutral',
@@ -46,7 +35,7 @@ export const Objectives: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const [rows, setRows] = useState<Objective[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [editing, setEditing] = useState<Partial<Objective> | null>(null);
   const [filter, setFilter] = useState({ employeeId: '', status: '' });
   const headers = useMemo(
@@ -55,12 +44,12 @@ export const Objectives: React.FC = () => {
   );
 
   const fetchAll = async () => {
-    const params = new URLSearchParams();
-    if (filter.employeeId) params.set('employeeId', filter.employeeId);
-    if (filter.status) params.set('status', filter.status);
     const [o, e] = await Promise.all([
-      hrApi.get(`/api/hr/evaluations/objectives/list?${params}`),
-      hrApi.get('/api/hr/employees'),
+      objectivesApi.list({
+        employeeId: filter.employeeId || undefined,
+        status: filter.status || undefined,
+      }),
+      employeesApi.list(),
     ]);
     setRows(Array.isArray(o) ? o : []);
     setEmployees(Array.isArray(e) ? e : []);
@@ -76,19 +65,22 @@ export const Objectives: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/evaluations/objectives' : `/api/hr/evaluations/objectives/${editing.id}`, editing);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      if (isNew) {
+        await objectivesApi.create(editing);
+      } else {
+        await objectivesApi.update(editing.id!, editing);
+      }
+      setEditing(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    setEditing(null);
-    fetchAll();
   };
 
   const remove = async (o: Objective) => {
     if (!confirm('¿Borrar objetivo?')) return;
-    await hrApi.raw('DELETE', `/api/hr/evaluations/objectives/${o.id}`);
+    await objectivesApi.remove(o.id);
     fetchAll();
   };
 

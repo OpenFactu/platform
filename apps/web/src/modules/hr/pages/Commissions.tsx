@@ -1,38 +1,13 @@
-import { hrApi } from '../api';
+import { commissionsApi, employeesApi, departmentsApi, payrollConceptsApi } from '../api';
+import type { CommissionRule as Rule, CommissionAccrual as Accrual } from '../domain/commission';
+import type { Employee } from '../domain/employee';
+import type { Department } from '../domain/department';
+import type { PayrollConcept } from '../domain/payroll';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Percent, Plus, Pencil, Trash2, RefreshCw, ArrowRightCircle } from 'lucide-react';
-
-interface Rule {
-  id: string;
-  name: string;
-  scope: 'employee' | 'department' | 'all';
-  employeeId: string | null;
-  departmentId: string | null;
-  basis: 'net_amount' | 'gross_amount' | 'margin';
-  kind: 'flat_pct' | 'tiered';
-  pct: string;
-  tiers: any;
-  payrollConceptId: string | null;
-  validFrom: string | null;
-  validTo: string | null;
-  isActive: boolean;
-}
-
-interface Accrual {
-  id: string;
-  employeeId: string;
-  ruleId: string | null;
-  periodYear: number;
-  periodMonth: number;
-  sourceDocType: string;
-  sourceDocId: string;
-  base: string;
-  amount: string;
-  status: 'pending' | 'paid' | 'cancelled';
-  payrollLineId: string | null;
-}
+import { ApiError } from '@/shared/http';
 
 const STATUS_VARIANT: Record<string, any> = {
   pending: 'warning',
@@ -55,9 +30,9 @@ export const Commissions: React.FC = () => {
   const [tab, setTab] = useState<'rules' | 'accruals'>('rules');
   const [rules, setRules] = useState<Rule[]>([]);
   const [accruals, setAccruals] = useState<Accrual[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
-  const [concepts, setConcepts] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [concepts, setConcepts] = useState<PayrollConcept[]>([]);
   const [editing, setEditing] = useState<Partial<Rule> | null>(null);
   const today = new Date();
   const [filter, setFilter] = useState({
@@ -74,10 +49,10 @@ export const Commissions: React.FC = () => {
 
   const fetchAll = async () => {
     const [r, e, d, c] = await Promise.all([
-      hrApi.get('/api/hr/commissions/rules'),
-      hrApi.get('/api/hr/employees'),
-      hrApi.get('/api/hr/departments'),
-      hrApi.get('/api/hr/payroll-concepts?activeOnly=true'),
+      commissionsApi.listRules(),
+      employeesApi.list(),
+      departmentsApi.list(),
+      payrollConceptsApi.list(true),
     ]);
     setRules(Array.isArray(r) ? r : []);
     setEmployees(Array.isArray(e) ? e : []);
@@ -89,13 +64,14 @@ export const Commissions: React.FC = () => {
   }, [user?.tenantId]);
 
   const fetchAccruals = async () => {
-    const params = new URLSearchParams();
-    if (filter.employeeId) params.set('employeeId', filter.employeeId);
-    if (filter.status) params.set('status', filter.status);
-    params.set('year', String(filter.year));
-    params.set('month', String(filter.month));
-    const r = await hrApi.raw('GET', `/api/hr/commissions/accruals?${params}`);
-    setAccruals(r.data);
+    const params: Record<string, string> = {
+      year: String(filter.year),
+      month: String(filter.month),
+    };
+    if (filter.employeeId) params.employeeId = filter.employeeId;
+    if (filter.status) params.status = filter.status;
+    const d = await commissionsApi.listAccruals(params);
+    setAccruals(Array.isArray(d) ? d : []);
   };
   useEffect(() => {
     if (tab === 'accruals' && user?.tenantId) fetchAccruals();
@@ -109,19 +85,22 @@ export const Commissions: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/commissions/rules' : `/api/hr/commissions/rules/${editing.id}`, editing);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      if (isNew) {
+        await commissionsApi.createRule(editing);
+      } else {
+        await commissionsApi.updateRule(editing.id!, editing);
+      }
+      setEditing(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    setEditing(null);
-    fetchAll();
   };
 
   const removeRule = async (rule: Rule) => {
     if (!confirm(`¿Borrar regla "${rule.name}"?`)) return;
-    await hrApi.raw('DELETE', `/api/hr/commissions/rules/${rule.id}`);
+    await commissionsApi.removeRule(rule.id);
     fetchAll();
   };
 
@@ -130,14 +109,13 @@ export const Commissions: React.FC = () => {
     const start = `${filter.year}-${String(filter.month).padStart(2, '0')}-01`;
     const lastDay = new Date(filter.year, filter.month, 0).getDate();
     const end = `${filter.year}-${String(filter.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    const r = await hrApi.raw('POST', `/api/hr/commissions/recalculate?from=${start}&to=${end}`);
-    if (!r.ok) {
+    try {
+      const d = await commissionsApi.recalculate(start, end);
+      toast.success(`Procesados ${d.processed} documentos`);
+      fetchAccruals();
+    } catch {
       toast.error('Error al recalcular');
-      return;
     }
-    const d = r.data;
-    toast.success(`Procesados ${d.processed} documentos`);
-    fetchAccruals();
   };
 
   return (

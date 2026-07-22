@@ -1,24 +1,12 @@
-import { hrApi } from '../api';
+import { tasksApi, employeesApi } from '../api';
+import type { Task } from '../domain/task';
+import type { Employee } from '../domain/employee';
+import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api/internalOrdersApi';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast, cn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ListTodo, Plus, Trash2, X, User, Calendar, Clock } from 'lucide-react';
-
-interface Task {
-  id: string;
-  code: string;
-  title: string;
-  description: string | null;
-  status: 'backlog' | 'todo' | 'in_progress' | 'blocked' | 'done' | 'cancelled';
-  priority: 'low' | 'normal' | 'high' | 'urgent';
-  assigneeId: string | null;
-  internalOrderId: string | null;
-  startDate: string | null;
-  dueDate: string | null;
-  estimatedHours: string | null;
-  actualHours: string | null;
-  progress: number;
-}
+import { ApiError } from '@/shared/http';
 
 const COLUMNS: Array<{ key: Task['status']; label: string; accent: string }> = [
   { key: 'todo', label: 'Por hacer', accent: 'bg-slate-400' },
@@ -54,8 +42,8 @@ export const Tasks: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const [rows, setRows] = useState<Task[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [projects, setProjects] = useState<InternalOrder[]>([]);
   const [editing, setEditing] = useState<Partial<Task> | null>(null);
   const [filter, setFilter] = useState({ projectId: '', assigneeId: '' });
 
@@ -65,13 +53,13 @@ export const Tasks: React.FC = () => {
   );
 
   const fetchAll = async () => {
-    const params = new URLSearchParams();
-    if (filter.projectId) params.set('projectId', filter.projectId);
-    if (filter.assigneeId) params.set('assigneeId', filter.assigneeId);
     const [t, e, p] = await Promise.all([
-      hrApi.get(`/api/hr/tasks?${params}`),
-      hrApi.get('/api/hr/employees'),
-      hrApi.get('/api/internal-orders').catch(() => []),
+      tasksApi.list({
+        projectId: filter.projectId || undefined,
+        assigneeId: filter.assigneeId || undefined,
+      }),
+      employeesApi.list(),
+      internalOrdersApi.list().catch(() => []),
     ]);
     setRows(Array.isArray(t) ? t : []);
     setEmployees(Array.isArray(e) ? e : []);
@@ -89,25 +77,28 @@ export const Tasks: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/tasks' : `/api/hr/tasks/${editing.id}`, editing);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      if (isNew) {
+        await tasksApi.create(editing);
+      } else {
+        await tasksApi.update(editing.id!, editing);
+      }
+      setEditing(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    setEditing(null);
-    fetchAll();
   };
 
   const remove = async (t: Task) => {
     if (!confirm(`¿Borrar tarea ${t.code}?`)) return;
-    await hrApi.raw('DELETE', `/api/hr/tasks/${t.id}`);
+    await tasksApi.remove(t.id);
     fetchAll();
   };
 
   const moveTo = async (t: Task, status: Task['status']) => {
     if (t.status === status) return;
-    await hrApi.raw('PATCH', `/api/hr/tasks/${t.id}`, { status });
+    await tasksApi.update(t.id, { status });
     fetchAll();
   };
 

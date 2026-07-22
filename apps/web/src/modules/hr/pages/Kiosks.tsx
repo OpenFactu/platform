@@ -1,4 +1,5 @@
-import { hrApi } from '../api';
+import { kiosksApi } from '../api';
+import type { Kiosk } from '../domain/kiosk';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -11,14 +12,7 @@ import {
   Link as LinkIcon,
   ExternalLink,
 } from 'lucide-react';
-
-interface Kiosk {
-  id: string;
-  name: string;
-  location: string | null;
-  token: string;
-  isActive: boolean;
-}
+import { ApiError } from '@/shared/http';
 
 export const Kiosks: React.FC = () => {
   const { token, user } = useAuth();
@@ -33,9 +27,12 @@ export const Kiosks: React.FC = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const r = await hrApi.raw('GET', '/api/hr/kiosks');
-    setRows(r.data);
-    setLoading(false);
+    try {
+      const d = await kiosksApi.list();
+      setRows(Array.isArray(d) ? d : []);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     if (user?.tenantId) fetchAll();
@@ -45,21 +42,28 @@ export const Kiosks: React.FC = () => {
     e.preventDefault();
     if (!editing?.name) return;
     const isNew = !editing.id;
-    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/kiosks' : `/api/hr/kiosks/${editing.id}`, editing);
-    if (!r.ok) return;
-    setEditing(null);
-    fetchAll();
+    try {
+      if (isNew) {
+        await kiosksApi.create(editing);
+      } else {
+        await kiosksApi.update(editing.id!, editing);
+      }
+      setEditing(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+    }
   };
 
   const regenerate = async (k: Kiosk) => {
     if (!confirm('¿Regenerar token? El kiosko deberá ser configurado de nuevo.')) return;
-    await hrApi.raw('POST', `/api/hr/kiosks/${k.id}/regenerate-token`);
+    await kiosksApi.regenerateToken(k.id);
     fetchAll();
   };
 
   const remove = async (k: Kiosk) => {
     if (!confirm(`Eliminar kiosko "${k.name}"?`)) return;
-    await hrApi.raw('DELETE', `/api/hr/kiosks/${k.id}`);
+    await kiosksApi.remove(k.id);
     fetchAll();
   };
 

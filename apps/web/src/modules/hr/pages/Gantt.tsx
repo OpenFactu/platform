@@ -1,25 +1,13 @@
-import { hrApi } from '../api';
+import { tasksApi, employeesApi } from '../api';
+import type { Task } from '../domain/task';
+import type { Employee } from '../domain/employee';
+import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api/internalOrdersApi';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Button, Input, useToast, cn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { CalendarRange, ChevronLeft, ChevronRight, GanttChart, Plus, X } from 'lucide-react';
-
-interface Task {
-  id: string;
-  code: string;
-  title: string;
-  status: string;
-  priority: string;
-  assigneeId: string | null;
-  internalOrderId: string | null;
-  startDate: string | null;
-  dueDate: string | null;
-  startAt: string | null;
-  endAt: string | null;
-  estimatedHours: string | null;
-  progress: number;
-}
+import { ApiError } from '@/shared/http';
 
 const STATUS_COLOR: Record<string, string> = {
   todo: 'bg-slate-400 dark:bg-slate-500',
@@ -67,8 +55,8 @@ export const Gantt: React.FC = () => {
   const [view, setView] = useState<View>('week');
   const [cursor, setCursor] = useState<Date>(startOfWeek(today));
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [projects, setProjects] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [projects, setProjects] = useState<InternalOrder[]>([]);
   const [filterProject, setFilterProject] = useState('');
   const [editing, setEditing] = useState<Task | null>(null);
 
@@ -86,15 +74,14 @@ export const Gantt: React.FC = () => {
   }, [cursor, view, days, monthStart]);
 
   const fetchAll = async () => {
-    const params = new URLSearchParams({
-      from: ymd(range.from),
-      to: ymd(range.to),
-    });
-    if (filterProject) params.set('projectId', filterProject);
     const [g, e, p] = await Promise.all([
-      hrApi.get(`/api/hr/tasks/gantt?${params}`),
-      hrApi.get('/api/hr/employees'),
-      hrApi.get('/api/internal-orders').catch(() => []),
+      tasksApi.gantt({
+        from: ymd(range.from),
+        to: ymd(range.to),
+        projectId: filterProject || undefined,
+      }),
+      employeesApi.list(),
+      internalOrdersApi.list().catch(() => []),
     ]);
     setTasks(g.tasks || []);
     setEmployees(Array.isArray(e) ? e : []);
@@ -127,12 +114,13 @@ export const Gantt: React.FC = () => {
 
   // Patch genérico.
   const patchTask = async (id: string, body: any): Promise<boolean> => {
-    const r = await hrApi.raw('PATCH', `/api/hr/tasks/${id}`, body);
-    if (!r.ok) {
+    try {
+      await tasksApi.update(id, body);
+      return true;
+    } catch {
       toast.error('No se pudo guardar');
       return false;
     }
-    return true;
   };
 
   // Mover una tarea a un día concreto (sin hora). Mantiene duración si tenía.
@@ -350,21 +338,22 @@ export const Gantt: React.FC = () => {
                   toast.error('Título obligatorio');
                   return;
                 }
-                const r = await hrApi.raw('POST', '/api/hr/tasks', {
+                try {
+                  await tasksApi.create({
                     title: quickCreate.title.trim(),
                     status: 'todo',
                     priority: 'normal',
                     progress: 0,
                     assigneeId: quickCreate.assigneeId || null,
                   });
-                if (!r.ok) {
-                  const d = (r.data ?? {});
-                  toast.error(d.error || 'No se pudo crear');
-                  return;
+                  setQuickCreate(null);
+                  fetchAll();
+                  toast.success('Tarea creada · arrástrala a un día para programarla');
+                } catch (err) {
+                  toast.error(
+                    err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'No se pudo crear',
+                  );
                 }
-                setQuickCreate(null);
-                fetchAll();
-                toast.success('Tarea creada · arrástrala a un día para programarla');
               }}
               className="p-4 space-y-3"
             >

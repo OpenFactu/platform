@@ -1,4 +1,5 @@
-import { hrApi } from '../api';
+import { shiftTemplatesApi } from '../api';
+import type { ShiftTemplate } from '../domain/shift';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -6,19 +7,7 @@ import { Clock, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
-
-interface ShiftTemplate {
-  id: string;
-  code: string;
-  name: string;
-  startTime: string;
-  endTime: string;
-  breakMinutes: number;
-  secondStartTime: string | null;
-  secondEndTime: string | null;
-  color: string | null;
-  isActive: boolean;
-}
+import { ApiError } from '@/shared/http';
 
 const empty = (): Partial<ShiftTemplate> => ({
   code: '',
@@ -45,10 +34,12 @@ export const ShiftTemplates: React.FC = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const r = await hrApi.raw('GET', '/api/hr/shift-templates');
-    const d = r.data;
-    setRows(Array.isArray(d) ? d : []);
-    setLoading(false);
+    try {
+      const d = await shiftTemplatesApi.list();
+      setRows(Array.isArray(d) ? d : []);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     if (user?.tenantId) fetchAll();
@@ -61,18 +52,21 @@ export const ShiftTemplates: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/shift-templates' : `/api/hr/shift-templates/${editing.id}`, editing);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error);
-      return;
+    try {
+      if (isNew) {
+        await shiftTemplatesApi.create(editing);
+      } else {
+        await shiftTemplatesApi.update(editing.id!, editing);
+      }
+      setEditing(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    setEditing(null);
-    fetchAll();
   };
 
   const remove = async (t: ShiftTemplate) => {
-    await hrApi.raw('DELETE', `/api/hr/shift-templates/${t.id}`);
+    await shiftTemplatesApi.remove(t.id);
     fetchAll();
   };
 

@@ -1,4 +1,5 @@
-import { hrApi } from '../api';
+import { incidentTypesApi } from '../api';
+import type { IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -6,19 +7,7 @@ import { AlertOctagon, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
-
-interface IncidentType {
-  id: string;
-  code: string;
-  name: string;
-  requiresSubstitution: boolean;
-  affectsPayroll: boolean;
-  consumesLeaveBalance: boolean;
-  requiresDocument: boolean;
-  paid: boolean;
-  color: string | null;
-  isActive: boolean;
-}
+import { ApiError } from '@/shared/http';
 
 const empty = (): Partial<IncidentType> => ({
   code: '',
@@ -42,7 +31,7 @@ export const IncidentTypes: React.FC = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const d = await hrApi.get('/api/hr/incident-types');
+      const d = await incidentTypesApi.list();
       setRows(Array.isArray(d) ? d : []);
     } finally {
       setLoading(false);
@@ -59,22 +48,24 @@ export const IncidentTypes: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const url = isNew ? '/api/hr/incident-types' : `/api/hr/incident-types/${editing.id}`;
-    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', url, editing);
-    const d = r.data;
-    if (!r.ok) {
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      if (isNew) {
+        await incidentTypesApi.create(editing);
+      } else {
+        await incidentTypesApi.update(editing.id!, editing);
+      }
+      toast.success('Guardado');
+      setEditing(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    toast.success('Guardado');
-    setEditing(null);
-    fetchAll();
   };
 
   const remove = async (t: IncidentType) => {
     const ok = await popup.confirm({ title: `Desactivar ${t.code}?`, message: '¿Desactivar este tipo de incidencia?', tone: 'danger' });
     if (!ok) return;
-    await hrApi.raw('DELETE', `/api/hr/incident-types/${t.id}`);
+    await incidentTypesApi.remove(t.id);
     fetchAll();
   };
 

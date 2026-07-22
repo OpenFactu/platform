@@ -1,4 +1,12 @@
-import { hrApi } from '../api';
+import {
+  payrollsApi,
+  employeesApi,
+  contractsApi,
+  payrollConceptsApi,
+  commissionsApi,
+} from '../api';
+import type { Payroll } from '../domain/payroll';
+import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -6,20 +14,7 @@ import { Banknote, Plus, CheckCircle, Trash2, ListPlus, X, FileText } from 'luci
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
-
-interface Payroll {
-  id: string;
-  employeeId: string;
-  periodYear: number;
-  periodMonth: number;
-  gross: string;
-  irpfAmount: string;
-  ssEmployee: string;
-  ssEmployer: string;
-  netPay: string;
-  status: 'draft' | 'approved' | 'paid';
-  journalEntryId: string | null;
-}
+import { ApiError } from '@/shared/http';
 
 const STATUS_VARIANTS: Record<string, any> = {
   draft: 'neutral',
@@ -36,7 +31,7 @@ const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', '
 export const Payrolls: React.FC = () => {
   const { token, user } = useAuth();
   const [rows, setRows] = useState<Payroll[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<any>({
@@ -57,10 +52,7 @@ export const Payrolls: React.FC = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [p, e] = await Promise.all([
-        hrApi.get('/api/hr/payrolls'),
-        hrApi.get('/api/hr/employees'),
-      ]);
+      const [p, e] = await Promise.all([payrollsApi.list(), employeesApi.list()]);
       setRows(Array.isArray(p) ? p : []);
       setEmployees(Array.isArray(e) ? e : []);
     } catch {
@@ -83,17 +75,16 @@ export const Payrolls: React.FC = () => {
       return;
     }
     // 1) Crear borrador con totales a 0 — las líneas marcan los importes.
-    const res = await hrApi.raw('POST', '/api/hr/payrolls', {
-        employeeId: form.employeeId,
-        periodYear: form.periodYear,
-        periodMonth: form.periodMonth,
-      });
+    const res = await payrollsApi.createSafe({
+      employeeId: form.employeeId,
+      periodYear: form.periodYear,
+      periodMonth: form.periodMonth,
+    });
     const created = res.data;
     if (res.status === 409 && created.existingId) {
       toast.error(created.error || 'Ya existe esa nómina');
       // Abrir directamente la existente para que el usuario la edite.
-      const existing = await hrApi.get(`/api/hr/payrolls/${created.existingId}`)
-        .catch(() => null);
+      const existing = await payrollsApi.get(created.existingId).catch(() => null);
       if (existing) {
         setCreating(false);
         openLines(existing);
@@ -104,12 +95,13 @@ export const Payrolls: React.FC = () => {
       toast.error(created.error || 'Error al crear');
       return;
     }
+    const createdPayroll = created as Payroll;
 
     // 2) Si se ha pedido prellenar con el contrato, añadir línea "Salario base"
     //    usando el grossSalary del contrato activo del empleado.
     if (form.autoSalary) {
       try {
-        const contracts = await hrApi.get(`/api/hr/contracts?employeeId=${form.employeeId}`);
+        const contracts = await contractsApi.listByEmployee(form.employeeId);
         const active =
           (Array.isArray(contracts) ? contracts : []).find((c: any) => c.isActive) ||
           (Array.isArray(contracts) ? contracts[0] : null);
@@ -118,18 +110,18 @@ export const Payrolls: React.FC = () => {
           : 0;
         if (monthlyGross > 0) {
           // Buscar concepto "Salario base" del catálogo o crear línea suelta.
-          const cs = await hrApi.get('/api/hr/payroll-concepts?activeOnly=true');
+          const cs = await payrollConceptsApi.list(true);
           const base = (Array.isArray(cs) ? cs : []).find(
             (c: any) =>
               c.kind === 'devengo' &&
               (/salario.*base/i.test(c.name) || /^sb/i.test(c.code) || /base/i.test(c.code)),
           );
-          await hrApi.raw('POST', `/api/hr/payrolls/${created.id}/lines`, {
-              conceptId: base?.id || null,
-              concept: base?.name || 'Salario base',
-              type: 'earning',
-              amount: monthlyGross.toFixed(2),
-            });
+          await payrollsApi.addLine(createdPayroll.id, {
+            conceptId: base?.id || null,
+            concept: base?.name || 'Salario base',
+            type: 'earning',
+            amount: monthlyGross.toFixed(2),
+          });
         }
       } catch {
         /* no-op — el usuario puede añadirlas a mano luego */
@@ -138,14 +130,14 @@ export const Payrolls: React.FC = () => {
 
     // 3) Auto-IRPF/SS si está marcado.
     if (form.autoTaxes) {
-      await hrApi.raw('POST', `/api/hr/payrolls/${created.id}/auto-deductions`);
+      await payrollsApi.autoDeductions(createdPayroll.id);
     }
 
     toast.success('Nómina creada — abre líneas/pluses para ajustar');
     setCreating(false);
     fetchAll();
     // Abrir directamente el editor de líneas con los datos ya prellenados.
-    openLines(created);
+    openLines(createdPayroll);
   };
 
   const handleApprove = async (id: string) => {
@@ -156,14 +148,15 @@ export const Payrolls: React.FC = () => {
       confirmLabel: 'Aprobar y asentar',
     });
     if (!ok) return;
-    const res = await hrApi.raw('POST', `/api/hr/payrolls/${id}/approve`, {});
-    const data = res.data;
-    if (!res.ok) {
-      toast.error(data.error || 'Error al aprobar');
-      return;
+    try {
+      await payrollsApi.approve(id);
+      toast.success('Nómina aprobada y asiento contable generado');
+      fetchAll();
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error al aprobar',
+      );
     }
-    toast.success('Nómina aprobada y asiento contable generado');
-    fetchAll();
   };
 
   const openLines = async (p: Payroll) => {
@@ -171,8 +164,8 @@ export const Payrolls: React.FC = () => {
     setLinesLoading(true);
     try {
       const [conceptsR, payrollR] = await Promise.all([
-        hrApi.get('/api/hr/payroll-concepts?activeOnly=true'),
-        hrApi.get(`/api/hr/payrolls/${p.id}`),
+        payrollConceptsApi.list(true),
+        payrollsApi.get(p.id),
       ]);
       setConcepts(Array.isArray(conceptsR) ? conceptsR : []);
       setLines(Array.isArray(payrollR.lines) ? payrollR.lines : []);
@@ -182,9 +175,7 @@ export const Payrolls: React.FC = () => {
   };
 
   const refreshLines = async (id: string) => {
-    const [d] = await Promise.all([
-      hrApi.get(`/api/hr/payrolls/${id}`),
-    ]);
+    const d = await payrollsApi.get(id);
     setLines(Array.isArray(d.lines) ? d.lines : []);
     setEditLines((curr) => (curr ? { ...curr, ...d } : curr));
     fetchAll();
@@ -208,30 +199,34 @@ export const Payrolls: React.FC = () => {
     };
     if (c.calculation === 'percent_of_base' && c.defaultPercent)
       payload.rate = Number(c.defaultPercent);
-    const r = await hrApi.raw('POST', `/api/hr/payrolls/${editLines.id}/lines`, payload);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error || 'Error al añadir línea');
-      return;
+    try {
+      await payrollsApi.addLine(editLines.id, payload);
+      await refreshLines(editLines.id);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error al añadir línea',
+      );
     }
-    await refreshLines(editLines.id);
   };
 
   const updateLine = async (lineId: string, patch: any) => {
     if (!editLines) return;
-    const r = await hrApi.raw('PATCH', `/api/hr/payrolls/${editLines.id}/lines/${lineId}`, patch);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      await payrollsApi.updateLine(editLines.id, lineId, patch);
+      await refreshLines(editLines.id);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    await refreshLines(editLines.id);
   };
 
   const deleteLine = async (lineId: string) => {
     if (!editLines) return;
-    const r = await hrApi.raw('DELETE', `/api/hr/payrolls/${editLines.id}/lines/${lineId}`);
-    if (r.ok) await refreshLines(editLines.id);
+    try {
+      await payrollsApi.removeLine(editLines.id, lineId);
+      await refreshLines(editLines.id);
+    } catch {
+      /* fallo silencioso — mismo comportamiento que el código original */
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -241,13 +236,12 @@ export const Payrolls: React.FC = () => {
       tone: 'danger',
     });
     if (!ok) return;
-    const res = await hrApi.raw('DELETE', `/api/hr/payrolls/${id}`);
-    if (res.ok) {
+    try {
+      await payrollsApi.remove(id);
       toast.success('Eliminada');
       fetchAll();
-    } else {
-      const d = res.data;
-      toast.error(d.error || 'Error');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
   };
 
@@ -297,7 +291,7 @@ export const Payrolls: React.FC = () => {
           <button
             onClick={async () => {
               try {
-                const { blob } = await hrApi.getBlob(`/api/reports/payslip/${r.id}/pdf`);
+                const { blob } = await payrollsApi.payslipPdf(r.id);
                 const url = URL.createObjectURL(blob);
                 window.open(url, '_blank', 'noopener');
               } catch {
@@ -334,7 +328,7 @@ export const Payrolls: React.FC = () => {
 
   const printPayslip = async (r: Payroll) => {
     try {
-      const { blob } = await hrApi.getBlob(`/api/reports/payslip/${r.id}/pdf`);
+      const { blob } = await payrollsApi.payslipPdf(r.id);
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener');
     } catch {
@@ -406,11 +400,11 @@ export const Payrolls: React.FC = () => {
               let skipped = 0;
               for (const e of active) {
                 try {
-                  const r = await hrApi.raw('POST', '/api/hr/payrolls', {
-                      employeeId: e.id,
-                      periodYear: y,
-                      periodMonth: m,
-                    });
+                  const r = await payrollsApi.createSafe({
+                    employeeId: e.id,
+                    periodYear: y,
+                    periodMonth: m,
+                  });
                   const d = r.data;
                   if (r.status === 409) {
                     skipped++;
@@ -418,21 +412,21 @@ export const Payrolls: React.FC = () => {
                   }
                   if (!r.ok) continue;
                   // Salario base del contrato
-                  const cs = await hrApi.get(`/api/hr/contracts?employeeId=${e.id}`).catch(() => []);
+                  const cs = await contractsApi.listByEmployee(e.id).catch(() => []);
                   const c =
                     (Array.isArray(cs) ? cs : []).find((x: any) => x.isActive) ||
                     (Array.isArray(cs) ? cs[0] : null);
                   if (c) {
                     const monthly = Number(c.grossSalary || 0) / Number(c.paymentsPerYear || 12);
                     if (monthly > 0) {
-                      await hrApi.raw('POST', `/api/hr/payrolls/${d.id}/lines`, {
-                          concept: 'Salario base',
-                          type: 'earning',
-                          amount: monthly.toFixed(2),
-                        });
+                      await payrollsApi.addLine(d.id!, {
+                        concept: 'Salario base',
+                        type: 'earning',
+                        amount: monthly.toFixed(2),
+                      });
                     }
                   }
-                  await hrApi.raw('POST', `/api/hr/payrolls/${d.id}/auto-deductions`);
+                  await payrollsApi.autoDeductions(d.id!);
                   n++;
                 } catch {
                   /* sigue con el siguiente empleado */
@@ -666,18 +660,21 @@ export const Payrolls: React.FC = () => {
                 <button
                   onClick={async () => {
                     if (!editLines) return;
-                    const r = await hrApi.raw('POST', `/api/hr/payrolls/${editLines.id}/auto-deductions`);
-                    const d = (r.data ?? {});
-                    if (!r.ok) {
-                      toast.error(d.error || 'No hay conceptos IRPF/SS en el catálogo');
-                      return;
+                    try {
+                      const d = await payrollsApi.autoDeductions(editLines.id);
+                      if (d.created === 0) {
+                        toast.success('IRPF/SS ya estaban añadidos. Recalculado.');
+                      } else {
+                        toast.success(`Añadidos ${d.created} conceptos automáticos`);
+                      }
+                      await refreshLines(editLines.id);
+                    } catch (err) {
+                      toast.error(
+                        err instanceof ApiError
+                          ? ((err.body as any)?.error ?? err.message)
+                          : 'No hay conceptos IRPF/SS en el catálogo',
+                      );
                     }
-                    if (d.created === 0) {
-                      toast.success('IRPF/SS ya estaban añadidos. Recalculado.');
-                    } else {
-                      toast.success(`Añadidos ${d.created} conceptos automáticos`);
-                    }
-                    await refreshLines(editLines.id);
                   }}
                   className="px-3 py-2 rounded-lg text-xs font-bold border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20 whitespace-nowrap"
                   title="Añade IRPF y SS Empleado/Empresa automáticamente del catálogo"
@@ -687,20 +684,21 @@ export const Payrolls: React.FC = () => {
                 <button
                   onClick={async () => {
                     if (!editLines) return;
-                    const r = await hrApi.raw('POST', `/api/hr/commissions/payrolls/${editLines.id}/import-commissions`);
-                    const d = (r.data ?? {});
-                    if (!r.ok) {
-                      toast.error(d.error || 'Error');
-                      return;
-                    }
-                    if (d.imported === 0) {
-                      toast.success('No hay comisiones pendientes para este periodo');
-                    } else {
-                      toast.success(
-                        `Importadas ${d.imported} comisiones · ${Number(d.total).toFixed(2)} €`,
+                    try {
+                      const d = await commissionsApi.importToPayroll(editLines.id);
+                      if (d.imported === 0) {
+                        toast.success('No hay comisiones pendientes para este periodo');
+                      } else {
+                        toast.success(
+                          `Importadas ${d.imported} comisiones · ${Number(d.total).toFixed(2)} €`,
+                        );
+                      }
+                      await refreshLines(editLines.id);
+                    } catch (err) {
+                      toast.error(
+                        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error',
                       );
                     }
-                    await refreshLines(editLines.id);
                   }}
                   className="px-3 py-2 rounded-lg text-xs font-bold border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 whitespace-nowrap"
                   title="Vuelca las comisiones del periodo del empleado a esta nómina como línea de devengo"

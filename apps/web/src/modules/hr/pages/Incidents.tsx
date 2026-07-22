@@ -1,4 +1,7 @@
-import { hrApi } from '../api';
+import { incidentsApi, employeesApi, incidentTypesApi } from '../api';
+import type { Incident } from '../domain/incident';
+import type { Employee } from '../domain/employee';
+import type { IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -6,16 +9,7 @@ import { AlertTriangle, Plus, UserCheck, X, Check, Ban } from 'lucide-react';
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
-
-interface Incident {
-  id: string;
-  employeeId: string;
-  incidentTypeId: string;
-  startAt: string;
-  endAt: string | null;
-  status: 'pending' | 'approved' | 'rejected' | 'covered';
-  notes: string | null;
-}
+import { ApiError } from '@/shared/http';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Pendiente',
@@ -33,8 +27,8 @@ const STATUS_VARIANT: Record<string, any> = {
 export const Incidents: React.FC = () => {
   const { token, user } = useAuth();
   const [rows, setRows] = useState<Incident[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [types, setTypes] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [types, setTypes] = useState<IncidentType[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [substituting, setSubstituting] = useState<Incident | null>(null);
@@ -56,9 +50,9 @@ export const Incidents: React.FC = () => {
     setLoading(true);
     try {
       const [i, e, t] = await Promise.all([
-        hrApi.get('/api/hr/incidents'),
-        hrApi.get('/api/hr/employees'),
-        hrApi.get('/api/hr/incident-types'),
+        incidentsApi.list(),
+        employeesApi.list(),
+        incidentTypesApi.list(),
       ]);
       setRows(Array.isArray(i) ? i : []);
       setEmployees(Array.isArray(e) ? e : []);
@@ -80,33 +74,31 @@ export const Incidents: React.FC = () => {
       toast.error('Empleado, tipo y fecha de inicio son obligatorios');
       return;
     }
-    const r = await hrApi.raw('POST', '/api/hr/incidents', form);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error);
-      return;
+    try {
+      await incidentsApi.create(form);
+      toast.success('Incidencia registrada');
+      setCreating(false);
+      setForm({ employeeId: '', incidentTypeId: '', startAt: '', endAt: '', notes: '' });
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    toast.success('Incidencia registrada');
-    setCreating(false);
-    setForm({ employeeId: '', incidentTypeId: '', startAt: '', endAt: '', notes: '' });
-    fetchAll();
   };
 
   const setStatus = async (i: Incident, status: 'approved' | 'rejected') => {
-    await hrApi.raw('PATCH', `/api/hr/incidents/${i.id}`, { status });
+    await incidentsApi.update(i.id, { status });
     fetchAll();
   };
 
   const openSubstitute = async (i: Incident) => {
     setSubstituting(i);
-    const r = await hrApi.raw('POST', `/api/hr/incidents/${i.id}/suggest-substitutes`);
-    const d = r.data;
+    const d = await incidentsApi.suggestSubstitutes(i.id);
     setSubstituteOptions(Array.isArray(d) ? d : []);
   };
 
   const assignSubstitute = async (substituteEmployeeId: string) => {
     if (!substituting) return;
-    await hrApi.raw('POST', `/api/hr/incidents/${substituting.id}/assign-substitute`, { substituteEmployeeId });
+    await incidentsApi.assignSubstitute(substituting.id, substituteEmployeeId);
     setSubstituting(null);
     setSubstituteOptions([]);
     fetchAll();

@@ -1,4 +1,5 @@
-import { hrApi } from '../api';
+import { payrollConceptsApi } from '../api';
+import type { PayrollConcept as Concept } from '../domain/payroll';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -6,19 +7,7 @@ import { ListChecks, Plus, Pencil, Trash2, Wand2 } from 'lucide-react';
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
-
-interface Concept {
-  id: string;
-  code: string;
-  name: string;
-  kind: 'devengo' | 'deduccion' | 'aportacion_empresa';
-  taxableIrpf: boolean;
-  taxableSs: boolean;
-  calculation: 'fixed' | 'percent_of_base' | 'per_hour';
-  defaultAmount: string | null;
-  defaultPercent: string | null;
-  isActive: boolean;
-}
+import { ApiError } from '@/shared/http';
 
 const KIND_LABELS: Record<Concept['kind'], string> = {
   devengo: 'Devengo',
@@ -58,7 +47,7 @@ export const PayrollConcepts: React.FC = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const d = await hrApi.get('/api/hr/payroll-concepts');
+      const d = await payrollConceptsApi.list();
       setRows(Array.isArray(d) ? d : []);
     } catch {
       toast.error('Error al cargar conceptos');
@@ -79,17 +68,18 @@ export const PayrollConcepts: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const url = isNew ? '/api/hr/payroll-concepts' : `/api/hr/payroll-concepts/${editing.id}`;
-    const method = isNew ? 'POST' : 'PATCH';
-    const res = await hrApi.raw(method, url, editing);
-    const data = res.data;
-    if (!res.ok) {
-      toast.error(data.error || 'Error al guardar');
-      return;
+    try {
+      if (isNew) {
+        await payrollConceptsApi.create(editing);
+      } else {
+        await payrollConceptsApi.update(editing.id!, editing);
+      }
+      toast.success(isNew ? 'Concepto creado' : 'Concepto actualizado');
+      setEditing(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error al guardar');
     }
-    toast.success(isNew ? 'Concepto creado' : 'Concepto actualizado');
-    setEditing(null);
-    fetchAll();
   };
 
   const remove = async (c: Concept) => {
@@ -99,13 +89,12 @@ export const PayrollConcepts: React.FC = () => {
       tone: 'danger',
     });
     if (!ok) return;
-    const r = await hrApi.raw('DELETE', `/api/hr/payroll-concepts/${c.id}`);
-    if (r.ok) {
+    try {
+      await payrollConceptsApi.remove(c.id);
       toast.success('Eliminado');
       fetchAll();
-    } else {
-      const d = r.data;
-      toast.error(d.error || 'Error');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
   };
 
@@ -182,18 +171,17 @@ export const PayrollConcepts: React.FC = () => {
             size="sm"
             variant="secondary"
             onClick={async () => {
-              const r = await hrApi.raw('POST', '/api/hr/payroll-concepts/seed-defaults');
-              const d = (r.data ?? {});
-              if (!r.ok) {
-                toast.error(d.error || 'Error');
-                return;
+              try {
+                const d = await payrollConceptsApi.seedDefaults();
+                if (d.created === 0) {
+                  toast.success('El catálogo ya estaba completo');
+                } else {
+                  toast.success(`Creados ${d.created} conceptos estándar`);
+                }
+                fetchAll();
+              } catch (err) {
+                toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
               }
-              if (d.created === 0) {
-                toast.success('El catálogo ya estaba completo');
-              } else {
-                toast.success(`Creados ${d.created} conceptos estándar`);
-              }
-              fetchAll();
             }}
             title="Crea de un click los conceptos típicos: salario base, pluses, IRPF, SS empleado y SS empresa"
           >

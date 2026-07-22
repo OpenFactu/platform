@@ -1,4 +1,11 @@
-import { hrApi } from '../api';
+import { shiftPatternsApi, shiftTemplatesApi, employeesApi } from '../api';
+import type {
+  ShiftPattern as Pattern,
+  ShiftPatternSlot as PatternSlot,
+  ShiftPatternAssignment as Assignment,
+  ShiftTemplate,
+} from '../domain/shift';
+import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -13,37 +20,15 @@ import {
   Eraser,
   Wand2,
 } from 'lucide-react';
-
-interface PatternSlot {
-  week: number;
-  dayOfWeek: number;
-  shiftTemplateId: string;
-}
-
-interface Pattern {
-  id: string;
-  name: string;
-  cycleWeeks: number;
-  slots: PatternSlot[];
-  isActive: boolean;
-}
-
-interface Assignment {
-  id: string;
-  patternId: string;
-  employeeId: string;
-  weekOffset: number;
-  validFrom: string;
-  validTo: string | null;
-}
+import { ApiError } from '@/shared/http';
 
 const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 export const ShiftPatterns: React.FC = () => {
   const { token, user } = useAuth();
   const [list, setList] = useState<Pattern[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [editing, setEditing] = useState<Pattern | null>(null);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [expanding, setExpanding] = useState({ from: '', to: '' });
@@ -57,9 +42,9 @@ export const ShiftPatterns: React.FC = () => {
 
   const fetchAll = async () => {
     const [p, t, e] = await Promise.all([
-      hrApi.get('/api/hr/shift-patterns'),
-      hrApi.get('/api/hr/shift-templates'),
-      hrApi.get('/api/hr/employees'),
+      shiftPatternsApi.list(),
+      shiftTemplatesApi.list(),
+      employeesApi.list(),
     ]);
     setList(Array.isArray(p) ? p : []);
     setTemplates(Array.isArray(t) ? t : []);
@@ -70,7 +55,7 @@ export const ShiftPatterns: React.FC = () => {
   }, [user?.tenantId]);
 
   const openEdit = async (p: Pattern) => {
-    const r = await hrApi.get(`/api/hr/shift-patterns/${p.id}`);
+    const r = await shiftPatternsApi.get(p.id);
     setEditing(r);
     setAssignments(Array.isArray(r.assignments) ? r.assignments : []);
   };
@@ -142,15 +127,16 @@ export const ShiftPatterns: React.FC = () => {
   const save = async () => {
     if (!editing) return;
     const isNew = !editing.id;
-    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/shift-patterns' : `/api/hr/shift-patterns/${editing.id}`, editing);
-    const d = r.data;
-    if (!r.ok) {
-      toast.error(d.error);
-      return;
+    try {
+      const d = isNew
+        ? await shiftPatternsApi.create(editing)
+        : await shiftPatternsApi.update(editing.id, editing);
+      toast.success('Guardado');
+      setEditing(d);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    toast.success('Guardado');
-    setEditing(d);
-    fetchAll();
   };
 
   const addAssignment = async (employeeId: string, validFrom: string, weekOffset: number) => {
@@ -158,17 +144,16 @@ export const ShiftPatterns: React.FC = () => {
       toast.error('Guarda el patrón antes de asignar empleados');
       return;
     }
-    const r = await hrApi.raw('POST', `/api/hr/shift-patterns/${editing.id}/assignments`, { employeeId, validFrom, weekOffset });
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error);
-      return;
+    try {
+      await shiftPatternsApi.addAssignment(editing.id, { employeeId, validFrom, weekOffset });
+      openEdit(editing);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    openEdit(editing);
   };
 
   const removeAssignment = async (a: Assignment) => {
-    await hrApi.raw('DELETE', `/api/hr/shift-patterns/${editing!.id}/assignments/${a.id}`);
+    await shiftPatternsApi.removeAssignment(editing!.id, a.id);
     if (editing) openEdit(editing);
   };
 
@@ -178,13 +163,12 @@ export const ShiftPatterns: React.FC = () => {
       toast.error('Indica from y to');
       return;
     }
-    const r = await hrApi.raw('POST', `/api/hr/shift-patterns/${editing.id}/expand`, expanding);
-    const d = r.data;
-    if (!r.ok) {
-      toast.error(d.error);
-      return;
+    try {
+      const d = await shiftPatternsApi.expand(editing.id, expanding);
+      toast.success(`Generadas ${d.created} asignaciones de turno`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    toast.success(`Generadas ${d.created} asignaciones de turno`);
   };
 
   return (

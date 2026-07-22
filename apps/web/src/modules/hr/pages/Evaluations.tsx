@@ -1,34 +1,15 @@
-import { hrApi } from '../api';
+import { evaluationsApi, employeesApi } from '../api';
+import type {
+  EvaluationCycle as Cycle,
+  Competency,
+  Evaluation,
+} from '../domain/evaluation';
+import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ClipboardCheck, Plus, Pencil, Trash2, X, Save, CheckCircle } from 'lucide-react';
-
-interface Cycle {
-  id: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  status: 'draft' | 'active' | 'closed';
-}
-
-interface Competency {
-  id: string;
-  code: string;
-  name: string;
-  weight: string;
-  scaleMax: number;
-  isActive: boolean;
-}
-
-interface Evaluation {
-  id: string;
-  cycleId: string;
-  employeeId: string;
-  managerId: string | null;
-  status: 'pending' | 'self_done' | 'manager_done' | 'closed';
-  finalScore: string | null;
-}
+import { ApiError } from '@/shared/http';
 
 const STATUS_VARIANT: Record<string, any> = {
   draft: 'neutral',
@@ -58,7 +39,7 @@ export const Evaluations: React.FC = () => {
   const [tab, setTab] = useState<'cycles' | 'competencies'>('cycles');
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [competencies, setCompetencies] = useState<Competency[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [editingCycle, setEditingCycle] = useState<Partial<Cycle> | null>(null);
   const [editingComp, setEditingComp] = useState<Partial<Competency> | null>(null);
   const [openCycle, setOpenCycle] = useState<Cycle | null>(null);
@@ -70,9 +51,9 @@ export const Evaluations: React.FC = () => {
 
   const fetchAll = async () => {
     const [c, comp, emps] = await Promise.all([
-      hrApi.get('/api/hr/evaluations/cycles'),
-      hrApi.get('/api/hr/evaluations/competencies'),
-      hrApi.get('/api/hr/employees'),
+      evaluationsApi.listCycles(),
+      evaluationsApi.listCompetencies(),
+      employeesApi.list(),
     ]);
     setCycles(Array.isArray(c) ? c : []);
     setCompetencies(Array.isArray(comp) ? comp : []);
@@ -83,8 +64,8 @@ export const Evaluations: React.FC = () => {
   }, [user?.tenantId]);
 
   const fetchEvaluations = async (cycleId: string) => {
-    const r = await hrApi.raw('GET', `/api/hr/evaluations?cycleId=${cycleId}`);
-    setEvaluations(r.data);
+    const d = await evaluationsApi.listByCycle(cycleId);
+    setEvaluations(Array.isArray(d) ? d : []);
   };
 
   const saveCycle = async (e: React.FormEvent) => {
@@ -94,15 +75,18 @@ export const Evaluations: React.FC = () => {
       return;
     }
     const isNew = !editingCycle.id;
-    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/evaluations/cycles' : `/api/hr/evaluations/cycles/${editingCycle.id}`, editingCycle);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      if (isNew) {
+        await evaluationsApi.createCycle(editingCycle);
+      } else {
+        await evaluationsApi.updateCycle(editingCycle.id!, editingCycle);
+      }
+      toast.success('Guardado');
+      setEditingCycle(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    toast.success('Guardado');
-    setEditingCycle(null);
-    fetchAll();
   };
 
   const saveComp = async (e: React.FormEvent) => {
@@ -111,30 +95,25 @@ export const Evaluations: React.FC = () => {
       toast.error('Código y nombre obligatorios');
       return;
     }
-    const isNew = !editingComp.id;
-    const r = await hrApi.raw('GET', isNew
-        ? '/api/hr/evaluations/competencies'
-        : `/api/hr/evaluations/competencies/${editingComp.id}`, editingComp);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      await evaluationsApi.saveCompetency(editingComp.id, editingComp);
+      setEditingComp(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    setEditingComp(null);
-    fetchAll();
   };
 
   const addEvaluation = async (employeeId: string) => {
     if (!openCycle) return;
-    await hrApi.raw('POST', '/api/hr/evaluations', { cycleId: openCycle.id, employeeId });
+    await evaluationsApi.create({ cycleId: openCycle.id, employeeId });
     fetchEvaluations(openCycle.id);
   };
 
   const openScores = async (ev: Evaluation) => {
     const emp = employees.find((e) => e.id === ev.employeeId);
     setScoreEditing({ evaluationId: ev.id, emp });
-    const r = await hrApi.raw('GET', `/api/hr/evaluations/${ev.id}`);
-    const d = r.data;
+    const d = await evaluationsApi.get(ev.id);
     const map = new Map((d.scores || []).map((s: any) => [s.competencyId, s]));
     setScores(
       competencies
@@ -153,24 +132,30 @@ export const Evaluations: React.FC = () => {
 
   const saveScores = async () => {
     if (!scoreEditing) return;
-    await hrApi.raw('PUT', `/api/hr/evaluations/${scoreEditing.evaluationId}/scores`, { scores });
-    toast.success('Puntuaciones guardadas');
-    setScoreEditing(null);
-    if (openCycle) fetchEvaluations(openCycle.id);
+    try {
+      await evaluationsApi.saveScores(scoreEditing.evaluationId, scores);
+      toast.success('Puntuaciones guardadas');
+      setScoreEditing(null);
+      if (openCycle) fetchEvaluations(openCycle.id);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+    }
   };
 
   const closeEvaluation = async () => {
     if (!scoreEditing) return;
+    const evaluationId = scoreEditing.evaluationId;
     await saveScores();
-    const r = await hrApi.raw('POST', `/api/hr/evaluations/${scoreEditing.evaluationId}/close`);
-    if (!r.ok) {
-      const d = r.data;
-      toast.error(d.error || 'No se pudo cerrar');
-      return;
+    try {
+      await evaluationsApi.close(evaluationId);
+      toast.success('Evaluación cerrada');
+      setScoreEditing(null);
+      if (openCycle) fetchEvaluations(openCycle.id);
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'No se pudo cerrar',
+      );
     }
-    toast.success('Evaluación cerrada');
-    setScoreEditing(null);
-    if (openCycle) fetchEvaluations(openCycle.id);
   };
 
   return (

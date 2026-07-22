@@ -1,23 +1,12 @@
-import { hrApi } from '../api';
+import { hrReportsApi, employeesApi, departmentsApi } from '../api';
+import type { ProductivityRow as Row } from '../api/hrReportsApi';
+import type { Employee } from '../domain/employee';
+import type { Department } from '../domain/department';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { TrendingUp, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
-
-interface Row {
-  employeeId: string;
-  code: string;
-  name: string;
-  departmentId: string | null;
-  hoursContracted: number;
-  hoursPlanned: number;
-  hoursClocked: number;
-  hoursOvertime: number;
-  compliancePct: number;
-  incidentsByType: Record<string, number>;
-  absenceDays: number;
-}
 
 export const Performance: React.FC = () => {
   const { token, user } = useAuth();
@@ -34,8 +23,8 @@ export const Performance: React.FC = () => {
     departmentId: '',
   });
   const [rows, setRows] = useState<Row[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [departments, setDepartments] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(false);
   const headers = useMemo(
     () => ({ Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' }),
@@ -44,15 +33,15 @@ export const Performance: React.FC = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    params.set('from', filters.from);
-    params.set('to', filters.to);
-    if (filters.employeeId) params.set('employeeId', filters.employeeId);
-    if (filters.departmentId) params.set('departmentId', filters.departmentId);
     const [r, e, d] = await Promise.all([
-      hrApi.get(`/api/reports/hr/productivity?${params}`),
-      hrApi.get('/api/hr/employees'),
-      hrApi.get('/api/hr/departments'),
+      hrReportsApi.productivity({
+        from: filters.from,
+        to: filters.to,
+        employeeId: filters.employeeId || undefined,
+        departmentId: filters.departmentId || undefined,
+      }),
+      employeesApi.list(),
+      departmentsApi.list(),
     ]);
     setRows(Array.isArray(r) ? r : []);
     setEmployees(Array.isArray(e) ? e : []);

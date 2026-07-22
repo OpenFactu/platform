@@ -1,4 +1,7 @@
-import { hrApi } from '../api';
+import { shiftAssignmentsApi, employeesApi, shiftTemplatesApi, incidentsApi, incidentTypesApi } from '../api';
+import type { ShiftAssignment, ShiftTemplate } from '../domain/shift';
+import type { Employee } from '../domain/employee';
+import type { Incident, IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -17,18 +20,7 @@ import {
   CopyPlus,
   AlertTriangle,
 } from 'lucide-react';
-
-interface ShiftAssignment {
-  id: string;
-  employeeId: string;
-  date: string;
-  startAt: string;
-  endAt: string;
-  status: 'scheduled' | 'cancelled' | 'substituted';
-  shiftTemplateId: string | null;
-  breakMinutes: number;
-  notes: string | null;
-}
+import { ApiError } from '@/shared/http';
 
 const DAY_LABEL = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
@@ -98,11 +90,11 @@ export const Planning: React.FC = () => {
   const { token, user } = useAuth();
   const [view, setView] = useState<'week' | 'month'>('week');
   const [cursor, setCursor] = useState(() => startOfWeek(new Date()));
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [assigns, setAssigns] = useState<ShiftAssignment[]>([]);
-  const [incidents, setIncidents] = useState<any[]>([]);
-  const [incidentTypes, setIncidentTypes] = useState<any[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [incidentTypes, setIncidentTypes] = useState<IncidentType[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Modal state: 'create' opens with employeeId+date; 'edit' opens with existing assignment id.
@@ -133,11 +125,11 @@ export const Planning: React.FC = () => {
       const from = ymd(rangeStart);
       const to = ymd(rangeEnd);
       const [e, t, a, inc, it] = await Promise.all([
-        hrApi.get('/api/hr/employees'),
-        hrApi.get('/api/hr/shift-templates'),
-        hrApi.get(`/api/hr/shift-assignments?from=${from}&to=${to}`),
-        hrApi.get('/api/hr/incidents').catch(() => []),
-        hrApi.get('/api/hr/incident-types').catch(() => []),
+        employeesApi.list(),
+        shiftTemplatesApi.list(),
+        shiftAssignmentsApi.list(from, to),
+        incidentsApi.list().catch(() => []),
+        incidentTypesApi.list().catch(() => []),
       ]);
       setEmployees(Array.isArray(e) ? e : []);
       setTemplates(Array.isArray(t) ? t : []);
@@ -281,22 +273,20 @@ export const Planning: React.FC = () => {
       shiftTemplateId: form.shiftTemplateId || null,
       notes: form.notes || null,
     };
-    const url =
-      modal.kind === 'edit' ? `/api/hr/shift-assignments/${modal.id}` : '/api/hr/shift-assignments';
-    const r = await hrApi.raw(modal.kind === 'edit' ? 'PATCH' : 'POST', url, body);
-    if (!r.ok) {
-      const d = (r.data ?? {});
-      toast.error(d.error || 'Error');
-      return;
-    }
-    // Si el usuario marcó "tramo 2" en creación, generamos un segundo turno
-    // independiente con las horas que él haya tecleado.
-    if (modal.kind === 'create' && form.secondEnabled && form.secondStartAt && form.secondEndAt) {
-      if (new Date(form.secondEndAt) <= new Date(form.secondStartAt)) {
-        toast.error('El 2º tramo: la hora fin debe ser posterior al inicio');
-        return;
+    try {
+      if (modal.kind === 'edit') {
+        await shiftAssignmentsApi.update(modal.id, body);
+      } else {
+        await shiftAssignmentsApi.create(body);
       }
-      await hrApi.raw('POST', '/api/hr/shift-assignments', {
+      // Si el usuario marcó "tramo 2" en creación, generamos un segundo turno
+      // independiente con las horas que él haya tecleado.
+      if (modal.kind === 'create' && form.secondEnabled && form.secondStartAt && form.secondEndAt) {
+        if (new Date(form.secondEndAt) <= new Date(form.secondStartAt)) {
+          toast.error('El 2º tramo: la hora fin debe ser posterior al inicio');
+          return;
+        }
+        await shiftAssignmentsApi.create({
           employeeId: modal.employeeId,
           date: modal.date,
           startAt: form.secondStartAt,
@@ -305,16 +295,19 @@ export const Planning: React.FC = () => {
           shiftTemplateId: form.shiftTemplateId || null,
           notes: form.notes || null,
         });
+      }
+      toast.success(modal.kind === 'edit' ? 'Turno actualizado' : 'Turno creado');
+      setModal(null);
+      fetchAll();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
     }
-    toast.success(modal.kind === 'edit' ? 'Turno actualizado' : 'Turno creado');
-    setModal(null);
-    fetchAll();
   };
 
   const cancelAssign = async () => {
     if (!modal || modal.kind !== 'edit') return;
     if (!confirm('¿Cancelar este turno? (queda en histórico tachado)')) return;
-    await hrApi.raw('PATCH', `/api/hr/shift-assignments/${modal.id}`, { status: 'cancelled' });
+    await shiftAssignmentsApi.update(modal.id, { status: 'cancelled' });
     setModal(null);
     fetchAll();
   };
@@ -322,7 +315,7 @@ export const Planning: React.FC = () => {
   const removeAssign = async () => {
     if (!modal || modal.kind !== 'edit') return;
     if (!confirm('¿Borrar este turno definitivamente?')) return;
-    await hrApi.raw('DELETE', `/api/hr/shift-assignments/${modal.id}`);
+    await shiftAssignmentsApi.remove(modal.id);
     setModal(null);
     fetchAll();
   };
