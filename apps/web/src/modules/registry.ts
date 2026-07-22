@@ -36,12 +36,19 @@ export interface Module {
   subTabs: SubTab[];
   /** Si es true, solo se renderiza en el sidebar para usuarios con rol SUPERUSER. */
   superuserOnly?: boolean;
+  /** Si es true, solo se renderiza en el sidebar para ADMIN o SUPERUSER
+   *  (a diferencia de superuserOnly, que excluye también a ADMIN). */
+  adminOnly?: boolean;
   /** Si se pasa, el módulo solo se renderiza si `flags[featureFlag] === true`. */
   featureFlag?: string;
   /** Si es true, el módulo se esconde cuando el flag `logisticsOnly` está activo
    *  (modo "sólo logística" para clientes que nos contratan únicamente el
    *  módulo de reparto). Se marcan los módulos que NO son logísticos. */
   hiddenInLogisticsOnly?: boolean;
+  /** Descripción corta usada solo por la tarjeta en /apps. */
+  description?: string;
+  /** Agrupación visual en /apps (fallback: "General" si no se pasa). */
+  category?: string;
 }
 
 /**

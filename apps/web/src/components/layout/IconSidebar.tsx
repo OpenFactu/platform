@@ -70,8 +70,10 @@ export const IconSidebar: React.FC = () => {
       ];
     }
     const logisticsOnly = !!(flags as any).logisticsOnly;
+    const isAdminRole = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
     return allModules.filter((m) => {
       if (m.superuserOnly && user?.role !== 'SUPERUSER') return false;
+      if (m.adminOnly && !isAdminRole) return false;
       if (m.featureFlag && !(flags as any)[m.featureFlag]) return false;
       // Modo "sólo logística": ocultamos los módulos marcados como no-logísticos.
       if (logisticsOnly && (m as any).hiddenInLogisticsOnly) return false;
@@ -140,6 +142,7 @@ export const IconSidebar: React.FC = () => {
     for (const mod of allModules) {
       // Saltamos sólo los de SUPERUSER si el user no lo es.
       if (mod.superuserOnly && user?.role !== 'SUPERUSER') continue;
+      if (mod.adminOnly && user?.role !== 'ADMIN' && user?.role !== 'SUPERUSER') continue;
       for (const sub of mod.subTabs as any[]) {
         if (!isAdmin && sub.adminOnly) continue;
         const hay = norm(`${mod.label} ${sub.label} ${sub.group || ''} ${sub.id}`);
