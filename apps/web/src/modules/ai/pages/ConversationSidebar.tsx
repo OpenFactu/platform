@@ -20,7 +20,7 @@ export const ConversationSidebar: React.FC<{
   const [items, setItems] = useState<ConversationSummary[] | null>(null);
 
   const load = () => {
-    coreApi.get<any>('/api/ai/conversations')
+    coreApi.get('/api/ai/conversations')
       .catch(() => ([]))
       .then(setItems)
       .catch(() => setItems([]));

@@ -36,7 +36,7 @@ export const PaymentTermsEditor: React.FC = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await coreApi.get<any>('/api/payment-terms');
+      const data = await coreApi.get('/api/payment-terms');
       setRows(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Error al cargar plazos');

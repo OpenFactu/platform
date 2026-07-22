@@ -118,7 +118,7 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const fetchHeaders: Record<string, string> = {};
       if (token) fetchHeaders['Authorization'] = `Bearer ${token}`;
 
-      const res = await coreApi.get<any>('/api/plugins/manifests');
+      const res = await coreApi.get('/api/plugins/manifests');
       if (!res.ok) {
         setManifests([]);
         return;

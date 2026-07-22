@@ -45,8 +45,8 @@ export const VehiclesTab: React.FC = () => {
     setLoading(true);
     const qs = showArchived ? '?includeArchived=true' : '';
     const [r1, r2] = await Promise.all([
-      logisticsApi.get<any>(`/api/logistics/vehicles${qs}`),
-      logisticsApi.get<any>('/api/hr/employees').catch(() => []),
+      logisticsApi.get(`/api/logistics/vehicles${qs}`),
+      logisticsApi.get('/api/hr/employees').catch(() => []),
     ]);
     setRows(Array.isArray(r1) ? r1 : []);
     setEmployees(Array.isArray(r2) ? r2 : []);

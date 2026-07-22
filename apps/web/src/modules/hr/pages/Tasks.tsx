@@ -69,9 +69,9 @@ export const Tasks: React.FC = () => {
     if (filter.projectId) params.set('projectId', filter.projectId);
     if (filter.assigneeId) params.set('assigneeId', filter.assigneeId);
     const [t, e, p] = await Promise.all([
-      hrApi.get<any>(`/api/hr/tasks?${params}`),
-      hrApi.get<any>('/api/hr/employees'),
-      hrApi.get<any>('/api/internal-orders').catch(() => []),
+      hrApi.get(`/api/hr/tasks?${params}`),
+      hrApi.get('/api/hr/employees'),
+      hrApi.get('/api/internal-orders').catch(() => []),
     ]);
     setRows(Array.isArray(t) ? t : []);
     setEmployees(Array.isArray(e) ? e : []);

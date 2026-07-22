@@ -57,9 +57,9 @@ export const ShiftPatterns: React.FC = () => {
 
   const fetchAll = async () => {
     const [p, t, e] = await Promise.all([
-      hrApi.get<any>('/api/hr/shift-patterns'),
-      hrApi.get<any>('/api/hr/shift-templates'),
-      hrApi.get<any>('/api/hr/employees'),
+      hrApi.get('/api/hr/shift-patterns'),
+      hrApi.get('/api/hr/shift-templates'),
+      hrApi.get('/api/hr/employees'),
     ]);
     setList(Array.isArray(p) ? p : []);
     setTemplates(Array.isArray(t) ? t : []);
@@ -70,7 +70,7 @@ export const ShiftPatterns: React.FC = () => {
   }, [user?.tenantId]);
 
   const openEdit = async (p: Pattern) => {
-    const r = await hrApi.get<any>(`/api/hr/shift-patterns/${p.id}`);
+    const r = await hrApi.get(`/api/hr/shift-patterns/${p.id}`);
     setEditing(r);
     setAssignments(Array.isArray(r.assignments) ? r.assignments : []);
   };

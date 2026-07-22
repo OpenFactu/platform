@@ -68,7 +68,7 @@ export const IncidentsTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     // Reportadas por clientes — en paralelo con la lista clásica.
-    logisticsApi.get<any>('/api/logistics/incidents/client-reported')
+    logisticsApi.get('/api/logistics/incidents/client-reported')
       .catch(() => [])
       .then((d) => setClientReported(Array.isArray(d) ? d : []))
       .catch(() => setClientReported([]));

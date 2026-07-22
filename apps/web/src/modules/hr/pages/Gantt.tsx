@@ -92,9 +92,9 @@ export const Gantt: React.FC = () => {
     });
     if (filterProject) params.set('projectId', filterProject);
     const [g, e, p] = await Promise.all([
-      hrApi.get<any>(`/api/hr/tasks/gantt?${params}`),
-      hrApi.get<any>('/api/hr/employees'),
-      hrApi.get<any>('/api/internal-orders').catch(() => []),
+      hrApi.get(`/api/hr/tasks/gantt?${params}`),
+      hrApi.get('/api/hr/employees'),
+      hrApi.get('/api/internal-orders').catch(() => []),
     ]);
     setTasks(g.tasks || []);
     setEmployees(Array.isArray(e) ? e : []);

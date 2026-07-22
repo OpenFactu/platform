@@ -194,7 +194,7 @@ export const UserDashboardWidgets: React.FC = () => {
 
   useEffect(() => {
     if (!user?.tenantId) return;
-    coreApi.get<any>('/api/dashboard-widgets')
+    coreApi.get('/api/dashboard-widgets')
       .catch(() => ([]))
       .then((d) => setWidgets(Array.isArray(d) ? d : []))
       .catch(() => setWidgets([]));

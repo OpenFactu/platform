@@ -29,7 +29,7 @@ export const ReferenceSelect: React.FC<Props> = ({
   useEffect(() => {
     if (!refTable || !token || !user?.tenantId) return;
     const t = setTimeout(() => {
-      coreApi.get<any>(`/api/custom-fields/ref/${refTable}?display=${encodeURIComponent(refDisplayField)}&q=${encodeURIComponent(q)}`)
+      coreApi.get(`/api/custom-fields/ref/${refTable}?display=${encodeURIComponent(refDisplayField)}&q=${encodeURIComponent(q)}`)
         .then((d) => {
           const list = Array.isArray(d) ? d : [];
           setRows(list);

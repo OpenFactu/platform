@@ -53,7 +53,7 @@ export const FiscalSettingsTab: React.FC = () => {
     // mediante /api/config/system/<key> (o similar). Como fallback, cargamos
     // todos via un endpoint dedicado si existe; si no, lo dejamos editable y
     // al guardar se crea/actualiza.
-    coreApi.get<any>('/api/config/fiscal')
+    coreApi.get('/api/config/fiscal')
       .catch(() => (null))
       .then((data) => {
         if (data && typeof data === 'object') setBank((prev) => ({ ...prev, ...data }));

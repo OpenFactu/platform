@@ -91,7 +91,7 @@ const SDNList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`/api/sales/delivery-notes/${id}/pdf`, token || '', user?.tenantId || '');
+      await downloadPdf(`/api/sales/delivery-notes/${id}/pdf`);
     } catch (e: any) {
       toast.error(e.message || 'Error al descargar PDF');
     } finally {

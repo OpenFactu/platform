@@ -59,8 +59,8 @@ export const Objectives: React.FC = () => {
     if (filter.employeeId) params.set('employeeId', filter.employeeId);
     if (filter.status) params.set('status', filter.status);
     const [o, e] = await Promise.all([
-      hrApi.get<any>(`/api/hr/evaluations/objectives/list?${params}`),
-      hrApi.get<any>('/api/hr/employees'),
+      hrApi.get(`/api/hr/evaluations/objectives/list?${params}`),
+      hrApi.get('/api/hr/employees'),
     ]);
     setRows(Array.isArray(o) ? o : []);
     setEmployees(Array.isArray(e) ? e : []);

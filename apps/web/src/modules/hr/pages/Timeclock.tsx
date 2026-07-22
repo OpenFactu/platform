@@ -102,8 +102,8 @@ export const Timeclock: React.FC = () => {
     if (filters.from) params.set('from', filters.from);
     if (filters.to) params.set('to', filters.to + 'T23:59:59');
     const [e, en] = await Promise.all([
-      hrApi.get<any>('/api/hr/employees'),
-      hrApi.get<any>(`/api/hr/timeclock/entries?${params.toString()}`),
+      hrApi.get('/api/hr/employees'),
+      hrApi.get(`/api/hr/timeclock/entries?${params.toString()}`),
     ]);
     setAllEmployees(Array.isArray(e) ? e : []);
     setAllEntries(Array.isArray(en) ? en : []);

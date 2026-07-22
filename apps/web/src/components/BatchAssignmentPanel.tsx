@@ -231,7 +231,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
     if (availableByItem[availabilityKey]) return;
     setLoadingAvail(true);
     const qs = isSale && lineWarehouseId ? `?warehouseId=${lineWarehouseId}` : '';
-    coreApi.get<any>(`/api/items/${selectedItem.id}/batches${qs}`)
+    coreApi.get(`/api/items/${selectedItem.id}/batches${qs}`)
       .then((data: AvailableBatch[]) => {
         setAvailableByItem((prev) => ({
           ...prev,

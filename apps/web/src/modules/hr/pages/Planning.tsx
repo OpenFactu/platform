@@ -133,11 +133,11 @@ export const Planning: React.FC = () => {
       const from = ymd(rangeStart);
       const to = ymd(rangeEnd);
       const [e, t, a, inc, it] = await Promise.all([
-        hrApi.get<any>('/api/hr/employees'),
-        hrApi.get<any>('/api/hr/shift-templates'),
-        hrApi.get<any>(`/api/hr/shift-assignments?from=${from}&to=${to}`),
-        hrApi.get<any>('/api/hr/incidents').catch(() => []),
-        hrApi.get<any>('/api/hr/incident-types').catch(() => []),
+        hrApi.get('/api/hr/employees'),
+        hrApi.get('/api/hr/shift-templates'),
+        hrApi.get(`/api/hr/shift-assignments?from=${from}&to=${to}`),
+        hrApi.get('/api/hr/incidents').catch(() => []),
+        hrApi.get('/api/hr/incident-types').catch(() => []),
       ]);
       setEmployees(Array.isArray(e) ? e : []);
       setTemplates(Array.isArray(t) ? t : []);

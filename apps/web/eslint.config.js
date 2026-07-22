@@ -21,13 +21,13 @@ export default defineConfig([
     },
   },
   {
-    // Migración a cliente central: fetch() solo es legal en src/shared/http.
-    // TODO(modularización): subir a 'error' cuando el grep de fetch llegue a 0.
+    // fetch() solo es legal en src/shared/http: el resto de la app pasa por
+    // apiClient / los adaptadores api/ de cada módulo.
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/shared/http/**'],
     rules: {
       'no-restricted-syntax': [
-        'warn',
+        'error',
         {
           selector:
             "CallExpression[callee.name='fetch'], CallExpression[callee.object.name='window'][callee.property.name='fetch']",

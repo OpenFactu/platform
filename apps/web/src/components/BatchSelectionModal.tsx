@@ -52,7 +52,7 @@ export const BatchSelectionModal: React.FC<Props> = ({
       console.log(
         `[FRONTEND-DIAG] Buscando lotes para Item: ${itemId} | Tenant: ${user?.tenantId}`,
       );
-      coreApi.get<any>(`/api/items/${itemId}/batches`)
+      coreApi.get(`/api/items/${itemId}/batches`)
         .then((data) => {
           console.log(`[FRONTEND-DIAG] Respuesta Recibida:`, data);
           setAvailableBatches(Array.isArray(data) ? data : []);

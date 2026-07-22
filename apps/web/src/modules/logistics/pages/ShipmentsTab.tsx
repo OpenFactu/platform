@@ -160,25 +160,25 @@ export const ShipmentsTab: React.FC = () => {
   // Cargar rutas y almacenes una vez (para filtros + selector pickup_return).
   useEffect(() => {
     if (!user?.tenantId) return;
-    logisticsApi.get<any>('/api/logistics/routes')
+    logisticsApi.get('/api/logistics/routes')
       .catch(() => [])
       .then((d) => setRoutes(Array.isArray(d) ? d : []))
       .catch(() => setRoutes([]));
-    logisticsApi.get<any>('/api/warehouses')
+    logisticsApi.get('/api/warehouses')
       .catch(() => [])
       .then((d) => setWarehouses(Array.isArray(d) ? d : []))
       .catch(() => setWarehouses([]));
-    logisticsApi.get<any>('/api/hr/employees')
+    logisticsApi.get('/api/hr/employees')
       .catch(() => [])
       .then((d) =>
         setEmployees(Array.isArray(d) ? d.filter((e: any) => e.status === 'active') : []),
       )
       .catch(() => setEmployees([]));
-    logisticsApi.get<any>('/api/logistics/vehicles')
+    logisticsApi.get('/api/logistics/vehicles')
       .catch(() => [])
       .then((d) => setVehicles(Array.isArray(d) ? d.filter((v: any) => v.status === 'active') : []))
       .catch(() => setVehicles([]));
-    logisticsApi.get<any>('/api/carriers')
+    logisticsApi.get('/api/carriers')
       .catch(() => [])
       .then((d) => setCarriers(Array.isArray(d) ? d.filter((c: any) => c.isActive !== false) : []))
       .catch(() => setCarriers([]));

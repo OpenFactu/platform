@@ -24,7 +24,7 @@ export const PluginViewRenderer: React.FC<PluginViewRendererProps> = ({
       const fetchData = async () => {
         setLoading(true);
         try {
-          const result = await coreApi.get<any>(config.endpoint);
+          const result = await coreApi.get(config.endpoint);
           // Algunos endpoints de plugins devuelven un objeto, lo envolvemos en array si es necesario
           setData(Array.isArray(result) ? result : [result]);
         } catch (err) {

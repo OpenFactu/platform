@@ -30,7 +30,7 @@ export const UserTableDetail: React.FC = () => {
   useEffect(() => {
     if (isNew || !id || !user?.tenantId) return;
     setLoading(true);
-    coreApi.get<any>(`/api/user-tables/${tblName}/rows/${id}`)
+    coreApi.get(`/api/user-tables/${tblName}/rows/${id}`)
       .then((d) => setValues(d || {}))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps

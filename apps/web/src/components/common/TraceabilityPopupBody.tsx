@@ -51,7 +51,7 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
 
   useEffect(() => {
     setLoading(true);
-    coreApi.get<any>(`/api/document-links?type=${type}&id=${id}`)
+    coreApi.get(`/api/document-links?type=${type}&id=${id}`)
       .then((d) => {
         if (d.error) toast.error(d.error);
         else setData(d);

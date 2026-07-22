@@ -73,10 +73,10 @@ export const Employees: React.FC = () => {
     setLoading(true);
     try {
       const [e, d, c, u] = await Promise.all([
-        hrApi.get<any>('/api/hr/employees'),
-        hrApi.get<any>('/api/hr/departments'),
-        hrApi.get<any>('/api/cost-centers'),
-        hrApi.get<any>('/api/users').catch(() => []),
+        hrApi.get('/api/hr/employees'),
+        hrApi.get('/api/hr/departments'),
+        hrApi.get('/api/cost-centers'),
+        hrApi.get('/api/users').catch(() => []),
       ]);
       setRows(Array.isArray(e) ? e : []);
       setDepartments(Array.isArray(d) ? d : []);

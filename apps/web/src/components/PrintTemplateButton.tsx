@@ -66,7 +66,7 @@ export const PrintTemplateButton: React.FC<Props> = ({
     setDownloading(true);
     try {
       const url = templateId ? `${pdfUrl}?templateId=${encodeURIComponent(templateId)}` : pdfUrl;
-      await downloadPdf(url, token || '', user?.tenantId || '');
+      await downloadPdf(url);
     } catch (e: any) {
       toast.error(e.message || 'Error al descargar PDF');
     } finally {

@@ -52,7 +52,7 @@ const DocumentList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`${config.apiEndpoint}/${id}/pdf`, token || '', user?.tenantId || '');
+      await downloadPdf(`${config.apiEndpoint}/${id}/pdf`);
     } catch (e: any) {
       toast.error(e.message || 'Error al descargar PDF');
     } finally {
@@ -392,7 +392,7 @@ const DocumentDetail: React.FC<{
   const handlePdf = async () => {
     setDownloading(true);
     try {
-      await downloadPdf(`${config.apiEndpoint}/${doc.id}/pdf`, token || '', user?.tenantId || '');
+      await downloadPdf(`${config.apiEndpoint}/${doc.id}/pdf`);
     } catch {
     } finally {
       setDownloading(false);

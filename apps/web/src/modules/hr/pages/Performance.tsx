@@ -50,9 +50,9 @@ export const Performance: React.FC = () => {
     if (filters.employeeId) params.set('employeeId', filters.employeeId);
     if (filters.departmentId) params.set('departmentId', filters.departmentId);
     const [r, e, d] = await Promise.all([
-      hrApi.get<any>(`/api/reports/hr/productivity?${params}`),
-      hrApi.get<any>('/api/hr/employees'),
-      hrApi.get<any>('/api/hr/departments'),
+      hrApi.get(`/api/reports/hr/productivity?${params}`),
+      hrApi.get('/api/hr/employees'),
+      hrApi.get('/api/hr/departments'),
     ]);
     setRows(Array.isArray(r) ? r : []);
     setEmployees(Array.isArray(e) ? e : []);

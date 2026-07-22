@@ -367,7 +367,7 @@ export const Users: React.FC = () => {
 
   const fetchTenants = async () => {
     try {
-      const data = await coreApi.get<any>('/api/auth/tenants');
+      const data = await coreApi.get('/api/auth/tenants');
       if (Array.isArray(data)) setAllTenants(data);
     } catch {}
   };

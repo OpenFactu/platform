@@ -58,7 +58,7 @@ export const RegisterPaymentModal: React.FC<Props> = ({
   useEffect(() => {
     if (!open) return;
     setAmount(String(Math.max(0, remaining).toFixed(2)));
-    coreApi.get<any>('/api/payment-methods')
+    coreApi.get('/api/payment-methods')
       .catch(() => ([]))
       .then((rows: PaymentMethod[]) => {
         setMethods(rows || []);

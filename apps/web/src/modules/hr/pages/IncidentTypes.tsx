@@ -42,7 +42,7 @@ export const IncidentTypes: React.FC = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const d = await hrApi.get<any>('/api/hr/incident-types');
+      const d = await hrApi.get('/api/hr/incident-types');
       setRows(Array.isArray(d) ? d : []);
     } finally {
       setLoading(false);

@@ -56,9 +56,9 @@ export const Incidents: React.FC = () => {
     setLoading(true);
     try {
       const [i, e, t] = await Promise.all([
-        hrApi.get<any>('/api/hr/incidents'),
-        hrApi.get<any>('/api/hr/employees'),
-        hrApi.get<any>('/api/hr/incident-types'),
+        hrApi.get('/api/hr/incidents'),
+        hrApi.get('/api/hr/employees'),
+        hrApi.get('/api/hr/incident-types'),
       ]);
       setRows(Array.isArray(i) ? i : []);
       setEmployees(Array.isArray(e) ? e : []);

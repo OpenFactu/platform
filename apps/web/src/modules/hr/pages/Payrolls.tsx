@@ -58,8 +58,8 @@ export const Payrolls: React.FC = () => {
     setLoading(true);
     try {
       const [p, e] = await Promise.all([
-        hrApi.get<any>('/api/hr/payrolls'),
-        hrApi.get<any>('/api/hr/employees'),
+        hrApi.get('/api/hr/payrolls'),
+        hrApi.get('/api/hr/employees'),
       ]);
       setRows(Array.isArray(p) ? p : []);
       setEmployees(Array.isArray(e) ? e : []);
@@ -92,7 +92,7 @@ export const Payrolls: React.FC = () => {
     if (res.status === 409 && created.existingId) {
       toast.error(created.error || 'Ya existe esa nómina');
       // Abrir directamente la existente para que el usuario la edite.
-      const existing = await hrApi.get<any>(`/api/hr/payrolls/${created.existingId}`)
+      const existing = await hrApi.get(`/api/hr/payrolls/${created.existingId}`)
         .catch(() => null);
       if (existing) {
         setCreating(false);
@@ -109,7 +109,7 @@ export const Payrolls: React.FC = () => {
     //    usando el grossSalary del contrato activo del empleado.
     if (form.autoSalary) {
       try {
-        const contracts = await hrApi.get<any>(`/api/hr/contracts?employeeId=${form.employeeId}`);
+        const contracts = await hrApi.get(`/api/hr/contracts?employeeId=${form.employeeId}`);
         const active =
           (Array.isArray(contracts) ? contracts : []).find((c: any) => c.isActive) ||
           (Array.isArray(contracts) ? contracts[0] : null);
@@ -118,7 +118,7 @@ export const Payrolls: React.FC = () => {
           : 0;
         if (monthlyGross > 0) {
           // Buscar concepto "Salario base" del catálogo o crear línea suelta.
-          const cs = await hrApi.get<any>('/api/hr/payroll-concepts?activeOnly=true');
+          const cs = await hrApi.get('/api/hr/payroll-concepts?activeOnly=true');
           const base = (Array.isArray(cs) ? cs : []).find(
             (c: any) =>
               c.kind === 'devengo' &&
@@ -171,8 +171,8 @@ export const Payrolls: React.FC = () => {
     setLinesLoading(true);
     try {
       const [conceptsR, payrollR] = await Promise.all([
-        hrApi.get<any>('/api/hr/payroll-concepts?activeOnly=true'),
-        hrApi.get<any>(`/api/hr/payrolls/${p.id}`),
+        hrApi.get('/api/hr/payroll-concepts?activeOnly=true'),
+        hrApi.get(`/api/hr/payrolls/${p.id}`),
       ]);
       setConcepts(Array.isArray(conceptsR) ? conceptsR : []);
       setLines(Array.isArray(payrollR.lines) ? payrollR.lines : []);
@@ -183,7 +183,7 @@ export const Payrolls: React.FC = () => {
 
   const refreshLines = async (id: string) => {
     const [d] = await Promise.all([
-      hrApi.get<any>(`/api/hr/payrolls/${id}`),
+      hrApi.get(`/api/hr/payrolls/${id}`),
     ]);
     setLines(Array.isArray(d.lines) ? d.lines : []);
     setEditLines((curr) => (curr ? { ...curr, ...d } : curr));
@@ -418,7 +418,7 @@ export const Payrolls: React.FC = () => {
                   }
                   if (!r.ok) continue;
                   // Salario base del contrato
-                  const cs = await hrApi.get<any>(`/api/hr/contracts?employeeId=${e.id}`).catch(() => []);
+                  const cs = await hrApi.get(`/api/hr/contracts?employeeId=${e.id}`).catch(() => []);
                   const c =
                     (Array.isArray(cs) ? cs : []).find((x: any) => x.isActive) ||
                     (Array.isArray(cs) ? cs[0] : null);

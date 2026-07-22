@@ -47,9 +47,9 @@ export const RoutesTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const [r1, r2, r3] = await Promise.all([
-      logisticsApi.get<any>('/api/logistics/routes'),
-      logisticsApi.get<any>('/api/hr/employees').catch(() => []),
-      logisticsApi.get<any>('/api/logistics/vehicles').catch(() => []),
+      logisticsApi.get('/api/logistics/routes'),
+      logisticsApi.get('/api/hr/employees').catch(() => []),
+      logisticsApi.get('/api/logistics/vehicles').catch(() => []),
     ]);
     setRows(Array.isArray(r1) ? r1 : []);
     setEmployees(Array.isArray(r2) ? r2 : []);

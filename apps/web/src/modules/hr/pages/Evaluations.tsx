@@ -70,9 +70,9 @@ export const Evaluations: React.FC = () => {
 
   const fetchAll = async () => {
     const [c, comp, emps] = await Promise.all([
-      hrApi.get<any>('/api/hr/evaluations/cycles'),
-      hrApi.get<any>('/api/hr/evaluations/competencies'),
-      hrApi.get<any>('/api/hr/employees'),
+      hrApi.get('/api/hr/evaluations/cycles'),
+      hrApi.get('/api/hr/evaluations/competencies'),
+      hrApi.get('/api/hr/employees'),
     ]);
     setCycles(Array.isArray(c) ? c : []);
     setCompetencies(Array.isArray(comp) ? comp : []);

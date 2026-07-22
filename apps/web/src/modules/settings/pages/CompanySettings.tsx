@@ -135,7 +135,7 @@ export const CompanySettings: React.FC = () => {
   useEffect(() => {
     if (!user?.tenantId || !token) return;
     const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user.tenantId || '' };
-    coreApi.get<any>('/api/config/app')
+    coreApi.get('/api/config/app')
       .catch(() => (null))
       .then((d) => {
         if (d) setAppConfig({ publicBaseUrl: d.publicBaseUrl ?? '' });

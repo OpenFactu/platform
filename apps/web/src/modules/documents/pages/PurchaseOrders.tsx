@@ -93,7 +93,7 @@ const POList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`/api/purchases/orders/${id}/pdf`, token || '', user?.tenantId || '');
+      await downloadPdf(`/api/purchases/orders/${id}/pdf`);
     } catch (e: any) {
       toast.error(e.message || 'Error al descargar PDF');
     } finally {

@@ -74,10 +74,10 @@ export const Commissions: React.FC = () => {
 
   const fetchAll = async () => {
     const [r, e, d, c] = await Promise.all([
-      hrApi.get<any>('/api/hr/commissions/rules'),
-      hrApi.get<any>('/api/hr/employees'),
-      hrApi.get<any>('/api/hr/departments'),
-      hrApi.get<any>('/api/hr/payroll-concepts?activeOnly=true'),
+      hrApi.get('/api/hr/commissions/rules'),
+      hrApi.get('/api/hr/employees'),
+      hrApi.get('/api/hr/departments'),
+      hrApi.get('/api/hr/payroll-concepts?activeOnly=true'),
     ]);
     setRules(Array.isArray(r) ? r : []);
     setEmployees(Array.isArray(e) ? e : []);

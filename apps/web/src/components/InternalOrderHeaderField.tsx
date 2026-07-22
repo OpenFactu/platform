@@ -34,7 +34,7 @@ export const InternalOrderHeaderField: React.FC<Props> = ({
 
   useEffect(() => {
     if (!user?.tenantId) return;
-    coreApi.get<any>('/api/internal-orders')
+    coreApi.get('/api/internal-orders')
       .catch(() => ([]))
       .then((d) => setOrders(Array.isArray(d) ? d : []))
       .catch(() => setOrders([]));

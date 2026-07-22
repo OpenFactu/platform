@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { apiClient } from '@/shared/http';
+import { apiClient, ApiError } from '@/shared/http';
+import { authApi } from '@/shared/api';
 
 interface User {
   id: string;
@@ -39,20 +40,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const res = await fetch('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.ok) {
-          const userData = await res.json();
-          setUser(userData);
-        } else {
+        const userData = await authApi.me();
+        setUser(userData);
+      } catch (err) {
+        if (err instanceof ApiError && err.status !== 0) {
           // Token expirado o inválido
           localStorage.removeItem('openfactu_token');
           setToken(null);
+        } else {
+          console.error('Error fetching auth status', err);
         }
-      } catch (err) {
-        console.error('Error fetching auth status', err);
       } finally {
         setLoading(false);
       }
@@ -63,8 +60,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     if (!token) return;
-    const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) setUser(await res.json());
+    try {
+      setUser(await authApi.me());
+    } catch {
+      /* mantener el usuario anterior si falla el refresh */
+    }
   };
 
   const login = (newToken: string, userData: User) => {
@@ -92,19 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const switchTenant = async (tenantId: string) => {
     if (!token) throw new Error('No autenticado');
-    const res = await fetch('/api/auth/switch-tenant', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ tenantId }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Error al cambiar de empresa' }));
-      throw new Error(err.error || 'Error al cambiar de empresa');
-    }
-    const data = await res.json();
+    const data = await authApi.switchTenant(tenantId);
     localStorage.setItem('openfactu_token', data.token);
     setToken(data.token);
     setUser(data.user);

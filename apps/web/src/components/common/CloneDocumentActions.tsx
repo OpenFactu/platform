@@ -18,7 +18,7 @@ interface Props {
 /**
  * Botones de Copiar/Pegar documento. Úsalo en:
  *  - Detalle: `<CloneDocumentActions docType="SINV" doc={invoice} show="copy" />`
- *  - Listado: `<CloneDocumentActions docType="SINV" onPaste={async (p) => { await fetch(...) }} show="paste" />`
+ *  - Listado: `<CloneDocumentActions docType="SINV" onPaste={async (p) => { await docsApi.create(...) }} show="paste" />`
  */
 export const CloneDocumentActions: React.FC<Props> = ({
   docType,

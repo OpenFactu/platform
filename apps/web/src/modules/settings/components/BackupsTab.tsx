@@ -97,7 +97,7 @@ export const BackupsTab: React.FC = () => {
   };
 
   const loadRuns = async (): Promise<BackupRun[]> => {
-    const res = await coreApi.get<any>('/api/backups');
+    const res = await coreApi.get('/api/backups');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const body = res.data;
     const list: BackupRun[] = body.runs || [];

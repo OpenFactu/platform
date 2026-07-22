@@ -81,9 +81,9 @@ export const PreparationTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const [sh, rt, st] = await Promise.all([
-      logisticsApi.get<any>('/api/logistics/shipments').catch(() => []),
-      logisticsApi.get<any>('/api/logistics/routes').catch(() => []),
-      logisticsApi.get<any>('/api/logistics/staging-areas').catch(() => []),
+      logisticsApi.get('/api/logistics/shipments').catch(() => []),
+      logisticsApi.get('/api/logistics/routes').catch(() => []),
+      logisticsApi.get('/api/logistics/staging-areas').catch(() => []),
     ]);
     setShipments(Array.isArray(sh) ? sh : []);
     setRoutes(Array.isArray(rt) ? rt : []);

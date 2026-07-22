@@ -59,7 +59,7 @@ export function useZonesWithStock() {
       inflight.add(key);
       pendingRef.current.add(key);
 
-      coreApi.get<any>(`/api/stock/items/${itemId}/zones-with-stock?warehouseId=${warehouseId}`)
+      coreApi.get(`/api/stock/items/${itemId}/zones-with-stock?warehouseId=${warehouseId}`)
         .catch(() => ([]))
         .then((data) => {
           cache[key] = Array.isArray(data) ? data : [];

@@ -29,7 +29,7 @@ export function useInternalOrderLineColumn(
   useEffect(() => {
     if (cache.orders) return;
     if (!token || !user?.tenantId) return;
-    coreApi.get<any>('/api/internal-orders')
+    coreApi.get('/api/internal-orders')
       .catch(() => ([]))
       .then((d: InternalOrder[]) => {
         const arr = Array.isArray(d) ? d : [];

@@ -72,11 +72,11 @@ export const StagingAreasTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const [r, w, p, it, pl] = await Promise.all([
-      logisticsApi.get<any>('/api/logistics/staging-areas'),
-      logisticsApi.get<any>('/api/warehouses').catch(() => []),
-      logisticsApi.get<any>('/api/partners').catch(() => []),
-      logisticsApi.get<any>('/api/items').catch(() => []),
-      logisticsApi.get<any>('/api/logistics/platforms').catch(() => []),
+      logisticsApi.get('/api/logistics/staging-areas'),
+      logisticsApi.get('/api/warehouses').catch(() => []),
+      logisticsApi.get('/api/partners').catch(() => []),
+      logisticsApi.get('/api/items').catch(() => []),
+      logisticsApi.get('/api/logistics/platforms').catch(() => []),
     ]);
     setRows(Array.isArray(r) ? r : []);
     setWarehouses(Array.isArray(w) ? w : []);

@@ -53,8 +53,8 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
   const load = async () => {
     setLoading(true);
     const [tRes, iRes] = await Promise.all([
-      logisticsApi.get<any>(`/api/logistics/prep/tasks?shipmentId=${shipmentId}`).catch(() => []),
-      logisticsApi.get<any>('/api/items').catch(() => []),
+      logisticsApi.get(`/api/logistics/prep/tasks?shipmentId=${shipmentId}`).catch(() => []),
+      logisticsApi.get('/api/items').catch(() => []),
     ]);
     const tasksList: PickingTask[] = Array.isArray(tRes) ? tRes : [];
     const itemsList: any[] = Array.isArray(iRes) ? iRes : [];

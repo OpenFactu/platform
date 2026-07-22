@@ -30,7 +30,7 @@ export const PluginFields: React.FC<PluginFieldsProps> = ({
   useEffect(() => {
     const fetchFields = async () => {
       try {
-        const data = await coreApi.get<any>(`/api/plugins/fields/${tableName}`);
+        const data = await coreApi.get(`/api/plugins/fields/${tableName}`);
         setFields(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error loading plugin fields:', err);

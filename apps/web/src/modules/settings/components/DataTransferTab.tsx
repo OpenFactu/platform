@@ -39,7 +39,7 @@ export const DataTransferTab: React.FC = () => {
   const [exportTenantId, setExportTenantId] = useState<string>('');
 
   const loadTenants = () =>
-    coreApi.get<any>('/api/tenants/mine')
+    coreApi.get('/api/tenants/mine')
       .then((list) => {
         const arr = Array.isArray(list) ? list : [];
         setTenants(arr);

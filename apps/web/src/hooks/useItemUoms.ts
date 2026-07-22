@@ -58,7 +58,7 @@ export function useItemUoms() {
       inflight.add(itemId);
       pendingRef.current.add(itemId);
 
-      coreApi.get<any>(`/api/items/${itemId}/uoms`)
+      coreApi.get(`/api/items/${itemId}/uoms`)
         .then((data) => {
           cache[itemId] = Array.isArray(data) ? data : [];
           inflight.delete(itemId);

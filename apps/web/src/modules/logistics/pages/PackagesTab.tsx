@@ -38,9 +38,9 @@ export const PackagesTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const [p, i, a] = await Promise.all([
-      logisticsApi.get<any>('/api/logistics/packages'),
-      logisticsApi.get<any>('/api/items').catch(() => []),
-      logisticsApi.get<any>('/api/logistics/staging-areas').catch(() => []),
+      logisticsApi.get('/api/logistics/packages'),
+      logisticsApi.get('/api/items').catch(() => []),
+      logisticsApi.get('/api/logistics/staging-areas').catch(() => []),
     ]);
     setRows(Array.isArray(p) ? p : []);
     const items = Array.isArray(i) ? i : [];

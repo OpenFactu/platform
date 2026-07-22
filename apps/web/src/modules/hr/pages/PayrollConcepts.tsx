@@ -58,7 +58,7 @@ export const PayrollConcepts: React.FC = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const d = await hrApi.get<any>('/api/hr/payroll-concepts');
+      const d = await hrApi.get('/api/hr/payroll-concepts');
       setRows(Array.isArray(d) ? d : []);
     } catch {
       toast.error('Error al cargar conceptos');

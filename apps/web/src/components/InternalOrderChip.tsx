@@ -27,7 +27,7 @@ export const InternalOrderChip: React.FC<Props> = ({ internalOrderId }) => {
     }
     if (allFetched) return;
     if (!token || !user?.tenantId) return;
-    coreApi.get<any>('/api/internal-orders')
+    coreApi.get('/api/internal-orders')
       .catch(() => ([]))
       .then((d: any[]) => {
         for (const io of d) cache.set(io.id, { code: io.code, name: io.name });
