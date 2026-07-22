@@ -69,6 +69,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = (newToken: string, userData: User) => {
     localStorage.setItem('openfactu_token', newToken);
+    // Empujar el token al cliente HTTP ya mismo: si esperamos al useEffect de
+    // más abajo, cualquier otro efecto que dependa de `token` (fetchMe aquí
+    // mismo, notificaciones, user-tables...) puede disparar su petición ANTES
+    // de que apiClient tenga el token nuevo, y le llega un 401 que se
+    // interpreta como "token inválido" — cerrando la sesión recién creada.
+    apiClient.setAuth(newToken, userData.tenantId ?? null);
     setToken(newToken);
     setUser(userData);
   };
@@ -94,6 +100,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!token) throw new Error('No autenticado');
     const data = await authApi.switchTenant(tenantId);
     localStorage.setItem('openfactu_token', data.token);
+    // Mismo motivo que en login(): empujar el token antes de que los efectos
+    // dependientes de `token` disparen sus peticiones.
+    apiClient.setAuth(data.token, data.user.tenantId ?? null);
     setToken(data.token);
     setUser(data.user);
   };
