@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PickingTasksPanel } from './PickingTasksPanel';
-import { RoutePicker } from '../components/RoutePicker';
+import { RoutePicker } from './RoutePicker';
 
 interface Shipment {
   id: string;

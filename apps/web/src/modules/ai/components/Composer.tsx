@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 import { AttachmentThumb } from './AttachmentThumb';
 import { ContextUsageRing } from './ContextUsageRing';
-import { MAX_ATTACHMENTS } from './constants';
-import type { DocumentAttachment } from './useComposerState';
+import { MAX_ATTACHMENTS } from '../domain/constants';
+import type { DocumentAttachment } from '../hooks/useComposerState';
 
 export const Composer: React.FC<{
   input: string;

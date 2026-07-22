@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { User as UserIcon, Bot } from 'lucide-react';
-import { ASSISTANT_NAME } from './constants';
+import { ASSISTANT_NAME } from '../domain/constants';
 import { ProcessSection } from './ProcessSection';
 import { MessageFooter } from './MessageFooter';
 import { SelectionToolbar } from './SelectionToolbar';
 import { isProcessPart, renderMessagePart } from './renderMessagePart';
-import type { AddToolApprovalResponse, ChatMessage } from './types';
+import type { AddToolApprovalResponse, ChatMessage } from '../domain/types';
 
 export const MessageBubble: React.FC<{
   message: ChatMessage;

@@ -37,13 +37,13 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useAiChatContext } from '@/modules/ai/AiChatContext';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
-import { ASSISTANT_NAME } from './constants';
-import { MessageBubble } from './MessageBubble';
-import { Composer } from './Composer';
-import { ConversationSidebar } from './ConversationSidebar';
-import { useComposerState } from './useComposerState';
-import { PendingQuestionBar } from './PendingQuestionBar';
-import { findPendingQuestion } from './pendingQuestion';
+import { ASSISTANT_NAME } from '../domain/constants';
+import { MessageBubble } from '../components/MessageBubble';
+import { Composer } from '../components/Composer';
+import { ConversationSidebar } from '../components/ConversationSidebar';
+import { useComposerState } from '../hooks/useComposerState';
+import { PendingQuestionBar } from '../components/PendingQuestionBar';
+import { findPendingQuestion } from '../domain/pendingQuestion';
 
 /** Sugerencias iniciales del estado vacío — texto + icono representativo. */
 const HERO_SUGGESTIONS: Array<{

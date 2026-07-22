@@ -7,11 +7,11 @@ import { ComponentRenderer } from './ComponentRenderer';
 import { FileDownloadCard } from './FileDownloadCard';
 import { PdfPreviewCard } from './PdfPreviewCard';
 import { AttachedDocumentChip } from './AttachedDocumentChip';
-import { splitAttachedDocuments } from './splitAttachedDocuments';
-import { ACTION_LABELS, TOOL_LABELS } from './constants';
+import { splitAttachedDocuments } from '../domain/splitAttachedDocuments';
+import { ACTION_LABELS, TOOL_LABELS } from '../domain/constants';
 import { ReasoningText } from './ReasoningText';
 import { AttachmentThumb } from './AttachmentThumb';
-import type { AddToolApprovalResponse, ChatMessage, ChatMessagePart } from './types';
+import type { AddToolApprovalResponse, ChatMessage, ChatMessagePart } from '../domain/types';
 
 export const isActionPart = (part: ChatMessagePart): boolean =>
   part.type.startsWith('tool-') && Boolean(ACTION_LABELS[part.type.slice('tool-'.length)]);

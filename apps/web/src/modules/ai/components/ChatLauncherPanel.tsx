@@ -22,12 +22,12 @@ import { Bot, Loader2, Maximize2, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAiChatContext } from '@/modules/ai/AiChatContext';
 import { useTabs } from '@/context/TabsContext';
-import { ASSISTANT_NAME } from '../pages/constants';
-import { MessageBubble } from '../pages/MessageBubble';
-import { Composer } from '../pages/Composer';
-import { useComposerState } from '../pages/useComposerState';
-import { PendingQuestionBar } from '../pages/PendingQuestionBar';
-import { findPendingQuestion } from '../pages/pendingQuestion';
+import { ASSISTANT_NAME } from '../domain/constants';
+import { MessageBubble } from './MessageBubble';
+import { Composer } from './Composer';
+import { useComposerState } from '../hooks/useComposerState';
+import { PendingQuestionBar } from './PendingQuestionBar';
+import { findPendingQuestion } from '../domain/pendingQuestion';
 
 type Corner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
 const CORNER_STORAGE_KEY = 'keirost:chatBubbleCorner';

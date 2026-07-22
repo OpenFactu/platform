@@ -5,7 +5,7 @@ import { staticRoutes } from './RouteRegistry';
 import { TabBridge } from './TabBridge';
 import { PermittedRoute } from './PermittedRoute';
 import { usePlugins } from '../../context/PluginContext';
-import { PluginViewRenderer } from '@/modules/plugins/pages/PluginViewRenderer';
+import { PluginViewRenderer } from '@/modules/plugins/components/PluginViewRenderer';
 
 const MAX_MOUNTED_TABS = 3;
 

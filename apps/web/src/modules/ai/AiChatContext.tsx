@@ -16,7 +16,7 @@ import {
 } from 'ai';
 import { useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
-import { ASSISTANT_NAME } from './pages/constants';
+import { ASSISTANT_NAME } from './domain/constants';
 
 interface AvailableModelsDTO {
   provider: string;

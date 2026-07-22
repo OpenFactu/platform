@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import type { ChatMessageMetadata } from './types';
+import type { ChatMessageMetadata } from '../domain/types';
 
 /**
  * Pie de un mensaje del asistente: tokens usados en el turno (pedido por el

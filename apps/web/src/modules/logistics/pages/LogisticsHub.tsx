@@ -8,14 +8,14 @@ import {
   Building2,
   AlertTriangle,
 } from 'lucide-react';
-import { ShipmentsTab } from './ShipmentsTab';
-import { RoutesTab } from './RoutesTab';
-import { PackagesTab } from './PackagesTab';
-import { StagingAreasTab } from './StagingAreasTab';
-import { VehiclesTab } from './VehiclesTab';
-import { PreparationTab } from './PreparationTab';
-import { PlatformsTab } from './PlatformsTab';
-import { IncidentsTab } from './IncidentsTab';
+import { ShipmentsTab } from '../components/ShipmentsTab';
+import { RoutesTab } from '../components/RoutesTab';
+import { PackagesTab } from '../components/PackagesTab';
+import { StagingAreasTab } from '../components/StagingAreasTab';
+import { VehiclesTab } from '../components/VehiclesTab';
+import { PreparationTab } from '../components/PreparationTab';
+import { PlatformsTab } from '../components/PlatformsTab';
+import { IncidentsTab } from '../components/IncidentsTab';
 
 type Tab =
   | 'shipments'

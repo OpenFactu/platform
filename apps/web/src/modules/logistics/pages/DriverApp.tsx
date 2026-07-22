@@ -18,7 +18,7 @@ import {
   Warehouse,
 } from 'lucide-react';
 import { BarcodeCameraModal } from '@/components/scanner/BarcodeCameraModal';
-import { DeliveryProofModal } from './DeliveryProofModal';
+import { DeliveryProofModal } from '../components/DeliveryProofModal';
 import { Marker, Source, Layer, Popup } from 'react-map-gl/maplibre';
 import { BaseMap, type BaseMapHandle } from '@/components/maps/BaseMap';
 import { useAuth } from '@/context/AuthContext';

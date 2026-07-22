@@ -1,7 +1,7 @@
 import { coreApi } from '@/shared/api';
 import { useEffect, useRef, useState } from 'react';
 import { convertFileListToFileUIParts, type FileUIPart } from 'ai';
-import { MAX_ATTACHMENTS, MAX_ATTACHMENT_MB } from './constants';
+import { MAX_ATTACHMENTS, MAX_ATTACHMENT_MB } from '../domain/constants';
 
 export interface DocumentAttachment {
   filename: string;

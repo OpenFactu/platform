@@ -1,6 +1,6 @@
 import React from 'react';
 import { AskUserQuestionCard } from './AskUserQuestionCard';
-import type { PendingQuestionOutput } from './pendingQuestion';
+import type { PendingQuestionOutput } from '../domain/pendingQuestion';
 
 /**
  * Pregunta de Keiro (ask_user_question) PENDIENTE de responder, fijada justo
