@@ -7,8 +7,6 @@ import { PurchaseDeliveryNotes } from './pages/PurchaseDeliveryNotes';
 import { PurchaseInvoices } from './pages/PurchaseInvoices';
 import Documents from './pages/Documents';
 import { DocumentSeries } from './pages/DocumentSeries';
-import { DocumentTemplates } from './pages/DocumentTemplates';
-import { DocumentTemplateDesigner } from './pages/DocumentTemplateDesigner';
 
 /**
  * Motor de documentos (ventas + compras). Un solo módulo es dueño de las
@@ -104,27 +102,13 @@ export const documentsModule: ModuleManifest = {
         permissionPath: '/documents',
       }),
     ),
-    // Series y plantillas
+    // Series de numeración
     {
       pattern: '/document-series',
       Component: DocumentSeries,
       title: 'Series Doc.',
       iconName: 'FileDigit',
       permissionPath: '/document-series',
-    },
-    {
-      pattern: '/document-templates',
-      Component: DocumentTemplates,
-      title: 'Plantillas PDF',
-      iconName: 'FileCode',
-      permissionPath: '/document-templates',
-    },
-    {
-      pattern: '/document-templates/:id/designer',
-      Component: DocumentTemplateDesigner,
-      title: 'Diseñador de plantilla',
-      iconName: 'FileCode',
-      permissionPath: '/document-templates',
     },
   ],
 };

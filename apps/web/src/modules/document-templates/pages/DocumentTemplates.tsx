@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
-import { TemplateEditor } from '../components/document-templates/TemplateEditor';
-import { TemplatesList } from '../components/document-templates/TemplatesList';
-import { DocumentGeneratorModal } from '../components/document-templates/DocumentGeneratorModal';
-import { AiTemplateGeneratorModal } from '../components/document-templates/AiTemplateGeneratorModal';
-import type { TemplateRow } from '../components/document-templates/constants';
+import { TemplateEditor } from '../components/TemplateEditor';
+import { TemplatesList } from '../components/TemplatesList';
+import { DocumentGeneratorModal } from '../components/DocumentGeneratorModal';
+import { AiTemplateGeneratorModal } from '../components/AiTemplateGeneratorModal';
+import type { TemplateRow } from '../components/constants';
 import { templatesApi } from '../api';
 
 export const DocumentTemplates: React.FC = () => {

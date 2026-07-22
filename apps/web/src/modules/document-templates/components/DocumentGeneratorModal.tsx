@@ -12,7 +12,7 @@ import { FileDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { CanvasLayout, ParamDef } from './canvas/types';
 import { resolveInputParams } from './canvas/params';
-import { templatesApi } from '../../api';
+import { templatesApi } from '../api';
 
 interface Props {
   templateId: string;

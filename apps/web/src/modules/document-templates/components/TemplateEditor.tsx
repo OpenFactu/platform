@@ -19,7 +19,7 @@ import { FieldExplorer } from './FieldExplorer';
 import { compileCanvas } from './canvas/compileCanvas';
 import { buildSimpleLabelLayout, defaultSimpleArticleSettings } from './canvas/buildSimpleLabel';
 import { createEmptyLayout, type CanvasLayout } from './canvas/types';
-import { templatesApi } from '../../api';
+import { templatesApi } from '../api';
 
 /**
  * Layout-semilla para una plantilla nueva sin documento ligado:

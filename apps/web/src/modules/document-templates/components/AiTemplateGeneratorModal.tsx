@@ -13,7 +13,7 @@ import { Modal, Button, Input, Badge, SearchableSelect, useToast } from '@openfa
 import { Sparkles, Save, AlertTriangle, Loader2 } from 'lucide-react';
 import { DOC_TYPE_OPTIONS, type DocType } from './constants';
 import { useAuth } from '@/context/AuthContext';
-import { templatesApi } from '../../api';
+import { templatesApi } from '../api';
 
 interface GeneratedResult {
   html: string;

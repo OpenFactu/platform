@@ -13,7 +13,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Editor, { type OnMount, type BeforeMount } from '@monaco-editor/react';
-import { templatesApi } from '../../api';
+import { templatesApi } from '../api';
 
 interface SchemaTable {
   schema: string;

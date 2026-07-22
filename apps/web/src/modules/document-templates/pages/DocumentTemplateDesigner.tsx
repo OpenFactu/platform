@@ -36,20 +36,20 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { Band, BandKind, CanvasElement, CanvasLayout, createDocumentLabelLayout, createEmptyLayout, createLabelLayout, ElementKind, ElementStyle, LinesTableColumn, LinesTableElement, PAGE_SIZE_LABELS, ParamDef, PageSize, resolvePageDimensions } from '../components/document-templates/canvas/types';
+import { Band, BandKind, CanvasElement, CanvasLayout, createDocumentLabelLayout, createEmptyLayout, createLabelLayout, ElementKind, ElementStyle, LinesTableColumn, LinesTableElement, PAGE_SIZE_LABELS, ParamDef, PageSize, resolvePageDimensions } from '../components/canvas/types';
 import { useAuth } from '@/context/AuthContext';
-import { TemplateRow } from '../components/document-templates/constants';
-import { buildSimpleLabelLayout, defaultSimpleArticleSettings } from '../components/document-templates/canvas/buildSimpleLabel';
-import { compileCanvas } from '../components/document-templates/canvas/compileCanvas';
-import { usePluginFields } from '../components/document-templates/canvas/usePluginFields';
-import { useQueryFields } from '../components/document-templates/canvas/useQueryFields';
+import { TemplateRow } from '../components/constants';
+import { buildSimpleLabelLayout, defaultSimpleArticleSettings } from '../components/canvas/buildSimpleLabel';
+import { compileCanvas } from '../components/canvas/compileCanvas';
+import { usePluginFields } from '../components/canvas/usePluginFields';
+import { useQueryFields } from '../components/canvas/useQueryFields';
 import { ContextMenu, ContextMenuItem } from '@/components/common/ContextMenu';
-import { CssEditorModal } from '../components/document-templates/canvas/CssEditorModal';
-import { ImportFromTemplateDialog } from '../components/document-templates/canvas/ImportFromTemplateDialog';
-import { SimpleLabelEditor } from '../components/document-templates/SimpleLabelEditor';
-import { FieldDef, FieldGroup, getFieldGroupsForFieldElement, getLineFieldGroup, inferDefaultFormat } from '../components/document-templates/canvas/fieldRegistry';
-import { extractPlaceholders } from '../components/document-templates/canvas/params';
-import { SqlEditorModal } from '../components/document-templates/SqlEditorModal';
+import { CssEditorModal } from '../components/canvas/CssEditorModal';
+import { ImportFromTemplateDialog } from '../components/canvas/ImportFromTemplateDialog';
+import { SimpleLabelEditor } from '../components/SimpleLabelEditor';
+import { FieldDef, FieldGroup, getFieldGroupsForFieldElement, getLineFieldGroup, inferDefaultFormat } from '../components/canvas/fieldRegistry';
+import { extractPlaceholders } from '../components/canvas/params';
+import { SqlEditorModal } from '../components/SqlEditorModal';
 import { templatesApi } from '../api';
 
 

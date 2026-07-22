@@ -1,4 +1,4 @@
-import { templatesApi } from '../../../api';
+import { templatesApi } from '../../api';
 import React, { useEffect, useState } from 'react';
 import type { TemplateRow } from '../constants';
 

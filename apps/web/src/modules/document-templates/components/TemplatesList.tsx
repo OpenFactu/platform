@@ -17,7 +17,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
-import { templatesApi } from '../../api';
+import { templatesApi } from '../api';
 
 interface Props {
   data: TemplateRow[];

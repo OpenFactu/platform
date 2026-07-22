@@ -1,4 +1,4 @@
-import { templatesApi } from '../../api';
+import { templatesApi } from '../api';
 import { useEffect, useRef, useState } from 'react';
 import type { DocType } from './constants';
 

@@ -1,4 +1,4 @@
-import { templatesApi } from '../../../api';
+import { templatesApi } from '../../api';
 import { useEffect, useState } from 'react';
 import type { FieldDef, FieldGroup } from './fieldRegistry';
 import type { CanvasLayout } from './types';
