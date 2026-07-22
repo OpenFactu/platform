@@ -1,3 +1,4 @@
+import { logisticsApi } from '../api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Loader, Badge, useToast } from '@openfactu/ui';
 import {
@@ -10,8 +11,8 @@ import {
   Printer,
   Tag,
 } from 'lucide-react';
-import { RowActionsMenu } from '../../components/logistics/RowActionsMenu';
-import { useAuth } from '../../context/AuthContext';
+import { RowActionsMenu } from '../components/RowActionsMenu';
+import { useAuth } from '@/context/AuthContext';
 
 interface StagingArea {
   id: string;
@@ -68,20 +69,14 @@ export const StagingAreasTab: React.FC = () => {
   const [newItemId, setNewItemId] = useState('');
   const [newItemQty, setNewItemQty] = useState<string>('');
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const load = async () => {
     setLoading(true);
     const [r, w, p, it, pl] = await Promise.all([
-      fetch('/api/logistics/staging-areas', { headers }).then((r) => r.json()),
-      fetch('/api/warehouses', { headers }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/partners', { headers }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/items', { headers }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/logistics/platforms', { headers }).then((r) => (r.ok ? r.json() : [])),
+      logisticsApi.get<any>('/api/logistics/staging-areas'),
+      logisticsApi.get<any>('/api/warehouses').catch(() => []),
+      logisticsApi.get<any>('/api/partners').catch(() => []),
+      logisticsApi.get<any>('/api/items').catch(() => []),
+      logisticsApi.get<any>('/api/logistics/platforms').catch(() => []),
     ]);
     setRows(Array.isArray(r) ? r : []);
     setWarehouses(Array.isArray(w) ? w : []);
@@ -114,8 +109,8 @@ export const StagingAreasTab: React.FC = () => {
       ? `/api/logistics/staging-areas/${editing.id}`
       : '/api/logistics/staging-areas';
     const method = editing ? 'PATCH' : 'POST';
-    const res = await fetch(url, { method, headers, body: JSON.stringify(form) });
-    const d = await res.json();
+    const res = await logisticsApi.raw(method, url, form);
+    const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error');
       return;
@@ -128,22 +123,20 @@ export const StagingAreasTab: React.FC = () => {
 
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar acopio?')) return;
-    await fetch(`/api/logistics/staging-areas/${id}`, { method: 'DELETE', headers });
+    await logisticsApi.raw('DELETE', `/api/logistics/staging-areas/${id}`);
     load();
   };
 
   const openQr = async (area: StagingArea) => {
-    // Fetch autenticado (el <img> no enviaría headers) → blob URL.
-    const [payloadRes, qrRes] = await Promise.all([
-      fetch(`/api/logistics/staging-areas/${area.id}/payload`, { headers }),
-      fetch(`/api/logistics/staging-areas/${area.id}/qr.png`, { headers }),
-    ]);
-    const payload = payloadRes.ok ? await payloadRes.json() : {};
+    // Petición autenticada (el <img> no enviaría headers) → blob URL.
+    const payload = await logisticsApi
+      .get<any>(`/api/logistics/staging-areas/${area.id}/payload`)
+      .catch(() => ({}));
     let imgUrl: string | null = null;
-    if (qrRes.ok) {
-      const blob = await qrRes.blob();
+    try {
+      const { blob } = await logisticsApi.getBlob(`/api/logistics/staging-areas/${area.id}/qr.png`);
       imgUrl = URL.createObjectURL(blob);
-    } else {
+    } catch {
       toast.error('No se pudo cargar el QR');
     }
     setQrFor({ id: area.id, name: area.name, payload, imgUrl });
@@ -155,12 +148,12 @@ export const StagingAreasTab: React.FC = () => {
    * backend (mismo que alimenta el QR) para no tocar la API.
    */
   const openPackingList = async (area: StagingArea) => {
-    const payloadRes = await fetch(`/api/logistics/staging-areas/${area.id}/payload`, { headers });
+    const payloadRes = await logisticsApi.raw('GET', `/api/logistics/staging-areas/${area.id}/payload`);
     if (!payloadRes.ok) {
       toast.error('No se pudo cargar el acopio');
       return;
     }
-    const p = await payloadRes.json();
+    const p = payloadRes.data;
     const w = window.open('', '_blank');
     if (!w) {
       toast.error('El navegador bloqueó la ventana emergente');
@@ -279,12 +272,12 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
    * en ruta y la app le muestra quién la va a recibir.
    */
   const openPackageLabels = async (area: StagingArea, perPage: 1 | 4 = 4) => {
-    const r = await fetch(`/api/logistics/staging-areas/${area.id}/payload`, { headers });
+    const r = await logisticsApi.raw('GET', `/api/logistics/staging-areas/${area.id}/payload`);
     if (!r.ok) {
       toast.error('No se pudo cargar el acopio');
       return;
     }
-    const p = await r.json();
+    const p = r.data;
     const pkgs = (p.packages || []) as any[];
     if (pkgs.length === 0) {
       toast.error('Este acopio no tiene paquetes');
@@ -407,8 +400,8 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
 
   const openItems = async (area: StagingArea) => {
     setItemsFor(area);
-    const r = await fetch(`/api/logistics/staging-areas/${area.id}/items`, { headers });
-    const list = await r.json();
+    const r = await logisticsApi.raw('GET', `/api/logistics/staging-areas/${area.id}/items`);
+    const list = r.data;
     setAreaItems(Array.isArray(list) ? list : []);
     setNewItemId('');
     setNewItemQty('');
@@ -418,8 +411,8 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
     setPkgsFor(area);
     // Filtramos client-side: no hay endpoint específico, pero GET /packages
     // devuelve todos — filtramos por stagingAreaId.
-    const r = await fetch('/api/logistics/packages', { headers });
-    const list = r.ok ? await r.json() : [];
+    const r = await logisticsApi.raw('GET', '/api/logistics/packages');
+    const list = r.ok ? r.data : [];
     setAreaPackages(
       (Array.isArray(list) ? list : []).filter((p: any) => p.stagingAreaId === area.id),
     );
@@ -435,15 +428,11 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
 
   const addItem = async () => {
     if (!itemsFor || !newItemId) return;
-    const res = await fetch(`/api/logistics/staging-areas/${itemsFor.id}/items`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
+    const res = await logisticsApi.raw('POST', `/api/logistics/staging-areas/${itemsFor.id}/items`, {
         itemId: newItemId,
         expectedQty: newItemQty === '' ? null : Number(newItemQty),
-      }),
-    });
-    const d = await res.json();
+      });
+    const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error');
       return;
@@ -451,16 +440,13 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
     toast.success('Artículo añadido');
     setNewItemId('');
     setNewItemQty('');
-    const r = await fetch(`/api/logistics/staging-areas/${itemsFor.id}/items`, { headers });
-    setAreaItems(await r.json());
+    const r = await logisticsApi.raw('GET', `/api/logistics/staging-areas/${itemsFor.id}/items`);
+    setAreaItems(r.data);
   };
 
   const removeItem = async (rowId: string) => {
     if (!itemsFor) return;
-    await fetch(`/api/logistics/staging-areas/${itemsFor.id}/items/${rowId}`, {
-      method: 'DELETE',
-      headers,
-    });
+    await logisticsApi.raw('DELETE', `/api/logistics/staging-areas/${itemsFor.id}/items/${rowId}`);
     setAreaItems((xs) => xs.filter((x) => x.id !== rowId));
   };
 

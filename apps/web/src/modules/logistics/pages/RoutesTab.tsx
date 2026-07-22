@@ -1,8 +1,9 @@
+import { logisticsApi } from '../api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
-import { RouteMapPlanner } from '../../components/logistics/RouteMapPlanner';
-import { useAuth } from '../../context/AuthContext';
+import { RouteMapPlanner } from '../components/RouteMapPlanner';
+import { useAuth } from '@/context/AuthContext';
 
 interface Route {
   id: string;
@@ -43,18 +44,12 @@ export const RoutesTab: React.FC = () => {
   const [form, setForm] = useState<any>({});
   const [plannerIds, setPlannerIds] = useState<string[]>([]);
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const load = async () => {
     setLoading(true);
     const [r1, r2, r3] = await Promise.all([
-      fetch('/api/logistics/routes', { headers }).then((r) => r.json()),
-      fetch('/api/hr/employees', { headers }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/logistics/vehicles', { headers }).then((r) => (r.ok ? r.json() : [])),
+      logisticsApi.get<any>('/api/logistics/routes'),
+      logisticsApi.get<any>('/api/hr/employees').catch(() => []),
+      logisticsApi.get<any>('/api/logistics/vehicles').catch(() => []),
     ]);
     setRows(Array.isArray(r1) ? r1 : []);
     setEmployees(Array.isArray(r2) ? r2 : []);
@@ -86,8 +81,8 @@ export const RoutesTab: React.FC = () => {
     }
     const url = editing ? `/api/logistics/routes/${editing.id}` : '/api/logistics/routes';
     const method = editing ? 'PATCH' : 'POST';
-    const res = await fetch(url, { method, headers, body: JSON.stringify(form) });
-    const d = await res.json();
+    const res = await logisticsApi.raw(method, url, form);
+    const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error');
       return;
@@ -96,8 +91,8 @@ export const RoutesTab: React.FC = () => {
     // Al crear una ruta nueva, insertamos las paradas del planner respetando el orden.
     if (!editing && plannerIds.length > 0) {
       const routeId = d.id as string;
-      const shipRes = await fetch('/api/logistics/shipments/unrouted', { headers });
-      const shipments = shipRes.ok ? await shipRes.json() : [];
+      const shipRes = await logisticsApi.raw('GET', '/api/logistics/shipments/unrouted');
+      const shipments = shipRes.ok ? shipRes.data : [];
       const byId = new Map<string, any>(
         Array.isArray(shipments) ? shipments.map((s: any) => [s.id, s]) : [],
       );
@@ -105,17 +100,13 @@ export const RoutesTab: React.FC = () => {
       for (let i = 0; i < plannerIds.length; i++) {
         const s = byId.get(plannerIds[i]);
         if (!s) continue;
-        await fetch(`/api/logistics/routes/${routeId}/stops`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
+        await logisticsApi.raw('POST', `/api/logistics/routes/${routeId}/stops`, {
             sequence: i + 1,
             shipmentId: s.id,
             address: s.destinationAddress,
             lat: s.destinationLat,
             lng: s.destinationLng,
-          }),
-        });
+          });
       }
     }
 
@@ -126,7 +117,7 @@ export const RoutesTab: React.FC = () => {
 
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar ruta? También sus paradas.')) return;
-    await fetch(`/api/logistics/routes/${id}`, { method: 'DELETE', headers });
+    await logisticsApi.raw('DELETE', `/api/logistics/routes/${id}`);
     load();
   };
 

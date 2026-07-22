@@ -1,3 +1,4 @@
+import { logisticsApi } from '../api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Button, Badge, Loader, Modal, Input, useToast } from '@openfactu/ui';
@@ -11,12 +12,12 @@ import {
   MoreVertical,
 } from 'lucide-react';
 import { Marker, Source, Layer, type MapLayerMouseEvent } from 'react-map-gl/maplibre';
-import { BaseMap, type BaseMapHandle } from '../../components/maps/BaseMap';
-import { MapSearchBox } from '../../components/maps/MapSearchBox';
-import { useAuth } from '../../context/AuthContext';
-import { useTabs } from '../../context/TabsContext';
-import { useFormat } from '../../hooks/useFormat';
-import { useRealtimeEvents } from '../../hooks/useRealtimeEvents';
+import { BaseMap, type BaseMapHandle } from '@/components/maps/BaseMap';
+import { MapSearchBox } from '@/components/maps/MapSearchBox';
+import { useAuth } from '@/context/AuthContext';
+import { useTabs } from '@/context/TabsContext';
+import { useFormat } from '@/hooks/useFormat';
+import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
 
 export const ShipmentDetail: React.FC = () => {
   const { id } = useParams();
@@ -41,22 +42,17 @@ export const ShipmentDetail: React.FC = () => {
   );
   const [warehouses, setWarehouses] = useState<any[]>([]);
 
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const load = async () => {
     if (!id) return;
     setLoading(true);
     const [sRes, pRes, eRes] = await Promise.all([
-      fetch(`/api/logistics/shipments/${id}`, { headers }),
-      fetch(`/api/logistics/shipments/${id}/positions`, { headers }),
-      fetch(`/api/logistics/shipments/${id}/events`, { headers }),
+      logisticsApi.raw('GET', `/api/logistics/shipments/${id}`),
+      logisticsApi.raw('GET', `/api/logistics/shipments/${id}/positions`),
+      logisticsApi.raw('GET', `/api/logistics/shipments/${id}/events`),
     ]);
-    const s = sRes.ok ? await sRes.json() : null;
-    const p = pRes.ok ? await pRes.json() : [];
-    const e = eRes.ok ? await eRes.json() : [];
+    const s = sRes.ok ? sRes.data : null;
+    const p = pRes.ok ? pRes.data : [];
+    const e = eRes.ok ? eRes.data : [];
     // Un endpoint puede devolver `{error:...}` con 200 — si no hay `id`, no es válido.
     setShipment(s && typeof s === 'object' && s.id ? s : null);
     setPositions(Array.isArray(p) ? p : []);
@@ -137,16 +133,12 @@ export const ShipmentDetail: React.FC = () => {
   const submitCancel = async () => {
     if (!id || !cancelModal) return;
     const { reason, cancelDn } = cancelModal;
-    const r = await fetch(`/api/logistics/shipments/${id}/cancel`, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${id}/cancel`, {
         reason: reason.trim() || null,
         cancelDeliveryNote: cancelDn,
-      }),
-    });
+      });
     if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
+      const d = (r.data ?? {});
       toast.error(d.error || 'No se pudo cancelar');
       return;
     }
@@ -159,8 +151,8 @@ export const ShipmentDetail: React.FC = () => {
   const openPickupModal = async () => {
     setPickupModal({ reason: '', warehouseId: '' });
     try {
-      const r = await fetch('/api/warehouses', { headers });
-      const d = r.ok ? await r.json() : [];
+      const r = await logisticsApi.raw('GET', '/api/warehouses');
+      const d = r.ok ? r.data : [];
       setWarehouses(Array.isArray(d) ? d : []);
     } catch {
       setWarehouses([]);
@@ -170,15 +162,11 @@ export const ShipmentDetail: React.FC = () => {
   /** Crea el envío pickup_return desde este envío. */
   const submitPickup = async () => {
     if (!id || !pickupModal) return;
-    const r = await fetch(`/api/logistics/shipments/${id}/schedule-pickup`, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${id}/schedule-pickup`, {
         reason: pickupModal.reason.trim() || null,
         warehouseId: pickupModal.warehouseId || null,
-      }),
-    });
-    const d = await r.json().catch(() => ({}));
+      });
+    const d = (r.data ?? {});
     if (r.ok) {
       toast.success(
         `Recogida ${d.code || ''} programada — añádela a una ruta desde el planificador`,
@@ -194,20 +182,16 @@ export const ShipmentDetail: React.FC = () => {
   const submitReturn = async () => {
     if (!id || !returnModal) return;
     const { reason, cancelDn } = returnModal;
-    const r = await fetch(`/api/logistics/shipments/${id}/return`, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${id}/return`, {
         reason: reason.trim() || null,
         cancelDeliveryNote: cancelDn,
-      }),
-    });
+      });
     if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
+      const d = (r.data ?? {});
       toast.error(d.error || 'No se pudo marcar como devuelto');
       return;
     }
-    const d = await r.json().catch(() => ({}));
+    const d = (r.data ?? {});
     setReturnModal(null);
     toast.success(
       d.deliveryNoteCancelled
@@ -223,13 +207,9 @@ export const ShipmentDetail: React.FC = () => {
   const sendTestNotification = async () => {
     if (!id) return;
     const stage = shipment?.status || 'in_transit';
-    const r = await fetch(`/api/logistics/shipments/${id}/notify`, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stage }),
-    });
+    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${id}/notify`, { stage });
     if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
+      const d = (r.data ?? {});
       toast.error(`Error: ${d.error || r.status}`);
       return;
     }
@@ -239,11 +219,7 @@ export const ShipmentDetail: React.FC = () => {
   /** Actualiza las coordenadas de destino del envío tras arrastrar el pin. */
   const saveDestination = async (lat: number, lng: number) => {
     if (!id) return;
-    const r = await fetch(`/api/logistics/shipments/${id}`, {
-      method: 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ destinationLat: lat, destinationLng: lng }),
-    });
+    const r = await logisticsApi.raw('PATCH', `/api/logistics/shipments/${id}`, { destinationLat: lat, destinationLng: lng });
     if (r.ok) {
       setShipment((prev: any) =>
         prev ? { ...prev, destinationLat: lat, destinationLng: lng } : prev,

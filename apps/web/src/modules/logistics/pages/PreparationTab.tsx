@@ -2,6 +2,7 @@
  * Preparación — gestor de shipments en estados `picking|packed|ready|receiving|received`.
  * Permite abrir el panel de tareas, empaquetar, marcar listo y asignar a una ruta.
  */
+import { logisticsApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge, Loader, Modal, useToast } from '@openfactu/ui';
 import {
@@ -12,9 +13,9 @@ import {
   ChevronRight,
   Warehouse,
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { PickingTasksPanel } from './PickingTasksPanel';
-import { RoutePicker } from '../../components/logistics/RoutePicker';
+import { RoutePicker } from '../components/RoutePicker';
 
 interface Shipment {
   id: string;
@@ -77,18 +78,12 @@ export const PreparationTab: React.FC = () => {
   const [showStaging, setShowStaging] = useState<Shipment | null>(null);
   const [stagingAreaId, setStagingAreaId] = useState('');
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const load = async () => {
     setLoading(true);
     const [sh, rt, st] = await Promise.all([
-      fetch('/api/logistics/shipments', { headers }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/logistics/routes', { headers }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/logistics/staging-areas', { headers }).then((r) => (r.ok ? r.json() : [])),
+      logisticsApi.get<any>('/api/logistics/shipments').catch(() => []),
+      logisticsApi.get<any>('/api/logistics/routes').catch(() => []),
+      logisticsApi.get<any>('/api/logistics/staging-areas').catch(() => []),
     ]);
     setShipments(Array.isArray(sh) ? sh : []);
     setRoutes(Array.isArray(rt) ? rt : []);
@@ -109,12 +104,8 @@ export const PreparationTab: React.FC = () => {
   );
 
   const act = async (url: string, body?: any) => {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const d = await res.json().catch(() => ({}));
+    const res = await logisticsApi.raw('POST', url);
+    const d = (res.data ?? {});
     if (!res.ok) {
       toast.error(d.error || 'Error');
       return false;
@@ -152,12 +143,8 @@ export const PreparationTab: React.FC = () => {
 
   const sendToStaging = async () => {
     if (!showStaging || !stagingAreaId) return;
-    const res = await fetch(`/api/logistics/shipments/${showStaging.id}/to-staging`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ stagingAreaId }),
-    });
-    const d = await res.json();
+    const res = await logisticsApi.raw('POST', `/api/logistics/shipments/${showStaging.id}/to-staging`, { stagingAreaId });
+    const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error');
       return;

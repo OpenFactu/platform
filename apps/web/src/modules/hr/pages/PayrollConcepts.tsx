@@ -81,7 +81,7 @@ export const PayrollConcepts: React.FC = () => {
     const isNew = !editing.id;
     const url = isNew ? '/api/hr/payroll-concepts' : `/api/hr/payroll-concepts/${editing.id}`;
     const method = isNew ? 'POST' : 'PATCH';
-    const res = await hrApi.raw('GET', url, editing);
+    const res = await hrApi.raw(method, url, editing);
     const data = res.data;
     if (!res.ok) {
       toast.error(data.error || 'Error al guardar');

@@ -6,7 +6,6 @@ import { StyleGuide } from '@/pages/StyleGuide';
 import { PluginManager } from '@/pages/PluginManager';
 import { Users } from '@/pages/Users';
 import { PriceLists } from '@/pages/PriceLists';
-import { CarriersSettings } from '@/pages/settings/CarriersSettings';
 import { WebhooksSettings } from '@/pages/settings/WebhooksSettings';
 import { UserProfile } from '@/pages/UserProfile';
 import { AuditLogs } from '@/pages/AuditLogs';
@@ -18,9 +17,6 @@ import { ServerCockpit } from '@/pages/ServerCockpit';
 import { CustomFields } from '@/pages/CustomFields';
 import { DashboardWidgets } from '@/pages/DashboardWidgets';
 import { Automations } from '@/pages/Automations';
-import { LogisticsHub } from '@/pages/logistics/LogisticsHub';
-import { ShipmentDetail } from '@/pages/logistics/ShipmentDetail';
-import { DriverApp } from '@/pages/logistics/DriverApp';
 import { UserTableList } from '@/pages/user-tables/UserTableList';
 import { UserTableDetail } from '@/pages/user-tables/UserTableDetail';
 import { AiChat } from '@/pages/AiChat';
@@ -68,13 +64,6 @@ const legacyRoutes: RouteEntry[] = [
     title: 'Tarifas',
     iconName: 'Zap',
     permissionPath: '/pricelists',
-  },
-  {
-    pattern: '/settings/carriers',
-    Component: CarriersSettings,
-    title: 'Transportistas',
-    iconName: 'Truck',
-    permissionPath: '/settings/carriers',
   },
   {
     pattern: '/settings/webhooks',
@@ -137,26 +126,6 @@ const legacyRoutes: RouteEntry[] = [
     title: 'Automatizaciones',
     iconName: 'Zap',
     permissionPath: '/automations',
-  },
-  {
-    pattern: '/logistics',
-    Component: LogisticsHub,
-    title: 'Logística',
-    iconName: 'Truck',
-    permissionPath: '/logistics',
-  },
-  {
-    pattern: '/logistics/shipments/:id',
-    Component: ShipmentDetail,
-    title: 'Envío',
-    iconName: 'Truck',
-    permissionPath: '/logistics',
-  },
-  {
-    pattern: '/driver',
-    Component: DriverApp,
-    title: 'Mi ruta',
-    iconName: 'Navigation',
   },
   {
     pattern: '/u/:name',

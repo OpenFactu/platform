@@ -283,7 +283,7 @@ export const Planning: React.FC = () => {
     };
     const url =
       modal.kind === 'edit' ? `/api/hr/shift-assignments/${modal.id}` : '/api/hr/shift-assignments';
-    const r = await hrApi.raw('GET', url, body);
+    const r = await hrApi.raw(modal.kind === 'edit' ? 'PATCH' : 'POST', url, body);
     if (!r.ok) {
       const d = (r.data ?? {});
       toast.error(d.error || 'Error');

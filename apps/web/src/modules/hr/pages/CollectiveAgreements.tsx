@@ -61,7 +61,7 @@ export const CollectiveAgreements: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await hrApi.raw('GET', isNew ? '/api/hr/collective-agreements' : `/api/hr/collective-agreements/${editing.id}`, editing);
+    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/collective-agreements' : `/api/hr/collective-agreements/${editing.id}`, editing);
     if (!r.ok) {
       const d = r.data;
       toast.error(d.error || 'Error');

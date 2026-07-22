@@ -76,7 +76,7 @@ export const Objectives: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await hrApi.raw('GET', isNew ? '/api/hr/evaluations/objectives' : `/api/hr/evaluations/objectives/${editing.id}`, editing);
+    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/evaluations/objectives' : `/api/hr/evaluations/objectives/${editing.id}`, editing);
     if (!r.ok) {
       const d = r.data;
       toast.error(d.error || 'Error');

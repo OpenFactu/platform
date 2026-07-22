@@ -45,7 +45,7 @@ export const Kiosks: React.FC = () => {
     e.preventDefault();
     if (!editing?.name) return;
     const isNew = !editing.id;
-    const r = await hrApi.raw('GET', isNew ? '/api/hr/kiosks' : `/api/hr/kiosks/${editing.id}`, editing);
+    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/kiosks' : `/api/hr/kiosks/${editing.id}`, editing);
     if (!r.ok) return;
     setEditing(null);
     fetchAll();

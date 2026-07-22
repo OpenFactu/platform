@@ -1,11 +1,12 @@
+import { logisticsApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, MapPin, Search, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useTabs } from '../../context/TabsContext';
-import { useFormat } from '../../hooks/useFormat';
-import { RoutePicker } from '../../components/logistics/RoutePicker';
-import { MapSearchBox } from '../../components/maps/MapSearchBox';
+import { useAuth } from '@/context/AuthContext';
+import { useTabs } from '@/context/TabsContext';
+import { useFormat } from '@/hooks/useFormat';
+import { RoutePicker } from '../components/RoutePicker';
+import { MapSearchBox } from '@/components/maps/MapSearchBox';
 
 interface Shipment {
   id: string;
@@ -120,15 +121,6 @@ export const ShipmentsTab: React.FC = () => {
   // Modo del select de transportista: propio | <code> | __custom__
   const [carrierMode, setCarrierMode] = useState<string>('propio');
 
-  const headers = useMemo(
-    () => ({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      'x-tenant-id': user?.tenantId || '',
-    }),
-    [token, user?.tenantId],
-  );
-
   // Debounce: al teclear `q`, espera 300ms antes de pedir.
   const [debouncedQ, setDebouncedQ] = useState('');
   useEffect(() => {
@@ -147,8 +139,8 @@ export const ShipmentsTab: React.FC = () => {
     params.set('page', String(page));
     params.set('pageSize', String(PAGE_SIZE));
 
-    const r = await fetch(`/api/logistics/shipments?${params.toString()}`, { headers });
-    const d = await r.json();
+    const r = await logisticsApi.raw('GET', `/api/logistics/shipments?${params.toString()}`);
+    const d = r.data;
     if (Array.isArray(d)) {
       // Compatibilidad con un backend que aún devolviera array plano.
       setRows(d);
@@ -168,26 +160,26 @@ export const ShipmentsTab: React.FC = () => {
   // Cargar rutas y almacenes una vez (para filtros + selector pickup_return).
   useEffect(() => {
     if (!user?.tenantId) return;
-    fetch('/api/logistics/routes', { headers })
-      .then((r) => (r.ok ? r.json() : []))
+    logisticsApi.get<any>('/api/logistics/routes')
+      .catch(() => [])
       .then((d) => setRoutes(Array.isArray(d) ? d : []))
       .catch(() => setRoutes([]));
-    fetch('/api/warehouses', { headers })
-      .then((r) => (r.ok ? r.json() : []))
+    logisticsApi.get<any>('/api/warehouses')
+      .catch(() => [])
       .then((d) => setWarehouses(Array.isArray(d) ? d : []))
       .catch(() => setWarehouses([]));
-    fetch('/api/hr/employees', { headers })
-      .then((r) => (r.ok ? r.json() : []))
+    logisticsApi.get<any>('/api/hr/employees')
+      .catch(() => [])
       .then((d) =>
         setEmployees(Array.isArray(d) ? d.filter((e: any) => e.status === 'active') : []),
       )
       .catch(() => setEmployees([]));
-    fetch('/api/logistics/vehicles', { headers })
-      .then((r) => (r.ok ? r.json() : []))
+    logisticsApi.get<any>('/api/logistics/vehicles')
+      .catch(() => [])
       .then((d) => setVehicles(Array.isArray(d) ? d.filter((v: any) => v.status === 'active') : []))
       .catch(() => setVehicles([]));
-    fetch('/api/carriers', { headers })
-      .then((r) => (r.ok ? r.json() : []))
+    logisticsApi.get<any>('/api/carriers')
+      .catch(() => [])
       .then((d) => setCarriers(Array.isArray(d) ? d.filter((c: any) => c.isActive !== false) : []))
       .catch(() => setCarriers([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -206,12 +198,8 @@ export const ShipmentsTab: React.FC = () => {
       toast.error('Selecciona el almacén de destino al devolverlo.');
       return;
     }
-    const res = await fetch('/api/logistics/shipments', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(form),
-    });
-    const d = await res.json();
+    const res = await logisticsApi.raw('POST', '/api/logistics/shipments', form);
+    const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error');
       return;
@@ -225,16 +213,12 @@ export const ShipmentsTab: React.FC = () => {
 
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar envío?')) return;
-    await fetch(`/api/logistics/shipments/${id}`, { method: 'DELETE', headers });
+    await logisticsApi.raw('DELETE', `/api/logistics/shipments/${id}`);
     load();
   };
 
   const resendNotification = async (id: string, status: string) => {
-    const r = await fetch(`/api/logistics/shipments/${id}/notify`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ stage: status }),
-    });
+    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${id}/notify`, { stage: status });
     if (r.ok) toast.success('Email enfilado');
     else toast.error('No se pudo enviar');
   };

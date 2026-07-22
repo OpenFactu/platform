@@ -1,3 +1,4 @@
+import { logisticsApi } from '../api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Button, Badge, Loader, Modal, Input, useToast } from '@openfactu/ui';
 import {
@@ -16,12 +17,12 @@ import {
   Truck as TruckIconLucide,
   Warehouse,
 } from 'lucide-react';
-import { BarcodeCameraModal } from '../../components/scanner/BarcodeCameraModal';
+import { BarcodeCameraModal } from '@/components/scanner/BarcodeCameraModal';
 import { DeliveryProofModal } from './DeliveryProofModal';
 import { Marker, Source, Layer, Popup } from 'react-map-gl/maplibre';
-import { BaseMap, type BaseMapHandle } from '../../components/maps/BaseMap';
-import { useAuth } from '../../context/AuthContext';
-import { useFormat } from '../../hooks/useFormat';
+import { BaseMap, type BaseMapHandle } from '@/components/maps/BaseMap';
+import { useAuth } from '@/context/AuthContext';
+import { useFormat } from '@/hooks/useFormat';
 
 /** Pin numerado — muestra la secuencia dentro de la ruta. */
 function NumberedPin({ n, done }: { n: number; done: boolean }) {
@@ -279,22 +280,16 @@ export const DriverApp: React.FC = () => {
   const mapRef = useRef<BaseMapHandle | null>(null);
   const mapRefFull = useRef<BaseMapHandle | null>(null);
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const loadRoutes = async () => {
     setLoading(true);
-    const r = await fetch('/api/logistics/my/routes', { headers });
-    const d = await r.json();
+    const r = await logisticsApi.raw('GET', '/api/logistics/my/routes');
+    const d = r.data;
     setRoutes(Array.isArray(d) ? d : []);
     setLoading(false);
   };
   const loadDetail = async (id: string) => {
-    const r = await fetch(`/api/logistics/my/routes/${id}`, { headers });
-    const d = await r.json();
+    const r = await logisticsApi.raw('GET', `/api/logistics/my/routes/${id}`);
+    const d = r.data;
     setDetail(d);
   };
   useEffect(() => {
@@ -324,17 +319,13 @@ export const DriverApp: React.FC = () => {
         );
         await Promise.all(
           active.map((s) =>
-            fetch(`/api/logistics/track/${s.reportToken}/position`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
+            logisticsApi.raw('POST', `/api/logistics/track/${s.reportToken}/position`, {
                 lat: latitude,
                 lng: longitude,
                 speedKmh: speed != null ? speed * 3.6 : null,
                 heading,
                 accuracyMeters: accuracy,
-              }),
-            }).catch(() => null),
+              }).catch(() => null),
           ),
         );
       },
@@ -378,13 +369,13 @@ export const DriverApp: React.FC = () => {
     // QR de un paquete individual (impreso como etiqueta): { v:1, type:'package', id, code }
     if (parsed?.v === 1 && parsed.type === 'package' && parsed.id) {
       try {
-        const r = await fetch(`/api/logistics/packages/${parsed.id}`, { headers });
+        const r = await logisticsApi.raw('GET', `/api/logistics/packages/${parsed.id}`);
         if (!r.ok) throw new Error();
-        const pkg = await r.json();
+        const pkg = r.data;
         let ship: any = null;
         if (pkg.shipmentId) {
-          const sr = await fetch(`/api/logistics/shipments/${pkg.shipmentId}`, { headers });
-          if (sr.ok) ship = await sr.json();
+          const sr = await logisticsApi.raw('GET', `/api/logistics/shipments/${pkg.shipmentId}`);
+          if (sr.ok) ship = sr.data;
         }
         setPackageScan({
           code: pkg.code,
@@ -410,9 +401,9 @@ export const DriverApp: React.FC = () => {
       return;
     }
     try {
-      const r = await fetch(`/api/logistics/staging-areas/${parsed.s}/payload`, { headers });
+      const r = await logisticsApi.raw('GET', `/api/logistics/staging-areas/${parsed.s}/payload`);
       if (!r.ok) throw new Error(String(r.status));
-      const payload = await r.json();
+      const payload = r.data;
       const myRouteIds = new Set(routes.map((x) => x.id));
       const hits = (payload.routes || []).filter((pr: any) => myRouteIds.has(pr.id));
       if (hits.length > 0) {
@@ -474,11 +465,7 @@ export const DriverApp: React.FC = () => {
     const now = new Date().toISOString();
     await Promise.all(
       pending.map((s) =>
-        fetch(`/api/logistics/routes/${selectedId}/stops/${s.id}`, {
-          method: 'PATCH',
-          headers,
-          body: JSON.stringify({ status: 'arrived', arrivedAt: now }),
-        }),
+        logisticsApi.raw('PATCH', `/api/logistics/routes/${selectedId}/stops/${s.id}`, { status: 'arrived', arrivedAt: now }),
       ),
     );
     setConfirmBulkArrive(null);
@@ -496,12 +483,9 @@ export const DriverApp: React.FC = () => {
     if (!selectedId || routeBusy) return;
     setRouteBusy(true);
     try {
-      const r = await fetch(`/api/logistics/routes/${selectedId}/start`, {
-        method: 'POST',
-        headers,
-      });
+      const r = await logisticsApi.raw('POST', `/api/logistics/routes/${selectedId}/start`);
       if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
+        const d = (r.data ?? {});
         toast.error(d.error || 'No se pudo iniciar la ruta');
         return;
       }
@@ -517,12 +501,9 @@ export const DriverApp: React.FC = () => {
     if (!selectedId || routeBusy) return;
     setRouteBusy(true);
     try {
-      const r = await fetch(`/api/logistics/routes/${selectedId}/finish`, {
-        method: 'POST',
-        headers,
-      });
+      const r = await logisticsApi.raw('POST', `/api/logistics/routes/${selectedId}/finish`);
       if (!r.ok) {
-        const d = await r.json().catch(() => ({}));
+        const d = (r.data ?? {});
         toast.error(d.error || 'No se pudo finalizar la ruta');
         return;
       }
@@ -538,11 +519,7 @@ export const DriverApp: React.FC = () => {
 
   const markArrived = async (stopId: string) => {
     if (!selectedId) return;
-    await fetch(`/api/logistics/routes/${selectedId}/stops/${stopId}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({ status: 'arrived', arrivedAt: new Date().toISOString() }),
-    });
+    await logisticsApi.raw('PATCH', `/api/logistics/routes/${selectedId}/stops/${stopId}`, { status: 'arrived', arrivedAt: new Date().toISOString() });
     loadDetail(selectedId);
   };
 
@@ -559,21 +536,13 @@ export const DriverApp: React.FC = () => {
   const submitPostpone = async () => {
     if (!selectedId || !postponeFor) return;
     const { stopId, shipmentId, reason } = postponeFor;
-    await fetch(`/api/logistics/routes/${selectedId}/stops/${stopId}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({
+    await logisticsApi.raw('PATCH', `/api/logistics/routes/${selectedId}/stops/${stopId}`, {
         status: 'postponed',
         arrivedAt: new Date().toISOString(),
         podNotes: reason.trim() || null,
-      }),
-    });
-    if (shipmentId) {
-      await fetch(`/api/logistics/shipments/${shipmentId}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ status: 'postponed', reason: reason.trim() || null }),
       });
+    if (shipmentId) {
+      await logisticsApi.raw('PATCH', `/api/logistics/shipments/${shipmentId}`, { status: 'postponed', reason: reason.trim() || null });
     }
     setPostponeFor(null);
     loadDetail(selectedId);
@@ -592,21 +561,13 @@ export const DriverApp: React.FC = () => {
       toast.error('Necesitas describir la incidencia');
       return;
     }
-    await fetch(`/api/logistics/routes/${selectedId}/stops/${stopId}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({
+    await logisticsApi.raw('PATCH', `/api/logistics/routes/${selectedId}/stops/${stopId}`, {
         status: 'exception',
         arrivedAt: new Date().toISOString(),
         podNotes: reason.trim(),
-      }),
-    });
-    if (shipmentId) {
-      await fetch(`/api/logistics/shipments/${shipmentId}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ status: 'exception', reason: reason.trim() }),
       });
+    if (shipmentId) {
+      await logisticsApi.raw('PATCH', `/api/logistics/shipments/${shipmentId}`, { status: 'exception', reason: reason.trim() });
     }
     setExceptionFor(null);
     loadDetail(selectedId);
@@ -629,10 +590,7 @@ export const DriverApp: React.FC = () => {
     podNotes: string;
   }) => {
     if (!podFor || !selectedId) return;
-    const r = await fetch(`/api/logistics/routes/${selectedId}/stops/${podFor.stopId}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({
+    const r = await logisticsApi.raw('PATCH', `/api/logistics/routes/${selectedId}/stops/${podFor.stopId}`, {
         status: 'delivered',
         departedAt: new Date().toISOString(),
         recipientName: pod.recipientName || null,
@@ -640,23 +598,18 @@ export const DriverApp: React.FC = () => {
         signatureImage: pod.signatureImage,
         photoImage: pod.photoImage,
         podNotes: pod.podNotes || null,
-      }),
-    });
+      });
     if (!r.ok) {
       let msg = `Error ${r.status}`;
       try {
-        const d = await r.json();
+        const d = r.data;
         if (d?.error) msg = d.error;
       } catch {}
       toast.error(`No se pudo marcar como entregado: ${msg}`);
       return;
     }
     if (podFor.shipmentId) {
-      await fetch(`/api/logistics/shipments/${podFor.shipmentId}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ status: 'delivered' }),
-      });
+      await logisticsApi.raw('PATCH', `/api/logistics/shipments/${podFor.shipmentId}`, { status: 'delivered' });
     }
     await loadDetail(selectedId);
     setPodFor(null);

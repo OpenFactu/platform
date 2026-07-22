@@ -142,7 +142,7 @@ export const ShiftPatterns: React.FC = () => {
   const save = async () => {
     if (!editing) return;
     const isNew = !editing.id;
-    const r = await hrApi.raw('GET', isNew ? '/api/hr/shift-patterns' : `/api/hr/shift-patterns/${editing.id}`, editing);
+    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/shift-patterns' : `/api/hr/shift-patterns/${editing.id}`, editing);
     const d = r.data;
     if (!r.ok) {
       toast.error(d.error);

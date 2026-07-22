@@ -130,7 +130,7 @@ export const Employees: React.FC = () => {
       // registro (ver openEdit → setPluginValues(r)). Si los spreads se ponen
       // como `{...form, ...pluginValues}` machaca los cambios del formulario
       // con los valores originales. Form tiene que ganar.
-      const res = await hrApi.raw('GET', url, { ...pluginValues, ...form });
+      const res = await hrApi.raw(method, url, { ...pluginValues, ...form });
       const data = res.data;
       if (!res.ok) {
         toast.error(data.error || 'Error al guardar');

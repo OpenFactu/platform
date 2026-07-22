@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
-import { DriverApp } from '../../pages/logistics/DriverApp';
+import { DriverApp } from '@/modules/logistics/pages/DriverApp';
 import { useAuth } from '../../context/AuthContext';
 
 /**

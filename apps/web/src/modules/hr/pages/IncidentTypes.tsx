@@ -60,7 +60,7 @@ export const IncidentTypes: React.FC = () => {
     }
     const isNew = !editing.id;
     const url = isNew ? '/api/hr/incident-types' : `/api/hr/incident-types/${editing.id}`;
-    const r = await hrApi.raw('GET', url, editing);
+    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', url, editing);
     const d = r.data;
     if (!r.ok) {
       toast.error(d.error || 'Error');

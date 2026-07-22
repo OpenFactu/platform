@@ -61,7 +61,7 @@ export const ShiftTemplates: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await hrApi.raw('GET', isNew ? '/api/hr/shift-templates' : `/api/hr/shift-templates/${editing.id}`, editing);
+    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/shift-templates' : `/api/hr/shift-templates/${editing.id}`, editing);
     if (!r.ok) {
       const d = r.data;
       toast.error(d.error);

@@ -7,6 +7,7 @@
  * funciona como manual.
  */
 
+import { logisticsApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Card,
@@ -19,7 +20,7 @@ import {
   SearchableSelect,
 } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, Truck, Plug, CheckCircle2 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface Carrier {
   id: string;
@@ -69,23 +70,14 @@ export const CarriersSettings: React.FC = () => {
   const [accountForm, setAccountForm] = useState<any>({ credentials: {} });
   const [accountCarrier, setAccountCarrier] = useState<Carrier | null>(null);
 
-  const headers = useMemo(
-    () => ({
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      'x-tenant-id': user?.tenantId || '',
-    }),
-    [token, user?.tenantId],
-  );
-
   const loadCarriers = async () => {
     setLoading(true);
     const [cRes, aRes] = await Promise.all([
-      fetch('/api/carriers', { headers }),
-      fetch('/api/carriers/adapters', { headers }),
+      logisticsApi.raw('GET', '/api/carriers'),
+      logisticsApi.raw('GET', '/api/carriers/adapters'),
     ]);
-    const c = cRes.ok ? await cRes.json() : [];
-    const a = aRes.ok ? await aRes.json() : [];
+    const c = cRes.ok ? cRes.data : [];
+    const a = aRes.ok ? aRes.data : [];
     setCarriers(Array.isArray(c) ? c : []);
     setAdapters(Array.isArray(a) ? a : []);
     setLoading(false);
@@ -97,8 +89,8 @@ export const CarriersSettings: React.FC = () => {
   }, [user?.tenantId]);
 
   const loadAccounts = async (carrierId: string) => {
-    const r = await fetch(`/api/carriers/${carrierId}/accounts`, { headers });
-    const d = r.ok ? await r.json() : [];
+    const r = await logisticsApi.raw('GET', `/api/carriers/${carrierId}/accounts`);
+    const d = r.ok ? r.data : [];
     setAccounts(Array.isArray(d) ? d : []);
   };
 
@@ -130,9 +122,9 @@ export const CarriersSettings: React.FC = () => {
     }
     const url = editing ? `/api/carriers/${editing.id}` : '/api/carriers';
     const method = editing ? 'PATCH' : 'POST';
-    const r = await fetch(url, { method, headers, body: JSON.stringify(form) });
+    const r = await logisticsApi.raw(method, url, form);
     if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
+      const d = (r.data ?? {});
       toast.error(d.error || 'Error');
       return;
     }
@@ -143,7 +135,7 @@ export const CarriersSettings: React.FC = () => {
 
   const removeCarrier = async (id: string) => {
     if (!confirm('¿Eliminar transportista y todas sus cuentas?')) return;
-    await fetch(`/api/carriers/${id}`, { method: 'DELETE', headers });
+    await logisticsApi.raw('DELETE', `/api/carriers/${id}`);
     loadCarriers();
   };
 
@@ -159,13 +151,9 @@ export const CarriersSettings: React.FC = () => {
       toast.error('Nombre obligatorio');
       return;
     }
-    const r = await fetch(`/api/carriers/${accountCarrier.id}/accounts`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(accountForm),
-    });
+    const r = await logisticsApi.raw('POST', `/api/carriers/${accountCarrier.id}/accounts`, accountForm);
     if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
+      const d = (r.data ?? {});
       toast.error(d.error || 'Error');
       return;
     }
@@ -176,13 +164,13 @@ export const CarriersSettings: React.FC = () => {
 
   const removeAccount = async (id: string, carrierId: string) => {
     if (!confirm('¿Eliminar cuenta?')) return;
-    await fetch(`/api/carriers/accounts/${id}`, { method: 'DELETE', headers });
+    await logisticsApi.raw('DELETE', `/api/carriers/accounts/${id}`);
     loadAccounts(carrierId);
   };
 
   const testAccount = async (id: string) => {
-    const r = await fetch(`/api/carriers/accounts/${id}/test`, { method: 'POST', headers });
-    const d = await r.json().catch(() => ({}));
+    const r = await logisticsApi.raw('POST', `/api/carriers/accounts/${id}/test`);
+    const d = (r.data ?? {});
     if (d.ok) {
       toast.success(`OK — tracking de prueba: ${d.trackingNumber || '(ninguno)'}`);
     } else if (d.manual) {

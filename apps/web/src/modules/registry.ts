@@ -57,18 +57,6 @@ export const LEGACY_NAV: Module[] = [
     subTabs: [{ id: 'dashboard', label: 'Dashboard', path: '/' }],
   },
   {
-    id: 'logistics',
-    label: 'Logística',
-    icon: 'Route',
-    /** Visible solo si `flags.logisticsEnabled=true`. El filtrado lo hace
-     *  `PluginContext` al mergear módulos. */
-    featureFlag: 'logisticsEnabled',
-    subTabs: [
-      { id: 'logistics-hub', label: 'Centro logístico', path: '/logistics', status: 'beta' },
-      { id: 'carriers', label: 'Transportistas', path: '/settings/carriers', status: 'beta' },
-    ],
-  },
-  {
     id: 'assistant',
     label: 'Asistente IA',
     icon: 'Bot',

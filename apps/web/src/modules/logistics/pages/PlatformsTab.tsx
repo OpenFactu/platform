@@ -3,10 +3,11 @@
  * (cross-docks, naves alquiladas, hubs compartidos). Las `StagingArea` las
  * referencian vía `platformId` para heredar address/coords.
  */
+import { logisticsApi } from '../api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, RotateCcw, Archive, Building2 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface Platform {
   id: string;
@@ -33,17 +34,11 @@ export const PlatformsTab: React.FC = () => {
   const [editing, setEditing] = useState<Platform | null>(null);
   const [form, setForm] = useState<any>({});
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const load = async () => {
     setLoading(true);
     const qs = showArchived ? '?includeArchived=true' : '';
-    const res = await fetch(`/api/logistics/platforms${qs}`, { headers });
-    const d = res.ok ? await res.json() : [];
+    const res = await logisticsApi.raw('GET', `/api/logistics/platforms${qs}`);
+    const d = res.ok ? res.data : [];
     setRows(Array.isArray(d) ? d : []);
     setLoading(false);
   };
@@ -70,8 +65,8 @@ export const PlatformsTab: React.FC = () => {
     }
     const url = editing ? `/api/logistics/platforms/${editing.id}` : '/api/logistics/platforms';
     const method = editing ? 'PATCH' : 'POST';
-    const res = await fetch(url, { method, headers, body: JSON.stringify(form) });
-    const d = await res.json();
+    const res = await logisticsApi.raw(method, url, form);
+    const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error');
       return;
@@ -84,11 +79,11 @@ export const PlatformsTab: React.FC = () => {
 
   const archive = async (p: Platform) => {
     if (!confirm(`¿Archivar plataforma ${p.name}?`)) return;
-    await fetch(`/api/logistics/platforms/${p.id}`, { method: 'DELETE', headers });
+    await logisticsApi.raw('DELETE', `/api/logistics/platforms/${p.id}`);
     load();
   };
   const restore = async (p: Platform) => {
-    await fetch(`/api/logistics/platforms/${p.id}/restore`, { method: 'POST', headers });
+    await logisticsApi.raw('POST', `/api/logistics/platforms/${p.id}/restore`);
     load();
   };
 

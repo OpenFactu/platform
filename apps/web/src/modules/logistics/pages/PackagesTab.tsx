@@ -1,7 +1,8 @@
+import { logisticsApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, Lock, Warehouse, Boxes } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface PackageLine {
   id: string;
@@ -34,18 +35,12 @@ export const PackagesTab: React.FC = () => {
   const [newLineItemId, setNewLineItemId] = useState('');
   const [newLineQty, setNewLineQty] = useState<string>('1');
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const load = async () => {
     setLoading(true);
     const [p, i, a] = await Promise.all([
-      fetch('/api/logistics/packages', { headers }).then((r) => r.json()),
-      fetch('/api/items', { headers }).then((r) => (r.ok ? r.json() : [])),
-      fetch('/api/logistics/staging-areas', { headers }).then((r) => (r.ok ? r.json() : [])),
+      logisticsApi.get<any>('/api/logistics/packages'),
+      logisticsApi.get<any>('/api/items').catch(() => []),
+      logisticsApi.get<any>('/api/logistics/staging-areas').catch(() => []),
     ]);
     setRows(Array.isArray(p) ? p : []);
     const items = Array.isArray(i) ? i : [];
@@ -57,8 +52,8 @@ export const PackagesTab: React.FC = () => {
 
   const openLines = async (pkg: any) => {
     setLinesFor(pkg);
-    const r = await fetch(`/api/logistics/packages/${pkg.id}/lines`, { headers });
-    const d = await r.json().catch(() => []);
+    const r = await logisticsApi.raw('GET', `/api/logistics/packages/${pkg.id}/lines`);
+    const d = (r.data ?? []);
     setLines(Array.isArray(d) ? d : []);
     setNewLineItemId('');
     setNewLineQty('1');
@@ -71,29 +66,22 @@ export const PackagesTab: React.FC = () => {
       toast.error('Cantidad inválida');
       return;
     }
-    const res = await fetch(`/api/logistics/packages/${linesFor.id}/lines`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ itemId: newLineItemId, quantity: qty }),
-    });
+    const res = await logisticsApi.raw('POST', `/api/logistics/packages/${linesFor.id}/lines`, { itemId: newLineItemId, quantity: qty });
     if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
+      const d = (res.data ?? {});
       toast.error(d.error || 'Error al añadir');
       return;
     }
     toast.success('Artículo añadido');
-    const r = await fetch(`/api/logistics/packages/${linesFor.id}/lines`, { headers });
-    setLines(await r.json());
+    const r = await logisticsApi.raw('GET', `/api/logistics/packages/${linesFor.id}/lines`);
+    setLines(r.data);
     setNewLineItemId('');
     setNewLineQty('1');
   };
 
   const removeLine = async (lineId: string) => {
     if (!linesFor) return;
-    await fetch(`/api/logistics/packages/${linesFor.id}/lines/${lineId}`, {
-      method: 'DELETE',
-      headers,
-    });
+    await logisticsApi.raw('DELETE', `/api/logistics/packages/${linesFor.id}/lines/${lineId}`);
     setLines((xs) => xs.filter((x) => x.id !== lineId));
   };
   useEffect(() => {
@@ -102,12 +90,8 @@ export const PackagesTab: React.FC = () => {
   }, [user?.tenantId]);
 
   const create = async () => {
-    const res = await fetch('/api/logistics/packages', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(form),
-    });
-    const d = await res.json();
+    const res = await logisticsApi.raw('POST', '/api/logistics/packages', form);
+    const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error');
       return;
@@ -119,24 +103,16 @@ export const PackagesTab: React.FC = () => {
   };
 
   const seal = async (id: string) => {
-    await fetch(`/api/logistics/packages/${id}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({ status: 'sealed' }),
-    });
+    await logisticsApi.raw('PATCH', `/api/logistics/packages/${id}`, { status: 'sealed' });
     toast.success('Paquete sellado');
     load();
   };
 
   const moveToArea = async (id: string, stagingAreaId: string | null) => {
     const area = stagingAreaId ? areas.find((a) => a.id === stagingAreaId) : null;
-    const res = await fetch(`/api/logistics/packages/${id}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({ stagingAreaId }),
-    });
+    const res = await logisticsApi.raw('PATCH', `/api/logistics/packages/${id}`, { stagingAreaId });
     if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
+      const d = (res.data ?? {});
       toast.error(d.error || 'Error al mover');
       return;
     }
@@ -146,7 +122,7 @@ export const PackagesTab: React.FC = () => {
 
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar paquete?')) return;
-    await fetch(`/api/logistics/packages/${id}`, { method: 'DELETE', headers });
+    await logisticsApi.raw('DELETE', `/api/logistics/packages/${id}`);
     load();
   };
 

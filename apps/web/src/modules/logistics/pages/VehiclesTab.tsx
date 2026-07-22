@@ -1,7 +1,8 @@
+import { logisticsApi } from '../api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, RotateCcw, Archive } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface Vehicle {
   id: string;
@@ -40,18 +41,12 @@ export const VehiclesTab: React.FC = () => {
   const [editing, setEditing] = useState<Vehicle | null>(null);
   const [form, setForm] = useState<any>({});
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const load = async () => {
     setLoading(true);
     const qs = showArchived ? '?includeArchived=true' : '';
     const [r1, r2] = await Promise.all([
-      fetch(`/api/logistics/vehicles${qs}`, { headers }).then((r) => r.json()),
-      fetch('/api/hr/employees', { headers }).then((r) => (r.ok ? r.json() : [])),
+      logisticsApi.get<any>(`/api/logistics/vehicles${qs}`),
+      logisticsApi.get<any>('/api/hr/employees').catch(() => []),
     ]);
     setRows(Array.isArray(r1) ? r1 : []);
     setEmployees(Array.isArray(r2) ? r2 : []);
@@ -80,8 +75,8 @@ export const VehiclesTab: React.FC = () => {
     }
     const url = editing ? `/api/logistics/vehicles/${editing.id}` : '/api/logistics/vehicles';
     const method = editing ? 'PATCH' : 'POST';
-    const res = await fetch(url, { method, headers, body: JSON.stringify(form) });
-    const d = await res.json();
+    const res = await logisticsApi.raw(method, url, form);
+    const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error');
       return;
@@ -94,7 +89,7 @@ export const VehiclesTab: React.FC = () => {
   const archive = async (v: Vehicle) => {
     if (!confirm(`¿Archivar vehículo ${v.plate}? Las rutas pasadas conservarán su registro.`))
       return;
-    const res = await fetch(`/api/logistics/vehicles/${v.id}`, { method: 'DELETE', headers });
+    const res = await logisticsApi.raw('DELETE', `/api/logistics/vehicles/${v.id}`);
     if (!res.ok) {
       toast.error('Error al archivar');
       return;
@@ -104,10 +99,7 @@ export const VehiclesTab: React.FC = () => {
   };
 
   const restore = async (v: Vehicle) => {
-    const res = await fetch(`/api/logistics/vehicles/${v.id}/restore`, {
-      method: 'POST',
-      headers,
-    });
+    const res = await logisticsApi.raw('POST', `/api/logistics/vehicles/${v.id}/restore`);
     if (!res.ok) {
       toast.error('Error al restaurar');
       return;

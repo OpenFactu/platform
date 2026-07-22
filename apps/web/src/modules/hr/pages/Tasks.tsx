@@ -89,7 +89,7 @@ export const Tasks: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await hrApi.raw('GET', isNew ? '/api/hr/tasks' : `/api/hr/tasks/${editing.id}`, editing);
+    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/tasks' : `/api/hr/tasks/${editing.id}`, editing);
     if (!r.ok) {
       const d = r.data;
       toast.error(d.error || 'Error');

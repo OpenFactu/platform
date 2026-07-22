@@ -94,7 +94,7 @@ export const Evaluations: React.FC = () => {
       return;
     }
     const isNew = !editingCycle.id;
-    const r = await hrApi.raw('GET', isNew ? '/api/hr/evaluations/cycles' : `/api/hr/evaluations/cycles/${editingCycle.id}`, editingCycle);
+    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/evaluations/cycles' : `/api/hr/evaluations/cycles/${editingCycle.id}`, editingCycle);
     if (!r.ok) {
       const d = r.data;
       toast.error(d.error || 'Error');

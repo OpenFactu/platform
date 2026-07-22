@@ -4,10 +4,11 @@
  * Si la tarea trae un `batchNumber` preasignado desde el albarán, lo muestra
  * como chip prominente — el operario sabe exactamente qué lote/serie coger.
  */
+import { logisticsApi } from '../api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Badge, Loader, SearchableSelect, useToast } from '@openfactu/ui';
 import { Check, X, Layers3, Package, RefreshCw } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface BatchOption {
   batchNum: string;
@@ -49,19 +50,11 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
   // un campo de texto libre sin ninguna validación.
   const [batchOptionsByKey, setBatchOptionsByKey] = useState<Map<string, BatchOption[]>>(new Map());
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const load = async () => {
     setLoading(true);
     const [tRes, iRes] = await Promise.all([
-      fetch(`/api/logistics/prep/tasks?shipmentId=${shipmentId}`, { headers }).then((r) =>
-        r.ok ? r.json() : [],
-      ),
-      fetch('/api/items', { headers }).then((r) => (r.ok ? r.json() : [])),
+      logisticsApi.get<any>(`/api/logistics/prep/tasks?shipmentId=${shipmentId}`).catch(() => []),
+      logisticsApi.get<any>('/api/items').catch(() => []),
     ]);
     const tasksList: PickingTask[] = Array.isArray(tRes) ? tRes : [];
     const itemsList: any[] = Array.isArray(iRes) ? iRes : [];
@@ -81,10 +74,8 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
     const entries = await Promise.all(
       Array.from(keys).map(async (key) => {
         const [itemId, warehouseId] = key.split('::');
-        const res = await fetch(`/api/items/${itemId}/batches?warehouseId=${warehouseId}`, {
-          headers,
-        });
-        const list = res.ok ? await res.json() : [];
+        const res = await logisticsApi.raw('GET', `/api/items/${itemId}/batches?warehouseId=${warehouseId}`);
+        const list = res.ok ? res.data : [];
         return [key, Array.isArray(list) ? list : []] as const;
       }),
     );
@@ -99,13 +90,9 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
 
   const patchTask = async (id: string, patch: any) => {
     try {
-      const res = await fetch(`/api/logistics/prep/tasks/${id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify(patch),
-      });
+      const res = await logisticsApi.raw('PATCH', `/api/logistics/prep/tasks/${id}`, patch);
       if (!res.ok) {
-        const d = await res.json().catch(() => ({}));
+        const d = (res.data ?? {});
         console.error('[PickingTasks] PATCH error', res.status, d);
         toast.error(d.error || `Error ${res.status} al actualizar la tarea`);
         return;
@@ -154,11 +141,8 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
       )
     )
       return;
-    const res = await fetch(`/api/logistics/prep/shipments/${shipmentId}/resync`, {
-      method: 'POST',
-      headers,
-    });
-    const d = await res.json();
+    const res = await logisticsApi.raw('POST', `/api/logistics/prep/shipments/${shipmentId}/resync`);
+    const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error al resincronizar');
       return;

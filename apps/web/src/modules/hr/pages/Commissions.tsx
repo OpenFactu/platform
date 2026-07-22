@@ -109,7 +109,7 @@ export const Commissions: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await hrApi.raw('GET', isNew ? '/api/hr/commissions/rules' : `/api/hr/commissions/rules/${editing.id}`, editing);
+    const r = await hrApi.raw(isNew ? 'POST' : 'PATCH', isNew ? '/api/hr/commissions/rules' : `/api/hr/commissions/rules/${editing.id}`, editing);
     if (!r.ok) {
       const d = r.data;
       toast.error(d.error || 'Error');
