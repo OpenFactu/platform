@@ -2,7 +2,7 @@
  * Preparación — gestor de shipments en estados `picking|packed|ready|receiving|received`.
  * Permite abrir el panel de tareas, empaquetar, marcar listo y asignar a una ruta.
  */
-import { logisticsApi } from '../api';
+import { routesApi, shipmentsApi, stagingAreasApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge, Loader, Modal, useToast } from '@openfactu/ui';
 import {
@@ -16,24 +16,10 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { PickingTasksPanel } from './PickingTasksPanel';
 import { RoutePicker } from './RoutePicker';
-
-interface Shipment {
-  id: string;
-  preparationStatus: string;
-  status: string;
-  sourceDocType: string | null;
-  sourceDocId: string | null;
-  destinationAddress: string | null;
-  createdAt: string;
-}
-
-interface Route {
-  id: string;
-  code: string;
-  name: string;
-  plannedDate: string;
-  status: string;
-}
+import { ApiError } from '@/shared/http';
+import type { Route } from '../domain/route';
+import type { Shipment } from '../domain/shipment';
+import type { StagingArea } from '../domain/stagingArea';
 
 const PREP_BADGE: Record<string, any> = {
   draft: 'neutral',
@@ -81,9 +67,9 @@ export const PreparationTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const [sh, rt, st] = await Promise.all([
-      logisticsApi.get('/api/logistics/shipments').catch(() => []),
-      logisticsApi.get('/api/logistics/routes').catch(() => []),
-      logisticsApi.get('/api/logistics/staging-areas').catch(() => []),
+      shipmentsApi.list().catch(() => []),
+      routesApi.list().catch(() => []),
+      stagingAreasApi.list().catch(() => []),
     ]);
     setShipments(Array.isArray(sh) ? sh : []);
     setRoutes(Array.isArray(rt) ? rt : []);
@@ -98,64 +84,62 @@ export const PreparationTab: React.FC = () => {
   const activeShipments = useMemo(
     () =>
       shipments.filter((s) =>
-        ['picking', 'packed', 'ready', 'receiving'].includes(s.preparationStatus),
+        ['picking', 'packed', 'ready', 'receiving'].includes(s.preparationStatus || ''),
       ),
     [shipments],
   );
 
-  const act = async (url: string, body?: any) => {
-    const res = await logisticsApi.raw('POST', url);
-    const d = (res.data ?? {});
-    if (!res.ok) {
-      toast.error(d.error || 'Error');
-      return false;
-    }
-    return true;
-  };
-
   const markReady = async (sh: Shipment) => {
-    if (await act(`/api/logistics/shipments/${sh.id}/ready`)) {
+    try {
+      await shipmentsApi.ready(sh.id);
       toast.success('Marcado como listo');
       load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
   };
 
   const receive = async (sh: Shipment) => {
-    if (await act(`/api/logistics/shipments/${sh.id}/receive`)) {
+    try {
+      await shipmentsApi.receive(sh.id);
       toast.success('Recepción confirmada');
       load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
   };
 
   const dispatch = async () => {
     if (!showDispatch) return;
-    if (
-      await act(`/api/logistics/shipments/${showDispatch.id}/dispatch`, {
-        routeId: dispatchRouteId || null,
-      })
-    ) {
+    try {
+      await shipmentsApi.dispatch(showDispatch.id, { routeId: dispatchRouteId || null });
       toast.success('Despachado');
       setShowDispatch(null);
       setDispatchRouteId('');
       load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
   };
 
   const sendToStaging = async () => {
     if (!showStaging || !stagingAreaId) return;
-    const res = await logisticsApi.raw('POST', `/api/logistics/shipments/${showStaging.id}/to-staging`, { stagingAreaId });
-    const d = res.data;
-    if (!res.ok) {
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      const d = await shipmentsApi.toStaging(showStaging.id, { stagingAreaId });
+      const area = stagingAreas.find((a) => a.id === stagingAreaId);
+      toast.success(
+        `Movido a ${area?.name || 'acopio'} · ${d.packagesCreated > 0 ? 'paquete creado' : `${d.packagesAffected} paquete(s)`}`,
+      );
+      setShowStaging(null);
+      setStagingAreaId('');
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
-    const area = stagingAreas.find((a) => a.id === stagingAreaId);
-    toast.success(
-      `Movido a ${area?.name || 'acopio'} · ${d.packagesCreated > 0 ? 'paquete creado' : `${d.packagesAffected} paquete(s)`}`,
-    );
-    setShowStaging(null);
-    setStagingAreaId('');
-    load();
   };
 
   return (

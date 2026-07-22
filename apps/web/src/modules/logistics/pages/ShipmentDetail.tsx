@@ -1,4 +1,5 @@
-import { logisticsApi } from '../api';
+import { shipmentsApi } from '../api';
+import { warehousesApi } from '@/modules/inventory/api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Button, Badge, Loader, Modal, Input, useToast } from '@openfactu/ui';
@@ -18,6 +19,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { useFormat } from '@/hooks/useFormat';
 import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
+import { ApiError } from '@/shared/http';
+import type { Shipment, ShipmentEvent, ShipmentPosition } from '../domain/shipment';
+import type { Warehouse as WarehouseType } from '@/modules/inventory/domain/warehouse';
 
 export const ShipmentDetail: React.FC = () => {
   const { id } = useParams();
@@ -25,9 +29,9 @@ export const ShipmentDetail: React.FC = () => {
   const { openTab } = useTabs();
   const fmt = useFormat();
   const toast = useToast();
-  const [shipment, setShipment] = useState<any>(null);
-  const [positions, setPositions] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
+  const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [positions, setPositions] = useState<ShipmentPosition[]>([]);
+  const [events, setEvents] = useState<ShipmentEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [cancelModal, setCancelModal] = useState<{ reason: string; cancelDn: boolean } | null>(
@@ -40,24 +44,28 @@ export const ShipmentDetail: React.FC = () => {
   const [pickupModal, setPickupModal] = useState<{ reason: string; warehouseId: string } | null>(
     null,
   );
-  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
 
   const load = async () => {
     if (!id) return;
     setLoading(true);
-    const [sRes, pRes, eRes] = await Promise.all([
-      logisticsApi.raw('GET', `/api/logistics/shipments/${id}`),
-      logisticsApi.raw('GET', `/api/logistics/shipments/${id}/positions`),
-      logisticsApi.raw('GET', `/api/logistics/shipments/${id}/events`),
-    ]);
-    const s = sRes.ok ? sRes.data : null;
-    const p = pRes.ok ? pRes.data : [];
-    const e = eRes.ok ? eRes.data : [];
-    // Un endpoint puede devolver `{error:...}` con 200 — si no hay `id`, no es válido.
-    setShipment(s && typeof s === 'object' && s.id ? s : null);
-    setPositions(Array.isArray(p) ? p : []);
-    setEvents(Array.isArray(e) ? e : []);
-    setLoading(false);
+    try {
+      const [s, p, e] = await Promise.all([
+        shipmentsApi.get(id),
+        shipmentsApi.listPositions(id),
+        shipmentsApi.listEvents(id),
+      ]);
+      // Un endpoint puede devolver `{error:...}` con 200 — si no hay `id`, no es válido.
+      setShipment(s && typeof s === 'object' && (s as Shipment).id ? s : null);
+      setPositions(Array.isArray(p) ? p : []);
+      setEvents(Array.isArray(e) ? e : []);
+    } catch {
+      setShipment(null);
+      setPositions([]);
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -79,7 +87,7 @@ export const ShipmentDetail: React.FC = () => {
         },
         ...prev,
       ]);
-      setShipment((prev: any) =>
+      setShipment((prev) =>
         prev
           ? {
               ...prev,
@@ -133,26 +141,22 @@ export const ShipmentDetail: React.FC = () => {
   const submitCancel = async () => {
     if (!id || !cancelModal) return;
     const { reason, cancelDn } = cancelModal;
-    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${id}/cancel`, {
-        reason: reason.trim() || null,
-        cancelDeliveryNote: cancelDn,
-      });
-    if (!r.ok) {
-      const d = (r.data ?? {});
-      toast.error(d.error || 'No se pudo cancelar');
-      return;
+    try {
+      await shipmentsApi.cancel(id, { reason: reason.trim() || null, cancelDeliveryNote: cancelDn });
+      setCancelModal(null);
+      toast.success('Envío cancelado');
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'No se pudo cancelar');
     }
-    setCancelModal(null);
-    toast.success('Envío cancelado');
-    load();
   };
 
   /** Abre el modal de recogida cargando los almacenes para el selector. */
   const openPickupModal = async () => {
     setPickupModal({ reason: '', warehouseId: '' });
     try {
-      const r = await logisticsApi.raw('GET', '/api/warehouses');
-      const d = r.ok ? r.data : [];
+      const d = await warehousesApi.list();
       setWarehouses(Array.isArray(d) ? d : []);
     } catch {
       setWarehouses([]);
@@ -162,19 +166,19 @@ export const ShipmentDetail: React.FC = () => {
   /** Crea el envío pickup_return desde este envío. */
   const submitPickup = async () => {
     if (!id || !pickupModal) return;
-    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${id}/schedule-pickup`, {
+    try {
+      const d = await shipmentsApi.schedulePickup(id, {
         reason: pickupModal.reason.trim() || null,
         warehouseId: pickupModal.warehouseId || null,
       });
-    const d = (r.data ?? {});
-    if (r.ok) {
       toast.success(
         `Recogida ${d.code || ''} programada — añádela a una ruta desde el planificador`,
       );
       setPickupModal(null);
       load();
-    } else {
-      toast.error(d.error || 'No se pudo programar la recogida');
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'No se pudo programar la recogida');
     }
   };
 
@@ -182,50 +186,45 @@ export const ShipmentDetail: React.FC = () => {
   const submitReturn = async () => {
     if (!id || !returnModal) return;
     const { reason, cancelDn } = returnModal;
-    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${id}/return`, {
-        reason: reason.trim() || null,
-        cancelDeliveryNote: cancelDn,
-      });
-    if (!r.ok) {
-      const d = (r.data ?? {});
-      toast.error(d.error || 'No se pudo marcar como devuelto');
-      return;
+    try {
+      const d = await shipmentsApi.return(id, { reason: reason.trim() || null, cancelDeliveryNote: cancelDn });
+      setReturnModal(null);
+      toast.success(
+        d.deliveryNoteCancelled
+          ? 'Devolución registrada. Albarán anulado y entrada de stock creada.'
+          : d.receiptId
+            ? 'Devolución registrada. GoodsReceipt en borrador. Albarán sigue abierto para reintentar.'
+            : 'Devolución registrada. Crea la entrada de stock a mano.',
+      );
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'No se pudo marcar como devuelto');
     }
-    const d = (r.data ?? {});
-    setReturnModal(null);
-    toast.success(
-      d.deliveryNoteCancelled
-        ? 'Devolución registrada. Albarán anulado y entrada de stock creada.'
-        : d.receiptId
-          ? 'Devolución registrada. GoodsReceipt en borrador. Albarán sigue abierto para reintentar.'
-          : 'Devolución registrada. Crea la entrada de stock a mano.',
-    );
-    load();
   };
 
   /** Fuerza el envío del email de notificación al destinatario (debug/manual). */
   const sendTestNotification = async () => {
     if (!id) return;
     const stage = shipment?.status || 'in_transit';
-    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${id}/notify`, { stage });
-    if (!r.ok) {
-      const d = (r.data ?? {});
-      toast.error(`Error: ${d.error || r.status}`);
-      return;
+    try {
+      await shipmentsApi.notify(id, { stage });
+      toast.success(`Email enfilado (${stage}). Mira los logs del server.`);
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      const status = err instanceof ApiError ? err.status : undefined;
+      toast.error(`Error: ${msg || status}`);
     }
-    toast.success(`Email enfilado (${stage}). Mira los logs del server.`);
   };
 
   /** Actualiza las coordenadas de destino del envío tras arrastrar el pin. */
   const saveDestination = async (lat: number, lng: number) => {
     if (!id) return;
-    const r = await logisticsApi.raw('PATCH', `/api/logistics/shipments/${id}`, { destinationLat: lat, destinationLng: lng });
-    if (r.ok) {
-      setShipment((prev: any) =>
-        prev ? { ...prev, destinationLat: lat, destinationLng: lng } : prev,
-      );
+    try {
+      await shipmentsApi.update(id, { destinationLat: lat, destinationLng: lng });
+      setShipment((prev) => (prev ? { ...prev, destinationLat: lat, destinationLng: lng } : prev));
       toast.success('Destino actualizado');
-    } else {
+    } catch {
       toast.error('No se pudo guardar el destino');
     }
   };

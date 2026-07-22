@@ -7,7 +7,7 @@
  * funciona como manual.
  */
 
-import { logisticsApi } from '../api';
+import { carriersApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Card,
@@ -21,43 +21,14 @@ import {
 } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, Truck, Plug, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-
-interface Carrier {
-  id: string;
-  name: string;
-  code: string | null;
-  logoUrl: string | null;
-  isActive: boolean;
-  adapterId: string | null;
-  notes: string | null;
-}
-
-interface AdapterInfo {
-  id: string;
-  name: string;
-  credentialFields: Array<{
-    key: string;
-    label: string;
-    type?: 'text' | 'password' | 'checkbox';
-    required?: boolean;
-    placeholder?: string;
-  }>;
-}
-
-interface Account {
-  id: string;
-  carrierId: string;
-  name: string;
-  sandbox: boolean;
-  isDefault: boolean;
-  credentials: Record<string, any>;
-}
+import { ApiError } from '@/shared/http';
+import type { Carrier, CarrierAccount, CarrierAdapterInfo } from '../domain/carrier';
 
 export const CarriersSettings: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const [carriers, setCarriers] = useState<Carrier[]>([]);
-  const [adapters, setAdapters] = useState<AdapterInfo[]>([]);
+  const [adapters, setAdapters] = useState<CarrierAdapterInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [showCarrierModal, setShowCarrierModal] = useState(false);
@@ -65,22 +36,23 @@ export const CarriersSettings: React.FC = () => {
   const [form, setForm] = useState<Partial<Carrier>>({});
 
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<CarrierAccount[]>([]);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [accountForm, setAccountForm] = useState<any>({ credentials: {} });
   const [accountCarrier, setAccountCarrier] = useState<Carrier | null>(null);
 
   const loadCarriers = async () => {
     setLoading(true);
-    const [cRes, aRes] = await Promise.all([
-      logisticsApi.raw('GET', '/api/carriers'),
-      logisticsApi.raw('GET', '/api/carriers/adapters'),
-    ]);
-    const c = cRes.ok ? cRes.data : [];
-    const a = aRes.ok ? aRes.data : [];
-    setCarriers(Array.isArray(c) ? c : []);
-    setAdapters(Array.isArray(a) ? a : []);
-    setLoading(false);
+    try {
+      const [c, a] = await Promise.all([carriersApi.list(), carriersApi.listAdapters()]);
+      setCarriers(Array.isArray(c) ? c : []);
+      setAdapters(Array.isArray(a) ? a : []);
+    } catch {
+      setCarriers([]);
+      setAdapters([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -89,9 +61,12 @@ export const CarriersSettings: React.FC = () => {
   }, [user?.tenantId]);
 
   const loadAccounts = async (carrierId: string) => {
-    const r = await logisticsApi.raw('GET', `/api/carriers/${carrierId}/accounts`);
-    const d = r.ok ? r.data : [];
-    setAccounts(Array.isArray(d) ? d : []);
+    try {
+      const d = await carriersApi.listAccounts(carrierId);
+      setAccounts(Array.isArray(d) ? d : []);
+    } catch {
+      setAccounts([]);
+    }
   };
 
   const toggleExpand = async (c: Carrier) => {
@@ -120,22 +95,21 @@ export const CarriersSettings: React.FC = () => {
       toast.error('El nombre es obligatorio');
       return;
     }
-    const url = editing ? `/api/carriers/${editing.id}` : '/api/carriers';
-    const method = editing ? 'PATCH' : 'POST';
-    const r = await logisticsApi.raw(method, url, form);
-    if (!r.ok) {
-      const d = (r.data ?? {});
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      if (editing) await carriersApi.update(editing.id, form);
+      else await carriersApi.create(form);
+      toast.success(editing ? 'Carrier actualizado' : 'Carrier creado');
+      setShowCarrierModal(false);
+      loadCarriers();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
-    toast.success(editing ? 'Carrier actualizado' : 'Carrier creado');
-    setShowCarrierModal(false);
-    loadCarriers();
   };
 
   const removeCarrier = async (id: string) => {
     if (!confirm('¿Eliminar transportista y todas sus cuentas?')) return;
-    await logisticsApi.raw('DELETE', `/api/carriers/${id}`);
+    await carriersApi.remove(id);
     loadCarriers();
   };
 
@@ -151,32 +125,35 @@ export const CarriersSettings: React.FC = () => {
       toast.error('Nombre obligatorio');
       return;
     }
-    const r = await logisticsApi.raw('POST', `/api/carriers/${accountCarrier.id}/accounts`, accountForm);
-    if (!r.ok) {
-      const d = (r.data ?? {});
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      await carriersApi.createAccount(accountCarrier.id, accountForm);
+      toast.success('Cuenta creada');
+      setShowAccountModal(false);
+      loadAccounts(accountCarrier.id);
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
-    toast.success('Cuenta creada');
-    setShowAccountModal(false);
-    loadAccounts(accountCarrier.id);
   };
 
   const removeAccount = async (id: string, carrierId: string) => {
     if (!confirm('¿Eliminar cuenta?')) return;
-    await logisticsApi.raw('DELETE', `/api/carriers/accounts/${id}`);
+    await carriersApi.removeAccount(id);
     loadAccounts(carrierId);
   };
 
   const testAccount = async (id: string) => {
-    const r = await logisticsApi.raw('POST', `/api/carriers/accounts/${id}/test`);
-    const d = (r.data ?? {});
-    if (d.ok) {
-      toast.success(`OK — tracking de prueba: ${d.trackingNumber || '(ninguno)'}`);
-    } else if (d.manual) {
-      toast.error('Carrier manual — sin conexión que probar');
-    } else {
-      toast.error(d.error || 'Fallo al probar');
+    try {
+      const d = await carriersApi.testAccount(id);
+      if (d.ok) {
+        toast.success(`OK — tracking de prueba: ${d.trackingNumber || '(ninguno)'}`);
+      } else if (d.manual) {
+        toast.error('Carrier manual — sin conexión que probar');
+      } else {
+        toast.error(d.error || 'Fallo al probar');
+      }
+    } catch {
+      toast.error('Fallo al probar');
     }
   };
 

@@ -4,28 +4,17 @@
  * Si la tarea trae un `batchNumber` preasignado desde el albarán, lo muestra
  * como chip prominente — el operario sabe exactamente qué lote/serie coger.
  */
-import { logisticsApi } from '../api';
+import { prepTasksApi } from '../api';
+import { itemsApi } from '@/modules/inventory/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Badge, Loader, SearchableSelect, useToast } from '@openfactu/ui';
 import { Check, X, Layers3, Package, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { ApiError } from '@/shared/http';
+import type { PickingTask } from '../domain/prepTask';
+import type { BatchOrSerial, Item } from '@/modules/inventory/domain/item';
 
-interface BatchOption {
-  batchNum: string;
-  quantity: number;
-}
-
-interface PickingTask {
-  id: string;
-  itemId: string | null;
-  requestedQty: number;
-  pickedQty: number;
-  status: 'pending' | 'partial' | 'done' | 'missing';
-  batchNumber: string | null;
-  notes: string | null;
-  warehouseId: string | null;
-  zoneId: string | null;
-}
+type BatchOption = BatchOrSerial;
 
 interface Props {
   shipmentId: string;
@@ -43,7 +32,7 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
   const { token, user } = useAuth();
   const toast = useToast();
   const [tasks, setTasks] = useState<PickingTask[]>([]);
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   // Lotes/series con stock disponible por `${itemId}::${warehouseId}` — para
   // ofrecer alternativas reales al sustituir el lote de una tarea, en vez de
@@ -52,14 +41,12 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
 
   const load = async () => {
     setLoading(true);
-    const [tRes, iRes] = await Promise.all([
-      logisticsApi.get(`/api/logistics/prep/tasks?shipmentId=${shipmentId}`).catch(() => []),
-      logisticsApi.get('/api/items').catch(() => []),
+    const [tasksList, itemsList] = await Promise.all([
+      prepTasksApi.list(shipmentId).catch(() => []),
+      itemsApi.list().catch(() => []),
     ]);
-    const tasksList: PickingTask[] = Array.isArray(tRes) ? tRes : [];
-    const itemsList: any[] = Array.isArray(iRes) ? iRes : [];
-    setTasks(tasksList);
-    setItems(itemsList);
+    setTasks(Array.isArray(tasksList) ? tasksList : []);
+    setItems(Array.isArray(itemsList) ? itemsList : []);
 
     // Precarga las opciones de lote/serie disponibles por item+almacén,
     // solo para artículos trazables con almacén conocido.
@@ -74,8 +61,7 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
     const entries = await Promise.all(
       Array.from(keys).map(async (key) => {
         const [itemId, warehouseId] = key.split('::');
-        const res = await logisticsApi.raw('GET', `/api/items/${itemId}/batches?warehouseId=${warehouseId}`);
-        const list = res.ok ? res.data : [];
+        const list = await itemsApi.listWarehouseBatches(itemId, warehouseId).catch(() => []);
         return [key, Array.isArray(list) ? list : []] as const;
       }),
     );
@@ -90,21 +76,17 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
 
   const patchTask = async (id: string, patch: any) => {
     try {
-      const res = await logisticsApi.raw('PATCH', `/api/logistics/prep/tasks/${id}`, patch);
-      if (!res.ok) {
-        const d = (res.data ?? {});
-        console.error('[PickingTasks] PATCH error', res.status, d);
-        toast.error(d.error || `Error ${res.status} al actualizar la tarea`);
-        return;
-      }
+      await prepTasksApi.update(id, patch);
       // Confirmación visible al usuario según la acción.
       if (patch.status === 'missing') toast.success('Marcada como no disponible');
       else if (patch.status === 'done') toast.success('Tarea completada');
       else if ('pickedQty' in patch) toast.success('Cantidad guardada');
       await load();
-    } catch (e: any) {
+    } catch (e) {
       console.error('[PickingTasks] PATCH exception', e);
-      toast.error(e?.message || 'Error de red');
+      const msg = e instanceof ApiError ? (e.body as any)?.error : undefined;
+      const status = e instanceof ApiError ? e.status : undefined;
+      toast.error(msg || (status ? `Error ${status} al actualizar la tarea` : 'Error de red'));
       return;
     }
     if (onAllDone) {
@@ -141,16 +123,16 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
       )
     )
       return;
-    const res = await logisticsApi.raw('POST', `/api/logistics/prep/shipments/${shipmentId}/resync`);
-    const d = res.data;
-    if (!res.ok) {
-      toast.error(d.error || 'Error al resincronizar');
-      return;
+    try {
+      const d = await prepTasksApi.resyncShipment(shipmentId);
+      toast.success(
+        `Resincronizado — ${d.added} añadidas, ${d.deleted} eliminadas, ${d.preserved} preservadas`,
+      );
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error al resincronizar');
     }
-    toast.success(
-      `Resincronizado — ${d.added} añadidas, ${d.deleted} eliminadas, ${d.preserved} preservadas`,
-    );
-    load();
   };
 
   return (

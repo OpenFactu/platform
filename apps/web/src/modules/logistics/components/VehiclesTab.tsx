@@ -1,22 +1,12 @@
-import { logisticsApi } from '../api';
+import { vehiclesApi } from '../api';
+import { employeesApi } from '@/modules/hr/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, RotateCcw, Archive } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-
-interface Vehicle {
-  id: string;
-  code: string;
-  plate: string;
-  brand: string | null;
-  model: string | null;
-  capacityKg: number | null;
-  capacityM3: number | null;
-  status: 'active' | 'maintenance' | 'retired';
-  defaultDriverEmployeeId: string | null;
-  notes: string | null;
-  archivedAt: string | null;
-}
+import { ApiError } from '@/shared/http';
+import type { Vehicle } from '../domain/vehicle';
+import type { Employee } from '@/modules/hr/domain/employee';
 
 const STATUS_BADGE: Record<string, any> = {
   active: 'success',
@@ -34,7 +24,7 @@ export const VehiclesTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const [rows, setRows] = useState<Vehicle[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -43,10 +33,9 @@ export const VehiclesTab: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
-    const qs = showArchived ? '?includeArchived=true' : '';
     const [r1, r2] = await Promise.all([
-      logisticsApi.get(`/api/logistics/vehicles${qs}`),
-      logisticsApi.get('/api/hr/employees').catch(() => []),
+      vehiclesApi.list(showArchived ? { includeArchived: true } : undefined).catch(() => []),
+      employeesApi.list().catch(() => []),
     ]);
     setRows(Array.isArray(r1) ? r1 : []);
     setEmployees(Array.isArray(r2) ? r2 : []);
@@ -73,39 +62,38 @@ export const VehiclesTab: React.FC = () => {
       toast.error('La matrícula es obligatoria.');
       return;
     }
-    const url = editing ? `/api/logistics/vehicles/${editing.id}` : '/api/logistics/vehicles';
-    const method = editing ? 'PATCH' : 'POST';
-    const res = await logisticsApi.raw(method, url, form);
-    const d = res.data;
-    if (!res.ok) {
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      if (editing) await vehiclesApi.update(editing.id, form);
+      else await vehiclesApi.create(form);
+      toast.success(editing ? 'Vehículo actualizado' : 'Vehículo creado');
+      setShowModal(false);
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
-    toast.success(editing ? 'Vehículo actualizado' : 'Vehículo creado');
-    setShowModal(false);
-    load();
   };
 
   const archive = async (v: Vehicle) => {
     if (!confirm(`¿Archivar vehículo ${v.plate}? Las rutas pasadas conservarán su registro.`))
       return;
-    const res = await logisticsApi.raw('DELETE', `/api/logistics/vehicles/${v.id}`);
-    if (!res.ok) {
+    try {
+      await vehiclesApi.archive(v.id);
+      toast.success('Vehículo archivado');
+      load();
+    } catch {
       toast.error('Error al archivar');
-      return;
     }
-    toast.success('Vehículo archivado');
-    load();
   };
 
   const restore = async (v: Vehicle) => {
-    const res = await logisticsApi.raw('POST', `/api/logistics/vehicles/${v.id}/restore`);
-    if (!res.ok) {
+    try {
+      await vehiclesApi.restore(v.id);
+      toast.success('Vehículo restaurado');
+      load();
+    } catch {
       toast.error('Error al restaurar');
-      return;
     }
-    toast.success('Vehículo restaurado');
-    load();
   };
 
   const empMap = new Map(employees.map((e) => [e.id, e] as const));

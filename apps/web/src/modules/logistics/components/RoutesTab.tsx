@@ -1,29 +1,13 @@
-import { logisticsApi } from '../api';
+import { routesApi, shipmentsApi, vehiclesApi } from '../api';
+import { employeesApi } from '@/modules/hr/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
 import { RouteMapPlanner } from '../components/RouteMapPlanner';
 import { useAuth } from '@/context/AuthContext';
-
-interface Route {
-  id: string;
-  code: string;
-  name: string;
-  plannedDate: string;
-  status: string;
-  driverName: string | null;
-  driverEmployeeId: string | null;
-  vehiclePlate: string | null;
-  vehicleId: string | null;
-}
-
-interface VehicleLite {
-  id: string;
-  plate: string;
-  brand: string | null;
-  model: string | null;
-  defaultDriverEmployeeId: string | null;
-}
+import { ApiError } from '@/shared/http';
+import type { Route, RouteVehicleOption } from '../domain/route';
+import type { Employee } from '@/modules/hr/domain/employee';
 
 const STATUS_BADGE: Record<string, any> = {
   planned: 'neutral',
@@ -36,8 +20,8 @@ export const RoutesTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const [rows, setRows] = useState<Route[]>([]);
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [vehicles, setVehicles] = useState<VehicleLite[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [vehicles, setVehicles] = useState<RouteVehicleOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Route | null>(null);
@@ -47,9 +31,9 @@ export const RoutesTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const [r1, r2, r3] = await Promise.all([
-      logisticsApi.get('/api/logistics/routes'),
-      logisticsApi.get('/api/hr/employees').catch(() => []),
-      logisticsApi.get('/api/logistics/vehicles').catch(() => []),
+      routesApi.list().catch(() => []),
+      employeesApi.list().catch(() => []),
+      vehiclesApi.list().catch(() => []),
     ]);
     setRows(Array.isArray(r1) ? r1 : []);
     setEmployees(Array.isArray(r2) ? r2 : []);
@@ -79,45 +63,42 @@ export const RoutesTab: React.FC = () => {
       toast.error('Nombre y fecha son obligatorios');
       return;
     }
-    const url = editing ? `/api/logistics/routes/${editing.id}` : '/api/logistics/routes';
-    const method = editing ? 'PATCH' : 'POST';
-    const res = await logisticsApi.raw(method, url, form);
-    const d = res.data;
-    if (!res.ok) {
-      toast.error(d.error || 'Error');
-      return;
-    }
+    try {
+      const d = editing ? await routesApi.update(editing.id, form) : await routesApi.create(form);
 
-    // Al crear una ruta nueva, insertamos las paradas del planner respetando el orden.
-    if (!editing && plannerIds.length > 0) {
-      const routeId = d.id as string;
-      const shipRes = await logisticsApi.raw('GET', '/api/logistics/shipments/unrouted');
-      const shipments = shipRes.ok ? shipRes.data : [];
-      const byId = new Map<string, any>(
-        Array.isArray(shipments) ? shipments.map((s: any) => [s.id, s]) : [],
-      );
-      // Creadas en serie para garantizar el orden de inserción / sequence.
-      for (let i = 0; i < plannerIds.length; i++) {
-        const s = byId.get(plannerIds[i]);
-        if (!s) continue;
-        await logisticsApi.raw('POST', `/api/logistics/routes/${routeId}/stops`, {
+      // Al crear una ruta nueva, insertamos las paradas del planner respetando el orden.
+      if (!editing && plannerIds.length > 0) {
+        const routeId = d.id;
+        const shipments = await shipmentsApi.listUnrouted().catch(() => []);
+        const byId = new Map(
+          Array.isArray(shipments) ? shipments.map((s) => [s.id, s] as const) : [],
+        );
+        // Creadas en serie para garantizar el orden de inserción / sequence.
+        for (let i = 0; i < plannerIds.length; i++) {
+          const s = byId.get(plannerIds[i]);
+          if (!s) continue;
+          await routesApi.createStop(routeId, {
             sequence: i + 1,
             shipmentId: s.id,
             address: s.destinationAddress,
             lat: s.destinationLat,
             lng: s.destinationLng,
           });
+        }
       }
-    }
 
-    toast.success(editing ? 'Ruta actualizada' : 'Ruta creada');
-    setShowModal(false);
-    load();
+      toast.success(editing ? 'Ruta actualizada' : 'Ruta creada');
+      setShowModal(false);
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
+    }
   };
 
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar ruta? También sus paradas.')) return;
-    await logisticsApi.raw('DELETE', `/api/logistics/routes/${id}`);
+    await routesApi.remove(id);
     load();
   };
 

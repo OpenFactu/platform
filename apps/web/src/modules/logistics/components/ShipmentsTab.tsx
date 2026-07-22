@@ -1,4 +1,6 @@
-import { logisticsApi } from '../api';
+import { carriersApi, routesApi, shipmentsApi, vehiclesApi } from '../api';
+import { warehousesApi } from '@/modules/inventory/api';
+import { employeesApi } from '@/modules/hr/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, MapPin, Search, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
@@ -7,23 +9,13 @@ import { useTabs } from '@/context/TabsContext';
 import { useFormat } from '@/hooks/useFormat';
 import { RoutePicker } from '../components/RoutePicker';
 import { MapSearchBox } from '@/components/maps/MapSearchBox';
-
-interface Shipment {
-  id: string;
-  carrier: string;
-  trackingNumber: string | null;
-  status: string;
-  preparationStatus: string | null;
-  driverName: string | null;
-  vehiclePlate: string | null;
-  destinationAddress: string | null;
-  lastLat: number | null;
-  lastLng: number | null;
-  lastLocationAt: string | null;
-  estimatedDelivery: string | null;
-  reportToken: string;
-  createdAt: string;
-}
+import { ApiError } from '@/shared/http';
+import type { Carrier } from '../domain/carrier';
+import type { Route } from '../domain/route';
+import type { Shipment } from '../domain/shipment';
+import type { Vehicle } from '../domain/vehicle';
+import type { Warehouse } from '@/modules/inventory/domain/warehouse';
+import type { Employee } from '@/modules/hr/domain/employee';
 
 const STATUS_BADGE: Record<string, any> = {
   pending: 'neutral',
@@ -110,14 +102,14 @@ export const ShipmentsTab: React.FC = () => {
   const [page, setPage] = useState(1);
 
   // Rutas disponibles para el RoutePicker del filtro.
-  const [routes, setRoutes] = useState<any[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
   // Almacenes (para el campo returnWarehouseId en pickup_return).
-  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   // Empleados (conductores) y vehículos para los selectores del modal.
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   // Carriers registrados para el selector de transportista.
-  const [carriers, setCarriers] = useState<any[]>([]);
+  const [carriers, setCarriers] = useState<Carrier[]>([]);
   // Modo del select de transportista: propio | <code> | __custom__
   const [carrierMode, setCarrierMode] = useState<string>('propio');
 
@@ -130,26 +122,30 @@ export const ShipmentsTab: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (debouncedQ) params.set('q', debouncedQ);
-    if (statuses.length) params.set('status', statuses.join(','));
-    if (routeId) params.set('routeId', routeId);
-    if (fromDate) params.set('fromDate', fromDate);
-    if (toDate) params.set('toDate', toDate);
-    params.set('page', String(page));
-    params.set('pageSize', String(PAGE_SIZE));
-
-    const r = await logisticsApi.raw('GET', `/api/logistics/shipments?${params.toString()}`);
-    const d = r.data;
-    if (Array.isArray(d)) {
-      // Compatibilidad con un backend que aún devolviera array plano.
-      setRows(d);
-      setTotal(d.length);
-    } else {
-      setRows(Array.isArray(d.rows) ? d.rows : []);
-      setTotal(Number(d.total) || 0);
+    try {
+      const d = await shipmentsApi.list({
+        q: debouncedQ || undefined,
+        status: statuses.length ? statuses.join(',') : undefined,
+        routeId: routeId || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+        page,
+        pageSize: PAGE_SIZE,
+      });
+      if (Array.isArray(d)) {
+        // Compatibilidad con un backend que aún devolviera array plano.
+        setRows(d);
+        setTotal(d.length);
+      } else {
+        setRows(Array.isArray(d.rows) ? d.rows : []);
+        setTotal(Number(d.total) || 0);
+      }
+    } catch {
+      setRows([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -160,27 +156,25 @@ export const ShipmentsTab: React.FC = () => {
   // Cargar rutas y almacenes una vez (para filtros + selector pickup_return).
   useEffect(() => {
     if (!user?.tenantId) return;
-    logisticsApi.get('/api/logistics/routes')
-      .catch(() => [])
+    routesApi
+      .list()
       .then((d) => setRoutes(Array.isArray(d) ? d : []))
       .catch(() => setRoutes([]));
-    logisticsApi.get('/api/warehouses')
-      .catch(() => [])
+    warehousesApi
+      .list()
       .then((d) => setWarehouses(Array.isArray(d) ? d : []))
       .catch(() => setWarehouses([]));
-    logisticsApi.get('/api/hr/employees')
-      .catch(() => [])
-      .then((d) =>
-        setEmployees(Array.isArray(d) ? d.filter((e: any) => e.status === 'active') : []),
-      )
+    employeesApi
+      .list()
+      .then((d) => setEmployees(Array.isArray(d) ? d.filter((e) => e.status === 'active') : []))
       .catch(() => setEmployees([]));
-    logisticsApi.get('/api/logistics/vehicles')
-      .catch(() => [])
-      .then((d) => setVehicles(Array.isArray(d) ? d.filter((v: any) => v.status === 'active') : []))
+    vehiclesApi
+      .list()
+      .then((d) => setVehicles(Array.isArray(d) ? d.filter((v) => v.status === 'active') : []))
       .catch(() => setVehicles([]));
-    logisticsApi.get('/api/carriers')
-      .catch(() => [])
-      .then((d) => setCarriers(Array.isArray(d) ? d.filter((c: any) => c.isActive !== false) : []))
+    carriersApi
+      .list()
+      .then((d) => setCarriers(Array.isArray(d) ? d.filter((c) => c.isActive !== false) : []))
       .catch(() => setCarriers([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.tenantId]);
@@ -198,29 +192,32 @@ export const ShipmentsTab: React.FC = () => {
       toast.error('Selecciona el almacén de destino al devolverlo.');
       return;
     }
-    const res = await logisticsApi.raw('POST', '/api/logistics/shipments', form);
-    const d = res.data;
-    if (!res.ok) {
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      const d = await shipmentsApi.create(form);
+      toast.success(`Envío creado (token ${d.reportToken.slice(0, 8)}…)`);
+      setShowModal(false);
+      setForm({ carrier: 'propio', status: 'pending', kind: 'delivery' });
+      setCarrierMode('propio');
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
-    toast.success(`Envío creado (token ${d.reportToken.slice(0, 8)}…)`);
-    setShowModal(false);
-    setForm({ carrier: 'propio', status: 'pending', kind: 'delivery' });
-    setCarrierMode('propio');
-    load();
   };
 
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar envío?')) return;
-    await logisticsApi.raw('DELETE', `/api/logistics/shipments/${id}`);
+    await shipmentsApi.remove(id);
     load();
   };
 
   const resendNotification = async (id: string, status: string) => {
-    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${id}/notify`, { stage: status });
-    if (r.ok) toast.success('Email enfilado');
-    else toast.error('No se pudo enviar');
+    try {
+      await shipmentsApi.notify(id, { stage: status });
+      toast.success('Email enfilado');
+    } catch {
+      toast.error('No se pudo enviar');
+    }
   };
 
   const toggleStatus = (s: string) => {

@@ -8,20 +8,10 @@
  * del mapa. El contenedor padre debe tener `position: relative`.
  */
 
-import { coreApi } from '@/shared/api';
+import { geocodeApi } from '@/modules/logistics/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Search, X as XIcon, Loader2 } from 'lucide-react';
-
-interface Suggestion {
-  label: string;
-  lat: number;
-  lng: number;
-  type?: string | null;
-  housenumber?: string | null;
-  street?: string | null;
-  city?: string | null;
-  postcode?: string | null;
-}
+import type { GeocodeSuggestion as Suggestion } from '@/modules/logistics/domain/shipment';
 
 interface Props {
   onSelect: (s: Suggestion) => void;
@@ -78,20 +68,15 @@ export const MapSearchBox: React.FC<Props> = ({
     }
     let aborted = false;
     setLoading(true);
-    const headers: Record<string, string> = {};
-    if (authHeader) headers.Authorization = authHeader;
-    if (tenantId) headers['x-tenant-id'] = tenantId;
-    coreApi
-      .raw('GET', `/api/logistics/geocode/suggest?q=${encodeURIComponent(debounced)}`)
-      .then((r) => {
-        if (!r.ok) {
-          console.error(
-            `[MapSearchBox] /geocode/suggest devolvió ${r.status}. ` +
-              `Cabeceras auth/tenant enviadas: auth=${!!authHeader}, tenant=${!!tenantId}`,
-          );
-          return [];
-        }
-        return r.data;
+    geocodeApi
+      .suggest(debounced)
+      .catch((err) => {
+        console.error(
+          `[MapSearchBox] /geocode/suggest falló. ` +
+            `Cabeceras auth/tenant enviadas: auth=${!!authHeader}, tenant=${!!tenantId}`,
+          err,
+        );
+        return [];
       })
       .then((d) => {
         if (aborted) return;

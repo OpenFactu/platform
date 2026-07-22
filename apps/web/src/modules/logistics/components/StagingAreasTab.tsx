@@ -1,4 +1,6 @@
-import { logisticsApi } from '../api';
+import { packagesApi, platformsApi, stagingAreasApi } from '../api';
+import { itemsApi, warehousesApi } from '@/modules/inventory/api';
+import { partnersApi } from '@/modules/partners/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Loader, Badge, useToast } from '@openfactu/ui';
 import {
@@ -13,44 +15,21 @@ import {
 } from 'lucide-react';
 import { RowActionsMenu } from '../components/RowActionsMenu';
 import { useAuth } from '@/context/AuthContext';
-
-interface StagingArea {
-  id: string;
-  code: string;
-  name: string;
-  warehouseId: string | null;
-  partnerId: string | null;
-  platformId: string | null;
-  address: string | null;
-  lat: number | null;
-  lng: number | null;
-  notes: string | null;
-}
-
-interface Platform {
-  id: string;
-  code: string;
-  name: string;
-  address: string | null;
-  lat: number | null;
-  lng: number | null;
-}
-
-interface StagingAreaItem {
-  id: string;
-  stagingAreaId: string;
-  itemId: string;
-  expectedQty: number | null;
-  notes: string | null;
-}
+import { ApiError } from '@/shared/http';
+import type { Platform } from '../domain/platform';
+import type { StagingArea, StagingAreaItem } from '../domain/stagingArea';
+import type { Package } from '../domain/package';
+import type { Item } from '@/modules/inventory/domain/item';
+import type { Warehouse } from '@/modules/inventory/domain/warehouse';
+import type { Partner } from '@/modules/partners/domain/partner';
 
 export const StagingAreasTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const [rows, setRows] = useState<StagingArea[]>([]);
-  const [warehouses, setWarehouses] = useState<any[]>([]);
-  const [partners, setPartners] = useState<any[]>([]);
-  const [items, setItems] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -65,18 +44,18 @@ export const StagingAreasTab: React.FC = () => {
   const [itemsFor, setItemsFor] = useState<StagingArea | null>(null);
   const [areaItems, setAreaItems] = useState<StagingAreaItem[]>([]);
   const [pkgsFor, setPkgsFor] = useState<StagingArea | null>(null);
-  const [areaPackages, setAreaPackages] = useState<any[]>([]);
+  const [areaPackages, setAreaPackages] = useState<Package[]>([]);
   const [newItemId, setNewItemId] = useState('');
   const [newItemQty, setNewItemQty] = useState<string>('');
 
   const load = async () => {
     setLoading(true);
     const [r, w, p, it, pl] = await Promise.all([
-      logisticsApi.get('/api/logistics/staging-areas'),
-      logisticsApi.get('/api/warehouses').catch(() => []),
-      logisticsApi.get('/api/partners').catch(() => []),
-      logisticsApi.get('/api/items').catch(() => []),
-      logisticsApi.get('/api/logistics/platforms').catch(() => []),
+      stagingAreasApi.list().catch(() => []),
+      warehousesApi.list().catch(() => []),
+      partnersApi.list().catch(() => []),
+      itemsApi.list().catch(() => []),
+      platformsApi.list().catch(() => []),
     ]);
     setRows(Array.isArray(r) ? r : []);
     setWarehouses(Array.isArray(w) ? w : []);
@@ -105,36 +84,32 @@ export const StagingAreasTab: React.FC = () => {
     // El nombre es opcional: si no se rellena, el backend lo genera como
     // "Acopio <cliente>" si hay partnerId, o con el código como último
     // recurso. Así el usuario no está obligado a inventar un nombre.
-    const url = editing
-      ? `/api/logistics/staging-areas/${editing.id}`
-      : '/api/logistics/staging-areas';
-    const method = editing ? 'PATCH' : 'POST';
-    const res = await logisticsApi.raw(method, url, form);
-    const d = res.data;
-    if (!res.ok) {
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      const d = editing
+        ? await stagingAreasApi.update(editing.id, form)
+        : await stagingAreasApi.create(form);
+      toast.success(editing ? 'Acopio actualizado' : `Acopio ${d.code} creado`);
+      setShowModal(false);
+      setForm({});
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
-    toast.success(editing ? 'Acopio actualizado' : `Acopio ${d.code} creado`);
-    setShowModal(false);
-    setForm({});
-    load();
   };
 
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar acopio?')) return;
-    await logisticsApi.raw('DELETE', `/api/logistics/staging-areas/${id}`);
+    await stagingAreasApi.remove(id);
     load();
   };
 
   const openQr = async (area: StagingArea) => {
     // Petición autenticada (el <img> no enviaría headers) → blob URL.
-    const payload = await logisticsApi
-      .get<any>(`/api/logistics/staging-areas/${area.id}/payload`)
-      .catch(() => ({}));
+    const payload = await stagingAreasApi.payload(area.id).catch(() => ({}));
     let imgUrl: string | null = null;
     try {
-      const { blob } = await logisticsApi.getBlob(`/api/logistics/staging-areas/${area.id}/qr.png`);
+      const { blob } = await stagingAreasApi.qrPng(area.id);
       imgUrl = URL.createObjectURL(blob);
     } catch {
       toast.error('No se pudo cargar el QR');
@@ -148,12 +123,13 @@ export const StagingAreasTab: React.FC = () => {
    * backend (mismo que alimenta el QR) para no tocar la API.
    */
   const openPackingList = async (area: StagingArea) => {
-    const payloadRes = await logisticsApi.raw('GET', `/api/logistics/staging-areas/${area.id}/payload`);
-    if (!payloadRes.ok) {
+    let p: any;
+    try {
+      p = await stagingAreasApi.payload(area.id);
+    } catch {
       toast.error('No se pudo cargar el acopio');
       return;
     }
-    const p = payloadRes.data;
     const w = window.open('', '_blank');
     if (!w) {
       toast.error('El navegador bloqueó la ventana emergente');
@@ -272,12 +248,13 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
    * en ruta y la app le muestra quién la va a recibir.
    */
   const openPackageLabels = async (area: StagingArea, perPage: 1 | 4 = 4) => {
-    const r = await logisticsApi.raw('GET', `/api/logistics/staging-areas/${area.id}/payload`);
-    if (!r.ok) {
+    let p: any;
+    try {
+      p = await stagingAreasApi.payload(area.id);
+    } catch {
       toast.error('No se pudo cargar el acopio');
       return;
     }
-    const p = r.data;
     const pkgs = (p.packages || []) as any[];
     if (pkgs.length === 0) {
       toast.error('Este acopio no tiene paquetes');
@@ -400,9 +377,12 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
 
   const openItems = async (area: StagingArea) => {
     setItemsFor(area);
-    const r = await logisticsApi.raw('GET', `/api/logistics/staging-areas/${area.id}/items`);
-    const list = r.data;
-    setAreaItems(Array.isArray(list) ? list : []);
+    try {
+      const list = await stagingAreasApi.listItems(area.id);
+      setAreaItems(Array.isArray(list) ? list : []);
+    } catch {
+      setAreaItems([]);
+    }
     setNewItemId('');
     setNewItemQty('');
   };
@@ -411,10 +391,9 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
     setPkgsFor(area);
     // Filtramos client-side: no hay endpoint específico, pero GET /packages
     // devuelve todos — filtramos por stagingAreaId.
-    const r = await logisticsApi.raw('GET', '/api/logistics/packages');
-    const list = r.ok ? r.data : [];
+    const list = await packagesApi.list().catch(() => []);
     setAreaPackages(
-      (Array.isArray(list) ? list : []).filter((p: any) => p.stagingAreaId === area.id),
+      (Array.isArray(list) ? list : []).filter((p) => p.stagingAreaId === area.id),
     );
   };
 
@@ -428,25 +407,25 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
 
   const addItem = async () => {
     if (!itemsFor || !newItemId) return;
-    const res = await logisticsApi.raw('POST', `/api/logistics/staging-areas/${itemsFor.id}/items`, {
+    try {
+      await stagingAreasApi.addItem(itemsFor.id, {
         itemId: newItemId,
         expectedQty: newItemQty === '' ? null : Number(newItemQty),
       });
-    const d = res.data;
-    if (!res.ok) {
-      toast.error(d.error || 'Error');
-      return;
+      toast.success('Artículo añadido');
+      setNewItemId('');
+      setNewItemQty('');
+      const list = await stagingAreasApi.listItems(itemsFor.id);
+      setAreaItems(Array.isArray(list) ? list : []);
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
-    toast.success('Artículo añadido');
-    setNewItemId('');
-    setNewItemQty('');
-    const r = await logisticsApi.raw('GET', `/api/logistics/staging-areas/${itemsFor.id}/items`);
-    setAreaItems(r.data);
   };
 
   const removeItem = async (rowId: string) => {
     if (!itemsFor) return;
-    await logisticsApi.raw('DELETE', `/api/logistics/staging-areas/${itemsFor.id}/items/${rowId}`);
+    await stagingAreasApi.removeItem(itemsFor.id, rowId);
     setAreaItems((xs) => xs.filter((x) => x.id !== rowId));
   };
 

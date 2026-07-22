@@ -3,26 +3,13 @@
  * (cross-docks, naves alquiladas, hubs compartidos). Las `StagingArea` las
  * referencian vía `platformId` para heredar address/coords.
  */
-import { logisticsApi } from '../api';
+import { platformsApi } from '../api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, RotateCcw, Archive, Building2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-
-interface Platform {
-  id: string;
-  code: string;
-  name: string;
-  address: string | null;
-  lat: number | null;
-  lng: number | null;
-  openingHours: string | null;
-  contactName: string | null;
-  contactPhone: string | null;
-  contactEmail: string | null;
-  notes: string | null;
-  archivedAt: string | null;
-}
+import { ApiError } from '@/shared/http';
+import type { Platform } from '../domain/platform';
 
 export const PlatformsTab: React.FC = () => {
   const { token, user } = useAuth();
@@ -36,11 +23,14 @@ export const PlatformsTab: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
-    const qs = showArchived ? '?includeArchived=true' : '';
-    const res = await logisticsApi.raw('GET', `/api/logistics/platforms${qs}`);
-    const d = res.ok ? res.data : [];
-    setRows(Array.isArray(d) ? d : []);
-    setLoading(false);
+    try {
+      const d = await platformsApi.list(showArchived ? { includeArchived: true } : undefined);
+      setRows(Array.isArray(d) ? d : []);
+    } catch {
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => {
     if (user?.tenantId) load();
@@ -63,27 +53,26 @@ export const PlatformsTab: React.FC = () => {
       toast.error('El nombre es obligatorio.');
       return;
     }
-    const url = editing ? `/api/logistics/platforms/${editing.id}` : '/api/logistics/platforms';
-    const method = editing ? 'PATCH' : 'POST';
-    const res = await logisticsApi.raw(method, url, form);
-    const d = res.data;
-    if (!res.ok) {
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      if (editing) await platformsApi.update(editing.id, form);
+      else await platformsApi.create(form);
+      toast.success(editing ? 'Plataforma actualizada' : 'Plataforma creada');
+      setShowModal(false);
+      setForm({});
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
-    toast.success(editing ? 'Plataforma actualizada' : 'Plataforma creada');
-    setShowModal(false);
-    setForm({});
-    load();
   };
 
   const archive = async (p: Platform) => {
     if (!confirm(`¿Archivar plataforma ${p.name}?`)) return;
-    await logisticsApi.raw('DELETE', `/api/logistics/platforms/${p.id}`);
+    await platformsApi.archive(p.id);
     load();
   };
   const restore = async (p: Platform) => {
-    await logisticsApi.raw('POST', `/api/logistics/platforms/${p.id}/restore`);
+    await platformsApi.restore(p.id);
     load();
   };
 

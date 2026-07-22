@@ -12,49 +12,20 @@
  *   - `GET /api/logistics/incidents/client-reported` (últimos 30 días)
  */
 
-import { logisticsApi } from '../api';
+import { incidentsApi, shipmentsApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Badge, Loader, Button, Input, Modal, useToast } from '@openfactu/ui';
 import { AlertTriangle, CheckCircle2, MessageCircle, RefreshCw, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
-
-interface Shipment {
-  id: string;
-  trackingNumber: string | null;
-  status: string;
-  preparationStatus: string | null;
-  driverName: string | null;
-  vehiclePlate: string | null;
-  destinationAddress: string | null;
-  recipientName: string | null;
-  updatedAt: string;
-}
-
-interface ShipmentEvent {
-  kind: string;
-  status: string | null;
-  description: string | null;
-  createdAt: string;
-}
+import { ApiError } from '@/shared/http';
+import type { ClientIncident, Shipment, ShipmentEvent } from '../domain/shipment';
 
 interface Incident {
   shipment: Shipment;
   reason: string | null;
   reportedAt: string | null;
-}
-
-/** Incidencia reportada por un cliente desde el chat público de tracking. */
-interface ClientIncident {
-  eventId: string;
-  description: string | null;
-  createdAt: string;
-  shipmentId: string;
-  shipmentStatus: string | null;
-  preparationStatus: string | null;
-  destinationAddress: string | null;
-  recipientName: string | null;
 }
 
 export const IncidentsTab: React.FC = () => {
@@ -68,21 +39,20 @@ export const IncidentsTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     // Reportadas por clientes — en paralelo con la lista clásica.
-    logisticsApi.get('/api/logistics/incidents/client-reported')
-      .catch(() => [])
+    incidentsApi
+      .listClientReported()
       .then((d) => setClientReported(Array.isArray(d) ? d : []))
       .catch(() => setClientReported([]));
     // Filtramos por ambos status (legacy + preparation) para no perder ninguno.
-    const r = await logisticsApi.raw('GET', `/api/logistics/shipments?status=exception&preparationStatus=exception&pageSize=100`);
-    const d = r.ok ? r.data : { rows: [] };
-    const rows: Shipment[] = Array.isArray(d.rows) ? d.rows : Array.isArray(d) ? d : [];
+    const d = await shipmentsApi
+      .list({ status: 'exception', preparationStatus: 'exception', pageSize: 100 })
+      .catch(() => ({ rows: [] }));
+    const rows: Shipment[] = Array.isArray(d) ? d : Array.isArray(d.rows) ? d.rows : [];
     // Para cada uno, pedimos el último event con descripción.
     const enriched = await Promise.all(
       rows.map(async (s) => {
         try {
-          const er = await logisticsApi.raw('GET', `/api/logistics/shipments/${s.id}/events`);
-          if (!er.ok) return { shipment: s, reason: null, reportedAt: null } as Incident;
-          const events: ShipmentEvent[] = er.data;
+          const events = await shipmentsApi.listEvents(s.id);
           const exc = events.find((e) => e.status === 'exception') || null;
           return {
             shipment: s,
@@ -111,14 +81,14 @@ export const IncidentsTab: React.FC = () => {
   /** Escala una incidencia de cliente: el envío pasa a `exception` y entra
    *  en la lista clásica con sus acciones (resolver / devolución). */
   const escalate = async (ci: ClientIncident) => {
-    const r = await logisticsApi.raw('PATCH', `/api/logistics/shipments/${ci.shipmentId}`, {
+    try {
+      await shipmentsApi.update(ci.shipmentId, {
         status: 'exception',
         reason: ci.description || 'Incidencia reportada por el cliente',
       });
-    if (r.ok) {
       toast.success('Escalada — el envío queda en estado de incidencia');
       load();
-    } else {
+    } catch {
       toast.error('No se pudo escalar la incidencia');
     }
   };
@@ -134,26 +104,25 @@ export const IncidentsTab: React.FC = () => {
   const confirmResolve = async () => {
     if (!resolveModal) return;
     setActionLoading(true);
-    const r = await logisticsApi.raw('PATCH', `/api/logistics/shipments/${resolveModal.shipment.id}`, { status: 'in_transit' });
-    setActionLoading(false);
-    if (r.ok) {
+    try {
+      await shipmentsApi.update(resolveModal.shipment.id, { status: 'in_transit' });
       toast.success('Incidencia resuelta — envío en tránsito de nuevo');
       setResolveModal(null);
       load();
-    } else {
+    } catch {
       toast.error('No se pudo resolver');
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const confirmReturn = async () => {
     if (!returnModal) return;
     setActionLoading(true);
-    const r = await logisticsApi.raw('POST', `/api/logistics/shipments/${returnModal.shipment.id}/return`, {
+    try {
+      const d = await shipmentsApi.return(returnModal.shipment.id, {
         reason: returnReason.trim() || 'Convertida desde incidencia',
       });
-    setActionLoading(false);
-    if (r.ok) {
-      const d = r.data;
       toast.success(
         d.receiptId
           ? 'Devolución creada. GoodsReceipt en borrador listo para postear.'
@@ -162,9 +131,11 @@ export const IncidentsTab: React.FC = () => {
       setReturnModal(null);
       setReturnReason('');
       load();
-    } else {
-      const d = (r.data ?? {});
-      toast.error(d.error || 'No se pudo convertir en devolución');
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'No se pudo convertir en devolución');
+    } finally {
+      setActionLoading(false);
     }
   };
 

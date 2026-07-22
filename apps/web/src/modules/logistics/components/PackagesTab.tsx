@@ -1,16 +1,13 @@
-import { logisticsApi } from '../api';
+import { packagesApi, stagingAreasApi } from '../api';
+import { itemsApi } from '@/modules/inventory/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
 import { Plus, Trash2, Lock, Warehouse, Boxes } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-
-interface PackageLine {
-  id: string;
-  packageId: string;
-  itemId: string;
-  quantity: number;
-  sourceLineId: string | null;
-}
+import { ApiError } from '@/shared/http';
+import type { Package, PackageLine } from '../domain/package';
+import type { StagingArea } from '../domain/stagingArea';
+import type { Item } from '@/modules/inventory/domain/item';
 
 const STATUS_BADGE: Record<string, any> = {
   open: 'warning',
@@ -23,14 +20,14 @@ const STATUS_BADGE: Record<string, any> = {
 export const PackagesTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
-  const [rows, setRows] = useState<any[]>([]);
-  const [boxes, setBoxes] = useState<any[]>([]);
-  const [areas, setAreas] = useState<any[]>([]);
-  const [allItems, setAllItems] = useState<any[]>([]);
+  const [rows, setRows] = useState<Package[]>([]);
+  const [boxes, setBoxes] = useState<Item[]>([]);
+  const [areas, setAreas] = useState<StagingArea[]>([]);
+  const [allItems, setAllItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState<any>({});
-  const [linesFor, setLinesFor] = useState<any | null>(null);
+  const [linesFor, setLinesFor] = useState<Package | null>(null);
   const [lines, setLines] = useState<PackageLine[]>([]);
   const [newLineItemId, setNewLineItemId] = useState('');
   const [newLineQty, setNewLineQty] = useState<string>('1');
@@ -38,23 +35,26 @@ export const PackagesTab: React.FC = () => {
   const load = async () => {
     setLoading(true);
     const [p, i, a] = await Promise.all([
-      logisticsApi.get('/api/logistics/packages'),
-      logisticsApi.get('/api/items').catch(() => []),
-      logisticsApi.get('/api/logistics/staging-areas').catch(() => []),
+      packagesApi.list().catch(() => []),
+      itemsApi.list().catch(() => []),
+      stagingAreasApi.list().catch(() => []),
     ]);
     setRows(Array.isArray(p) ? p : []);
     const items = Array.isArray(i) ? i : [];
     setAllItems(items);
-    setBoxes(items.filter((x: any) => x.kind === 'box'));
+    setBoxes(items.filter((x) => x.kind === 'box'));
     setAreas(Array.isArray(a) ? a : []);
     setLoading(false);
   };
 
-  const openLines = async (pkg: any) => {
+  const openLines = async (pkg: Package) => {
     setLinesFor(pkg);
-    const r = await logisticsApi.raw('GET', `/api/logistics/packages/${pkg.id}/lines`);
-    const d = (r.data ?? []);
-    setLines(Array.isArray(d) ? d : []);
+    try {
+      const d = await packagesApi.listLines(pkg.id);
+      setLines(Array.isArray(d) ? d : []);
+    } catch {
+      setLines([]);
+    }
     setNewLineItemId('');
     setNewLineQty('1');
   };
@@ -66,22 +66,22 @@ export const PackagesTab: React.FC = () => {
       toast.error('Cantidad inválida');
       return;
     }
-    const res = await logisticsApi.raw('POST', `/api/logistics/packages/${linesFor.id}/lines`, { itemId: newLineItemId, quantity: qty });
-    if (!res.ok) {
-      const d = (res.data ?? {});
-      toast.error(d.error || 'Error al añadir');
-      return;
+    try {
+      await packagesApi.addLine(linesFor.id, { itemId: newLineItemId, quantity: qty });
+      toast.success('Artículo añadido');
+      const d = await packagesApi.listLines(linesFor.id);
+      setLines(Array.isArray(d) ? d : []);
+      setNewLineItemId('');
+      setNewLineQty('1');
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error al añadir');
     }
-    toast.success('Artículo añadido');
-    const r = await logisticsApi.raw('GET', `/api/logistics/packages/${linesFor.id}/lines`);
-    setLines(r.data);
-    setNewLineItemId('');
-    setNewLineQty('1');
   };
 
   const removeLine = async (lineId: string) => {
     if (!linesFor) return;
-    await logisticsApi.raw('DELETE', `/api/logistics/packages/${linesFor.id}/lines/${lineId}`);
+    await packagesApi.removeLine(linesFor.id, lineId);
     setLines((xs) => xs.filter((x) => x.id !== lineId));
   };
   useEffect(() => {
@@ -90,39 +90,39 @@ export const PackagesTab: React.FC = () => {
   }, [user?.tenantId]);
 
   const create = async () => {
-    const res = await logisticsApi.raw('POST', '/api/logistics/packages', form);
-    const d = res.data;
-    if (!res.ok) {
-      toast.error(d.error || 'Error');
-      return;
+    try {
+      const d = await packagesApi.create(form);
+      toast.success(`Paquete ${d.code} creado`);
+      setShowModal(false);
+      setForm({});
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error');
     }
-    toast.success(`Paquete ${d.code} creado`);
-    setShowModal(false);
-    setForm({});
-    load();
   };
 
   const seal = async (id: string) => {
-    await logisticsApi.raw('PATCH', `/api/logistics/packages/${id}`, { status: 'sealed' });
+    await packagesApi.update(id, { status: 'sealed' });
     toast.success('Paquete sellado');
     load();
   };
 
   const moveToArea = async (id: string, stagingAreaId: string | null) => {
     const area = stagingAreaId ? areas.find((a) => a.id === stagingAreaId) : null;
-    const res = await logisticsApi.raw('PATCH', `/api/logistics/packages/${id}`, { stagingAreaId });
-    if (!res.ok) {
-      const d = (res.data ?? {});
-      toast.error(d.error || 'Error al mover');
-      return;
+    try {
+      await packagesApi.update(id, { stagingAreaId });
+      toast.success(area ? `Movido a ${area.name}` : 'Sacado del acopio');
+      load();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error al mover');
     }
-    toast.success(area ? `Movido a ${area.name}` : 'Sacado del acopio');
-    load();
   };
 
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar paquete?')) return;
-    await logisticsApi.raw('DELETE', `/api/logistics/packages/${id}`);
+    await packagesApi.remove(id);
     load();
   };
 
@@ -360,7 +360,7 @@ export const PackagesTab: React.FC = () => {
                           {it?.name || l.itemId}
                         </span>
                         <span className="text-[11px] font-bold tabular-nums text-slate-600 dark:text-slate-300">
-                          {Number(l.quantity).toFixed(2)} {it?.uomCode || ''}
+                          {Number(l.quantity).toFixed(2)} {it?.uomCode ? String(it.uomCode) : ''}
                         </span>
                         {linesFor.status !== 'shipped' && linesFor.status !== 'delivered' && (
                           <button

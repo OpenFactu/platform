@@ -1,17 +1,9 @@
-import { logisticsApi } from '../api';
+import { shipmentsApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Marker, Source, Layer } from 'react-map-gl/maplibre';
 import { BaseMap } from '@/components/maps/BaseMap';
 import { ArrowUp, ArrowDown, X, Zap } from 'lucide-react';
-
-interface UnroutedShipment {
-  id: string;
-  trackingNumber: string | null;
-  status: string;
-  destinationAddress: string | null;
-  destinationLat: number | null;
-  destinationLng: number | null;
-}
+import type { UnroutedShipment } from '../domain/route';
 
 interface Props {
   token: string;
@@ -87,10 +79,14 @@ export const RouteMapPlanner: React.FC<Props> = ({
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const r = await logisticsApi.raw('GET', '/api/logistics/shipments/unrouted');
-      const d = r.ok ? r.data : [];
-      setShipments(Array.isArray(d) ? d : []);
-      setLoading(false);
+      try {
+        const d = await shipmentsApi.listUnrouted();
+        setShipments(Array.isArray(d) ? d : []);
+      } catch {
+        setShipments([]);
+      } finally {
+        setLoading(false);
+      }
     };
     load();
   }, [token, tenantId]);

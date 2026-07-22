@@ -1,4 +1,4 @@
-import { logisticsApi } from '../api';
+import { packagesApi, routesApi, shipmentsApi, stagingAreasApi } from '../api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Button, Badge, Loader, Modal, Input, useToast } from '@openfactu/ui';
 import {
@@ -23,6 +23,9 @@ import { Marker, Source, Layer, Popup } from 'react-map-gl/maplibre';
 import { BaseMap, type BaseMapHandle } from '@/components/maps/BaseMap';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
+import { ApiError } from '@/shared/http';
+import type { Route, RouteDetail, RouteStop } from '../domain/route';
+import type { Shipment } from '../domain/shipment';
 
 /** Pin numerado — muestra la secuencia dentro de la ruta. */
 function NumberedPin({ n, done }: { n: number; done: boolean }) {
@@ -47,27 +50,6 @@ function NumberedPin({ n, done }: { n: number; done: boolean }) {
       {n}
     </div>
   );
-}
-
-interface Route {
-  id: string;
-  code: string;
-  name: string;
-  plannedDate: string;
-  status: string;
-  vehiclePlate: string | null;
-}
-
-interface Stop {
-  id: string;
-  sequence: number;
-  shipmentId: string | null;
-  address: string | null;
-  lat: number | null;
-  lng: number | null;
-  status: string;
-  arrivedAt: string | null;
-  departedAt: string | null;
 }
 
 const STOP_LABEL: Record<string, string> = {
@@ -95,56 +77,6 @@ const SHIP_LABEL: Record<string, string> = {
   cancelled: 'Cancelado',
 };
 
-interface ShipmentLite {
-  id: string;
-  reportToken: string;
-  destinationAddress: string | null;
-  destinationLat: number | null;
-  destinationLng: number | null;
-  status: string;
-  /** Datos del destinatario — opcionales, si vienen del shipment standalone
-   *  o del partner del albarán. */
-  recipientName?: string | null;
-  recipientPhone?: string | null;
-  recipientEmail?: string | null;
-  /** 'delivery' (default) o 'pickup_return' — si es recogida, el repartidor
-   *  va a buscar mercancía en lugar de entregar. */
-  kind?: string | null;
-}
-
-interface VehicleInfo {
-  id: string;
-  plate: string;
-  brand: string | null;
-  model: string | null;
-  capacity: number | null;
-  notes: string | null;
-}
-
-interface Pickup {
-  id: string;
-  code: string;
-  name: string;
-  address: string | null;
-  lat: number | null;
-  lng: number | null;
-  packageCount: number;
-  platform: {
-    id: string;
-    code: string;
-    name: string;
-    address: string | null;
-  } | null;
-}
-
-interface RouteDetail {
-  route: Route;
-  stops: Stop[];
-  shipments: ShipmentLite[];
-  vehicle?: VehicleInfo | null;
-  pickups?: Pickup[];
-}
-
 /**
  * Construye una URL `wa.me` a partir de un teléfono libre. Quita espacios,
  * paréntesis y guiones; si no empieza por `+` ni por código país, asume
@@ -163,7 +95,7 @@ function buildWhatsAppUrl(phone: string, message: string): string {
 }
 
 /** Devuelve [lat,lng] o null fusionando stop+ship. */
-function resolveCoords(stop: Stop, ship: ShipmentLite | undefined): [number, number] | null {
+function resolveCoords(stop: RouteStop, ship: Shipment | undefined): [number, number] | null {
   if (stop.lat != null && stop.lng != null) return [stop.lat, stop.lng];
   if (ship?.destinationLat != null && ship?.destinationLng != null)
     return [ship.destinationLat, ship.destinationLng];
@@ -171,7 +103,7 @@ function resolveCoords(stop: Stop, ship: ShipmentLite | undefined): [number, num
 }
 
 /** Dirección textual efectiva para la parada. */
-function resolveAddress(stop: Stop, ship: ShipmentLite | undefined): string {
+function resolveAddress(stop: RouteStop, ship: Shipment | undefined): string {
   return stop.address || ship?.destinationAddress || '';
 }
 
@@ -179,7 +111,7 @@ function resolveAddress(stop: Stop, ship: ShipmentLite | undefined): string {
  *  TEXTUAL: el geocodificador de Google es mejor que el nuestro (MapTiler/
  *  Photon/Nominatim) y nuestras coords a veces apuntan a un sitio equivocado.
  *  Las coords propias solo se usan si no hay dirección escrita. */
-function mapsUrl(stop: Stop, ship: ShipmentLite | undefined) {
+function mapsUrl(stop: RouteStop, ship: Shipment | undefined) {
   const addr = resolveAddress(stop, ship);
   if (addr) {
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}&travelmode=driving`;
@@ -192,7 +124,7 @@ function mapsUrl(stop: Stop, ship: ShipmentLite | undefined) {
 /** URL de Maps con la ruta COMPLETA: el origen es la ubicación actual del
  *  navegador ("current location"), los waypoints son las paradas intermedias,
  *  y la última parada es el destino. */
-function routeUrl(stops: Stop[], shipmentsById: Map<string, ShipmentLite>) {
+function routeUrl(stops: RouteStop[], shipmentsById: Map<string, Shipment>) {
   const active = stops
     .filter((s) => s.status !== 'delivered' && s.status !== 'cancelled')
     .map((s) => {
@@ -282,15 +214,22 @@ export const DriverApp: React.FC = () => {
 
   const loadRoutes = async () => {
     setLoading(true);
-    const r = await logisticsApi.raw('GET', '/api/logistics/my/routes');
-    const d = r.data;
-    setRoutes(Array.isArray(d) ? d : []);
-    setLoading(false);
+    try {
+      const d = await routesApi.myRoutes();
+      setRoutes(Array.isArray(d) ? d : []);
+    } catch {
+      setRoutes([]);
+    } finally {
+      setLoading(false);
+    }
   };
   const loadDetail = async (id: string) => {
-    const r = await logisticsApi.raw('GET', `/api/logistics/my/routes/${id}`);
-    const d = r.data;
-    setDetail(d);
+    try {
+      const d = await routesApi.myRouteDetail(id);
+      setDetail(d);
+    } catch {
+      setDetail(null);
+    }
   };
   useEffect(() => {
     if (user?.tenantId) loadRoutes();
@@ -319,13 +258,15 @@ export const DriverApp: React.FC = () => {
         );
         await Promise.all(
           active.map((s) =>
-            logisticsApi.raw('POST', `/api/logistics/track/${s.reportToken}/position`, {
+            shipmentsApi
+              .reportPosition(s.reportToken, {
                 lat: latitude,
                 lng: longitude,
                 speedKmh: speed != null ? speed * 3.6 : null,
                 heading,
                 accuracyMeters: accuracy,
-              }).catch(() => null),
+              })
+              .catch(() => null),
           ),
         );
       },
@@ -369,13 +310,10 @@ export const DriverApp: React.FC = () => {
     // QR de un paquete individual (impreso como etiqueta): { v:1, type:'package', id, code }
     if (parsed?.v === 1 && parsed.type === 'package' && parsed.id) {
       try {
-        const r = await logisticsApi.raw('GET', `/api/logistics/packages/${parsed.id}`);
-        if (!r.ok) throw new Error();
-        const pkg = r.data;
-        let ship: any = null;
+        const pkg = await packagesApi.get(parsed.id);
+        let ship: Shipment | null = null;
         if (pkg.shipmentId) {
-          const sr = await logisticsApi.raw('GET', `/api/logistics/shipments/${pkg.shipmentId}`);
-          if (sr.ok) ship = sr.data;
+          ship = await shipmentsApi.get(pkg.shipmentId).catch(() => null);
         }
         setPackageScan({
           code: pkg.code,
@@ -401,9 +339,7 @@ export const DriverApp: React.FC = () => {
       return;
     }
     try {
-      const r = await logisticsApi.raw('GET', `/api/logistics/staging-areas/${parsed.s}/payload`);
-      if (!r.ok) throw new Error(String(r.status));
-      const payload = r.data;
+      const payload = await stagingAreasApi.payload(parsed.s);
       const myRouteIds = new Set(routes.map((x) => x.id));
       const hits = (payload.routes || []).filter((pr: any) => myRouteIds.has(pr.id));
       if (hits.length > 0) {
@@ -464,9 +400,7 @@ export const DriverApp: React.FC = () => {
     const pending = detail.stops.filter((s) => s.status === 'pending' || s.status === 'en_route');
     const now = new Date().toISOString();
     await Promise.all(
-      pending.map((s) =>
-        logisticsApi.raw('PATCH', `/api/logistics/routes/${selectedId}/stops/${s.id}`, { status: 'arrived', arrivedAt: now }),
-      ),
+      pending.map((s) => routesApi.updateStop(selectedId, s.id, { status: 'arrived', arrivedAt: now })),
     );
     setConfirmBulkArrive(null);
     loadDetail(selectedId);
@@ -483,14 +417,12 @@ export const DriverApp: React.FC = () => {
     if (!selectedId || routeBusy) return;
     setRouteBusy(true);
     try {
-      const r = await logisticsApi.raw('POST', `/api/logistics/routes/${selectedId}/start`);
-      if (!r.ok) {
-        const d = (r.data ?? {});
-        toast.error(d.error || 'No se pudo iniciar la ruta');
-        return;
-      }
+      await routesApi.start(selectedId);
       toast.success('Ruta iniciada — ¡buen reparto!');
       await loadDetail(selectedId);
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'No se pudo iniciar la ruta');
     } finally {
       setRouteBusy(false);
     }
@@ -501,17 +433,15 @@ export const DriverApp: React.FC = () => {
     if (!selectedId || routeBusy) return;
     setRouteBusy(true);
     try {
-      const r = await logisticsApi.raw('POST', `/api/logistics/routes/${selectedId}/finish`);
-      if (!r.ok) {
-        const d = (r.data ?? {});
-        toast.error(d.error || 'No se pudo finalizar la ruta');
-        return;
-      }
+      await routesApi.finish(selectedId);
       toast.success('Ruta finalizada');
       setFinishConfirm(false);
       stopGps();
       setSelectedId(null);
       loadRoutes();
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'No se pudo finalizar la ruta');
     } finally {
       setRouteBusy(false);
     }
@@ -519,7 +449,10 @@ export const DriverApp: React.FC = () => {
 
   const markArrived = async (stopId: string) => {
     if (!selectedId) return;
-    await logisticsApi.raw('PATCH', `/api/logistics/routes/${selectedId}/stops/${stopId}`, { status: 'arrived', arrivedAt: new Date().toISOString() });
+    await routesApi.updateStop(selectedId, stopId, {
+      status: 'arrived',
+      arrivedAt: new Date().toISOString(),
+    });
     loadDetail(selectedId);
   };
 
@@ -536,13 +469,13 @@ export const DriverApp: React.FC = () => {
   const submitPostpone = async () => {
     if (!selectedId || !postponeFor) return;
     const { stopId, shipmentId, reason } = postponeFor;
-    await logisticsApi.raw('PATCH', `/api/logistics/routes/${selectedId}/stops/${stopId}`, {
-        status: 'postponed',
-        arrivedAt: new Date().toISOString(),
-        podNotes: reason.trim() || null,
-      });
+    await routesApi.updateStop(selectedId, stopId, {
+      status: 'postponed',
+      arrivedAt: new Date().toISOString(),
+      podNotes: reason.trim() || null,
+    });
     if (shipmentId) {
-      await logisticsApi.raw('PATCH', `/api/logistics/shipments/${shipmentId}`, { status: 'postponed', reason: reason.trim() || null });
+      await shipmentsApi.update(shipmentId, { status: 'postponed', reason: reason.trim() || null });
     }
     setPostponeFor(null);
     loadDetail(selectedId);
@@ -561,13 +494,13 @@ export const DriverApp: React.FC = () => {
       toast.error('Necesitas describir la incidencia');
       return;
     }
-    await logisticsApi.raw('PATCH', `/api/logistics/routes/${selectedId}/stops/${stopId}`, {
-        status: 'exception',
-        arrivedAt: new Date().toISOString(),
-        podNotes: reason.trim(),
-      });
+    await routesApi.updateStop(selectedId, stopId, {
+      status: 'exception',
+      arrivedAt: new Date().toISOString(),
+      podNotes: reason.trim(),
+    });
     if (shipmentId) {
-      await logisticsApi.raw('PATCH', `/api/logistics/shipments/${shipmentId}`, { status: 'exception', reason: reason.trim() });
+      await shipmentsApi.update(shipmentId, { status: 'exception', reason: reason.trim() });
     }
     setExceptionFor(null);
     loadDetail(selectedId);
@@ -590,7 +523,8 @@ export const DriverApp: React.FC = () => {
     podNotes: string;
   }) => {
     if (!podFor || !selectedId) return;
-    const r = await logisticsApi.raw('PATCH', `/api/logistics/routes/${selectedId}/stops/${podFor.stopId}`, {
+    try {
+      await routesApi.updateStop(selectedId, podFor.stopId, {
         status: 'delivered',
         departedAt: new Date().toISOString(),
         recipientName: pod.recipientName || null,
@@ -599,17 +533,14 @@ export const DriverApp: React.FC = () => {
         photoImage: pod.photoImage,
         podNotes: pod.podNotes || null,
       });
-    if (!r.ok) {
-      let msg = `Error ${r.status}`;
-      try {
-        const d = r.data;
-        if (d?.error) msg = d.error;
-      } catch {}
-      toast.error(`No se pudo marcar como entregado: ${msg}`);
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      const status = err instanceof ApiError ? err.status : undefined;
+      toast.error(`No se pudo marcar como entregado: ${msg || `Error ${status}`}`);
       return;
     }
     if (podFor.shipmentId) {
-      await logisticsApi.raw('PATCH', `/api/logistics/shipments/${podFor.shipmentId}`, { status: 'delivered' });
+      await shipmentsApi.update(podFor.shipmentId, { status: 'delivered' });
     }
     await loadDetail(selectedId);
     setPodFor(null);
@@ -623,14 +554,14 @@ export const DriverApp: React.FC = () => {
 
   // Puntos con coordenadas resueltas (para el mapa mini).
   const mapPoints = useMemo(() => {
-    if (!detail) return [] as Array<{ stop: Stop; coords: [number, number] }>;
+    if (!detail) return [] as Array<{ stop: RouteStop; coords: [number, number] }>;
     return detail.stops
       .map((s) => {
         const ship = s.shipmentId ? shipmentsById.get(s.shipmentId) : undefined;
         const coords = resolveCoords(s, ship);
         return coords ? { stop: s, coords } : null;
       })
-      .filter((x): x is { stop: Stop; coords: [number, number] } => !!x);
+      .filter((x): x is { stop: RouteStop; coords: [number, number] } => !!x);
   }, [detail, shipmentsById]);
 
   const renderScanModals = () => (
