@@ -4,6 +4,7 @@ import { inventoryModule } from './inventory/module';
 import { partnersModule } from './partners/module';
 import { analyticsModule } from './analytics/module';
 import { accountingModule } from './accounting/module';
+import { reportsModule } from './reports/module';
 
 /**
  * Agregador de módulos (estilo Odoo): compone CORE_MODULES (navbar) y las
@@ -17,6 +18,7 @@ export const moduleManifests: ModuleManifest[] = [
   partnersModule,
   accountingModule,
   analyticsModule,
+  reportsModule,
 ];
 
 /** Orden canónico del navbar (ids de Module). */

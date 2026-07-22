@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Card, Button, Input } from '@openfactu/ui';
 import { ArrowLeft, Download, RefreshCw, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useFormat } from '../../hooks/useFormat';
+import { useAuth } from '@/context/AuthContext';
+import { reportsApi } from '../api';
+import { useFormat } from '@/hooks/useFormat';
 
 export const ReportVAT: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const fmt = useFormat();
   const navigate = useNavigate();
   const [from, setFrom] = useState('');
@@ -14,15 +15,13 @@ export const ReportVAT: React.FC = () => {
   const [data, setData] = useState<{ output: any[]; input: any[] } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   const load = () => {
     const qs = new URLSearchParams();
     if (from) qs.append('from', from);
     if (to) qs.append('to', to);
     setLoading(true);
-    fetch(`/api/reports/vat?${qs.toString()}`, { headers })
-      .then((r) => r.json())
+    reportsApi.get<any>(`/api/reports/vat?${qs.toString()}`)
       .then(setData)
       .finally(() => setLoading(false));
   };
@@ -36,14 +35,7 @@ export const ReportVAT: React.FC = () => {
     const qs = new URLSearchParams();
     if (from) qs.append('from', from);
     if (to) qs.append('to', to);
-    const res = await fetch(`/api/reports/vat/pdf?${qs.toString()}`, { headers });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `libro-iva.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    await reportsApi.downloadPdf(`/api/reports/vat/pdf?${qs.toString()}`, `libro-iva.pdf`);
   };
 
   const sum = (arr: any[], k: string) =>

@@ -1,19 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ReportPage } from '../../components/reports/ReportPage';
-import { useAuth } from '../../context/AuthContext';
-import { useFormat } from '../../hooks/useFormat';
+import { ReportPage } from '@/components/reports/ReportPage';
+import { useAuth } from '@/context/AuthContext';
+import { reportsApi } from '../api';
+import { useFormat } from '@/hooks/useFormat';
 
 export const ReportStockValuation: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const fmt = useFormat();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   const load = () => {
     setLoading(true);
-    fetch('/api/reports/stock-valuation', { headers })
-      .then((r) => r.json())
+    reportsApi.get<any>('/api/reports/stock-valuation')
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };

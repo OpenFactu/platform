@@ -80,17 +80,6 @@ export const LEGACY_NAV: Module[] = [
     ],
   },
   {
-    id: 'reports',
-    label: 'Informes',
-    icon: 'BarChart3',
-    subTabs: [
-      { id: 'accounting-reports', label: 'Contabilidad', path: '/reports/accounting' },
-      { id: 'management-reports', label: 'Gestión', path: '/reports/management' },
-      { id: 'hr-reports', label: 'RRHH', path: '/reports/hr' },
-      { id: 'stock-reports', label: 'Stock', path: '/reports/stock' },
-    ],
-  },
-  {
     id: 'hr',
     hiddenInLogisticsOnly: true,
     label: 'Recursos Humanos',

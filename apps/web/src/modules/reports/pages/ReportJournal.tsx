@@ -1,21 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ReportPage } from '../../components/reports/ReportPage';
-import { useAuth } from '../../context/AuthContext';
-import { useFormat } from '../../hooks/useFormat';
+import { ReportPage } from '@/components/reports/ReportPage';
+import { useAuth } from '@/context/AuthContext';
+import { reportsApi } from '../api';
+import { useFormat } from '@/hooks/useFormat';
 
-export const ReportTrialBalance: React.FC = () => {
-  const { token, user } = useAuth();
+export const ReportJournal: React.FC = () => {
+  const { user } = useAuth();
   const fmt = useFormat();
   const [periods, setPeriods] = useState<any[]>([]);
   const [periodId, setPeriodId] = useState<string>('');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   useEffect(() => {
-    fetch('/api/periods', { headers })
-      .then((r) => r.json())
+    reportsApi.get<any>('/api/periods')
       .then((d) => {
         if (Array.isArray(d)) {
           setPeriods(d);
@@ -29,8 +28,7 @@ export const ReportTrialBalance: React.FC = () => {
   const load = () => {
     if (!periodId) return;
     setLoading(true);
-    fetch(`/api/reports/trial-balance?periodId=${periodId}`, { headers })
-      .then((r) => r.json())
+    reportsApi.get<any>(`/api/reports/journal?periodId=${periodId}`)
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
@@ -42,25 +40,27 @@ export const ReportTrialBalance: React.FC = () => {
 
   const columns = useMemo(
     () => [
-      { key: 'code', label: 'Cuenta' },
-      { key: 'name', label: 'Denominación' },
-      { key: 'debit', label: 'Debe', format: (v: any) => fmt.money(v) },
-      { key: 'credit', label: 'Haber', format: (v: any) => fmt.money(v) },
-      { key: 'balance', label: 'Saldo', format: (v: any) => fmt.money(v) },
+      { key: 'number', label: 'Nº', format: (v: any) => String(v) },
+      { key: 'date', label: 'Fecha', format: (v: any) => fmt.date(v) },
+      { key: 'accountCode', label: 'Cuenta' },
+      { key: 'accountName', label: 'Denominación' },
+      { key: 'lineDesc', label: 'Descripción' },
+      { key: 'debit', label: 'Debe', format: (v: any) => (Number(v) ? fmt.money(v) : '') },
+      { key: 'credit', label: 'Haber', format: (v: any) => (Number(v) ? fmt.money(v) : '') },
     ],
     [fmt],
   );
 
   return (
     <ReportPage
-      title="Balance de sumas y saldos"
-      subtitle="Totales debe/haber por cuenta del período."
+      title="Diario de asientos"
+      subtitle="Listado cronológico de todos los asientos posteados del período."
       rows={rows}
       columns={columns as any}
       loading={loading}
       onRefresh={load}
-      filename={`sumas-saldos-${periodId}`}
-      pdfEndpoint="/api/reports/trial-balance/pdf"
+      filename={`diario-${periodId}`}
+      pdfEndpoint="/api/reports/journal/pdf"
       pdfQuery={{ periodId }}
       filters={
         <div className="flex items-center gap-3 flex-wrap">
@@ -82,4 +82,4 @@ export const ReportTrialBalance: React.FC = () => {
   );
 };
 
-export default ReportTrialBalance;
+export default ReportJournal;

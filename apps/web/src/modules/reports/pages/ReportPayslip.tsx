@@ -2,26 +2,26 @@ import React, { useEffect, useState } from 'react';
 import { Card, Button, useToast } from '@openfactu/ui';
 import { ArrowLeft, Download, Banknote, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useFormat } from '../../hooks/useFormat';
+import { useAuth } from '@/context/AuthContext';
+import { reportsApi } from '../api';
+import { useFormat } from '@/hooks/useFormat';
 
 /**
  * Lista de nóminas aprobadas — click → descarga recibo en PDF.
  */
 export const ReportPayslip: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const fmt = useFormat();
   const navigate = useNavigate();
   const toast = useToast();
   const [payrolls, setPayrolls] = useState<any[]>([]);
   const [employees, setEmployees] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
-  const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/hr/payrolls', { headers }).then((r) => r.json()),
-      fetch('/api/hr/employees', { headers }).then((r) => r.json()),
+      reportsApi.get<any>('/api/hr/payrolls'),
+      reportsApi.get<any>('/api/hr/employees'),
     ])
       .then(([p, e]) => {
         setPayrolls(Array.isArray(p) ? p : []);
@@ -35,15 +35,10 @@ export const ReportPayslip: React.FC = () => {
 
   const downloadPdf = async (payrollId: string, empName: string, year: number, month: number) => {
     try {
-      const res = await fetch(`/api/reports/payslip/${payrollId}/pdf`, { headers });
-      if (!res.ok) throw new Error('Error');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `recibo-${empName.replace(/\s/g, '_')}-${year}-${String(month).padStart(2, '0')}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await reportsApi.downloadPdf(
+        `/api/reports/payslip/${payrollId}/pdf`,
+        `recibo-${empName.replace(/\s/g, '_')}-${year}-${String(month).padStart(2, '0')}.pdf`,
+      );
       toast.success('Recibo descargado');
     } catch (e: any) {
       toast.error(e.message || 'Error');

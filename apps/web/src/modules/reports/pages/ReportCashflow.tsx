@@ -12,22 +12,21 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import { useAuth } from '../../context/AuthContext';
-import { useFormat } from '../../hooks/useFormat';
+import { useAuth } from '@/context/AuthContext';
+import { reportsApi } from '../api';
+import { useFormat } from '@/hooks/useFormat';
 
 export const ReportCashflow: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const fmt = useFormat();
   const navigate = useNavigate();
   const [days, setDays] = useState(30);
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   const load = () => {
     setLoading(true);
-    fetch(`/api/reports/cashflow?days=${days}`, { headers })
-      .then((r) => r.json())
+    reportsApi.get<any>(`/api/reports/cashflow?days=${days}`)
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };

@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Card, Button } from '@openfactu/ui';
 import { ArrowLeft, Download, FileText, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useFormat } from '../../hooks/useFormat';
+import { useAuth } from '@/context/AuthContext';
+import { reportsApi } from '../api';
+import { useFormat } from '@/hooks/useFormat';
 
 interface PLData {
   incomeRows: { code: string; name: string; amount: number }[];
@@ -14,7 +15,7 @@ interface PLData {
 }
 
 export const ReportPL: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const fmt = useFormat();
   const navigate = useNavigate();
   const [periods, setPeriods] = useState<any[]>([]);
@@ -22,11 +23,9 @@ export const ReportPL: React.FC = () => {
   const [data, setData] = useState<PLData | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   useEffect(() => {
-    fetch('/api/periods', { headers })
-      .then((r) => r.json())
+    reportsApi.get<any>('/api/periods')
       .then((d) => {
         if (Array.isArray(d)) {
           setPeriods(d);
@@ -40,8 +39,7 @@ export const ReportPL: React.FC = () => {
   const load = () => {
     if (!periodId) return;
     setLoading(true);
-    fetch(`/api/reports/pl?periodId=${periodId}`, { headers })
-      .then((r) => r.json())
+    reportsApi.get<any>(`/api/reports/pl?periodId=${periodId}`)
       .then(setData)
       .finally(() => setLoading(false));
   };
@@ -52,14 +50,7 @@ export const ReportPL: React.FC = () => {
   }, [periodId]);
 
   const downloadPdf = async () => {
-    const res = await fetch(`/api/reports/pl/pdf?periodId=${periodId}`, { headers });
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `pl-${periodId}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    await reportsApi.downloadPdf(`/api/reports/pl/pdf?periodId=${periodId}`, `pl-${periodId}.pdf`);
   };
 
   return (
