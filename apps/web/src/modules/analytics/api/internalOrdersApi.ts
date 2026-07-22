@@ -1,4 +1,4 @@
-import { apiClient } from '../../../shared/http';
+import { apiClient } from '@/shared/http';
 
 export interface InternalOrder {
   id: string;

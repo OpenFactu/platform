@@ -1,6 +1,6 @@
 import { matchRoutes } from 'react-router-dom';
-import { moduleRoutes } from '../../modules';
-import type { RouteEntry, RouteMeta } from '../../modules/types';
+import { moduleRoutes } from '@/modules';
+import type { RouteEntry, RouteMeta } from '@/modules/types';
 import { Dashboard } from '../../pages/Dashboard';
 import { StyleGuide } from '../../pages/StyleGuide';
 import { PluginManager } from '../../pages/PluginManager';
@@ -74,7 +74,7 @@ import { DocumentTemplates } from '../../pages/Documents/DocumentTemplates';
 import { AiChat } from '../../pages/AiChat';
 import { DocumentSeries } from '../../pages/Documents/DocumentSeries';
 
-export type { RouteEntry, RouteMeta } from '../../modules/types';
+export type { RouteEntry, RouteMeta } from '@/modules/types';
 
 /**
  * Rutas de módulos AÚN NO migrados a manifiesto propio

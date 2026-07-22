@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Percent, Plus, Trash2, Edit3, Save, X, Info } from 'lucide-react';
-import { ContextMenu } from '../../../components/common/ContextMenu';
-import { useContextMenu } from '../../../hooks/useContextMenu';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 import { taxesApi } from '../api';
 
 export const Taxes: React.FC = () => {

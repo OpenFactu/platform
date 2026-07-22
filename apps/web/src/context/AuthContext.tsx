@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { apiClient } from '../shared/http';
+import { apiClient } from '@/shared/http';
 
 interface User {
   id: string;

@@ -28,10 +28,10 @@ import {
   ScanLine,
   ArrowLeft,
 } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-import { BarcodeCameraModal } from '../../../components/scanner/BarcodeCameraModal';
-import { useBarcodeScanner } from '../../../hooks/useBarcodeScanner';
-import { ApiError } from '../../../shared/http';
+import { useAuth } from '@/context/AuthContext';
+import { BarcodeCameraModal } from '@/components/scanner/BarcodeCameraModal';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { ApiError } from '@/shared/http';
 import { itemsApi, stockApi, stockDocsApi, uomApi, warehousesApi, zonesApi } from '../api';
 import type { StockDocKind } from '../domain/stockMovement';
 import type { Warehouse, Zone } from '../domain/warehouse';

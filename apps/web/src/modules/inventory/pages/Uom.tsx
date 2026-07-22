@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Hash, Plus, Trash2, ArrowRightLeft, Save, X, Settings2, Pencil } from 'lucide-react';
-import { ContextMenu } from '../../../components/common/ContextMenu';
-import { useContextMenu } from '../../../hooks/useContextMenu';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 import { uomApi } from '../api';
 import type { Uom as UomEntity } from '../domain/uom';
 

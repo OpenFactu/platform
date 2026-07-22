@@ -1,6 +1,6 @@
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
-import { validateIban, validateSwift, formatIban } from '../../../utils/bankValidation';
+import { useAuth } from '@/context/AuthContext';
+import { validateIban, validateSwift, formatIban } from '@/utils/bankValidation';
 import {
   Table,
   Card,
@@ -25,17 +25,17 @@ import {
   Check,
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useGeo, type GeoRow } from '../../../hooks/useGeo';
-import { TaxIdInput } from '../../../components/geo/TaxIdInput';
-import { PostalCodeInput } from '../../../components/geo/PostalCodeInput';
-import { ContextMenu } from '../../../components/common/ContextMenu';
-import { withRowContextMenu } from '../../../components/common/withRowContextMenu';
-import { useContextMenu } from '../../../hooks/useContextMenu';
-import { PhoneInput } from '../../../components/geo/PhoneInput';
-import { PluginFieldsPanel } from '../../../components/PluginFieldsPanel';
-import { usePluginListColumns } from '../../../components/plugin-fields';
-import { AttachmentsPanel } from '../../../components/AttachmentsPanel';
-import { crudApi } from '../../../shared/api';
+import { useGeo, type GeoRow } from '@/hooks/useGeo';
+import { TaxIdInput } from '@/components/geo/TaxIdInput';
+import { PostalCodeInput } from '@/components/geo/PostalCodeInput';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { withRowContextMenu } from '@/components/common/withRowContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
+import { PhoneInput } from '@/components/geo/PhoneInput';
+import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
+import { usePluginListColumns } from '@/components/plugin-fields';
+import { AttachmentsPanel } from '@/components/AttachmentsPanel';
+import { crudApi } from '@/shared/api';
 import { partnersApi, partnerGroupsApi } from '../api';
 
 const FLAGS: Record<string, string> = {

@@ -1,4 +1,4 @@
-import { apiClient } from '../../../shared/http';
+import { apiClient } from '@/shared/http';
 import type { Category } from '../domain/category';
 
 export interface CategoryInput {

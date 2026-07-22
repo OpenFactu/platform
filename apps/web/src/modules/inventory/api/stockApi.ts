@@ -1,4 +1,4 @@
-import { apiClient } from '../../../shared/http';
+import { apiClient } from '@/shared/http';
 import type { BatchOrSerial, Item, ZoneStock } from '../domain/item';
 import type { StockDocKind, StockDocLine, StockDocument } from '../domain/stockMovement';
 

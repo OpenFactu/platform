@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Network, Plus, Trash2, Save, X, UserCheck, ShoppingBag, Pencil } from 'lucide-react';
-import { ContextMenu } from '../../../components/common/ContextMenu';
-import { useContextMenu } from '../../../hooks/useContextMenu';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 import { partnerGroupsApi } from '../api';
 
 export const PartnerGroups: React.FC = () => {

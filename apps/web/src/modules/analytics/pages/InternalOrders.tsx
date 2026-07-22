@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Briefcase, Plus, Trash2, Pencil } from 'lucide-react';
-import { PluginFieldsPanel } from '../../../components/PluginFieldsPanel';
-import { ContextMenu } from '../../../components/common/ContextMenu';
-import { withRowContextMenu } from '../../../components/common/withRowContextMenu';
-import { useContextMenu } from '../../../hooks/useContextMenu';
+import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { withRowContextMenu } from '@/components/common/withRowContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 import { internalOrdersApi, costCentersApi } from '../api';
 
 interface InternalOrder {

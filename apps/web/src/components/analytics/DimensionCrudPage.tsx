@@ -7,7 +7,7 @@ import { PluginFieldsPanel } from '../PluginFieldsPanel';
 import { ContextMenu } from '../common/ContextMenu';
 import { withRowContextMenu } from '../common/withRowContextMenu';
 import { useContextMenu } from '../../hooks/useContextMenu';
-import { crudApi } from '../../shared/api';
+import { crudApi } from '@/shared/api';
 
 interface DimensionRow {
   id: string;

@@ -15,6 +15,12 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Alias de paths — @/ apunta a src/ (ver también resolve.alias en vite.config.ts).
+       Sin baseUrl: las entradas se resuelven relativas a este tsconfig. */
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     /* Linting — relaxed for build tolerance */
     "strict": false,
     "noImplicitAny": false,

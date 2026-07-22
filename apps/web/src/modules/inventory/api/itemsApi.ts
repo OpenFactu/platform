@@ -1,4 +1,4 @@
-import { apiClient } from '../../../shared/http';
+import { apiClient } from '@/shared/http';
 import type { Item } from '../domain/item';
 import type { ItemUomAlternative } from '../domain/uom';
 

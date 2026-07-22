@@ -1,4 +1,4 @@
-import { apiClient } from '../../../shared/http';
+import { apiClient } from '@/shared/http';
 import type { Partner, PartnerGroup } from '../domain/partner';
 
 export type PartnerInput = Record<string, unknown>;

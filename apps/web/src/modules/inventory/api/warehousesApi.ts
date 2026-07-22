@@ -1,4 +1,4 @@
-import { apiClient } from '../../../shared/http';
+import { apiClient } from '@/shared/http';
 import type { Warehouse, Zone } from '../domain/warehouse';
 
 interface BinRange {

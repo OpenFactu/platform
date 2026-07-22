@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, useToast, Badge } from '@openfactu/ui';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { BookOpenCheck } from 'lucide-react';
 import { chartOfAccountsApi, journalEntriesApi } from '../api';
 

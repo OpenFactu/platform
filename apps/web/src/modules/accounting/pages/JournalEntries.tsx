@@ -2,12 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { ScrollText, Plus, Trash2, Pencil, CheckCircle, Undo2 } from 'lucide-react';
-import { PluginFieldsPanel } from '../../../components/PluginFieldsPanel';
-import { ContextMenu } from '../../../components/common/ContextMenu';
-import { withRowContextMenu } from '../../../components/common/withRowContextMenu';
-import { useContextMenu } from '../../../hooks/useContextMenu';
+import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { withRowContextMenu } from '@/components/common/withRowContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 import { journalEntriesApi, chartOfAccountsApi, periodsApi } from '../api';
 
 interface Line {
