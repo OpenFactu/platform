@@ -10,6 +10,9 @@ export const inventoryModule: ModuleManifest = {
     id: 'inventory',
     label: 'Inventario',
     icon: 'Package',
+    featureFlag: 'inventoryEnabled',
+    description: 'Catálogo, categorías, unidades, almacenes y movimientos de stock.',
+    category: 'Operaciones',
     subTabs: [
       { id: 'items', label: 'Catálogo', path: '/items' },
       { id: 'categories', label: 'Categorías', path: '/categories' },

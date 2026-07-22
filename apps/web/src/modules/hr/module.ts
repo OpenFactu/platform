@@ -25,6 +25,10 @@ export const hrModule: ModuleManifest = {
     hiddenInLogisticsOnly: true,
     label: 'Recursos Humanos',
     icon: 'UsersRound',
+    featureFlag: 'hrEnabled',
+    description:
+      'Empleados, departamentos y nóminas. Los sub-módulos de turnos, fichajes, planificación e incidencias se activan aparte, en Ajustes → Empresa → Flags.',
+    category: 'RRHH',
     subTabs: [
       // Inline (sin grupo)
       { id: 'employees', label: 'Empleados', path: '/hr/employees' },

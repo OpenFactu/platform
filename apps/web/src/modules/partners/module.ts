@@ -7,6 +7,9 @@ export const partnersModule: ModuleManifest = {
     id: 'partners',
     label: 'Interlocutores',
     icon: 'Users',
+    featureFlag: 'partnersEnabled',
+    description: 'Directorio de clientes y proveedores, agrupados por categorías.',
+    category: 'Operaciones',
     subTabs: [
       { id: 'partners-list', label: 'Directorio', path: '/partners' },
       { id: 'partner-groups', label: 'Grupos', path: '/partner-groups' },

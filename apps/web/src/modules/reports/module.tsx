@@ -25,6 +25,9 @@ export const reportsModule: ModuleManifest = {
     id: 'reports',
     label: 'Informes',
     icon: 'BarChart3',
+    featureFlag: 'reportsEnabled',
+    description: 'Informes contables, de gestión, RRHH y stock.',
+    category: 'Análisis',
     subTabs: [
       { id: 'accounting-reports', label: 'Contabilidad', path: '/reports/accounting' },
       { id: 'management-reports', label: 'Gestión', path: '/reports/management' },

@@ -10,8 +10,10 @@ export const logisticsModule: ModuleManifest = {
     label: 'Logística',
     icon: 'Route',
     /** Visible solo si `flags.logisticsEnabled=true`. El filtrado lo hace
-     *  `PluginContext` al mergear módulos. */
+     *  `IconSidebar`/`ModuleTabBar` al leer `useTheme().flags`. */
     featureFlag: 'logisticsEnabled',
+    description: 'Envíos, rutas de reparto y seguimiento en tiempo real.',
+    category: 'Logística',
     subTabs: [
       { id: 'logistics-hub', label: 'Centro logístico', path: '/logistics', status: 'beta' },
       { id: 'carriers', label: 'Transportistas', path: '/settings/carriers', status: 'beta' },

@@ -11,6 +11,9 @@ export const accountingModule: ModuleManifest = {
     label: 'Contabilidad',
     icon: 'Wallet',
     hiddenInLogisticsOnly: true,
+    featureFlag: 'accountingEnabled',
+    description: 'Plan contable, asientos, libro mayor, periodos e impuestos.',
+    category: 'Finanzas',
     subTabs: [
       { id: 'chart', label: 'Plan contable', path: '/chart-of-accounts' },
       { id: 'journal-entries', label: 'Asientos', path: '/journal-entries' },

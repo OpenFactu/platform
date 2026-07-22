@@ -6,6 +6,9 @@ export const aiModule: ModuleManifest = {
     id: 'assistant',
     label: 'Asistente IA',
     icon: 'Bot',
+    featureFlag: 'assistantEnabled',
+    description: 'Chat con Keiro, el asistente de IA de Keirost.',
+    category: 'Productividad',
     subTabs: [{ id: 'ai-chat', label: 'Keiro', path: '/ai/chat', status: 'beta' }],
   },
   routes: [

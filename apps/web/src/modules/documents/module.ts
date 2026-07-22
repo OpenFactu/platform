@@ -21,6 +21,9 @@ export const documentsModule: ModuleManifest = {
       label: 'Ventas',
       icon: 'ShoppingCart',
       hiddenInLogisticsOnly: true,
+      featureFlag: 'salesEnabled',
+      description: 'Pedidos, albaranes y facturas de venta, con tarifas de precio.',
+      category: 'Ventas y compras',
       subTabs: [
         { id: 'sales-orders', label: 'Pedidos', path: '/sales-orders' },
         { id: 'sales-delivery-notes', label: 'Albaranes', path: '/sales/delivery-notes' },
@@ -33,6 +36,9 @@ export const documentsModule: ModuleManifest = {
       label: 'Compras',
       icon: 'Truck',
       hiddenInLogisticsOnly: true,
+      featureFlag: 'purchasesEnabled',
+      description: 'Pedidos, albaranes y facturas de compra a proveedores.',
+      category: 'Ventas y compras',
       subTabs: [
         { id: 'purchase-orders', label: 'Pedidos', path: '/purchase-orders' },
         { id: 'purchase-delivery-notes', label: 'Albaranes', path: '/purchases/delivery-notes' },
