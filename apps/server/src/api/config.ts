@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getConfigSection, setConfigSection } from '../core/config/systemConfigSection';
+import { adminMiddleware } from './middleware/adminAuth';
 import {
   BRANDING_DEFAULTS,
   FORMAT_DEFAULTS,
@@ -35,7 +36,7 @@ function mount<T extends Record<string, any>>(section: string, defaults: T, enti
     }
   });
 
-  router.put(`/${section}`, async (req: any, res) => {
+  router.put(`/${section}`, adminMiddleware, async (req: any, res) => {
     if (!req.tenantId) {
       return res.status(400).json({ error: 'Se requiere tenant para modificar configuración' });
     }

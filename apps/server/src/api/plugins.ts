@@ -190,7 +190,7 @@ router.get('/fields/:tableName?', async (req: any, res) => {
  * POST /api/plugins/:pluginId/activate
  * Activa un plugin para el tenant actual.
  */
-router.post('/:pluginId/activate', async (req: any, res) => {
+router.post('/:pluginId/activate', adminMiddleware, async (req: any, res) => {
   const { pluginId } = req.params;
   const tenantId = req.tenantId;
 
@@ -214,7 +214,7 @@ router.post('/:pluginId/activate', async (req: any, res) => {
  * POST /api/plugins/:pluginId/deactivate
  * Desactiva un plugin para el tenant actual.
  */
-router.post('/:pluginId/deactivate', async (req: any, res) => {
+router.post('/:pluginId/deactivate', adminMiddleware, async (req: any, res) => {
   const { pluginId } = req.params;
   const tenantId = req.tenantId;
 
