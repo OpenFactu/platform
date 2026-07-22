@@ -102,10 +102,18 @@ En `apps/web/src/modules/registry.ts`, añadir a la interfaz `Module`:
 ```ts
 description?: string; // usado solo por la tarjeta en /apps
 category?: string;    // agrupación visual en /apps (fallback: "General")
+adminOnly?: boolean;  // como superuserOnly, pero para ADMIN + SUPERUSER
 ```
 
-Sin cambios en `SubTab` ni en el resto de consumidores — campos
-opcionales, ignorados por `IconSidebar`/`ModuleTabBar`.
+`adminOnly` es necesario porque hoy `Module` solo tiene `superuserOnly`
+(excluiría a ADMIN también) y no hay forma de ocultar un módulo completo
+del sidebar solo para roles no-admin — el requisito "`/apps` solo visible
+para ADMIN/SUPERUSER" lo necesita. Se comprueba en los mismos dos sitios
+donde ya se comprueba `superuserOnly`
+(`apps/web/src/components/layout/IconSidebar.tsx:74` y `:142`).
+
+Sin más cambios en `SubTab` ni en el resto de consumidores — campos
+opcionales, ignorados por `ModuleTabBar`.
 
 ### 3. Mapeo de módulos activables
 
@@ -151,9 +159,13 @@ descrito en la memoria `rest-api-permission-gap` sigue pendiente como
 ### 5. Pantalla `/apps` (frontend)
 
 Módulo `apps/web/src/modules/plugins/module.ts` cambia su `Module.id` de
-`'plugins'` a `'apps'`, label "Apps", y `NAV_ORDER` en
+`'plugins'` a `'apps'`, label "Apps", `adminOnly: true`, y `NAV_ORDER` en
 `apps/web/src/modules/index.ts` sustituye la entrada `'plugins'` por
-`'apps'` (misma posición).
+`'apps'` (misma posición). `apps/web/src/context/PluginContext.tsx:255`
+busca el módulo destino de los `menuItems` legacy por id literal
+`'plugins'` — hay que actualizarlo a `'apps'` o los plugins que aún usen
+ese campo deprecado dejan de mostrar sus items silenciosamente (el
+`if (legacyTarget)` los descarta sin avisar).
 
 `PluginManager.tsx` (o su sucesor, mismo archivo) conserva su estructura
 de tabs internos ("Aplicaciones" / "Base de datos" / "Desarrollo"), pero
@@ -173,10 +185,15 @@ toggle optimista + toast, igual que el patrón actual de flags y plugins.
 
 ### 6. `CompanySettings.tsx` — pestaña "Flags"
 
-Se eliminan las filas `logisticsEnabled` (843-848) y las 5 de RRHH
-(861-890) — se mudan a `/apps`. Se conservan `logisticsOnly`,
-`allowNegativeStock`, `watermarkDraft`, `trackingChatEnabled` y el resto
-de flags de comportamiento puro que no representan un módulo completo.
+Se elimina solo la fila `logisticsEnabled` (843-848) — se muda a
+`/apps` junto con el resto de módulos core. Las 5 filas de RRHH
+(861-890, `hrShiftsEnabled`/`hrTimeclockEnabled`/`hrIncidentsEnabled`/
+`hrPlanningEnabled`/`hrAdvancedEnabled`) **se quedan tal cual**: gestionan
+sub-tabs dentro del módulo HR, no el módulo HR completo (ese es
+`hrEnabled`, la fila nueva que sí vive en Apps — ver sección 3). Se
+conservan también `logisticsOnly`, `allowNegativeStock`, `watermarkDraft`,
+`trackingChatEnabled` y el resto de flags de comportamiento puro que no
+representan un módulo completo.
 
 ## Orden de ejecución
 
