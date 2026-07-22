@@ -3,6 +3,7 @@ import type { TimeclockEntry as Entry } from '../domain/timeclock';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Timer, LogIn, LogOut, Coffee, RotateCcw, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
@@ -14,7 +15,7 @@ const KIND_LABEL: Record<string, string> = {
   break_start: 'Inicio pausa',
   break_end: 'Fin pausa',
 };
-const KIND_VARIANT: Record<string, any> = {
+const KIND_VARIANT: Record<string, BadgeProps['variant']> = {
   in: 'success',
   out: 'info',
   break_start: 'warning',

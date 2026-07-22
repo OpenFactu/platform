@@ -85,8 +85,8 @@ const SOList: React.FC<{
     setDownloadingId(id);
     try {
       await downloadPdf(`/api/sales/${id}/pdf`);
-    } catch (e: any) {
-      toast.error(e.message || 'Error al descargar PDF');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al descargar PDF');
     } finally {
       setDownloadingId(null);
     }
@@ -939,8 +939,8 @@ export const SalesOrders: React.FC = () => {
         const data = await docsApi.get('/api/sales', detailId);
         setSelectedOrder(data);
         currentTab.rename(formatDocCode(data));
-      } catch (e: any) {
-        toast.error(e.message || 'Error al cargar el pedido');
+      } catch (e) {
+        toast.error((e instanceof Error ? e.message : undefined) || 'Error al cargar el pedido');
       } finally {
         setDetailLoading(false);
       }
@@ -958,8 +958,8 @@ export const SalesOrders: React.FC = () => {
       toast.success(`Pedido registrado nº ${data.docNum}`);
       notifyDocChange(DocType.SalesOrder);
       currentTab.close();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : undefined));
     }
   };
 
@@ -970,8 +970,8 @@ export const SalesOrders: React.FC = () => {
       toast.success('Pedido cancelado');
       notifyDocChange(DocType.SalesOrder);
       currentTab.close();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined));
     }
   };
 

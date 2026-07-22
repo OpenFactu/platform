@@ -7,11 +7,12 @@ import type {
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ClipboardCheck, Plus, Pencil, Trash2, X, Save, CheckCircle } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
-const STATUS_VARIANT: Record<string, any> = {
+const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
   draft: 'neutral',
   active: 'success',
   closed: 'info',

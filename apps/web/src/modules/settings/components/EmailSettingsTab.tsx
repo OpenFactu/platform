@@ -59,8 +59,8 @@ export const EmailSettingsTab: React.FC = () => {
         if (!res.ok) throw new Error('No se pudo cargar la configuración');
         const data = res.data;
         setCfg({ ...EMPTY, ...data });
-      } catch (e: any) {
-        toast.error(e?.message || 'Error');
+      } catch (e) {
+        toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error');
       } finally {
         setLoading(false);
       }
@@ -79,8 +79,8 @@ export const EmailSettingsTab: React.FC = () => {
       setCfg({ ...EMPTY, ...data });
       setNewPassword('');
       toast.success('Configuración guardada');
-    } catch (e: any) {
-      toast.error(e?.message || 'Error al guardar');
+    } catch (e) {
+      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al guardar');
     } finally {
       setSaving(false);
     }
@@ -104,9 +104,9 @@ export const EmailSettingsTab: React.FC = () => {
         setVerifyResult({ ok: false, detail: data.error || 'Error desconocido' });
         toast.error(`Fallo: ${data.error}`);
       }
-    } catch (e: any) {
-      setVerifyResult({ ok: false, detail: e?.message || 'Error' });
-      toast.error(e?.message || 'Error');
+    } catch (e) {
+      setVerifyResult({ ok: false, detail: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error' });
+      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error');
     } finally {
       setVerifying(false);
     }
@@ -126,9 +126,9 @@ export const EmailSettingsTab: React.FC = () => {
         setTestResult({ ok: false, detail: data.error || 'Error' });
         toast.error(data.error || 'Fallo al enviar');
       }
-    } catch (e: any) {
-      setTestResult({ ok: false, detail: e?.message || 'Error' });
-      toast.error(e?.message || 'Error');
+    } catch (e) {
+      setTestResult({ ok: false, detail: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error' });
+      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error');
     } finally {
       setSendingTest(false);
     }

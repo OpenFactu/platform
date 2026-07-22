@@ -5,11 +5,12 @@ import type { Department } from '../domain/department';
 import type { PayrollConcept } from '../domain/payroll';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Percent, Plus, Pencil, Trash2, RefreshCw, ArrowRightCircle } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
-const STATUS_VARIANT: Record<string, any> = {
+const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
   pending: 'warning',
   paid: 'success',
   cancelled: 'neutral',

@@ -66,8 +66,8 @@ export const TemplatesList: React.FC<Props> = ({
       const body: any = await templatesApi.resyncDefaults();
       toast.success(`Plantillas regeneradas: ${body.count}`);
       onReload?.();
-    } catch (e: any) {
-      toast.error(e.message || 'Error al regenerar plantillas');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al regenerar plantillas');
     } finally {
       setResyncing(false);
     }

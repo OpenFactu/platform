@@ -498,8 +498,8 @@ export const Users: React.FC = () => {
       toast.success(editingUser ? 'Usuario actualizado' : 'Usuario creado');
       resetForm();
       fetchUsers();
-    } catch (err: any) {
-      toast.error(err.message || 'Error de conexión');
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : undefined) || 'Error de conexión');
     } finally {
       setIsSubmitting(false);
     }

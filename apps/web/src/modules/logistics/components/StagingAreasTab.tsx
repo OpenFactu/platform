@@ -3,6 +3,7 @@ import { itemsApi, warehousesApi } from '@/modules/inventory/api';
 import { partnersApi } from '@/modules/partners/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Loader, Badge, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import {
   Plus,
   Trash2,
@@ -397,12 +398,12 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
     );
   };
 
-  const PKG_BADGE: Record<string, any> = {
+  const PKG_BADGE: Record<string, BadgeProps['variant']> = {
     open: 'warning',
     sealed: 'info',
     shipped: 'info',
     delivered: 'success',
-    returned: 'danger',
+    returned: 'error',
   };
 
   const addItem = async () => {

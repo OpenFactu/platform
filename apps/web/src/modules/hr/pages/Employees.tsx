@@ -2,6 +2,7 @@ import { employeesApi, departmentsApi } from '../api';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { UserRound, Plus, Trash2, Pencil } from 'lucide-react';
@@ -14,7 +15,7 @@ import { ApiError } from '@/shared/http';
 import { crudApi } from '@/shared/api';
 import { costCentersApi } from '@/modules/analytics/api/internalOrdersApi';
 
-const STATUS_VARIANTS: Record<string, any> = {
+const STATUS_VARIANTS: Record<string, BadgeProps['variant']> = {
   active: 'success',
   leave: 'warning',
   terminated: 'neutral',

@@ -52,8 +52,8 @@ const DocumentList: React.FC<{
     setDownloadingId(id);
     try {
       await downloadPdf(`${config.apiEndpoint}/${id}/pdf`);
-    } catch (e: any) {
-      toast.error(e.message || 'Error al descargar PDF');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al descargar PDF');
     } finally {
       setDownloadingId(null);
     }
@@ -503,8 +503,8 @@ const Documents: React.FC = () => {
       const data = await docsApi.get(config!.apiEndpoint, item.id);
       setSelectedDoc(data);
       setView('detail');
-    } catch (e: any) {
-      toast.error(e.message || 'Error al cargar');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al cargar');
     }
   };
 
@@ -522,8 +522,8 @@ const Documents: React.FC = () => {
       toast.success(`${config?.label} creado`);
       notifyDocChange(config.docType);
       setView('list');
-    } catch (e: any) {
-      toast.error(e.message || 'Error al crear');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al crear');
     }
   };
 

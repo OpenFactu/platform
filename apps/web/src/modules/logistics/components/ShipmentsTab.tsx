@@ -3,6 +3,7 @@ import { warehousesApi } from '@/modules/inventory/api';
 import { employeesApi } from '@/modules/hr/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { Plus, Trash2, MapPin, Search, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
@@ -17,7 +18,7 @@ import type { Vehicle } from '../domain/vehicle';
 import type { Warehouse } from '@/modules/inventory/domain/warehouse';
 import type { Employee } from '@/modules/hr/domain/employee';
 
-const STATUS_BADGE: Record<string, any> = {
+const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
   pending: 'neutral',
   picking: 'info',
   packed: 'info',
@@ -27,8 +28,8 @@ const STATUS_BADGE: Record<string, any> = {
   out_for_delivery: 'warning',
   postponed: 'warning',
   delivered: 'success',
-  exception: 'danger',
-  returned: 'danger',
+  exception: 'error',
+  returned: 'error',
   cancelled: 'neutral',
 };
 

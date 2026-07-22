@@ -94,8 +94,8 @@ const POList: React.FC<{
     setDownloadingId(id);
     try {
       await downloadPdf(`/api/purchases/orders/${id}/pdf`);
-    } catch (e: any) {
-      toast.error(e.message || 'Error al descargar PDF');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al descargar PDF');
     } finally {
       setDownloadingId(null);
     }
@@ -920,8 +920,8 @@ export const PurchaseOrders: React.FC = () => {
         const data = await docsApi.get('/api/purchases/orders', detailId);
         setSelectedOrder(data);
         currentTab.rename(formatDocCode(data));
-      } catch (err: any) {
-        toast.error(err?.message || 'Error de red al cargar el pedido');
+      } catch (err) {
+        toast.error((err instanceof Error ? (err instanceof Error ? err.message : undefined) : undefined) || 'Error de red al cargar el pedido');
       } finally {
         setDetailLoading(false);
       }
@@ -956,8 +956,8 @@ export const PurchaseOrders: React.FC = () => {
       toast.success(`Pedido registrado nº ${data.docNum}`);
       notifyDocChange(DocType.PurchaseOrder);
       currentTab.close();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : undefined));
     }
   };
 
@@ -967,8 +967,8 @@ export const PurchaseOrders: React.FC = () => {
       toast.success('Pedido cancelado');
       notifyDocChange(DocType.PurchaseOrder);
       currentTab.close();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : undefined));
     }
   };
 

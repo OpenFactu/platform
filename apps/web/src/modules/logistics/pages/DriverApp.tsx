@@ -369,7 +369,7 @@ export const DriverApp: React.FC = () => {
         });
       }
       if (navigator.vibrate) navigator.vibrate(hits.length > 0 ? [80, 40, 80] : 200);
-    } catch (e: any) {
+    } catch (e) {
       toast.error('No se pudo cargar el acopio');
     }
   };

@@ -62,8 +62,8 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
       );
       if (data.queued > 0) onSuccess?.();
       onClose();
-    } catch (e: any) {
-      toast.error(e.message || 'Error en envío masivo');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error en envío masivo');
     } finally {
       setSending(false);
     }

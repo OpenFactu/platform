@@ -4,6 +4,7 @@ import type { Employee } from '../domain/employee';
 import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api/internalOrdersApi';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast, cn } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ListTodo, Plus, Trash2, X, User, Calendar, Clock } from 'lucide-react';
 import { ApiError } from '@/shared/http';
@@ -15,11 +16,11 @@ const COLUMNS: Array<{ key: Task['status']; label: string; accent: string }> = [
   { key: 'done', label: 'Hecha', accent: 'bg-emerald-500' },
 ];
 
-const PRIORITY_VARIANT: Record<string, any> = {
+const PRIORITY_VARIANT: Record<string, BadgeProps['variant']> = {
   low: 'neutral',
   normal: 'info',
   high: 'warning',
-  urgent: 'danger',
+  urgent: 'error',
 };
 const PRIORITY_LABEL: Record<string, string> = {
   low: 'Baja',

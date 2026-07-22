@@ -90,8 +90,8 @@ export const UserProfile: React.FC = () => {
       if (!res.ok) throw new Error((res.data).error);
       toast.success('Perfil actualizado');
       await load();
-    } catch (e: any) {
-      toast.error(e.message || 'Error');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error');
     } finally {
       setSaving(false);
     }
@@ -113,8 +113,8 @@ export const UserProfile: React.FC = () => {
       await coreApi.postForm('/api/profile/me/signature', form);
       toast.success('Firma subida');
       await load();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined));
     } finally {
       setUploading(false);
     }
@@ -129,8 +129,8 @@ export const UserProfile: React.FC = () => {
       if (signaturePreview?.startsWith('blob:')) URL.revokeObjectURL(signaturePreview);
       setSignaturePreview(null);
       await load();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined));
     }
   };
 

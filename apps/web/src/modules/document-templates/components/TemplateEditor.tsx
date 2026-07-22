@@ -141,8 +141,8 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
       }
       await onSave(payload);
       toast.success('Plantilla guardada');
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined));
     } finally {
       setSaving(false);
     }
@@ -174,8 +174,8 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
           : {}),
       });
       openTab(`/document-templates/${id}/designer`);
-    } catch (e: any) {
-      toast.error(e.message || 'No se pudo abrir el diseñador');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'No se pudo abrir el diseñador');
     } finally {
       setSaving(false);
     }

@@ -80,8 +80,8 @@ export const DataTransferTab: React.FC = () => {
       setDeleteConfirmText('');
       setDeleteTenantId('');
       await loadTenants();
-    } catch (e: any) {
-      toast.error(`Error al eliminar: ${e?.message || e}`);
+    } catch (e) {
+      toast.error(`Error al eliminar: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setDeleting(false);
     }
@@ -129,8 +129,8 @@ export const DataTransferTab: React.FC = () => {
       a.click();
       setTimeout(() => URL.revokeObjectURL(u), 30_000);
       toast.success(`${label} listo`);
-    } catch (e: any) {
-      toast.error(`Error en ${label}: ${e?.message || e}`);
+    } catch (e) {
+      toast.error(`Error en ${label}: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setBusy(null);
       setProgress(null);

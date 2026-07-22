@@ -90,8 +90,8 @@ const InvoiceList: React.FC<{
     setDownloadingId(id);
     try {
       await downloadPdf(`/api/purchases/invoices/${id}/pdf`);
-    } catch (e: any) {
-      toast.error(e.message || 'Error al descargar PDF');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al descargar PDF');
     } finally {
       setDownloadingId(null);
     }
@@ -966,8 +966,8 @@ export const PurchaseInvoices: React.FC = () => {
         const data = await docsApi.get('/api/purchases/invoices', detailId);
         setSelectedInvoice(data);
         currentTab.rename(formatDocCode(data));
-      } catch (e: any) {
-        toast.error(e.message || 'Error al cargar el detalle de la factura');
+      } catch (e) {
+        toast.error((e instanceof Error ? e.message : undefined) || 'Error al cargar el detalle de la factura');
       } finally {
         setDetailLoading(false);
       }
@@ -1054,8 +1054,8 @@ export const PurchaseInvoices: React.FC = () => {
       toast.success('Factura asentada correctamente');
       notifyDocChange(DocType.PurchaseInvoice);
       currentTab.close();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined));
     }
   };
 
@@ -1070,8 +1070,8 @@ export const PurchaseInvoices: React.FC = () => {
       toast.success('Factura cancelada y stock/albaranes revertidos');
       notifyDocChange(DocType.PurchaseInvoice);
       currentTab.close();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined));
     }
   };
 
@@ -1083,8 +1083,8 @@ export const PurchaseInvoices: React.FC = () => {
       toast.success('Factura asentada');
       notifyDocChange(DocType.PurchaseInvoice);
       setSelectedInvoice({ ...selectedInvoice, status: 'O' });
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined));
     } finally {
       setPosting(false);
     }

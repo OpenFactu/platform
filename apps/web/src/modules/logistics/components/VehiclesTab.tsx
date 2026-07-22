@@ -2,13 +2,14 @@ import { vehiclesApi } from '../api';
 import { employeesApi } from '@/modules/hr/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, RotateCcw, Archive } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
 import type { Vehicle } from '../domain/vehicle';
 import type { Employee } from '@/modules/hr/domain/employee';
 
-const STATUS_BADGE: Record<string, any> = {
+const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
   active: 'success',
   maintenance: 'warning',
   retired: 'neutral',

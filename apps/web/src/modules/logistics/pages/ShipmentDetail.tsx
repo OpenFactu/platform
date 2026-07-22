@@ -3,6 +3,7 @@ import { warehousesApi } from '@/modules/inventory/api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Button, Badge, Loader, Modal, Input, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import {
   ArrowLeft,
   Copy,
@@ -257,7 +258,7 @@ export const ShipmentDetail: React.FC = () => {
   const centerLng = shipment.lastLng ?? shipment.destinationLng ?? -3.7038;
   const centerLat = shipment.lastLat ?? shipment.destinationLat ?? 40.4168;
 
-  const prepBadge = (() => {
+  const prepBadge = ((): { label: string; variant: BadgeProps['variant'] } => {
     // Una recogida invierte el sentido: "entregado" significa que RECOGIMOS
     // el paquete, "en camino" que vamos hacia el cliente a por él.
     const pickupLabels: Record<string, string> = {
@@ -292,7 +293,7 @@ export const ShipmentDetail: React.FC = () => {
       shipment.preparationStatus === 'delivered' || shipment.preparationStatus === 'received'
         ? 'success'
         : shipment.preparationStatus === 'cancelled' || shipment.preparationStatus === 'exception'
-          ? 'danger'
+          ? 'error'
           : 'info';
     return { label, variant };
   })();
@@ -319,7 +320,7 @@ export const ShipmentDetail: React.FC = () => {
                 {shipment.trackingNumber || (shipment.id || '').slice(0, 8)}
               </h1>
               <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                <Badge variant={prepBadge.variant as any}>{prepBadge.label}</Badge>
+                <Badge variant={prepBadge.variant}>{prepBadge.label}</Badge>
                 {!isInbound && shipment.driverName && <span>Conductor: {shipment.driverName}</span>}
                 {!isInbound && shipment.vehiclePlate && <span>· {shipment.vehiclePlate}</span>}
                 {isInbound && shipment.carrier && shipment.carrier !== 'propio' && (

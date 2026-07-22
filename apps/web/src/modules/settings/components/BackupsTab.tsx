@@ -152,8 +152,8 @@ export const BackupsTab: React.FC = () => {
       if (!res.ok) throw new Error((res.data)?.error || `HTTP ${res.status}`);
       setConfig(res.data);
       toast.success('Programación guardada');
-    } catch (e: any) {
-      toast.error(e?.message || 'Error al guardar');
+    } catch (e) {
+      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al guardar');
     } finally {
       setSaving(false);
     }
@@ -167,8 +167,8 @@ export const BackupsTab: React.FC = () => {
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       toast.success('Backup lanzado — puede tardar unos minutos');
       await loadRuns().catch(() => undefined);
-    } catch (e: any) {
-      toast.error(e?.message || 'Error al lanzar el backup');
+    } catch (e) {
+      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al lanzar el backup');
     } finally {
       setLaunching(false);
     }
@@ -183,8 +183,8 @@ export const BackupsTab: React.FC = () => {
       a.download = run.fileName || 'backup.zip';
       a.click();
       setTimeout(() => URL.revokeObjectURL(u), 30_000);
-    } catch (e: any) {
-      toast.error(`Error al descargar: ${e?.message || e}`);
+    } catch (e) {
+      toast.error(`Error al descargar: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -201,8 +201,8 @@ export const BackupsTab: React.FC = () => {
       if (!res.ok) throw new Error((res.data)?.error || `HTTP ${res.status}`);
       toast.success('Backup eliminado');
       await loadRuns().catch(() => undefined);
-    } catch (e: any) {
-      toast.error(e?.message || 'Error al eliminar');
+    } catch (e) {
+      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al eliminar');
     }
   };
 
@@ -220,8 +220,8 @@ export const BackupsTab: React.FC = () => {
       toast.success(`Backup restaurado como "${restoreName.trim()}" (id: ${body.tenantId})`);
       setRestoreRun(null);
       setRestoreName('');
-    } catch (e: any) {
-      toast.error(e?.message || 'Error al restaurar');
+    } catch (e) {
+      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al restaurar');
     } finally {
       setRestoring(false);
     }

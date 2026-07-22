@@ -182,8 +182,8 @@ export const CompanySettings: React.FC = () => {
     try {
       await updateTheme('branding', brandingDraft);
       toast.success('Branding guardado');
-    } catch (e: any) {
-      toast.error(e.message || 'Error al guardar');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al guardar');
     } finally {
       setSaving(false);
     }
@@ -194,8 +194,8 @@ export const CompanySettings: React.FC = () => {
     try {
       await updateTheme('format', formatDraft);
       toast.success('Formato guardado');
-    } catch (e: any) {
-      toast.error(e.message || 'Error al guardar');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al guardar');
     } finally {
       setSaving(false);
     }
@@ -206,8 +206,8 @@ export const CompanySettings: React.FC = () => {
     try {
       await updateTheme('flags', flagsDraft);
       toast.success('Comportamiento guardado');
-    } catch (e: any) {
-      toast.error(e.message || 'Error al guardar');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al guardar');
     } finally {
       setSaving(false);
     }
@@ -224,8 +224,8 @@ export const CompanySettings: React.FC = () => {
       const res = await coreApi.raw('PUT', '/api/config/app', appConfig);
       if (!res.ok) throw new Error('http');
       toast.success('URL pública guardada');
-    } catch (e: any) {
-      toast.error(e.message || 'Error al guardar');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al guardar');
     } finally {
       setSaving(false);
     }

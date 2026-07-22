@@ -104,8 +104,8 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
             }),
         );
         if (!cancelled) setOptionsMap(optMap);
-      } catch (e: any) {
-        if (!cancelled) setLoadError(e?.message || 'No se pudo cargar la plantilla');
+      } catch (e) {
+        if (!cancelled) setLoadError((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'No se pudo cargar la plantilla');
       }
     })();
     return () => {
@@ -180,8 +180,8 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
       } else {
         onClose();
       }
-    } catch (e: any) {
-      setError(e?.message || 'Error al generar el documento');
+    } catch (e) {
+      setError((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al generar el documento');
     } finally {
       setGenerating(false);
     }

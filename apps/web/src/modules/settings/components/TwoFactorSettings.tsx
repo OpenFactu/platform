@@ -55,8 +55,8 @@ export const TwoFactorSettings: React.FC = () => {
       setCode('');
       setBackupCodes(null);
       setSetupOpen(true);
-    } catch (e: any) {
-      toast.error(e.message || 'No se pudo iniciar el 2FA');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'No se pudo iniciar el 2FA');
     } finally {
       setLoading(false);
     }
@@ -71,8 +71,8 @@ export const TwoFactorSettings: React.FC = () => {
       setBackupCodes(data.backupCodes);
       setEnabled(true);
       toast.success('2FA activado');
-    } catch (e: any) {
-      toast.error(e.message || 'Código incorrecto');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Código incorrecto');
     } finally {
       setLoading(false);
     }
@@ -88,8 +88,8 @@ export const TwoFactorSettings: React.FC = () => {
       setDisableOpen(false);
       setDisableCode('');
       toast.success('2FA desactivado');
-    } catch (e: any) {
-      toast.error(e.message || 'Código incorrecto');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Código incorrecto');
     } finally {
       setLoading(false);
     }

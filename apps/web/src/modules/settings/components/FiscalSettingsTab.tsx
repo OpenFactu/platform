@@ -73,8 +73,8 @@ export const FiscalSettingsTab: React.FC = () => {
         throw new Error(err?.error || 'Error');
       }
       toast.success('Guardado');
-    } catch (e: any) {
-      toast.error(e.message || 'Error al guardar');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al guardar');
     } finally {
       setSaving(false);
     }

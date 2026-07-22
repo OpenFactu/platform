@@ -85,8 +85,8 @@ export const SqlEditorModal: React.FC<Props> = ({
         const tables: SchemaTable[] = body.tables ?? [];
         schemaRef.current = tables;
         setSchema(tables);
-      } catch (e: any) {
-        if (!cancelled) setSchemaError(e?.message || 'No se pudo cargar el esquema');
+      } catch (e) {
+        if (!cancelled) setSchemaError((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'No se pudo cargar el esquema');
       }
     })();
     return () => {
@@ -236,8 +236,8 @@ export const SqlEditorModal: React.FC<Props> = ({
           truncated: body.truncated ?? false,
         });
       }
-    } catch (e: any) {
-      setTestResult({ ok: false, error: e?.message || 'Error de red' });
+    } catch (e) {
+      setTestResult({ ok: false, error: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error de red' });
     } finally {
       setTesting(false);
     }

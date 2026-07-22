@@ -8,6 +8,7 @@ import { prepTasksApi } from '../api';
 import { itemsApi } from '@/modules/inventory/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Badge, Loader, SearchableSelect, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { Check, X, Layers3, Package, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
@@ -21,11 +22,11 @@ interface Props {
   onAllDone?: () => void;
 }
 
-const STATUS_BADGE: Record<string, any> = {
+const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
   pending: 'neutral',
   partial: 'warning',
   done: 'success',
-  missing: 'danger',
+  missing: 'error',
 };
 
 export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) => {

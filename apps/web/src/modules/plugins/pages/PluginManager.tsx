@@ -121,8 +121,8 @@ export const PluginManager: React.FC = () => {
       toast.success(
         currentlyActive ? `Plugin "${pluginId}" desactivado` : `Plugin "${pluginId}" activado`,
       );
-    } catch (err: any) {
-      toast.error(err.message || 'Error al cambiar estado del plugin');
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : undefined) || 'Error al cambiar estado del plugin');
     } finally {
       setToggling(null);
     }
@@ -391,8 +391,8 @@ const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ token, us
       } else {
         toast.error(data.error);
       }
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : undefined));
     } finally {
       setCreating(false);
     }

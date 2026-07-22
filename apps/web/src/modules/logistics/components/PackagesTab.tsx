@@ -2,6 +2,7 @@ import { packagesApi, stagingAreasApi } from '../api';
 import { itemsApi } from '@/modules/inventory/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { Plus, Trash2, Lock, Warehouse, Boxes } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
@@ -9,12 +10,12 @@ import type { Package, PackageLine } from '../domain/package';
 import type { StagingArea } from '../domain/stagingArea';
 import type { Item } from '@/modules/inventory/domain/item';
 
-const STATUS_BADGE: Record<string, any> = {
+const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
   open: 'warning',
   sealed: 'info',
   shipped: 'info',
   delivered: 'success',
-  returned: 'danger',
+  returned: 'error',
 };
 
 export const PackagesTab: React.FC = () => {

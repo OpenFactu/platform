@@ -72,8 +72,8 @@ export const NewCompany: React.FC = () => {
       await switchTenant(created.id);
       toast.success('Empresa creada y activada');
       navigate('/');
-    } catch (e: any) {
-      toast.error(e.message || 'Error al crear empresa');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al crear empresa');
     } finally {
       setSaving(false);
     }

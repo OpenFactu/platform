@@ -4,6 +4,7 @@ import type { Employee } from '../domain/employee';
 import type { IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { AlertTriangle, Plus, UserCheck, X, Check, Ban } from 'lucide-react';
 import { ContextMenu } from '@/components/common/ContextMenu';
@@ -17,10 +18,10 @@ const STATUS_LABEL: Record<string, string> = {
   rejected: 'Rechazada',
   covered: 'Cubierta',
 };
-const STATUS_VARIANT: Record<string, any> = {
+const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
   pending: 'warning',
   approved: 'info',
-  rejected: 'danger',
+  rejected: 'error',
   covered: 'success',
 };
 

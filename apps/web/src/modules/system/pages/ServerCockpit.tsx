@@ -142,8 +142,8 @@ export const ServerCockpit: React.FC = () => {
           ),
           req: pushRing(h.req, reqPerSec),
         }));
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Error');
+      } catch (e) {
+        if (!cancelled) setError((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error');
       }
     };
     tick();

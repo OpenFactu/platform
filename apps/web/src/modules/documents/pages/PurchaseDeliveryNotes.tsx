@@ -96,8 +96,8 @@ const PDNList: React.FC<{
     setDownloadingId(id);
     try {
       await downloadPdf(`/api/purchases/delivery-notes/${id}/pdf`);
-    } catch (e: any) {
-      toast.error(e.message || 'Error al descargar PDF');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al descargar PDF');
     } finally {
       setDownloadingId(null);
     }
@@ -978,8 +978,8 @@ export const PurchaseDeliveryNotes: React.FC = () => {
         const data = await docsApi.get('/api/purchases/delivery-notes', detailId);
         setSelectedDelivery(data);
         currentTab.rename(formatDocCode(data));
-      } catch (e: any) {
-        toast.error(e.message || 'Error al cargar el albarán');
+      } catch (e) {
+        toast.error((e instanceof Error ? e.message : undefined) || 'Error al cargar el albarán');
       } finally {
         setDetailLoading(false);
       }
@@ -1067,8 +1067,8 @@ export const PurchaseDeliveryNotes: React.FC = () => {
       toast.success(`Albarán registrado nº ${data.docNum}`);
       notifyDocChange(DocType.PurchaseDeliveryNote);
       currentTab.close();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : undefined));
     }
   };
 
@@ -1112,8 +1112,8 @@ export const PurchaseDeliveryNotes: React.FC = () => {
       );
       notifyDocChange(DocType.PurchaseDeliveryNote);
       currentTab.close();
-    } catch (err: any) {
-      toast.error(err.message || 'Error al cancelar');
+    } catch (err) {
+      toast.error((err instanceof Error ? err.message : undefined) || 'Error al cancelar');
     }
   };
 

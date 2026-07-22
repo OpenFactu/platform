@@ -729,8 +729,8 @@ export const DocumentTemplateDesigner: React.FC = () => {
       const url = URL.createObjectURL(blob);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(url);
-    } catch (e: any) {
-      toast.error(`Preview falló: ${e.message}`);
+    } catch (e) {
+      toast.error(`Preview falló: ${(e instanceof Error ? e.message : undefined)}`);
     } finally {
       setPreviewLoading(false);
     }
@@ -762,8 +762,8 @@ export const DocumentTemplateDesigner: React.FC = () => {
       setLayout(parsed as CanvasLayout);
       setSelectedElementId(null);
       toast.success('Layout importado');
-    } catch (e: any) {
-      toast.error(`No se pudo importar: ${e.message || 'JSON inválido'}`);
+    } catch (e) {
+      toast.error(`No se pudo importar: ${(e instanceof Error ? e.message : undefined) || 'JSON inválido'}`);
     }
   };
 
@@ -2613,8 +2613,8 @@ const QueryEditor: React.FC<{
           truncated: body.truncated ?? false,
         });
       }
-    } catch (e: any) {
-      setResult({ ok: false, error: e?.message || 'Error de red' });
+    } catch (e) {
+      setResult({ ok: false, error: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error de red' });
     } finally {
       setTesting(false);
     }

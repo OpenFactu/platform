@@ -2,6 +2,7 @@ import { routesApi, shipmentsApi, vehiclesApi } from '../api';
 import { employeesApi } from '@/modules/hr/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
 import { RouteMapPlanner } from '../components/RouteMapPlanner';
 import { useAuth } from '@/context/AuthContext';
@@ -9,11 +10,11 @@ import { ApiError } from '@/shared/http';
 import type { Route, RouteVehicleOption } from '../domain/route';
 import type { Employee } from '@/modules/hr/domain/employee';
 
-const STATUS_BADGE: Record<string, any> = {
+const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
   planned: 'neutral',
   active: 'info',
   completed: 'success',
-  cancelled: 'danger',
+  cancelled: 'error',
 };
 
 export const RoutesTab: React.FC = () => {

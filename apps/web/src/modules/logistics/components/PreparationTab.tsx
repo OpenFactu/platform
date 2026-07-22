@@ -5,6 +5,7 @@
 import { routesApi, shipmentsApi, stagingAreasApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge, Loader, Modal, useToast } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import {
   Box,
   Package as PackageIcon,
@@ -21,7 +22,7 @@ import type { Route } from '../domain/route';
 import type { Shipment } from '../domain/shipment';
 import type { StagingArea } from '../domain/stagingArea';
 
-const PREP_BADGE: Record<string, any> = {
+const PREP_BADGE: Record<string, BadgeProps['variant']> = {
   draft: 'neutral',
   picking: 'info',
   packed: 'info',
@@ -31,8 +32,8 @@ const PREP_BADGE: Record<string, any> = {
   delivered: 'success',
   receiving: 'info',
   received: 'success',
-  cancelled: 'danger',
-  exception: 'danger',
+  cancelled: 'error',
+  exception: 'error',
 };
 
 const PREP_LABEL: Record<string, string> = {

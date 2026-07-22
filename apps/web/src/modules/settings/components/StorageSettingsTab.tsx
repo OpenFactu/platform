@@ -168,8 +168,8 @@ export const StorageSettingsTab: React.FC = () => {
       }
       await patchConfig(patch);
       toast.success('Configuración guardada');
-    } catch (e: any) {
-      toast.error(e?.message || 'Error al guardar');
+    } catch (e) {
+      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al guardar');
     } finally {
       setSaving(false);
     }
@@ -191,10 +191,10 @@ export const StorageSettingsTab: React.FC = () => {
       if (!res.ok || !body.url) throw new Error(body.error || `HTTP ${res.status}`);
       if (popup) popup.location.href = body.url;
       else toast.error('El navegador bloqueó la ventana de conexión');
-    } catch (e: any) {
+    } catch (e) {
       popup?.close();
       setConnecting(false);
-      toast.error(e?.message || 'Error al iniciar la conexión');
+      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al iniciar la conexión');
     }
   };
 
@@ -217,8 +217,8 @@ export const StorageSettingsTab: React.FC = () => {
         setViewProvider(cfg.provider || 'local');
       }
       await loadOauthStatus();
-    } catch (e: any) {
-      toast.error(e?.message || 'Error al desconectar');
+    } catch (e) {
+      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al desconectar');
     }
   };
 
@@ -228,8 +228,8 @@ export const StorageSettingsTab: React.FC = () => {
       const res = await coreApi.raw('POST', '/api/config/storage/healthcheck');
       const body = res.data;
       setHealth(body);
-    } catch (e: any) {
-      setHealth({ ok: false, provider: 'unknown', detail: e?.message });
+    } catch (e) {
+      setHealth({ ok: false, provider: 'unknown', detail: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) });
     }
   };
 

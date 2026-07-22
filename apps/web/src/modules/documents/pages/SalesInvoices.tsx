@@ -89,8 +89,8 @@ const InvoiceList: React.FC<{
     setDownloadingId(id);
     try {
       await downloadPdf(`/api/sales/invoices/${id}/pdf`);
-    } catch (e: any) {
-      toast.error(e.message || 'Error al descargar PDF');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error al descargar PDF');
     } finally {
       setDownloadingId(null);
     }
@@ -972,8 +972,8 @@ export const SalesInvoices: React.FC = () => {
         const data = await docsApi.get('/api/sales/invoices', detailId);
         setSelectedInvoice(data);
         currentTab.rename(formatDocCode(data));
-      } catch (e: any) {
-        toast.error(e.message || 'Error al cargar el detalle de la factura');
+      } catch (e) {
+        toast.error((e instanceof Error ? e.message : undefined) || 'Error al cargar el detalle de la factura');
       } finally {
         setDetailLoading(false);
       }
@@ -1067,8 +1067,8 @@ export const SalesInvoices: React.FC = () => {
         });
       }
       currentTab.close();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined));
     }
   };
 
@@ -1081,8 +1081,8 @@ export const SalesInvoices: React.FC = () => {
       toast.success('Factura cancelada');
       notifyDocChange(DocType.SalesInvoice);
       currentTab.close();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined));
     } finally {
       setCancelling(false);
     }
@@ -1097,8 +1097,8 @@ export const SalesInvoices: React.FC = () => {
       notifyDocChange(DocType.SalesInvoice);
       // Refetch el detalle para reflejar el nuevo status
       setSelectedInvoice({ ...selectedInvoice, status: 'O' });
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined));
     } finally {
       setPosting(false);
     }

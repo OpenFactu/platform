@@ -40,8 +40,8 @@ export const ReportPayslip: React.FC = () => {
         `recibo-${empName.replace(/\s/g, '_')}-${year}-${String(month).padStart(2, '0')}.pdf`,
       );
       toast.success('Recibo descargado');
-    } catch (e: any) {
-      toast.error(e.message || 'Error');
+    } catch (e) {
+      toast.error((e instanceof Error ? e.message : undefined) || 'Error');
     }
   };
 

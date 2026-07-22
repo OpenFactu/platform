@@ -9,6 +9,7 @@ import type { Payroll } from '../domain/payroll';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Banknote, Plus, CheckCircle, Trash2, ListPlus, X, FileText } from 'lucide-react';
 import { ContextMenu } from '@/components/common/ContextMenu';
@@ -16,7 +17,7 @@ import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
 import { ApiError } from '@/shared/http';
 
-const STATUS_VARIANTS: Record<string, any> = {
+const STATUS_VARIANTS: Record<string, BadgeProps['variant']> = {
   draft: 'neutral',
   approved: 'success',
   paid: 'info',
