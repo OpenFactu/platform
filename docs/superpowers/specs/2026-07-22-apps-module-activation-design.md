@@ -213,12 +213,12 @@ disponibles). Verificación manual:
 
 ## Riesgos
 
-- La duplicación actual de `FlagsConfig` entre servidor y web ya estaba
-  desincronizada antes de este cambio (le faltaban 6 campos al tipo web);
-  al tocar el archivo hay que sincronizar ambas copias por completo o el
-  build de `apps/web` puede fallar por tipos si algún componente usa
-  `(flags as any)` en vez del tipo — revisar `CompanySettings.tsx` donde
-  ya se usaba ese escape hatch.
+- ~~La duplicación actual de `FlagsConfig` entre servidor y web ya estaba
+  desincronizada antes de este cambio...~~ **Resuelto por adelantado**
+  (commit `72e842f`): se sincronizó `ThemeContext.tsx` con los 6 campos
+  que le faltaban (`trackingChatEnabled` + 5 sub-flags de RRHH) y se
+  quitaron los `(flagsDraft as any)` de `CompanySettings.tsx`. El paso 1
+  del plan de implementación parte ya de las dos copias sincronizadas.
 - Añadir `adminMiddleware` a `mount()` afecta también a
   branding/format/app/fiscal/backup, no solo a flags — si algún flujo no
   ADMIN dependía de poder guardar, por ejemplo, su propia configuración
