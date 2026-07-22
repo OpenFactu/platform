@@ -9,6 +9,19 @@ import { logAudit } from '../utils/audit';
 const router = Router();
 
 /**
+ * Traduce una violación de restricción única de Postgres (código 23505) a un
+ * mensaje claro. Devuelve `null` si `error` no es ese tipo de error — el
+ * llamador debe caer entonces al 500 genérico.
+ */
+function uniqueViolationMessage(error: any): string | null {
+  if (error?.code !== '23505') return null;
+  const constraint: string = error.constraint || '';
+  if (constraint.includes('email')) return 'Ya existe un usuario con ese email';
+  if (constraint.includes('username')) return 'Ya existe un usuario con ese nombre de usuario';
+  return 'Ya existe un registro con ese valor único';
+}
+
+/**
  * GET /api/users
  */
 router.get('/', async (req: any, res) => {
@@ -74,6 +87,11 @@ router.post('/', async (req: any, res) => {
         newValue: safeUser,
       });
   } catch (error: any) {
+    const dupMessage = uniqueViolationMessage(error);
+    if (dupMessage) {
+      res.status(409).json({ error: dupMessage });
+      return;
+    }
     res.status(500).json({ error: error.message });
   }
 });
@@ -110,6 +128,11 @@ router.patch('/:id', async (req: any, res) => {
       });
     }
   } catch (error: any) {
+    const dupMessage = uniqueViolationMessage(error);
+    if (dupMessage) {
+      res.status(409).json({ error: dupMessage });
+      return;
+    }
     res.status(500).json({ error: error.message });
   }
 });

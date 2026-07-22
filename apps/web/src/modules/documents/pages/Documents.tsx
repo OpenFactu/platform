@@ -20,10 +20,9 @@ import {
   DocType,
   DocKind,
   DocSide,
-  getDocTypeConfig,
-  DOC_TYPE_CONFIGS,
   decomposeDocType,
 } from '@openfactu/common';
+import { getDocTypeConfig, DOC_TYPE_CONFIGS } from '../domain/docTypeConfig';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
 import { downloadPdf } from '@/utils/downloadPdf';
@@ -135,7 +134,7 @@ const DocumentList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => item.status || '',
       cell: (item: any) => {
-        const props = statusBadgeProps[item.status] || {
+        const props = statusBadgeProps(item.status, decomposeDocType(config.docType).kind) || {
           variant: 'neutral' as const,
           label: item.status,
         };
