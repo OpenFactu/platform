@@ -6,6 +6,7 @@ import { Percent, Plus, Trash2, Edit3, Save, X, Info } from 'lucide-react';
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
 import { taxesApi } from '../api';
+import type { Tax } from '../domain/accounting';
 
 export const Taxes: React.FC = () => {
   const { user } = useAuth();
@@ -19,7 +20,7 @@ export const Taxes: React.FC = () => {
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
   const toast = useToast();
-  const [taxes, setTaxes] = useState<any[]>([]);
+  const [taxes, setTaxes] = useState<Tax[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newRow, setNewRow] = useState<{ code: string; rate: string } | null>(null);
@@ -81,8 +82,8 @@ export const Taxes: React.FC = () => {
     }
   };
 
-  const ctxMenu = useContextMenu<any>();
-  const buildCtxItems = (t: any) => [
+  const ctxMenu = useContextMenu<Tax>();
+  const buildCtxItems = (t: Tax) => [
     {
       label: 'Editar',
       icon: <Edit3 size={14} />,
@@ -240,7 +241,7 @@ export const Taxes: React.FC = () => {
                     <>
                       <Button
                         size="sm"
-                        onClick={() => handleUpdate(t.id, t.code, t.rate)}
+                        onClick={() => handleUpdate(t.id, t.code, String(t.rate))}
                         className="h-10 gap-2"
                       >
                         <Save size={14} /> Aplicar

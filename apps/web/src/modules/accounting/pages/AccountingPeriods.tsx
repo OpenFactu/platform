@@ -7,6 +7,7 @@ import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
 import { periodsApi } from '../api';
+import type { AccountingPeriod } from '../domain/accounting';
 
 export const AccountingPeriods: React.FC = () => {
   const { user } = useAuth();
@@ -19,7 +20,7 @@ export const AccountingPeriods: React.FC = () => {
     user?.role === 'SUPERUSER' ||
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
-  const [periods, setPeriods] = useState<any[]>([]);
+  const [periods, setPeriods] = useState<AccountingPeriod[]>([]);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');

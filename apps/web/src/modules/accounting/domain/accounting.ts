@@ -41,9 +41,13 @@ export interface JournalEntry {
 
 export interface LedgerRow {
   id: string;
-  date: string;
+  entryDate: string;
+  entryNumber?: number | string | null;
+  description?: string | null;
+  headerDescription?: string | null;
   debit: number | string;
   credit: number | string;
+  runningBalance: number;
   [key: string]: unknown;
 }
 

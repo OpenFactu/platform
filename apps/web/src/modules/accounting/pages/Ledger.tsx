@@ -3,12 +3,13 @@ import { Table, Card, useToast, Badge } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { BookOpenCheck } from 'lucide-react';
 import { chartOfAccountsApi, journalEntriesApi } from '../api';
+import type { Account, LedgerRow } from '../domain/accounting';
 
 export const Ledger: React.FC = () => {
   const { user } = useAuth();
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [selected, setSelected] = useState<string>('');
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<LedgerRow[]>([]);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
@@ -41,14 +42,14 @@ export const Ledger: React.FC = () => {
   const columns = [
     {
       header: 'Fecha',
-      cell: (r: any) => new Date(r.entryDate).toLocaleDateString(),
+      cell: (r: LedgerRow) => new Date(r.entryDate).toLocaleDateString(),
     },
-    { header: 'Asiento', cell: (r: any) => <b>{r.entryNumber}</b> },
-    { header: 'Concepto', cell: (r: any) => r.description || r.headerDescription || '' },
+    { header: 'Asiento', cell: (r: LedgerRow) => <b>{r.entryNumber}</b> },
+    { header: 'Concepto', cell: (r: LedgerRow) => r.description || r.headerDescription || '' },
     {
       header: 'Debe',
       align: 'right' as const,
-      cell: (r: any) =>
+      cell: (r: LedgerRow) =>
         Number(r.debit) > 0
           ? Number(r.debit).toLocaleString('es-ES', { minimumFractionDigits: 2 })
           : '',
@@ -56,7 +57,7 @@ export const Ledger: React.FC = () => {
     {
       header: 'Haber',
       align: 'right' as const,
-      cell: (r: any) =>
+      cell: (r: LedgerRow) =>
         Number(r.credit) > 0
           ? Number(r.credit).toLocaleString('es-ES', { minimumFractionDigits: 2 })
           : '',
@@ -64,7 +65,7 @@ export const Ledger: React.FC = () => {
     {
       header: 'Saldo',
       align: 'right' as const,
-      cell: (r: any) => (
+      cell: (r: LedgerRow) => (
         <b
           className={
             r.runningBalance >= 0

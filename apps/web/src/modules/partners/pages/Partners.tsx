@@ -37,6 +37,7 @@ import { usePluginListColumns } from '@/components/plugin-fields';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { crudApi } from '@/shared/api';
 import { partnersApi, partnerGroupsApi } from '../api';
+import type { Partner, PartnerAddress, PartnerGroup } from '../domain/partner';
 
 const FLAGS: Record<string, string> = {
   ES: '🇪🇸',
@@ -188,8 +189,8 @@ export const Partners: React.FC = () => {
     user?.permissions?.[location.pathname]?.write;
   const toast = useToast();
   const { countries, loadSubRegionsByCountry, searchLocalities } = useGeo();
-  const [partners, setPartners] = useState<any[]>([]);
-  const [groups, setGroups] = useState<any[]>([]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [groups, setGroups] = useState<PartnerGroup[]>([]);
   const [priceLists, setPriceLists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -218,7 +219,7 @@ export const Partners: React.FC = () => {
     bankName: '',
     bankSwift: '',
   });
-  const [addresses, setAddresses] = useState<any[]>([]);
+  const [addresses, setAddresses] = useState<PartnerAddress[]>([]);
 
   const [docTypes, setDocTypes] = useState<any[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
@@ -834,7 +835,7 @@ export const Partners: React.FC = () => {
                             <div>
                               <label className={labelCls}>Provincia</label>
                               <SearchableSelect
-                                value={addr.subRegionId || ''}
+                                value={String(addr.subRegionId || '')}
                                 onChange={(id) => {
                                   updateAddress(idx, 'subRegionId', id);
                                   updateAddress(idx, 'localityId', '');
@@ -855,8 +856,8 @@ export const Partners: React.FC = () => {
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <MunicipalitySearch
-                                subRegionId={addr.subRegionId || ''}
-                                value={addr.localityId || ''}
+                                subRegionId={String(addr.subRegionId || '')}
+                                value={String(addr.localityId || '')}
                                 valueName={addr.city}
                                 onChange={(loc) => {
                                   updateAddress(idx, 'localityId', loc?.id || '');
