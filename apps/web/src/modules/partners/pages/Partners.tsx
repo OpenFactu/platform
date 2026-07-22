@@ -1,6 +1,6 @@
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { validateIban, validateSwift, formatIban } from '../utils/bankValidation';
+import { useAuth } from '../../../context/AuthContext';
+import { validateIban, validateSwift, formatIban } from '../../../utils/bankValidation';
 import {
   Table,
   Card,
@@ -25,16 +25,18 @@ import {
   Check,
 } from 'lucide-react';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useGeo, type GeoRow } from '../hooks/useGeo';
-import { TaxIdInput } from '../components/geo/TaxIdInput';
-import { PostalCodeInput } from '../components/geo/PostalCodeInput';
-import { ContextMenu } from '../components/common/ContextMenu';
-import { withRowContextMenu } from '../components/common/withRowContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
-import { PhoneInput } from '../components/geo/PhoneInput';
-import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
-import { usePluginListColumns } from '../components/plugin-fields';
-import { AttachmentsPanel } from '../components/AttachmentsPanel';
+import { useGeo, type GeoRow } from '../../../hooks/useGeo';
+import { TaxIdInput } from '../../../components/geo/TaxIdInput';
+import { PostalCodeInput } from '../../../components/geo/PostalCodeInput';
+import { ContextMenu } from '../../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../../hooks/useContextMenu';
+import { PhoneInput } from '../../../components/geo/PhoneInput';
+import { PluginFieldsPanel } from '../../../components/PluginFieldsPanel';
+import { usePluginListColumns } from '../../../components/plugin-fields';
+import { AttachmentsPanel } from '../../../components/AttachmentsPanel';
+import { crudApi } from '../../../shared/api';
+import { partnersApi, partnerGroupsApi } from '../api';
 
 const FLAGS: Record<string, string> = {
   ES: '🇪🇸',
@@ -178,7 +180,7 @@ const MunicipalitySearch: React.FC<MunicipalitySearchProps> = ({
 /* ── Partners Page ─────────────────────────────────────────────────────── */
 
 export const Partners: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -225,13 +227,10 @@ export const Partners: React.FC = () => {
   const [subRegions, setSubRegions] = useState<Record<number, GeoRow[]>>({});
   const [subRegionsLoading, setSubRegionsLoading] = useState<Record<number, boolean>>({});
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
-
   const fetchPartners = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/partners', { headers: authHeaders });
-      const data = await res.json();
+      const data = await partnersApi.list();
       setPartners(data);
     } catch {
       toast.error('Error al cargar interlocutores');
@@ -240,10 +239,11 @@ export const Partners: React.FC = () => {
     }
   };
 
+  // Lookups de otros módulos (tarifas, formas/términos de pago, tipos de
+  // documento) — van por el adaptador genérico para no acoplar este módulo.
   const fetchLookup = async (endpoint: string, setter: (d: any[]) => void) => {
     try {
-      const res = await fetch(endpoint, { headers: authHeaders });
-      const data = await res.json();
+      const data = await crudApi.list<any>(endpoint);
       setter(Array.isArray(data) ? data : []);
     } catch {
       /* ignore */
@@ -253,7 +253,10 @@ export const Partners: React.FC = () => {
   useEffect(() => {
     if (!user?.tenantId) return;
     fetchPartners();
-    fetchLookup('/api/partnerGroups', setGroups);
+    partnerGroupsApi
+      .list()
+      .then((d) => setGroups(Array.isArray(d) ? d : []))
+      .catch(() => {});
     fetchLookup('/api/pricelists', setPriceLists);
     fetchLookup('/api/document-types', setDocTypes);
     fetchLookup('/api/payment-methods', setPaymentMethods);
@@ -375,23 +378,16 @@ export const Partners: React.FC = () => {
     e.preventDefault();
     if (!formData.name || !formData.groupId) return toast.error('Nombre y Grupo son obligatorios');
     try {
-      const url = editingId ? `/api/partners/${editingId}` : '/api/partners';
-      const method = editingId ? 'PATCH' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
-        body: JSON.stringify({ ...formData, addresses }),
-      });
-      if (res.ok) {
-        toast.success(editingId ? 'Interlocutor actualizado' : 'Interlocutor creado');
-        setIsModalOpen(false);
-        fetchPartners();
-      } else {
-        const err = await res.json();
-        toast.error(`Error: ${err.error}`);
-      }
-    } catch {
-      toast.error('Error de red al guardar socio');
+      const payload = { ...formData, addresses };
+      if (editingId) await partnersApi.update(editingId, payload);
+      else await partnersApi.create(payload);
+      toast.success(editingId ? 'Interlocutor actualizado' : 'Interlocutor creado');
+      setIsModalOpen(false);
+      fetchPartners();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? `Error: ${err.message}` : 'Error de red al guardar socio',
+      );
     }
   };
 

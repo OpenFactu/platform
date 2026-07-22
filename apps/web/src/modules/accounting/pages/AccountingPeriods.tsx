@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, Loader, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Calendar, Plus, Trash2, Lock, AlertTriangle } from 'lucide-react';
-import { ContextMenu } from '../components/common/ContextMenu';
-import { withRowContextMenu } from '../components/common/withRowContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { ContextMenu } from '../../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../../hooks/useContextMenu';
+import { periodsApi } from '../api';
 
 export const AccountingPeriods: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -31,10 +32,7 @@ export const AccountingPeriods: React.FC = () => {
   const fetchPeriods = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/periods', {
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      const data = await res.json();
+      const data = await periodsApi.list();
       setPeriods(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
@@ -51,34 +49,23 @@ export const AccountingPeriods: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/periods', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-        body: JSON.stringify({
-          code: code.toUpperCase(),
-          name,
-          startDate: new Date(startDate).toISOString(),
-          endDate: new Date(endDate).toISOString(),
-          status: 'O',
-        }),
+      await periodsApi.create({
+        code: code.toUpperCase(),
+        name,
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        status: 'O',
       });
-      if (res.ok) {
-        setCode('');
-        setName('');
-        setStartDate('');
-        setEndDate('');
-        fetchPeriods();
-        toast.success('Periodo creado correctamente');
-      } else {
-        const d = await res.json();
-        toast.error(`Error: ${d.error}`);
-      }
+      setCode('');
+      setName('');
+      setStartDate('');
+      setEndDate('');
+      fetchPeriods();
+      toast.success('Periodo creado correctamente');
     } catch (err) {
-      toast.error('Error al crear Periodo');
+      toast.error(
+        err instanceof Error ? `Error: ${err.message}` : 'Error al crear Periodo',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -87,16 +74,9 @@ export const AccountingPeriods: React.FC = () => {
   const openClosePreview = async (periodId: string) => {
     let preview: any;
     try {
-      const res = await fetch(`/api/periods/${periodId}/close-preview`, {
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      preview = await res.json();
-      if (!res.ok) {
-        toast.error(preview.error || 'No se pudo obtener preview');
-        return;
-      }
-    } catch {
-      toast.error('Error de red');
+      preview = await periodsApi.closePreview(periodId);
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'No se pudo obtener preview');
       return;
     }
 
@@ -118,32 +98,19 @@ export const AccountingPeriods: React.FC = () => {
     if (!confirmed) return;
 
     try {
-      const res = await fetch(`/api/periods/${periodId}/close`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Error al cerrar período');
-        return;
-      }
+      await periodsApi.close(periodId);
       toast.success('Período cerrado y nuevo período creado');
       fetchPeriods();
-    } catch {
-      toast.error('Error de red');
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al cerrar período');
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/periods/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      if (res.ok) {
-        fetchPeriods();
-        toast.success('Periodo eliminado');
-      }
+      await periodsApi.remove(id);
+      fetchPeriods();
+      toast.success('Periodo eliminado');
     } catch (err) {
       toast.error('Error al eliminar');
     }

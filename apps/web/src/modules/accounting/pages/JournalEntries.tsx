@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { ScrollText, Plus, Trash2, Pencil, CheckCircle, Undo2 } from 'lucide-react';
-import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
-import { ContextMenu } from '../components/common/ContextMenu';
-import { withRowContextMenu } from '../components/common/withRowContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { PluginFieldsPanel } from '../../../components/PluginFieldsPanel';
+import { ContextMenu } from '../../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../../hooks/useContextMenu';
+import { journalEntriesApi, chartOfAccountsApi, periodsApi } from '../api';
 
 interface Line {
   id?: string;
@@ -56,7 +57,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export const JournalEntries: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -75,17 +76,16 @@ export const JournalEntries: React.FC = () => {
   const toast = useToast();
   const popup = usePopup();
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   const fetchAll = async () => {
     setLoading(true);
     try {
       const [r1, r2, r3] = await Promise.all([
-        fetch('/api/journal-entries', { headers: authHeaders }).then((r) => r.json()),
-        fetch('/api/chart-of-accounts', { headers: authHeaders }).then((r) => r.json()),
-        fetch('/api/periods', { headers: authHeaders }).then((r) => r.json()),
+        journalEntriesApi.list(),
+        chartOfAccountsApi.list(),
+        periodsApi.list(),
       ]);
-      setRows(Array.isArray(r1) ? r1 : []);
+      setRows((Array.isArray(r1) ? r1 : []) as unknown as Entry[]);
       setAccounts(Array.isArray(r2) ? r2 : []);
       setPeriods(Array.isArray(r3) ? r3 : []);
     } catch {
@@ -112,8 +112,7 @@ export const JournalEntries: React.FC = () => {
   };
 
   const openEdit = async (r: Entry) => {
-    const res = await fetch(`/api/journal-entries/${r.id}`, { headers: authHeaders });
-    const full = await res.json();
+    const full: any = await journalEntriesApi.get(r.id);
     setEditing(full);
     setHeader({
       date: full.date?.substring(0, 10),
@@ -172,26 +171,16 @@ export const JournalEntries: React.FC = () => {
     setSubmitting(true);
     try {
       const body = { ...header, ...pluginValues, lines };
-      const url = editing ? `/api/journal-entries/${editing.id}` : '/api/journal-entries';
       // NOTA: para editar un asiento draft se crearía un endpoint PATCH;
       // de momento solo permitimos crear + postear + reversar. Los borradores
       // se pueden eliminar y recrear si hace falta.
-      const method = editing ? 'PATCH' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Error al guardar');
-        return;
-      }
+      if (editing) await journalEntriesApi.update(editing.id, body);
+      else await journalEntriesApi.create(body);
       toast.success('Asiento creado en borrador');
       closeForm();
       fetchAll();
-    } catch {
-      toast.error('Error de red');
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al guardar');
     } finally {
       setSubmitting(false);
     }
@@ -199,19 +188,11 @@ export const JournalEntries: React.FC = () => {
 
   const handlePost = async (id: string) => {
     try {
-      const res = await fetch(`/api/journal-entries/${id}/post`, {
-        method: 'POST',
-        headers: authHeaders,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Error al postear');
-        return;
-      }
+      const data = await journalEntriesApi.post(id);
       toast.success(`Asiento nº ${data.number} posteado`);
       fetchAll();
-    } catch {
-      toast.error('Error de red');
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al postear');
     }
   };
 
@@ -225,20 +206,11 @@ export const JournalEntries: React.FC = () => {
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/journal-entries/${id}/reverse`, {
-        method: 'POST',
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Error al reversar');
-        return;
-      }
+      await journalEntriesApi.reverse(id);
       toast.success('Reversión creada y posteada');
       fetchAll();
-    } catch {
-      toast.error('Error de red');
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al reversar');
     }
   };
 

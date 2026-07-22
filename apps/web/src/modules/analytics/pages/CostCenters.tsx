@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layers } from 'lucide-react';
-import { DimensionCrudPage } from '../components/analytics/DimensionCrudPage';
+import { DimensionCrudPage } from '../../../components/analytics/DimensionCrudPage';
 
 export const CostCenters: React.FC = () => (
   <DimensionCrudPage

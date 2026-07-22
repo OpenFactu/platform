@@ -1,22 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, useToast, Badge } from '@openfactu/ui';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { BookOpenCheck } from 'lucide-react';
+import { chartOfAccountsApi, journalEntriesApi } from '../api';
 
 export const Ledger: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [selected, setSelected] = useState<string>('');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   useEffect(() => {
     if (!user?.tenantId) return;
-    fetch('/api/chart-of-accounts', { headers: authHeaders })
-      .then((r) => r.json())
+    chartOfAccountsApi
+      .list()
       .then((d) => setAccounts(Array.isArray(d) ? d : []))
       .catch(() => toast.error('Error al cargar cuentas'));
   }, [user?.tenantId]);
@@ -27,8 +27,8 @@ export const Ledger: React.FC = () => {
       return;
     }
     setLoading(true);
-    fetch(`/api/journal-entries/ledger/${selected}`, { headers: authHeaders })
-      .then((r) => r.json())
+    journalEntriesApi
+      .ledger(selected)
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .catch(() => toast.error('Error al cargar mayor'))
       .finally(() => setLoading(false));

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Network, Plus, Trash2, Save, X, UserCheck, ShoppingBag, Pencil } from 'lucide-react';
-import { ContextMenu } from '../components/common/ContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { ContextMenu } from '../../../components/common/ContextMenu';
+import { useContextMenu } from '../../../hooks/useContextMenu';
+import { partnerGroupsApi } from '../api';
 
 export const PartnerGroups: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -26,10 +27,7 @@ export const PartnerGroups: React.FC = () => {
   const fetchGroups = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/partnerGroups', {
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      const data = await res.json();
+      const data = await partnerGroupsApi.list();
       setGroups(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Error al cargar grupos');
@@ -45,24 +43,14 @@ export const PartnerGroups: React.FC = () => {
   const handleCreate = async () => {
     if (!newRow?.code || !newRow?.name) return;
     try {
-      const res = await fetch('/api/partnerGroups', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-        body: JSON.stringify({
-          ...newRow,
-          code: newRow.code.toUpperCase(),
-          codePrefix: newRow.codePrefix?.trim().toUpperCase() || null,
-        }),
+      await partnerGroupsApi.create({
+        ...newRow,
+        code: newRow.code.toUpperCase(),
+        codePrefix: newRow.codePrefix?.trim().toUpperCase() || null,
       });
-      if (res.ok) {
-        setNewRow(null);
-        fetchGroups();
-        toast.success('Grupo creado');
-      }
+      setNewRow(null);
+      fetchGroups();
+      toast.success('Grupo creado');
     } catch {
       toast.error('Error al crear');
     }
@@ -70,24 +58,14 @@ export const PartnerGroups: React.FC = () => {
 
   const handleUpdate = async (id: string, data: any) => {
     try {
-      const res = await fetch(`/api/partnerGroups/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-        body: JSON.stringify({
-          ...data,
-          code: data.code.toUpperCase(),
-          codePrefix: data.codePrefix?.trim().toUpperCase() || null,
-        }),
+      await partnerGroupsApi.update(id, {
+        ...data,
+        code: data.code.toUpperCase(),
+        codePrefix: data.codePrefix?.trim().toUpperCase() || null,
       });
-      if (res.ok) {
-        setEditingId(null);
-        fetchGroups();
-        toast.success('Grupo actualizado');
-      }
+      setEditingId(null);
+      fetchGroups();
+      toast.success('Grupo actualizado');
     } catch {
       toast.error('Error al actualizar');
     }
@@ -96,14 +74,9 @@ export const PartnerGroups: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!confirm('¿Seguro que deseas eliminar este grupo?')) return;
     try {
-      const res = await fetch(`/api/partnerGroups/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      if (res.ok) {
-        fetchGroups();
-        toast.success('Grupo eliminado');
-      }
+      await partnerGroupsApi.remove(id);
+      fetchGroups();
+      toast.success('Grupo eliminado');
     } catch {
       toast.error('Error al eliminar');
     }

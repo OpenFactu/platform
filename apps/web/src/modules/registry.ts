@@ -80,40 +80,6 @@ export const LEGACY_NAV: Module[] = [
     ],
   },
   {
-    id: 'partners',
-    label: 'Interlocutores',
-    icon: 'Users',
-    subTabs: [
-      { id: 'partners-list', label: 'Directorio', path: '/partners' },
-      { id: 'partner-groups', label: 'Grupos', path: '/partner-groups' },
-    ],
-  },
-  {
-    id: 'accounting',
-    label: 'Contabilidad',
-    icon: 'Wallet',
-    hiddenInLogisticsOnly: true,
-    subTabs: [
-      { id: 'chart', label: 'Plan contable', path: '/chart-of-accounts' },
-      { id: 'journal-entries', label: 'Asientos', path: '/journal-entries' },
-      { id: 'ledger', label: 'Libro mayor', path: '/ledger' },
-      { id: 'periods', label: 'Periodos', path: '/accounting-periods' },
-      { id: 'series', label: 'Series', path: '/document-series' },
-      { id: 'taxes', label: 'Impuestos', path: '/taxes' },
-    ],
-  },
-  {
-    id: 'analytics',
-    label: 'Analítica',
-    icon: 'Layers',
-    hiddenInLogisticsOnly: true,
-    subTabs: [
-      { id: 'cost-centers', label: 'Centros de coste', path: '/cost-centers' },
-      { id: 'profit-centers', label: 'Centros de beneficio', path: '/profit-centers' },
-      { id: 'internal-orders', label: 'Proyectos/Órdenes', path: '/internal-orders' },
-    ],
-  },
-  {
     id: 'reports',
     label: 'Informes',
     icon: 'BarChart3',

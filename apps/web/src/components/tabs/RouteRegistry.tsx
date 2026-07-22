@@ -8,14 +8,6 @@ import { Users } from '../../pages/Users';
 import { PriceLists } from '../../pages/PriceLists';
 import { CarriersSettings } from '../../pages/settings/CarriersSettings';
 import { WebhooksSettings } from '../../pages/settings/WebhooksSettings';
-import { Partners } from '../../pages/Partners';
-import { PartnerGroups } from '../../pages/PartnerGroups';
-import { AccountingPeriods } from '../../pages/AccountingPeriods';
-import { ChartOfAccounts } from '../../pages/ChartOfAccounts';
-import { CostCenters } from '../../pages/CostCenters';
-import { ProfitCenters } from '../../pages/ProfitCenters';
-import { InternalOrders } from '../../pages/InternalOrders';
-import { JournalEntries } from '../../pages/JournalEntries';
 import { UserProfile } from '../../pages/UserProfile';
 import { ReportsHub } from '../../pages/reports/ReportsHub';
 import { ReportJournal } from '../../pages/reports/ReportJournal';
@@ -37,7 +29,6 @@ import { ReportHeadcount } from '../../pages/reports/ReportHeadcount';
 import { ReportStockValuation } from '../../pages/reports/ReportStockValuation';
 import { ReportStockRotation } from '../../pages/reports/ReportStockRotation';
 import { ReportStockMovements } from '../../pages/reports/ReportStockMovements';
-import { Ledger } from '../../pages/Ledger';
 import { Employees } from '../../pages/hr/Employees';
 import { Departments as HrDepartments } from '../../pages/hr/Departments';
 import { Payrolls } from '../../pages/hr/Payrolls';
@@ -63,7 +54,6 @@ import { PurchaseInvoices } from '../../pages/Documents/PurchaseInvoices';
 import { SalesOrders } from '../../pages/Documents/SalesOrders';
 import { SalesDeliveryNotes } from '../../pages/Documents/SalesDeliveryNotes';
 import { SalesInvoices } from '../../pages/Documents/SalesInvoices';
-import { Taxes } from '../../pages/Taxes';
 import { AuditLogs } from '../../pages/AuditLogs';
 import { BackgroundTasks } from '../../pages/BackgroundTasks';
 import { CompanySettings } from '../../pages/CompanySettings';
@@ -291,55 +281,6 @@ const legacyRoutes: RouteEntry[] = [
     permissionPath: '/documents',
   },
   {
-    pattern: '/partner-groups',
-    Component: PartnerGroups,
-    title: 'Grupos',
-    iconName: 'Network',
-    permissionPath: '/partner-groups',
-  },
-  {
-    pattern: '/partners',
-    Component: Partners,
-    title: 'Directorio',
-    iconName: 'Users',
-    permissionPath: '/partners',
-  },
-  {
-    pattern: '/accounting-periods',
-    Component: AccountingPeriods,
-    title: 'Periodos',
-    iconName: 'Calendar',
-    permissionPath: '/accounting-periods',
-  },
-  {
-    pattern: '/chart-of-accounts',
-    Component: ChartOfAccounts,
-    title: 'Plan contable',
-    iconName: 'BookOpen',
-    permissionPath: '/chart-of-accounts',
-  },
-  {
-    pattern: '/cost-centers',
-    Component: CostCenters,
-    title: 'Centros de coste',
-    iconName: 'Layers',
-    permissionPath: '/cost-centers',
-  },
-  {
-    pattern: '/profit-centers',
-    Component: ProfitCenters,
-    title: 'Centros de beneficio',
-    iconName: 'TrendingUp',
-    permissionPath: '/profit-centers',
-  },
-  {
-    pattern: '/internal-orders',
-    Component: InternalOrders,
-    title: 'Proyectos',
-    iconName: 'Briefcase',
-    permissionPath: '/internal-orders',
-  },
-  {
     pattern: '/profile',
     Component: UserProfile,
     title: 'Mi perfil',
@@ -426,20 +367,6 @@ const legacyRoutes: RouteEntry[] = [
   { pattern: '/reports/stock/valuation', Component: ReportStockValuation, title: 'Valoración' },
   { pattern: '/reports/stock/rotation', Component: ReportStockRotation, title: 'Rotación' },
   { pattern: '/reports/stock/movements', Component: ReportStockMovements, title: 'Movimientos' },
-  {
-    pattern: '/journal-entries',
-    Component: JournalEntries,
-    title: 'Asientos',
-    iconName: 'ScrollText',
-    permissionPath: '/journal-entries',
-  },
-  {
-    pattern: '/ledger',
-    Component: Ledger,
-    title: 'Libro mayor',
-    iconName: 'BookOpenCheck',
-    permissionPath: '/ledger',
-  },
   {
     pattern: '/hr/employees',
     Component: Employees,
@@ -572,13 +499,6 @@ const legacyRoutes: RouteEntry[] = [
     title: 'Gantt',
     iconName: 'GanttChart',
     permissionPath: '/hr/gantt',
-  },
-  {
-    pattern: '/taxes',
-    Component: Taxes,
-    title: 'Impuestos',
-    iconName: 'Percent',
-    permissionPath: '/taxes',
   },
   {
     pattern: '/document-series',

@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { BookOpen, Plus, Trash2, Pencil, Wand2 } from 'lucide-react';
-import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
-import { ExcelTools } from '../components/common/ExcelTools';
-import { ContextMenu } from '../components/common/ContextMenu';
-import { withRowContextMenu } from '../components/common/withRowContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { PluginFieldsPanel } from '../../../components/PluginFieldsPanel';
+import { ExcelTools } from '../../../components/common/ExcelTools';
+import { ContextMenu } from '../../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../../hooks/useContextMenu';
+import { chartOfAccountsApi } from '../api';
 
 interface Account {
   id: string;
@@ -37,7 +38,7 @@ const TYPE_VARIANTS: Record<string, any> = {
 };
 
 export const ChartOfAccounts: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -57,14 +58,12 @@ export const ChartOfAccounts: React.FC = () => {
   const toast = useToast();
   const popup = usePopup();
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   const fetchRows = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/chart-of-accounts', { headers: authHeaders });
-      const data = await res.json();
-      setRows(Array.isArray(data) ? data : []);
+      const data = await chartOfAccountsApi.list();
+      setRows((Array.isArray(data) ? data : []) as unknown as Account[]);
     } catch {
       toast.error('Error al cargar plan contable');
     } finally {
@@ -99,24 +98,15 @@ export const ChartOfAccounts: React.FC = () => {
       return;
     }
     setSubmitting(true);
-    const url = editing ? `/api/chart-of-accounts/${editing.id}` : '/api/chart-of-accounts';
-    const method = editing ? 'PATCH' : 'POST';
+    const payload = { ...form, ...pluginValues };
     try {
-      const res = await fetch(url, {
-        method,
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, ...pluginValues }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Error al guardar');
-        return;
-      }
+      if (editing) await chartOfAccountsApi.update(editing.id, payload);
+      else await chartOfAccountsApi.create(payload);
       toast.success(editing ? 'Cuenta actualizada' : 'Cuenta creada');
       closeForm();
       fetchRows();
-    } catch {
-      toast.error('Error de red');
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al guardar');
     } finally {
       setSubmitting(false);
     }
@@ -131,19 +121,11 @@ export const ChartOfAccounts: React.FC = () => {
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/chart-of-accounts/${id}`, {
-        method: 'DELETE',
-        headers: authHeaders,
-      });
-      if (res.ok) {
-        toast.success('Cuenta eliminada');
-        fetchRows();
-      } else {
-        const d = await res.json();
-        toast.error(d.error || 'Error al eliminar');
-      }
-    } catch {
-      toast.error('Error de red');
+      await chartOfAccountsApi.remove(id);
+      toast.success('Cuenta eliminada');
+      fetchRows();
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al eliminar');
     }
   };
 
@@ -241,13 +223,13 @@ export const ChartOfAccounts: React.FC = () => {
                     confirmLabel: 'Continuar',
                   });
                   if (!ok) return;
-                  const res = await fetch('/api/admin/seed-accounting', {
-                    method: 'POST',
-                    headers: authHeaders,
-                  });
-                  const d = await res.json();
-                  if (!res.ok) {
-                    toast.error(d.error || 'Error al sembrar contabilidad');
+                  let d;
+                  try {
+                    d = await chartOfAccountsApi.seed();
+                  } catch (err) {
+                    toast.error(
+                      (err instanceof Error && err.message) || 'Error al sembrar contabilidad',
+                    );
                     return;
                   }
                   toast.success(
@@ -272,13 +254,7 @@ export const ChartOfAccounts: React.FC = () => {
                 { key: 'notes', label: 'Notas' },
               ]}
               onImport={async (parsed) => {
-                const res = await fetch('/api/chart-of-accounts/bulk', {
-                  method: 'POST',
-                  headers: { ...authHeaders, 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ rows: parsed }),
-                });
-                const d = await res.json();
-                if (!res.ok) throw new Error(d.error || 'Error al importar');
+                await chartOfAccountsApi.bulkImport(parsed);
                 fetchRows();
               }}
             />

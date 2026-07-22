@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Briefcase, Plus, Trash2, Pencil } from 'lucide-react';
-import { PluginFieldsPanel } from '../components/PluginFieldsPanel';
-import { ContextMenu } from '../components/common/ContextMenu';
-import { withRowContextMenu } from '../components/common/withRowContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { PluginFieldsPanel } from '../../../components/PluginFieldsPanel';
+import { ContextMenu } from '../../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../../hooks/useContextMenu';
+import { internalOrdersApi, costCentersApi } from '../api';
 
 interface InternalOrder {
   id: string;
@@ -29,7 +30,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export const InternalOrders: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -50,16 +51,12 @@ export const InternalOrders: React.FC = () => {
   const toast = useToast();
   const popup = usePopup();
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [r1, r2] = await Promise.all([
-        fetch('/api/internal-orders', { headers: authHeaders }).then((r) => r.json()),
-        fetch('/api/cost-centers', { headers: authHeaders }).then((r) => r.json()),
-      ]);
-      setRows(Array.isArray(r1) ? r1 : []);
+      const [r1, r2] = await Promise.all([internalOrdersApi.list(), costCentersApi.list()]);
+      setRows((Array.isArray(r1) ? r1 : []) as unknown as InternalOrder[]);
       setCostCenters(Array.isArray(r2) ? r2 : []);
     } catch {
       toast.error('Error al cargar datos');
@@ -95,24 +92,15 @@ export const InternalOrders: React.FC = () => {
       return;
     }
     setSubmitting(true);
-    const url = editing ? `/api/internal-orders/${editing.id}` : '/api/internal-orders';
-    const method = editing ? 'PATCH' : 'POST';
+    const payload = { ...form, ...pluginValues };
     try {
-      const res = await fetch(url, {
-        method,
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, ...pluginValues }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Error al guardar');
-        return;
-      }
+      if (editing) await internalOrdersApi.update(editing.id, payload);
+      else await internalOrdersApi.create(payload);
       toast.success(editing ? 'Actualizado' : 'Creado');
       closeForm();
       fetchAll();
-    } catch {
-      toast.error('Error de red');
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al guardar');
     } finally {
       setSubmitting(false);
     }
@@ -127,19 +115,11 @@ export const InternalOrders: React.FC = () => {
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/internal-orders/${id}`, {
-        method: 'DELETE',
-        headers: authHeaders,
-      });
-      if (res.ok) {
-        toast.success('Eliminado');
-        fetchAll();
-      } else {
-        const d = await res.json();
-        toast.error(d.error || 'Error al eliminar');
-      }
-    } catch {
-      toast.error('Error de red');
+      await internalOrdersApi.remove(id);
+      toast.success('Eliminado');
+      fetchAll();
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al eliminar');
     }
   };
 

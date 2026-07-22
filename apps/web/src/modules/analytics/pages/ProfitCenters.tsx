@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrendingUp } from 'lucide-react';
-import { DimensionCrudPage } from '../components/analytics/DimensionCrudPage';
+import { DimensionCrudPage } from '../../../components/analytics/DimensionCrudPage';
 
 export const ProfitCenters: React.FC = () => (
   <DimensionCrudPage

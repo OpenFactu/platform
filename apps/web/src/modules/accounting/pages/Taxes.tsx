@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
 import { Percent, Plus, Trash2, Edit3, Save, X, Info } from 'lucide-react';
-import { ContextMenu } from '../components/common/ContextMenu';
-import { useContextMenu } from '../hooks/useContextMenu';
+import { ContextMenu } from '../../../components/common/ContextMenu';
+import { useContextMenu } from '../../../hooks/useContextMenu';
+import { taxesApi } from '../api';
 
 export const Taxes: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -26,10 +27,7 @@ export const Taxes: React.FC = () => {
   const fetchTaxes = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/taxes', {
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      const data = await res.json();
+      const data = await taxesApi.list();
       setTaxes(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Error al cargar impuestos');
@@ -47,16 +45,7 @@ export const Taxes: React.FC = () => {
   const handleCreate = async () => {
     if (!newRow || !newRow.code || !newRow.rate) return;
     try {
-      const res = await fetch('/api/taxes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-        body: JSON.stringify(newRow),
-      });
-      if (!res.ok) throw new Error();
+      await taxesApi.create(newRow);
       toast.success('Impuesto creado');
       setNewRow(null);
       fetchTaxes();
@@ -67,16 +56,7 @@ export const Taxes: React.FC = () => {
 
   const handleUpdate = async (id: string, code: string, rate: string) => {
     try {
-      const res = await fetch(`/api/taxes/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-        body: JSON.stringify({ code, rate }),
-      });
-      if (!res.ok) throw new Error();
+      await taxesApi.update(id, { code, rate });
       toast.success('Impuesto actualizado');
       setEditingId(null);
       fetchTaxes();
@@ -93,11 +73,7 @@ export const Taxes: React.FC = () => {
     )
       return;
     try {
-      const res = await fetch(`/api/taxes/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-      });
-      if (!res.ok) throw new Error();
+      await taxesApi.remove(id);
       toast.success('Impuesto eliminado');
       fetchTaxes();
     } catch {
