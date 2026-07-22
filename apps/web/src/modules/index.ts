@@ -11,7 +11,7 @@ import { hrModule } from './hr/module';
 import { logisticsModule } from './logistics/module';
 import { homeModule } from './home/module';
 import { aiModule } from './ai/module';
-import { pluginsModule } from './plugins/module';
+import { appsModule } from './plugins/module';
 import { systemModule } from './system/module';
 import { settingsModule } from './settings/module';
 import { userTablesModule } from './user-tables/module';
@@ -35,7 +35,7 @@ export const moduleManifests: ModuleManifest[] = [
   logisticsModule,
   homeModule,
   aiModule,
-  pluginsModule,
+  appsModule,
   settingsModule,
   systemModule,
   userTablesModule,
@@ -54,7 +54,7 @@ const NAV_ORDER = [
   'hr',
   'logistics',
   'assistant',
-  'plugins',
+  'apps',
   'configuration',
   'system',
 ];

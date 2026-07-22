@@ -1,20 +1,21 @@
 import type { ModuleManifest } from '../types';
 import { PluginManager } from './pages/PluginManager';
 
-export const pluginsModule: ModuleManifest = {
+export const appsModule: ModuleManifest = {
   nav: {
-    id: 'plugins',
-    label: 'Plugins',
-    icon: 'Puzzle',
-    subTabs: [{ id: 'plugins-manager', label: 'Gestor', path: '/plugins' }],
+    id: 'apps',
+    label: 'Apps',
+    icon: 'LayoutGrid',
+    adminOnly: true,
+    subTabs: [{ id: 'apps-manager', label: 'Aplicaciones', path: '/apps' }],
   },
   routes: [
     {
-      pattern: '/plugins',
+      pattern: '/apps',
       Component: PluginManager,
-      title: 'Plugins',
-      iconName: 'Layers',
-      permissionPath: '/plugins',
+      title: 'Apps',
+      iconName: 'LayoutGrid',
+      permissionPath: '/apps',
     },
   ],
 };

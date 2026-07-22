@@ -251,8 +251,8 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
       }
 
-      // 3) Legacy menuItems → mapear todos al módulo "plugins"
-      const legacyTarget = merged.find((m) => m.id === 'plugins');
+      // 3) Legacy menuItems → mapear todos al módulo "apps" (antes "plugins")
+      const legacyTarget = merged.find((m) => m.id === 'apps');
       if (legacyTarget) {
         for (const item of manifest.ui?.menuItems || []) {
           legacyTarget.subTabs.push({
