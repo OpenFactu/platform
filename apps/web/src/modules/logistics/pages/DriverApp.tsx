@@ -20,7 +20,7 @@ import {
 import { BarcodeCameraModal } from '@/components/scanner/BarcodeCameraModal';
 import { DeliveryProofModal } from '../components/DeliveryProofModal';
 import { Marker, Source, Layer, Popup } from 'react-map-gl/maplibre';
-import { BaseMap, type BaseMapHandle } from '@/components/maps/BaseMap';
+import { BaseMap, type BaseMapHandle } from '../components/maps/BaseMap';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
 import { ApiError } from '@/shared/http';

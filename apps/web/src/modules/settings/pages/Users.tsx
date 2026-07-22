@@ -27,7 +27,7 @@ import {
   Route,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { UsersTable } from '@/components/users/UsersTable';
+import { UsersTable } from '../components/UsersTable';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 

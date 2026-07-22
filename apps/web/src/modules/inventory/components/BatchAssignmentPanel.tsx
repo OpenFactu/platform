@@ -14,9 +14,9 @@ import {
   Camera,
   Zap,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useZonesWithStock } from '../hooks/useZonesWithStock';
-import { BarcodeCameraModal } from './scanner/BarcodeCameraModal';
+import { useAuth } from '@/context/AuthContext';
+import { useZonesWithStock } from '@/hooks/useZonesWithStock';
+import { BarcodeCameraModal } from '@/components/scanner/BarcodeCameraModal';
 
 export interface BatchDetail {
   batchNum: string;

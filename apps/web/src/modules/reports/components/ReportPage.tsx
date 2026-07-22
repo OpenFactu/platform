@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 import { Card, Button, useToast } from '@openfactu/ui';
 import { ArrowLeft, Download, FileText, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { ExcelTools, type ExcelColumn } from '../common/ExcelTools';
+import { useAuth } from '@/context/AuthContext';
+import { ExcelTools, type ExcelColumn } from '@/components/common/ExcelTools';
 
 interface Props<T> {
   /** Título grande arriba. */

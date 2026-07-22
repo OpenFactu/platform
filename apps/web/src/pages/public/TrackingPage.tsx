@@ -2,7 +2,7 @@ import { apiClient } from '@/shared/http';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Marker } from 'react-map-gl/maplibre';
-import { BaseMap } from '../../components/maps/BaseMap';
+import { BaseMap } from '@/modules/logistics/components/maps/BaseMap';
 import { TrackingChatWidget } from './TrackingChatWidget';
 import {
   Truck,

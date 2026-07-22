@@ -31,11 +31,11 @@ import {
   Eye,
   Ban,
 } from 'lucide-react';
-import { DocumentActionBar } from '@/components/DocumentActionBar';
-import { InternalOrderHeaderField } from '@/components/InternalOrderHeaderField';
-import { InternalOrderChip } from '@/components/InternalOrderChip';
+import { DocumentActionBar } from '../components/DocumentActionBar';
+import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
+import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
-import { DocumentDetailLayout } from '@/components/DocumentDetailLayout';
+import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
@@ -43,7 +43,7 @@ import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
-import { DocumentTotalsBlock } from '@/components/DocumentTotalsBlock';
+import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
   buildFormLineColumns,

@@ -8,7 +8,7 @@ import { Package, Plus, Trash2, Search, Settings2, Boxes, Scale, Tag } from 'luc
 import { usePluginListColumns } from '@/components/plugin-fields';
 import { SearchableSelect } from '@openfactu/ui';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
-import { LabelPrintButton } from '@/components/LabelPrintButton';
+import { LabelPrintButton } from '@/modules/document-templates/components/LabelPrintButton';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { validateBarcode, generateEan13 } from '@/utils/barcodeValidation';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';

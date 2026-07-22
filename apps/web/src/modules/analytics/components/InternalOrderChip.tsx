@@ -1,7 +1,7 @@
 import { internalOrdersApi } from '@/modules/analytics/api';
 import React, { useEffect, useState } from 'react';
 import { FolderKanban } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface Props {
   internalOrderId: string | null | undefined;

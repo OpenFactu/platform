@@ -1,7 +1,7 @@
 import { shipmentsApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Marker, Source, Layer } from 'react-map-gl/maplibre';
-import { BaseMap } from '@/components/maps/BaseMap';
+import { BaseMap } from './maps/BaseMap';
 import { ArrowUp, ArrowDown, X, Zap } from 'lucide-react';
 import type { UnroutedShipment } from '../domain/route';
 

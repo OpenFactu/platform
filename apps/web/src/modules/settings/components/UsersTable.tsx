@@ -1,9 +1,9 @@
 import React from 'react';
 import { Table, Badge, type TableColumn } from '@openfactu/ui';
 import { Building2, Edit2, Trash2 } from 'lucide-react';
-import { ContextMenu } from '../common/ContextMenu';
-import { withRowContextMenu } from '../common/withRowContextMenu';
-import { useContextMenu } from '../../hooks/useContextMenu';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { withRowContextMenu } from '@/components/common/withRowContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 

@@ -2,8 +2,8 @@ import { templatesApi } from '@/modules/document-templates/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, type ButtonProps, useToast } from '@openfactu/ui';
 import { Download, ChevronDown, FileCode } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { downloadPdf } from '../utils/downloadPdf';
+import { useAuth } from '@/context/AuthContext';
+import { downloadPdf } from '@/utils/downloadPdf';
 
 interface Template {
   id: string;

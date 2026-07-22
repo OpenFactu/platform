@@ -3,7 +3,7 @@ import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, useToast, usePopup } from '@openfactu/ui';
 import { CreditCard, Trash2, Inbox, Pencil } from 'lucide-react';
-import { useFormat } from '../../hooks/useFormat';
+import { useFormat } from '@/hooks/useFormat';
 import type { Payment as PaymentRow, PaymentMethod as MethodRow } from '@/modules/accounting/domain/accounting';
 
 interface Props {

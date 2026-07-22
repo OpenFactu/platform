@@ -1,8 +1,8 @@
 import React from 'react';
 import { Button } from '@openfactu/ui';
 import { Trash2, Tag, Mail, type LucideIcon } from 'lucide-react';
-import { PrintTemplateButton } from './PrintTemplateButton';
-import { LabelPrintButton } from './LabelPrintButton';
+import { PrintTemplateButton } from '@/modules/document-templates/components/PrintTemplateButton';
+import { LabelPrintButton } from '@/modules/document-templates/components/LabelPrintButton';
 
 export interface PrimaryAction {
   label: string;

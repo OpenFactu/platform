@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { useFormat } from '@/hooks/useFormat';
 import { RoutePicker } from '../components/RoutePicker';
-import { MapSearchBox } from '@/components/maps/MapSearchBox';
+import { MapSearchBox } from './maps/MapSearchBox';
 import { ApiError } from '@/shared/http';
 import type { Carrier } from '../domain/carrier';
 import type { Route } from '../domain/route';

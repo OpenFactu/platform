@@ -30,8 +30,8 @@ import {
   Eye,
   Ban,
 } from 'lucide-react';
-import { DocumentActionBar } from '@/components/DocumentActionBar';
-import { DocumentDetailLayout } from '@/components/DocumentDetailLayout';
+import { DocumentActionBar } from '../components/DocumentActionBar';
+import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
@@ -39,10 +39,10 @@ import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
 import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
-import { InternalOrderHeaderField } from '@/components/InternalOrderHeaderField';
-import { InternalOrderChip } from '@/components/InternalOrderChip';
+import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
+import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
-import { DocumentTotalsBlock } from '@/components/DocumentTotalsBlock';
+import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
   buildFormLineColumns,
@@ -51,8 +51,8 @@ import {
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
 import { downloadPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
-import { BatchSelectionModal } from '@/components/BatchSelectionModal';
-import { BatchAssignmentPanel } from '@/components/BatchAssignmentPanel';
+import { BatchSelectionModal } from '@/modules/inventory/components/BatchSelectionModal';
+import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssignmentPanel';
 import { useItemUoms } from '@/hooks/useItemUoms';
 import { useZonesWithStock } from '@/hooks/useZonesWithStock';
 import { usePluginLineFields } from '@/hooks/usePluginLineFields';

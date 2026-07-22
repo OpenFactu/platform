@@ -1,6 +1,6 @@
 import { stockApi } from '@/modules/inventory/api';
 import { Trash2, Plus, AlertCircle, CheckCircle2, ChevronRight, Barcode } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
 import { Button, cn, Input, Modal } from '@openfactu/ui';
 

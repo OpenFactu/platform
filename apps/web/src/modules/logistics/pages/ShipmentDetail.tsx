@@ -14,8 +14,8 @@ import {
   MoreVertical,
 } from 'lucide-react';
 import { Marker, Source, Layer, type MapLayerMouseEvent } from 'react-map-gl/maplibre';
-import { BaseMap, type BaseMapHandle } from '@/components/maps/BaseMap';
-import { MapSearchBox } from '@/components/maps/MapSearchBox';
+import { BaseMap, type BaseMapHandle } from '../components/maps/BaseMap';
+import { MapSearchBox } from '../components/maps/MapSearchBox';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { useFormat } from '@/hooks/useFormat';

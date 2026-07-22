@@ -1,7 +1,7 @@
 import React from 'react';
 import { Badge } from '@openfactu/ui';
 import { Lock } from 'lucide-react';
-import { useI18n } from '../../i18n/I18nContext';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   status?: string | null;

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ReportPage } from '@/components/reports/ReportPage';
+import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';

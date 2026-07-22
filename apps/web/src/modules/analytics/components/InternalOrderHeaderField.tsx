@@ -1,7 +1,7 @@
 import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api';
 import React, { useEffect, useState } from 'react';
 import { SearchableSelect } from '@openfactu/ui';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface Props {
   value: string | null | undefined;

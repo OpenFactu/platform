@@ -31,14 +31,14 @@ import {
   Mail,
   Eye,
 } from 'lucide-react';
-import { DocumentActionBar } from '@/components/DocumentActionBar';
-import { DocumentDetailLayout } from '@/components/DocumentDetailLayout';
+import { DocumentActionBar } from '../components/DocumentActionBar';
+import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
-import { DocumentTotalsBlock } from '@/components/DocumentTotalsBlock';
+import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
   buildFormLineColumns,
@@ -48,8 +48,8 @@ import {
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
 import { downloadPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
-import { BatchSelectionModal } from '@/components/BatchSelectionModal';
-import { BatchAssignmentPanel } from '@/components/BatchAssignmentPanel';
+import { BatchSelectionModal } from '@/modules/inventory/components/BatchSelectionModal';
+import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssignmentPanel';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 import { useItemUoms } from '@/hooks/useItemUoms';
 import { usePluginLineFields } from '@/hooks/usePluginLineFields';
@@ -57,14 +57,14 @@ import { usePluginListColumns } from '@/components/plugin-fields';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
 import { useDocumentScanner } from '@/hooks/useDocumentScanner';
 import { formatDocCode } from '@/utils/docCode';
-import { InternalOrderHeaderField } from '@/components/InternalOrderHeaderField';
-import { InternalOrderChip } from '@/components/InternalOrderChip';
+import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
+import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
-import { PaymentStatusBadge } from '@/components/payments/PaymentStatusBadge';
-import { RegisterPaymentModal } from '@/components/payments/RegisterPaymentModal';
+import { PaymentStatusBadge } from '../components/payments/PaymentStatusBadge';
+import { RegisterPaymentModal } from '../components/payments/RegisterPaymentModal';
 import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
 import { SendInvoiceModal } from '../components/documents/SendInvoiceModal';
-import { InvoicePaymentsList } from '@/components/payments/InvoicePaymentsList';
+import { InvoicePaymentsList } from '../components/payments/InvoicePaymentsList';
 import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
 import { docsApi } from '../api';
 import { crudApi } from '@/shared/api';

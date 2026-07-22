@@ -3,7 +3,7 @@ import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { Modal, Input, Button, useToast } from '@openfactu/ui';
 import { CreditCard } from 'lucide-react';
-import { useI18n } from '../../i18n/I18nContext';
+import { useI18n } from '@/i18n/I18nContext';
 import type { PaymentMethod } from '@/modules/accounting/domain/accounting';
 
 export type InvoiceKind = 'sales' | 'purchase';

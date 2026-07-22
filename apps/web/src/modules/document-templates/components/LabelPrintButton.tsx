@@ -18,7 +18,7 @@ import { apiClient } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Tag, Printer } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface FreeTemplate {
   id: string;

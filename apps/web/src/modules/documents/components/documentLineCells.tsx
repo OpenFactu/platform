@@ -13,7 +13,7 @@ import {
 import { Button, Input, SearchableSelect } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { DocKind, DocSide, DocStatus } from '@openfactu/common';
-import { LabelPrintButton } from '@/components/LabelPrintButton';
+import { LabelPrintButton } from '@/modules/document-templates/components/LabelPrintButton';
 import { PluginFieldInput, PluginFieldValue } from '@/components/plugin-fields';
 import type { ZoneStock } from '@/hooks/useZonesWithStock';
 
