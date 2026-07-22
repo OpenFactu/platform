@@ -49,65 +49,7 @@ export interface Module {
  * (src/modules/<nombre>/module.ts). Cada fase de la modularización mueve su
  * entrada de aquí a su module.ts. `CORE_MODULES` se compone en ./index.ts.
  */
-export const LEGACY_NAV: Module[] = [
-  {
-    id: 'home',
-    label: 'Inicio',
-    icon: 'Home',
-    subTabs: [{ id: 'dashboard', label: 'Dashboard', path: '/' }],
-  },
-  {
-    id: 'assistant',
-    label: 'Asistente IA',
-    icon: 'Bot',
-    subTabs: [{ id: 'ai-chat', label: 'Keiro', path: '/ai/chat', status: 'beta' }],
-  },
-  {
-    id: 'plugins',
-    label: 'Plugins',
-    icon: 'Puzzle',
-    subTabs: [{ id: 'plugins-manager', label: 'Gestor', path: '/plugins' }],
-  },
-  {
-    id: 'configuration',
-    label: 'Configuración',
-    icon: 'SlidersHorizontal',
-    subTabs: [
-      { id: 'profile', label: 'Mi perfil', path: '/profile' },
-      { id: 'company', label: 'Empresa', path: '/settings/company' },
-      { id: 'templates', label: 'Plantillas PDF', path: '/document-templates' },
-      { id: 'users', label: 'Usuarios', path: '/users' },
-      {
-        id: 'custom-fields',
-        label: 'Campos personalizados',
-        path: '/custom-fields',
-        adminOnly: true,
-      },
-      {
-        id: 'dashboard-widgets',
-        label: 'Widgets de dashboard',
-        path: '/dashboard-widgets',
-        adminOnly: true,
-      },
-      { id: 'webhooks', label: 'Webhooks', path: '/settings/webhooks', adminOnly: true },
-      { id: 'api-tokens', label: 'Tokens de API', path: '/settings/api-tokens', adminOnly: true },
-      { id: 'automations', label: 'Automatizaciones', path: '/automations', adminOnly: true },
-      { id: 'audit', label: 'Auditoría', path: '/audit-logs' },
-      { id: 'tasks', label: 'Tareas', path: '/background-tasks' },
-      { id: 'styleguide', label: 'Style Guide', path: '/ui' },
-    ],
-  },
-  {
-    id: 'system',
-    label: 'Sistema',
-    icon: 'Activity',
-    superuserOnly: true,
-    subTabs: [
-      { id: 'cockpit', label: 'Cockpit', path: '/system/cockpit' },
-      { id: 'tasks', label: 'Tareas en 2º plano', path: '/background-tasks' },
-    ],
-  },
-];
+export const LEGACY_NAV: Module[] = [];
 
 /**
  * Encuentra el módulo activo dado un pathname.

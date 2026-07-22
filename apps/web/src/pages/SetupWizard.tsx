@@ -1,3 +1,4 @@
+import { apiClient, ApiError } from '@/shared/http';
 import React, { useState } from 'react';
 import {
   Eye,
@@ -166,12 +167,11 @@ function Step1Database({
 
     setChecking(true);
     try {
-      const res = await fetch('/api/setup/check-db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ host: data.host, port, user: data.user, password: data.password }),
-      });
-      const json = await res.json();
+      const json = await apiClient.post<any>(
+        '/api/setup/check-db',
+        { host: data.host, port, user: data.user, password: data.password },
+        { auth: false },
+      );
 
       if (json.connected) {
         if (json.hasExistingSetup) {
@@ -547,10 +547,9 @@ export const SetupWizard: React.FC = () => {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/setup/init', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await apiClient.post(
+        '/api/setup/init',
+        {
           dbConfig: {
             host: formData.db.host,
             port: parseInt(formData.db.port),
@@ -572,17 +571,18 @@ export const SetupWizard: React.FC = () => {
             fiscalYearStart: formData.company.fiscalYearStart,
             publicBaseUrl: formData.company.publicBaseUrl,
           },
-        }),
-      });
-
-      if (res.ok) {
-        window.location.href = '/';
+        },
+        { auth: false },
+      );
+      window.location.href = '/';
+    } catch (err) {
+      if (err instanceof ApiError && err.status !== 0) {
+        toast.error(
+          ((err.body as any)?.error as string) || 'Fallo en la configuración. Revisa los logs.',
+        );
       } else {
-        const err = await res.json();
-        toast.error(err.error || 'Fallo en la configuración. Revisa los logs.');
+        toast.error('Error de red al intentar configurar el sistema.');
       }
-    } catch {
-      toast.error('Error de red al intentar configurar el sistema.');
     } finally {
       setLoading(false);
     }

@@ -9,6 +9,12 @@ import { documentsModule } from './documents/module';
 import { documentTemplatesModule } from './document-templates/module';
 import { hrModule } from './hr/module';
 import { logisticsModule } from './logistics/module';
+import { homeModule } from './home/module';
+import { aiModule } from './ai/module';
+import { pluginsModule } from './plugins/module';
+import { systemModule } from './system/module';
+import { settingsModule } from './settings/module';
+import { userTablesModule } from './user-tables/module';
 
 /**
  * Agregador de módulos (estilo Odoo): compone CORE_MODULES (navbar) y las
@@ -27,6 +33,12 @@ export const moduleManifests: ModuleManifest[] = [
   documentTemplatesModule,
   hrModule,
   logisticsModule,
+  homeModule,
+  aiModule,
+  pluginsModule,
+  settingsModule,
+  systemModule,
+  userTablesModule,
 ];
 
 /** Orden canónico del navbar (ids de Module). */

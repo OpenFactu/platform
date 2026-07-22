@@ -12,8 +12,8 @@ import { MainLayout } from './components/MainLayout';
 import { TabsProvider } from './context/TabsContext';
 import { MobileNavProvider } from './context/MobileNavContext';
 import { ScannerProvider } from './context/ScannerContext';
-import { AiChatProvider } from './context/AiChatContext';
-import { ChatLauncherPanel } from './components/ai/ChatLauncherPanel';
+import { AiChatProvider } from '@/modules/ai/AiChatContext';
+import { ChatLauncherPanel } from '@/modules/ai/components/ChatLauncherPanel';
 import { DebugPanel } from './components/DebugPanel';
 
 function App() {

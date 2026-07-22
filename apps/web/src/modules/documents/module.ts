@@ -7,6 +7,7 @@ import { PurchaseDeliveryNotes } from './pages/PurchaseDeliveryNotes';
 import { PurchaseInvoices } from './pages/PurchaseInvoices';
 import Documents from './pages/Documents';
 import { DocumentSeries } from './pages/DocumentSeries';
+import { PriceLists } from './pages/PriceLists';
 
 /**
  * Motor de documentos (ventas + compras). Un solo módulo es dueño de las
@@ -102,6 +103,13 @@ export const documentsModule: ModuleManifest = {
         permissionPath: '/documents',
       }),
     ),
+    {
+      pattern: '/pricelists',
+      Component: PriceLists,
+      title: 'Tarifas',
+      iconName: 'Zap',
+      permissionPath: '/pricelists',
+    },
     // Series de numeración
     {
       pattern: '/document-series',

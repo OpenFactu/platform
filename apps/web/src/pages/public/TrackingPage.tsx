@@ -1,3 +1,4 @@
+import { apiClient } from '@/shared/http';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Marker } from 'react-map-gl/maplibre';
@@ -266,9 +267,7 @@ export const TrackingPage: React.FC = () => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     try {
-      const r = await fetch(`/api/logistics/track/${token}`);
-      if (!r.ok) throw new Error('not found');
-      const d = await r.json();
+      const d = await apiClient.get<any>(`/api/logistics/track/${token}`, { auth: false });
       setData(d);
       setError(null);
     } catch {

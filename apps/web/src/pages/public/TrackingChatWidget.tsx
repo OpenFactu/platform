@@ -11,7 +11,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
-import { Markdown } from '../../components/ai/Markdown';
+import { Markdown } from '@/modules/ai/components/Markdown';
 
 function isTextPart(part: { type: string }): part is { type: 'text'; text: string } {
   return part.type === 'text';

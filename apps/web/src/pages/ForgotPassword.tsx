@@ -1,3 +1,4 @@
+import { apiClient } from '@/shared/http';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2, CheckCircle2, Send } from 'lucide-react';
@@ -19,11 +20,7 @@ export const ForgotPassword: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+      await apiClient.post('/api/auth/forgot-password', { email }, { auth: false });
     } catch {
       // Silencioso — mostramos siempre la misma confirmación.
     } finally {
