@@ -1,10 +1,10 @@
-import { paymentTermsApi } from '@/modules/accounting/api';
+import { paymentTermsApi } from '../api';
 import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { Button, Input, useToast, usePopup, Badge } from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X, CalendarClock, AlertCircle } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import type { PaymentTerm, PaymentTermLine as SplitLine } from '@/modules/accounting/domain/accounting';
+import { useAuth } from '@/context/AuthContext';
+import type { PaymentTerm, PaymentTermLine as SplitLine } from '../domain/accounting';
 
 /**
  * Editor dedicado para plazos de pago. Permite listar, crear, editar

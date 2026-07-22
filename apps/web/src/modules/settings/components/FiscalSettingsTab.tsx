@@ -13,7 +13,7 @@ import {
   X as XIcon,
 } from 'lucide-react';
 import { FiscalCatalogTable } from '@/components/fiscal/FiscalCatalogTable';
-import { PaymentTermsEditor } from '@/components/fiscal/PaymentTermsEditor';
+import { PaymentTermsEditor } from '@/modules/accounting/components/PaymentTermsEditor';
 import { useAuth } from '@/context/AuthContext';
 import { validateIban, validateSwift, formatIban } from '@/utils/bankValidation';
 
@@ -53,8 +53,9 @@ export const FiscalSettingsTab: React.FC = () => {
     // mediante /api/config/system/<key> (o similar). Como fallback, cargamos
     // todos via un endpoint dedicado si existe; si no, lo dejamos editable y
     // al guardar se crea/actualiza.
-    coreApi.get('/api/config/fiscal')
-      .catch(() => (null))
+    coreApi
+      .get('/api/config/fiscal')
+      .catch(() => null)
       .then((data) => {
         if (data && typeof data === 'object') setBank((prev) => ({ ...prev, ...data }));
       })
@@ -69,7 +70,7 @@ export const FiscalSettingsTab: React.FC = () => {
     try {
       const res = await coreApi.raw('PUT', '/api/config/fiscal', bank);
       if (!res.ok) {
-        const err = (res.data ?? {});
+        const err = res.data ?? {};
         throw new Error(err?.error || 'Error');
       }
       toast.success('Guardado');
