@@ -85,6 +85,9 @@ type TabId =
 
 export const CompanySettings: React.FC = () => {
   const { token, user } = useAuth();
+  // Branding/formato/comportamiento/app son PUT /api/config/:section — el backend
+  // exige ADMIN o SUPERUSER (ver adminMiddleware en apps/server/src/api/config.ts).
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
   const {
     branding,
     format,
@@ -670,6 +673,11 @@ export const CompanySettings: React.FC = () => {
             </div>
           </Card>
 
+          {!isAdmin && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
+              Solo un administrador puede guardar esta configuración.
+            </p>
+          )}
           <div className="flex justify-end gap-2">
             <Button
               variant="secondary"
@@ -678,7 +686,7 @@ export const CompanySettings: React.FC = () => {
             >
               Descartar
             </Button>
-            <Button onClick={saveBranding} disabled={saving}>
+            <Button onClick={saveBranding} disabled={saving || !isAdmin}>
               <Save size={16} className="mr-2" />
               {saving ? 'Guardando...' : 'Guardar branding'}
             </Button>
@@ -785,11 +793,16 @@ export const CompanySettings: React.FC = () => {
             </div>
           </Card>
 
+          {!isAdmin && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
+              Solo un administrador puede guardar esta configuración.
+            </p>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setFormatDraft(format)} disabled={saving}>
               Descartar
             </Button>
-            <Button onClick={saveFormat} disabled={saving}>
+            <Button onClick={saveFormat} disabled={saving || !isAdmin}>
               <Save size={16} className="mr-2" />
               {saving ? 'Guardando...' : 'Guardar formato'}
             </Button>
@@ -909,11 +922,16 @@ export const CompanySettings: React.FC = () => {
             </div>
           </Card>
 
+          {!isAdmin && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
+              Solo un administrador puede guardar esta configuración.
+            </p>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setFlagsDraft(flags)} disabled={saving}>
               Descartar
             </Button>
-            <Button onClick={saveFlags} disabled={saving}>
+            <Button onClick={saveFlags} disabled={saving || !isAdmin}>
               <Save size={16} className="mr-2" />
               {saving ? 'Guardando...' : 'Guardar comportamiento'}
             </Button>
@@ -945,6 +963,11 @@ export const CompanySettings: React.FC = () => {
             </div>
           </Card>
 
+          {!isAdmin && (
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
+              Solo un administrador puede guardar esta configuración.
+            </p>
+          )}
           <div className="flex justify-end gap-2">
             <Button
               variant="secondary"
@@ -953,7 +976,7 @@ export const CompanySettings: React.FC = () => {
             >
               Descartar
             </Button>
-            <Button onClick={saveAppConfig} disabled={saving}>
+            <Button onClick={saveAppConfig} disabled={saving || !isAdmin}>
               <Save size={16} className="mr-2" />
               {saving ? 'Guardando...' : 'Guardar URL'}
             </Button>

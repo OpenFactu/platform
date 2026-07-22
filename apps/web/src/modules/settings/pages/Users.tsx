@@ -53,7 +53,6 @@ const PERMISSION_GROUPS = [
     icon: Settings,
     items: [
       { label: 'Dashboard', path: '/dashboard' },
-      { label: 'Plugins', path: '/plugins' },
       { label: 'Usuarios', path: '/users' },
       { label: 'Auditoría', path: '/audit-logs' },
     ],

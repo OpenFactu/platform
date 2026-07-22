@@ -25,6 +25,9 @@ import { validateIban, validateSwift, formatIban } from '@/utils/bankValidation'
 export const FiscalSettingsTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  // PUT /api/config/fiscal exige ADMIN o SUPERUSER en el backend
+  // (adminMiddleware, apps/server/src/api/config.ts).
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
 
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -158,8 +161,13 @@ export const FiscalSettingsTab: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="flex justify-end">
-            <Button onClick={saveBank} disabled={saving} className="gap-2">
+          <div className="flex flex-col items-end gap-2">
+            {!isAdmin && (
+              <p className="text-[11px] text-ink-400 dark:text-ink-500">
+                Solo un administrador puede guardar esta configuración.
+              </p>
+            )}
+            <Button onClick={saveBank} disabled={saving || !isAdmin} className="gap-2">
               <Save size={14} />
               {saving ? 'Guardando…' : 'Guardar'}
             </Button>

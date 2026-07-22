@@ -378,8 +378,13 @@ export const BackupsTab: React.FC = () => {
             «Keirost Backups».
           </p>
 
+          {!canUse && (
+            <p className="text-[11px] text-slate-400">
+              Solo un administrador puede guardar esta configuración.
+            </p>
+          )}
           <div className="flex items-center gap-3">
-            <Button onClick={saveConfig} disabled={saving}>
+            <Button onClick={saveConfig} disabled={saving || !canUse}>
               <Save size={15} className="mr-2" />
               {saving ? 'Guardando…' : 'Guardar programación'}
             </Button>
