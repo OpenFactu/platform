@@ -1,6 +1,7 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 
 interface Agreement {
@@ -45,8 +46,8 @@ export const CollectiveAgreements: React.FC = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const r = await fetch('/api/hr/collective-agreements', { headers });
-    setRows(await r.json());
+    const r = await hrApi.raw('GET', '/api/hr/collective-agreements');
+    setRows(r.data);
     setLoading(false);
   };
   useEffect(() => {
@@ -60,16 +61,9 @@ export const CollectiveAgreements: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await fetch(
-      isNew ? '/api/hr/collective-agreements' : `/api/hr/collective-agreements/${editing.id}`,
-      {
-        method: isNew ? 'POST' : 'PATCH',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(editing),
-      },
-    );
+    const r = await hrApi.raw('GET', isNew ? '/api/hr/collective-agreements' : `/api/hr/collective-agreements/${editing.id}`, editing);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error || 'Error');
       return;
     }
@@ -80,7 +74,7 @@ export const CollectiveAgreements: React.FC = () => {
 
   const remove = async (a: Agreement) => {
     if (!confirm(`¿Borrar convenio ${a.code}?`)) return;
-    await fetch(`/api/hr/collective-agreements/${a.id}`, { method: 'DELETE', headers });
+    await hrApi.raw('DELETE', `/api/hr/collective-agreements/${a.id}`);
     fetchAll();
   };
 

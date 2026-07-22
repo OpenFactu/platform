@@ -1,10 +1,11 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { AlertTriangle, Plus, UserCheck, X, Check, Ban } from 'lucide-react';
-import { ContextMenu } from '../../components/common/ContextMenu';
-import { withRowContextMenu } from '../../components/common/withRowContextMenu';
-import { useContextMenu } from '../../hooks/useContextMenu';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { withRowContextMenu } from '@/components/common/withRowContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 
 interface Incident {
   id: string;
@@ -55,9 +56,9 @@ export const Incidents: React.FC = () => {
     setLoading(true);
     try {
       const [i, e, t] = await Promise.all([
-        fetch('/api/hr/incidents', { headers }).then((r) => r.json()),
-        fetch('/api/hr/employees', { headers }).then((r) => r.json()),
-        fetch('/api/hr/incident-types', { headers }).then((r) => r.json()),
+        hrApi.get<any>('/api/hr/incidents'),
+        hrApi.get<any>('/api/hr/employees'),
+        hrApi.get<any>('/api/hr/incident-types'),
       ]);
       setRows(Array.isArray(i) ? i : []);
       setEmployees(Array.isArray(e) ? e : []);
@@ -79,13 +80,9 @@ export const Incidents: React.FC = () => {
       toast.error('Empleado, tipo y fecha de inicio son obligatorios');
       return;
     }
-    const r = await fetch('/api/hr/incidents', {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
+    const r = await hrApi.raw('POST', '/api/hr/incidents', form);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error);
       return;
     }
@@ -96,31 +93,20 @@ export const Incidents: React.FC = () => {
   };
 
   const setStatus = async (i: Incident, status: 'approved' | 'rejected') => {
-    await fetch(`/api/hr/incidents/${i.id}`, {
-      method: 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
+    await hrApi.raw('PATCH', `/api/hr/incidents/${i.id}`, { status });
     fetchAll();
   };
 
   const openSubstitute = async (i: Incident) => {
     setSubstituting(i);
-    const r = await fetch(`/api/hr/incidents/${i.id}/suggest-substitutes`, {
-      method: 'POST',
-      headers,
-    });
-    const d = await r.json();
+    const r = await hrApi.raw('POST', `/api/hr/incidents/${i.id}/suggest-substitutes`);
+    const d = r.data;
     setSubstituteOptions(Array.isArray(d) ? d : []);
   };
 
   const assignSubstitute = async (substituteEmployeeId: string) => {
     if (!substituting) return;
-    await fetch(`/api/hr/incidents/${substituting.id}/assign-substitute`, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ substituteEmployeeId }),
-    });
+    await hrApi.raw('POST', `/api/hr/incidents/${substituting.id}/assign-substitute`, { substituteEmployeeId });
     setSubstituting(null);
     setSubstituteOptions([]);
     fetchAll();

@@ -1,13 +1,14 @@
+import { hrApi } from '../api';
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { UserRound, Plus, Trash2, Pencil } from 'lucide-react';
-import { PluginFieldsPanel } from '../../components/PluginFieldsPanel';
-import { validateIban, formatIban, normalizeIban } from '../../utils/bankValidation';
-import { ContextMenu } from '../../components/common/ContextMenu';
-import { withRowContextMenu } from '../../components/common/withRowContextMenu';
-import { useContextMenu } from '../../hooks/useContextMenu';
+import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
+import { validateIban, formatIban, normalizeIban } from '@/utils/bankValidation';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { withRowContextMenu } from '@/components/common/withRowContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 
 interface Employee {
   id: string;
@@ -67,16 +68,15 @@ export const Employees: React.FC = () => {
   const toast = useToast();
   const popup = usePopup();
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   const fetchAll = async () => {
     setLoading(true);
     try {
       const [e, d, c, u] = await Promise.all([
-        fetch('/api/hr/employees', { headers: authHeaders }).then((r) => r.json()),
-        fetch('/api/hr/departments', { headers: authHeaders }).then((r) => r.json()),
-        fetch('/api/cost-centers', { headers: authHeaders }).then((r) => r.json()),
-        fetch('/api/users', { headers: authHeaders }).then((r) => (r.ok ? r.json() : [])),
+        hrApi.get<any>('/api/hr/employees'),
+        hrApi.get<any>('/api/hr/departments'),
+        hrApi.get<any>('/api/cost-centers'),
+        hrApi.get<any>('/api/users').catch(() => []),
       ]);
       setRows(Array.isArray(e) ? e : []);
       setDepartments(Array.isArray(d) ? d : []);
@@ -130,12 +130,8 @@ export const Employees: React.FC = () => {
       // registro (ver openEdit → setPluginValues(r)). Si los spreads se ponen
       // como `{...form, ...pluginValues}` machaca los cambios del formulario
       // con los valores originales. Form tiene que ganar.
-      const res = await fetch(url, {
-        method,
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...pluginValues, ...form }),
-      });
-      const data = await res.json();
+      const res = await hrApi.raw('GET', url, { ...pluginValues, ...form });
+      const data = res.data;
       if (!res.ok) {
         toast.error(data.error || 'Error al guardar');
         return;
@@ -159,15 +155,12 @@ export const Employees: React.FC = () => {
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/hr/employees/${id}`, {
-        method: 'DELETE',
-        headers: authHeaders,
-      });
+      const res = await hrApi.raw('DELETE', `/api/hr/employees/${id}`);
       if (res.ok) {
         toast.success('Empleado eliminado');
         fetchAll();
       } else {
-        const d = await res.json();
+        const d = res.data;
         toast.error(d.error || 'Error al eliminar');
       }
     } catch {

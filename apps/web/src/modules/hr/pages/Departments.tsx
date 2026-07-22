@@ -1,6 +1,6 @@
 import React from 'react';
 import { Building2 } from 'lucide-react';
-import { DimensionCrudPage } from '../../components/analytics/DimensionCrudPage';
+import { DimensionCrudPage } from '@/components/analytics/DimensionCrudPage';
 
 export const Departments: React.FC = () => (
   <DimensionCrudPage

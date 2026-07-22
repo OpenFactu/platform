@@ -6,7 +6,7 @@ import { Login } from './pages/Login';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { TrackingPage } from './pages/public/TrackingPage';
-import { KioskMode } from './pages/hr/KioskMode';
+import { KioskMode } from '@/modules/hr/pages/KioskMode';
 import { useAuth } from './context/AuthContext';
 import { MainLayout } from './components/MainLayout';
 import { TabsProvider } from './context/TabsContext';

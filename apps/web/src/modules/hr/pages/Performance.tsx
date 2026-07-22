@@ -1,8 +1,9 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, useToast } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { TrendingUp, Download } from 'lucide-react';
-import { exportToXlsx } from '../../utils/exportXlsx';
+import { exportToXlsx } from '@/utils/exportXlsx';
 
 interface Row {
   employeeId: string;
@@ -49,9 +50,9 @@ export const Performance: React.FC = () => {
     if (filters.employeeId) params.set('employeeId', filters.employeeId);
     if (filters.departmentId) params.set('departmentId', filters.departmentId);
     const [r, e, d] = await Promise.all([
-      fetch(`/api/reports/hr/productivity?${params}`, { headers }).then((r) => r.json()),
-      fetch('/api/hr/employees', { headers }).then((r) => r.json()),
-      fetch('/api/hr/departments', { headers }).then((r) => r.json()),
+      hrApi.get<any>(`/api/reports/hr/productivity?${params}`),
+      hrApi.get<any>('/api/hr/employees'),
+      hrApi.get<any>('/api/hr/departments'),
     ]);
     setRows(Array.isArray(r) ? r : []);
     setEmployees(Array.isArray(e) ? e : []);

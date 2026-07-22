@@ -1,6 +1,7 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import {
   CalendarDays,
   ChevronLeft,
@@ -132,15 +133,11 @@ export const Planning: React.FC = () => {
       const from = ymd(rangeStart);
       const to = ymd(rangeEnd);
       const [e, t, a, inc, it] = await Promise.all([
-        fetch('/api/hr/employees', { headers }).then((r) => r.json()),
-        fetch('/api/hr/shift-templates', { headers }).then((r) => r.json()),
-        fetch(`/api/hr/shift-assignments?from=${from}&to=${to}`, { headers }).then((r) => r.json()),
-        fetch('/api/hr/incidents', { headers })
-          .then((r) => r.json())
-          .catch(() => []),
-        fetch('/api/hr/incident-types', { headers })
-          .then((r) => r.json())
-          .catch(() => []),
+        hrApi.get<any>('/api/hr/employees'),
+        hrApi.get<any>('/api/hr/shift-templates'),
+        hrApi.get<any>(`/api/hr/shift-assignments?from=${from}&to=${to}`),
+        hrApi.get<any>('/api/hr/incidents').catch(() => []),
+        hrApi.get<any>('/api/hr/incident-types').catch(() => []),
       ]);
       setEmployees(Array.isArray(e) ? e : []);
       setTemplates(Array.isArray(t) ? t : []);
@@ -286,13 +283,9 @@ export const Planning: React.FC = () => {
     };
     const url =
       modal.kind === 'edit' ? `/api/hr/shift-assignments/${modal.id}` : '/api/hr/shift-assignments';
-    const r = await fetch(url, {
-      method: modal.kind === 'edit' ? 'PATCH' : 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    const r = await hrApi.raw('GET', url, body);
     if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
+      const d = (r.data ?? {});
       toast.error(d.error || 'Error');
       return;
     }
@@ -303,10 +296,7 @@ export const Planning: React.FC = () => {
         toast.error('El 2º tramo: la hora fin debe ser posterior al inicio');
         return;
       }
-      await fetch('/api/hr/shift-assignments', {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await hrApi.raw('POST', '/api/hr/shift-assignments', {
           employeeId: modal.employeeId,
           date: modal.date,
           startAt: form.secondStartAt,
@@ -314,8 +304,7 @@ export const Planning: React.FC = () => {
           breakMinutes: 0,
           shiftTemplateId: form.shiftTemplateId || null,
           notes: form.notes || null,
-        }),
-      });
+        });
     }
     toast.success(modal.kind === 'edit' ? 'Turno actualizado' : 'Turno creado');
     setModal(null);
@@ -325,11 +314,7 @@ export const Planning: React.FC = () => {
   const cancelAssign = async () => {
     if (!modal || modal.kind !== 'edit') return;
     if (!confirm('¿Cancelar este turno? (queda en histórico tachado)')) return;
-    await fetch(`/api/hr/shift-assignments/${modal.id}`, {
-      method: 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'cancelled' }),
-    });
+    await hrApi.raw('PATCH', `/api/hr/shift-assignments/${modal.id}`, { status: 'cancelled' });
     setModal(null);
     fetchAll();
   };
@@ -337,7 +322,7 @@ export const Planning: React.FC = () => {
   const removeAssign = async () => {
     if (!modal || modal.kind !== 'edit') return;
     if (!confirm('¿Borrar este turno definitivamente?')) return;
-    await fetch(`/api/hr/shift-assignments/${modal.id}`, { method: 'DELETE', headers });
+    await hrApi.raw('DELETE', `/api/hr/shift-assignments/${modal.id}`);
     setModal(null);
     fetchAll();
   };

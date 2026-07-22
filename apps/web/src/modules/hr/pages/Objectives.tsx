@@ -1,6 +1,7 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Target, Plus, Pencil, Trash2 } from 'lucide-react';
 
 interface Objective {
@@ -58,8 +59,8 @@ export const Objectives: React.FC = () => {
     if (filter.employeeId) params.set('employeeId', filter.employeeId);
     if (filter.status) params.set('status', filter.status);
     const [o, e] = await Promise.all([
-      fetch(`/api/hr/evaluations/objectives/list?${params}`, { headers }).then((r) => r.json()),
-      fetch('/api/hr/employees', { headers }).then((r) => r.json()),
+      hrApi.get<any>(`/api/hr/evaluations/objectives/list?${params}`),
+      hrApi.get<any>('/api/hr/employees'),
     ]);
     setRows(Array.isArray(o) ? o : []);
     setEmployees(Array.isArray(e) ? e : []);
@@ -75,16 +76,9 @@ export const Objectives: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await fetch(
-      isNew ? '/api/hr/evaluations/objectives' : `/api/hr/evaluations/objectives/${editing.id}`,
-      {
-        method: isNew ? 'POST' : 'PATCH',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(editing),
-      },
-    );
+    const r = await hrApi.raw('GET', isNew ? '/api/hr/evaluations/objectives' : `/api/hr/evaluations/objectives/${editing.id}`, editing);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error || 'Error');
       return;
     }
@@ -94,7 +88,7 @@ export const Objectives: React.FC = () => {
 
   const remove = async (o: Objective) => {
     if (!confirm('¿Borrar objetivo?')) return;
-    await fetch(`/api/hr/evaluations/objectives/${o.id}`, { method: 'DELETE', headers });
+    await hrApi.raw('DELETE', `/api/hr/evaluations/objectives/${o.id}`);
     fetchAll();
   };
 

@@ -7,6 +7,7 @@ import { accountingModule } from './accounting/module';
 import { reportsModule } from './reports/module';
 import { documentsModule } from './documents/module';
 import { documentTemplatesModule } from './document-templates/module';
+import { hrModule } from './hr/module';
 
 /**
  * Agregador de módulos (estilo Odoo): compone CORE_MODULES (navbar) y las
@@ -23,6 +24,7 @@ export const moduleManifests: ModuleManifest[] = [
   reportsModule,
   documentsModule,
   documentTemplatesModule,
+  hrModule,
 ];
 
 /** Orden canónico del navbar (ids de Module). */

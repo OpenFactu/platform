@@ -1,6 +1,7 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import {
   Repeat,
   Plus,
@@ -56,9 +57,9 @@ export const ShiftPatterns: React.FC = () => {
 
   const fetchAll = async () => {
     const [p, t, e] = await Promise.all([
-      fetch('/api/hr/shift-patterns', { headers }).then((r) => r.json()),
-      fetch('/api/hr/shift-templates', { headers }).then((r) => r.json()),
-      fetch('/api/hr/employees', { headers }).then((r) => r.json()),
+      hrApi.get<any>('/api/hr/shift-patterns'),
+      hrApi.get<any>('/api/hr/shift-templates'),
+      hrApi.get<any>('/api/hr/employees'),
     ]);
     setList(Array.isArray(p) ? p : []);
     setTemplates(Array.isArray(t) ? t : []);
@@ -69,7 +70,7 @@ export const ShiftPatterns: React.FC = () => {
   }, [user?.tenantId]);
 
   const openEdit = async (p: Pattern) => {
-    const r = await fetch(`/api/hr/shift-patterns/${p.id}`, { headers }).then((r) => r.json());
+    const r = await hrApi.get<any>(`/api/hr/shift-patterns/${p.id}`);
     setEditing(r);
     setAssignments(Array.isArray(r.assignments) ? r.assignments : []);
   };
@@ -141,15 +142,8 @@ export const ShiftPatterns: React.FC = () => {
   const save = async () => {
     if (!editing) return;
     const isNew = !editing.id;
-    const r = await fetch(
-      isNew ? '/api/hr/shift-patterns' : `/api/hr/shift-patterns/${editing.id}`,
-      {
-        method: isNew ? 'POST' : 'PATCH',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(editing),
-      },
-    );
-    const d = await r.json();
+    const r = await hrApi.raw('GET', isNew ? '/api/hr/shift-patterns' : `/api/hr/shift-patterns/${editing.id}`, editing);
+    const d = r.data;
     if (!r.ok) {
       toast.error(d.error);
       return;
@@ -164,13 +158,9 @@ export const ShiftPatterns: React.FC = () => {
       toast.error('Guarda el patrón antes de asignar empleados');
       return;
     }
-    const r = await fetch(`/api/hr/shift-patterns/${editing.id}/assignments`, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ employeeId, validFrom, weekOffset }),
-    });
+    const r = await hrApi.raw('POST', `/api/hr/shift-patterns/${editing.id}/assignments`, { employeeId, validFrom, weekOffset });
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error);
       return;
     }
@@ -178,10 +168,7 @@ export const ShiftPatterns: React.FC = () => {
   };
 
   const removeAssignment = async (a: Assignment) => {
-    await fetch(`/api/hr/shift-patterns/${editing!.id}/assignments/${a.id}`, {
-      method: 'DELETE',
-      headers,
-    });
+    await hrApi.raw('DELETE', `/api/hr/shift-patterns/${editing!.id}/assignments/${a.id}`);
     if (editing) openEdit(editing);
   };
 
@@ -191,12 +178,8 @@ export const ShiftPatterns: React.FC = () => {
       toast.error('Indica from y to');
       return;
     }
-    const r = await fetch(`/api/hr/shift-patterns/${editing.id}/expand`, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify(expanding),
-    });
-    const d = await r.json();
+    const r = await hrApi.raw('POST', `/api/hr/shift-patterns/${editing.id}/expand`, expanding);
+    const d = r.data;
     if (!r.ok) {
       toast.error(d.error);
       return;

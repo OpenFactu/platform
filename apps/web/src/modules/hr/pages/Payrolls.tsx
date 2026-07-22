@@ -1,10 +1,11 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Banknote, Plus, CheckCircle, Trash2, ListPlus, X, FileText } from 'lucide-react';
-import { ContextMenu } from '../../components/common/ContextMenu';
-import { withRowContextMenu } from '../../components/common/withRowContextMenu';
-import { useContextMenu } from '../../hooks/useContextMenu';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { withRowContextMenu } from '@/components/common/withRowContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 
 interface Payroll {
   id: string;
@@ -52,14 +53,13 @@ export const Payrolls: React.FC = () => {
   const [lines, setLines] = useState<any[]>([]);
   const [linesLoading, setLinesLoading] = useState(false);
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
 
   const fetchAll = async () => {
     setLoading(true);
     try {
       const [p, e] = await Promise.all([
-        fetch('/api/hr/payrolls', { headers: authHeaders }).then((r) => r.json()),
-        fetch('/api/hr/employees', { headers: authHeaders }).then((r) => r.json()),
+        hrApi.get<any>('/api/hr/payrolls'),
+        hrApi.get<any>('/api/hr/employees'),
       ]);
       setRows(Array.isArray(p) ? p : []);
       setEmployees(Array.isArray(e) ? e : []);
@@ -83,23 +83,16 @@ export const Payrolls: React.FC = () => {
       return;
     }
     // 1) Crear borrador con totales a 0 — las líneas marcan los importes.
-    const res = await fetch('/api/hr/payrolls', {
-      method: 'POST',
-      headers: { ...authHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const res = await hrApi.raw('POST', '/api/hr/payrolls', {
         employeeId: form.employeeId,
         periodYear: form.periodYear,
         periodMonth: form.periodMonth,
-      }),
-    });
-    const created = await res.json();
+      });
+    const created = res.data;
     if (res.status === 409 && created.existingId) {
       toast.error(created.error || 'Ya existe esa nómina');
       // Abrir directamente la existente para que el usuario la edite.
-      const existing = await fetch(`/api/hr/payrolls/${created.existingId}`, {
-        headers: authHeaders,
-      })
-        .then((r) => r.json())
+      const existing = await hrApi.get<any>(`/api/hr/payrolls/${created.existingId}`)
         .catch(() => null);
       if (existing) {
         setCreating(false);
@@ -116,9 +109,7 @@ export const Payrolls: React.FC = () => {
     //    usando el grossSalary del contrato activo del empleado.
     if (form.autoSalary) {
       try {
-        const contracts = await fetch(`/api/hr/contracts?employeeId=${form.employeeId}`, {
-          headers: authHeaders,
-        }).then((r) => r.json());
+        const contracts = await hrApi.get<any>(`/api/hr/contracts?employeeId=${form.employeeId}`);
         const active =
           (Array.isArray(contracts) ? contracts : []).find((c: any) => c.isActive) ||
           (Array.isArray(contracts) ? contracts[0] : null);
@@ -127,24 +118,18 @@ export const Payrolls: React.FC = () => {
           : 0;
         if (monthlyGross > 0) {
           // Buscar concepto "Salario base" del catálogo o crear línea suelta.
-          const cs = await fetch('/api/hr/payroll-concepts?activeOnly=true', {
-            headers: authHeaders,
-          }).then((r) => r.json());
+          const cs = await hrApi.get<any>('/api/hr/payroll-concepts?activeOnly=true');
           const base = (Array.isArray(cs) ? cs : []).find(
             (c: any) =>
               c.kind === 'devengo' &&
               (/salario.*base/i.test(c.name) || /^sb/i.test(c.code) || /base/i.test(c.code)),
           );
-          await fetch(`/api/hr/payrolls/${created.id}/lines`, {
-            method: 'POST',
-            headers: { ...authHeaders, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          await hrApi.raw('POST', `/api/hr/payrolls/${created.id}/lines`, {
               conceptId: base?.id || null,
               concept: base?.name || 'Salario base',
               type: 'earning',
               amount: monthlyGross.toFixed(2),
-            }),
-          });
+            });
         }
       } catch {
         /* no-op — el usuario puede añadirlas a mano luego */
@@ -153,10 +138,7 @@ export const Payrolls: React.FC = () => {
 
     // 3) Auto-IRPF/SS si está marcado.
     if (form.autoTaxes) {
-      await fetch(`/api/hr/payrolls/${created.id}/auto-deductions`, {
-        method: 'POST',
-        headers: authHeaders,
-      });
+      await hrApi.raw('POST', `/api/hr/payrolls/${created.id}/auto-deductions`);
     }
 
     toast.success('Nómina creada — abre líneas/pluses para ajustar');
@@ -174,12 +156,8 @@ export const Payrolls: React.FC = () => {
       confirmLabel: 'Aprobar y asentar',
     });
     if (!ok) return;
-    const res = await fetch(`/api/hr/payrolls/${id}/approve`, {
-      method: 'POST',
-      headers: { ...authHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    const data = await res.json();
+    const res = await hrApi.raw('POST', `/api/hr/payrolls/${id}/approve`, {});
+    const data = res.data;
     if (!res.ok) {
       toast.error(data.error || 'Error al aprobar');
       return;
@@ -193,10 +171,8 @@ export const Payrolls: React.FC = () => {
     setLinesLoading(true);
     try {
       const [conceptsR, payrollR] = await Promise.all([
-        fetch('/api/hr/payroll-concepts?activeOnly=true', { headers: authHeaders }).then((r) =>
-          r.json(),
-        ),
-        fetch(`/api/hr/payrolls/${p.id}`, { headers: authHeaders }).then((r) => r.json()),
+        hrApi.get<any>('/api/hr/payroll-concepts?activeOnly=true'),
+        hrApi.get<any>(`/api/hr/payrolls/${p.id}`),
       ]);
       setConcepts(Array.isArray(conceptsR) ? conceptsR : []);
       setLines(Array.isArray(payrollR.lines) ? payrollR.lines : []);
@@ -207,7 +183,7 @@ export const Payrolls: React.FC = () => {
 
   const refreshLines = async (id: string) => {
     const [d] = await Promise.all([
-      fetch(`/api/hr/payrolls/${id}`, { headers: authHeaders }).then((r) => r.json()),
+      hrApi.get<any>(`/api/hr/payrolls/${id}`),
     ]);
     setLines(Array.isArray(d.lines) ? d.lines : []);
     setEditLines((curr) => (curr ? { ...curr, ...d } : curr));
@@ -232,13 +208,9 @@ export const Payrolls: React.FC = () => {
     };
     if (c.calculation === 'percent_of_base' && c.defaultPercent)
       payload.rate = Number(c.defaultPercent);
-    const r = await fetch(`/api/hr/payrolls/${editLines.id}/lines`, {
-      method: 'POST',
-      headers: { ...authHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+    const r = await hrApi.raw('POST', `/api/hr/payrolls/${editLines.id}/lines`, payload);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error || 'Error al añadir línea');
       return;
     }
@@ -247,13 +219,9 @@ export const Payrolls: React.FC = () => {
 
   const updateLine = async (lineId: string, patch: any) => {
     if (!editLines) return;
-    const r = await fetch(`/api/hr/payrolls/${editLines.id}/lines/${lineId}`, {
-      method: 'PATCH',
-      headers: { ...authHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    });
+    const r = await hrApi.raw('PATCH', `/api/hr/payrolls/${editLines.id}/lines/${lineId}`, patch);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error || 'Error');
       return;
     }
@@ -262,10 +230,7 @@ export const Payrolls: React.FC = () => {
 
   const deleteLine = async (lineId: string) => {
     if (!editLines) return;
-    const r = await fetch(`/api/hr/payrolls/${editLines.id}/lines/${lineId}`, {
-      method: 'DELETE',
-      headers: authHeaders,
-    });
+    const r = await hrApi.raw('DELETE', `/api/hr/payrolls/${editLines.id}/lines/${lineId}`);
     if (r.ok) await refreshLines(editLines.id);
   };
 
@@ -276,12 +241,12 @@ export const Payrolls: React.FC = () => {
       tone: 'danger',
     });
     if (!ok) return;
-    const res = await fetch(`/api/hr/payrolls/${id}`, { method: 'DELETE', headers: authHeaders });
+    const res = await hrApi.raw('DELETE', `/api/hr/payrolls/${id}`);
     if (res.ok) {
       toast.success('Eliminada');
       fetchAll();
     } else {
-      const d = await res.json();
+      const d = res.data;
       toast.error(d.error || 'Error');
     }
   };
@@ -331,16 +296,13 @@ export const Payrolls: React.FC = () => {
           </button>
           <button
             onClick={async () => {
-              const res = await fetch(`/api/reports/payslip/${r.id}/pdf`, {
-                headers: authHeaders,
-              });
-              if (!res.ok) {
+              try {
+                const { blob } = await hrApi.getBlob(`/api/reports/payslip/${r.id}/pdf`);
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank', 'noopener');
+              } catch {
                 toast.error('No se pudo generar el PDF');
-                return;
               }
-              const blob = await res.blob();
-              const url = URL.createObjectURL(blob);
-              window.open(url, '_blank', 'noopener');
             }}
             className="text-slate-500 hover:text-indigo-600"
             title="Imprimir / descargar recibo de nómina (PDF)"
@@ -371,14 +333,13 @@ export const Payrolls: React.FC = () => {
   ];
 
   const printPayslip = async (r: Payroll) => {
-    const res = await fetch(`/api/reports/payslip/${r.id}/pdf`, { headers: authHeaders });
-    if (!res.ok) {
+    try {
+      const { blob } = await hrApi.getBlob(`/api/reports/payslip/${r.id}/pdf`);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener');
+    } catch {
       toast.error('No se pudo generar el PDF');
-      return;
     }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank', 'noopener');
   };
 
   const ctxMenu = useContextMenu<Payroll>();
@@ -445,48 +406,33 @@ export const Payrolls: React.FC = () => {
               let skipped = 0;
               for (const e of active) {
                 try {
-                  const r = await fetch('/api/hr/payrolls', {
-                    method: 'POST',
-                    headers: { ...authHeaders, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                  const r = await hrApi.raw('POST', '/api/hr/payrolls', {
                       employeeId: e.id,
                       periodYear: y,
                       periodMonth: m,
-                    }),
-                  });
-                  const d = await r.json();
+                    });
+                  const d = r.data;
                   if (r.status === 409) {
                     skipped++;
                     continue;
                   }
                   if (!r.ok) continue;
                   // Salario base del contrato
-                  const cs = await fetch(`/api/hr/contracts?employeeId=${e.id}`, {
-                    headers: authHeaders,
-                  })
-                    .then((rr) => rr.json())
-                    .catch(() => []);
+                  const cs = await hrApi.get<any>(`/api/hr/contracts?employeeId=${e.id}`).catch(() => []);
                   const c =
                     (Array.isArray(cs) ? cs : []).find((x: any) => x.isActive) ||
                     (Array.isArray(cs) ? cs[0] : null);
                   if (c) {
                     const monthly = Number(c.grossSalary || 0) / Number(c.paymentsPerYear || 12);
                     if (monthly > 0) {
-                      await fetch(`/api/hr/payrolls/${d.id}/lines`, {
-                        method: 'POST',
-                        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
+                      await hrApi.raw('POST', `/api/hr/payrolls/${d.id}/lines`, {
                           concept: 'Salario base',
                           type: 'earning',
                           amount: monthly.toFixed(2),
-                        }),
-                      });
+                        });
                     }
                   }
-                  await fetch(`/api/hr/payrolls/${d.id}/auto-deductions`, {
-                    method: 'POST',
-                    headers: authHeaders,
-                  });
+                  await hrApi.raw('POST', `/api/hr/payrolls/${d.id}/auto-deductions`);
                   n++;
                 } catch {
                   /* sigue con el siguiente empleado */
@@ -720,11 +666,8 @@ export const Payrolls: React.FC = () => {
                 <button
                   onClick={async () => {
                     if (!editLines) return;
-                    const r = await fetch(`/api/hr/payrolls/${editLines.id}/auto-deductions`, {
-                      method: 'POST',
-                      headers: authHeaders,
-                    });
-                    const d = await r.json().catch(() => ({}));
+                    const r = await hrApi.raw('POST', `/api/hr/payrolls/${editLines.id}/auto-deductions`);
+                    const d = (r.data ?? {});
                     if (!r.ok) {
                       toast.error(d.error || 'No hay conceptos IRPF/SS en el catálogo');
                       return;
@@ -744,11 +687,8 @@ export const Payrolls: React.FC = () => {
                 <button
                   onClick={async () => {
                     if (!editLines) return;
-                    const r = await fetch(
-                      `/api/hr/commissions/payrolls/${editLines.id}/import-commissions`,
-                      { method: 'POST', headers: authHeaders },
-                    );
-                    const d = await r.json().catch(() => ({}));
+                    const r = await hrApi.raw('POST', `/api/hr/commissions/payrolls/${editLines.id}/import-commissions`);
+                    const d = (r.data ?? {});
                     if (!r.ok) {
                       toast.error(d.error || 'Error');
                       return;

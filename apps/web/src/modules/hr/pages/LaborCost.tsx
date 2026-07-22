@@ -1,8 +1,9 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { PiggyBank, Download } from 'lucide-react';
-import { exportToXlsx } from '../../utils/exportXlsx';
+import { exportToXlsx } from '@/utils/exportXlsx';
 
 interface Row {
   key: string;
@@ -36,8 +37,8 @@ export const LaborCost: React.FC = () => {
       to: filters.to,
       groupBy: filters.groupBy,
     });
-    const r = await fetch(`/api/reports/hr/labor-cost?${params}`, { headers });
-    const d = await r.json();
+    const r = await hrApi.raw('GET', `/api/reports/hr/labor-cost?${params}`);
+    const d = r.data;
     setRows(d.rows || []);
     setTotals(d.totals || { gross: 0, ssEr: 0, total: 0 });
     setLoading(false);

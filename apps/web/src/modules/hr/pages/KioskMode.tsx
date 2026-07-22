@@ -1,3 +1,4 @@
+import { apiClient, ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { Timer, LogIn, LogOut, Coffee, RotateCcw, Delete, Check, AlertCircle } from 'lucide-react';
 
@@ -74,17 +75,23 @@ export const KioskMode: React.FC = () => {
     }
     setBusy(true);
     try {
-      const r = await fetch('/api/hr/timeclock/kiosk/punch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-kiosk-token': token,
-          'x-tenant-id': tenantId,
-        },
-        body: JSON.stringify({ pin, kind }),
-      });
-      const d = await r.json();
-      if (!r.ok) {
+      // El kiosko no tiene sesión: se autentica con su token propio + tenant.
+      let d: any;
+      let punchOk = true;
+      try {
+        d = await apiClient.post('/api/hr/timeclock/kiosk/punch', { pin, kind }, {
+          auth: false,
+          headers: { 'x-kiosk-token': token, 'x-tenant-id': tenantId },
+        });
+      } catch (e) {
+        if (e instanceof ApiError) {
+          punchOk = false;
+          d = e.body ?? { error: e.message };
+        } else {
+          throw e;
+        }
+      }
+      if (!punchOk) {
         setFeedback({ ok: false, msg: d.error || 'Error' });
         setPin('');
         return;

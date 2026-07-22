@@ -1,10 +1,11 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { ListChecks, Plus, Pencil, Trash2, Wand2 } from 'lucide-react';
-import { ContextMenu } from '../../components/common/ContextMenu';
-import { withRowContextMenu } from '../../components/common/withRowContextMenu';
-import { useContextMenu } from '../../hooks/useContextMenu';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { withRowContextMenu } from '@/components/common/withRowContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 
 interface Concept {
   id: string;
@@ -54,16 +55,10 @@ export const PayrollConcepts: React.FC = () => {
   const [editing, setEditing] = useState<Partial<Concept> | null>(null);
   const toast = useToast();
   const popup = usePopup();
-  const authHeaders = useMemo(
-    () => ({ Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' }),
-    [token, user?.tenantId],
-  );
-
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const r = await fetch('/api/hr/payroll-concepts', { headers: authHeaders });
-      const d = await r.json();
+      const d = await hrApi.get<any>('/api/hr/payroll-concepts');
       setRows(Array.isArray(d) ? d : []);
     } catch {
       toast.error('Error al cargar conceptos');
@@ -86,12 +81,8 @@ export const PayrollConcepts: React.FC = () => {
     const isNew = !editing.id;
     const url = isNew ? '/api/hr/payroll-concepts' : `/api/hr/payroll-concepts/${editing.id}`;
     const method = isNew ? 'POST' : 'PATCH';
-    const res = await fetch(url, {
-      method,
-      headers: { ...authHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify(editing),
-    });
-    const data = await res.json();
+    const res = await hrApi.raw('GET', url, editing);
+    const data = res.data;
     if (!res.ok) {
       toast.error(data.error || 'Error al guardar');
       return;
@@ -108,15 +99,12 @@ export const PayrollConcepts: React.FC = () => {
       tone: 'danger',
     });
     if (!ok) return;
-    const r = await fetch(`/api/hr/payroll-concepts/${c.id}`, {
-      method: 'DELETE',
-      headers: authHeaders,
-    });
+    const r = await hrApi.raw('DELETE', `/api/hr/payroll-concepts/${c.id}`);
     if (r.ok) {
       toast.success('Eliminado');
       fetchAll();
     } else {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error || 'Error');
     }
   };
@@ -194,11 +182,8 @@ export const PayrollConcepts: React.FC = () => {
             size="sm"
             variant="secondary"
             onClick={async () => {
-              const r = await fetch('/api/hr/payroll-concepts/seed-defaults', {
-                method: 'POST',
-                headers: authHeaders,
-              });
-              const d = await r.json().catch(() => ({}));
+              const r = await hrApi.raw('POST', '/api/hr/payroll-concepts/seed-defaults');
+              const d = (r.data ?? {});
               if (!r.ok) {
                 toast.error(d.error || 'Error');
                 return;

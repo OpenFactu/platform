@@ -1,6 +1,7 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { ClipboardCheck, Plus, Pencil, Trash2, X, Save, CheckCircle } from 'lucide-react';
 
 interface Cycle {
@@ -69,9 +70,9 @@ export const Evaluations: React.FC = () => {
 
   const fetchAll = async () => {
     const [c, comp, emps] = await Promise.all([
-      fetch('/api/hr/evaluations/cycles', { headers }).then((r) => r.json()),
-      fetch('/api/hr/evaluations/competencies', { headers }).then((r) => r.json()),
-      fetch('/api/hr/employees', { headers }).then((r) => r.json()),
+      hrApi.get<any>('/api/hr/evaluations/cycles'),
+      hrApi.get<any>('/api/hr/evaluations/competencies'),
+      hrApi.get<any>('/api/hr/employees'),
     ]);
     setCycles(Array.isArray(c) ? c : []);
     setCompetencies(Array.isArray(comp) ? comp : []);
@@ -82,8 +83,8 @@ export const Evaluations: React.FC = () => {
   }, [user?.tenantId]);
 
   const fetchEvaluations = async (cycleId: string) => {
-    const r = await fetch(`/api/hr/evaluations?cycleId=${cycleId}`, { headers });
-    setEvaluations(await r.json());
+    const r = await hrApi.raw('GET', `/api/hr/evaluations?cycleId=${cycleId}`);
+    setEvaluations(r.data);
   };
 
   const saveCycle = async (e: React.FormEvent) => {
@@ -93,16 +94,9 @@ export const Evaluations: React.FC = () => {
       return;
     }
     const isNew = !editingCycle.id;
-    const r = await fetch(
-      isNew ? '/api/hr/evaluations/cycles' : `/api/hr/evaluations/cycles/${editingCycle.id}`,
-      {
-        method: isNew ? 'POST' : 'PATCH',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingCycle),
-      },
-    );
+    const r = await hrApi.raw('GET', isNew ? '/api/hr/evaluations/cycles' : `/api/hr/evaluations/cycles/${editingCycle.id}`, editingCycle);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error || 'Error');
       return;
     }
@@ -118,18 +112,11 @@ export const Evaluations: React.FC = () => {
       return;
     }
     const isNew = !editingComp.id;
-    const r = await fetch(
-      isNew
+    const r = await hrApi.raw('GET', isNew
         ? '/api/hr/evaluations/competencies'
-        : `/api/hr/evaluations/competencies/${editingComp.id}`,
-      {
-        method: isNew ? 'POST' : 'PATCH',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingComp),
-      },
-    );
+        : `/api/hr/evaluations/competencies/${editingComp.id}`, editingComp);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error || 'Error');
       return;
     }
@@ -139,19 +126,15 @@ export const Evaluations: React.FC = () => {
 
   const addEvaluation = async (employeeId: string) => {
     if (!openCycle) return;
-    await fetch('/api/hr/evaluations', {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cycleId: openCycle.id, employeeId }),
-    });
+    await hrApi.raw('POST', '/api/hr/evaluations', { cycleId: openCycle.id, employeeId });
     fetchEvaluations(openCycle.id);
   };
 
   const openScores = async (ev: Evaluation) => {
     const emp = employees.find((e) => e.id === ev.employeeId);
     setScoreEditing({ evaluationId: ev.id, emp });
-    const r = await fetch(`/api/hr/evaluations/${ev.id}`, { headers });
-    const d = await r.json();
+    const r = await hrApi.raw('GET', `/api/hr/evaluations/${ev.id}`);
+    const d = r.data;
     const map = new Map((d.scores || []).map((s: any) => [s.competencyId, s]));
     setScores(
       competencies
@@ -170,11 +153,7 @@ export const Evaluations: React.FC = () => {
 
   const saveScores = async () => {
     if (!scoreEditing) return;
-    await fetch(`/api/hr/evaluations/${scoreEditing.evaluationId}/scores`, {
-      method: 'PUT',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scores }),
-    });
+    await hrApi.raw('PUT', `/api/hr/evaluations/${scoreEditing.evaluationId}/scores`, { scores });
     toast.success('Puntuaciones guardadas');
     setScoreEditing(null);
     if (openCycle) fetchEvaluations(openCycle.id);
@@ -183,12 +162,9 @@ export const Evaluations: React.FC = () => {
   const closeEvaluation = async () => {
     if (!scoreEditing) return;
     await saveScores();
-    const r = await fetch(`/api/hr/evaluations/${scoreEditing.evaluationId}/close`, {
-      method: 'POST',
-      headers,
-    });
+    const r = await hrApi.raw('POST', `/api/hr/evaluations/${scoreEditing.evaluationId}/close`);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error || 'No se pudo cerrar');
       return;
     }

@@ -1,8 +1,9 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge, useToast } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Timer, LogIn, LogOut, Coffee, RotateCcw, Download } from 'lucide-react';
-import { exportToXlsx } from '../../utils/exportXlsx';
+import { exportToXlsx } from '@/utils/exportXlsx';
 
 interface Entry {
   id: string;
@@ -51,12 +52,12 @@ export const Timeclock: React.FC = () => {
   // export y genera la hoja en cliente (utils/exportXlsx).
   const exportEntriesExcel = async (params: URLSearchParams, filename: string, title: string) => {
     params.set('format', 'json');
-    const r = await fetch(`/api/hr/timeclock/export?${params}`, { headers });
+    const r = await hrApi.raw('GET', `/api/hr/timeclock/export?${params}`);
     if (!r.ok) {
       toast.error('No se pudo exportar');
       return;
     }
-    const data = await r.json();
+    const data = r.data;
     await exportToXlsx({
       filename,
       sheetName: 'Fichajes',
@@ -77,13 +78,13 @@ export const Timeclock: React.FC = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const r = await fetch('/api/hr/timeclock/me', { headers });
+      const r = await hrApi.raw('GET', '/api/hr/timeclock/me');
       if (!r.ok) {
-        const d = await r.json();
+        const d = r.data;
         toast.error(d.error || 'No hay empleado vinculado');
         return;
       }
-      const d = await r.json();
+      const d = r.data;
       setEmployee(d.employee);
       setEntries(Array.isArray(d.entries) ? d.entries : []);
     } finally {
@@ -101,8 +102,8 @@ export const Timeclock: React.FC = () => {
     if (filters.from) params.set('from', filters.from);
     if (filters.to) params.set('to', filters.to + 'T23:59:59');
     const [e, en] = await Promise.all([
-      fetch('/api/hr/employees', { headers }).then((r) => r.json()),
-      fetch(`/api/hr/timeclock/entries?${params.toString()}`, { headers }).then((r) => r.json()),
+      hrApi.get<any>('/api/hr/employees'),
+      hrApi.get<any>(`/api/hr/timeclock/entries?${params.toString()}`),
     ]);
     setAllEmployees(Array.isArray(e) ? e : []);
     setAllEntries(Array.isArray(en) ? en : []);
@@ -128,13 +129,9 @@ export const Timeclock: React.FC = () => {
         // sin geo
       }
     }
-    const r = await fetch('/api/hr/timeclock/punch', {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind, ...coords, device: navigator.userAgent }),
-    });
+    const r = await hrApi.raw('POST', '/api/hr/timeclock/punch', { kind, ...coords, device: navigator.userAgent });
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error);
       return;
     }

@@ -1,10 +1,11 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { AlertOctagon, Plus, Pencil, Trash2 } from 'lucide-react';
-import { ContextMenu } from '../../components/common/ContextMenu';
-import { withRowContextMenu } from '../../components/common/withRowContextMenu';
-import { useContextMenu } from '../../hooks/useContextMenu';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { withRowContextMenu } from '@/components/common/withRowContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 
 interface IncidentType {
   id: string;
@@ -38,16 +39,10 @@ export const IncidentTypes: React.FC = () => {
   const [editing, setEditing] = useState<Partial<IncidentType> | null>(null);
   const toast = useToast();
   const popup = usePopup();
-  const authHeaders = useMemo(
-    () => ({ Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' }),
-    [token, user?.tenantId],
-  );
-
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const r = await fetch('/api/hr/incident-types', { headers: authHeaders });
-      const d = await r.json();
+      const d = await hrApi.get<any>('/api/hr/incident-types');
       setRows(Array.isArray(d) ? d : []);
     } finally {
       setLoading(false);
@@ -65,12 +60,8 @@ export const IncidentTypes: React.FC = () => {
     }
     const isNew = !editing.id;
     const url = isNew ? '/api/hr/incident-types' : `/api/hr/incident-types/${editing.id}`;
-    const r = await fetch(url, {
-      method: isNew ? 'POST' : 'PATCH',
-      headers: { ...authHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify(editing),
-    });
-    const d = await r.json();
+    const r = await hrApi.raw('GET', url, editing);
+    const d = r.data;
     if (!r.ok) {
       toast.error(d.error || 'Error');
       return;
@@ -83,7 +74,7 @@ export const IncidentTypes: React.FC = () => {
   const remove = async (t: IncidentType) => {
     const ok = await popup.confirm({ title: `Desactivar ${t.code}?`, message: '¿Desactivar este tipo de incidencia?', tone: 'danger' });
     if (!ok) return;
-    await fetch(`/api/hr/incident-types/${t.id}`, { method: 'DELETE', headers: authHeaders });
+    await hrApi.raw('DELETE', `/api/hr/incident-types/${t.id}`);
     fetchAll();
   };
 

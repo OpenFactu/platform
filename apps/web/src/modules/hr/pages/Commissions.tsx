@@ -1,6 +1,7 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Percent, Plus, Pencil, Trash2, RefreshCw, ArrowRightCircle } from 'lucide-react';
 
 interface Rule {
@@ -73,10 +74,10 @@ export const Commissions: React.FC = () => {
 
   const fetchAll = async () => {
     const [r, e, d, c] = await Promise.all([
-      fetch('/api/hr/commissions/rules', { headers }).then((r) => r.json()),
-      fetch('/api/hr/employees', { headers }).then((r) => r.json()),
-      fetch('/api/hr/departments', { headers }).then((r) => r.json()),
-      fetch('/api/hr/payroll-concepts?activeOnly=true', { headers }).then((r) => r.json()),
+      hrApi.get<any>('/api/hr/commissions/rules'),
+      hrApi.get<any>('/api/hr/employees'),
+      hrApi.get<any>('/api/hr/departments'),
+      hrApi.get<any>('/api/hr/payroll-concepts?activeOnly=true'),
     ]);
     setRules(Array.isArray(r) ? r : []);
     setEmployees(Array.isArray(e) ? e : []);
@@ -93,8 +94,8 @@ export const Commissions: React.FC = () => {
     if (filter.status) params.set('status', filter.status);
     params.set('year', String(filter.year));
     params.set('month', String(filter.month));
-    const r = await fetch(`/api/hr/commissions/accruals?${params}`, { headers });
-    setAccruals(await r.json());
+    const r = await hrApi.raw('GET', `/api/hr/commissions/accruals?${params}`);
+    setAccruals(r.data);
   };
   useEffect(() => {
     if (tab === 'accruals' && user?.tenantId) fetchAccruals();
@@ -108,16 +109,9 @@ export const Commissions: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await fetch(
-      isNew ? '/api/hr/commissions/rules' : `/api/hr/commissions/rules/${editing.id}`,
-      {
-        method: isNew ? 'POST' : 'PATCH',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(editing),
-      },
-    );
+    const r = await hrApi.raw('GET', isNew ? '/api/hr/commissions/rules' : `/api/hr/commissions/rules/${editing.id}`, editing);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error || 'Error');
       return;
     }
@@ -127,7 +121,7 @@ export const Commissions: React.FC = () => {
 
   const removeRule = async (rule: Rule) => {
     if (!confirm(`¿Borrar regla "${rule.name}"?`)) return;
-    await fetch(`/api/hr/commissions/rules/${rule.id}`, { method: 'DELETE', headers });
+    await hrApi.raw('DELETE', `/api/hr/commissions/rules/${rule.id}`);
     fetchAll();
   };
 
@@ -136,15 +130,12 @@ export const Commissions: React.FC = () => {
     const start = `${filter.year}-${String(filter.month).padStart(2, '0')}-01`;
     const lastDay = new Date(filter.year, filter.month, 0).getDate();
     const end = `${filter.year}-${String(filter.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-    const r = await fetch(`/api/hr/commissions/recalculate?from=${start}&to=${end}`, {
-      method: 'POST',
-      headers,
-    });
+    const r = await hrApi.raw('POST', `/api/hr/commissions/recalculate?from=${start}&to=${end}`);
     if (!r.ok) {
       toast.error('Error al recalcular');
       return;
     }
-    const d = await r.json();
+    const d = r.data;
     toast.success(`Procesados ${d.processed} documentos`);
     fetchAccruals();
   };

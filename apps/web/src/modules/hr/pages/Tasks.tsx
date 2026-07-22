@@ -1,6 +1,7 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast, cn } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { ListTodo, Plus, Trash2, X, User, Calendar, Clock } from 'lucide-react';
 
 interface Task {
@@ -68,11 +69,9 @@ export const Tasks: React.FC = () => {
     if (filter.projectId) params.set('projectId', filter.projectId);
     if (filter.assigneeId) params.set('assigneeId', filter.assigneeId);
     const [t, e, p] = await Promise.all([
-      fetch(`/api/hr/tasks?${params}`, { headers }).then((r) => r.json()),
-      fetch('/api/hr/employees', { headers }).then((r) => r.json()),
-      fetch('/api/internal-orders', { headers })
-        .then((r) => r.json())
-        .catch(() => []),
+      hrApi.get<any>(`/api/hr/tasks?${params}`),
+      hrApi.get<any>('/api/hr/employees'),
+      hrApi.get<any>('/api/internal-orders').catch(() => []),
     ]);
     setRows(Array.isArray(t) ? t : []);
     setEmployees(Array.isArray(e) ? e : []);
@@ -90,13 +89,9 @@ export const Tasks: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await fetch(isNew ? '/api/hr/tasks' : `/api/hr/tasks/${editing.id}`, {
-      method: isNew ? 'POST' : 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify(editing),
-    });
+    const r = await hrApi.raw('GET', isNew ? '/api/hr/tasks' : `/api/hr/tasks/${editing.id}`, editing);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error || 'Error');
       return;
     }
@@ -106,17 +101,13 @@ export const Tasks: React.FC = () => {
 
   const remove = async (t: Task) => {
     if (!confirm(`¿Borrar tarea ${t.code}?`)) return;
-    await fetch(`/api/hr/tasks/${t.id}`, { method: 'DELETE', headers });
+    await hrApi.raw('DELETE', `/api/hr/tasks/${t.id}`);
     fetchAll();
   };
 
   const moveTo = async (t: Task, status: Task['status']) => {
     if (t.status === status) return;
-    await fetch(`/api/hr/tasks/${t.id}`, {
-      method: 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
+    await hrApi.raw('PATCH', `/api/hr/tasks/${t.id}`, { status });
     fetchAll();
   };
 

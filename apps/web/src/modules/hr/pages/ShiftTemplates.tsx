@@ -1,10 +1,11 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Clock, Plus, Pencil, Trash2 } from 'lucide-react';
-import { ContextMenu } from '../../components/common/ContextMenu';
-import { withRowContextMenu } from '../../components/common/withRowContextMenu';
-import { useContextMenu } from '../../hooks/useContextMenu';
+import { ContextMenu } from '@/components/common/ContextMenu';
+import { withRowContextMenu } from '@/components/common/withRowContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 
 interface ShiftTemplate {
   id: string;
@@ -44,8 +45,8 @@ export const ShiftTemplates: React.FC = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const r = await fetch('/api/hr/shift-templates', { headers });
-    const d = await r.json();
+    const r = await hrApi.raw('GET', '/api/hr/shift-templates');
+    const d = r.data;
     setRows(Array.isArray(d) ? d : []);
     setLoading(false);
   };
@@ -60,16 +61,9 @@ export const ShiftTemplates: React.FC = () => {
       return;
     }
     const isNew = !editing.id;
-    const r = await fetch(
-      isNew ? '/api/hr/shift-templates' : `/api/hr/shift-templates/${editing.id}`,
-      {
-        method: isNew ? 'POST' : 'PATCH',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(editing),
-      },
-    );
+    const r = await hrApi.raw('GET', isNew ? '/api/hr/shift-templates' : `/api/hr/shift-templates/${editing.id}`, editing);
     if (!r.ok) {
-      const d = await r.json();
+      const d = r.data;
       toast.error(d.error);
       return;
     }
@@ -78,7 +72,7 @@ export const ShiftTemplates: React.FC = () => {
   };
 
   const remove = async (t: ShiftTemplate) => {
-    await fetch(`/api/hr/shift-templates/${t.id}`, { method: 'DELETE', headers });
+    await hrApi.raw('DELETE', `/api/hr/shift-templates/${t.id}`);
     fetchAll();
   };
 

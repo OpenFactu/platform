@@ -1,6 +1,7 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import {
   Tablet,
   Plus,
@@ -32,8 +33,8 @@ export const Kiosks: React.FC = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const r = await fetch('/api/hr/kiosks', { headers });
-    setRows(await r.json());
+    const r = await hrApi.raw('GET', '/api/hr/kiosks');
+    setRows(r.data);
     setLoading(false);
   };
   useEffect(() => {
@@ -44,11 +45,7 @@ export const Kiosks: React.FC = () => {
     e.preventDefault();
     if (!editing?.name) return;
     const isNew = !editing.id;
-    const r = await fetch(isNew ? '/api/hr/kiosks' : `/api/hr/kiosks/${editing.id}`, {
-      method: isNew ? 'POST' : 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify(editing),
-    });
+    const r = await hrApi.raw('GET', isNew ? '/api/hr/kiosks' : `/api/hr/kiosks/${editing.id}`, editing);
     if (!r.ok) return;
     setEditing(null);
     fetchAll();
@@ -56,13 +53,13 @@ export const Kiosks: React.FC = () => {
 
   const regenerate = async (k: Kiosk) => {
     if (!confirm('¿Regenerar token? El kiosko deberá ser configurado de nuevo.')) return;
-    await fetch(`/api/hr/kiosks/${k.id}/regenerate-token`, { method: 'POST', headers });
+    await hrApi.raw('POST', `/api/hr/kiosks/${k.id}/regenerate-token`);
     fetchAll();
   };
 
   const remove = async (k: Kiosk) => {
     if (!confirm(`Eliminar kiosko "${k.name}"?`)) return;
-    await fetch(`/api/hr/kiosks/${k.id}`, { method: 'DELETE', headers });
+    await hrApi.raw('DELETE', `/api/hr/kiosks/${k.id}`);
     fetchAll();
   };
 

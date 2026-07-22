@@ -1,7 +1,8 @@
+import { hrApi } from '../api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, Button, Input, useToast, cn } from '@openfactu/ui';
-import { useAuth } from '../../context/AuthContext';
-import { useTabs } from '../../context/TabsContext';
+import { useAuth } from '@/context/AuthContext';
+import { useTabs } from '@/context/TabsContext';
 import { CalendarRange, ChevronLeft, ChevronRight, GanttChart, Plus, X } from 'lucide-react';
 
 interface Task {
@@ -91,11 +92,9 @@ export const Gantt: React.FC = () => {
     });
     if (filterProject) params.set('projectId', filterProject);
     const [g, e, p] = await Promise.all([
-      fetch(`/api/hr/tasks/gantt?${params}`, { headers }).then((r) => r.json()),
-      fetch('/api/hr/employees', { headers }).then((r) => r.json()),
-      fetch('/api/internal-orders', { headers })
-        .then((r) => r.json())
-        .catch(() => []),
+      hrApi.get<any>(`/api/hr/tasks/gantt?${params}`),
+      hrApi.get<any>('/api/hr/employees'),
+      hrApi.get<any>('/api/internal-orders').catch(() => []),
     ]);
     setTasks(g.tasks || []);
     setEmployees(Array.isArray(e) ? e : []);
@@ -128,11 +127,7 @@ export const Gantt: React.FC = () => {
 
   // Patch genérico.
   const patchTask = async (id: string, body: any): Promise<boolean> => {
-    const r = await fetch(`/api/hr/tasks/${id}`, {
-      method: 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    const r = await hrApi.raw('PATCH', `/api/hr/tasks/${id}`, body);
     if (!r.ok) {
       toast.error('No se pudo guardar');
       return false;
@@ -355,19 +350,15 @@ export const Gantt: React.FC = () => {
                   toast.error('Título obligatorio');
                   return;
                 }
-                const r = await fetch('/api/hr/tasks', {
-                  method: 'POST',
-                  headers: { ...headers, 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
+                const r = await hrApi.raw('POST', '/api/hr/tasks', {
                     title: quickCreate.title.trim(),
                     status: 'todo',
                     priority: 'normal',
                     progress: 0,
                     assigneeId: quickCreate.assigneeId || null,
-                  }),
-                });
+                  });
                 if (!r.ok) {
-                  const d = await r.json().catch(() => ({}));
+                  const d = (r.data ?? {});
                   toast.error(d.error || 'No se pudo crear');
                   return;
                 }
