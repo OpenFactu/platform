@@ -1,15 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Badge, Button, useToast } from '@openfactu/ui';
-import { Puzzle, Database, RefreshCw, Zap, Key } from 'lucide-react';
+import { Puzzle, Database, RefreshCw, Zap, Key, LayoutGrid } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { usePlugins } from '@/context/PluginContext';
+import { usePlugins, useModules } from '@/context/PluginContext';
+import { useTheme } from '@/context/ThemeContext';
 import { ApiError } from '@/shared/http';
 import { DevKeysPanel } from '../components/DevKeysPanel';
 import { PluginCard } from '../components/PluginCard';
+import { ModuleCard } from '../components/ModuleCard';
 import { pluginsApi } from '../api';
 import type { PluginInfo } from '../domain/PluginInfo';
 import type { PluginField } from '../domain/PluginField';
 import type { PluginTable } from '../domain/PluginTable';
+import type { Module } from '@/modules';
 
 export const PluginManager: React.FC = () => {
   const { token, user } = useAuth();
@@ -21,7 +24,17 @@ export const PluginManager: React.FC = () => {
   const [tables, setTables] = useState<PluginTable[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
+  const [togglingModule, setTogglingModule] = useState<string | null>(null);
   const [tab, setTab] = useState<'plugins' | 'dev'>('plugins');
+
+  const allModules = useModules();
+  const { flags, update } = useTheme();
+  const activatableModules = allModules.filter((m) => Boolean(m.featureFlag));
+  const modulesByCategory = activatableModules.reduce<Record<string, Module[]>>((acc, m) => {
+    const cat = m.category || 'General';
+    (acc[cat] = acc[cat] || []).push(m);
+    return acc;
+  }, {});
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -79,6 +92,23 @@ export const PluginManager: React.FC = () => {
     }
   };
 
+  const toggleModule = async (mod: Module) => {
+    if (!mod.featureFlag) return;
+    const key = mod.featureFlag;
+    const currentlyEnabled = !!(flags as unknown as Record<string, boolean>)[key];
+    setTogglingModule(mod.id);
+    try {
+      await update('flags', { [key]: !currentlyEnabled });
+      toast.success(
+        currentlyEnabled ? `Módulo "${mod.label}" desactivado` : `Módulo "${mod.label}" activado`,
+      );
+    } catch {
+      toast.error('Error al cambiar estado del módulo');
+    } finally {
+      setTogglingModule(null);
+    }
+  };
+
   const activeCount = plugins.filter((p) => p.isActive).length;
 
   return (
@@ -87,10 +117,10 @@ export const PluginManager: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            Gestor de Plugins
+            Apps
           </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-1">
-            Gestiona extensiones y credenciales de desarrollo.
+            Activa o desactiva módulos y plugins para esta empresa.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -118,7 +148,7 @@ export const PluginManager: React.FC = () => {
           }`}
         >
           <span className="flex items-center gap-2">
-            <Puzzle size={15} /> Plugins
+            <LayoutGrid size={15} /> Aplicaciones
           </span>
         </button>
         {(user?.role === 'ADMIN' || user?.role === 'SUPERUSER') && (
@@ -141,7 +171,32 @@ export const PluginManager: React.FC = () => {
         <DevKeysPanel token={token} user={user} />
       ) : (
         <>
+          {/* Módulos core activables, agrupados por categoría */}
+          {Object.entries(modulesByCategory).map(([category, mods]) => (
+            <div key={category} className="mb-8">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">
+                {category}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {mods.map((mod) => (
+                  <ModuleCard
+                    key={mod.id}
+                    module={mod}
+                    enabled={
+                      !!(flags as unknown as Record<string, boolean>)[mod.featureFlag as string]
+                    }
+                    onToggle={() => toggleModule(mod)}
+                    isToggling={togglingModule === mod.id}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+
           {/* Plugin Cards Grid */}
+          <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-3">
+            Plugins
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-10">
             {loading
               ? Array.from({ length: 3 }).map((_, i) => (
