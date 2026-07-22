@@ -841,12 +841,6 @@ export const CompanySettings: React.FC = () => {
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, enforceWarehouseZones: v })}
               />
               <FlagRow
-                label="Gestión de logística"
-                hint="Activa el módulo de envíos, rutas y seguimiento en tiempo real (mapa + timeline por albarán)."
-                checked={!!flagsDraft.logisticsEnabled}
-                onChange={(v) => setFlagsDraft({ ...flagsDraft, logisticsEnabled: v })}
-              />
-              <FlagRow
                 label="Chat de Keiro en seguimiento público"
                 hint="Añade un chat de IA a la página pública de seguimiento (/track/:token) para que el cliente pregunte por su envío o reporte una incidencia — sin login, así que actívalo solo si quieres exponer esa superficie públicamente."
                 checked={!!flagsDraft.trackingChatEnabled}
