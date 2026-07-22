@@ -1,7 +1,9 @@
 import React from 'react';
 import { Shield, Database, Power } from 'lucide-react';
 import { PluginIcon } from '@/components/PluginIcon';
-import type { PluginInfo, PluginField, PluginTable } from '../pages/PluginManager';
+import type { PluginInfo } from '../domain/PluginInfo';
+import type { PluginField } from '../domain/PluginField';
+import type { PluginTable } from '../domain/PluginTable';
 
 interface PluginCardProps {
   plugin: PluginInfo;

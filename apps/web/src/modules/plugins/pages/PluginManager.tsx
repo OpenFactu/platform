@@ -1,36 +1,15 @@
-import { coreApi, type RawResult } from '@/shared/api';
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Badge, Button, useToast } from '@openfactu/ui';
 import { Puzzle, Database, RefreshCw, Zap, Key } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { usePlugins } from '@/context/PluginContext';
+import { ApiError } from '@/shared/http';
 import { DevKeysPanel } from '../components/DevKeysPanel';
 import { PluginCard } from '../components/PluginCard';
-
-export interface PluginInfo {
-  id: string;
-  name?: string;
-  description?: string;
-  version?: string;
-  author?: string;
-  logo?: string;
-  isActive: boolean;
-  ui?: any;
-}
-
-export interface PluginField {
-  pluginId: string;
-  tableName: string;
-  fieldName: string;
-  fieldType: string;
-  label: string;
-}
-
-export interface PluginTable {
-  pluginId: string;
-  tableName: string;
-  definition: string;
-}
+import { pluginsApi } from '../api';
+import type { PluginInfo } from '../domain/PluginInfo';
+import type { PluginField } from '../domain/PluginField';
+import type { PluginTable } from '../domain/PluginTable';
 
 export const PluginManager: React.FC = () => {
   const { token, user } = useAuth();
@@ -44,35 +23,23 @@ export const PluginManager: React.FC = () => {
   const [toggling, setToggling] = useState<string | null>(null);
   const [tab, setTab] = useState<'plugins' | 'dev'>('plugins');
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
-  const parseArray = async <T,>(res: RawResult): Promise<T[]> => {
-    if (!res.ok) return [];
-    const data = res.data;
-    return Array.isArray(data) ? (data as T[]) : [];
-  };
-
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [pluginsRes, fieldsRes, tablesRes] = await Promise.all([
-        coreApi.raw('GET', '/api/plugins/available'),
-        coreApi.raw('GET', '/api/plugins/fields'),
-        coreApi.raw('GET', '/api/plugins/tables'),
+        pluginsApi.list(),
+        pluginsApi.fields(),
+        pluginsApi.tables(),
       ]);
-      setPlugins(await parseArray<PluginInfo>(pluginsRes));
-      setFields(await parseArray<PluginField>(fieldsRes));
-      setTables(await parseArray<PluginTable>(tablesRes));
-    } catch (err) {
+      setPlugins(Array.isArray(pluginsRes) ? pluginsRes : []);
+      setFields(Array.isArray(fieldsRes) ? fieldsRes : []);
+      setTables(Array.isArray(tablesRes) ? tablesRes : []);
+    } catch {
       toast.error('Error al cargar datos de plugins');
     } finally {
       setLoading(false);
     }
-  }, [token, user?.tenantId]);
+  }, [user?.tenantId]);
 
   useEffect(() => {
     fetchData();
@@ -80,14 +47,12 @@ export const PluginManager: React.FC = () => {
 
   const togglePlugin = async (pluginId: string, currentlyActive: boolean) => {
     setToggling(pluginId);
-    const action = currentlyActive ? 'deactivate' : 'activate';
 
     try {
-      const res = await coreApi.raw('POST', `/api/plugins/${pluginId}/${action}`);
-
-      if (!res.ok) {
-        const data = res.data;
-        throw new Error(data.error || 'Error desconocido');
+      if (currentlyActive) {
+        await pluginsApi.deactivate(pluginId);
+      } else {
+        await pluginsApi.activate(pluginId);
       }
 
       // Actualizar estado local inmediatamente
@@ -99,20 +64,16 @@ export const PluginManager: React.FC = () => {
       reloadManifests();
 
       // Recargar fields/tables (pueden cambiar con activación)
-      const [fieldsRes, tablesRes] = await Promise.all([
-        coreApi.raw('GET', '/api/plugins/fields'),
-        coreApi.raw('GET', '/api/plugins/tables'),
-      ]);
-      setFields(await parseArray<PluginField>(fieldsRes));
-      setTables(await parseArray<PluginTable>(tablesRes));
+      const [fieldsRes, tablesRes] = await Promise.all([pluginsApi.fields(), pluginsApi.tables()]);
+      setFields(Array.isArray(fieldsRes) ? fieldsRes : []);
+      setTables(Array.isArray(tablesRes) ? tablesRes : []);
 
       toast.success(
         currentlyActive ? `Plugin "${pluginId}" desactivado` : `Plugin "${pluginId}" activado`,
       );
     } catch (err) {
-      toast.error(
-        (err instanceof Error ? err.message : undefined) || 'Error al cambiar estado del plugin',
-      );
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error al cambiar estado del plugin');
     } finally {
       setToggling(null);
     }

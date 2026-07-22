@@ -1,17 +1,9 @@
-import { coreApi } from '@/shared/api';
 import React, { useEffect, useState, useCallback } from 'react';
 import { Card, Badge, Button, useToast } from '@openfactu/ui';
 import { Shield, Key, Copy, Trash2, Eye, EyeOff, Plus } from 'lucide-react';
-
-interface DevKey {
-  id: string;
-  clientId: string;
-  name: string;
-  permissions: string;
-  isActive: boolean;
-  lastUsedAt: string | null;
-  createdAt: string;
-}
+import { ApiError } from '@/shared/http';
+import { devKeysApi } from '../api';
+import type { DevKey } from '../domain/DevKeys';
 
 export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ token, user }) => {
   const toast = useToast();
@@ -22,22 +14,17 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
   const [newKey, setNewKey] = useState<{ clientId: string; clientSecret: string } | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
-  const headers = {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const fetchKeys = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await coreApi.raw('GET', '/api/dev-keys');
-      if (res.ok) setKeys(res.data);
+      const data = await devKeysApi.list();
+      setKeys(Array.isArray(data) ? data : []);
     } catch {
+      // silencioso: el panel se queda vacío, no es una acción del usuario
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, user?.tenantId]);
 
   useEffect(() => {
     fetchKeys();
@@ -50,18 +37,14 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
     }
     setCreating(true);
     try {
-      const res = await coreApi.raw('POST', '/api/dev-keys', { name: newKeyName });
-      const data = res.data;
-      if (res.ok) {
-        setNewKey({ clientId: data.clientId, clientSecret: data.clientSecret });
-        setNewKeyName('');
-        fetchKeys();
-        toast.success('API Key generada');
-      } else {
-        toast.error(data.error);
-      }
+      const data = await devKeysApi.create(newKeyName);
+      setNewKey({ clientId: data.clientId, clientSecret: data.clientSecret });
+      setNewKeyName('');
+      fetchKeys();
+      toast.success('API Key generada');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : undefined);
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || 'Error al generar la key');
     } finally {
       setCreating(false);
     }
@@ -69,22 +52,21 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
 
   const deleteKey = async (id: string) => {
     try {
-      const res = await coreApi.raw('DELETE', `/api/dev-keys/${id}`);
-      if (res.ok) {
-        setKeys((prev) => prev.filter((k) => k.id !== id));
-        toast.success('Key eliminada');
-      }
-    } catch {}
+      await devKeysApi.remove(id);
+      setKeys((prev) => prev.filter((k) => k.id !== id));
+      toast.success('Key eliminada');
+    } catch {
+      toast.error('Error al eliminar la key');
+    }
   };
 
   const toggleKey = async (id: string) => {
     try {
-      const res = await coreApi.raw('PATCH', `/api/dev-keys/${id}/toggle`);
-      const data = res.data;
-      if (res.ok) {
-        setKeys((prev) => prev.map((k) => (k.id === id ? { ...k, isActive: data.isActive } : k)));
-      }
-    } catch {}
+      const data = await devKeysApi.toggle(id);
+      setKeys((prev) => prev.map((k) => (k.id === id ? { ...k, isActive: data.isActive } : k)));
+    } catch {
+      toast.error('Error al cambiar el estado de la key');
+    }
   };
 
   const copyToClipboard = (text: string, field: string) => {
