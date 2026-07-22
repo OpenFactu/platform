@@ -255,7 +255,8 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                         (ver PATCH /prep/tasks/:id). */}
                     {(manageBy === 'B' || manageBy === 'S') &&
                       (() => {
-                        const key = t.itemId && t.warehouseId ? `${t.itemId}::${t.warehouseId}` : '';
+                        const key =
+                          t.itemId && t.warehouseId ? `${t.itemId}::${t.warehouseId}` : '';
                         const available = batchOptionsByKey.get(key) || [];
                         const options = available.map((b) => ({
                           value: b.batchNum,

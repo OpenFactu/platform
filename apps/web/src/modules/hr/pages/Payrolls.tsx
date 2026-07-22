@@ -49,7 +49,6 @@ export const Payrolls: React.FC = () => {
   const [lines, setLines] = useState<any[]>([]);
   const [linesLoading, setLinesLoading] = useState(false);
 
-
   const fetchAll = async () => {
     setLoading(true);
     try {
@@ -205,7 +204,9 @@ export const Payrolls: React.FC = () => {
       await refreshLines(editLines.id);
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error al añadir línea',
+        err instanceof ApiError
+          ? ((err.body as any)?.error ?? err.message)
+          : 'Error al añadir línea',
       );
     }
   };
@@ -697,7 +698,9 @@ export const Payrolls: React.FC = () => {
                       await refreshLines(editLines.id);
                     } catch (err) {
                       toast.error(
-                        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error',
+                        err instanceof ApiError
+                          ? ((err.body as any)?.error ?? err.message)
+                          : 'Error',
                       );
                     }
                   }}

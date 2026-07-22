@@ -393,9 +393,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
     // Filtramos client-side: no hay endpoint específico, pero GET /packages
     // devuelve todos — filtramos por stagingAreaId.
     const list = await packagesApi.list().catch(() => []);
-    setAreaPackages(
-      (Array.isArray(list) ? list : []).filter((p) => p.stagingAreaId === area.id),
-    );
+    setAreaPackages((Array.isArray(list) ? list : []).filter((p) => p.stagingAreaId === area.id));
   };
 
   const PKG_BADGE: Record<string, BadgeProps['variant']> = {

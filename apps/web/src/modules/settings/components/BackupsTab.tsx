@@ -112,8 +112,9 @@ export const BackupsTab: React.FC = () => {
         const [cfgRes] = await Promise.all([
           coreApi.raw('GET', '/api/config/backup'),
           loadRuns().catch(() => []),
-          coreApi.raw('GET', '/api/config/storage/oauth/status')
-            .catch(() => (null))
+          coreApi
+            .raw('GET', '/api/config/storage/oauth/status')
+            .catch(() => null)
             .then(setCloudStatus)
             .catch(() => undefined),
         ]);
@@ -149,11 +150,14 @@ export const BackupsTab: React.FC = () => {
     setSaving(true);
     try {
       const res = await coreApi.raw('PUT', '/api/config/backup', config);
-      if (!res.ok) throw new Error((res.data)?.error || `HTTP ${res.status}`);
+      if (!res.ok) throw new Error(res.data?.error || `HTTP ${res.status}`);
       setConfig(res.data);
       toast.success('Programación guardada');
     } catch (e) {
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al guardar');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al guardar',
+      );
     } finally {
       setSaving(false);
     }
@@ -163,12 +167,15 @@ export const BackupsTab: React.FC = () => {
     setLaunching(true);
     try {
       const res = await coreApi.raw('POST', '/api/backups/run');
-      const body = (res.data ?? {});
+      const body = res.data ?? {};
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       toast.success('Backup lanzado — puede tardar unos minutos');
       await loadRuns().catch(() => undefined);
     } catch (e) {
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al lanzar el backup');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al lanzar el backup',
+      );
     } finally {
       setLaunching(false);
     }
@@ -198,11 +205,14 @@ export const BackupsTab: React.FC = () => {
     }
     try {
       const res = await coreApi.raw('DELETE', `/api/backups/${run.id}`);
-      if (!res.ok) throw new Error((res.data)?.error || `HTTP ${res.status}`);
+      if (!res.ok) throw new Error(res.data?.error || `HTTP ${res.status}`);
       toast.success('Backup eliminado');
       await loadRuns().catch(() => undefined);
     } catch (e) {
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al eliminar');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al eliminar',
+      );
     }
   };
 
@@ -214,14 +224,19 @@ export const BackupsTab: React.FC = () => {
     }
     setRestoring(true);
     try {
-      const res = await coreApi.raw('POST', `/api/backups/${restoreRun.id}/restore`, { newName: restoreName.trim() });
-      const body = (res.data ?? {});
+      const res = await coreApi.raw('POST', `/api/backups/${restoreRun.id}/restore`, {
+        newName: restoreName.trim(),
+      });
+      const body = res.data ?? {};
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       toast.success(`Backup restaurado como "${restoreName.trim()}" (id: ${body.tenantId})`);
       setRestoreRun(null);
       setRestoreName('');
     } catch (e) {
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al restaurar');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al restaurar',
+      );
     } finally {
       setRestoring(false);
     }

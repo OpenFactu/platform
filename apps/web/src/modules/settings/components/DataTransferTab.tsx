@@ -39,7 +39,8 @@ export const DataTransferTab: React.FC = () => {
   const [exportTenantId, setExportTenantId] = useState<string>('');
 
   const loadTenants = () =>
-    coreApi.get('/api/tenants/mine')
+    coreApi
+      .get('/api/tenants/mine')
       .then((list) => {
         const arr = Array.isArray(list) ? list : [];
         setTenants(arr);
@@ -73,8 +74,10 @@ export const DataTransferTab: React.FC = () => {
     }
     setDeleting(true);
     try {
-      const res = await coreApi.raw('DELETE', `/api/admin/tenants/${deleteTenant.id}`, { confirmName: deleteConfirmText });
-      const body = (res.data ?? {});
+      const res = await coreApi.raw('DELETE', `/api/admin/tenants/${deleteTenant.id}`, {
+        confirmName: deleteConfirmText,
+      });
+      const body = res.data ?? {};
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       toast.success(`Empresa "${deleteTenant.name}" eliminada`);
       setDeleteConfirmText('');

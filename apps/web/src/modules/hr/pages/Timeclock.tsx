@@ -80,7 +80,9 @@ export const Timeclock: React.FC = () => {
       setEntries(Array.isArray(d.entries) ? d.entries : []);
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'No hay empleado vinculado',
+        err instanceof ApiError
+          ? ((err.body as any)?.error ?? err.message)
+          : 'No hay empleado vinculado',
       );
     } finally {
       setLoading(false);

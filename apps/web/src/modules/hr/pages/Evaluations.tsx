@@ -1,9 +1,5 @@
 import { evaluationsApi, employeesApi } from '../api';
-import type {
-  EvaluationCycle as Cycle,
-  Competency,
-  Evaluation,
-} from '../domain/evaluation';
+import type { EvaluationCycle as Cycle, Competency, Evaluation } from '../domain/evaluation';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';

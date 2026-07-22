@@ -52,7 +52,6 @@ export const Employees: React.FC = () => {
   const toast = useToast();
   const popup = usePopup();
 
-
   const fetchAll = async () => {
     setLoading(true);
     try {
@@ -60,9 +59,7 @@ export const Employees: React.FC = () => {
         employeesApi.list(),
         departmentsApi.list(),
         costCentersApi.list(),
-        crudApi
-          .list<{ id: string; username: string; email: string }>('/api/users')
-          .catch(() => []),
+        crudApi.list<{ id: string; username: string; email: string }>('/api/users').catch(() => []),
       ]);
       setRows(Array.isArray(e) ? e : []);
       setDepartments(Array.isArray(d) ? d : []);
@@ -211,7 +208,12 @@ export const Employees: React.FC = () => {
   const ctxMenu = useContextMenu<Employee>();
   const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
   const buildCtxItems = (r: Employee) => [
-    { label: 'Editar', icon: <Pencil size={14} />, disabled: !canWrite, onClick: () => openEdit(r) },
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => openEdit(r),
+    },
     {
       label: 'Eliminar',
       icon: <Trash2 size={14} />,

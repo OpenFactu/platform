@@ -143,7 +143,10 @@ export const ShipmentDetail: React.FC = () => {
     if (!id || !cancelModal) return;
     const { reason, cancelDn } = cancelModal;
     try {
-      await shipmentsApi.cancel(id, { reason: reason.trim() || null, cancelDeliveryNote: cancelDn });
+      await shipmentsApi.cancel(id, {
+        reason: reason.trim() || null,
+        cancelDeliveryNote: cancelDn,
+      });
       setCancelModal(null);
       toast.success('Envío cancelado');
       load();
@@ -188,7 +191,10 @@ export const ShipmentDetail: React.FC = () => {
     if (!id || !returnModal) return;
     const { reason, cancelDn } = returnModal;
     try {
-      const d = await shipmentsApi.return(id, { reason: reason.trim() || null, cancelDeliveryNote: cancelDn });
+      const d = await shipmentsApi.return(id, {
+        reason: reason.trim() || null,
+        cancelDeliveryNote: cancelDn,
+      });
       setReturnModal(null);
       toast.success(
         d.deliveryNoteCancelled

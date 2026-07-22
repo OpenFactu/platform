@@ -175,7 +175,11 @@ export const Incidents: React.FC = () => {
     return [
       ...(r.status === 'pending'
         ? [
-            { label: 'Aprobar', icon: <Check size={14} />, onClick: () => setStatus(r, 'approved') },
+            {
+              label: 'Aprobar',
+              icon: <Check size={14} />,
+              onClick: () => setStatus(r, 'approved'),
+            },
             {
               label: 'Rechazar',
               icon: <Ban size={14} />,
