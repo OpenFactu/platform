@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Button, Input, useToast, usePopup, Badge } from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X, CalendarClock, AlertCircle } from 'lucide-react';
@@ -35,8 +36,7 @@ export const PaymentTermsEditor: React.FC = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/payment-terms', { headers: authHeaders });
-      const data = await res.json();
+      const data = await coreApi.get<any>('/api/payment-terms');
       setRows(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Error al cargar plazos');
@@ -77,11 +77,8 @@ export const PaymentTermsEditor: React.FC = () => {
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/payment-terms/${id}`, {
-        method: 'DELETE',
-        headers: authHeaders,
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Error');
+      const res = await coreApi.raw('DELETE', `/api/payment-terms/${id}`);
+      if (!res.ok) throw new Error((res.data).error || 'Error');
       toast.success('Eliminado');
       await load();
     } catch (e: any) {
@@ -261,11 +258,10 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
     }
     setSaving(true);
     try {
-      const body = JSON.stringify({ name, lines, isActive });
       const url = initial ? `/api/payment-terms/${initial.id}` : '/api/payment-terms';
       const method = initial ? 'PATCH' : 'POST';
-      const res = await fetch(url, { method, headers: authHeaders, body });
-      if (!res.ok) throw new Error((await res.json()).error || 'Error');
+      const res = await coreApi.raw(method, url, { name, lines, isActive });
+      if (!res.ok) throw new Error(res.data?.error || 'Error');
       toast.success(initial ? 'Actualizado' : 'Creado');
       onSaved();
     } catch (e: any) {

@@ -11,6 +11,7 @@
  * server-side según la config del tenant — el front no se entera.
  */
 
+import { coreApi } from '@/shared/api';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Paperclip, Upload, Trash2, Download, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -61,12 +62,9 @@ export const AttachmentsPanel: React.FC<Props> = ({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(
-        `/api/attachments?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`,
-        { headers },
-      );
+      const res = await coreApi.raw('GET', `/api/attachments?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setItems(await res.json());
+      setItems(res.data);
     } catch (e: any) {
       setError(e?.message || 'Error al cargar adjuntos');
     } finally {
@@ -85,14 +83,10 @@ export const AttachmentsPanel: React.FC<Props> = ({
       for (const file of Array.from(files)) {
         const fd = new FormData();
         fd.append('file', file);
-        const res = await fetch(
+        await coreApi.postForm(
           `/api/attachments?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`,
-          { method: 'POST', headers, body: fd },
+          fd,
         );
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body?.error || `HTTP ${res.status} subiendo ${file.name}`);
-        }
       }
       await refresh();
     } catch (e: any) {
@@ -105,7 +99,7 @@ export const AttachmentsPanel: React.FC<Props> = ({
   const onDelete = async (id: string) => {
     if (!confirm('¿Eliminar este adjunto?')) return;
     try {
-      const res = await fetch(`/api/attachments/${id}`, { method: 'DELETE', headers });
+      const res = await coreApi.raw('DELETE', `/api/attachments/${id}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await refresh();
     } catch (e: any) {
@@ -117,10 +111,9 @@ export const AttachmentsPanel: React.FC<Props> = ({
     const tenantId = user?.tenantId ?? '';
     // Forzamos descarga vía `<a>` con headers no posibles → usamos fetch
     // y blob para preservar la auth del JWT.
-    fetch(`/api/attachments/${a.id}/download`, {
-      headers: { Authorization: `Bearer ${token ?? ''}`, 'x-tenant-id': tenantId },
-    })
-      .then((r) => r.blob())
+    coreApi
+      .getBlob(`/api/attachments/${a.id}/download`)
+      .then(({ blob }) => blob)
       .then((blob) => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');

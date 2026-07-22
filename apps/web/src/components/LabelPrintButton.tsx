@@ -13,6 +13,8 @@
  * disponibles en las queries de la plantilla — típicamente `{ itemId }`.
  */
 
+import { coreApi } from '@/shared/api';
+import { apiClient } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Tag, Printer } from 'lucide-react';
@@ -58,14 +60,9 @@ export const LabelPrintButton: React.FC<Props> = ({
     if (!open || templates !== null) return;
     (async () => {
       try {
-        const res = await fetch('/api/document-templates?docType=LABEL', {
-          headers: {
-            Authorization: `Bearer ${token ?? ''}`,
-            'x-tenant-id': tenantId ?? '',
-          },
-        });
+        const res = await coreApi.raw('GET', '/api/document-templates?docType=LABEL');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const list: FreeTemplate[] = await res.json();
+        const list: FreeTemplate[] = res.data;
         setTemplates(list);
         const def = list.find((t) => t.isDefault) ?? list[0];
         setSelectedId(def?.id ?? '');
@@ -80,20 +77,10 @@ export const LabelPrintButton: React.FC<Props> = ({
     setPrinting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/document-templates/${selectedId}/render-free`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token ?? ''}`,
-          'x-tenant-id': tenantId ?? '',
-        },
-        body: JSON.stringify({ params, copies }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
-      const blob = await res.blob();
+      const { blob } = await apiClient.postBlob(
+        `/api/document-templates/${selectedId}/render-free`,
+        { params, copies },
+      );
       const url = URL.createObjectURL(blob);
       const win = window.open(url, '_blank');
       if (!win) {

@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Input, useToast } from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X } from 'lucide-react';
@@ -57,8 +58,8 @@ export const FiscalCatalogTable: React.FC<Props> = ({
   const load = async () => {
     setLoading(true);
     try {
-      const res = await fetch(endpoint, { headers });
-      const data = await res.json();
+      const res = await coreApi.raw('GET', endpoint);
+      const data = res.data;
       setRows(Array.isArray(data) ? data : []);
     } catch {
       toast.error(`Error cargando ${title}`);
@@ -78,8 +79,8 @@ export const FiscalCatalogTable: React.FC<Props> = ({
       const method = isNew ? 'POST' : 'PUT';
       const body = { ...row };
       if (isNew) delete body.id;
-      const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
-      if (!res.ok) throw new Error((await res.json())?.error || 'Error');
+      const res = await coreApi.raw(method, url, body);
+      if (!res.ok) throw new Error(res.data?.error || 'Error');
       toast.success(isNew ? 'Creado' : 'Actualizado');
       setEditingId(null);
       setCreating(false);
@@ -93,8 +94,8 @@ export const FiscalCatalogTable: React.FC<Props> = ({
   const remove = async (id: string) => {
     if (!confirm('¿Eliminar este registro?')) return;
     try {
-      const res = await fetch(`${endpoint}/${id}`, { method: 'DELETE', headers });
-      if (!res.ok) throw new Error((await res.json())?.error || 'Error');
+      const res = await coreApi.raw('DELETE', `${endpoint}/${id}`);
+      if (!res.ok) throw new Error((res.data)?.error || 'Error');
       toast.success('Eliminado');
       await load();
     } catch (e: any) {

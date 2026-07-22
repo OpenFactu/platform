@@ -9,6 +9,7 @@
  * desatendida en el backend — este tab solo gestiona la config.
  */
 
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
 import { Mail, Send, Plug, CheckCircle2, XCircle } from 'lucide-react';
@@ -54,9 +55,9 @@ export const EmailSettingsTab: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/email/config', { headers });
+        const res = await coreApi.raw('GET', '/api/email/config');
         if (!res.ok) throw new Error('No se pudo cargar la configuración');
-        const data = await res.json();
+        const data = res.data;
         setCfg({ ...EMPTY, ...data });
       } catch (e: any) {
         toast.error(e?.message || 'Error');
@@ -72,13 +73,9 @@ export const EmailSettingsTab: React.FC = () => {
     try {
       const payload: any = { ...cfg };
       if (newPassword) payload.password = newPassword;
-      const res = await fetch('/api/email/config', {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Error');
-      const data = await res.json();
+      const res = await coreApi.raw('PUT', '/api/email/config', payload);
+      if (!res.ok) throw new Error((res.data).error || 'Error');
+      const data = res.data;
       setCfg({ ...EMPTY, ...data });
       setNewPassword('');
       toast.success('Configuración guardada');
@@ -98,12 +95,8 @@ export const EmailSettingsTab: React.FC = () => {
       // usamos; si no, el backend cae a la guardada.
       const override: any = { ...cfg };
       if (newPassword) override.password = newPassword;
-      const res = await fetch('/api/email/verify', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(override),
-      });
-      const data = await res.json();
+      const res = await coreApi.raw('POST', '/api/email/verify', override);
+      const data = res.data;
       if (data.ok) {
         setVerifyResult({ ok: true, detail: `Conectado a ${cfg.host}:${cfg.port}` });
         toast.success('Conexión SMTP OK');
@@ -123,12 +116,8 @@ export const EmailSettingsTab: React.FC = () => {
     setSendingTest(true);
     setTestResult(null);
     try {
-      const res = await fetch('/api/email/test', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ to: testEmail || undefined }),
-      });
-      const data = await res.json();
+      const res = await coreApi.raw('POST', '/api/email/test', { to: testEmail || undefined });
+      const data = res.data;
       if (res.ok) {
         const accepted = (data.accepted as string[])?.join(', ') || '(sin destinatarios)';
         setTestResult({ ok: true, detail: `Correo aceptado por el SMTP · ${accepted}` });

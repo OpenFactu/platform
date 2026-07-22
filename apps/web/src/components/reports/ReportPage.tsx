@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React from 'react';
 import type { ReactNode } from 'react';
 import { Card, Button, useToast } from '@openfactu/ui';
@@ -62,14 +63,7 @@ export function ReportPage<T extends Record<string, any>>({
           .join('&')
       : '';
     try {
-      const res = await fetch(`${pdfEndpoint}${qs}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-      });
-      if (!res.ok) throw new Error(`${res.status}`);
-      const blob = await res.blob();
+      const { blob } = await coreApi.getBlob(`${pdfEndpoint}${qs}`);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

@@ -11,6 +11,7 @@
  * Endpoints solo para ADMIN/SUPERUSER (el backend devuelve 403 al resto).
  */
 
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
 import {
@@ -96,9 +97,9 @@ export const BackupsTab: React.FC = () => {
   };
 
   const loadRuns = async (): Promise<BackupRun[]> => {
-    const res = await fetch('/api/backups', { headers });
+    const res = await coreApi.get<any>('/api/backups');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const body = await res.json();
+    const body = res.data;
     const list: BackupRun[] = body.runs || [];
     setRuns(list);
     return list;
@@ -109,15 +110,15 @@ export const BackupsTab: React.FC = () => {
     (async () => {
       try {
         const [cfgRes] = await Promise.all([
-          fetch('/api/config/backup', { headers }),
+          coreApi.raw('GET', '/api/config/backup'),
           loadRuns().catch(() => []),
-          fetch('/api/config/storage/oauth/status', { headers })
-            .then((r) => (r.ok ? r.json() : null))
+          coreApi.raw('GET', '/api/config/storage/oauth/status')
+            .catch(() => (null))
             .then(setCloudStatus)
             .catch(() => undefined),
         ]);
         if (!cfgRes.ok) throw new Error(`HTTP ${cfgRes.status}`);
-        setConfig(await cfgRes.json());
+        setConfig(cfgRes.data);
       } catch {
         toast.error('No se pudo cargar la configuración de backups');
       } finally {
@@ -147,13 +148,9 @@ export const BackupsTab: React.FC = () => {
     if (!config) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/config/backup', {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(config),
-      });
-      if (!res.ok) throw new Error((await res.json())?.error || `HTTP ${res.status}`);
-      setConfig(await res.json());
+      const res = await coreApi.raw('PUT', '/api/config/backup', config);
+      if (!res.ok) throw new Error((res.data)?.error || `HTTP ${res.status}`);
+      setConfig(res.data);
       toast.success('Programación guardada');
     } catch (e: any) {
       toast.error(e?.message || 'Error al guardar');
@@ -165,8 +162,8 @@ export const BackupsTab: React.FC = () => {
   const runNow = async () => {
     setLaunching(true);
     try {
-      const res = await fetch('/api/backups/run', { method: 'POST', headers });
-      const body = await res.json().catch(() => ({}));
+      const res = await coreApi.raw('POST', '/api/backups/run');
+      const body = (res.data ?? {});
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       toast.success('Backup lanzado — puede tardar unos minutos');
       await loadRuns().catch(() => undefined);
@@ -179,12 +176,7 @@ export const BackupsTab: React.FC = () => {
 
   const download = async (run: BackupRun) => {
     try {
-      const res = await fetch(`/api/backups/${run.id}/download`, { headers });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || `HTTP ${res.status}`);
-      }
-      const blob = await res.blob();
+      const { blob } = await coreApi.getBlob(`/api/backups/${run.id}/download`);
       const u = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = u;
@@ -205,8 +197,8 @@ export const BackupsTab: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch(`/api/backups/${run.id}`, { method: 'DELETE', headers });
-      if (!res.ok) throw new Error((await res.json())?.error || `HTTP ${res.status}`);
+      const res = await coreApi.raw('DELETE', `/api/backups/${run.id}`);
+      if (!res.ok) throw new Error((res.data)?.error || `HTTP ${res.status}`);
       toast.success('Backup eliminado');
       await loadRuns().catch(() => undefined);
     } catch (e: any) {
@@ -222,12 +214,8 @@ export const BackupsTab: React.FC = () => {
     }
     setRestoring(true);
     try {
-      const res = await fetch(`/api/backups/${restoreRun.id}/restore`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ newName: restoreName.trim() }),
-      });
-      const body = await res.json().catch(() => ({}));
+      const res = await coreApi.raw('POST', `/api/backups/${restoreRun.id}/restore`, { newName: restoreName.trim() });
+      const body = (res.data ?? {});
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       toast.success(`Backup restaurado como "${restoreName.trim()}" (id: ${body.tenantId})`);
       setRestoreRun(null);

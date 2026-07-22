@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Modal, Button, Input, cn } from '@openfactu/ui';
 import {
@@ -230,13 +231,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
     if (availableByItem[availabilityKey]) return;
     setLoadingAvail(true);
     const qs = isSale && lineWarehouseId ? `?warehouseId=${lineWarehouseId}` : '';
-    fetch(`/api/items/${selectedItem.id}/batches${qs}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'x-tenant-id': user?.tenantId || '',
-      },
-    })
-      .then((r) => r.json())
+    coreApi.get<any>(`/api/items/${selectedItem.id}/batches${qs}`)
       .then((data: AvailableBatch[]) => {
         setAvailableByItem((prev) => ({
           ...prev,

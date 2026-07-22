@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, {
   createContext,
   useCallback,
@@ -303,11 +304,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     async <T,>(section: string): Promise<T | null> => {
       if (!token || !user?.tenantId) return null;
       try {
-        const res = await fetch(`/api/config/${section}`, {
-          headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user.tenantId },
-        });
+        const res = await coreApi.raw('GET', `/api/config/${section}`);
         if (!res.ok) return null;
-        return (await res.json()) as T;
+        return (res.data) as T;
       } catch {
         return null;
       }
@@ -339,20 +338,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const update = useCallback(
     async (section: 'branding' | 'format' | 'flags', patch: any) => {
       if (!token || !user?.tenantId) throw new Error('No autenticado');
-      const res = await fetch(`/api/config/${section}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user.tenantId,
-        },
-        body: JSON.stringify(patch),
-      });
+      const res = await coreApi.raw('PUT', `/api/config/${section}`, patch);
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Error al guardar' }));
+        const err = (res.data ?? { error: 'Error al guardar' });
         throw new Error(err.error || 'Error al guardar');
       }
-      const data = await res.json();
+      const data = res.data;
       if (section === 'branding') setBranding({ ...BRANDING_DEFAULTS, ...data });
       if (section === 'format') setFormat({ ...FORMAT_DEFAULTS, ...data });
       if (section === 'flags') setFlags({ ...FLAGS_DEFAULTS, ...data });

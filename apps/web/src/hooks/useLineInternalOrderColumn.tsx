@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { TableColumn } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
@@ -28,10 +29,8 @@ export function useInternalOrderLineColumn(
   useEffect(() => {
     if (cache.orders) return;
     if (!token || !user?.tenantId) return;
-    fetch('/api/internal-orders', {
-      headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user.tenantId },
-    })
-      .then((r) => (r.ok ? r.json() : []))
+    coreApi.get<any>('/api/internal-orders')
+      .catch(() => ([]))
       .then((d: InternalOrder[]) => {
         const arr = Array.isArray(d) ? d : [];
         cache.orders = arr;

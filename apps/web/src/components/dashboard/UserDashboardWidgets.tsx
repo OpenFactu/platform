@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Card } from '@openfactu/ui';
 import { LayoutGrid, AlertCircle, Loader2 } from 'lucide-react';
@@ -193,10 +194,8 @@ export const UserDashboardWidgets: React.FC = () => {
 
   useEffect(() => {
     if (!user?.tenantId) return;
-    fetch('/api/dashboard-widgets', {
-      headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user.tenantId },
-    })
-      .then((r) => (r.ok ? r.json() : []))
+    coreApi.get<any>('/api/dashboard-widgets')
+      .catch(() => ([]))
       .then((d) => setWidgets(Array.isArray(d) ? d : []))
       .catch(() => setWidgets([]));
   }, [token, user?.tenantId]);

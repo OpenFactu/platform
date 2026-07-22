@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { LogOut, Building2, X, ChevronDown, Search } from 'lucide-react';
 import { cn } from '@openfactu/ui';
@@ -80,8 +81,8 @@ export const IconSidebar: React.FC = () => {
 
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
-    fetch('/api/version')
-      .then((r) => (r.ok ? r.json() : null))
+    coreApi
+      .get<any>('/api/version')
       .then((d) => setVersion(d?.version || null))
       .catch(() => setVersion(null));
   }, []);

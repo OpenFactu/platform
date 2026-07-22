@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -28,16 +29,7 @@ export const ReferenceSelect: React.FC<Props> = ({
   useEffect(() => {
     if (!refTable || !token || !user?.tenantId) return;
     const t = setTimeout(() => {
-      fetch(
-        `/api/custom-fields/ref/${refTable}?display=${encodeURIComponent(refDisplayField)}&q=${encodeURIComponent(q)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'x-tenant-id': user.tenantId || '',
-          },
-        },
-      )
-        .then((r) => r.json())
+      coreApi.get<any>(`/api/custom-fields/ref/${refTable}?display=${encodeURIComponent(refDisplayField)}&q=${encodeURIComponent(q)}`)
         .then((d) => {
           const list = Array.isArray(d) ? d : [];
           setRows(list);

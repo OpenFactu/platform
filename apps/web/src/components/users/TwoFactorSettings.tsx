@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Modal, useToast } from '@openfactu/ui';
 import { ShieldCheck, ShieldOff, Loader2, Copy, Check } from 'lucide-react';
@@ -31,8 +32,8 @@ export const TwoFactorSettings: React.FC = () => {
 
   const loadStatus = async () => {
     try {
-      const res = await fetch('/api/2fa/status', { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setEnabled((await res.json()).enabled);
+      const res = await coreApi.raw('GET', '/api/2fa/status');
+      if (res.ok) setEnabled((res.data).enabled);
     } catch {
       /* ignore */
     }
@@ -46,8 +47,8 @@ export const TwoFactorSettings: React.FC = () => {
   const startSetup = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/2fa/setup', { method: 'POST', headers: authHeaders });
-      const data = await res.json();
+      const res = await coreApi.raw('POST', '/api/2fa/setup');
+      const data = res.data;
       if (!res.ok) throw new Error(data.error);
       setQr(data.qrDataUrl);
       setSecret(data.secret);
@@ -64,12 +65,8 @@ export const TwoFactorSettings: React.FC = () => {
   const confirmEnable = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/2fa/enable', {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({ code: code.trim() }),
-      });
-      const data = await res.json();
+      const res = await coreApi.raw('POST', '/api/2fa/enable', { code: code.trim() });
+      const data = res.data;
       if (!res.ok) throw new Error(data.error);
       setBackupCodes(data.backupCodes);
       setEnabled(true);
@@ -84,12 +81,8 @@ export const TwoFactorSettings: React.FC = () => {
   const confirmDisable = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/2fa/disable', {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({ code: disableCode.trim() }),
-      });
-      const data = await res.json();
+      const res = await coreApi.raw('POST', '/api/2fa/disable', { code: disableCode.trim() });
+      const data = res.data;
       if (!res.ok) throw new Error(data.error);
       setEnabled(false);
       setDisableOpen(false);

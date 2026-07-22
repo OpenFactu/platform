@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Modal, Input, Button, useToast } from '@openfactu/ui';
 import { CreditCard } from 'lucide-react';
@@ -57,8 +58,8 @@ export const RegisterPaymentModal: React.FC<Props> = ({
   useEffect(() => {
     if (!open) return;
     setAmount(String(Math.max(0, remaining).toFixed(2)));
-    fetch('/api/payment-methods', { headers })
-      .then((r) => (r.ok ? r.json() : []))
+    coreApi.get<any>('/api/payment-methods')
+      .catch(() => ([]))
       .then((rows: PaymentMethod[]) => {
         setMethods(rows || []);
         if (rows && rows.length > 0 && !methodId) setMethodId(rows[0].id);
@@ -89,12 +90,8 @@ export const RegisterPaymentModal: React.FC<Props> = ({
       if (kind === 'sales') body.salesInvoiceId = invoiceId;
       else body.purchaseInvoiceId = invoiceId;
 
-      const res = await fetch('/api/payments', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
+      const res = await coreApi.raw('POST', '/api/payments', body);
+      const data = res.data;
       if (!res.ok) throw new Error(data?.error || 'Error');
       toast.success(
         kind === 'sales'

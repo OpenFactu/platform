@@ -12,6 +12,7 @@
  * exponer botones destructivos a usuarios finales.
  */
 
+import { coreApi, type RawResult } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Bug, RotateCcw, Globe, AlertTriangle, X, ScanLine, GripVertical } from 'lucide-react';
 
@@ -102,8 +103,8 @@ export const DebugPanel: React.FC = () => {
 
   useEffect(() => {
     const forceParam = new URLSearchParams(window.location.search).get('debug') === '1';
-    fetch('/api/setup/status')
-      .then((r) => r.json())
+    coreApi
+      .get<any>('/api/setup/status')
       .then((j) => setDebugEnabled(Boolean(j?.debugEnabled) || forceParam))
       .catch(() => setDebugEnabled(forceParam));
   }, []);
@@ -133,13 +134,13 @@ export const DebugPanel: React.FC = () => {
 
   if (!debugEnabled) return null;
 
-  const call = async (label: string, action: () => Promise<Response>) => {
+  const call = async (label: string, action: () => Promise<RawResult>) => {
     setBusy(label);
     setMsg(null);
     setErr(null);
     try {
       const r = await action();
-      const body = await r.json().catch(() => ({}));
+      const body = (r.data ?? {});
       if (!r.ok) throw new Error(body?.error || `HTTP ${r.status}`);
       setMsg(body?.message || JSON.stringify(body));
     } catch (e: any) {
@@ -151,19 +152,12 @@ export const DebugPanel: React.FC = () => {
 
   const resetSetup = () =>
     call('reset', () =>
-      fetch('/api/setup/dev-reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      }),
+      coreApi.raw('POST', '/api/setup/dev-reset', {}),
     );
 
   const reseedGeo = () =>
     call('geo', () =>
-      fetch('/api/geo/seed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      }),
+      coreApi.raw('POST', '/api/geo/seed'),
     );
 
   const forceWizard = () => {

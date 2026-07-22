@@ -90,6 +90,23 @@ export class ApiClient {
     return this.request<T>('POST', path, form, opts);
   }
 
+  /**
+   * POST en streaming (NDJSON/SSE): devuelve la Response cruda para que el
+   * llamador consuma res.body con un reader. Lanza ApiError si !ok.
+   */
+  async postStream(path: string, body?: unknown, opts?: RequestOptions): Promise<Response> {
+    const res = await this.rawFetch('POST', path, body, opts);
+    await this.throwIfNotOk(res, opts);
+    return res;
+  }
+
+  /** GET en streaming (descargas con progreso por chunk). Lanza ApiError si !ok. */
+  async getStream(path: string, opts?: RequestOptions): Promise<Response> {
+    const res = await this.rawFetch('GET', path, undefined, opts);
+    await this.throwIfNotOk(res, opts);
+    return res;
+  }
+
   /** POST que devuelve binario (p.ej. previews de PDF renderizadas al vuelo). */
   async postBlob(path: string, body?: unknown, opts?: RequestOptions): Promise<BlobResult> {
     const res = await this.rawFetch('POST', path, body, opts);

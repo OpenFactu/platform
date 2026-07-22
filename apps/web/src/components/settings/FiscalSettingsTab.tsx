@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Input, Button, useToast } from '@openfactu/ui';
 import {
@@ -52,8 +53,8 @@ export const FiscalSettingsTab: React.FC = () => {
     // mediante /api/config/system/<key> (o similar). Como fallback, cargamos
     // todos via un endpoint dedicado si existe; si no, lo dejamos editable y
     // al guardar se crea/actualiza.
-    fetch('/api/config/fiscal', { headers })
-      .then((r) => (r.ok ? r.json() : null))
+    coreApi.get<any>('/api/config/fiscal')
+      .catch(() => (null))
       .then((data) => {
         if (data && typeof data === 'object') setBank((prev) => ({ ...prev, ...data }));
       })
@@ -66,13 +67,9 @@ export const FiscalSettingsTab: React.FC = () => {
   const saveBank = async () => {
     setSaving(true);
     try {
-      const res = await fetch('/api/config/fiscal', {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(bank),
-      });
+      const res = await coreApi.raw('PUT', '/api/config/fiscal', bank);
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
+        const err = (res.data ?? {});
         throw new Error(err?.error || 'Error');
       }
       toast.success('Guardado');

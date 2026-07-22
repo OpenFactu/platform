@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, {
   createContext,
   useContext,
@@ -117,7 +118,7 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const fetchHeaders: Record<string, string> = {};
       if (token) fetchHeaders['Authorization'] = `Bearer ${token}`;
 
-      const res = await fetch('/api/plugins/manifests', { headers: fetchHeaders });
+      const res = await coreApi.get<any>('/api/plugins/manifests');
       if (!res.ok) {
         setManifests([]);
         return;
@@ -150,13 +151,8 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setUserTables([]);
       return;
     }
-    fetch('/api/user-tables/menu', {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        'x-tenant-id': authUser.tenantId,
-      },
-    })
-      .then((r) => (r.ok ? r.json() : []))
+    coreApi.raw('GET', '/api/user-tables/menu')
+      .catch(() => ([]))
       .then((d) => setUserTables(Array.isArray(d) ? d : []))
       .catch(() => setUserTables([]));
   }, [authToken, authUser?.tenantId]);

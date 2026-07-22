@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
@@ -33,10 +34,8 @@ export const InternalOrderHeaderField: React.FC<Props> = ({
 
   useEffect(() => {
     if (!user?.tenantId) return;
-    fetch('/api/internal-orders', {
-      headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user.tenantId },
-    })
-      .then((r) => (r.ok ? r.json() : []))
+    coreApi.get<any>('/api/internal-orders')
+      .catch(() => ([]))
       .then((d) => setOrders(Array.isArray(d) ? d : []))
       .catch(() => setOrders([]));
   }, [token, user?.tenantId]);

@@ -9,6 +9,8 @@
  * de GGUF en Hugging Face, con descarga mostrando progreso en vivo.
  */
 
+import { apiClient } from '@/shared/http';
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, Button, Input, Badge, SearchableSelect, Modal, useToast } from '@openfactu/ui';
 import {
@@ -173,12 +175,12 @@ export const AiSettingsTab: React.FC = () => {
     (async () => {
       try {
         const [provRes, cfgRes] = await Promise.all([
-          fetch('/api/ai/providers', { headers }),
-          fetch('/api/ai/config', { headers }),
+          coreApi.raw('GET', '/api/ai/providers'),
+          coreApi.raw('GET', '/api/ai/config'),
         ]);
         if (!provRes.ok || !cfgRes.ok) throw new Error('No se pudo cargar la configuración de IA');
-        setProviders(await provRes.json());
-        setCfg({ ...EMPTY, ...(await cfgRes.json()) });
+        setProviders(provRes.data);
+        setCfg({ ...EMPTY, ...(cfgRes.data) });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Error');
       } finally {
@@ -193,9 +195,9 @@ export const AiSettingsTab: React.FC = () => {
   const loadLocalModels = async () => {
     setLoadingLocal(true);
     try {
-      const res = await fetch('/api/ai/local/models', { headers });
+      const res = await coreApi.raw('GET', '/api/ai/local/models');
       if (!res.ok) throw new Error('No se pudo consultar los modelos locales');
-      setLocal(await res.json());
+      setLocal(res.data);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error');
     } finally {
@@ -224,13 +226,9 @@ export const AiSettingsTab: React.FC = () => {
         supportsImages: cfg.supportsImages,
       };
       if (newApiKey) payload.apiKey = newApiKey;
-      const res = await fetch('/api/ai/config', {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error((await res.json()).error || 'Error');
-      setCfg({ ...EMPTY, ...(await res.json()) });
+      const res = await coreApi.raw('PUT', '/api/ai/config', payload);
+      if (!res.ok) throw new Error((res.data).error || 'Error');
+      setCfg({ ...EMPTY, ...(res.data) });
       setNewApiKey('');
       toast.success('Configuración guardada');
     } catch (e) {
@@ -244,8 +242,7 @@ export const AiSettingsTab: React.FC = () => {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch('/api/ai/test', { method: 'POST', headers, body: '{}' });
-      const data = await res.json();
+      const data: any = await coreApi.post('/api/ai/test', {});
       if (data.ok) {
         setTestResult({ ok: true, detail: `${data.model} (${data.ms} ms): ${data.text}` });
         toast.success('El proveedor de IA responde');
@@ -266,10 +263,8 @@ export const AiSettingsTab: React.FC = () => {
     if (!hfQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await fetch(`/api/ai/local/models/search?q=${encodeURIComponent(hfQuery)}`, {
-        headers,
-      });
-      const data = await res.json();
+      const res = await coreApi.raw('GET', `/api/ai/local/models/search?q=${encodeURIComponent(hfQuery)}`);
+      const data = res.data;
       if (!res.ok) throw new Error(data.error || 'Error al buscar');
       setHfResults(data.results || []);
       setHasSearchedHf(true);
@@ -289,16 +284,10 @@ export const AiSettingsTab: React.FC = () => {
       [name]: { status: 'iniciando…', pct: -1, completedMb: 0, totalMb: 0 },
     }));
     try {
-      const res = await fetch('/api/ai/local/models/pull', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ name }),
+      const res = await apiClient.postStream('/api/ai/local/models/pull', { name }, {
         signal: controller.signal,
       });
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `Error ${res.status}`);
-      }
+      if (!res.body) throw new Error('Sin cuerpo de respuesta');
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -377,18 +366,11 @@ export const AiSettingsTab: React.FC = () => {
     }
     setApplyingContext(true);
     try {
-      const res = await fetch('/api/ai/local/models/apply-context', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ baseModel: cfg.model, contextWindow: cfg.contextWindow }),
-      });
-      const data = await res.json();
+      const res = await coreApi.raw('POST', '/api/ai/local/models/apply-context', { baseModel: cfg.model, contextWindow: cfg.contextWindow });
+      const data = res.data;
       if (!res.ok) throw new Error(data.error || 'Error al aplicar la ventana de contexto');
 
-      const putRes = await fetch('/api/ai/config', {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({
+      const putRes = await coreApi.raw('PUT', '/api/ai/config', {
           enabled: cfg.enabled,
           provider: cfg.provider,
           model: data.modelName,
@@ -396,9 +378,8 @@ export const AiSettingsTab: React.FC = () => {
           localBackend: cfg.localBackend,
           contextWindow: cfg.contextWindow,
           supportsImages: cfg.supportsImages,
-        }),
-      });
-      if (putRes.ok) setCfg({ ...EMPTY, ...(await putRes.json()) });
+        });
+      if (putRes.ok) setCfg({ ...EMPTY, ...(putRes.data) });
       toast.success(`Modelo creado y seleccionado: ${data.modelName}`);
       void loadLocalModels();
     } catch (e) {
@@ -410,11 +391,8 @@ export const AiSettingsTab: React.FC = () => {
 
   const removeModel = async (name: string) => {
     try {
-      const res = await fetch(`/api/ai/local/models?name=${encodeURIComponent(name)}`, {
-        method: 'DELETE',
-        headers,
-      });
-      const data = await res.json();
+      const res = await coreApi.raw('DELETE', `/api/ai/local/models?name=${encodeURIComponent(name)}`);
+      const data = res.data;
       if (!res.ok) throw new Error(data.error || 'Error al borrar');
       toast.success(`Modelo ${name} eliminado`);
       void loadLocalModels();

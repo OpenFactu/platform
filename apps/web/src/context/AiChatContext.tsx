@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, {
   createContext,
   useCallback,
@@ -83,9 +84,9 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const refreshModels = useCallback(async () => {
     if (!user?.tenantId) return;
     try {
-      const r = await fetch('/api/ai/available-models', { headers });
+      const r = await coreApi.get<any>('/api/ai/available-models');
       const d: AvailableModelsDTO = r.ok
-        ? await r.json()
+        ? r.data
         : { provider: '', current: '', options: [] };
       setAvailableModels(d);
       const providerChanged =
@@ -106,11 +107,11 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   useEffect(() => {
     if (!user?.tenantId) return;
-    fetch('/api/ai/capabilities', { headers })
-      .then((r) => (r.ok ? r.json() : { supportsImages: false, contextWindow: null }))
+    coreApi
+      .get<any>('/api/ai/capabilities')
       .then((d) => {
-        setSupportsImages(Boolean(d.supportsImages));
-        setContextWindow(typeof d.contextWindow === 'number' ? d.contextWindow : null);
+        setSupportsImages(Boolean(d?.supportsImages));
+        setContextWindow(typeof d?.contextWindow === 'number' ? d.contextWindow : null);
       })
       .catch(() => setSupportsImages(false));
     void refreshModels();
@@ -143,14 +144,10 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const id = conversationId || crypto.randomUUID();
     if (!conversationId) setConversationId(id);
     try {
-      await fetch(`/api/ai/conversations/${id}`, {
-        method: 'PUT',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await coreApi.raw('PUT', `/api/ai/conversations/${id}`, {
           messages,
           model: selectedModel || availableModels.current || undefined,
-        }),
-      });
+        });
     } catch {
       /* sin conexión o error del server — no interrumpe el chat */
     }
@@ -191,9 +188,9 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const loadConversation = async (id: string) => {
     try {
-      const res = await fetch(`/api/ai/conversations/${id}`, { headers });
+      const res = await coreApi.raw('GET', `/api/ai/conversations/${id}`);
       if (!res.ok) return;
-      const data = await res.json();
+      const data = res.data;
       setMessages(Array.isArray(data.messages) ? data.messages : []);
       setConversationId(data.id);
       // Solo aplicamos el modelo guardado si sigue siendo válido para el

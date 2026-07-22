@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, useToast, usePopup } from '@openfactu/ui';
 import { CreditCard, Trash2, Inbox, Pencil } from 'lucide-react';
@@ -60,11 +61,11 @@ export const InvoicePaymentsList: React.FC<Props> = ({
       const qs =
         kind === 'sales' ? `salesInvoiceId=${invoiceId}` : `purchaseInvoiceId=${invoiceId}`;
       const [pRes, mRes] = await Promise.all([
-        fetch(`/api/payments?${qs}`, { headers }),
-        fetch('/api/payment-methods', { headers }),
+        coreApi.raw('GET', `/api/payments?${qs}`),
+        coreApi.raw('GET', '/api/payment-methods'),
       ]);
-      const p = await pRes.json();
-      const m = await mRes.json();
+      const p = pRes.data;
+      const m = mRes.data;
       setPayments(Array.isArray(p) ? p : []);
       setMethods(Array.isArray(m) ? m : []);
     } catch {
@@ -98,12 +99,8 @@ export const InvoicePaymentsList: React.FC<Props> = ({
     });
     if (!result) return;
     try {
-      const res = await fetch(`/api/payments/${p.id}`, {
-        method: 'PATCH',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify(result),
-      });
-      if (!res.ok) throw new Error((await res.json())?.error || 'Error');
+      const res = await coreApi.raw('PATCH', `/api/payments/${p.id}`, result);
+      if (!res.ok) throw new Error((res.data)?.error || 'Error');
       toast.success('Actualizado');
       await load();
       onChanged?.();
@@ -121,11 +118,8 @@ export const InvoicePaymentsList: React.FC<Props> = ({
     });
     if (!ok) return;
     try {
-      const res = await fetch(`/api/payments/${p.id}`, {
-        method: 'DELETE',
-        headers,
-      });
-      if (!res.ok) throw new Error((await res.json())?.error || 'Error');
+      const res = await coreApi.raw('DELETE', `/api/payments/${p.id}`);
+      if (!res.ok) throw new Error((res.data)?.error || 'Error');
       toast.success('Eliminado');
       await load();
       onChanged?.();

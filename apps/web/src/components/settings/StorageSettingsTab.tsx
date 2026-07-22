@@ -21,6 +21,7 @@
  * el backend activo apuntando a una conexión que nunca se completó.
  */
 
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
 import { HardDrive, Cloud, CheckCircle2, AlertTriangle, Save, Link2, Unlink } from 'lucide-react';
@@ -86,9 +87,9 @@ export const StorageSettingsTab: React.FC = () => {
 
   const loadOauthStatus = async (): Promise<OAuthStatus | null> => {
     try {
-      const res = await fetch('/api/config/storage/oauth/status', { headers });
+      const res = await coreApi.raw('GET', '/api/config/storage/oauth/status');
       if (!res.ok) return null;
-      const body = await res.json();
+      const body = res.data;
       setOauth(body);
       return body;
     } catch {
@@ -100,9 +101,9 @@ export const StorageSettingsTab: React.FC = () => {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/config/storage', { headers });
+        const res = await coreApi.raw('GET', '/api/config/storage');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const cfg = await res.json();
+        const cfg = res.data;
         setConfig({ provider: 'local', ...cfg });
         setViewProvider(cfg.provider || 'local');
         await loadOauthStatus();
@@ -116,13 +117,9 @@ export const StorageSettingsTab: React.FC = () => {
 
   /** PUT parcial — el server solo toca las claves incluidas en el body. */
   const patchConfig = async (patch: Record<string, any>): Promise<StorageConfig | null> => {
-    const res = await fetch('/api/config/storage', {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify(patch),
-    });
+    const res = await coreApi.raw('PUT', '/api/config/storage', patch);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const cfg = await res.json();
+    const cfg = res.data;
     setConfig({ provider: 'local', ...cfg });
     return cfg;
   };
@@ -189,8 +186,8 @@ export const StorageSettingsTab: React.FC = () => {
       // hay clientId/clientSecret propios recién escritos — el backend activo
       // no cambia hasta que la conexión OAuth termine con éxito.
       await patchConfig({ [p]: config[p] });
-      const res = await fetch(`/api/config/storage/oauth/${p}/url`, { headers });
-      const body = await res.json();
+      const res = await coreApi.raw('GET', `/api/config/storage/oauth/${p}/url`);
+      const body = res.data;
       if (!res.ok || !body.url) throw new Error(body.error || `HTTP ${res.status}`);
       if (popup) popup.location.href = body.url;
       else toast.error('El navegador bloqueó la ventana de conexión');
@@ -210,15 +207,12 @@ export const StorageSettingsTab: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch(`/api/config/storage/oauth/${p}/disconnect`, {
-        method: 'POST',
-        headers,
-      });
-      if (!res.ok) throw new Error((await res.json())?.error || `HTTP ${res.status}`);
+      const res = await coreApi.raw('POST', `/api/config/storage/oauth/${p}/disconnect`);
+      if (!res.ok) throw new Error((res.data)?.error || `HTTP ${res.status}`);
       toast.success(`${PROVIDER_LABELS[p]} desconectado`);
-      const cfgRes = await fetch('/api/config/storage', { headers });
+      const cfgRes = await coreApi.raw('GET', '/api/config/storage');
       if (cfgRes.ok) {
-        const cfg = await cfgRes.json();
+        const cfg = cfgRes.data;
         setConfig({ provider: 'local', ...cfg });
         setViewProvider(cfg.provider || 'local');
       }
@@ -231,11 +225,8 @@ export const StorageSettingsTab: React.FC = () => {
   const runHealth = async () => {
     setHealth(null);
     try {
-      const res = await fetch('/api/config/storage/healthcheck', {
-        method: 'POST',
-        headers,
-      });
-      const body = await res.json();
+      const res = await coreApi.raw('POST', '/api/config/storage/healthcheck');
+      const body = res.data;
       setHealth(body);
     } catch (e: any) {
       setHealth({ ok: false, provider: 'unknown', detail: e?.message });

@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
@@ -57,13 +58,7 @@ export function useItemUoms() {
       inflight.add(itemId);
       pendingRef.current.add(itemId);
 
-      fetch(`/api/items/${itemId}/uoms`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-      })
-        .then((r) => r.json())
+      coreApi.get<any>(`/api/items/${itemId}/uoms`)
         .then((data) => {
           cache[itemId] = Array.isArray(data) ? data : [];
           inflight.delete(itemId);

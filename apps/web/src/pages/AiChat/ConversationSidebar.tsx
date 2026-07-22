@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Plus, MessageSquare, Trash2 } from 'lucide-react';
 
@@ -19,8 +20,8 @@ export const ConversationSidebar: React.FC<{
   const [items, setItems] = useState<ConversationSummary[] | null>(null);
 
   const load = () => {
-    fetch('/api/ai/conversations', { headers })
-      .then((r) => (r.ok ? r.json() : []))
+    coreApi.get<any>('/api/ai/conversations')
+      .catch(() => ([]))
       .then(setItems)
       .catch(() => setItems([]));
   };
@@ -32,7 +33,7 @@ export const ConversationSidebar: React.FC<{
 
   const remove = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await fetch(`/api/ai/conversations/${id}`, { method: 'DELETE', headers });
+    await coreApi.raw('DELETE', `/api/ai/conversations/${id}`);
     load();
   };
 

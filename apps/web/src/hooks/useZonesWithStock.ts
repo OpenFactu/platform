@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
@@ -58,13 +59,8 @@ export function useZonesWithStock() {
       inflight.add(key);
       pendingRef.current.add(key);
 
-      fetch(`/api/stock/items/${itemId}/zones-with-stock?warehouseId=${warehouseId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-      })
-        .then((r) => (r.ok ? r.json() : []))
+      coreApi.get<any>(`/api/stock/items/${itemId}/zones-with-stock?warehouseId=${warehouseId}`)
+        .catch(() => ([]))
         .then((data) => {
           cache[key] = Array.isArray(data) ? data : [];
           inflight.delete(key);

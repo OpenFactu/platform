@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import { useEffect, useRef, useState } from 'react';
 import { convertFileListToFileUIParts, type FileUIPart } from 'ai';
 import { MAX_ATTACHMENTS, MAX_ATTACHMENT_MB } from './constants';
@@ -79,13 +80,7 @@ export function useComposerState(
       for (const file of list) {
         const formData = new FormData();
         formData.append('file', file);
-        const res = await fetch('/api/ai/extract-file', {
-          method: 'POST',
-          headers,
-          body: formData,
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `No se pudo leer ${file.name}`);
+        const data: any = await coreApi.postForm('/api/ai/extract-file', formData);
         setDocuments((prev) => [
           ...prev,
           { filename: data.filename, text: data.text, truncated: Boolean(data.truncated) },

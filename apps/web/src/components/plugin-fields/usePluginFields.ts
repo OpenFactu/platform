@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import type { FieldSurface, PluginFieldDef } from './types';
@@ -53,10 +54,7 @@ export function usePluginFields(
     if (cache[tableName]) return;
     if (inflight.has(tableName)) return;
     inflight.add(tableName);
-    fetch(`/api/plugins/fields/${tableName}`, {
-      headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user.tenantId },
-    })
-      .then((r) => r.json())
+    coreApi.get<any>(`/api/plugins/fields/${tableName}`)
       .then((data) => {
         cache[tableName] = Array.isArray(data) ? data : [];
         notify();

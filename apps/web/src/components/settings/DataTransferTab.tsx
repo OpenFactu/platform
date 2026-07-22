@@ -8,6 +8,8 @@
  * Endpoints solo disponibles para SUPERUSER (el backend devuelve 403 al resto).
  */
 
+import { coreApi } from '@/shared/api';
+import { apiClient } from '@/shared/http';
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
 import { Download, Upload, FileSpreadsheet, AlertTriangle, Trash2 } from 'lucide-react';
@@ -37,10 +39,7 @@ export const DataTransferTab: React.FC = () => {
   const [exportTenantId, setExportTenantId] = useState<string>('');
 
   const loadTenants = () =>
-    fetch('/api/tenants/mine', {
-      headers: { Authorization: `Bearer ${token ?? ''}` },
-    })
-      .then((r) => r.json())
+    coreApi.get<any>('/api/tenants/mine')
       .then((list) => {
         const arr = Array.isArray(list) ? list : [];
         setTenants(arr);
@@ -74,12 +73,8 @@ export const DataTransferTab: React.FC = () => {
     }
     setDeleting(true);
     try {
-      const res = await fetch(`/api/admin/tenants/${deleteTenant.id}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token ?? ''}` },
-        body: JSON.stringify({ confirmName: deleteConfirmText }),
-      });
-      const body = await res.json().catch(() => ({}));
+      const res = await coreApi.raw('DELETE', `/api/admin/tenants/${deleteTenant.id}`, { confirmName: deleteConfirmText });
+      const body = (res.data ?? {});
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       toast.success(`Empresa "${deleteTenant.name}" eliminada`);
       setDeleteConfirmText('');
@@ -102,13 +97,7 @@ export const DataTransferTab: React.FC = () => {
     setBusy(label);
     setProgress({ pct: 0, loadedMB: 0, totalMB: 0 });
     try {
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token ?? ''}` },
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || `HTTP ${res.status}`);
-      }
+      const res = await apiClient.getStream(url);
       const total = Number(res.headers.get('Content-Length') || '0');
       const reader = res.body?.getReader();
       const chunks: Uint8Array[] = [];

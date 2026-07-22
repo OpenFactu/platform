@@ -8,6 +8,7 @@
  * del mapa. El contenedor padre debe tener `position: relative`.
  */
 
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Search, X as XIcon, Loader2 } from 'lucide-react';
 
@@ -80,16 +81,17 @@ export const MapSearchBox: React.FC<Props> = ({
     const headers: Record<string, string> = {};
     if (authHeader) headers.Authorization = authHeader;
     if (tenantId) headers['x-tenant-id'] = tenantId;
-    fetch(`/api/logistics/geocode/suggest?q=${encodeURIComponent(debounced)}`, { headers })
-      .then(async (r) => {
+    coreApi
+      .raw('GET', `/api/logistics/geocode/suggest?q=${encodeURIComponent(debounced)}`)
+      .then((r) => {
         if (!r.ok) {
           console.error(
-            `[MapSearchBox] /geocode/suggest devolvió ${r.status} ${r.statusText}. ` +
+            `[MapSearchBox] /geocode/suggest devolvió ${r.status}. ` +
               `Cabeceras auth/tenant enviadas: auth=${!!authHeader}, tenant=${!!tenantId}`,
           );
           return [];
         }
-        return r.json();
+        return r.data;
       })
       .then((d) => {
         if (aborted) return;

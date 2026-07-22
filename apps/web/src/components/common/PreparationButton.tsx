@@ -2,6 +2,7 @@
  * Botón "Preparar" para albaranes de venta (SDN) y compra (PDN).
  * Llama a `/api/logistics/prep/from-<kind>/:id` y navega a Logística → Preparación.
  */
+import { coreApi } from '@/shared/api';
 import React, { useState } from 'react';
 import { Button, useToast, cn } from '@openfactu/ui';
 import { ClipboardCheck } from 'lucide-react';
@@ -45,15 +46,8 @@ export const PreparationButton: React.FC<Props> = ({
         docType === 'SDN'
           ? `/api/logistics/prep/from-sdn/${docId}`
           : `/api/logistics/prep/from-pdn/${docId}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-      });
-      const d = await res.json();
+      const res = await coreApi.raw('POST', url);
+      const d = res.data;
       if (!res.ok) {
         toast.error(d.error || 'Error al iniciar preparación');
         return;
