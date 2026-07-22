@@ -10,8 +10,10 @@ export const stockApi = {
     apiClient.get<ZoneStock[]>(`/api/stock/items/${itemId}/zones-with-stock`, {
       query: { warehouseId },
     }),
-  batches: (itemId: string) =>
-    apiClient.get<BatchOrSerial[]>(`/api/stock/items/${itemId}/batches`),
+  batches: (itemId: string, warehouseId?: string) =>
+    apiClient.get<BatchOrSerial[]>(`/api/stock/items/${itemId}/batches`, {
+      query: { warehouseId },
+    }),
   serials: (itemId: string) =>
     apiClient.get<BatchOrSerial[]>(`/api/stock/items/${itemId}/serials`),
 };

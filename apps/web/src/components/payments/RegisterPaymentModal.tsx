@@ -1,9 +1,10 @@
-import { coreApi } from '@/shared/api';
+import { paymentMethodsApi, paymentsApi } from '@/modules/accounting/api';
+import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { Modal, Input, Button, useToast } from '@openfactu/ui';
 import { CreditCard } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n/I18nContext';
+import type { PaymentMethod } from '@/modules/accounting/domain/accounting';
 
 export type InvoiceKind = 'sales' | 'purchase';
 
@@ -16,12 +17,6 @@ interface Props {
   /** Total menos lo ya pagado — el importe sugerido para cerrar la factura. */
   remaining: number;
   onSuccess?: () => void;
-}
-
-interface PaymentMethod {
-  id: string;
-  code: string;
-  name: string;
 }
 
 /**
@@ -37,7 +32,6 @@ export const RegisterPaymentModal: React.FC<Props> = ({
   remaining,
   onSuccess,
 }) => {
-  const { token, user } = useAuth();
   const { t } = useI18n();
   const toast = useToast();
 
@@ -49,18 +43,13 @@ export const RegisterPaymentModal: React.FC<Props> = ({
   const [methodId, setMethodId] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-    'Content-Type': 'application/json',
-  };
-
   useEffect(() => {
     if (!open) return;
     setAmount(String(Math.max(0, remaining).toFixed(2)));
-    coreApi.get('/api/payment-methods')
-      .catch(() => ([]))
-      .then((rows: PaymentMethod[]) => {
+    paymentMethodsApi
+      .list()
+      .catch(() => [])
+      .then((rows) => {
         setMethods(rows || []);
         if (rows && rows.length > 0 && !methodId) setMethodId(rows[0].id);
       })
@@ -90,9 +79,7 @@ export const RegisterPaymentModal: React.FC<Props> = ({
       if (kind === 'sales') body.salesInvoiceId = invoiceId;
       else body.purchaseInvoiceId = invoiceId;
 
-      const res = await coreApi.raw('POST', '/api/payments', body);
-      const data = res.data;
-      if (!res.ok) throw new Error(data?.error || 'Error');
+      const data = await paymentsApi.create(body);
       toast.success(
         kind === 'sales'
           ? t('invoice.registerPayment') + ' · ' + data.paymentStatus

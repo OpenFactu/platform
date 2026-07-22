@@ -1,4 +1,4 @@
-import { coreApi } from '@/shared/api';
+import { stockApi } from '@/modules/inventory/api';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
@@ -59,8 +59,9 @@ export function useZonesWithStock() {
       inflight.add(key);
       pendingRef.current.add(key);
 
-      coreApi.get(`/api/stock/items/${itemId}/zones-with-stock?warehouseId=${warehouseId}`)
-        .catch(() => ([]))
+      stockApi
+        .zonesWithStock(itemId, warehouseId)
+        .catch(() => [])
         .then((data) => {
           cache[key] = Array.isArray(data) ? data : [];
           inflight.delete(key);

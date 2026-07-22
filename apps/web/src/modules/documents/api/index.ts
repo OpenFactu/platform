@@ -1,2 +1,2 @@
-export { docsApi, documentEmailApi, seriesApi } from './docsApi';
-export type { DocumentSeries } from './docsApi';
+export { docsApi, documentEmailApi, seriesApi, priceListsApi } from './docsApi';
+export type { DocumentSeries, PriceList, PriceListEntry } from './docsApi';

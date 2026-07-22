@@ -1,4 +1,4 @@
-import { coreApi } from '@/shared/api';
+import { itemsApi } from '@/modules/inventory/api';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
@@ -58,9 +58,13 @@ export function useItemUoms() {
       inflight.add(itemId);
       pendingRef.current.add(itemId);
 
-      coreApi.get(`/api/items/${itemId}/uoms`)
+      itemsApi
+        .listUoms(itemId)
+        // El endpoint devuelve más campos (name/isBase) que el tipo
+        // compartido ItemUomAlternative — este hook los necesita todos.
         .then((data) => {
-          cache[itemId] = Array.isArray(data) ? data : [];
+          const list = data as unknown as AvailableUom[];
+          cache[itemId] = Array.isArray(list) ? list : [];
           inflight.delete(itemId);
           notifyAll();
         })

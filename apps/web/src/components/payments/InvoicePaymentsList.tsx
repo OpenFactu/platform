@@ -1,9 +1,10 @@
-import { coreApi } from '@/shared/api';
+import { paymentMethodsApi, paymentsApi } from '@/modules/accounting/api';
+import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, useToast, usePopup } from '@openfactu/ui';
 import { CreditCard, Trash2, Inbox, Pencil } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { useFormat } from '../../hooks/useFormat';
+import type { Payment as PaymentRow, PaymentMethod as MethodRow } from '@/modules/accounting/domain/accounting';
 
 interface Props {
   kind: 'sales' | 'purchase';
@@ -11,23 +12,6 @@ interface Props {
   /** Versión para forzar refetch desde el padre. */
   refreshKey?: number;
   onChanged?: () => void;
-}
-
-interface PaymentRow {
-  id: string;
-  date: string;
-  amount: string | number;
-  paymentMethodId?: string | null;
-  reference?: string | null;
-  notes?: string | null;
-  source?: string;
-  createdAt?: string;
-}
-
-interface MethodRow {
-  id: string;
-  code: string;
-  name: string;
 }
 
 /**
@@ -42,7 +26,6 @@ export const InvoicePaymentsList: React.FC<Props> = ({
   refreshKey = 0,
   onChanged,
 }) => {
-  const { token, user } = useAuth();
   const toast = useToast();
   const popup = usePopup();
   const fmt = useFormat();
@@ -50,22 +33,12 @@ export const InvoicePaymentsList: React.FC<Props> = ({
   const [methods, setMethods] = useState<MethodRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const load = async () => {
     setLoading(true);
     try {
-      const qs =
-        kind === 'sales' ? `salesInvoiceId=${invoiceId}` : `purchaseInvoiceId=${invoiceId}`;
-      const [pRes, mRes] = await Promise.all([
-        coreApi.raw('GET', `/api/payments?${qs}`),
-        coreApi.raw('GET', '/api/payment-methods'),
-      ]);
-      const p = pRes.data;
-      const m = mRes.data;
+      const query =
+        kind === 'sales' ? { salesInvoiceId: invoiceId } : { purchaseInvoiceId: invoiceId };
+      const [p, m] = await Promise.all([paymentsApi.list(query), paymentMethodsApi.list()]);
       setPayments(Array.isArray(p) ? p : []);
       setMethods(Array.isArray(m) ? m : []);
     } catch {
@@ -99,13 +72,12 @@ export const InvoicePaymentsList: React.FC<Props> = ({
     });
     if (!result) return;
     try {
-      const res = await coreApi.raw('PATCH', `/api/payments/${p.id}`, result);
-      if (!res.ok) throw new Error((res.data)?.error || 'Error');
+      await paymentsApi.update(p.id, result);
       toast.success('Actualizado');
       await load();
       onChanged?.();
-    } catch (e: any) {
-      toast.error(e.message || 'Error al actualizar');
+    } catch (e) {
+      toast.error(e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al actualizar');
     }
   };
 
@@ -118,13 +90,12 @@ export const InvoicePaymentsList: React.FC<Props> = ({
     });
     if (!ok) return;
     try {
-      const res = await coreApi.raw('DELETE', `/api/payments/${p.id}`);
-      if (!res.ok) throw new Error((res.data)?.error || 'Error');
+      await paymentsApi.remove(p.id);
       toast.success('Eliminado');
       await load();
       onChanged?.();
-    } catch (e: any) {
-      toast.error(e.message || 'Error al eliminar');
+    } catch (e) {
+      toast.error(e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al eliminar');
     }
   };
 

@@ -1,20 +1,10 @@
-import { coreApi } from '@/shared/api';
+import { paymentTermsApi } from '@/modules/accounting/api';
+import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { Button, Input, useToast, usePopup, Badge } from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X, CalendarClock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-
-interface SplitLine {
-  days: number;
-  percentage: number;
-}
-
-interface PaymentTerm {
-  id: string;
-  name: string;
-  lines: SplitLine[];
-  isActive: boolean;
-}
+import type { PaymentTerm, PaymentTermLine as SplitLine } from '@/modules/accounting/domain/accounting';
 
 /**
  * Editor dedicado para plazos de pago. Permite listar, crear, editar
@@ -22,21 +12,16 @@ interface PaymentTerm {
  * que la suma de porcentajes sea 100 antes de guardar.
  */
 export const PaymentTermsEditor: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const toast = useToast();
   const popup = usePopup();
   const [rows, setRows] = useState<PaymentTerm[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const authHeaders = {
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-  };
-
   const load = async () => {
     setLoading(true);
     try {
-      const data = await coreApi.get('/api/payment-terms');
+      const data = await paymentTermsApi.list();
       setRows(Array.isArray(data) ? data : []);
     } catch {
       toast.error('Error al cargar plazos');
@@ -77,12 +62,11 @@ export const PaymentTermsEditor: React.FC = () => {
     });
     if (!ok) return;
     try {
-      const res = await coreApi.raw('DELETE', `/api/payment-terms/${id}`);
-      if (!res.ok) throw new Error((res.data).error || 'Error');
+      await paymentTermsApi.remove(id);
       toast.success('Eliminado');
       await load();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error de red');
     }
   };
 
@@ -190,7 +174,6 @@ interface FormProps {
 }
 
 const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) => {
-  const { token, user } = useAuth();
   const toast = useToast();
   const [name, setName] = useState(initial?.name || '');
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
@@ -198,12 +181,6 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
     initial?.lines && initial.lines.length > 0 ? initial.lines : [{ days: 0, percentage: 100 }],
   );
   const [saving, setSaving] = useState(false);
-
-  const authHeaders = {
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-    'Content-Type': 'application/json',
-  };
 
   const totalPct = lines.reduce((s, l) => s + Number(l.percentage || 0), 0);
   const balanced = Math.abs(totalPct - 100) < 0.01;
@@ -258,14 +235,13 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
     }
     setSaving(true);
     try {
-      const url = initial ? `/api/payment-terms/${initial.id}` : '/api/payment-terms';
-      const method = initial ? 'PATCH' : 'POST';
-      const res = await coreApi.raw(method, url, { name, lines, isActive });
-      if (!res.ok) throw new Error(res.data?.error || 'Error');
+      const payload = { name, lines, isActive };
+      if (initial) await paymentTermsApi.update(initial.id, payload);
+      else await paymentTermsApi.create(payload);
       toast.success(initial ? 'Actualizado' : 'Creado');
       onSaved();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (e) {
+      toast.error(e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error de red');
     } finally {
       setSaving(false);
     }

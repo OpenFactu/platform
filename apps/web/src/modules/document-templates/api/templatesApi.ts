@@ -9,7 +9,8 @@ export interface DocumentTemplate {
 }
 
 export const templatesApi = {
-  list: () => apiClient.get<DocumentTemplate[]>('/api/document-templates'),
+  list: (docType?: string) =>
+    apiClient.get<DocumentTemplate[]>('/api/document-templates', { query: { docType } }),
   get: (id: string) => apiClient.get<DocumentTemplate>(`/api/document-templates/${id}`),
   create: (data: Record<string, unknown>) =>
     apiClient.post<DocumentTemplate>('/api/document-templates', data),

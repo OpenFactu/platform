@@ -4,6 +4,9 @@ import type {
   AccountingPeriod,
   JournalEntry,
   LedgerRow,
+  Payment,
+  PaymentMethod,
+  PaymentTerm,
   Tax,
 } from '../domain/accounting';
 
@@ -51,4 +54,26 @@ export const taxesApi = {
   update: (id: string, data: Record<string, unknown>) =>
     apiClient.patch<Tax>(`/api/taxes/${id}`, data),
   remove: (id: string) => apiClient.delete<void>(`/api/taxes/${id}`),
+};
+
+export const paymentTermsApi = {
+  list: () => apiClient.get<PaymentTerm[]>('/api/payment-terms'),
+  create: (data: Record<string, unknown>) =>
+    apiClient.post<PaymentTerm>('/api/payment-terms', data),
+  update: (id: string, data: Record<string, unknown>) =>
+    apiClient.put<PaymentTerm>(`/api/payment-terms/${id}`, data),
+  remove: (id: string) => apiClient.delete<void>(`/api/payment-terms/${id}`),
+};
+
+export const paymentMethodsApi = {
+  list: () => apiClient.get<PaymentMethod[]>('/api/payment-methods'),
+};
+
+export const paymentsApi = {
+  list: (query: Record<string, string | undefined>) =>
+    apiClient.get<Payment[]>('/api/payments', { query }),
+  create: (data: Record<string, unknown>) => apiClient.post<Payment>('/api/payments', data),
+  update: (id: string, data: Record<string, unknown>) =>
+    apiClient.patch<Payment>(`/api/payments/${id}`, data),
+  remove: (id: string) => apiClient.delete<void>(`/api/payments/${id}`),
 };

@@ -1,4 +1,4 @@
-import { coreApi } from '@/shared/api';
+import { stockApi } from '@/modules/inventory/api';
 import { Trash2, Plus, AlertCircle, CheckCircle2, ChevronRight, Barcode } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
@@ -52,7 +52,8 @@ export const BatchSelectionModal: React.FC<Props> = ({
       console.log(
         `[FRONTEND-DIAG] Buscando lotes para Item: ${itemId} | Tenant: ${user?.tenantId}`,
       );
-      coreApi.get(`/api/items/${itemId}/batches`)
+      stockApi
+        .batches(itemId)
         .then((data) => {
           console.log(`[FRONTEND-DIAG] Respuesta Recibida:`, data);
           setAvailableBatches(Array.isArray(data) ? data : []);

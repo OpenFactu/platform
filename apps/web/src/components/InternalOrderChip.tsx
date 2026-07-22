@@ -1,4 +1,4 @@
-import { coreApi } from '@/shared/api';
+import { internalOrdersApi } from '@/modules/analytics/api';
 import React, { useEffect, useState } from 'react';
 import { FolderKanban } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -27,9 +27,10 @@ export const InternalOrderChip: React.FC<Props> = ({ internalOrderId }) => {
     }
     if (allFetched) return;
     if (!token || !user?.tenantId) return;
-    coreApi.get('/api/internal-orders')
-      .catch(() => ([]))
-      .then((d: any[]) => {
+    internalOrdersApi
+      .list()
+      .catch(() => [])
+      .then((d) => {
         for (const io of d) cache.set(io.id, { code: io.code, name: io.name });
         allFetched = true;
         const found = cache.get(internalOrderId);

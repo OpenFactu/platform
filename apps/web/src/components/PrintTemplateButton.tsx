@@ -1,4 +1,4 @@
-import { coreApi } from '@/shared/api';
+import { templatesApi } from '@/modules/document-templates/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, type ButtonProps, useToast } from '@openfactu/ui';
 import { Download, ChevronDown, FileCode } from 'lucide-react';
@@ -52,9 +52,7 @@ export const PrintTemplateButton: React.FC<Props> = ({
     if (templates) return templates;
     setLoading(true);
     try {
-      const res = await coreApi.raw('GET', `/api/document-templates?docType=${encodeURIComponent(docType)}`);
-      if (!res.ok) throw new Error('http');
-      const data: Template[] = res.data;
+      const data = (await templatesApi.list(docType)) as unknown as Template[];
       setTemplates(data);
       return data;
     } finally {

@@ -13,7 +13,7 @@
  * disponibles en las queries de la plantilla — típicamente `{ itemId }`.
  */
 
-import { coreApi } from '@/shared/api';
+import { templatesApi } from '@/modules/document-templates/api';
 import { apiClient } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -60,9 +60,7 @@ export const LabelPrintButton: React.FC<Props> = ({
     if (!open || templates !== null) return;
     (async () => {
       try {
-        const res = await coreApi.raw('GET', '/api/document-templates?docType=LABEL');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const list: FreeTemplate[] = res.data;
+        const list = (await templatesApi.list('LABEL')) as unknown as FreeTemplate[];
         setTemplates(list);
         const def = list.find((t) => t.isDefault) ?? list[0];
         setSelectedId(def?.id ?? '');

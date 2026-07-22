@@ -1,14 +1,7 @@
-import { coreApi } from '@/shared/api';
+import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import type { TableColumn } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
-
-interface InternalOrder {
-  id: string;
-  code: string;
-  name: string;
-  status: string;
-}
 
 /**
  * Devuelve la definición de una columna "Proyecto" para integrar en la
@@ -29,9 +22,10 @@ export function useInternalOrderLineColumn(
   useEffect(() => {
     if (cache.orders) return;
     if (!token || !user?.tenantId) return;
-    coreApi.get('/api/internal-orders')
-      .catch(() => ([]))
-      .then((d: InternalOrder[]) => {
+    internalOrdersApi
+      .list()
+      .catch(() => [])
+      .then((d) => {
         const arr = Array.isArray(d) ? d : [];
         cache.orders = arr;
         setOrders(arr);

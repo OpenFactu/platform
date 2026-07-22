@@ -53,3 +53,39 @@ export interface Tax {
   rate: number | string;
   [key: string]: unknown;
 }
+
+export interface PaymentTermLine {
+  days: number;
+  percentage: number;
+}
+
+export interface PaymentTerm {
+  id: string;
+  name: string;
+  lines: PaymentTermLine[];
+  isActive: boolean;
+  [key: string]: unknown;
+}
+
+export interface PaymentMethod {
+  id: string;
+  code: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+export interface Payment {
+  id: string;
+  date: string;
+  amount: string | number;
+  paymentMethodId?: string | null;
+  reference?: string | null;
+  notes?: string | null;
+  source?: string;
+  createdAt?: string;
+  salesInvoiceId?: string;
+  purchaseInvoiceId?: string;
+  /** Solo en la respuesta de creación: estado resultante de la factura. */
+  paymentStatus?: string;
+  [key: string]: unknown;
+}

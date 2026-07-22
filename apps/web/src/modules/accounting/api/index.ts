@@ -1,1 +1,9 @@
-export { chartOfAccountsApi, periodsApi, journalEntriesApi, taxesApi } from './accountingApi';
+export {
+  chartOfAccountsApi,
+  periodsApi,
+  journalEntriesApi,
+  taxesApi,
+  paymentTermsApi,
+  paymentMethodsApi,
+  paymentsApi,
+} from './accountingApi';

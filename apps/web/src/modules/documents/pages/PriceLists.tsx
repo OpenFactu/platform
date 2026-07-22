@@ -1,4 +1,6 @@
-import { coreApi } from '@/shared/api';
+import { priceListsApi, type PriceList, type PriceListEntry } from '../api';
+import { itemsApi } from '@/modules/inventory/api';
+import type { Item } from '@/modules/inventory/domain/item';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
@@ -20,7 +22,7 @@ import { ContextMenu } from '@/components/common/ContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
 
 export const PriceLists: React.FC = () => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -32,22 +34,21 @@ export const PriceLists: React.FC = () => {
     user?.permissions?.[location.pathname]?.delete;
   const toast = useToast();
   // States for Price Lists
-  const [lists, setLists] = useState<any[]>([]);
+  const [lists, setLists] = useState<PriceList[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [newListRow, setNewListRow] = useState<{ name: string } | null>(null);
   // States for selected list and its prices
-  const [selectedList, setSelectedList] = useState<any | null>(null);
-  const [prices, setPrices] = useState<any[]>([]);
-  const [items, setItems] = useState<any[]>([]);
+  const [selectedList, setSelectedList] = useState<PriceList | null>(null);
+  const [prices, setPrices] = useState<PriceListEntry[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [searchItem, setSearchItem] = useState('');
   const [savingItems, setSavingItems] = useState<string[]>([]);
   const fetchLists = async () => {
     setLoading(true);
     try {
-      const res = await coreApi.raw('GET', '/api/pricelists');
-      const data = res.data;
+      const data = await priceListsApi.list();
       const loadedLists = Array.isArray(data) ? data : [];
       setLists(loadedLists);
       // Auto-select first list if none selected
@@ -64,8 +65,7 @@ export const PriceLists: React.FC = () => {
 
   const fetchItems = async () => {
     try {
-      const res = await coreApi.raw('GET', '/api/items');
-      const data = res.data;
+      const data = await itemsApi.list();
       setItems(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
@@ -75,8 +75,7 @@ export const PriceLists: React.FC = () => {
   const fetchPrices = async (listId: string) => {
     setLoadingPrices(true);
     try {
-      const res = await coreApi.raw('GET', `/api/pricelists/${listId}/prices`);
-      const data = res.data;
+      const data = await priceListsApi.prices(listId);
       setPrices(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
@@ -95,12 +94,10 @@ export const PriceLists: React.FC = () => {
   const handleCreateList = async () => {
     if (!newListRow?.name) return;
     try {
-      const res = await coreApi.raw('POST', '/api/pricelists', newListRow);
-      if (res.ok) {
-        setNewListRow(null);
-        fetchLists();
-        toast.success('Lista comercial creada');
-      }
+      await priceListsApi.create(newListRow);
+      setNewListRow(null);
+      fetchLists();
+      toast.success('Lista comercial creada');
     } catch (err) {
       toast.error('Error al crear');
     }
@@ -108,12 +105,10 @@ export const PriceLists: React.FC = () => {
 
   const handleUpdateList = async (id: string, name: string) => {
     try {
-      const res = await coreApi.raw('PATCH', `/api/pricelists/${id}`, { name });
-      if (res.ok) {
-        setEditingListId(null);
-        fetchLists();
-        toast.success('Lista actualizada');
-      }
+      await priceListsApi.update(id, { name });
+      setEditingListId(null);
+      fetchLists();
+      toast.success('Lista actualizada');
     } catch (err) {
       toast.error('Error al actualizar');
     }
@@ -122,12 +117,10 @@ export const PriceLists: React.FC = () => {
   const handleDeleteList = async (id: string) => {
     if (!confirm('¿Seguro que deseas eliminar esta lista de precios?')) return;
     try {
-      const res = await coreApi.raw('DELETE', `/api/pricelists/${id}`);
-      if (res.ok) {
-        if (selectedList?.id === id) setSelectedList(null);
-        fetchLists();
-        toast.success('Lista eliminada');
-      }
+      await priceListsApi.remove(id);
+      if (selectedList?.id === id) setSelectedList(null);
+      fetchLists();
+      toast.success('Lista eliminada');
     } catch (err) {
       toast.error('Error al eliminar');
     }
@@ -137,17 +130,13 @@ export const PriceLists: React.FC = () => {
     if (!selectedList || !price) return;
     setSavingItems((prev) => [...prev, itemId]);
     try {
-      const res = await coreApi.raw('POST', `/api/pricelists/${selectedList.id}/prices`, { itemId, price: parseFloat(price) });
-      if (res.ok) {
-        // Optimistic update or refetch
-        const updatedPrice = res.data;
-        setPrices((prev) => {
-          const exists = prev.find((p) => p.itemId === itemId);
-          if (exists) return prev.map((p) => (p.itemId === itemId ? updatedPrice : p));
-          return [...prev, updatedPrice];
-        });
-        toast.success('Precio actualizado');
-      }
+      const updatedPrice = await priceListsApi.setPrice(selectedList.id, itemId, parseFloat(price));
+      setPrices((prev) => {
+        const exists = prev.find((p) => p.itemId === itemId);
+        if (exists) return prev.map((p) => (p.itemId === itemId ? updatedPrice : p));
+        return [...prev, updatedPrice];
+      });
+      toast.success('Precio actualizado');
     } catch (err) {
       toast.error('Error al actualizar precio');
     } finally {
@@ -378,7 +367,7 @@ export const PriceLists: React.FC = () => {
                     {filteredItems.map((item) => {
                       const itemPrice = prices.find((p) => p.itemId === item.id);
                       const diff = itemPrice
-                        ? (parseFloat(itemPrice.price) / parseFloat(item.basePrice) - 1) * 100
+                        ? (parseFloat(String(itemPrice.price)) / parseFloat(String(item.basePrice)) - 1) * 100
                         : 0;
                       return (
                         <tr
@@ -424,7 +413,7 @@ export const PriceLists: React.FC = () => {
                                   id={`price-input-${item.id}`}
                                   type="number"
                                   step="0.01"
-                                  placeholder={item.basePrice}
+                                  placeholder={String(item.basePrice ?? '')}
                                   defaultValue={itemPrice?.price || ''}
                                   className="h-9 w-full pl-6 pr-2 rounded-lg border border-slate-100 dark:border-slate-800 text-xs font-black text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all outline-none text-right"
                                 />

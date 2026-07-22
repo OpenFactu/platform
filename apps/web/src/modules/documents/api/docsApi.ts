@@ -34,3 +34,27 @@ export const seriesApi = {
   create: (data: Record<string, unknown>) => apiClient.post<DocumentSeries>('/api/series', data),
   remove: (id: string) => apiClient.delete<void>(`/api/series/${id}`),
 };
+
+export interface PriceList {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+export interface PriceListEntry {
+  id: string;
+  itemId: string;
+  price: number | string;
+  [key: string]: unknown;
+}
+
+export const priceListsApi = {
+  list: () => apiClient.get<PriceList[]>('/api/pricelists'),
+  create: (data: Record<string, unknown>) => apiClient.post<PriceList>('/api/pricelists', data),
+  update: (id: string, data: Record<string, unknown>) =>
+    apiClient.patch<PriceList>(`/api/pricelists/${id}`, data),
+  remove: (id: string) => apiClient.delete<void>(`/api/pricelists/${id}`),
+  prices: (listId: string) => apiClient.get<PriceListEntry[]>(`/api/pricelists/${listId}/prices`),
+  setPrice: (listId: string, itemId: string, price: number) =>
+    apiClient.post<PriceListEntry>(`/api/pricelists/${listId}/prices`, { itemId, price }),
+};

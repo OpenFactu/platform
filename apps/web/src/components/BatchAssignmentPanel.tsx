@@ -1,4 +1,4 @@
-import { coreApi } from '@/shared/api';
+import { stockApi } from '@/modules/inventory/api';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Modal, Button, Input, cn } from '@openfactu/ui';
 import {
@@ -230,12 +230,15 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
     if (!isOpen || !selectedItem || !token || !availabilityKey) return;
     if (availableByItem[availabilityKey]) return;
     setLoadingAvail(true);
-    const qs = isSale && lineWarehouseId ? `?warehouseId=${lineWarehouseId}` : '';
-    coreApi.get(`/api/items/${selectedItem.id}/batches${qs}`)
-      .then((data: AvailableBatch[]) => {
+    stockApi
+      .batches(selectedItem.id, isSale && lineWarehouseId ? lineWarehouseId : undefined)
+      // El endpoint devuelve más campos (warehouseId/zoneId/...) que el tipo
+      // compartido BatchOrSerial — este componente los necesita todos.
+      .then((data) => {
+        const list = data as unknown as AvailableBatch[];
         setAvailableByItem((prev) => ({
           ...prev,
-          [availabilityKey]: Array.isArray(data) ? data : [],
+          [availabilityKey]: Array.isArray(list) ? list : [],
         }));
       })
       .catch(() => {

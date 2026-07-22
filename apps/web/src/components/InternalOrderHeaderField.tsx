@@ -1,14 +1,7 @@
-import { coreApi } from '@/shared/api';
+import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api';
 import React, { useEffect, useState } from 'react';
 import { SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
-
-interface InternalOrder {
-  id: string;
-  code: string;
-  name: string;
-  status: string;
-}
 
 interface Props {
   value: string | null | undefined;
@@ -34,8 +27,9 @@ export const InternalOrderHeaderField: React.FC<Props> = ({
 
   useEffect(() => {
     if (!user?.tenantId) return;
-    coreApi.get('/api/internal-orders')
-      .catch(() => ([]))
+    internalOrdersApi
+      .list()
+      .catch(() => [])
       .then((d) => setOrders(Array.isArray(d) ? d : []))
       .catch(() => setOrders([]));
   }, [token, user?.tenantId]);
