@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Badge, Loader, useToast } from '@openfactu/ui';
+import { Card, Button, Input, Loader, useToast, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
 import {
   UserPlus,
   Mail,
-  Edit2,
-  Trash2,
   ShieldCheck,
   Lock,
   Building2,
@@ -20,12 +18,15 @@ import {
   TrendingUp,
   Calendar,
   Eye,
+  EyeOff,
+  KeyRound,
   Pencil,
   AlertTriangle,
   UsersRound,
   Route,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { UsersTable } from '../components/users/UsersTable';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -331,7 +332,19 @@ export const Users: React.FC = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [globalRole, setGlobalRole] = useState('USER');
+
+  // Genera una contraseña robusta y la revela para que el admin la copie.
+  // Sirve como "resetear contraseña" al editar un usuario existente.
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    const bytes = new Uint32Array(14);
+    crypto.getRandomValues(bytes);
+    const pwd = Array.from(bytes, (b) => chars[b % chars.length]).join('');
+    setPassword(pwd);
+    setShowPassword(true);
+  };
 
   // Memberships
   const [memberships, setMemberships] = useState<MembershipEntry[]>([]);
@@ -372,6 +385,7 @@ export const Users: React.FC = () => {
     setUsername('');
     setEmail('');
     setPassword('');
+    setShowPassword(false);
     setGlobalRole('USER');
     setMemberships([]);
   };
@@ -606,16 +620,40 @@ export const Users: React.FC = () => {
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  {editingUser ? 'Nueva Contraseña (vacío = no cambiar)' : 'Contraseña'}
-                </label>
-                <Input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required={!editingUser}
-                />
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                    {editingUser ? 'Nueva Contraseña (vacío = no cambiar)' : 'Contraseña'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={generatePassword}
+                    className="inline-flex items-center gap-1 text-[10px] font-black text-accent hover:text-accent/80 uppercase tracking-widest"
+                  >
+                    <KeyRound size={11} /> Generar
+                  </button>
+                </div>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required={!editingUser}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-accent transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {editingUser && (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                    Escribe o genera una nueva contraseña para restablecer el acceso del usuario.
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
@@ -630,18 +668,17 @@ export const Users: React.FC = () => {
                   Rol Global {!isPrivileged && <Lock size={9} className="text-rose-400" />}
                 </label>
                 {isPrivileged ? (
-                  <select
+                  <SearchableSelect
                     value={globalRole}
-                    onChange={(e) => setGlobalRole(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  >
-                    <option value="USER">Usuario estándar</option>
-                    <option value="ADMIN">Administrador</option>
-
-                    {currentUser?.role === 'SUPERUSER' && (
-                      <option value="SUPERUSER">Superadministrador</option>
-                    )}
-                  </select>
+                    onChange={(v) => setGlobalRole(v)}
+                    options={[
+                      { label: 'Usuario estándar', value: 'USER' },
+                      { label: 'Administrador', value: 'ADMIN' },
+                      ...(currentUser?.role === 'SUPERUSER'
+                        ? [{ label: 'Superadministrador', value: 'SUPERUSER' }]
+                        : []),
+                    ]}
+                  />
                 ) : (
                   <div className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-500 dark:text-slate-400 font-bold">
                     {globalRole === 'USER'
@@ -864,110 +901,14 @@ export const Users: React.FC = () => {
       )}
 
       {/* Tabla de usuarios */}
-      <Card className="border-0 overflow-hidden" noPadding>
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-black text-slate-400 dark:text-slate-500">
-              <th className="p-4 pl-6">Usuario</th>
-              <th className="p-4">Email</th>
-              <th className="p-4">Rol Global</th>
-              <th className="p-4">Empresas</th>
-              <th className="p-4 text-right pr-6">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {loading && (
-              <tr>
-                <td colSpan={5} className="p-20 text-center">
-                  <Loader size="lg" />
-                </td>
-              </tr>
-            )}
-            {!loading &&
-              users.map((u) => (
-                <tr
-                  key={u.id}
-                  className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group"
-                >
-                  <td className="p-4 pl-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-xs font-black text-slate-600 dark:text-slate-300">
-                        {u.username?.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="font-black text-slate-800 dark:text-slate-100">
-                        {u.username}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-4 text-sm text-slate-500 dark:text-slate-400">{u.email}</td>
-                  <td className="p-4">
-                    <Badge
-                      variant={
-                        u.role === 'SUPERUSER' ? 'warning' : u.role === 'ADMIN' ? 'info' : 'neutral'
-                      }
-                    >
-                      {u.role === 'SUPERUSER'
-                        ? '⚡ Superadmin'
-                        : u.role === 'ADMIN'
-                          ? 'Admin'
-                          : 'Usuario'}
-                    </Badge>
-                  </td>
-                  <td className="p-4">
-                    {u.role === 'SUPERUSER' ? (
-                      <span className="text-xs text-amber-600 dark:text-amber-300 font-bold">
-                        Todas las empresas
-                      </span>
-                    ) : u.membershipCount > 0 ? (
-                      <div className="flex items-center gap-1.5">
-                        <Building2 size={13} className="text-slate-400 dark:text-slate-500" />
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                          {u.membershipCount} empresa{u.membershipCount !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    ) : u.tenantName ? (
-                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        {u.tenantName}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-rose-400 font-bold">Sin asignar</span>
-                    )}
-                  </td>
-                  <td className="p-4 text-right pr-6">
-                    <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => startEdit(u)}
-                        disabled={!canWrite}
-                        className="p-2 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all disabled:opacity-30"
-                      >
-                        <Edit2 size={15} />
-                      </button>
-                      {u.role !== 'SUPERUSER' && (
-                        <button
-                          onClick={() => canDelete && handleDelete(u.id)}
-                          disabled={!canDelete}
-                          className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-all disabled:opacity-30"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            {!loading && users.length === 0 && (
-              <tr>
-                <td
-                  colSpan={5}
-                  className="p-20 text-center text-slate-400 dark:text-slate-500 font-medium"
-                >
-                  No hay usuarios registrados.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </Card>
+      <UsersTable
+        users={users}
+        loading={loading}
+        canWrite={canWrite}
+        canDelete={canDelete}
+        onEdit={startEdit}
+        onDelete={handleDelete}
+      />
     </div>
   );
 };

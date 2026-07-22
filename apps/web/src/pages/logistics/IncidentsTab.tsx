@@ -1,19 +1,23 @@
 /**
  * Pestaña de Incidencias — lista todos los envíos en estado `exception` con
  * el motivo reportado por el conductor, y deja resolverlas o convertirlas
- * en devolución.
+ * en devolución. Incluye además las incidencias reportadas por CLIENTES desde
+ * el chat público de seguimiento (eventos `kind='incident'`), que no cambian
+ * el estado del envío: el equipo las revisa y decide si escalarlas.
  *
  * Fuentes de datos:
  *   - `GET /api/logistics/shipments?status=exception` (paginado)
  *   - Para cada incidencia, el último `ShipmentEvent` con la descripción
  *     que escribió el conductor (o el `routeStop.podNotes`).
+ *   - `GET /api/logistics/incidents/client-reported` (últimos 30 días)
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Badge, Loader, Button, Input, Modal, useToast } from '@openfactu/ui';
-import { AlertTriangle, CheckCircle2, RefreshCw, RotateCcw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, MessageCircle, RefreshCw, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTabs } from '../../context/TabsContext';
+import { useRealtimeEvents } from '../../hooks/useRealtimeEvents';
 
 interface Shipment {
   id: string;
@@ -40,11 +44,24 @@ interface Incident {
   reportedAt: string | null;
 }
 
+/** Incidencia reportada por un cliente desde el chat público de tracking. */
+interface ClientIncident {
+  eventId: string;
+  description: string | null;
+  createdAt: string;
+  shipmentId: string;
+  shipmentStatus: string | null;
+  preparationStatus: string | null;
+  destinationAddress: string | null;
+  recipientName: string | null;
+}
+
 export const IncidentsTab: React.FC = () => {
   const { token, user } = useAuth();
   const { openTab } = useTabs();
   const toast = useToast();
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [clientReported, setClientReported] = useState<ClientIncident[]>([]);
   const [loading, setLoading] = useState(true);
 
   const headers = useMemo(
@@ -58,6 +75,11 @@ export const IncidentsTab: React.FC = () => {
 
   const load = async () => {
     setLoading(true);
+    // Reportadas por clientes — en paralelo con la lista clásica.
+    fetch('/api/logistics/incidents/client-reported', { headers })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setClientReported(Array.isArray(d) ? d : []))
+      .catch(() => setClientReported([]));
     // Filtramos por ambos status (legacy + preparation) para no perder ninguno.
     const r = await fetch(
       `/api/logistics/shipments?status=exception&preparationStatus=exception&pageSize=100`,
@@ -91,6 +113,30 @@ export const IncidentsTab: React.FC = () => {
     if (user?.tenantId) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.tenantId]);
+
+  // Si un cliente reporta desde el chat con la pestaña abierta, refresca al vuelo.
+  useRealtimeEvents({
+    'shipment.incident': () => load(),
+  });
+
+  /** Escala una incidencia de cliente: el envío pasa a `exception` y entra
+   *  en la lista clásica con sus acciones (resolver / devolución). */
+  const escalate = async (ci: ClientIncident) => {
+    const r = await fetch(`/api/logistics/shipments/${ci.shipmentId}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        status: 'exception',
+        reason: ci.description || 'Incidencia reportada por el cliente',
+      }),
+    });
+    if (r.ok) {
+      toast.success('Escalada — el envío queda en estado de incidencia');
+      load();
+    } else {
+      toast.error('No se pudo escalar la incidencia');
+    }
+  };
 
   // Estados de los modales — sustituyen a window.confirm/prompt para tener
   // feedback visual coherente con el resto de la app (y que funcione bien
@@ -261,6 +307,86 @@ export const IncidentsTab: React.FC = () => {
             })}
           </ul>
         </Card>
+      )}
+
+      {/* Reportadas por clientes — vía chat público de seguimiento. No cambian
+          el estado del envío hasta que el equipo las escala. */}
+      {clientReported.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 pt-2">
+            <MessageCircle size={16} className="text-amber-500" />
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+              Reportadas por clientes
+            </span>
+            <span className="text-[11px] text-slate-400">
+              vía chat de seguimiento · últimos 30 días
+            </span>
+          </div>
+          <Card bodyClassName="p-0">
+            <ul>
+              {clientReported.map((ci) => {
+                const escalated =
+                  ci.shipmentStatus === 'exception' || ci.preparationStatus === 'exception';
+                return (
+                  <li
+                    key={ci.eventId}
+                    className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 px-4 py-3"
+                  >
+                    <div className="flex items-start gap-3 flex-wrap">
+                      <div className="shrink-0 w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
+                        <MessageCircle size={18} className="text-amber-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="warning">Cliente</Badge>
+                          {escalated && <Badge variant="error">Escalada</Badge>}
+                          <span className="text-[11px] text-slate-400 ml-auto">
+                            {new Date(ci.createdAt).toLocaleString('es-ES')}
+                          </span>
+                        </div>
+                        {ci.destinationAddress && (
+                          <div className="text-sm text-slate-700 dark:text-slate-200 mt-0.5 truncate">
+                            {ci.destinationAddress}
+                            {ci.recipientName && (
+                              <span className="text-slate-500 text-xs"> · {ci.recipientName}</span>
+                            )}
+                          </div>
+                        )}
+                        {ci.description && (
+                          <div className="mt-1 rounded-md bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-2.5 py-1.5 text-xs text-amber-800 dark:text-amber-200">
+                            {ci.description}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-2 flex gap-2 flex-wrap justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          openTab(`/logistics/shipments/${ci.shipmentId}`, { title: 'Envío' })
+                        }
+                        className="text-primary"
+                      >
+                        Ver envío
+                      </Button>
+                      {!escalated && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => escalate(ci)}
+                          className="flex items-center gap-1.5 !text-rose-700"
+                        >
+                          <AlertTriangle size={13} /> Escalar a incidencia
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        </>
       )}
 
       {/* Modal — Marcar resuelta */}

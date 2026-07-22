@@ -38,6 +38,20 @@ export function hasScope(req: any, required: string): boolean {
   return false;
 }
 
+/**
+ * Middleware factory: exige un scope concreto. Una sesión de usuario (JWT)
+ * pasa siempre — la autorización la resuelve el JWT/rol. Solo restringe cuando
+ * la petición llega con un token de API (`req.apiToken`), de modo que añadirlo
+ * a un endpoint que también usa la web es seguro: el front con JWT no se ve
+ * afectado.
+ */
+export function requireScope(scope: string) {
+  return (req: any, res: Response, next: NextFunction) => {
+    if (hasScope(req, scope)) return next();
+    return res.status(403).json({ error: `Falta el scope ${scope}` });
+  };
+}
+
 export const apiTokenMiddleware = async (req: any, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization as string | undefined;
   if (!authHeader || !authHeader.startsWith('Bearer ')) return next();

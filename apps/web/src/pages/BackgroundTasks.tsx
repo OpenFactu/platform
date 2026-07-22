@@ -9,6 +9,8 @@ import {
   Loader2,
   RefreshCw,
   AlertTriangle,
+  DatabaseBackup,
+  Paperclip,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useFormat } from '../hooks/useFormat';
@@ -25,16 +27,60 @@ interface MailQueueRow {
   to: string | string[];
 }
 
+interface BackupRunRow {
+  id: string;
+  kind: 'scheduled' | 'manual';
+  status: 'running' | 'ok' | 'error';
+  destination: 'local' | 'gdrive' | 'onedrive';
+  fileName: string | null;
+  sizeBytes: number | null;
+  error: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+}
+
+interface AttachmentRow {
+  id: string;
+  entityType: string;
+  entityId: string;
+  fileName: string;
+  mime: string;
+  size: number;
+  provider: 'local' | 'gdrive' | 'onedrive';
+  uploadedBy: string | null;
+  uploadedAt: string;
+}
+
+function formatBytes(n: number): string {
+  if (!n) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  let v = n;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
 /**
- * Panel en vivo con todas las tareas en segundo plano del tenant actual.
- * Por ahora muestra la cola de correo (únicamente tarea async implementada).
- * Refresca cada 2 segundos sin molestar (nada se refresca si no hay cambios).
+ * Panel en vivo con todas las tareas en segundo plano del tenant actual:
+ * cola de correo, backups (manuales y programados) y subidas de adjuntos
+ * recientes. Refresca cada 2 segundos sin molestar (nada se refresca si no
+ * hay cambios visibles).
+ *
+ * `/api/backups` solo responde a ADMIN/SUPERUSER — si el usuario no tiene
+ * ese rol, la sección de backups se omite en silencio (sin toast de error)
+ * en vez de mostrar un 403 confuso.
  */
 export const BackgroundTasks: React.FC = () => {
   const { token, user } = useAuth();
   const fmt = useFormat();
   const toast = useToast();
   const [mails, setMails] = useState<MailQueueRow[]>([]);
+  const [backups, setBackups] = useState<BackupRunRow[]>([]);
+  const [canSeeBackups, setCanSeeBackups] = useState(true);
+  const [uploads, setUploads] = useState<AttachmentRow[]>([]);
   const [lastUpdate, setLastUpdate] = useState(Date.now());
   const [loading, setLoading] = useState(true);
 
@@ -45,9 +91,25 @@ export const BackgroundTasks: React.FC = () => {
 
   const load = async () => {
     try {
-      const res = await fetch('/api/email/queue', { headers });
-      const data = await res.json();
-      setMails(Array.isArray(data) ? data : []);
+      const [mailRes, backupsRes, uploadsRes] = await Promise.all([
+        fetch('/api/email/queue', { headers }),
+        fetch('/api/backups', { headers }),
+        fetch('/api/attachments/recent?limit=15', { headers }),
+      ]);
+
+      const mailData = await mailRes.json().catch(() => []);
+      setMails(Array.isArray(mailData) ? mailData : []);
+
+      if (backupsRes.status === 403) {
+        setCanSeeBackups(false);
+      } else {
+        const backupData = await backupsRes.json().catch(() => ({ runs: [] }));
+        setBackups(Array.isArray(backupData?.runs) ? backupData.runs : []);
+      }
+
+      const uploadsData = await uploadsRes.json().catch(() => []);
+      setUploads(Array.isArray(uploadsData) ? uploadsData : []);
+
       setLastUpdate(Date.now());
     } catch {
       /* silencioso */
@@ -71,6 +133,15 @@ export const BackgroundTasks: React.FC = () => {
     failed: mails.filter((m) => m.status === 'failed'),
   };
 
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  const backupsGrouped = {
+    running: backups.filter((b) => b.status === 'running'),
+    okRecent: backups.filter(
+      (b) => b.status === 'ok' && new Date(b.startedAt).getTime() >= oneHourAgo,
+    ),
+    failed: backups.filter((b) => b.status === 'error'),
+  };
+
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       <header className="flex items-end justify-between border-b border-line dark:border-ink-700 pb-4">
@@ -83,7 +154,7 @@ export const BackgroundTasks: React.FC = () => {
               Tareas en segundo plano
             </h1>
             <p className="text-sm text-ink-500 dark:text-ink-400">
-              Cola de envíos, jobs async y su estado en tiempo real.
+              Cola de envíos, backups, subidas y su estado en tiempo real.
             </p>
           </div>
         </div>
@@ -97,7 +168,7 @@ export const BackgroundTasks: React.FC = () => {
         </div>
       </header>
 
-      {/* Stats agregadas */}
+      {/* Stats agregadas — correo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           label="Enviándose"
@@ -145,6 +216,78 @@ export const BackgroundTasks: React.FC = () => {
                 .map((m) => (
                   <MailRow key={m.id} mail={m} fmt={fmt} />
                 ))}
+            </ul>
+          )}
+        </div>
+      </Card>
+
+      {canSeeBackups && (
+        <>
+          {/* Stats agregadas — backups */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <StatCard
+              label="Backups en curso"
+              value={backupsGrouped.running.length}
+              icon={<Loader2 size={18} className="animate-spin" />}
+              tone="accent"
+            />
+            <StatCard
+              label="Completados (última h)"
+              value={backupsGrouped.okRecent.length}
+              icon={<CheckCircle2 size={18} />}
+              tone="success"
+            />
+            <StatCard
+              label="Fallidos"
+              value={backupsGrouped.failed.length}
+              icon={<XCircle size={18} />}
+              tone="error"
+            />
+          </div>
+
+          <Card>
+            <div className="p-4">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 flex items-center gap-2 mb-3">
+                <DatabaseBackup size={14} /> Backups
+              </h2>
+              {loading ? (
+                <div className="py-10 text-center text-ink-400 text-xs font-mono">Cargando…</div>
+              ) : backups.length === 0 ? (
+                <div className="py-10 flex flex-col items-center gap-2 text-ink-400">
+                  <DatabaseBackup size={28} />
+                  <p className="text-xs font-mono uppercase tracking-wider">
+                    Todavía no hay backups
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-line dark:divide-ink-700">
+                  {backups.slice(0, 15).map((b) => (
+                    <BackupRow key={b.id} run={b} fmt={fmt} />
+                  ))}
+                </ul>
+              )}
+            </div>
+          </Card>
+        </>
+      )}
+
+      <Card>
+        <div className="p-4">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 flex items-center gap-2 mb-3">
+            <Paperclip size={14} /> Subidas recientes
+          </h2>
+          {loading ? (
+            <div className="py-10 text-center text-ink-400 text-xs font-mono">Cargando…</div>
+          ) : uploads.length === 0 ? (
+            <div className="py-10 flex flex-col items-center gap-2 text-ink-400">
+              <Paperclip size={28} />
+              <p className="text-xs font-mono uppercase tracking-wider">Sin subidas recientes</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-line dark:divide-ink-700">
+              {uploads.map((u) => (
+                <UploadRow key={u.id} attachment={u} fmt={fmt} />
+              ))}
             </ul>
           )}
         </div>
@@ -234,5 +377,78 @@ const MailRow: React.FC<{ mail: MailQueueRow; fmt: any }> = ({ mail, fmt }) => {
     </li>
   );
 };
+
+const BACKUP_DEST_LABELS: Record<BackupRunRow['destination'], string> = {
+  local: 'Disco local',
+  gdrive: 'Google Drive',
+  onedrive: 'OneDrive',
+};
+
+const BackupRow: React.FC<{ run: BackupRunRow; fmt: any }> = ({ run, fmt }) => {
+  const statusMap = {
+    running: {
+      label: 'En curso…',
+      color: 'info' as const,
+      icon: <Loader2 size={12} className="animate-spin" />,
+    },
+    ok: { label: 'Completado', color: 'success' as const, icon: <CheckCircle2 size={12} /> },
+    error: { label: 'Fallido', color: 'error' as const, icon: <AlertTriangle size={12} /> },
+  }[run.status];
+
+  return (
+    <li className="py-3 flex items-center gap-3 animate-in slide-in-from-left-2 duration-300">
+      <Badge variant={statusMap.color} className="gap-1">
+        {statusMap.icon}
+        {statusMap.label}
+      </Badge>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-bold text-ink-900 dark:text-slate-100 truncate">
+          {run.fileName || (run.kind === 'manual' ? 'Backup manual' : 'Backup programado')}
+        </div>
+        <div className="text-[11px] text-ink-500 dark:text-ink-400 flex items-center gap-2">
+          <span>{run.kind === 'manual' ? 'Manual' : 'Programado'}</span>
+          <span>·</span>
+          <span>{BACKUP_DEST_LABELS[run.destination] || run.destination}</span>
+          {run.sizeBytes ? (
+            <>
+              <span>·</span>
+              <span>{formatBytes(run.sizeBytes)}</span>
+            </>
+          ) : null}
+          <span>·</span>
+          <span>{fmt.date(new Date(run.startedAt))}</span>
+        </div>
+        {run.error && (
+          <div className="text-[10px] text-rose-600 dark:text-rose-400 italic mt-0.5 truncate">
+            {run.error}
+          </div>
+        )}
+      </div>
+    </li>
+  );
+};
+
+const UploadRow: React.FC<{ attachment: AttachmentRow; fmt: any }> = ({ attachment, fmt }) => (
+  <li className="py-3 flex items-center gap-3 animate-in slide-in-from-left-2 duration-300">
+    <Badge variant="neutral" className="gap-1">
+      <Paperclip size={12} />
+      {attachment.provider}
+    </Badge>
+    <div className="flex-1 min-w-0">
+      <div className="text-sm font-bold text-ink-900 dark:text-slate-100 truncate">
+        {attachment.fileName}
+      </div>
+      <div className="text-[11px] text-ink-500 dark:text-ink-400 flex items-center gap-2">
+        <span>{formatBytes(attachment.size)}</span>
+        <span>·</span>
+        <span>
+          {attachment.entityType} #{attachment.entityId.slice(0, 8)}
+        </span>
+        <span>·</span>
+        <span>{fmt.date(new Date(attachment.uploadedAt))}</span>
+      </div>
+    </div>
+  </li>
+);
 
 export default BackgroundTasks;

@@ -27,8 +27,11 @@ export const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
   const [selectedTenant, setSelectedTenant] = useState('');
+  const [loginAvatarUrl, setLoginAvatarUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tenantOpen, setTenantOpen] = useState(false);
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
   const tenantWrapperRef = useRef<HTMLDivElement>(null);
 
   const { login } = useAuth();
@@ -48,6 +51,7 @@ export const Login: React.FC = () => {
     if (!emailOrUsername.trim()) {
       setTenants([]);
       setSelectedTenant('');
+      setLoginAvatarUrl(null);
       return;
     }
     try {
@@ -63,6 +67,17 @@ export const Login: React.FC = () => {
     } catch {
       // Silencioso — no revelar si el usuario existe
     }
+    // Foto de perfil (si la cuenta existe y tiene una) — mismo criterio de
+    // "no revelar si el usuario existe": el endpoint siempre responde 200.
+    try {
+      const res = await fetch(
+        `/api/auth/avatar-for-login?email=${encodeURIComponent(emailOrUsername)}`,
+      );
+      const data = await res.json();
+      setLoginAvatarUrl(data?.avatarImageUrl || null);
+    } catch {
+      setLoginAvatarUrl(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,16 +89,33 @@ export const Login: React.FC = () => {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, selectedTenantId: selectedTenant }),
+        body: JSON.stringify({
+          email,
+          password,
+          selectedTenantId: selectedTenant,
+          ...(twoFactorRequired ? { totpCode: totpCode.trim() } : {}),
+        }),
       });
 
       const data = await res.json();
+
+      // La contraseña es correcta pero el usuario tiene 2FA: pedimos el código.
+      if (res.ok && data.twoFactorRequired) {
+        setTwoFactorRequired(true);
+        setIsSubmitting(false);
+        return;
+      }
 
       if (res.ok) {
         login(data.token, data.user);
         navigate('/');
       } else {
-        setError(data.error || 'Credenciales incorrectas o empresa no válida');
+        setError(
+          data.error ||
+            (twoFactorRequired
+              ? 'Código 2FA inválido'
+              : 'Credenciales incorrectas o empresa no válida'),
+        );
       }
     } catch (err) {
       setError('No se pudo establecer conexión con el servidor');
@@ -168,9 +200,14 @@ export const Login: React.FC = () => {
                 <span className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer">
                   <Globe size={10} /> ES
                 </span>
-                <span className="hover:text-white transition-colors cursor-pointer">
+                <a
+                  href="https://docs.keirost.es"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white transition-colors cursor-pointer"
+                >
                   Documentación
-                </span>
+                </a>
               </div>
             </div>
           </div>
@@ -207,7 +244,7 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            <div className="space-y-5">
+            <div className={`space-y-5 ${twoFactorRequired ? 'hidden' : ''}`}>
               {/* Input Email / Username — primero */}
               <div className="space-y-1.5 focus-within:translate-y-[-2px] transition-transform">
                 <label className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest ml-1">
@@ -215,7 +252,15 @@ export const Login: React.FC = () => {
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-4 flex items-center text-slate-400 dark:text-slate-500 group-focus-within:text-[#0D9488] dark:group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
-                    <Mail size={18} />
+                    {loginAvatarUrl ? (
+                      <img
+                        src={loginAvatarUrl}
+                        alt=""
+                        className="w-5 h-5 rounded-full object-cover"
+                      />
+                    ) : (
+                      <Mail size={18} />
+                    )}
                   </div>
                   <input
                     type="text"
@@ -322,6 +367,7 @@ export const Login: React.FC = () => {
                   </label>
                   <button
                     type="button"
+                    onClick={() => navigate('/forgot-password')}
                     className="text-[11px] font-bold text-[#0D9488] hover:text-[#0A6E63] hover:underline transition"
                   >
                     ¿Olvidó su contraseña?
@@ -350,6 +396,33 @@ export const Login: React.FC = () => {
               </div>
             </div>
 
+            {/* Paso 2FA — se muestra cuando la contraseña es correcta y el usuario tiene 2FA */}
+            {twoFactorRequired && (
+              <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest ml-1">
+                  Código de verificación
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-4 flex items-center text-slate-400 dark:text-slate-500 group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value)}
+                    placeholder="123456 o código de respaldo"
+                    className="w-full bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium tracking-widest"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 ml-1 pt-1">
+                  Introduce el código de tu app de autenticación.
+                </p>
+              </div>
+            )}
+
             <div className="pt-2">
               <button
                 type="submit"
@@ -360,7 +433,7 @@ export const Login: React.FC = () => {
                   <Loader2 className="animate-spin" size={20} />
                 ) : (
                   <>
-                    Entrar al Sistema
+                    {twoFactorRequired ? 'Verificar código' : 'Entrar al Sistema'}
                     <ArrowRight
                       size={18}
                       className="group-hover:translate-x-1 transition-transform"

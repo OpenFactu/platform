@@ -43,7 +43,7 @@ import { buildSimpleLabelLayout, defaultSimpleArticleSettings } from '../../comp
 import { compileCanvas } from '../../components/document-templates/canvas/compileCanvas';
 import { usePluginFields } from '../../components/document-templates/canvas/usePluginFields';
 import { useQueryFields } from '../../components/document-templates/canvas/useQueryFields';
-import { CanvasContextMenu, CtxItem } from '../../components/document-templates/canvas/CanvasContextMenu';
+import { ContextMenu, ContextMenuItem } from '../../components/common/ContextMenu';
 import { CssEditorModal } from '../../components/document-templates/canvas/CssEditorModal';
 import { ImportFromTemplateDialog } from '../../components/document-templates/canvas/ImportFromTemplateDialog';
 import { SimpleLabelEditor } from '../../components/document-templates/SimpleLabelEditor';
@@ -980,7 +980,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
   const cssElement = cssElementId ? findElement(cssElementId) : null;
 
   /** Construye las opciones del menú contextual según el objetivo. */
-  const buildCtxItems = (t: CtxTarget): CtxItem[] => {
+  const buildCtxItems = (t: CtxTarget): ContextMenuItem[] => {
     const hasClip = !!clipboardRef.current;
     const hasStyleClip = !!styleClipboardRef.current;
     if (t.scope === 'element') {
@@ -1130,7 +1130,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
       )}
       {previewUrl && <PreviewModal url={previewUrl} onClose={() => setPreviewUrl(null)} />}
       {ctxMenu && (
-        <CanvasContextMenu
+        <ContextMenu
           x={ctxMenu.x}
           y={ctxMenu.y}
           items={buildCtxItems(ctxMenu)}
@@ -2460,6 +2460,11 @@ const PageInspector: React.FC<{
       value={layout.pageNumbers}
       onChange={(pn) => onUpdatePage({ pageNumbers: pn })}
     />
+    <TraceabilityFooterInspector
+      showDocQr={layout.showDocQr}
+      showDocBarcode={layout.showDocBarcode}
+      onChange={(v) => onUpdatePage(v)}
+    />
     <QueriesInspector
       queries={layout.queries}
       testParams={layout.testParams ?? {}}
@@ -2952,6 +2957,33 @@ const PageNumbersInspector: React.FC<{
             El pie se pinta en los últimos 12mm de cada página. Se reserva espacio automáticamente.
           </div>
         </>
+      )}
+    </Section>
+  );
+};
+
+const TraceabilityFooterInspector: React.FC<{
+  showDocQr?: boolean;
+  showDocBarcode?: boolean;
+  onChange: (v: { showDocQr?: boolean; showDocBarcode?: boolean }) => void;
+}> = ({ showDocQr, showDocBarcode, onChange }) => {
+  return (
+    <Section title="Trazabilidad (QR / código de barras)">
+      <Toggle
+        label="Mostrar QR de verificación"
+        checked={showDocQr === true}
+        onChange={(v) => onChange({ showDocQr: v })}
+      />
+      <Toggle
+        label="Mostrar código de barras (Code-128)"
+        checked={showDocBarcode === true}
+        onChange={(v) => onChange({ showDocBarcode: v })}
+      />
+      {(showDocQr || showDocBarcode) && (
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+          Se añaden junto al hash y la fecha en el pie de cada página, igual que en las plantillas
+          estándar del sistema.
+        </div>
       )}
     </Section>
   );

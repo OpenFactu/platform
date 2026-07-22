@@ -14,6 +14,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTabs, useCurrentTab } from '../../context/TabsContext';
 import { useTheme } from '../../context/ThemeContext';
+import { formatDocCode } from '../../utils/docCode';
 import {
   Truck,
   Plus,
@@ -26,6 +27,8 @@ import {
   ShoppingCart,
   AlertCircle,
   Download,
+  Eye,
+  PackageSearch,
 } from 'lucide-react';
 import { DocumentActionBar } from '../../components/DocumentActionBar';
 import { InternalOrderHeaderField } from '../../components/InternalOrderHeaderField';
@@ -35,6 +38,9 @@ import { DocumentDetailLayout } from '../../components/DocumentDetailLayout';
 import { AttachmentsPanel } from '../../components/AttachmentsPanel';
 import { CloneDocumentActions } from '../../components/common/CloneDocumentActions';
 import { PreparationButton } from '../../components/common/PreparationButton';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 import { DocumentFiscalPanel } from '../../components/documents/DocumentFiscalPanel';
 import { TraceabilityButton } from '../../components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../../components/DocumentTotalsBlock';
@@ -49,6 +55,7 @@ import { useFormat } from '../../hooks/useFormat';
 import { BatchSelectionModal } from '../../components/BatchSelectionModal';
 import { BatchAssignmentPanel } from '../../components/BatchAssignmentPanel';
 import { useItemUoms } from '../../hooks/useItemUoms';
+import { useZonesWithStock } from '../../hooks/useZonesWithStock';
 import { usePluginLineFields } from '../../hooks/usePluginLineFields';
 import { PluginFieldsPanel } from '../../components/PluginFieldsPanel';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
@@ -70,6 +77,7 @@ const SDNList: React.FC<{
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
+  const { flags } = useTheme();
   const tabs = (() => {
     try {
       return useTabs();
@@ -118,12 +126,11 @@ const SDNList: React.FC<{
     {
       header: 'No. Albarán',
       sortable: true,
-      sortAccessor: (item: any) =>
-        `${item.seriesPrefix || ''}-${String(item.docNum || 0).padStart(6, '0')}`,
+      sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {item.seriesPrefix}-{item.periodCode}-{String(item.docNum).padStart(6, '0')}
+            {formatDocCode(item)}
           </span>
           <span className="text-[10px] text-slate-400 dark:text-slate-400 font-mono mt-1">
             ID: {item.id.substring(0, 8)}
@@ -178,7 +185,12 @@ const SDNList: React.FC<{
           {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
           {item.status === 'C' && <Badge variant="success">Facturado</Badge>}
           {item.status === 'X' && <Badge variant="error">Cancelado</Badge>}
-          {item.hasActiveShipment && <Badge variant="info">En preparación</Badge>}
+          {item.hasActiveShipment && item.activeShipmentStatus === 'delivered' && (
+            <Badge variant="success">Entregado</Badge>
+          )}
+          {item.hasActiveShipment && item.activeShipmentStatus !== 'delivered' && (
+            <Badge variant="info">En preparación</Badge>
+          )}
         </div>
       ),
     },
@@ -213,9 +225,9 @@ const SDNList: React.FC<{
               <Copy size={12} /> Facturar
             </Button>
           )}
-          {item.status === 'O' && !item.hasActiveShipment && (
+          {item.status === 'O' && !item.hasActiveShipment && flags.logisticsEnabled && (
             <div onClick={(e) => e.stopPropagation()} className="inline-flex">
-              <PreparationButton docType="SDN" docId={item.id} />
+              <PreparationButton docType="SDN" docId={item.id} compact />
             </div>
           )}
           {item.hasActiveShipment && item.activeShipmentId && (
@@ -249,6 +261,43 @@ const SDNList: React.FC<{
         </div>
       ),
     },
+  ];
+
+  const ctxMenu = useContextMenu<any>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (item: any) => [
+    { label: 'Ver Albarán', icon: <Eye size={14} />, onClick: () => onDetail(item) },
+    {
+      label: 'Descargar PDF',
+      icon: <Download size={14} />,
+      onClick: () => handleQuickPdf(item.id),
+    },
+    ...(item.status === 'O'
+      ? [
+          {
+            label: 'Facturar',
+            icon: <Copy size={14} />,
+            onClick: () => onCopyToInvoice(item),
+            separatorBefore: true,
+          },
+        ]
+      : []),
+    ...(item.hasActiveShipment && item.activeShipmentId
+      ? [
+          {
+            label: 'Ver preparación',
+            icon: <PackageSearch size={14} />,
+            onClick: () => {
+              const path = `/logistics/shipments/${item.activeShipmentId}`;
+              if (tabs && (tabs as any).openTab) {
+                (tabs as any).openTab(path, { title: 'Envío en preparación' });
+              } else {
+                window.location.href = path;
+              }
+            },
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -322,7 +371,7 @@ const SDNList: React.FC<{
           onSent={() => setSelectedKeys(new Set())}
         />
         <Table
-          columns={columns}
+          columns={ctxColumns}
           data={filteredData || []}
           isLoading={loading}
           onRowClick={onDetail}
@@ -331,6 +380,14 @@ const SDNList: React.FC<{
           onSelectionChange={setSelectedKeys}
         />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };
@@ -366,6 +423,7 @@ const SDNForm: React.FC<{
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const fmt = useFormat();
   const itemUoms = useItemUoms();
+  const zonesWithStock = useZonesWithStock();
   const { flags } = useTheme();
   const warehouseLocation = flags.warehouseLocation;
   const pluginLineFields = usePluginLineFields('SalesDeliveryNoteLine');
@@ -389,10 +447,12 @@ const SDNForm: React.FC<{
       getItemUoms: itemUoms.get,
       warehouseLocation,
       pluginLineFields,
+      getAvailableZones: zonesWithStock.get,
     });
     return [...base.slice(0, -1), projectCol, base[base.length - 1]];
   }, [
     state.lines,
+    state.warehouseId,
     masters.items,
     masters.taxGroups,
     warehouseLocation,
@@ -499,6 +559,22 @@ const SDNForm: React.FC<{
                   onChange={setState.setSeriesId}
                   options={masters.series.map((s: any) => ({ label: s.name, value: s.id }))}
                 />
+                {state.isManualSeries && (
+                  <div className="mt-2 space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      Número de documento (manual) *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={state.manualNumber}
+                      onChange={(e) => setState.setManualNumber(e.target.value)}
+                      placeholder="Ej: 1050"
+                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    />
+                  </div>
+                )}
                 {state.seriesError && (
                   <p className="text-[10px] text-rose-500 font-bold mt-1">{state.seriesError}</p>
                 )}
@@ -606,6 +682,7 @@ const SDNForm: React.FC<{
         masters={masters}
         zones={zones}
         warehouseId={state.warehouseId}
+        warehouseLocation={warehouseLocation}
         initialLineIdx={batchEditingIdx}
         isSale={true}
         onSave={(updates) => {
@@ -671,6 +748,8 @@ const SDNDetail: React.FC<{
   setViewingBatch: (l: any) => void;
 }> = ({ sdn, onBack, onCancel, onCopyToInvoice, masters, zones, setViewingBatch }) => {
   const fmt = useFormat();
+  const { flags } = useTheme();
+  const tabs = useTabs();
   const partner = masters.partners.find((p: any) => p.id === sdn.partnerId);
 
   const columns = useMemo(
@@ -690,14 +769,14 @@ const SDNDetail: React.FC<{
     <DocumentDetailLayout
       onBack={onBack}
       breadcrumb="VENTAS · ALBARÁN"
-      title={`${sdn.seriesPrefix}-${sdn.periodCode}-${String(sdn.docNum).padStart(6, '0')}`}
+      title={formatDocCode(sdn)}
       status={statusBadgeProps(sdn.status, DocKind.DeliveryNote)}
       actions={
         <DocumentActionBar
           docType="SDN"
           pdfUrl={`/api/sales/delivery-notes/${sdn.id}/pdf`}
           docId={sdn.id}
-          docCode={`${sdn.seriesPrefix}-${sdn.periodCode}-${String(sdn.docNum).padStart(6, '0')}`}
+          docCode={formatDocCode(sdn)}
           onCancel={() => onCancel(sdn.id)}
           showCancel={sdn.status === 'O'}
           primary={
@@ -713,10 +792,27 @@ const SDNDetail: React.FC<{
         <TraceabilityButton
           type="SDN"
           id={sdn.id}
-          docCode={`${sdn.seriesPrefix}-${sdn.periodCode}-${String(sdn.docNum).padStart(6, '0')}`}
+          docCode={formatDocCode(sdn)}
         />
         <InternalOrderChip internalOrderId={sdn.internalOrderId} />
-        {sdn.status === 'O' && <PreparationButton docType="SDN" docId={sdn.id} />}
+        {sdn.status === 'O' && !sdn.hasActiveShipment && flags.logisticsEnabled && (
+          <PreparationButton docType="SDN" docId={sdn.id} />
+        )}
+        {sdn.hasActiveShipment && sdn.activeShipmentId && (
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const path = `/logistics/shipments/${sdn.activeShipmentId}`;
+              if (tabs && (tabs as any).openTab) {
+                (tabs as any).openTab(path, { title: 'Envío en preparación' });
+              } else {
+                window.location.href = path;
+              }
+            }}
+          >
+            Ver preparación
+          </Button>
+        )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card
@@ -795,8 +891,6 @@ const SDNDetail: React.FC<{
   );
 };
 
-const formatDocCode = (d: any): string =>
-  `${d.seriesPrefix}-${d.periodCode}-${String(d.docNum).padStart(6, '0')}`;
 
 export const SalesDeliveryNotes: React.FC = () => {
   const { token, user } = useAuth();
@@ -856,7 +950,7 @@ export const SalesDeliveryNotes: React.FC = () => {
         const data = await res.json();
         const withCode = (Array.isArray(data) ? data : []).map((d: any) => ({
           ...d,
-          docCode: `${d.seriesPrefix || ''}-${d.periodCode || ''}-${String(d.docNum || '').padStart(6, '0')}`,
+          docCode: formatDocCode(d),
           partnerName: d.partnerName || '',
         }));
         setDeliveries(withCode);

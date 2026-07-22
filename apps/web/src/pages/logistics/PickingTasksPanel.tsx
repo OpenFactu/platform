@@ -5,9 +5,14 @@
  * como chip prominente — el operario sabe exactamente qué lote/serie coger.
  */
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Badge, Loader, useToast } from '@openfactu/ui';
+import { Card, Button, Input, Badge, Loader, SearchableSelect, useToast } from '@openfactu/ui';
 import { Check, X, Layers3, Package, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+
+interface BatchOption {
+  batchNum: string;
+  quantity: number;
+}
 
 interface PickingTask {
   id: string;
@@ -39,6 +44,10 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
   const [tasks, setTasks] = useState<PickingTask[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  // Lotes/series con stock disponible por `${itemId}::${warehouseId}` — para
+  // ofrecer alternativas reales al sustituir el lote de una tarea, en vez de
+  // un campo de texto libre sin ninguna validación.
+  const [batchOptionsByKey, setBatchOptionsByKey] = useState<Map<string, BatchOption[]>>(new Map());
 
   const headers = {
     'Content-Type': 'application/json',
@@ -54,8 +63,32 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
       ),
       fetch('/api/items', { headers }).then((r) => (r.ok ? r.json() : [])),
     ]);
-    setTasks(Array.isArray(tRes) ? tRes : []);
-    setItems(Array.isArray(iRes) ? iRes : []);
+    const tasksList: PickingTask[] = Array.isArray(tRes) ? tRes : [];
+    const itemsList: any[] = Array.isArray(iRes) ? iRes : [];
+    setTasks(tasksList);
+    setItems(itemsList);
+
+    // Precarga las opciones de lote/serie disponibles por item+almacén,
+    // solo para artículos trazables con almacén conocido.
+    const itemMapLocal = new Map(itemsList.map((i) => [i.id, i] as const));
+    const keys = new Set<string>();
+    for (const t of tasksList) {
+      const it = t.itemId ? itemMapLocal.get(t.itemId) : null;
+      if ((it?.manageBy === 'B' || it?.manageBy === 'S') && t.itemId && t.warehouseId) {
+        keys.add(`${t.itemId}::${t.warehouseId}`);
+      }
+    }
+    const entries = await Promise.all(
+      Array.from(keys).map(async (key) => {
+        const [itemId, warehouseId] = key.split('::');
+        const res = await fetch(`/api/items/${itemId}/batches?warehouseId=${warehouseId}`, {
+          headers,
+        });
+        const list = res.ok ? await res.json() : [];
+        return [key, Array.isArray(list) ? list : []] as const;
+      }),
+    );
+    setBatchOptionsByKey(new Map(entries));
     setLoading(false);
   };
 
@@ -246,24 +279,48 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                     </button>
                   </div>
                   <div className="mt-1 flex items-center gap-2">
-                    {/* El input de Lote/serie solo aparece si el artículo se
+                    {/* El selector de Lote/serie solo aparece si el artículo se
                         gestiona por lotes ('B') o series ('S'). Para artículos
-                        sin trazabilidad ('N' o null) no tiene sentido. */}
-                    {(manageBy === 'B' || manageBy === 'S') && (
-                      <Input
-                        placeholder={manageBy === 'S' ? 'Nº de serie' : 'Lote'}
-                        value={t.batchNumber || ''}
-                        onChange={(e) =>
-                          setTasks((xs) =>
-                            xs.map((x) =>
-                              x.id === t.id ? { ...x, batchNumber: e.target.value } : x,
-                            ),
-                          )
+                        sin trazabilidad ('N' o null) no tiene sentido. Las
+                        opciones son los lotes con stock REAL en el almacén de
+                        la tarea — al elegir uno distinto, el backend revierte
+                        el stock del lote original y lo descuenta del nuevo
+                        (ver PATCH /prep/tasks/:id). */}
+                    {(manageBy === 'B' || manageBy === 'S') &&
+                      (() => {
+                        const key = t.itemId && t.warehouseId ? `${t.itemId}::${t.warehouseId}` : '';
+                        const available = batchOptionsByKey.get(key) || [];
+                        const options = available.map((b) => ({
+                          value: b.batchNum,
+                          label: b.batchNum,
+                          secondaryLabel: `${b.quantity} disp.`,
+                        }));
+                        // El lote ya asignado debe seguir siendo seleccionable
+                        // aunque su stock "disponible" salga en 0 en la
+                        // consulta fresca (ya se descontó al crear el
+                        // albarán) — si no, desaparecería del desplegable.
+                        if (t.batchNumber && !options.some((o) => o.value === t.batchNumber)) {
+                          options.unshift({
+                            value: t.batchNumber,
+                            label: t.batchNumber,
+                            secondaryLabel: 'actual',
+                          });
                         }
-                        onBlur={() => patchTask(t.id, { batchNumber: t.batchNumber })}
-                        className="w-40 text-xs"
-                      />
-                    )}
+                        return (
+                          <SearchableSelect
+                            options={options}
+                            value={t.batchNumber || ''}
+                            onChange={(v) => {
+                              setTasks((xs) =>
+                                xs.map((x) => (x.id === t.id ? { ...x, batchNumber: v } : x)),
+                              );
+                              if (v !== t.batchNumber) patchTask(t.id, { batchNumber: v });
+                            }}
+                            placeholder={manageBy === 'S' ? 'Nº de serie' : 'Lote'}
+                            className="w-48 text-xs"
+                          />
+                        );
+                      })()}
                     <Input
                       placeholder="Notas"
                       value={t.notes || ''}

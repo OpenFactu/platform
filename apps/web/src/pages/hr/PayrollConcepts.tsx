@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useAuth } from '../../context/AuthContext';
 import { ListChecks, Plus, Pencil, Trash2, Wand2 } from 'lucide-react';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 
 interface Concept {
   id: string;
@@ -162,6 +165,18 @@ export const PayrollConcepts: React.FC = () => {
     },
   ];
 
+  const ctxMenu = useContextMenu<Concept>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (r: Concept) => [
+    { label: 'Editar', icon: <Pencil size={14} />, onClick: () => setEditing(r) },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      onClick: () => remove(r),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4">
@@ -307,8 +322,16 @@ export const PayrollConcepts: React.FC = () => {
       )}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} />
+        <Table columns={ctxColumns} data={rows} isLoading={loading} />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };

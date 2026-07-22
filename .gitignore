@@ -40,3 +40,9 @@ storage/*
 
 # Local-only dev scripts (not shared)
 scripts/link-local.sh
+
+# Claude Code (config, worktrees, scratch) — no debe trackearse
+.claude/
+CLAUDE.md
+scratch_transpile_test.js
+**/scratch_transpile_test.js

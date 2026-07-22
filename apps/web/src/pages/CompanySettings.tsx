@@ -8,16 +8,19 @@ import {
   SlidersHorizontal,
   FileText,
   HardDrive,
-  FileBox,
   Upload,
   Mail,
   Coins,
   Link,
+  Sparkles,
+  DatabaseBackup,
 } from 'lucide-react';
 import { StorageSettingsTab } from '../components/settings/StorageSettingsTab';
 import { DataTransferTab } from '../components/settings/DataTransferTab';
+import { BackupsTab } from '../components/settings/BackupsTab';
 import { FiscalSettingsTab } from '../components/settings/FiscalSettingsTab';
 import { EmailSettingsTab } from '../components/settings/EmailSettingsTab';
+import { AiSettingsTab } from '../components/settings/AiSettingsTab';
 import { useAuth } from '../context/AuthContext';
 import { useTheme, THEME_PRESETS } from '../context/ThemeContext';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
@@ -72,11 +75,12 @@ type TabId =
   | 'format'
   | 'flags'
   | 'storage'
-  | 'templates'
   | 'data'
+  | 'backups'
   | 'email'
   | 'catalogs'
-  | 'app';
+  | 'app'
+  | 'ai';
 
 export const CompanySettings: React.FC = () => {
   const { token, user } = useAuth();
@@ -90,8 +94,8 @@ export const CompanySettings: React.FC = () => {
     activePresetId,
   } = useTheme();
   const toast = useToast();
-  // Soporta deep-link al tab vía `?tab=storage|data|templates|...`. Usado por el
-  // sidebar (Configuración → Almacenamiento / Importar/Exportar).
+  // Soporta deep-link al tab vía `?tab=storage|data|...` para enlazar directamente
+  // a una pestaña concreta de Empresa desde otras partes de la app.
   const initialTab: TabId = (() => {
     if (typeof window === 'undefined') return 'fiscal';
     const t = new URLSearchParams(window.location.search).get('tab');
@@ -101,11 +105,12 @@ export const CompanySettings: React.FC = () => {
       'format',
       'flags',
       'storage',
-      'templates',
       'data',
+      'backups',
       'email',
       'catalogs',
       'app',
+      'ai',
     ];
     return allowed.includes(t as TabId) ? (t as TabId) : 'fiscal';
   })();
@@ -256,10 +261,11 @@ export const CompanySettings: React.FC = () => {
     { id: 'flags', label: 'Comportamiento', icon: SlidersHorizontal },
     { id: 'catalogs', label: 'Fiscal / Pagos', icon: Coins },
     { id: 'app', label: 'Acceso', icon: Link },
-    { id: 'templates', label: 'Plantillas', icon: FileBox },
     { id: 'storage', label: 'Almacenamiento', icon: HardDrive },
     { id: 'email', label: 'Correo', icon: Mail },
+    { id: 'ai', label: 'IA', icon: Sparkles },
     { id: 'data', label: 'Importar/Exportar', icon: Upload },
+    { id: 'backups', label: 'Backups', icon: DatabaseBackup },
   ];
 
   return (
@@ -830,6 +836,12 @@ export const CompanySettings: React.FC = () => {
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, watermarkDraft: v })}
               />
               <FlagRow
+                label="Marca de agua PAGADA en facturas cobradas"
+                hint="Añade la marca PAGADA (en verde) a los PDFs de facturas con el cobro completo."
+                checked={flagsDraft.watermarkPaid}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, watermarkPaid: v })}
+              />
+              <FlagRow
                 label="Confirmar antes de cancelar"
                 hint="Pide confirmación al usuario antes de cancelar un documento desde la interfaz."
                 checked={flagsDraft.confirmBeforeCancel}
@@ -846,6 +858,12 @@ export const CompanySettings: React.FC = () => {
                 hint="Activa el módulo de envíos, rutas y seguimiento en tiempo real (mapa + timeline por albarán)."
                 checked={!!flagsDraft.logisticsEnabled}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, logisticsEnabled: v })}
+              />
+              <FlagRow
+                label="Chat de Keiro en seguimiento público"
+                hint="Añade un chat de IA a la página pública de seguimiento (/track/:token) para que el cliente pregunte por su envío o reporte una incidencia — sin login, así que actívalo solo si quieres exponer esa superficie públicamente."
+                checked={!!(flagsDraft as any).trackingChatEnabled}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, trackingChatEnabled: v } as any)}
               />
               <FlagRow
                 label="Modo sólo logística"
@@ -962,37 +980,17 @@ export const CompanySettings: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'templates' && (
-        <Card>
-          <div className="p-6 space-y-3">
-            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
-              <FileBox size={18} />
-              <h2 className="text-lg font-bold">Plantillas PDF</h2>
-            </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Las plantillas de documento (facturas, albaranes, pedidos, etiquetas libres) se
-              gestionan en una página dedicada con su diseñador visual.
-            </p>
-            <div>
-              <a
-                href="/document-templates"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold"
-              >
-                <FileBox size={14} />
-                Abrir gestor de plantillas
-              </a>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {activeTab === 'storage' && <StorageSettingsTab />}
 
       {activeTab === 'catalogs' && <FiscalSettingsTab />}
 
       {activeTab === 'email' && <EmailSettingsTab />}
 
+      {activeTab === 'ai' && <AiSettingsTab />}
+
       {activeTab === 'data' && <DataTransferTab />}
+
+      {activeTab === 'backups' && <BackupsTab />}
     </div>
   );
 };

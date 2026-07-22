@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { Button, usePopup, useToast } from '@openfactu/ui';
 import { Download, ClipboardPaste } from 'lucide-react';
+import { exportToXlsx, type XlsxColumnType } from '../../utils/exportXlsx';
 
 /**
  * Utilidades de export/import tipo Excel para cualquier tabla.
  *
- * - Exportar: descarga CSV UTF-8 con BOM (Excel lo abre directamente como
- *   hoja nativa respetando acentos). Sin dependencias.
+ * - Exportar: descarga un .xlsx real con formato (cabecera con color,
+ *   filtros, anchos y formatos numéricos) vía utils/exportXlsx.
  * - Pegar desde Excel: detecta tabs (TSV que produce Excel al copiar) o
  *   comas (CSV). Auto-detecta cabecera si la primera fila coincide con
  *   las columnas esperadas. Mapeo editable por el usuario.
@@ -17,7 +18,7 @@ import { Download, ClipboardPaste } from 'lucide-react';
  *     columns={[
  *       { key: 'code', label: 'Código', required: true },
  *       { key: 'name', label: 'Nombre', required: true },
- *       { key: 'type', label: 'Tipo' },
+ *       { key: 'balance', label: 'Saldo', type: 'currency' },
  *     ]}
  *     filename="plan-contable"
  *     onImport={async (rows) => { await bulkInsert(rows) }}
@@ -27,10 +28,14 @@ import { Download, ClipboardPaste } from 'lucide-react';
 export interface ExcelColumn<T> {
   /** Campo del objeto (p.ej. 'code', 'name'). */
   key: keyof T & string;
-  /** Etiqueta visible en la cabecera del CSV. */
+  /** Etiqueta visible en la cabecera. */
   label: string;
   /** Si true, la fila se descarta al importar si este campo está vacío. */
   required?: boolean;
+  /** Tipo de dato al exportar: controla el formato de celda en Excel. */
+  type?: XlsxColumnType;
+  /** Ancho de columna en caracteres al exportar (si falta, se calcula). */
+  width?: number;
   /** Formateador opcional al exportar. */
   format?: (value: any, row: T) => string;
   /** Parseador opcional al importar (string → valor). */
@@ -46,29 +51,6 @@ export interface ExcelToolsProps<T> {
   onImport?: (rows: Partial<T>[]) => Promise<void> | void;
   /** Habilita solo el export (sin botón de importar). */
   exportOnly?: boolean;
-}
-
-function escapeCell(v: any): string {
-  if (v === null || v === undefined) return '';
-  const s = typeof v === 'string' ? v : String(v);
-  if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes(';')) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
-
-function toCsv<T>(rows: T[], columns: ExcelColumn<T>[]): string {
-  const header = columns.map((c) => escapeCell(c.label)).join(',');
-  const body = rows.map((r) =>
-    columns
-      .map((c) => {
-        const value = c.format ? c.format((r as any)[c.key], r) : (r as any)[c.key];
-        return escapeCell(value);
-      })
-      .join(','),
-  );
-  // BOM inicial para que Excel detecte UTF-8 automáticamente.
-  return '﻿' + [header, ...body].join('\r\n');
 }
 
 function parsePasteText(text: string): string[][] {
@@ -124,22 +106,17 @@ export function ExcelTools<T extends Record<string, any>>({
   const popup = usePopup();
   const toast = useToast();
 
-  const doExport = () => {
+  const doExport = async () => {
     if (!data.length) {
       toast.info('No hay datos para exportar');
       return;
     }
-    const csv = toCsv(data, columns);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    toast.success(`Exportadas ${data.length} filas`);
+    try {
+      await exportToXlsx({ filename, columns, rows: data });
+      toast.success(`Exportadas ${data.length} filas`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al exportar');
+    }
   };
 
   const doImport = async () => {
@@ -173,7 +150,7 @@ export function ExcelTools<T extends Record<string, any>>({
         variant="secondary"
         onClick={doExport}
         className="flex items-center gap-2 whitespace-nowrap"
-        title="Exportar a CSV (Excel-compatible)"
+        title="Exportar a Excel (.xlsx con formato)"
       >
         <Download size={16} />
         Exportar

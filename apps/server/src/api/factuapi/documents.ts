@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { eq } from 'drizzle-orm';
 import { FactuApi } from '../../core/plugins/FactuApi';
+import { hasScope } from '../middleware/apiToken';
 import { logAudit } from '../../utils/audit';
 import * as schema from '../../db/schema';
 type DocType = 'SINV' | 'PINV' | 'SO' | 'PO' | 'SDN' | 'PDN';
@@ -17,6 +18,28 @@ const DOC_TYPE_LABELS: Record<DocType, string> = {
 const router = Router();
 
 const VALID_TYPES = new Set<string>(['SINV', 'PINV', 'SO', 'PO', 'SDN', 'PDN']);
+const SALES_TYPES = new Set<string>(['SINV', 'SO', 'SDN']);
+
+/**
+ * Guard de FactuAPI. Estos endpoints son SOLO para integraciones externas —
+ * la web no los usa — así que exigimos un token de API (`Authorization:
+ * Bearer tk_...`) con el scope de escritura del área del documento
+ * (`write:ventas` para SINV/SO/SDN, `write:compras` para PINV/PO/PDN). Una
+ * sesión de usuario normal (JWT) NO basta: sin esto el endpoint quedaba
+ * abierto a cualquiera que conociera el `x-tenant-id`.
+ */
+function requireWriteScope(req: any, res: any, next: any) {
+  if (!req.apiToken) {
+    return res
+      .status(401)
+      .json({ error: 'Se requiere un token de API (Authorization: Bearer tk_...).' });
+  }
+  const scope = SALES_TYPES.has(req.params.docType) ? 'write:ventas' : 'write:compras';
+  if (!hasScope(req, scope)) {
+    return res.status(403).json({ error: `Falta el scope ${scope}` });
+  }
+  next();
+}
 
 /**
  * POST /api/factuapi/documents/:docType
@@ -24,7 +47,7 @@ const VALID_TYPES = new Set<string>(['SINV', 'PINV', 'SO', 'PO', 'SDN', 'PDN']);
  *
  * Body: { partnerId, seriesId, periodId, date, warehouseId?, lines: [...], customFields?: {...} }
  */
-router.post('/:docType', async (req: any, res) => {
+router.post('/:docType', requireWriteScope, async (req: any, res) => {
   const { docType } = req.params;
   if (!VALID_TYPES.has(docType)) {
     return res.status(400).json({
@@ -65,7 +88,7 @@ router.post('/:docType', async (req: any, res) => {
  * POST /api/factuapi/documents/:docType/:id/post
  * Asienta un borrador (D → O). Sólo para facturas.
  */
-router.post('/:docType/:id/post', async (req: any, res) => {
+router.post('/:docType/:id/post', requireWriteScope, async (req: any, res) => {
   const { docType, id } = req.params;
   if (!VALID_TYPES.has(docType)) {
     return res.status(400).json({ error: `Tipo inválido: ${docType}` });
@@ -102,7 +125,7 @@ router.post('/:docType/:id/post', async (req: any, res) => {
  * POST /api/factuapi/documents/:docType/:id/cancel
  * Cancela un documento. Delega al endpoint existente del tipo correspondiente.
  */
-router.post('/:docType/:id/cancel', async (req: any, res) => {
+router.post('/:docType/:id/cancel', requireWriteScope, async (req: any, res) => {
   const { docType, id } = req.params;
   if (!VALID_TYPES.has(docType)) {
     return res.status(400).json({ error: `Tipo inválido: ${docType}` });

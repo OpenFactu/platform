@@ -25,6 +25,36 @@ const ALL_SCOPES = [
     label: 'Escribir logística',
     description: 'POST/PATCH/DELETE /api/logistics/*',
   },
+  {
+    id: 'write:ventas',
+    label: 'Escribir ventas',
+    description: 'FactuAPI: crear/asentar/cancelar facturas, pedidos y albaranes de venta (SINV/SO/SDN)',
+  },
+  {
+    id: 'write:compras',
+    label: 'Escribir compras',
+    description: 'FactuAPI: crear/asentar/cancelar facturas, pedidos y albaranes de compra (PINV/PO/PDN)',
+  },
+  {
+    id: 'read:maestros',
+    label: 'Leer maestros',
+    description: 'GET clientes/proveedores y artículos (stock, lotes, unidades)',
+  },
+  {
+    id: 'write:maestros',
+    label: 'Escribir maestros',
+    description: 'Crear/editar/borrar clientes/proveedores y artículos',
+  },
+  {
+    id: 'mcp:read',
+    label: 'MCP — lectura',
+    description: 'Servidor MCP (Claude Desktop/Code): buscar clientes/artículos, listar documentos',
+  },
+  {
+    id: 'mcp:sql',
+    label: 'MCP — SQL de lectura',
+    description: 'Además del anterior: consultas SQL de solo lectura sobre todo el esquema',
+  },
 ];
 
 export const ApiTokens: React.FC = () => {
@@ -37,7 +67,9 @@ export const ApiTokens: React.FC = () => {
     name: '',
     scopes: ['read:logistics'],
   });
-  const [created, setCreated] = useState<{ token: string; name: string } | null>(null);
+  const [created, setCreated] = useState<{ token: string; name: string; scopes: string[] } | null>(
+    null,
+  );
 
   const headers = {
     'Content-Type': 'application/json',
@@ -76,7 +108,7 @@ export const ApiTokens: React.FC = () => {
       toast.error(d.error || 'Error creando token');
       return;
     }
-    setCreated({ token: d.token, name: d.name });
+    setCreated({ token: d.token, name: d.name, scopes: form.scopes });
     setShowCreate(false);
     setForm({ name: '', scopes: ['read:logistics'] });
     load();
@@ -266,6 +298,25 @@ export const ApiTokens: React.FC = () => {
                 Authorization: Bearer {created.token.slice(0, 15)}…
               </pre>
             </div>
+            {created.scopes.some((s) => s.startsWith('mcp:')) && (
+              <div className="text-[11px] text-slate-500">
+                Config de Claude Desktop / Claude Code (servidor MCP remoto vía HTTP):
+                <pre className="mt-1 p-2 bg-slate-50 dark:bg-slate-900 rounded text-[11px] font-mono whitespace-pre-wrap break-all">
+                  {JSON.stringify(
+                    {
+                      mcpServers: {
+                        keirost: {
+                          url: `${window.location.origin}/api/mcp`,
+                          headers: { Authorization: `Bearer ${created.token}` },
+                        },
+                      },
+                    },
+                    null,
+                    2,
+                  )}
+                </pre>
+              </div>
+            )}
             <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
               <Button onClick={() => setCreated(null)}>Cerrar</Button>
             </div>

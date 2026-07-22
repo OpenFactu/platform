@@ -82,7 +82,28 @@ export class MigrationManager {
             .filter((s) => s.length > 0);
 
           for (const statement of statements) {
-            await db.execute(sql.raw(statement));
+            try {
+              await db.execute(sql.raw(statement));
+            } catch (stmtError: any) {
+              // Tenants importados de un backup pueden traer objetos que la
+              // migración intenta crear (la tabla existe en el dump pero su
+              // _MigrationHistory no registró esta migración). Un "ya existe"
+              // no es un fallo real: saltamos el statement y seguimos, para
+              // que el catch-up post-import no aborte la sincronización.
+              const pgCode = stmtError?.cause?.code || stmtError?.code;
+              const alreadyExists =
+                ['42P07', '42701', '42710', '42P06', '42723'].includes(pgCode) ||
+                /already exists|ya existe/i.test(
+                  stmtError?.cause?.message || stmtError?.message || '',
+                );
+              if (alreadyExists) {
+                console.warn(
+                  `   ⚠️  Objeto ya existente en ${file} (${pgCode || 'sin código'}) — statement omitido`,
+                );
+                continue;
+              }
+              throw stmtError;
+            }
           }
 
           // Registrar éxito
@@ -127,9 +148,18 @@ export class MigrationManager {
   }
 
   /**
-   * Regenera la plantilla marcada como `isDefault` de cada docType, SIN tocar
-   * las plantillas custom. Útil tras un cambio de paleta o de layout del
-   * generador visual (p.ej. al publicar una versión nueva de @openfactu/pdf).
+   * Regenera la plantilla "de fábrica" (`isFactoryDefault=true`) de cada
+   * docType, SIN tocar las plantillas custom. Útil tras un cambio de paleta
+   * o de layout del generador visual (p.ej. al publicar una versión nueva
+   * de @openfactu/pdf).
+   *
+   * A propósito filtra por `isFactoryDefault`, NO por `isDefault`: si un
+   * usuario promueve su plantilla personalizada a predeterminada
+   * (`isDefault=true`), sigue siendo SU plantilla — nunca la fila sembrada
+   * por el sistema — y no debe regenerarse aquí (bug histórico: antes se
+   * filtraba por `isDefault`, así que promover una plantilla custom a
+   * predeterminada la exponía a que el siguiente reinicio le sobreescribiera
+   * html y name con el genérico de fábrica).
    */
   public static async resyncDefaultTemplates(schemaName: string): Promise<number> {
     const db = ClientFactory.getClient(schemaName);
@@ -142,7 +172,7 @@ export class MigrationManager {
         .where(
           and(
             eq(schema.documentTemplates.docType, docType),
-            eq(schema.documentTemplates.isDefault, true),
+            eq(schema.documentTemplates.isFactoryDefault, true),
           ),
         );
       const html = getDefaultTemplate(docType);
@@ -158,12 +188,27 @@ export class MigrationManager {
           .set({ html, name: DEFAULT_TEMPLATE_NAMES[docType] })
           .where(eq(schema.documentTemplates.id, existing.id));
       } else {
+        // No hay fila de fábrica para este docType (tenant nuevo, o backfill
+        // de la migración 060 que no la marcó porque la única fila
+        // isDefault=true era custom). No tocamos cuál es la predeterminada
+        // actual del usuario: solo la marcamos isDefault si de verdad no hay
+        // ninguna otra ya activa para este docType.
+        const [currentDefault] = await db
+          .select({ id: schema.documentTemplates.id })
+          .from(schema.documentTemplates)
+          .where(
+            and(
+              eq(schema.documentTemplates.docType, docType),
+              eq(schema.documentTemplates.isDefault, true),
+            ),
+          );
         await db.insert(schema.documentTemplates).values({
           id: crypto.randomUUID(),
           docType,
           name: DEFAULT_TEMPLATE_NAMES[docType],
           html,
-          isDefault: true,
+          isDefault: !currentDefault,
+          isFactoryDefault: true,
         });
       }
       updated++;
@@ -190,6 +235,7 @@ export class MigrationManager {
           name: DEFAULT_TEMPLATE_NAMES[docType],
           html: getDefaultTemplate(docType),
           isDefault: true,
+          isFactoryDefault: true,
         });
         console.log(`[Templates] Seeded default template for ${docType} in ${schemaName}`);
       }
@@ -214,7 +260,15 @@ export class MigrationManager {
         .from(schema.tenants);
 
       for (const t of tenantsList) {
-        await this.syncTenant(t.schemaName);
+        try {
+          await this.syncTenant(t.schemaName);
+        } catch (err: any) {
+          // Un tenant con problemas (p.ej. importado con estado inconsistente)
+          // no debe bloquear la sincronización del resto de empresas.
+          console.error(
+            `[MigrationManager] ❌ Sincronización fallida en ${t.schemaName}: ${err?.message}`,
+          );
+        }
       }
       console.log('[MigrationManager] Sincronización finalizada.');
     } catch (error: any) {

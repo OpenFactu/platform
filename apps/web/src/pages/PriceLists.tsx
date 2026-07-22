@@ -13,7 +13,10 @@ import {
   ArrowRightLeft,
   TrendingUp,
   TrendingDown,
+  Pencil,
 } from 'lucide-react';
+import { ContextMenu } from '../components/common/ContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
 
 export const PriceLists: React.FC = () => {
   const { token, user } = useAuth();
@@ -184,6 +187,23 @@ export const PriceLists: React.FC = () => {
     }
   };
 
+  const ctxMenu = useContextMenu<any>();
+  const buildCtxItems = (l: any) => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => setEditingListId(l.id),
+    },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      disabled: !canDelete,
+      onClick: () => handleDeleteList(l.id),
+    },
+  ];
+
   const filteredItems = items.filter(
     (i) =>
       i.name.toLowerCase().includes(searchItem.toLowerCase()) ||
@@ -264,6 +284,7 @@ export const PriceLists: React.FC = () => {
                       setSelectedList(l);
                       fetchPrices(l.id);
                     }}
+                    onContextMenu={(e) => ctxMenu.open(e, l)}
                     className={`cursor-pointer transition-all group border-l-2 ${selectedList?.id === l.id ? 'bg-slate-100 dark:bg-slate-800 border-l-primary' : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                   >
                     <td className="px-6 py-3">
@@ -495,6 +516,14 @@ export const PriceLists: React.FC = () => {
           )}
         </div>
       </div>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };

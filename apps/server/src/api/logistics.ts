@@ -42,6 +42,11 @@ import {
   type ShipmentStage,
 } from '../core/logistics/shipmentNotifications';
 import { dispatchEvent } from '../core/webhooks/WebhookQueue';
+import { getConfigSection } from '../core/config/systemConfigSection';
+import { FLAGS_DEFAULTS } from '../core/config/appConfig';
+import { applyBaseOrderFulfillment } from '../core/documents/baseOrderFulfillment';
+import { getAiConfig } from '../core/ai';
+import { streamTrackingChat, checkTrackingChatRateLimit } from '../core/ai/trackingChatEngine';
 
 const NOTIFY_STAGES: ShipmentStage[] = [
   'pending',
@@ -415,6 +420,17 @@ router.patch('/shipments/:id', async (req: any, res) => {
         status: patch.status,
         description: body.reason || null,
       });
+      // Cancelado/devuelto por PATCH directo → cerrar también sus paradas
+      // para que el envío no se quede colgado en la ruta.
+      if (patch.status === 'cancelled' || patch.status === 'returned') {
+        await closeStopsForShipment(
+          req,
+          req.params.id,
+          body.reason
+            ? `Envío ${patch.status === 'returned' ? 'devuelto' : 'cancelado'} — ${body.reason}`
+            : `Envío ${patch.status === 'returned' ? 'devuelto' : 'cancelado'}`,
+        );
+      }
       // Notificación al destinatario: se enfila, no bloquea la response.
       if (NOTIFY_STAGES.includes(patch.status as ShipmentStage)) {
         const baseUrl = await publicBaseUrl(req);
@@ -488,6 +504,13 @@ router.post('/shipments/:id/cancel', async (req: any, res) => {
       description: body.reason || null,
     });
 
+    // Sacar el envío de su ruta — si no, la parada queda viva para siempre.
+    await closeStopsForShipment(
+      req,
+      req.params.id,
+      body.reason ? `Envío cancelado — ${body.reason}` : 'Envío cancelado',
+    );
+
     // Anular el albarán si el caller lo pide.
     let dnCancelled = false;
     if (body.cancelDeliveryNote && ship.deliveryNoteId) {
@@ -532,7 +555,9 @@ router.post('/shipments/:id/cancel', async (req: any, res) => {
  * Body: {
  *   reason?: string;
  *   warehouseId?: string;
- *   cancelDeliveryNote?: boolean;  // si true, el albarán origen pasa a 'X'
+ *   cancelDeliveryNote?: boolean;  // si true, el albarán origen pasa a 'X' y se
+ *                                  // revierte el fulfillment del pedido origen
+ *                                  // (se rechaza si ya está facturado — 'C')
  * }
  */
 router.post('/shipments/:id/return', async (req: any, res) => {
@@ -581,22 +606,53 @@ router.post('/shipments/:id/return', async (req: any, res) => {
           ship.sourceDocType === 'PDN'
             ? schema.purchaseDeliveryNoteLines
             : schema.salesDeliveryNoteLines;
+        const batchTable =
+          ship.sourceDocType === 'PDN'
+            ? schema.purchaseDeliveryNoteLineBatches
+            : schema.salesDeliveryNoteLineBatches;
         // Ambas tablas (Sales/Purchase DeliveryNoteLine) usan `deliveryId`.
         const lines = await req.tenantClient
           .select()
           .from(lineTable)
           .where(eq((lineTable as any).deliveryId, ship.deliveryNoteId));
-        for (let i = 0; i < lines.length; i++) {
-          const l: any = lines[i];
+        let lineNum = 0;
+        for (const l of lines as any[]) {
           if (!l.itemId || !l.quantity) continue;
-          await req.tenantClient.insert(schema.goodsReceiptLines).values({
-            id: crypto.randomUUID(),
-            receiptId,
-            lineNum: i + 1,
-            itemId: l.itemId,
-            quantity: Number(l.quantity),
-            uomId: l.uomId || null,
-          });
+          // Si la línea tenía lotes/series asignados, generamos una fila de
+          // recepción POR LOTE — si no, `StockPoster.postReceipt` nunca sabe
+          // a qué lote reponer y la devolución solo sube el stock global/por
+          // almacén, dejando itemBatches/itemBatchStocks sin el lote devuelto.
+          const batches = await req.tenantClient
+            .select()
+            .from(batchTable)
+            .where(eq((batchTable as any).deliveryLineId, l.id));
+          if (batches.length > 0) {
+            for (const b of batches as any[]) {
+              lineNum += 1;
+              await req.tenantClient.insert(schema.goodsReceiptLines).values({
+                id: crypto.randomUUID(),
+                receiptId,
+                lineNum,
+                itemId: l.itemId,
+                quantity: Number(b.quantity),
+                zoneId: l.zoneId || null,
+                batchNum: b.batchNum,
+                uomId: l.uomId || null,
+              });
+            }
+          } else {
+            lineNum += 1;
+            await req.tenantClient.insert(schema.goodsReceiptLines).values({
+              id: crypto.randomUUID(),
+              receiptId,
+              lineNum,
+              itemId: l.itemId,
+              // En UoM base — igual que el resto del ledger de stock.
+              quantity: Number(l.quantity) * Number(l.uomFactor || 1),
+              zoneId: l.zoneId || null,
+              uomId: l.uomId || null,
+            });
+          }
         }
       }
     }
@@ -614,21 +670,66 @@ router.post('/shipments/:id/return', async (req: any, res) => {
       description: body.reason || null,
     });
 
+    // Sacar el envío de su ruta — si no, la parada queda viva para siempre.
+    await closeStopsForShipment(
+      req,
+      req.params.id,
+      body.reason ? `Envío devuelto — ${body.reason}` : 'Envío devuelto',
+    );
+
     // Opcional: anular el albarán origen si el caller lo pide (devolución
     // definitiva). Si no, el albarán queda abierto para permitir reintentar
     // el reparto creando un shipment nuevo (ver `/prep/from-sdn`).
+    //
+    // Aquí NO se revierte stock: la mercancía salió físicamente y vuelve vía
+    // el GoodsReceipt de devolución creado arriba (por eso no se usa
+    // DocumentEngine.cancel, que siempre revierte). Lo que SÍ se revierte es
+    // el fulfillment del pedido origen — 'X' significa en todo el sistema que
+    // el documento deja de contar, y el pedido queda P/O para que el usuario
+    // decida si re-servirlo o cancelarlo.
     let dnCancelled = false;
+    let dnHint: string | null = null;
     if (body.cancelDeliveryNote && ship.deliveryNoteId) {
-      const table =
-        ship.sourceDocType === 'PDN' ? schema.purchaseDeliveryNotes : schema.salesDeliveryNotes;
+      const isPdn = ship.sourceDocType === 'PDN';
+      const table = isPdn ? schema.purchaseDeliveryNotes : schema.salesDeliveryNotes;
+      const lineTable = isPdn ? schema.purchaseDeliveryNoteLines : schema.salesDeliveryNoteLines;
       try {
-        await req.tenantClient
-          .update(table)
-          .set({ status: 'X' })
-          .where(eq(table.id, ship.deliveryNoteId));
-        dnCancelled = true;
+        await req.tenantClient.transaction(async (tx: any) => {
+          const [dn] = await tx.select().from(table).where(eq(table.id, ship.deliveryNoteId));
+          if (!dn) {
+            dnHint = 'El albarán origen ya no existe.';
+            return;
+          }
+          if (dn.status === 'X') {
+            dnHint = 'El albarán ya estaba cancelado.';
+            return;
+          }
+          if (dn.status === 'C') {
+            dnHint =
+              'El albarán ya está facturado — no se anula. Emite una factura rectificativa para revertir la operación.';
+            return;
+          }
+
+          const dnLines = await tx
+            .select()
+            .from(lineTable)
+            .where(eq((lineTable as any).deliveryId, ship.deliveryNoteId));
+
+          await tx.update(table).set({ status: 'X' }).where(eq(table.id, ship.deliveryNoteId));
+
+          await applyBaseOrderFulfillment(tx, {
+            orderLineTable: isPdn ? schema.purchaseOrderLines : schema.salesOrderLines,
+            orderHeaderTable: isPdn ? schema.purchaseOrders : schema.salesOrders,
+            qtyField: isPdn ? 'receivedQty' : 'deliveredQty',
+            orderId: dn.orderId,
+            lines: dnLines,
+            sign: -1,
+          });
+          dnCancelled = true;
+        });
       } catch (e: any) {
         console.warn('[return] no se pudo anular el albarán:', e?.message);
+        dnHint = `No se pudo anular el albarán: ${e?.message}`;
       }
     }
 
@@ -651,9 +752,132 @@ router.post('/shipments/:id/return', async (req: any, res) => {
       ok: true,
       receiptId,
       deliveryNoteCancelled: dnCancelled,
+      deliveryNoteHint: dnHint,
       hint: receiptId
         ? 'Se creó un GoodsReceipt draft. Revísalo y posteálo para que suba stock.'
         : 'Sin almacén origen detectado — crea la entrada de devolución a mano.',
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Programa una RECOGIDA del paquete en casa del cliente (p. ej. tras una
+ * incidencia: contenido incorrecto, producto dañado). Crea un envío nuevo
+ * `kind='pickup_return'` con el mismo destino y destinatario que el original:
+ * el conductor va ALLÍ a recoger, y al marcarlo entregado ("Recogí") se crea
+ * automáticamente el GoodsReceipt draft sobre `returnWarehouseId` (ver el
+ * PATCH de shipments). La recogida se planifica en rutas como cualquier envío.
+ *
+ * Body: { reason?: string; warehouseId?: string }  — si no llega warehouseId
+ * se infiere del albarán origen; sin ninguno de los dos → 400.
+ */
+router.post('/shipments/:id/schedule-pickup', async (req: any, res) => {
+  try {
+    const body = req.body || {};
+    const [ship] = await req.tenantClient
+      .select()
+      .from(schema.shipments)
+      .where(eq(schema.shipments.id, req.params.id));
+    if (!ship) return res.status(404).json({ error: 'Envío no encontrado' });
+    if (ship.kind === 'pickup_return') {
+      return res.status(400).json({ error: 'Este envío ya es una recogida' });
+    }
+
+    // Evitar duplicados: si ya hay una recogida viva para el mismo albarán,
+    // no creamos otra.
+    if (ship.deliveryNoteId) {
+      const [existing] = await req.tenantClient
+        .select({ id: schema.shipments.id, trackingNumber: schema.shipments.trackingNumber })
+        .from(schema.shipments)
+        .where(
+          and(
+            eq(schema.shipments.deliveryNoteId, ship.deliveryNoteId),
+            eq(schema.shipments.kind, 'pickup_return'),
+            notInArray(schema.shipments.status, ['delivered', 'returned', 'cancelled']),
+          ),
+        );
+      if (existing) {
+        return res.status(409).json({
+          error: `Ya existe una recogida en curso para este albarán (${existing.trackingNumber || existing.id.slice(0, 8)}).`,
+          pickupId: existing.id,
+        });
+      }
+    }
+
+    // Almacén de retorno: explícito > inferido del albarán origen.
+    let warehouseId = body.warehouseId as string | undefined;
+    if (!warehouseId && ship.deliveryNoteId) {
+      const table =
+        ship.sourceDocType === 'PDN' ? schema.purchaseDeliveryNotes : schema.salesDeliveryNotes;
+      const [dn] = await req.tenantClient
+        .select({ warehouseId: table.warehouseId })
+        .from(table)
+        .where(eq(table.id, ship.deliveryNoteId));
+      warehouseId = dn?.warehouseId || undefined;
+    }
+    if (!warehouseId) {
+      return res
+        .status(400)
+        .json({ error: 'Indica el almacén de retorno (warehouseId) — no se pudo inferir.' });
+    }
+
+    const id = crypto.randomUUID();
+    const reportToken = crypto.randomBytes(24).toString('hex');
+    const code = genCode('REC');
+    const origCode = ship.trackingNumber || ship.id.slice(0, 8);
+    await req.tenantClient.insert(schema.shipments).values({
+      id,
+      reportToken,
+      deliveryNoteId: ship.deliveryNoteId || null,
+      sourceDocType: ship.sourceDocType || null,
+      carrier: 'propio',
+      trackingNumber: code,
+      status: 'pending',
+      destinationAddress: ship.destinationAddress,
+      destinationLat: ship.destinationLat,
+      destinationLng: ship.destinationLng,
+      recipientName: ship.recipientName,
+      recipientEmail: ship.recipientEmail,
+      recipientPhone: ship.recipientPhone,
+      kind: 'pickup_return',
+      returnWarehouseId: warehouseId,
+      notes: `Recogida del envío ${origCode}${body.reason ? ` — ${body.reason}` : ''}`,
+    });
+
+    // Trazabilidad en ambos timelines.
+    await req.tenantClient.insert(schema.shipmentEvents).values([
+      {
+        id: crypto.randomUUID(),
+        shipmentId: ship.id,
+        kind: 'note',
+        description: `Recogida programada (${code})${body.reason ? ` — ${body.reason}` : ''}`,
+      },
+      {
+        id: crypto.randomUUID(),
+        shipmentId: id,
+        kind: 'note',
+        description: `Creada desde el envío ${origCode}`,
+      },
+    ]);
+
+    broadcastEvent(req.tenantId, {
+      type: 'shipment.updated',
+      payload: { id: ship.id },
+    } as any);
+    dispatchEvent(req.tenantId, 'shipment.pickup_scheduled', {
+      id,
+      code,
+      fromShipmentId: ship.id,
+      reason: body.reason || null,
+    }).catch(() => {});
+
+    res.json({
+      id,
+      code,
+      reportToken,
+      hint: 'Añade la recogida a una ruta desde el planificador — el conductor verá "Recoger de" en su app.',
     });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
@@ -690,6 +914,41 @@ router.post('/shipments/:id/events', async (req: any, res) => {
     location: body.location || null,
   });
   res.json({ id });
+});
+
+/**
+ * Incidencias reportadas por clientes desde el chat público de seguimiento
+ * (eventos `kind='incident'`, últimos 30 días) con su envío. Alimenta la
+ * sección "Reportadas por clientes" de Logística → Incidencias.
+ */
+router.get('/incidents/client-reported', async (req: any, res) => {
+  try {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const rows = await req.tenantClient
+      .select({
+        eventId: schema.shipmentEvents.id,
+        description: schema.shipmentEvents.description,
+        createdAt: schema.shipmentEvents.createdAt,
+        shipmentId: schema.shipments.id,
+        shipmentStatus: schema.shipments.status,
+        preparationStatus: schema.shipments.preparationStatus,
+        destinationAddress: schema.shipments.destinationAddress,
+        recipientName: schema.shipments.recipientName,
+      })
+      .from(schema.shipmentEvents)
+      .innerJoin(schema.shipments, eq(schema.shipmentEvents.shipmentId, schema.shipments.id))
+      .where(
+        and(
+          eq(schema.shipmentEvents.kind, 'incident'),
+          gte(schema.shipmentEvents.createdAt, since),
+        ),
+      )
+      .orderBy(desc(schema.shipmentEvents.createdAt))
+      .limit(100);
+    res.json(rows);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 router.get('/shipments/:id/positions', async (req: any, res) => {
@@ -982,13 +1241,21 @@ router.post('/routes/:id/stops', async (req: any, res) => {
   });
   // Si el stop vincula un shipment, lo sacamos de la zona de preparación
   // marcándolo como dispatched (mismo efecto que el endpoint /dispatch).
+  // Guard por rango: el planner inserta stops de uno en uno y puede re-añadir
+  // el mismo shipment — sin el guard duplicaríamos evento y email.
   if (body.shipmentId) {
     const [sh] = await req.tenantClient
       .select()
       .from(schema.shipments)
       .where(eq(schema.shipments.id, body.shipmentId));
     const terminal = ['cancelled', 'delivered', 'returned'];
-    if (sh && !terminal.includes(sh.preparationStatus || '')) {
+    const rank = (s: string | null | undefined) => SHIPMENT_STAGE_RANK[s || ''] ?? -1;
+    if (
+      sh &&
+      !terminal.includes(sh.preparationStatus || '') &&
+      rank(sh.preparationStatus) < SHIPMENT_STAGE_RANK.dispatched &&
+      rank(sh.status) < SHIPMENT_STAGE_RANK.dispatched
+    ) {
       await req.tenantClient
         .update(schema.shipments)
         .set({
@@ -998,6 +1265,16 @@ router.post('/routes/:id/stops', async (req: any, res) => {
           updatedAt: nowIso(),
         })
         .where(eq(schema.shipments.id, body.shipmentId));
+      await emitTransition(
+        req.tenantClient,
+        req.tenantId,
+        body.shipmentId,
+        sh.preparationStatus,
+        'dispatched',
+        sh.kind === 'pickup_return' ? 'Recogida asignada a ruta' : 'Despachado',
+        'shipment.dispatched',
+        { routeId: req.params.id },
+      );
       dispatchEvent(req.tenantId, 'shipment.dispatched', {
         id: body.shipmentId,
         routeId: req.params.id,
@@ -1058,20 +1335,36 @@ router.patch('/routes/:rid/stops/:sid', async (req: any, res) => {
   if (startedNow && prevStop?.shipmentId) {
     try {
       const [ship] = await req.tenantClient
-        .select({ status: schema.shipments.status })
+        .select({
+          status: schema.shipments.status,
+          preparationStatus: schema.shipments.preparationStatus,
+          kind: schema.shipments.kind,
+        })
         .from(schema.shipments)
         .where(eq(schema.shipments.id, prevStop.shipmentId));
-      if (ship && ship.status !== 'out_for_delivery' && ship.status !== 'delivered') {
+      const already = ['out_for_delivery', 'delivered'];
+      if (
+        ship &&
+        !already.includes(ship.status || '') &&
+        !already.includes(ship.preparationStatus || '')
+      ) {
+        // Ambos campos — si solo tocamos `status`, el tracking público (que
+        // elige el más avanzado de los dos) puede quedarse desincronizado.
         await req.tenantClient
           .update(schema.shipments)
-          .set({ status: 'out_for_delivery', updatedAt: nowIso() })
+          .set({
+            status: 'out_for_delivery',
+            preparationStatus: 'out_for_delivery',
+            updatedAt: nowIso(),
+          })
           .where(eq(schema.shipments.id, prevStop.shipmentId));
         await req.tenantClient.insert(schema.shipmentEvents).values({
           id: crypto.randomUUID(),
           shipmentId: prevStop.shipmentId,
           kind: 'status_change',
           status: 'out_for_delivery',
-          description: 'Sale hoy en reparto',
+          description:
+            ship.kind === 'pickup_return' ? 'Hoy pasamos a recogerlo' : 'Sale hoy en reparto',
         });
         const baseUrl = await publicBaseUrl(req);
         notifyShipmentStageChange(
@@ -1088,8 +1381,13 @@ router.patch('/routes/:rid/stops/:sid', async (req: any, res) => {
   }
 
   // Automatizaciones de la ruta:
-  //   planeada → activa   al primer stop con progreso (arrived/delivered/en_route)
-  //   activa  → completa  cuando TODAS las paradas están delivered
+  //   planeada → activa   al primer stop con progreso (fallback — el camino
+  //                       normal es POST /routes/:id/start desde la DriverApp)
+  //   activa  → completa  cuando TODAS las paradas están en estado terminal
+  //                       (delivered/postponed/exception/cancelled — una
+  //                       aplazada ya no deja la ruta abierta para siempre)
+  //   auto-avance         al terminar una parada, la siguiente pendiente pasa
+  //                       a en_route y su envío a "en reparto"
   try {
     const [route] = await req.tenantClient
       .select()
@@ -1101,10 +1399,19 @@ router.patch('/routes/:rid/stops/:sid', async (req: any, res) => {
         .from(schema.routeStops)
         .where(eq(schema.routeStops.routeId, route.id));
       if (stops.length > 0) {
+        const TERMINAL_STOP = ['delivered', 'postponed', 'exception', 'cancelled'];
         const anyInProgress = stops.some(
           (s: any) => s.status && s.status !== 'pending' && s.status !== 'cancelled',
         );
-        const allDelivered = stops.every((s: any) => s.status === 'delivered');
+        const allTerminal = stops.every((s: any) => TERMINAL_STOP.includes(s.status || ''));
+        // Auto-avance: si esta parada acaba de quedar terminal y la ruta sigue
+        // viva, la siguiente pendiente (por secuencia) sale hacia el cliente.
+        if (TERMINAL_STOP.includes(patch.status || '') && !allTerminal) {
+          const next = stops
+            .filter((s: any) => s.status === 'pending')
+            .sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0))[0];
+          if (next) await advanceStopEnRoute(req, next);
+        }
         if (route.status === 'planned' && anyInProgress) {
           await req.tenantClient
             .update(schema.routes)
@@ -1119,7 +1426,7 @@ router.patch('/routes/:rid/stops/:sid', async (req: any, res) => {
             routeId: route.id,
           }).catch(() => {});
         }
-        if (allDelivered && route.status !== 'completed') {
+        if (allTerminal && route.status !== 'completed') {
           await req.tenantClient
             .update(schema.routes)
             .set({ status: 'completed', completedAt: nowIso() })
@@ -1158,6 +1465,289 @@ router.delete('/routes/:rid/stops/:sid', async (req: any, res) => {
       and(eq(schema.routeStops.id, req.params.sid), eq(schema.routeStops.routeId, req.params.rid)),
     );
   res.json({ ok: true });
+});
+
+/**
+ * ¿Puede este usuario operar la ruta (iniciarla/finalizarla)? Admin/API con
+ * scope de logística, o el conductor asignado (vía su Employee — mismo vínculo
+ * que /my/routes). El conductor NO tiene write:logistics, por eso no basta
+ * con requireScope.
+ */
+async function canOperateRoute(req: any, route: any): Promise<boolean> {
+  if (hasScope(req, 'write:logistics')) return true; // sesión JWT normal pasa siempre
+  const userId = req.user?.id;
+  if (!userId || !route?.driverEmployeeId) return false;
+  const [emp] = await req.tenantClient
+    .select()
+    .from(schema.employees)
+    .where(eq(schema.employees.userId, userId));
+  return !!emp && emp.id === route.driverEmployeeId;
+}
+
+/**
+ * Marca una parada `pending` como `en_route` y propaga su envío a
+ * `out_for_delivery` (evento + email "sale hoy hacia ti"). Idempotente: si la
+ * parada ya avanzó o el envío ya está en reparto/terminal, no hace nada — así
+ * los reintentos y el auto-avance no duplican emails.
+ */
+async function advanceStopEnRoute(req: any, stop: any) {
+  if (!stop || (stop.status && stop.status !== 'pending')) return;
+  await req.tenantClient
+    .update(schema.routeStops)
+    .set({ status: 'en_route' })
+    .where(eq(schema.routeStops.id, stop.id));
+  if (!stop.shipmentId) return;
+  const [ship] = await req.tenantClient
+    .select()
+    .from(schema.shipments)
+    .where(eq(schema.shipments.id, stop.shipmentId));
+  if (!ship) return;
+  const skip = ['out_for_delivery', 'delivered', 'returned', 'cancelled', 'exception'];
+  if (skip.includes(ship.status || '') || skip.includes(ship.preparationStatus || '')) return;
+  await req.tenantClient
+    .update(schema.shipments)
+    .set({
+      status: 'out_for_delivery',
+      preparationStatus: 'out_for_delivery',
+      updatedAt: nowIso(),
+    })
+    .where(eq(schema.shipments.id, ship.id));
+  await emitTransition(
+    req.tenantClient,
+    req.tenantId,
+    ship.id,
+    ship.preparationStatus,
+    'out_for_delivery',
+    ship.kind === 'pickup_return' ? 'Hoy pasamos a recogerlo' : 'Sale hoy en reparto',
+    'shipment.out_for_delivery',
+    { routeId: stop.routeId, stopId: stop.id },
+  );
+}
+
+/**
+ * Cierra las paradas vivas de un shipment cancelado/devuelto para que no se
+ * quede colgado en la ruta: la parada pasa a `cancelled`, se avanza la
+ * siguiente pendiente si la ruta está activa, y se completa la ruta si ya no
+ * queda ninguna parada abierta.
+ */
+async function closeStopsForShipment(req: any, shipmentId: string, reason: string) {
+  const TERMINAL_STOP = ['delivered', 'postponed', 'exception', 'cancelled'];
+  const alive = await req.tenantClient
+    .select()
+    .from(schema.routeStops)
+    .where(
+      and(
+        eq(schema.routeStops.shipmentId, shipmentId),
+        inArray(schema.routeStops.status, ['pending', 'en_route', 'arrived']),
+      ),
+    );
+  for (const stop of alive as any[]) {
+    await req.tenantClient
+      .update(schema.routeStops)
+      .set({ status: 'cancelled', podNotes: reason })
+      .where(eq(schema.routeStops.id, stop.id));
+    try {
+      const [route] = await req.tenantClient
+        .select()
+        .from(schema.routes)
+        .where(eq(schema.routes.id, stop.routeId));
+      if (!route || route.status === 'completed') continue;
+      const stops = await req.tenantClient
+        .select()
+        .from(schema.routeStops)
+        .where(eq(schema.routeStops.routeId, stop.routeId));
+      if (route.status === 'active') {
+        const next = stops
+          .filter((s: any) => s.status === 'pending')
+          .sort((a: any, b: any) => (a.sequence || 0) - (b.sequence || 0))[0];
+        if (next) await advanceStopEnRoute(req, next);
+      }
+      // Si tras el cierre no queda nada abierto, la ruta se completa sola —
+      // mismo criterio que la automatización del PATCH de stops. (Si se ha
+      // avanzado una parada arriba, en el snapshot sigue 'pending' y por
+      // tanto la ruta se mantiene abierta, que es lo correcto.)
+      const allTerminal =
+        stops.length > 0 && stops.every((s: any) => TERMINAL_STOP.includes(s.status || ''));
+      if (allTerminal) {
+        await req.tenantClient
+          .update(schema.routes)
+          .set({ status: 'completed', completedAt: nowIso() })
+          .where(eq(schema.routes.id, route.id));
+        broadcastEvent(req.tenantId, {
+          type: 'route.changed',
+          payload: { routeId: route.id, from: route.status, to: 'completed' },
+        } as any);
+        HookManager.trigger('route.completed', {
+          tenantId: req.tenantId,
+          routeId: route.id,
+        }).catch(() => {});
+      }
+    } catch (e: any) {
+      console.warn('[routes] no se pudo reevaluar la ruta tras cerrar parada:', e?.message);
+    }
+  }
+}
+
+/**
+ * Inicio de ruta explícito — el conductor pulsa "Iniciar ruta" al salir a
+ * repartir. La ruta pasa a `active`, todos sus envíos no terminales a
+ * `in_transit` (evento + email "en camino"), y la primera parada pendiente
+ * arranca en `en_route` → su envío a "en reparto". Idempotente si ya está
+ * activa (p. ej. reabrir la app a mitad de reparto).
+ */
+router.post('/routes/:id/start', async (req: any, res) => {
+  try {
+    const [route] = await req.tenantClient
+      .select()
+      .from(schema.routes)
+      .where(eq(schema.routes.id, req.params.id));
+    if (!route) return res.status(404).json({ error: 'Ruta no encontrada' });
+    if (!(await canOperateRoute(req, route))) {
+      return res.status(403).json({ error: 'No puedes operar esta ruta' });
+    }
+    if (route.status === 'completed') {
+      return res.status(409).json({ error: 'La ruta ya está completada' });
+    }
+    if (route.status === 'active') return res.json({ ok: true, already: true });
+
+    await req.tenantClient
+      .update(schema.routes)
+      .set({ status: 'active', startedAt: route.startedAt || nowIso() })
+      .where(eq(schema.routes.id, route.id));
+    broadcastEvent(req.tenantId, {
+      type: 'route.changed',
+      payload: { routeId: route.id, from: route.status, to: 'active' },
+    } as any);
+    HookManager.trigger('route.started', {
+      tenantId: req.tenantId,
+      routeId: route.id,
+    }).catch(() => {});
+
+    const stops = await req.tenantClient
+      .select()
+      .from(schema.routeStops)
+      .where(eq(schema.routeStops.routeId, route.id))
+      .orderBy(asc(schema.routeStops.sequence));
+
+    // Envíos de la ruta → in_transit, salvo terminales o ya más avanzados.
+    const shipmentIds = stops
+      .map((s: any) => s.shipmentId)
+      .filter((x: string | null): x is string => !!x);
+    if (shipmentIds.length) {
+      const ships = await req.tenantClient
+        .select()
+        .from(schema.shipments)
+        .where(inArray(schema.shipments.id, shipmentIds));
+      const terminal = ['delivered', 'returned', 'cancelled', 'exception'];
+      const rank = (s: string | null | undefined) => SHIPMENT_STAGE_RANK[s || ''] ?? -1;
+      for (const ship of ships) {
+        if (terminal.includes(ship.status || '') || terminal.includes(ship.preparationStatus || ''))
+          continue;
+        if (
+          rank(ship.status) >= SHIPMENT_STAGE_RANK.in_transit ||
+          rank(ship.preparationStatus) >= SHIPMENT_STAGE_RANK.in_transit
+        )
+          continue;
+        await req.tenantClient
+          .update(schema.shipments)
+          .set({ status: 'in_transit', preparationStatus: 'in_transit', updatedAt: nowIso() })
+          .where(eq(schema.shipments.id, ship.id));
+        await emitTransition(
+          req.tenantClient,
+          req.tenantId,
+          ship.id,
+          ship.preparationStatus,
+          'in_transit',
+          ship.kind === 'pickup_return' ? 'De camino a recoger' : 'En camino',
+          'shipment.in_transit',
+          { routeId: route.id },
+        );
+      }
+    }
+
+    // La primera parada pendiente sale ya hacia el cliente.
+    const firstPending = stops.find((s: any) => s.status === 'pending');
+    if (firstPending) await advanceStopEnRoute(req, firstPending);
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * Fin de ruta explícito — cierra la ruta aunque queden paradas sin entregar:
+ * las no terminales pasan a `postponed` y sus envíos también (vuelven al
+ * almacén para reintentarse). Complementa el auto-complete del PATCH de stops,
+ * que solo cierra cuando todas las paradas quedaron en estado terminal.
+ */
+router.post('/routes/:id/finish', async (req: any, res) => {
+  try {
+    const [route] = await req.tenantClient
+      .select()
+      .from(schema.routes)
+      .where(eq(schema.routes.id, req.params.id));
+    if (!route) return res.status(404).json({ error: 'Ruta no encontrada' });
+    if (!(await canOperateRoute(req, route))) {
+      return res.status(403).json({ error: 'No puedes operar esta ruta' });
+    }
+    if (route.status === 'completed') return res.json({ ok: true, already: true });
+
+    const stops = await req.tenantClient
+      .select()
+      .from(schema.routeStops)
+      .where(eq(schema.routeStops.routeId, route.id));
+    const open = stops.filter((s: any) =>
+      ['pending', 'en_route', 'arrived'].includes(s.status || 'pending'),
+    );
+    for (const stop of open) {
+      await req.tenantClient
+        .update(schema.routeStops)
+        .set({ status: 'postponed' })
+        .where(eq(schema.routeStops.id, stop.id));
+      if (!stop.shipmentId) continue;
+      const [ship] = await req.tenantClient
+        .select()
+        .from(schema.shipments)
+        .where(eq(schema.shipments.id, stop.shipmentId));
+      if (!ship) continue;
+      const skip = ['delivered', 'returned', 'cancelled', 'exception', 'postponed'];
+      if (skip.includes(ship.status || '') || skip.includes(ship.preparationStatus || '')) continue;
+      await req.tenantClient
+        .update(schema.shipments)
+        .set({ status: 'postponed', preparationStatus: 'postponed', updatedAt: nowIso() })
+        .where(eq(schema.shipments.id, ship.id));
+      await emitTransition(
+        req.tenantClient,
+        req.tenantId,
+        ship.id,
+        ship.preparationStatus,
+        'postponed',
+        ship.kind === 'pickup_return'
+          ? 'Recogida aplazada — se reintentará'
+          : 'Reparto finalizado sin entrega — se reintentará',
+        'shipment.postponed',
+        { routeId: route.id, stopId: stop.id },
+      );
+    }
+
+    await req.tenantClient
+      .update(schema.routes)
+      .set({ status: 'completed', completedAt: nowIso() })
+      .where(eq(schema.routes.id, route.id));
+    broadcastEvent(req.tenantId, {
+      type: 'route.changed',
+      payload: { routeId: route.id, from: route.status, to: 'completed' },
+    } as any);
+    HookManager.trigger('route.completed', {
+      tenantId: req.tenantId,
+      routeId: route.id,
+    }).catch(() => {});
+
+    res.json({ ok: true, postponedStops: open.length });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────
@@ -1635,34 +2225,64 @@ async function buildStagingPayload(tenantClient: any, tenantId: string, stagingA
   if (!area) throw new Error('Acopio no encontrado');
 
   // Paquetes actualmente en este acopio.
-  const pkgs = await tenantClient
+  const allPkgs = await tenantClient
     .select()
     .from(schema.packages)
     .where(eq(schema.packages.stagingAreaId, stagingAreaId));
 
-  // Envíos vinculados a esos paquetes (si los tienen).
-  const shipmentIds = [...new Set(pkgs.map((p: any) => p.shipmentId).filter(Boolean))] as string[];
+  // Envíos vinculados a esos paquetes (si los tienen). Los terminales
+  // (entregado/devuelto/cancelado) ya no cuentan como mercancía pendiente:
+  // se filtran del payload junto con sus paquetes, para que el QR y el
+  // packing list reflejen solo lo que queda por salir.
+  const TERMINAL_SHIP = ['delivered', 'returned', 'cancelled'];
+  const allShipmentIds = [
+    ...new Set(allPkgs.map((p: any) => p.shipmentId).filter(Boolean)),
+  ] as string[];
   let shipments: any[] = [];
-  if (shipmentIds.length > 0) {
+  if (allShipmentIds.length > 0) {
     shipments = await tenantClient
       .select()
       .from(schema.shipments)
-      .where(inArray(schema.shipments.id, shipmentIds));
+      .where(inArray(schema.shipments.id, allShipmentIds));
   }
+  const terminalShipIds = new Set(
+    shipments
+      .filter(
+        (s: any) =>
+          TERMINAL_SHIP.includes(s.status || '') ||
+          TERMINAL_SHIP.includes(s.preparationStatus || ''),
+      )
+      .map((s: any) => s.id),
+  );
+  shipments = shipments.filter((s: any) => !terminalShipIds.has(s.id));
+  const pkgs = allPkgs.filter((p: any) => !p.shipmentId || !terminalShipIds.has(p.shipmentId));
+  const shipmentIds = shipments.map((s: any) => s.id);
 
-  // Rutas activas que incluyen esos envíos.
+  // Rutas VIVAS (planificadas/activas) con paradas aún abiertas para esos
+  // envíos — una ruta completada o una parada ya cerrada no pinta nada en
+  // el acopio.
   let routesWithDriver: any[] = [];
   if (shipmentIds.length > 0) {
     const stops = await tenantClient
       .select()
       .from(schema.routeStops)
-      .where(inArray(schema.routeStops.shipmentId, shipmentIds));
+      .where(
+        and(
+          inArray(schema.routeStops.shipmentId, shipmentIds),
+          inArray(schema.routeStops.status, ['pending', 'en_route', 'arrived']),
+        ),
+      );
     const routeIds = [...new Set(stops.map((s: any) => s.routeId).filter(Boolean))] as string[];
     if (routeIds.length > 0) {
       routesWithDriver = await tenantClient
         .select()
         .from(schema.routes)
-        .where(inArray(schema.routes.id, routeIds));
+        .where(
+          and(
+            inArray(schema.routes.id, routeIds),
+            inArray(schema.routes.status, ['planned', 'active']),
+          ),
+        );
     }
   }
 
@@ -1865,7 +2485,9 @@ router.post('/prep/from-sdn/:id', requireScope('write:logistics'), async (req: a
       .where(eq(schema.salesDeliveryNotes.id, dnId));
     if (!dn) return res.status(404).json({ error: 'Albarán no encontrado.' });
 
-    // ¿Existe shipment vivo ya para este albarán?
+    // ¿Existe shipment vivo ya para este albarán? Un shipment 'delivered' sigue
+    // contando como vivo/bloqueante — ya se entregó, no debe poder volver a
+    // prepararse desde cero (antes se creaba un shipment nuevo silenciosamente).
     const existing = await req.tenantClient
       .select()
       .from(schema.shipments)
@@ -1873,10 +2495,7 @@ router.post('/prep/from-sdn/:id', requireScope('write:logistics'), async (req: a
         and(eq(schema.shipments.sourceDocType, 'SDN'), eq(schema.shipments.sourceDocId, dnId)),
       );
     const alive = existing.find(
-      (s: any) =>
-        s.preparationStatus !== 'cancelled' &&
-        s.preparationStatus !== 'delivered' &&
-        s.preparationStatus !== 'returned',
+      (s: any) => s.preparationStatus !== 'cancelled' && s.preparationStatus !== 'returned',
     );
     if (alive) {
       const tasks = await req.tenantClient
@@ -2223,6 +2842,112 @@ router.patch('/prep/tasks/:id', requireScope('write:logistics'), async (req: any
       patch.pickedByUserId = req.user?.id || task.pickedByUserId || null;
       patch.pickedAt = nowIso();
     }
+
+    // Sustitución de lote/serie durante el picking: si cambia `batchNumber`
+    // respecto al ya asignado, no basta con renombrar el campo — hay que
+    // revertir el stock del lote original y descontarlo del nuevo, y
+    // reflejar el cambio en la línea del albarán origen. Antes este campo
+    // era puramente cosmético (nunca se leía en ningún otro sitio) y el
+    // inventario registrado divergía del inventario físico realmente usado.
+    if (
+      'batchNumber' in patch &&
+      patch.batchNumber &&
+      task.batchNumber &&
+      patch.batchNumber !== task.batchNumber &&
+      task.itemId &&
+      task.warehouseId
+    ) {
+      const oldBatch = task.batchNumber;
+      const newBatch = patch.batchNumber;
+      const qty = Number(task.requestedQty);
+      try {
+        await req.tenantClient.transaction(async (tx: any) => {
+          const [newStock] = await tx
+            .select({ quantity: schema.itemBatchStocks.quantity })
+            .from(schema.itemBatchStocks)
+            .where(
+              and(
+                eq(schema.itemBatchStocks.itemId, task.itemId),
+                eq(schema.itemBatchStocks.batchNum, newBatch),
+                eq(schema.itemBatchStocks.warehouseId, task.warehouseId),
+              ),
+            );
+          if (!newStock || Number(newStock.quantity) < qty) {
+            throw new Error(
+              `Stock insuficiente en el lote ${newBatch}. Disponible: ${newStock?.quantity || 0}, necesario: ${qty}.`,
+            );
+          }
+
+          // Revertir el lote antiguo (stock del almacén + global del artículo).
+          await tx
+            .update(schema.itemBatchStocks)
+            .set({
+              quantity: sql`${schema.itemBatchStocks.quantity} + ${qty}`,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(schema.itemBatchStocks.itemId, task.itemId),
+                eq(schema.itemBatchStocks.batchNum, oldBatch),
+                eq(schema.itemBatchStocks.warehouseId, task.warehouseId),
+              ),
+            );
+          await tx
+            .update(schema.itemBatches)
+            .set({ quantity: sql`${schema.itemBatches.quantity} + ${qty}` })
+            .where(
+              and(
+                eq(schema.itemBatches.itemId, task.itemId),
+                eq(schema.itemBatches.batchNum, oldBatch),
+              ),
+            );
+
+          // Descontar del lote nuevo.
+          await tx
+            .update(schema.itemBatchStocks)
+            .set({
+              quantity: sql`${schema.itemBatchStocks.quantity} - ${qty}`,
+              updatedAt: new Date(),
+            })
+            .where(
+              and(
+                eq(schema.itemBatchStocks.itemId, task.itemId),
+                eq(schema.itemBatchStocks.batchNum, newBatch),
+                eq(schema.itemBatchStocks.warehouseId, task.warehouseId),
+              ),
+            );
+          await tx
+            .update(schema.itemBatches)
+            .set({ quantity: sql`${schema.itemBatches.quantity} - ${qty}` })
+            .where(
+              and(
+                eq(schema.itemBatches.itemId, task.itemId),
+                eq(schema.itemBatches.batchNum, newBatch),
+              ),
+            );
+
+          // Reflejar el lote realmente usado en la línea del albarán origen.
+          if (task.docLineId) {
+            const isSdn = task.docType === 'SDN';
+            const batchesTable = isSdn
+              ? schema.salesDeliveryNoteLineBatches
+              : schema.purchaseDeliveryNoteLineBatches;
+            await tx
+              .update(batchesTable)
+              .set({ batchNum: newBatch })
+              .where(
+                and(
+                  eq(batchesTable.deliveryLineId, task.docLineId),
+                  eq(batchesTable.batchNum, oldBatch),
+                ),
+              );
+          }
+        });
+      } catch (e: any) {
+        return res.status(400).json({ error: e.message || 'No se pudo sustituir el lote.' });
+      }
+    }
+
     await req.tenantClient
       .update(schema.pickingTasks)
       .set(patch)
@@ -2629,12 +3354,14 @@ router.post('/shipments/:id/dispatch', requireScope('write:logistics'), async (r
         .where(eq(schema.routeStops.id, body.routeStopId));
     }
 
+    // `dispatched` en ambos campos — `in_transit` llega después, cuando el
+    // conductor pulsa "Iniciar ruta" (POST /routes/:id/start), no al despachar.
     await req.tenantClient
       .update(schema.shipments)
       .set({
         preparationStatus: 'dispatched',
         dispatchedAt: nowIso(),
-        status: 'in_transit',
+        status: 'dispatched',
         updatedAt: nowIso(),
       })
       .where(eq(schema.shipments.id, sh.id));
@@ -2644,7 +3371,7 @@ router.post('/shipments/:id/dispatch', requireScope('write:logistics'), async (r
       sh.id,
       sh.preparationStatus,
       'dispatched',
-      'Despachado',
+      sh.kind === 'pickup_return' ? 'Recogida asignada a ruta' : 'Despachado',
       'shipment.dispatched',
       { routeId: body.routeId || null },
     );
@@ -2885,6 +3612,49 @@ export default router;
 export const publicTrackRouter = Router();
 
 /**
+ * Rango de progreso para elegir el status "más avanzado" entre el legacy
+ * (`status`) y el canónico (`preparationStatus`) de un mismo shipment.
+ * `receiving`/`received` (flujo INBOUND de recepción de compra) tienen rango
+ * propio, distinto de `out_for_delivery`/`delivered` (flujo OUTBOUND de
+ * entrega a cliente) — antes compartían rango con esos y podían mezclar
+ * ambos flujos al elegir "el más avanzado".
+ */
+const SHIPMENT_STAGE_RANK: Record<string, number> = {
+  draft: 0,
+  pending: 1,
+  picking: 2,
+  packed: 3,
+  ready: 4,
+  dispatched: 5,
+  in_transit: 6,
+  out_for_delivery: 7,
+  postponed: 7,
+  receiving: 8,
+  received: 9,
+  delivered: 10,
+  exception: 11,
+  returned: 11,
+  cancelled: 11,
+};
+
+/**
+ * Status "más avanzado" entre `preparationStatus` y el legacy `status` de un
+ * mismo shipment — protege contra envíos donde solo uno de los dos se
+ * actualizó (p. ej. delivered antes del sync automático). Usado tanto por el
+ * GET público como por el chat, para que ambos reporten siempre la misma
+ * etapa (antes el chat usaba `preparationStatus || status` sin comparar
+ * rangos, pudiendo desincronizarse del status mostrado en la página).
+ */
+function resolveShipmentStage(
+  preparationStatus: string | null | undefined,
+  status: string | null | undefined,
+): string | null {
+  const a = preparationStatus || status || null;
+  const b = status || preparationStatus || null;
+  return (SHIPMENT_STAGE_RANK[a || ''] ?? -1) >= (SHIPMENT_STAGE_RANK[b || ''] ?? -1) ? a : b;
+}
+
+/**
  * GET público de seguimiento — devuelve status + últimos eventos + última
  * posición. Sin datos sensibles (no partner, no líneas, no precios).
  *
@@ -2902,6 +3672,7 @@ publicTrackRouter.get('/track/:token', async (req: any, res) => {
         id: schema.shipments.id,
         preparationStatus: schema.shipments.preparationStatus,
         status: schema.shipments.status,
+        kind: schema.shipments.kind,
         destinationAddress: schema.shipments.destinationAddress,
         destinationLat: schema.shipments.destinationLat,
         destinationLng: schema.shipments.destinationLng,
@@ -2929,33 +3700,22 @@ publicTrackRouter.get('/track/:token', async (req: any, res) => {
       .orderBy(desc(schema.shipmentEvents.createdAt))
       .limit(50);
 
-    // Elige el status "más avanzado" entre el canónico (preparationStatus) y
-    // el legacy (status). Esto protege contra envíos antiguos donde sólo uno
-    // de los dos se actualizó (p. ej. delivered antes del sync automático).
-    const STAGE_RANK: Record<string, number> = {
-      draft: 0,
-      pending: 1,
-      picking: 2,
-      packed: 3,
-      ready: 4,
-      dispatched: 5,
-      in_transit: 6,
-      out_for_delivery: 7,
-      postponed: 7,
-      receiving: 7,
-      received: 10,
-      delivered: 10,
-      exception: 11,
-      returned: 11,
-      cancelled: 11,
-    };
-    const a = s.preparationStatus || s.status;
-    const b = s.status || s.preparationStatus;
-    const mostAdvanced = (STAGE_RANK[a || ''] ?? -1) >= (STAGE_RANK[b || ''] ?? -1) ? a : b;
+    const mostAdvanced = resolveShipmentStage(s.preparationStatus, s.status);
+
+    // Chat de Keiro en esta página: solo si el tenant lo activó
+    // explícitamente (flag off por defecto, ver appConfig.ts) Y tiene la IA
+    // configurada — así el frontend sabe si mostrar el punto de entrada sin
+    // una llamada extra.
+    const [flags, aiCfg] = await Promise.all([
+      getConfigSection(tenantDb, 'flags', FLAGS_DEFAULTS),
+      getAiConfig(tenantDb),
+    ]);
+    const chatEnabled = !!flags.trackingChatEnabled && !!aiCfg.enabled;
 
     res.json({
       status: mostAdvanced || s.status,
       legacyStatus: s.status,
+      kind: s.kind || 'delivery',
       destination: { address: s.destinationAddress || null },
       lastPosition:
         s.lastLat != null && s.lastLng != null
@@ -2965,9 +3725,107 @@ publicTrackRouter.get('/track/:token', async (req: any, res) => {
       deliveredAt: s.deliveredAt,
       events,
       updatedAt: s.updatedAt,
+      chatEnabled,
     });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * POST público de chat de Keiro para ESTE envío — sin login, igual que el
+ * GET de arriba. Solo responde si el tenant activó `flags.trackingChatEnabled`
+ * y tiene la IA configurada; el motor (`trackingChatEngine.ts`) no tiene
+ * acceso a nada fuera de este envío — ver su cabecera para el porqué.
+ */
+publicTrackRouter.post('/track/:token/chat', async (req: any, res) => {
+  try {
+    const token = req.params.token;
+    if (!token || token.length < 16) return res.status(400).json({ error: 'token' });
+
+    const tenantId = await resolveTenantByReportToken(token);
+    if (!tenantId) return res.status(404).json({ error: 'token desconocido' });
+    const tenantDb = await getTenantDb(tenantId);
+
+    const flags = await getConfigSection(tenantDb, 'flags', FLAGS_DEFAULTS);
+    if (!flags.trackingChatEnabled) {
+      return res.status(403).json({ error: 'El chat no está disponible para este envío' });
+    }
+    const aiCfg = await getAiConfig(tenantDb);
+    if (!aiCfg.enabled) {
+      return res
+        .status(400)
+        .json({ error: 'El asistente de IA no está activado para esta empresa' });
+    }
+
+    if (!checkTrackingChatRateLimit(token)) {
+      return res
+        .status(429)
+        .json({ error: 'Demasiados mensajes — inténtalo de nuevo en unos minutos' });
+    }
+
+    const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+    if (messages.length === 0) return res.status(400).json({ error: 'messages es obligatorio' });
+    // Límites laxos pero explícitos — esta ruta es pública y sin login, no
+    // hay ningún otro freno de tamaño de payload aquí.
+    if (messages.length > 40)
+      return res.status(400).json({ error: 'Conversación demasiado larga' });
+    if (JSON.stringify(messages).length > 20_000) {
+      return res.status(400).json({ error: 'Mensaje demasiado largo' });
+    }
+
+    const [s] = await tenantDb
+      .select({
+        id: schema.shipments.id,
+        preparationStatus: schema.shipments.preparationStatus,
+        status: schema.shipments.status,
+        kind: schema.shipments.kind,
+        destinationAddress: schema.shipments.destinationAddress,
+        estimatedDelivery: schema.shipments.estimatedDelivery,
+        deliveredAt: schema.shipments.deliveredAt,
+      })
+      .from(schema.shipments)
+      .where(eq(schema.shipments.reportToken, token));
+    if (!s) return res.status(404).json({ error: 'shipment' });
+
+    const events = await tenantDb
+      .select({
+        kind: schema.shipmentEvents.kind,
+        status: schema.shipmentEvents.status,
+        description: schema.shipmentEvents.description,
+        createdAt: schema.shipmentEvents.createdAt,
+      })
+      .from(schema.shipmentEvents)
+      .where(eq(schema.shipmentEvents.shipmentId, s.id))
+      .orderBy(desc(schema.shipmentEvents.createdAt))
+      .limit(20);
+
+    const result = await streamTrackingChat({
+      aiConfig: aiCfg,
+      tenantClient: tenantDb,
+      tenantId,
+      shipment: {
+        id: s.id,
+        status: resolveShipmentStage(s.preparationStatus, s.status),
+        kind: s.kind || 'delivery',
+        destinationAddress: s.destinationAddress,
+        estimatedDelivery: s.estimatedDelivery,
+        deliveredAt: s.deliveredAt,
+        events,
+      },
+      messages,
+    });
+
+    result.pipeUIMessageStreamToResponse(res, {
+      onError: (e: unknown) => (e instanceof Error ? e.message : 'Error del asistente'),
+    });
+  } catch (e: any) {
+    console.error('[publicTrackRouter.chat]', e);
+    if (!res.headersSent) {
+      res.status(502).json({ error: e?.message || 'Error en el chat de seguimiento' });
+    } else {
+      res.end();
+    }
   }
 });
 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@openfactu/ui';
 import { Mail, X } from 'lucide-react';
 import { BulkSendModal, type AnyDocType } from './BulkSendModal';
+import { formatDocCode } from '../../utils/docCode';
 
 interface PartnerLike {
   id: string;
@@ -44,9 +45,7 @@ export const BulkSendToolbar: React.FC<Props> = ({
     return {
       docType,
       docId: r.id,
-      docCode:
-        r.docCode ||
-        `${r.seriesPrefix || ''}-${r.periodCode || ''}-${String(r.docNum || '').padStart(6, '0')}`,
+      docCode: r.docCode || formatDocCode(r),
       partnerName: p?.name || r.partnerName || '—',
       partnerEmail: p?.email || null,
     };

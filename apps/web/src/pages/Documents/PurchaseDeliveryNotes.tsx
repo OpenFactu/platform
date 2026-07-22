@@ -28,6 +28,8 @@ import {
   FileDigit,
   Barcode,
   Download,
+  Eye,
+  PackageSearch,
 } from 'lucide-react';
 import { DocumentActionBar } from '../../components/DocumentActionBar';
 import { InternalOrderHeaderField } from '../../components/InternalOrderHeaderField';
@@ -37,6 +39,9 @@ import { DocumentDetailLayout } from '../../components/DocumentDetailLayout';
 import { AttachmentsPanel } from '../../components/AttachmentsPanel';
 import { CloneDocumentActions } from '../../components/common/CloneDocumentActions';
 import { PreparationButton } from '../../components/common/PreparationButton';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 import { DocumentFiscalPanel } from '../../components/documents/DocumentFiscalPanel';
 import { TraceabilityButton } from '../../components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../../components/DocumentTotalsBlock';
@@ -49,6 +54,7 @@ import { notifyDocChange, useDataVersion } from '../../utils/dataRefresh';
 import { downloadPdf } from '../../utils/downloadPdf';
 import { useFormat } from '../../hooks/useFormat';
 import { useTheme } from '../../context/ThemeContext';
+import { formatDocCode } from '../../utils/docCode';
 import { BatchSelectionModal } from '../../components/BatchSelectionModal';
 import { BatchAssignmentPanel } from '../../components/BatchAssignmentPanel';
 import { useItemUoms } from '../../hooks/useItemUoms';
@@ -75,6 +81,7 @@ const PDNList: React.FC<{
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
+  const { flags } = useTheme();
   const tabs = (() => {
     try {
       return useTabs();
@@ -127,12 +134,11 @@ const PDNList: React.FC<{
     {
       header: 'No. Albarán',
       sortable: true,
-      sortAccessor: (item: any) =>
-        `${item.seriesPrefix || ''}-${String(item.docNum || 0).padStart(6, '0')}`,
+      sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {item.seriesPrefix}-{item.periodCode}-{String(item.docNum).padStart(6, '0')}
+            {formatDocCode(item)}
           </span>
           <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
             ID: {item.id.substring(0, 8)}
@@ -222,9 +228,9 @@ const PDNList: React.FC<{
               <Copy size={12} /> Facturar
             </Button>
           )}
-          {item.status === 'O' && !item.hasActiveShipment && (
+          {item.status === 'O' && !item.hasActiveShipment && flags.logisticsEnabled && (
             <div onClick={(e) => e.stopPropagation()} className="inline-flex">
-              <PreparationButton docType="PDN" docId={item.id} />
+              <PreparationButton docType="PDN" docId={item.id} compact />
             </div>
           )}
           {item.hasActiveShipment && item.activeShipmentId && (
@@ -258,6 +264,43 @@ const PDNList: React.FC<{
         </div>
       ),
     },
+  ];
+
+  const ctxMenu = useContextMenu<any>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (item: any) => [
+    { label: 'Ver Albarán', icon: <Eye size={14} />, onClick: () => onDetail(item) },
+    {
+      label: 'Descargar PDF',
+      icon: <Download size={14} />,
+      onClick: () => handleQuickPdf(item.id),
+    },
+    ...(item.status === 'O'
+      ? [
+          {
+            label: 'Facturar',
+            icon: <Copy size={14} />,
+            onClick: () => onCopyToInvoice(item),
+            separatorBefore: true,
+          },
+        ]
+      : []),
+    ...(item.hasActiveShipment && item.activeShipmentId
+      ? [
+          {
+            label: 'Ver recepción',
+            icon: <PackageSearch size={14} />,
+            onClick: () => {
+              const path = `/logistics/shipments/${item.activeShipmentId}`;
+              if (tabs && (tabs as any).openTab) {
+                (tabs as any).openTab(path, { title: 'Recepción en curso' });
+              } else {
+                window.location.href = path;
+              }
+            },
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -331,7 +374,7 @@ const PDNList: React.FC<{
           onSent={() => setSelectedKeys(new Set())}
         />
         <Table
-          columns={columns}
+          columns={ctxColumns}
           data={filteredData || []}
           isLoading={loading}
           onRowClick={onDetail}
@@ -340,6 +383,14 @@ const PDNList: React.FC<{
           onSelectionChange={setSelectedKeys}
         />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
     </div>
   );
 };
@@ -410,6 +461,7 @@ const PDNForm: React.FC<{
     return [...base.slice(0, -1), projectCol, base[base.length - 1]];
   }, [
     state.lines,
+    state.warehouseId,
     masters.items,
     masters.taxGroups,
     pluginLineFields,
@@ -516,6 +568,22 @@ const PDNForm: React.FC<{
                   onChange={setState.setSeriesId}
                   options={masters.series.map((s: any) => ({ label: s.name, value: s.id }))}
                 />
+                {state.isManualSeries && (
+                  <div className="mt-2 space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      Número de documento (manual) *
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={state.manualNumber}
+                      onChange={(e) => setState.setManualNumber(e.target.value)}
+                      placeholder="Ej: 1050"
+                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    />
+                  </div>
+                )}
                 {state.seriesError && (
                   <p className="text-[10px] text-rose-500 font-bold mt-1">{state.seriesError}</p>
                 )}
@@ -643,6 +711,7 @@ const PDNForm: React.FC<{
         masters={masters}
         zones={zones}
         warehouseId={state.warehouseId}
+        warehouseLocation={warehouseLocation}
         initialLineIdx={batchEditingIdx}
         isSale={false}
         onSave={(updates) => {
@@ -705,6 +774,7 @@ const PDNDetail: React.FC<{
   setViewingBatch: (l: any) => void;
 }> = ({ pdn, onBack, onCancel, onCopyToInvoice, masters, zones, setViewingBatch }) => {
   const fmt = useFormat();
+  const { flags } = useTheme();
   const partner = masters.partners.find((p: any) => p.id === pdn.partnerId);
 
   const columns = useMemo(
@@ -724,14 +794,14 @@ const PDNDetail: React.FC<{
     <DocumentDetailLayout
       onBack={onBack}
       breadcrumb="COMPRAS · ALBARÁN"
-      title={`${pdn.seriesPrefix}-${pdn.periodCode}-${String(pdn.docNum).padStart(6, '0')}`}
+      title={formatDocCode(pdn)}
       status={statusBadgeProps(pdn.status, DocKind.DeliveryNote)}
       actions={
         <DocumentActionBar
           docType="PDN"
           pdfUrl={`/api/purchases/delivery-notes/${pdn.id}/pdf`}
           docId={pdn.id}
-          docCode={`${pdn.seriesPrefix}-${pdn.periodCode}-${String(pdn.docNum).padStart(6, '0')}`}
+          docCode={formatDocCode(pdn)}
           onCancel={() => onCancel(pdn.id)}
           showCancel={pdn.status === 'O'}
           primary={
@@ -747,10 +817,12 @@ const PDNDetail: React.FC<{
         <TraceabilityButton
           type="PDN"
           id={pdn.id}
-          docCode={`${pdn.seriesPrefix}-${pdn.periodCode}-${String(pdn.docNum).padStart(6, '0')}`}
+          docCode={formatDocCode(pdn)}
         />
         <InternalOrderChip internalOrderId={pdn.internalOrderId} />
-        {pdn.status === 'O' && <PreparationButton docType="PDN" docId={pdn.id} />}
+        {pdn.status === 'O' && flags.logisticsEnabled && (
+          <PreparationButton docType="PDN" docId={pdn.id} />
+        )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card
@@ -829,8 +901,6 @@ const PDNDetail: React.FC<{
   );
 };
 
-const formatDocCode = (d: any): string =>
-  `${d.seriesPrefix}-${d.periodCode}-${String(d.docNum).padStart(6, '0')}`;
 
 export const PurchaseDeliveryNotes: React.FC = () => {
   const { token, user } = useAuth();
@@ -891,7 +961,7 @@ export const PurchaseDeliveryNotes: React.FC = () => {
         const data = await res.json();
         const withCode = (Array.isArray(data) ? data : []).map((d: any) => ({
           ...d,
-          docCode: `${d.seriesPrefix || ''}-${d.periodCode || ''}-${String(d.docNum || '').padStart(6, '0')}`,
+          docCode: formatDocCode(d),
           partnerName: d.partnerName || '',
         }));
         setDeliveries(withCode);

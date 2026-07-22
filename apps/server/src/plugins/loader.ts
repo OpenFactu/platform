@@ -2,11 +2,14 @@ import { Express } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { MigrationEngine } from '../core/plugins/MigrationEngine';
-import { PluginContext } from './types';
+import { PluginContext, PluginDashboardWidgetInput } from './types';
 import { HookManager } from '../core/plugins/HookManager';
 import { FactuApi } from '../core/plugins/FactuApi';
 import { TenantPluginCache } from '../core/plugins/TenantPluginCache';
 import { CarrierRegistry } from '../core/carriers/CarrierRegistry';
+import { AiToolRegistry } from '../core/ai/AiToolRegistry';
+import { ClientFactory } from '../core/tenant/ClientFactory';
+import * as schema from '../db/schema';
 
 // Almacén en memoria de plugins cargados (instalados globalmente)
 export const activePlugins: string[] = [];
@@ -15,6 +18,100 @@ const pluginsDir = path.join(__dirname, '../../../../plugins');
 
 // Referencia al Express app para reloads
 let _app: Express | null = null;
+
+// Widgets de dashboard registrados programáticamente vía context.widgets.registerDashboard(),
+// por plugin. Se resetea en cada buildPluginContext() (carga y reload) para que el
+// hot-reload no acumule duplicados — el Map<id, widget> dedupe dentro de un mismo init().
+const programmaticDashboardWidgets = new Map<string, Map<string, PluginDashboardWidgetInput>>();
+
+// Widgets declarados estáticamente en manifest.json, cacheados aparte para poder
+// mezclarlos con los programáticos sin perderlos ni duplicarlos entre reloads.
+const manifestDashboardWidgetsCache = new Map<string, PluginDashboardWidgetInput[]>();
+
+function resetDashboardWidgets(pluginId: string) {
+  programmaticDashboardWidgets.set(pluginId, new Map());
+}
+
+function registerDashboardWidget(pluginId: string, widget: PluginDashboardWidgetInput) {
+  if (!programmaticDashboardWidgets.has(pluginId)) {
+    programmaticDashboardWidgets.set(pluginId, new Map());
+  }
+  programmaticDashboardWidgets.get(pluginId)!.set(widget.id, widget);
+  applyDashboardWidgetsToManifest(pluginId);
+}
+
+/** Punto de fusión: mezcla widgets de manifest.json + programáticos dentro de activePluginManifests. */
+function applyDashboardWidgetsToManifest(pluginId: string) {
+  const programmatic = Array.from(programmaticDashboardWidgets.get(pluginId)?.values() ?? []);
+  const manifestOwn = manifestDashboardWidgetsCache.get(pluginId) ?? [];
+  const programmaticIds = new Set(programmatic.map((w) => w.id));
+  const merged = [
+    ...manifestOwn.filter((w: any) => !programmaticIds.has(w.id)), // programático gana si hay choque de id
+    ...programmatic,
+  ];
+
+  let entry = activePluginManifests.find((m: any) => m.id === pluginId);
+  if (!entry) {
+    if (merged.length === 0) return; // sin manifest ni nada programático aún -> no crear ruido
+    entry = { id: pluginId, name: pluginId, ui: {} };
+    activePluginManifests.push(entry);
+  }
+  entry.ui = entry.ui || {};
+  entry.ui.dashboardWidgets = merged;
+}
+
+/**
+ * Construye el PluginContext que recibe init(). Compartido entre loadPlugins()
+ * y reloadPlugin() para no duplicar la lista de capacidades en dos sitios.
+ */
+function buildPluginContext(pluginId: string): PluginContext {
+  if (!_app) {
+    throw new Error('[Plugins] No se puede construir el contexto: la app Express aún no está lista');
+  }
+
+  // Reset ANTES de ejecutar init(): así un reload que deja de registrar un widget
+  // no lo deja "colgado", y uno que sigue registrando los mismos ids no los duplica.
+  resetDashboardWidgets(pluginId);
+  applyDashboardWidgetsToManifest(pluginId);
+
+  return {
+    app: _app,
+    migration: {
+      addCustomField: MigrationEngine.addCustomField.bind(MigrationEngine),
+      createTable: MigrationEngine.createPluginTable.bind(MigrationEngine),
+    },
+    hooks: {
+      register: (event: string, handler: any) => {
+        HookManager.register(event, handler, pluginId);
+      },
+    },
+    documents: {
+      onBeforeCreate: (tableName: string, handler: any) => {
+        const event = `${tableName.charAt(0).toLowerCase() + tableName.slice(1)}.beforeCreate`;
+        HookManager.register(event, handler, pluginId);
+      },
+      onAfterCreate: (tableName: string, handler: any) => {
+        const event = `${tableName.charAt(0).toLowerCase() + tableName.slice(1)}.afterCreate`;
+        HookManager.register(event, handler, pluginId);
+      },
+    },
+    factuApi: FactuApi,
+    carriers: {
+      register: (adapter) => CarrierRegistry.register(adapter),
+    },
+    db: {
+      public: ClientFactory.getClient('public'),
+      forTenant: (tenantId: string) => ClientFactory.getTenantClient(tenantId),
+      schema,
+    },
+    widgets: {
+      registerDashboard: (widget) => registerDashboardWidget(pluginId, widget),
+    },
+    aiTools: {
+      register: (name, factory) => AiToolRegistry.register(name, factory, pluginId),
+    },
+  };
+}
 
 export const loadPlugins = async (app: Express) => {
   _app = app;
@@ -42,6 +139,7 @@ export const loadPlugins = async (app: Express) => {
           try {
             const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
             activePluginManifests.push({ ...manifest, id: folder });
+            manifestDashboardWidgetsCache.set(folder, manifest.ui?.dashboardWidgets ?? []);
             console.log(`[Plugins] Manifiesto de UI cargado para: ${folder}`);
           } catch (e) {
             console.error(`[Plugins] Error al leer manifest.json de ${folder}`);
@@ -63,32 +161,7 @@ export const loadPlugins = async (app: Express) => {
         const initFn = pluginModule?.init || pluginModule?.default?.init;
 
         if (typeof initFn === 'function') {
-          const context: PluginContext = {
-            app,
-            migration: {
-              addCustomField: MigrationEngine.addCustomField.bind(MigrationEngine),
-              createTable: MigrationEngine.createPluginTable.bind(MigrationEngine),
-            },
-            hooks: {
-              register: (event: string, handler: any) => {
-                HookManager.register(event, handler, folder);
-              },
-            },
-            documents: {
-              onBeforeCreate: (tableName: string, handler: any) => {
-                const event = `${tableName.charAt(0).toLowerCase() + tableName.slice(1)}.beforeCreate`;
-                HookManager.register(event, handler, folder);
-              },
-              onAfterCreate: (tableName: string, handler: any) => {
-                const event = `${tableName.charAt(0).toLowerCase() + tableName.slice(1)}.afterCreate`;
-                HookManager.register(event, handler, folder);
-              },
-            },
-            factuApi: FactuApi,
-            carriers: {
-              register: (adapter) => CarrierRegistry.register(adapter),
-            },
-          };
+          const context: PluginContext = buildPluginContext(folder);
 
           await initFn(context);
           activePlugins.push(folder);
@@ -132,8 +205,9 @@ export async function reloadPlugin(
   console.log(`[Plugins] Recargando plugin: ${pluginId}...`);
 
   try {
-    // 1. Limpiar hooks
+    // 1. Limpiar hooks y tools de IA
     HookManager.unregisterPlugin(pluginId);
+    AiToolRegistry.unregisterPlugin(pluginId);
 
     // 2. Limpiar require.cache
     const resolvedPath = path.resolve(pluginPath);
@@ -155,6 +229,7 @@ export async function reloadPlugin(
       } else {
         activePluginManifests.push(newManifest);
       }
+      manifestDashboardWidgetsCache.set(pluginId, manifest.ui?.dashboardWidgets ?? []);
     }
 
     // 4. Re-ejecutar init()
@@ -171,32 +246,7 @@ export async function reloadPlugin(
     const initFn = pluginModule?.init || pluginModule?.default?.init;
 
     if (typeof initFn === 'function' && _app) {
-      const context: PluginContext = {
-        app: _app,
-        migration: {
-          addCustomField: MigrationEngine.addCustomField.bind(MigrationEngine),
-          createTable: MigrationEngine.createPluginTable.bind(MigrationEngine),
-        },
-        hooks: {
-          register: (event: string, handler: any) => {
-            HookManager.register(event, handler, pluginId);
-          },
-        },
-        documents: {
-          onBeforeCreate: (tableName: string, handler: any) => {
-            const event = `${tableName.charAt(0).toLowerCase() + tableName.slice(1)}.beforeCreate`;
-            HookManager.register(event, handler, pluginId);
-          },
-          onAfterCreate: (tableName: string, handler: any) => {
-            const event = `${tableName.charAt(0).toLowerCase() + tableName.slice(1)}.afterCreate`;
-            HookManager.register(event, handler, pluginId);
-          },
-        },
-        factuApi: FactuApi,
-        carriers: {
-          register: (adapter) => CarrierRegistry.register(adapter),
-        },
-      };
+      const context: PluginContext = buildPluginContext(pluginId);
 
       await initFn(context);
     }
@@ -209,4 +259,4 @@ export async function reloadPlugin(
   }
 }
 
-export { pluginsDir };
+export { pluginsDir, buildPluginContext };

@@ -10,6 +10,7 @@ import customFieldsRouter from './api/customFields';
 import userTablesRouter from './api/userTables';
 import userModulesRouter from './api/userModules';
 import automationsRouter from './api/automations';
+import dashboardWidgetsRouter from './api/dashboardWidgets';
 import logisticsRouter, { publicTrackRouter } from './api/logistics';
 import apiTokensRouter from './api/apiTokens';
 import { apiTokenMiddleware } from './api/middleware/apiToken';
@@ -44,6 +45,7 @@ import accountMappingsRouter from './api/accountMappings';
 import documentLinksRouter from './api/documentLinks';
 import companySignatureRouter from './api/companySignature';
 import userProfileRouter from './api/userProfile';
+import twoFactorRouter from './api/twofa';
 import reportsRouter from './api/reports';
 import hrEmployeesRouter from './api/hr/employees';
 import hrDepartmentsRouter from './api/hr/departments';
@@ -62,12 +64,12 @@ import hrShiftAssignmentsRouter from './api/hr/shiftAssignments';
 import hrTimeclockRouter from './api/hr/timeclock';
 import hrKiosksRouter from './api/hr/kiosks';
 import seriesRouter from './api/series';
-import purchasesRouter from './api/purchases';
-import purchaseDeliveryNotesRouter from './api/purchaseDeliveryNotes';
-import purchaseInvoicesRouter from './api/purchaseInvoices';
-import salesOrdersRouter from './api/salesOrders';
-import salesDeliveryNotesRouter from './api/salesDeliveryNotes';
-import salesInvoicesRouter from './api/salesInvoices';
+import purchasesRouter from './api/documentos/purchases';
+import purchaseDeliveryNotesRouter from './api/documentos/purchaseDeliveryNotes';
+import purchaseInvoicesRouter from './api/documentos/purchaseInvoices';
+import salesOrdersRouter from './api/documentos/salesOrders';
+import salesDeliveryNotesRouter from './api/documentos/salesDeliveryNotes';
+import salesInvoicesRouter from './api/documentos/salesInvoices';
 import paymentsRouter from './api/payments';
 import {
   currenciesRouter,
@@ -81,6 +83,7 @@ import membershipsRouter from './api/memberships';
 import documentTemplatesRouter from './api/documentTemplates';
 import attachmentsRouter from './api/attachments';
 import adminRouter from './api/admin';
+import backupsRouter from './api/backups';
 import systemRouter from './api/system';
 import emailRouter from './api/email';
 import notificationsRouter from './api/notifications';
@@ -88,13 +91,16 @@ import companyRouter from './api/company';
 import dashboardRouter from './api/dashboard';
 import tenantsRouter from './api/tenants';
 import configRouter from './api/config';
+import aiRouter from './api/ai';
+import mcpRouter from './api/mcp';
 import searchRouter from './api/search';
 import geoRouter from './api/geo';
 import factuApiRouter from './api/factuapi';
-import documentRouter from './api/documentRouter';
+import documentRouter from './api/documentos/documentRouter';
 import { tenantContextMiddleware } from './api/middleware/tenantContext';
 import { MigrationManager } from './core/tenant/MigrationManager';
 import { startPeriodCloseCron } from './core/cron/periodCloseCron';
+import { startBackupCron } from './core/cron/backupCron';
 import { startEventSocket, broadcastEvent } from './core/realtime/EventSocket';
 import { notifyTenant } from './core/realtime/notifyTenant';
 import { HookManager } from './core/plugins/HookManager';
@@ -171,6 +177,7 @@ app.use('/api/custom-fields', customFieldsRouter);
 app.use('/api/user-tables', userTablesRouter);
 app.use('/api/user-modules', userModulesRouter);
 app.use('/api/automations', automationsRouter);
+app.use('/api/dashboard-widgets', dashboardWidgetsRouter);
 app.use('/api/logistics', logisticsRouter);
 app.use('/api/dev-keys', devKeysRouter);
 // 4. Rustas de creación y gestion de usarios
@@ -201,6 +208,7 @@ app.use('/api/company/signature', companySignatureRouter);
 // userProfileRouter va ANTES de usersRouter para que /me capture primero.
 // Pero usersRouter ya está montado arriba, así que usamos otro prefix.
 app.use('/api/profile', userProfileRouter);
+app.use('/api/2fa', twoFactorRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/hr/employees', hrEmployeesRouter);
 app.use('/api/hr/departments', hrDepartmentsRouter);
@@ -233,6 +241,7 @@ app.use('/api/memberships', membershipsRouter);
 app.use('/api/document-templates', documentTemplatesRouter);
 app.use('/api/attachments', attachmentsRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/backups', backupsRouter);
 app.use('/api/system', systemRouter);
 // Correo saliente por tenant — lee/escribe config SMTP y envía emails.
 app.use('/api/email', emailRouter);
@@ -241,6 +250,8 @@ app.use('/api/company', companyRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/tenants', tenantsRouter);
 app.use('/api/config', configRouter);
+app.use('/api/ai', aiRouter);
+app.use('/api/mcp', mcpRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/geo', geoRouter);
 app.use('/api/factuapi', factuApiRouter);
@@ -311,6 +322,12 @@ const start = async () => {
         ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "signatureName" TEXT;
         ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "signatureRole" TEXT;
         ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "signatureImageUrl" TEXT;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "resetTokenHash" TEXT;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "resetTokenExpiresAt" TIMESTAMP;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpSecret" TEXT;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpEnabled" BOOLEAN NOT NULL DEFAULT FALSE;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpBackupCodes" TEXT;
+        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "avatarImageUrl" TEXT;
         CREATE TABLE IF NOT EXISTS "UserTenantMembership" (
           "id" TEXT PRIMARY KEY, "userId" TEXT NOT NULL REFERENCES "GlobalUser"("id") ON DELETE CASCADE,
           "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
@@ -370,6 +387,18 @@ const start = async () => {
           "deactivatedAt" TIMESTAMP,
           UNIQUE ("tenantId", "pluginId")
         );
+        CREATE TABLE IF NOT EXISTS "ApiToken" (
+          "id" TEXT PRIMARY KEY,
+          "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+          "name" TEXT NOT NULL,
+          "tokenHash" TEXT UNIQUE NOT NULL,
+          "prefix" TEXT NOT NULL,
+          "scopes" TEXT NOT NULL,
+          "createdByUserId" TEXT,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "lastUsedAt" TIMESTAMP,
+          "revokedAt" TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS "DevApiKey" (
           "id" TEXT PRIMARY KEY,
           "clientId" TEXT UNIQUE NOT NULL,
@@ -417,6 +446,33 @@ const start = async () => {
           "triggerSource" TEXT,
           "contextJson" JSONB
         );
+        CREATE TABLE IF NOT EXISTS "UserDashboardWidget" (
+          "id" TEXT PRIMARY KEY,
+          "tenantId" TEXT NOT NULL,
+          "title" TEXT NOT NULL,
+          "subtitle" TEXT,
+          "metricKey" TEXT,
+          "size" TEXT NOT NULL DEFAULT 'md',
+          "displayOrder" INTEGER NOT NULL DEFAULT 100,
+          "createdBy" TEXT,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        ALTER TABLE "UserDashboardWidget" ALTER COLUMN "metricKey" DROP NOT NULL;
+        ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "kind" TEXT NOT NULL DEFAULT 'metric';
+        ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "sourceCode" TEXT;
+        ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "queryConfig" JSONB;
+        CREATE TABLE IF NOT EXISTS "AiConversation" (
+          "id" TEXT PRIMARY KEY,
+          "tenantId" TEXT NOT NULL,
+          "userId" TEXT NOT NULL,
+          "title" TEXT,
+          "messages" JSONB NOT NULL DEFAULT '[]',
+          "model" TEXT,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS "AiConversation_tenant_user_idx" ON "AiConversation" ("tenantId", "userId");
       `),
       );
       console.log('[Bootstrap] Tablas del schema publico verificadas.');
@@ -444,6 +500,10 @@ const start = async () => {
     // Cron de cierre de período — notifica a los admins cuando un periodo
     // vence pero NO cierra automáticamente (requiere confirmación UI).
     startPeriodCloseCron();
+
+    // Cron de backups automáticos — ejecuta los backups programados por
+    // tenant (sección `backup` de SystemConfig) y aplica retención.
+    startBackupCron();
 
     const server = app.listen(PORT, () => {
       console.log(`[Server] Keirost escuchando en puerto ${PORT}`);

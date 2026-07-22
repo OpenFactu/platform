@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GlobalLoader, PopupProvider } from '@openfactu/ui';
 import { SetupWizard } from './pages/SetupWizard';
 import { Login } from './pages/Login';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { TrackingPage } from './pages/public/TrackingPage';
 import { KioskMode } from './pages/hr/KioskMode';
 import { useAuth } from './context/AuthContext';
@@ -10,6 +12,8 @@ import { MainLayout } from './components/MainLayout';
 import { TabsProvider } from './context/TabsContext';
 import { MobileNavProvider } from './context/MobileNavContext';
 import { ScannerProvider } from './context/ScannerContext';
+import { AiChatProvider } from './context/AiChatContext';
+import { ChatLauncherPanel } from './components/ai/ChatLauncherPanel';
 import { DebugPanel } from './components/DebugPanel';
 
 function App() {
@@ -97,6 +101,8 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
@@ -111,12 +117,15 @@ function App() {
         <MobileNavProvider>
           <ScannerProvider>
             <PopupProvider>
-              <MainLayout />
+              <AiChatProvider>
+                <MainLayout />
+                <ChatLauncherPanel />
+              </AiChatProvider>
             </PopupProvider>
           </ScannerProvider>
         </MobileNavProvider>
       </TabsProvider>
-      <DebugPanel />
+      {/* <DebugPanel /> */}
     </>
   );
 }

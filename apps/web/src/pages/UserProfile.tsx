@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, useToast } from '@openfactu/ui';
-import { UserCircle, Upload, X as XIcon, Save, PenLine } from 'lucide-react';
+import { UserCircle, Upload, X as XIcon, Save, PenLine, ImageIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { TwoFactorSettings } from '../components/users/TwoFactorSettings';
 
 interface Profile {
   id: string;
@@ -11,6 +12,7 @@ interface Profile {
   signatureName: string | null;
   signatureRole: string | null;
   signatureImageUrl: string | null;
+  avatarImageUrl: string | null;
 }
 
 /**
@@ -19,7 +21,7 @@ interface Profile {
  * al generar PDFs de documentos creados por este usuario.
  */
 export const UserProfile: React.FC = () => {
-  const { token, user } = useAuth();
+  const { token, user, refreshUser } = useAuth();
   const toast = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState('');
@@ -27,6 +29,7 @@ export const UserProfile: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const authHeaders = {
     Authorization: `Bearer ${token}`,
@@ -144,6 +147,51 @@ export const UserProfile: React.FC = () => {
     }
   };
 
+  // La foto de perfil se sirve sin auth (ver GET /api/profile/avatar/:userId),
+  // así que a diferencia de la firma no hace falta el blob-fetch: un <img
+  // src> directo basta.
+  const uploadAvatar = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Solo imágenes');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Máximo 5 MB');
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/profile/me/avatar', {
+        method: 'POST',
+        headers: authHeaders,
+        body: form,
+      });
+      if (!res.ok) throw new Error((await res.json()).error || 'Error al subir');
+      toast.success('Foto de perfil actualizada');
+      await load();
+      await refreshUser();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const deleteAvatar = async () => {
+    if (!confirm('¿Eliminar la foto de perfil?')) return;
+    try {
+      const res = await fetch('/api/profile/me/avatar', { method: 'DELETE', headers: authHeaders });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success('Foto eliminada');
+      await load();
+      await refreshUser();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error');
+    }
+  };
+
   return (
     <div className="p-8 max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
       <div>
@@ -159,6 +207,59 @@ export const UserProfile: React.FC = () => {
 
       <Card className="p-6 space-y-4 border-slate-100 dark:border-slate-800">
         <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+          <ImageIcon size={14} /> Foto de perfil
+        </h2>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          Se usa en la tabla de Usuarios y en tus mensajes del asistente de IA (PNG o JPG, máx. 5
+          MB).
+        </p>
+        <div className="flex items-center gap-4">
+          {profile?.avatarImageUrl ? (
+            <img
+              src={profile.avatarImageUrl}
+              alt="Foto de perfil"
+              className="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-700"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xl font-black text-slate-600 dark:text-slate-200">
+              {profile?.username?.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="inline-flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-sm font-bold cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+              <Upload size={14} />
+              {uploadingAvatar
+                ? 'Subiendo…'
+                : profile?.avatarImageUrl
+                  ? 'Reemplazar'
+                  : 'Subir foto'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden"
+                disabled={uploadingAvatar}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) uploadAvatar(f);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            {profile?.avatarImageUrl && (
+              <button
+                type="button"
+                onClick={deleteAvatar}
+                className="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors text-sm"
+              >
+                <XIcon size={14} /> Eliminar
+              </button>
+            )}
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 space-y-4 border-slate-100 dark:border-slate-800">
+        <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
           <UserCircle size={14} /> Datos de la cuenta
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -169,6 +270,8 @@ export const UserProfile: React.FC = () => {
           Para cambiar email o contraseña, ve a la sección Usuarios (requiere permisos).
         </p>
       </Card>
+
+      <TwoFactorSettings />
 
       <Card className="p-6 space-y-4 border-slate-100 dark:border-slate-800">
         <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">

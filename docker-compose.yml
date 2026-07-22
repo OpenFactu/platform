@@ -4,11 +4,11 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        VITE_API_URL: "${VITE_API_URL:-http://localhost:3000}"
+        VITE_API_URL: '${VITE_API_URL:-http://localhost:3000}'
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - '${WEB_PORT:-8080}:80'
     environment:
-      VITE_API_URL: "http://localhost:${SERVER_PORT:-3000}"
+      VITE_API_URL: 'http://localhost:${SERVER_PORT:-3000}'
     depends_on:
       - server
     networks:
@@ -19,7 +19,7 @@ services:
       context: .
       dockerfile: apps/server/Dockerfile
     ports:
-      - "${SERVER_PORT:-3000}:3000"
+      - '${SERVER_PORT:-3000}:3000'
     env_file:
       - .env
     volumes:
@@ -42,11 +42,44 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openfactu_pass}
       POSTGRES_DB: ${POSTGRES_DB:-openfactudb}
     ports:
-      - "0.0.0.0:${DB_PORT:-5432}:5432"
+      - '0.0.0.0:${DB_PORT:-5432}:5432'
     volumes:
       - ./storage/db_data:/var/lib/postgresql/data
     networks:
       - openfactu_net
+
+  # ── IA local (opcional) ──
+  # Solo arranca con el profile "ai":  docker compose --profile ai up -d ollama
+  # (o `npm run dev:ai` / `npm run dev:all:ai`). Los modelos se descargan desde
+  # Ajustes → Empresa → IA y persisten en ./storage/ollama.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ['ai']
+    ports:
+      - '${OLLAMA_PORT:-11434}:11434'
+    volumes:
+      - ./storage/ollama:/root/.ollama
+    networks:
+      - openfactu_net
+  # Variante con GPU NVIDIA (Docker Desktop + WSL2 + drivers NVIDIA).
+  # Mismo puerto y mismo volumen de modelos que `ollama` — arranca uno u otro,
+  # nunca los dos: `npm run dev:ai` (CPU) o `npm run dev:ai:gpu` (GPU).
+  ollama-gpu:
+    image: ollama/ollama:latest
+    profiles: ['ai-gpu']
+    ports:
+      - '${OLLAMA_PORT:-11434}:11434'
+    volumes:
+      - ./storage/ollama:/root/.ollama
+    networks:
+      - openfactu_net
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
 networks:
   openfactu_net:

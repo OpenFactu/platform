@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { Slot } from '../components/Slot';
 import { DashboardPluginWidgets } from '../components/plugins/DashboardPluginWidgets';
+import { UserDashboardWidgets } from '../components/dashboard/UserDashboardWidgets';
 import { Card, Badge, DashboardSkeleton } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -143,7 +144,28 @@ export const Dashboard: React.FC = () => {
         });
         if (!res.ok) throw new Error('http');
         const json = await res.json();
-        setData(json);
+        // Respuesta defensiva: si el server devolvió un payload parcial
+        // (reinicio en caliente, error a medias), mejor mostrar el estado de
+        // error que reventar el render con un undefined.
+        if (!json || typeof json !== 'object' || !json.sales || !json.receivables) {
+          throw new Error('payload');
+        }
+        setData({
+          ...json,
+          monthlyTrend: Array.isArray(json.monthlyTrend) ? json.monthlyTrend : [],
+          invoiceStatus: Array.isArray(json.invoiceStatus) ? json.invoiceStatus : [],
+          recentDocs: Array.isArray(json.recentDocs) ? json.recentDocs : [],
+          activityFeed: Array.isArray(json.activityFeed) ? json.activityFeed : [],
+          topItems: Array.isArray(json.topItems) ? json.topItems : [],
+          topPartners: {
+            customers: json.topPartners?.customers ?? [],
+            suppliers: json.topPartners?.suppliers ?? [],
+          },
+          stockAlerts: {
+            lowStock: json.stockAlerts?.lowStock ?? [],
+            expiringBatches: json.stockAlerts?.expiringBatches ?? [],
+          },
+        });
         setError(null);
       } catch {
         setError('No se pudo cargar el resumen');
@@ -771,6 +793,10 @@ export const Dashboard: React.FC = () => {
           )}
         </Card>
       </div>
+
+      {/* Widgets: creados desde código (plugins) o sin código (Ajustes → Widgets de dashboard) */}
+      <UserDashboardWidgets />
+      <DashboardPluginWidgets />
 
       <Slot name="dashboard:main:bottom" />
     </div>

@@ -4,15 +4,37 @@ import * as schema from '../../db/schema';
 import {
   PdfRenderer,
   extractMetaFromHtml,
-  buildVisualTemplate,
   DEFAULT_VISUAL_OPTIONS,
   type DocType,
   type VisualOptions,
+  type WatermarkOptions,
 } from '@openfactu/pdf';
 import { PdfPayloadBuilder } from './PdfPayloadBuilder';
 import { registerCanvasHelpers } from '../../api/documentTemplates';
+import { runTemplateQueries, type TemplateQuery } from './templateQueries';
 import { getConfigSection } from '../config/systemConfigSection';
 import { FLAGS_DEFAULTS } from '../config/appConfig';
+
+/**
+ * Inyecta un watermark diagonal semitransparente en un HTML de plantilla YA
+ * COMPLETO, como overlay `position:fixed` justo antes de `</body>`.
+ *
+ * A propósito NO usamos `buildVisualTemplate` (que reconstruye la página
+ * entera desde cero a partir de `VisualOptions`): eso descartaba silenciosamente
+ * la plantilla real elegida por el usuario (`?templateId=...` o cualquier
+ * plantilla custom no-default) y siempre renderizaba el diseño genérico de
+ * fábrica en cuanto un documento estaba pagado o en borrador con
+ * `watermarkDraft` activo — independientemente de qué plantilla se hubiera
+ * seleccionado.
+ */
+function injectWatermark(html: string, wm: WatermarkOptions): string {
+  const text = String(wm.text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const overlay = `<div aria-hidden="true" style="position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;z-index:99999;"><span style="color:${wm.color};opacity:${wm.opacity};font-size:${wm.fontSize}pt;font-weight:bold;white-space:nowrap;transform:rotate(${wm.rotation}deg);font-family:-apple-system,'Segoe UI',Roboto,sans-serif;">${text}</span></div>`;
+  return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${overlay}</body>`) : `${html}${overlay}`;
+}
 
 /**
  * Helper reutilizable para el endpoint `GET /:id/pdf` de todos los tipos de documento.
@@ -25,6 +47,7 @@ export async function renderDocumentPdf(
   templateId: string | undefined,
   tenantClient: any,
   res: Response,
+  tenantId?: string | null,
 ): Promise<void> {
   // 1. Resolver la plantilla
   let template: any = null;
@@ -55,6 +78,28 @@ export async function renderDocumentPdf(
   // 2. Construir payload
   const payload = await PdfPayloadBuilder.build(docType, documentId, tenantClient);
 
+  // 2.b Ejecutar las consultas SQL guardadas en la plantilla (canvasLayout.queries)
+  // e inyectar sus filas como `queries.<name>`, igual que hacen el preview del
+  // diseñador y render-free. Solo admins pueden guardar queries, así que
+  // ejecutarlas aquí no amplía permisos. Un fallo de query no aborta el PDF.
+  const layoutQueries: TemplateQuery[] = ((template.canvasLayout as any)?.queries ??
+    []) as TemplateQuery[];
+  if (layoutQueries.length > 0) {
+    const queryResults = await runTemplateQueries(tenantClient, layoutQueries, {
+      docId: (payload as any)?.doc?.id ?? documentId,
+      partnerId: (payload as any)?.partner?.id ?? null,
+      companyId: (payload as any)?.company?.id ?? null,
+      tenantId: tenantId ?? null,
+    });
+    (payload as any).queries = queryResults.byName;
+    if (queryResults.errors.length > 0) {
+      console.warn(
+        `[renderDocumentPdf] ${docType} ${documentId} queries con errores:`,
+        JSON.stringify(queryResults.errors),
+      );
+    }
+  }
+
   // 3. Extraer opciones del meta del HTML
   const meta = extractMetaFromHtml(template.html);
   const baseOpts: VisualOptions = meta || DEFAULT_VISUAL_OPTIONS;
@@ -77,8 +122,8 @@ export async function renderDocumentPdf(
           text: baseOpts.watermark?.text || 'BORRADOR',
         },
       };
-      finalHtml = buildVisualTemplate(docType, finalOpts);
-    } else if ((payload as any).doc?.paymentStatus === 'paid') {
+      finalHtml = injectWatermark(template.html, finalOpts.watermark);
+    } else if (flags.watermarkPaid && (payload as any).doc?.paymentStatus === 'paid') {
       // Si la factura está totalmente pagada, marca de agua "PAGADA" en verde.
       finalOpts = {
         ...baseOpts,
@@ -92,7 +137,7 @@ export async function renderDocumentPdf(
           fontSize: 140,
         },
       };
-      finalHtml = buildVisualTemplate(docType, finalOpts);
+      finalHtml = injectWatermark(template.html, finalOpts.watermark);
     }
   } catch (err: any) {
     console.warn(

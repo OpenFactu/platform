@@ -18,6 +18,8 @@ export interface FlagsConfig {
   allowNegativeStock: boolean;
   autoConfirmBatches: boolean;
   watermarkDraft: boolean;
+  /** Añade la marca de agua "PAGADA" a los PDFs de facturas ya cobradas. */
+  watermarkPaid: boolean;
   confirmBeforeCancel: boolean;
   enforceWarehouseZones: boolean;
   /** Dónde se captura el almacén en documentos con movimiento de stock.
@@ -27,6 +29,10 @@ export interface FlagsConfig {
   /** Activa el módulo de logística / seguimiento de envíos y rutas.
    *  Cuando está false, nada del menú de logística aparece. */
   logisticsEnabled: boolean;
+  /** Activa el chat de Keiro en la página pública de seguimiento
+   *  (/track/:token, sin login). Off por defecto: es una superficie nueva,
+   *  pública y con coste de IA — cada tenant lo activa explícitamente. */
+  trackingChatEnabled: boolean;
   /** Modo "sólo logística" — oculta ventas, compras, contabilidad, RRHH y
    *  analítica. Útil para clientes que nos contratan únicamente la logística
    *  sin el resto del ERP. */
@@ -62,10 +68,12 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   allowNegativeStock: false,
   autoConfirmBatches: false,
   watermarkDraft: true,
+  watermarkPaid: false,
   confirmBeforeCancel: true,
   enforceWarehouseZones: false,
   warehouseLocation: 'header',
   logisticsEnabled: false,
+  trackingChatEnabled: false,
   logisticsOnly: false,
   hrShiftsEnabled: false,
   hrTimeclockEnabled: false,

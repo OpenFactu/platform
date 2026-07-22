@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, Loader, useToast, Badge, Modal } from '@openfactu/ui';
+import { useFormat } from '../hooks/useFormat';
+import StockDetailModal from '../components/StockDetailModal';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Package, Plus, Trash2, Search, Settings2, Boxes, Scale, Tag } from 'lucide-react';
@@ -11,6 +13,9 @@ import { AttachmentsPanel } from '../components/AttachmentsPanel';
 import { validateBarcode, generateEan13 } from '../utils/barcodeValidation';
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner';
 import { BarcodeScanButton } from '../components/scanner/BarcodeScanButton';
+import { ContextMenu } from '../components/common/ContextMenu';
+import { withRowContextMenu } from '../components/common/withRowContextMenu';
+import { useContextMenu } from '../hooks/useContextMenu';
 
 const AlternativeUomsPanel: React.FC<{
   itemId?: string;
@@ -33,13 +38,13 @@ const AlternativeUomsPanel: React.FC<{
   };
 
   const fetchAlts = async () => {
-    if (!itemId || !token) return;
+    if (!itemId) return setAlternatives([]);
     setLoading(true);
     try {
       const res = await fetch(`/api/items/${itemId}/uoms`, { headers });
       const data = await res.json();
-      setAlternatives(Array.isArray(data) ? data.filter((u: any) => !u.isBase) : []);
-    } catch {
+      setAlternatives(Array.isArray(data) ? data : []);
+    } catch (err) {
       setAlternatives([]);
     } finally {
       setLoading(false);
@@ -48,10 +53,11 @@ const AlternativeUomsPanel: React.FC<{
 
   useEffect(() => {
     fetchAlts();
-  }, [itemId, token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId]);
 
   const handleAdd = async () => {
-    if (!newUomId || !newFactor || !itemId) return;
+    if (!itemId || !newUomId || !newFactor) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/items/${itemId}/uoms`, {
@@ -59,155 +65,92 @@ const AlternativeUomsPanel: React.FC<{
         headers,
         body: JSON.stringify({ uomId: newUomId, factor: Number(newFactor) }),
       });
-      if (!res.ok) throw new Error('Error al añadir');
-      setNewUomId('');
-      setNewFactor('');
-      fetchAlts();
-      toast.success('Unidad alternativa añadida');
-    } catch (e: any) {
-      toast.error(e.message);
+      if (res.ok) {
+        toast.success('Unidad alternativa añadida');
+        setNewUomId('');
+        setNewFactor('');
+        fetchAlts();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error || 'Error al añadir unidad alternativa');
+      }
+    } catch (err) {
+      toast.error('Error de conexión');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (altId: string) => {
+  const handleRemove = async (id: string) => {
     if (!itemId) return;
     try {
-      await fetch(`/api/items/${itemId}/uoms/${altId}`, { method: 'DELETE', headers });
-      fetchAlts();
-      toast.success('Eliminada');
+      const res = await fetch(`/api/items/${itemId}/uoms/${id}`, { method: 'DELETE', headers });
+      if (res.ok) {
+        toast.success('Eliminado');
+        fetchAlts();
+      } else {
+        toast.error('Error al eliminar');
+      }
     } catch {
-      toast.error('Error al eliminar');
+      toast.error('Error de conexión');
     }
   };
 
-  if (!itemId) {
-    return (
-      <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
-        <Scale className="text-slate-300 dark:text-slate-600 mb-2" size={32} />
-        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-relaxed">
-          Las unidades alternativas se configuran una vez creado el maestro básico.
-        </p>
-      </div>
-    );
-  }
-
-  const baseUom = uoms.find((u) => u.id === baseUomId);
-  const usedUomIds = new Set([baseUomId, ...alternatives.map((a: any) => a.uomId)]);
-  const availableUoms = uoms.filter((u) => !usedUomIds.has(u.id));
-
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
-      <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-xl">
-        <Scale size={16} className="text-blue-600 dark:text-blue-300 shrink-0" />
-        <p className="text-xs text-blue-800 dark:text-blue-200 font-medium leading-tight">
-          UoM base: <strong>{baseUom?.code || '?'}</strong> ({baseUom?.name || '?'}). Las
-          alternativas definen factores de conversión para permitir introducir cantidades en otras
-          unidades.
-        </p>
-      </div>
-
+    <div className="p-4">
       {loading ? (
         <div className="p-4 text-center">
-          <Loader size="sm" />
+          <Loader />
         </div>
       ) : (
         <>
-          {alternatives.length > 0 && (
-            <table className="w-full text-[12px]">
+          {alternatives.length > 0 ? (
+            <table className="w-full table-auto text-sm">
               <thead>
-                <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
-                  <th className="pb-2 text-left">Código</th>
-                  <th className="pb-2 text-left">Nombre</th>
-                  <th className="pb-2 text-right">Factor</th>
-                  <th className="pb-2 text-right">Equivalencia</th>
-                  <th className="pb-2 w-8"></th>
+                <tr className="text-left text-xs text-slate-500 uppercase">
+                  <th className="py-2">Unidad</th>
+                  <th className="py-2">Factor</th>
+                  <th className="py-2">&nbsp;</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody>
                 {alternatives.map((a: any) => (
-                  <tr key={a.id} className="group">
-                    <td className="py-2 font-mono font-bold text-slate-700 dark:text-slate-200">
-                      {a.code}
-                    </td>
-                    <td className="py-2 text-slate-600 dark:text-slate-300">{a.name}</td>
-                    <td className="py-2 text-right font-bold tabular-nums text-slate-700 dark:text-slate-200">
-                      {Number(a.factor).toFixed(4)}
-                    </td>
-                    <td className="py-2 text-right text-[10px] text-slate-400 dark:text-slate-500 italic">
-                      1 {a.code} = {Number(a.factor).toFixed(2)} {baseUom?.code || 'base'}
-                    </td>
-                    <td className="py-2 text-right">
-                      <button
-                        onClick={() => handleDelete(a.id)}
-                        className="p-1 text-slate-300 dark:text-slate-600 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                  <tr key={a.id} className="border-t border-slate-100">
+                    <td className="py-2">{a.uomCode || a.uomId}</td>
+                    <td className="py-2">{a.factor}</td>
+                    <td className="py-2 w-20">
+                      <Button size="sm" variant="secondary" onClick={() => handleRemove(a.id)}>
+                        Eliminar
+                      </Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          ) : (
+            <div className="p-4 text-center text-sm text-slate-400">Sin unidades alternativas configuradas.</div>
           )}
 
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
-            <div className="grid grid-cols-[1fr_100px_40px] gap-2 items-start">
+          <div className="pt-4 border-t mt-4">
+            <div className="grid grid-cols-3 gap-2 items-end">
               <div>
-                <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 block">
-                  Unidad
-                </label>
+                <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1 block">Unidad</label>
                 <SearchableSelect
                   value={newUomId}
                   onChange={setNewUomId}
-                  options={availableUoms.map((u: any) => ({
-                    label: `${u.code} — ${u.name}`,
-                    value: u.id,
-                  }))}
+                  options={uoms.map((u: any) => ({ label: `${u.code} — ${u.name}`, value: u.id }))}
                   placeholder="Seleccionar UoM..."
                 />
               </div>
               <div>
-                <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 block">
-                  Factor
-                </label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={newFactor}
-                  onChange={(e) => setNewFactor(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAdd();
-                    }
-                  }}
-                  placeholder="24"
-                  className="text-center font-bold tabular-nums"
-                />
+                <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1 block">Factor</label>
+                <Input value={newFactor} onChange={(e) => setNewFactor(e.target.value)} placeholder="1.00" />
               </div>
               <div>
-                <label className="text-[9px] font-black uppercase tracking-wider text-transparent mb-1 block">
-                  +
-                </label>
-                <Button
-                  onClick={handleAdd}
-                  disabled={!newUomId || !newFactor || saving}
-                  isLoading={saving}
-                  className="w-full h-9 px-0 flex items-center justify-center"
-                >
-                  <Plus size={16} />
-                </Button>
+                <Button onClick={handleAdd} disabled={!newUomId || !newFactor} isLoading={saving} className="w-full">Añadir</Button>
               </div>
             </div>
           </div>
-
-          {alternatives.length === 0 && (
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 italic text-center pt-2">
-              Sin unidades alternativas configuradas. Añade una arriba.
-            </p>
-          )}
         </>
       )}
     </div>
@@ -216,6 +159,7 @@ const AlternativeUomsPanel: React.FC<{
 
 export const Items: React.FC = () => {
   const { token, user } = useAuth();
+  const fmt = useFormat();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -574,6 +518,17 @@ export const Items: React.FC = () => {
   const actionsCol = columns[columns.length - 1];
   const restCols = columns.slice(0, -1);
   const allColumns = [...restCols, ...pluginCols, actionsCol];
+  const ctxMenu = useContextMenu<any>();
+  const ctxColumns = withRowContextMenu(allColumns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (i: any) => [
+    { label: 'Ver Inventario', icon: <Boxes size={14} />, onClick: () => handleViewStock(i) },
+    {
+      label: 'Editar',
+      icon: <Settings2 size={14} />,
+      disabled: !canWrite,
+      onClick: () => canWrite && setSelectedItem(i),
+    },
+  ];
 
   const handleViewStock = async (item: any) => {
     setSelectedStockItem(item);
@@ -654,165 +609,29 @@ export const Items: React.FC = () => {
               </Button>
             }
           >
-            <Table columns={allColumns} data={filteredItems} isLoading={loading} />
+            <Table columns={ctxColumns} data={filteredItems} isLoading={loading} />
+            {ctxMenu.state && (
+              <ContextMenu
+                x={ctxMenu.state.x}
+                y={ctxMenu.state.y}
+                items={buildCtxItems(ctxMenu.state.data)}
+                onClose={ctxMenu.close}
+              />
+            )}
           </Card>
         </div>
       </div>
 
-      <Modal
+      <StockDetailModal
         isOpen={!!selectedStockItem}
         onClose={() => setSelectedStockItem(null)}
-        title={`Detalle de Inventario: ${selectedStockItem?.name}`}
+        title={`Detalle de Inventario`}
         subtitle="Desglose por almacenes y trazabilidad."
-        maxWidth="2xl"
-      >
-        {stockDetailLoading ? (
-          <div className="flex justify-center p-10">
-            <Loader />
-          </div>
-        ) : (
-          <div className="space-y-6 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
-            <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-              <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Boxes size={12} className="text-blue-500 dark:text-blue-300" />
-                Existencias por Almacén
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {stockDetail?.warehouseStock?.length > 0 ? (
-                  stockDetail.warehouseStock.map((ws: any) => (
-                    <div
-                      key={ws.warehouseId}
-                      className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/60 shadow-sm flex justify-between items-center group hover:border-blue-300 hover:shadow-md hover:shadow-blue-500/5 transition-all"
-                    >
-                      <div>
-                        <p className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight leading-none mb-1">
-                          {ws.warehouseName}
-                        </p>
-                        <Badge
-                          variant="info"
-                          className="text-[8px] py-0 px-1 border-blue-100 dark:border-blue-500/20 bg-blue-50/50 text-blue-600 dark:text-blue-300 font-black"
-                        >
-                          STOCK FÍSICO
-                        </Badge>
-                      </div>
-                      <p className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono tracking-tighter leading-none">
-                        {Number(ws.stock).toFixed(2)}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-2 p-8 text-center bg-slate-50/30 dark:bg-slate-800/30 rounded-xl border-dashed border-2 border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-widest leading-relaxed">
-                    Sin existencias físicas en ningún almacén.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {stockDetail?.zoneStock?.length > 0 && (
-              <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 italic">
-                <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <Package size={12} className="text-blue-500 dark:text-blue-300" />
-                  Reparto por Ubicaciones (Zonas)
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {stockDetail.zoneStock.map((zs: any) => (
-                    <div
-                      key={zs.zoneId}
-                      className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col group hover:border-blue-400 transition-all"
-                    >
-                      <span className="text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight leading-none mb-1">
-                        {zs.zoneName}
-                      </span>
-                      <div className="flex justify-between items-end">
-                        <span className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase">
-                          {zs.warehouseName}
-                        </span>
-                        <span className="text-xl font-black text-slate-900 dark:text-slate-100 font-mono tracking-tighter leading-none">
-                          {Number(zs.stock).toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {selectedStockItem?.manageBy !== 'N' && (
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                  <Tag size={12} className="text-indigo-500" />
-                  Trazabilidad por Lote/Serie e Ubicación
-                </h4>
-                <div className="rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-y-auto max-h-[350px]">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-800 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      <tr>
-                        <th className="px-5 py-4">Lote / Serie</th>
-                        <th className="px-5 py-4">Ubicación</th>
-                        <th className="px-5 py-4 text-center">Cant.</th>
-                        <th className="px-5 py-4 text-right">Caducidad</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {stockDetail?.batches
-                        ?.filter((b: any) => Number(b.quantity) > 0)
-                        .map((b: any) => (
-                          <tr key={b.id} className="hover:bg-blue-50/30 transition-colors group">
-                            <td className="px-5 py-3">
-                              <Badge
-                                variant="neutral"
-                                className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 font-mono text-[10px] font-black py-0 px-2"
-                              >
-                                {b.batchNum}
-                              </Badge>
-                            </td>
-                            <td className="px-5 py-3">
-                              <div className="flex flex-col">
-                                <span className="text-xs font-bold text-slate-600 dark:text-slate-300 leading-none">
-                                  {b.zoneName || 'Stock General'}
-                                </span>
-                                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-tighter mt-1">
-                                  {b.warehouseName ||
-                                    stockDetail?.warehouseStock?.[0]?.warehouseName ||
-                                    'Almacén Principal'}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-5 py-3 text-center">
-                              <span className="font-mono font-black text-sm text-slate-900 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-lg border border-slate-100 dark:border-slate-800">
-                                {Number(b.quantity).toFixed(2)}
-                              </span>
-                            </td>
-                            <td className="px-5 py-3 text-right">
-                              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 font-mono italic">
-                                {b.expiryDate ? new Date(b.expiryDate).toLocaleDateString() : 'N/A'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      {(!stockDetail?.batches ||
-                        stockDetail.batches.filter((b: any) => Number(b.quantity) > 0).length ===
-                          0) && (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="px-5 py-10 text-center text-slate-300 dark:text-slate-600 italic text-xs font-medium bg-slate-50/20 dark:bg-slate-800/20"
-                          >
-                            No hay lotes o series con existencias disponibles en este momento.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            <div className="flex justify-end pt-4 border-t">
-              <Button onClick={() => setSelectedStockItem(null)}>Cerrar</Button>
-            </div>
-          </div>
-        )}
-      </Modal>
+        selectedStockItem={selectedStockItem}
+        stockDetail={stockDetail}
+        loading={stockDetailLoading}
+        defaultUnified={true}
+      />
 
       <Modal
         isOpen={showItemModal || !!selectedItem}
@@ -994,7 +813,7 @@ export const Items: React.FC = () => {
               <div className="space-y-6 animate-in slide-in-from-right-2 duration-200">
                 {/* Tipo de artículo — producto normal o caja de embalaje. Las cajas se
                     muestran en el selector "Caja" del modal de Paquetes. */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50  border border-slate-200 dark:border-slate-700/50">
                   <label className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-3 block">
                     Tipo de artículo
                   </label>
@@ -1097,7 +916,7 @@ export const Items: React.FC = () => {
                   )}
                 </div>
 
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50  border border-slate-200 dark:border-slate-700/50">
                   <label className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-4 block">
                     Trazabilidad Obligatoria
                   </label>
@@ -1135,7 +954,7 @@ export const Items: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/50">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50  border border-slate-200 dark:border-slate-700/50">
                   <label className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-3 block">
                     Ubicación por defecto
                   </label>

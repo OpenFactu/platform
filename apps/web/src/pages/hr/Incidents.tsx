@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge } from '@openfactu/ui';
 import { useAuth } from '../../context/AuthContext';
 import { AlertTriangle, Plus, UserCheck, X, Check, Ban } from 'lucide-react';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 
 interface Incident {
   id: string;
@@ -186,6 +189,34 @@ export const Incidents: React.FC = () => {
     },
   ];
 
+  const ctxMenu = useContextMenu<Incident>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (r: Incident) => {
+    const t = typeMap[r.incidentTypeId];
+    return [
+      ...(r.status === 'pending'
+        ? [
+            { label: 'Aprobar', icon: <Check size={14} />, onClick: () => setStatus(r, 'approved') },
+            {
+              label: 'Rechazar',
+              icon: <Ban size={14} />,
+              destructive: true,
+              onClick: () => setStatus(r, 'rejected'),
+            },
+          ]
+        : []),
+      ...(r.status === 'approved' && t?.requiresSubstitution
+        ? [
+            {
+              label: 'Asignar sustituto',
+              icon: <UserCheck size={14} />,
+              onClick: () => openSubstitute(r),
+            },
+          ]
+        : []),
+    ];
+  };
+
   return (
     <div className="p-4 w-full space-y-6">
       <div className="flex items-start justify-between">
@@ -272,8 +303,16 @@ export const Incidents: React.FC = () => {
       )}
 
       <Card noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} />
+        <Table columns={ctxColumns} data={rows} isLoading={loading} />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
 
       {substituting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

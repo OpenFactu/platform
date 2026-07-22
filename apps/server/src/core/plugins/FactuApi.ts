@@ -1,4 +1,5 @@
 import { DocumentEngine, type DocumentCreateRequest } from '../documents/DocumentEngine';
+import { DocumentRegistry } from '../documents/DocumentRegistry';
 import { PluginFieldManager } from './PluginFieldManager';
 import { ClientFactory } from '../tenant/ClientFactory';
 import { AuthService } from '../auth/AuthService';
@@ -125,6 +126,10 @@ export abstract class DiDocument {
         stockAction: this.stockAction,
         closeBaseDocuments: this.closeBaseDocuments,
         initialStatus: this.initialStatus,
+        // Hooks del tipo desde el registry — sin esto, un documento creado
+        // vía FactuApi (plugins, IA) se saltaría las validaciones de stock
+        // y el fulfillment del pedido origen que sí aplica la UI.
+        hooks: DocumentRegistry.get(this.docType).hooks,
       },
       request,
     );

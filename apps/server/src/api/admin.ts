@@ -9,10 +9,13 @@
 import { Router } from 'express';
 import multer from 'multer';
 import fs from 'fs';
+import path from 'path';
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { ClientFactory } from '../core/tenant/ClientFactory';
-import { TenantBackup } from '../core/tenant/TenantBackup';
+import { SchemaManager } from '../core/tenant/SchemaManager';
+import { TenantBackup, defaultUploadsBase } from '../core/tenant/TenantBackup';
+import { defaultBackupsBasePath } from '../core/backup/BackupDestination';
 import { ErpDataExporter } from '../core/export/ErpDataExporter';
 import { MigrationManager } from '../core/tenant/MigrationManager';
 import { seedAccountingDefaults } from '../core/accounting/seedAccountingDefaults';
@@ -46,6 +49,18 @@ function ensureTenantAccess(req: any, res: any, tenantId: string): boolean {
   if (req.user?.tenantId && req.user.tenantId === tenantId) return true;
   res.status(403).json({ error: 'No puedes operar sobre otra empresa' });
   return false;
+}
+
+/**
+ * Borrar una empresa es irreversible y afecta a cualquier usuario con
+ * acceso, no solo al tenant activo del que la borra — a diferencia de
+ * export/import, aquí NO basta con ser ADMIN de esa empresa.
+ */
+function requireSuperuser(req: any, res: any, next: any) {
+  if (req.user?.role !== 'SUPERUSER') {
+    return res.status(403).json({ error: 'Borrar una empresa requiere rol SUPERUSER' });
+  }
+  next();
 }
 
 router.use(requireAdminOrSuperuser);
@@ -89,6 +104,67 @@ router.post('/tenants/import', upload.single('file'), async (req: any, res) => {
     console.error('[Admin.importTenant] error:', e?.stack || e);
     if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
     res.status(500).json({ error: e?.message || 'Error al importar' });
+  }
+});
+
+/**
+ * DELETE /api/admin/tenants/:id — borra una empresa PERMANENTEMENTE.
+ * Body: { confirmName: "<nombre exacto de la empresa>" }
+ *
+ * Solo SUPERUSER (ver `requireSuperuser`). Requiere que `confirmName`
+ * coincida exactamente con `tenant.name` — protección contra un click
+ * accidental, ya que no hay vuelta atrás sin restaurar desde un backup.
+ *
+ * Elimina, en orden:
+ *   1. Filas en `public` que referencian al tenant sin ON DELETE CASCADE
+ *      (GlobalUser.tenantId se pone a null; AuditLog/DevApiKey se borran).
+ *      UserTenantMembership/TenantPlugin/ApiToken cascadean solos por FK.
+ *   2. La fila `Tenant`.
+ *   3. El schema físico completo (`DROP SCHEMA ... CASCADE`) — aquí viven
+ *      todos los datos de negocio (documentos, stock, contabilidad...).
+ *   4. Los archivos locales de `storage/uploads/<schema>` y
+ *      `storage/backups/<schema>` (best-effort, no bloquea si falla).
+ *   5. La conexión cacheada del schema en ClientFactory.
+ */
+router.delete('/tenants/:id', requireSuperuser, async (req: any, res) => {
+  try {
+    const publicDb = ClientFactory.getClient('public');
+    const [tenant] = await publicDb
+      .select()
+      .from(schema.tenants)
+      .where(eq(schema.tenants.id, req.params.id));
+    if (!tenant) return res.status(404).json({ error: 'Empresa no encontrada' });
+
+    const confirmName = String(req.body?.confirmName ?? '');
+    if (confirmName !== tenant.name) {
+      return res.status(400).json({
+        error: 'El nombre de confirmación no coincide con el de la empresa',
+      });
+    }
+
+    console.warn(
+      `[Admin.deleteTenant] SUPERUSER ${req.user?.id} borrando empresa "${tenant.name}" ` +
+        `(id=${tenant.id}, schema=${tenant.schemaName})`,
+    );
+
+    // 1-3, 5: filas de `public` sin cascade + fila Tenant + schema físico +
+    // conexión cacheada (lógica compartida con el rollback de importFromZip).
+    await SchemaManager.deleteTenantCompletely(tenant.id, tenant.schemaName);
+
+    // 4. Limpiar archivos locales — no crítico si falla (p.ej. ya usaba cloud).
+    for (const base of [defaultUploadsBase(), defaultBackupsBasePath()]) {
+      try {
+        fs.rmSync(path.join(base, tenant.schemaName), { recursive: true, force: true });
+      } catch (e: any) {
+        console.warn(`[Admin.deleteTenant] No se pudo limpiar ${base}: ${e?.message}`);
+      }
+    }
+
+    console.warn(`[Admin.deleteTenant] Empresa "${tenant.name}" eliminada por completo.`);
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[Admin.deleteTenant] error:', e?.stack || e);
+    res.status(500).json({ error: e?.message || 'Error al borrar la empresa' });
   }
 });
 

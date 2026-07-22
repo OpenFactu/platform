@@ -135,8 +135,6 @@ export const IconSidebar: React.FC = () => {
       modLabel: string;
       modIcon: string;
       sub: any;
-      disabled: boolean;
-      reason?: string;
     }[] = [];
     for (const mod of allModules) {
       // Saltamos sólo los de SUPERUSER si el user no lo es.
@@ -147,17 +145,8 @@ export const IconSidebar: React.FC = () => {
         if (!tokens.every((t) => hay.includes(t))) continue;
         const flagOff = sub.featureFlag && !(flags as any)[sub.featureFlag];
         const modOff = mod.featureFlag && !(flags as any)[mod.featureFlag];
-        out.push({
-          modLabel: mod.label,
-          modIcon: mod.icon,
-          sub,
-          disabled: !!(flagOff || modOff),
-          reason: flagOff
-            ? `Activa "${sub.featureFlag}" en Ajustes`
-            : modOff
-              ? `Activa "${mod.featureFlag}" en Ajustes`
-              : undefined,
-        });
+        if (flagOff || modOff) continue;
+        out.push({ modLabel: mod.label, modIcon: mod.icon, sub });
       }
     }
     return out.slice(0, 30);
@@ -256,27 +245,20 @@ export const IconSidebar: React.FC = () => {
                 Sin resultados para “{query}”.
               </p>
             ) : (
-              searchResults.map(({ modLabel, modIcon, sub, disabled, reason }) => {
+              searchResults.map(({ modLabel, modIcon, sub }) => {
                 const subActive = sub.path === pathname;
                 return (
                   <button
                     key={`${modLabel}-${sub.id}`}
                     onClick={() => {
                       setMobileOpen(false);
-                      if (disabled) {
-                        openTab('/settings/company');
-                      } else {
-                        openTab(sub.path);
-                      }
+                      openTab(sub.path);
                     }}
-                    title={disabled ? reason : undefined}
                     className={cn(
                       'w-full flex items-center gap-3 px-5 py-2.5 text-left transition-colors',
                       subActive
                         ? 'bg-accent/10 text-accent'
-                        : disabled
-                          ? 'text-ink-400 dark:text-ink-500 hover:bg-line-2 dark:hover:bg-ink-700'
-                          : 'text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700',
+                        : 'text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700',
                     )}
                   >
                     <PluginIcon iconName={modIcon} size={16} />
@@ -288,11 +270,6 @@ export const IconSidebar: React.FC = () => {
                       </p>
                     </div>
                     <StatusBadge status={sub.status} />
-                    {disabled && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-xs whitespace-nowrap">
-                        Inactivo
-                      </span>
-                    )}
                   </button>
                 );
               })
@@ -340,9 +317,17 @@ export const IconSidebar: React.FC = () => {
 
           {/* Usuario */}
           <div className="flex items-center gap-3 px-3 py-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-ink-700 to-ink-900 text-white flex items-center justify-center font-bold text-sm border-2 border-transparent">
-              {user?.username?.charAt(0)?.toUpperCase() || 'A'}
-            </div>
+            {user?.avatarImageUrl ? (
+              <img
+                src={user.avatarImageUrl}
+                alt=""
+                className="w-10 h-10 rounded-full object-cover border-2 border-transparent"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-ink-700 to-ink-900 text-white flex items-center justify-center font-bold text-sm border-2 border-transparent">
+                {user?.username?.charAt(0)?.toUpperCase() || 'A'}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate" style={{ color: 'var(--fg-default)' }}>
                 {user?.username || 'Administrador'}
@@ -474,16 +459,24 @@ export const IconSidebar: React.FC = () => {
               title={user?.username || 'Usuario'}
               aria-label="Menú de usuario"
               className={cn(
-                'group relative w-10 h-10 flex items-center justify-center rounded-full',
+                'group relative w-10 h-10 flex items-center justify-center rounded-full overflow-hidden',
                 'transition-all duration-200 ease-out hover:scale-110',
-                'bg-gradient-to-br from-ink-700 to-ink-900 text-white',
+                !user?.avatarImageUrl && 'bg-gradient-to-br from-ink-700 to-ink-900 text-white',
                 'border-2',
                 userOpen ? 'border-accent' : 'border-transparent',
               )}
             >
-              <span className="text-xs font-bold">
-                {user?.username?.charAt(0)?.toUpperCase() || 'A'}
-              </span>
+              {user?.avatarImageUrl ? (
+                <img
+                  src={user.avatarImageUrl}
+                  alt=""
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <span className="text-xs font-bold">
+                  {user?.username?.charAt(0)?.toUpperCase() || 'A'}
+                </span>
+              )}
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-ink-900 rounded-full" />
             </button>
             {userOpen && (
@@ -540,18 +533,13 @@ const MobileModuleAccordion: React.FC<{
   const { user } = useAuth();
   const { flags } = useTheme();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
-  // Mostramos todos los subtabs y marcamos los inactivos por flag para que el
-  // usuario los descubra y pueda activarlos desde Ajustes. Sólo escondemos los
-  // que el usuario realmente no puede ver (adminOnly sin permiso).
-  const visibleSubTabs = mod.subTabs
-    .filter((s: any) => {
-      if (!isAdmin && s.adminOnly) return false;
-      return true;
-    })
-    .map((s: any) => ({
-      ...s,
-      _disabled: !!(s.featureFlag && !(flags as any)[s.featureFlag]),
-    }));
+  // Ocultamos los subtabs desactivados por flag (y los que el usuario no puede
+  // ver por rol).
+  const visibleSubTabs = mod.subTabs.filter((s: any) => {
+    if (!isAdmin && s.adminOnly) return false;
+    if (s.featureFlag && !(flags as any)[s.featureFlag]) return false;
+    return true;
+  });
   const hasSubs = visibleSubTabs.length > 0;
 
   return (
@@ -581,29 +569,20 @@ const MobileModuleAccordion: React.FC<{
         <div className="bg-line-2/40 dark:bg-ink-900/60 border-l-4 border-accent/20">
           {visibleSubTabs.map((sub: any) => {
             const subActive = sub.path === currentPath;
-            const disabled = sub._disabled;
             return (
               <button
                 key={sub.id}
-                onClick={() => onNavigate(disabled ? '/settings/company' : sub.path)}
-                title={disabled ? `Activa "${sub.featureFlag}" en Ajustes` : undefined}
+                onClick={() => onNavigate(sub.path)}
                 className={cn(
                   'w-full flex items-center gap-3 pl-14 pr-5 py-2.5 text-left text-sm transition-colors',
                   subActive
                     ? 'text-accent font-semibold'
-                    : disabled
-                      ? 'text-ink-400 dark:text-ink-500 hover:bg-line-2 dark:hover:bg-ink-700 font-medium'
-                      : 'text-ink-700 dark:text-ink-400 hover:text-accent hover:bg-line-2 dark:hover:bg-ink-700 font-medium',
+                    : 'text-ink-700 dark:text-ink-400 hover:text-accent hover:bg-line-2 dark:hover:bg-ink-700 font-medium',
                 )}
               >
                 {sub.icon && <PluginIcon iconName={sub.icon} size={14} />}
                 <span className="flex-1 truncate">{sub.label}</span>
                 <StatusBadge status={sub.status} />
-                {disabled && (
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-xs">
-                    Inactivo
-                  </span>
-                )}
               </button>
             );
           })}

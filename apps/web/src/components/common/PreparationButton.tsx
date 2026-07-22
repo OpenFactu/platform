@@ -3,7 +3,7 @@
  * Llama a `/api/logistics/prep/from-<kind>/:id` y navega a Logística → Preparación.
  */
 import React, { useState } from 'react';
-import { Button, useToast } from '@openfactu/ui';
+import { Button, useToast, cn } from '@openfactu/ui';
 import { ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTabs } from '../../context/TabsContext';
@@ -13,9 +13,20 @@ interface Props {
   docId: string;
   size?: number;
   className?: string;
+  /** Estilo compacto (ghost, pequeño) para usar en fila de listado, junto a
+   * las demás acciones de fila. Por defecto usa el mismo estilo "secondary"
+   * que el resto de acciones del detalle (Trazabilidad, Copiar/Pegar). */
+  compact?: boolean;
 }
 
-export const PreparationButton: React.FC<Props> = ({ docType, docId, size = 14, className }) => {
+export const PreparationButton: React.FC<Props> = ({
+  docType,
+  docId,
+  size,
+  className,
+  compact = false,
+}) => {
+  const iconSize = size ?? (compact ? 14 : 16);
   const { token, user } = useAuth();
   const toast = useToast();
   const tabs = (() => {
@@ -68,13 +79,16 @@ export const PreparationButton: React.FC<Props> = ({ docType, docId, size = 14, 
 
   return (
     <Button
-      variant="secondary"
-      size="sm"
+      variant={compact ? 'ghost' : 'secondary'}
+      size={compact ? 'sm' : undefined}
       onClick={onClick}
       isLoading={loading}
-      className={className}
+      className={cn(
+        compact ? 'gap-1' : 'flex items-center gap-2 whitespace-nowrap',
+        className,
+      )}
     >
-      <ClipboardCheck size={size} className="mr-1" />
+      <ClipboardCheck size={iconSize} />
       {docType === 'SDN' ? 'Preparar envío' : 'Recepcionar'}
     </Button>
   );

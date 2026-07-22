@@ -439,6 +439,14 @@ export interface CanvasLayout {
   /** Numeración de páginas (opcional). */
   pageNumbers?: PageNumberConfig;
   /**
+   * Añade un QR de verificación al pie de cada página (trazabilidad tipo
+   * Veri*Factu). Ausente/`false` equivale a desactivado — el diseñador debe
+   * activarlo explícitamente para que aparezca.
+   */
+  showDocQr?: boolean;
+  /** Añade un código de barras Code-128 con el docCode al pie de cada página. */
+  showDocBarcode?: boolean;
+  /**
    * Consultas SQL asociadas a la plantilla (solo-lectura, admin-only).
    * Se ejecutan al renderizar y su resultado queda disponible en el contexto
    * Handlebars como `queries.<name>`. Un array vacío o ausente = sin SQL.

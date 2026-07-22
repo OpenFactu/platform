@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Marker } from 'react-map-gl/maplibre';
 import { BaseMap } from '../../components/maps/BaseMap';
+import { TrackingChatWidget } from './TrackingChatWidget';
 import {
   Truck,
   CheckCircle2,
@@ -23,12 +24,15 @@ interface TrackEvent {
 interface TrackPayload {
   status: string;
   legacyStatus: string;
+  /** 'delivery' (entrega) o 'pickup_return' (pasamos a recoger un paquete). */
+  kind?: string;
   destination: { address: string | null };
   lastPosition: { lat: number; lng: number; reportedAt: string } | null;
   estimatedDelivery: string | null;
   deliveredAt: string | null;
   events: TrackEvent[];
   updatedAt: string;
+  chatEnabled?: boolean;
 }
 
 /** Pasos lineales del viaje — usados para la progress bar superior. */
@@ -39,6 +43,15 @@ const STEPS: { key: string[]; label: string; Icon: any }[] = [
   // `postponed` encaja aquí — está en ruta pero aplazado por un intento fallido.
   { key: ['out_for_delivery', 'postponed'], label: 'En reparto', Icon: Truck },
   { key: ['delivered'], label: 'Entregado', Icon: CheckCircle2 },
+];
+
+/** Mismos pasos con vocabulario de RECOGIDA — vamos a por el paquete. */
+const PICKUP_STEPS: { key: string[]; label: string; Icon: any }[] = [
+  { key: ['pending', 'draft', 'picking', 'packed'], label: 'Programada', Icon: Package },
+  { key: ['ready', 'dispatched'], label: 'Asignada a ruta', Icon: Package },
+  { key: ['in_transit'], label: 'En camino', Icon: Truck },
+  { key: ['out_for_delivery', 'postponed'], label: 'Recogida hoy', Icon: Truck },
+  { key: ['delivered'], label: 'Recogido', Icon: CheckCircle2 },
 ];
 
 const STATUS_COPY: Record<
@@ -83,7 +96,7 @@ const STATUS_COPY: Record<
     accent: 'bg-blue-500',
     Icon: Truck,
     hero: 'Tu pedido ha sido despachado',
-    sub: 'En ruta hacia ti.',
+    sub: 'Asignado a una ruta de reparto — saldrá hacia ti en breve.',
   },
   in_transit: {
     label: 'En camino',
@@ -139,6 +152,70 @@ const STATUS_COPY: Record<
     accent: 'bg-slate-500',
     Icon: AlertTriangle,
     hero: 'Pedido cancelado',
+    sub: '',
+  },
+};
+
+/**
+ * Overrides de copy para RECOGIDAS (kind='pickup_return'): el sentido se
+ * invierte — el repartidor va a la dirección del cliente a RECOGER un
+ * paquete. Los estados sin override caen al copy genérico de entrega.
+ */
+const PICKUP_STATUS_COPY: Partial<typeof STATUS_COPY> = {
+  pending: {
+    label: 'Recogida programada',
+    tone: 'bg-violet-100 text-violet-800',
+    accent: 'bg-violet-500',
+    Icon: Package,
+    hero: 'Vamos a recoger tu paquete',
+    sub: 'Te avisaremos cuando el repartidor salga hacia ti.',
+  },
+  dispatched: {
+    label: 'Asignada a ruta',
+    tone: 'bg-blue-100 text-blue-800',
+    accent: 'bg-blue-500',
+    Icon: Truck,
+    hero: 'Tu recogida ya está planificada',
+    sub: 'Pasaremos pronto a por el paquete.',
+  },
+  in_transit: {
+    label: 'En camino',
+    tone: 'bg-indigo-100 text-indigo-800',
+    accent: 'bg-indigo-500',
+    Icon: Truck,
+    hero: 'Vamos de camino a por tu paquete',
+    sub: 'Sigue al repartidor en tiempo real.',
+  },
+  out_for_delivery: {
+    label: 'Recogida hoy',
+    tone: 'bg-violet-100 text-violet-800',
+    accent: 'bg-violet-500',
+    Icon: Truck,
+    hero: '¡Hoy recogemos tu paquete!',
+    sub: 'Ten el paquete preparado y a alguien para entregárselo al repartidor.',
+  },
+  postponed: {
+    label: 'Recogida aplazada',
+    tone: 'bg-amber-100 text-amber-800',
+    accent: 'bg-amber-500',
+    Icon: AlertTriangle,
+    hero: 'No pudimos recoger tu paquete',
+    sub: 'Lo volveremos a intentar pronto.',
+  },
+  delivered: {
+    label: 'Recogido',
+    tone: 'bg-emerald-100 text-emerald-800',
+    accent: 'bg-emerald-500',
+    Icon: CheckCircle2,
+    hero: '¡Paquete recogido!',
+    sub: 'Ya lo tenemos — te contactaremos con la resolución.',
+  },
+  cancelled: {
+    label: 'Recogida cancelada',
+    tone: 'bg-slate-200 text-slate-700',
+    accent: 'bg-slate-500',
+    Icon: AlertTriangle,
+    hero: 'Recogida cancelada',
     sub: '',
   },
 };
@@ -210,13 +287,18 @@ export const TrackingPage: React.FC = () => {
   }, [token]);
 
   const statusKey = data?.status || data?.legacyStatus || 'pending';
-  const copy = STATUS_COPY[statusKey] || STATUS_COPY.pending;
+  const isPickup = data?.kind === 'pickup_return';
+  const copy =
+    (isPickup ? PICKUP_STATUS_COPY[statusKey] : undefined) ||
+    STATUS_COPY[statusKey] ||
+    STATUS_COPY.pending;
+  const steps = isPickup ? PICKUP_STEPS : STEPS;
 
-  /** Índice del paso actual dentro de STEPS (para la progress bar). */
+  /** Índice del paso actual dentro de los pasos (para la progress bar). */
   const stepIndex = useMemo(() => {
-    const idx = STEPS.findIndex((s) => s.key.includes(statusKey));
+    const idx = steps.findIndex((s) => s.key.includes(statusKey));
     return idx === -1 ? 0 : idx;
-  }, [statusKey]);
+  }, [statusKey, steps]);
 
   const share = async () => {
     try {
@@ -318,7 +400,8 @@ export const TrackingPage: React.FC = () => {
             {data.deliveredAt && (
               <div className="mt-5 inline-flex items-center gap-2 bg-white/20 px-3 py-2 rounded-xl text-sm backdrop-blur-sm">
                 <CheckCircle2 size={14} />
-                Entregado el {new Date(data.deliveredAt).toLocaleString('es-ES')}
+                {isPickup ? 'Recogido' : 'Entregado'} el{' '}
+                {new Date(data.deliveredAt).toLocaleString('es-ES')}
               </div>
             )}
           </div>
@@ -328,7 +411,7 @@ export const TrackingPage: React.FC = () => {
         {statusKey !== 'exception' && statusKey !== 'returned' && statusKey !== 'cancelled' && (
           <section className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
             <div className="flex items-center justify-between">
-              {STEPS.map((s, i) => {
+              {steps.map((s, i) => {
                 const done = i < stepIndex;
                 const current = i === stepIndex;
                 return (
@@ -366,7 +449,7 @@ export const TrackingPage: React.FC = () => {
               <div
                 className="absolute left-0 top-0 h-full rounded-full bg-emerald-500 transition-all"
                 style={{
-                  width: `${((stepIndex + (statusKey === 'delivered' ? 1 : 0.5)) / STEPS.length) * 100}%`,
+                  width: `${((stepIndex + (statusKey === 'delivered' ? 1 : 0.5)) / steps.length) * 100}%`,
                 }}
               />
             </div>
@@ -382,7 +465,7 @@ export const TrackingPage: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Entregar en
+                  {isPickup ? 'Recogeremos en' : 'Entregar en'}
                 </div>
                 <div className="text-sm font-semibold text-slate-800 leading-snug mt-0.5 break-words">
                   {data.destination.address}
@@ -434,7 +517,10 @@ export const TrackingPage: React.FC = () => {
               {/* Línea vertical punteada. */}
               <div className="absolute left-[9px] top-2 bottom-2 w-[1px] bg-slate-200" />
               {data.events.map((e, i) => {
-                const s = STATUS_COPY[e.status || ''] || null;
+                const s =
+                  (isPickup ? PICKUP_STATUS_COPY[e.status || ''] : undefined) ||
+                  STATUS_COPY[e.status || ''] ||
+                  null;
                 const isLatest = i === 0;
                 return (
                   <li key={i} className="relative pl-8 pb-4 last:pb-0">
@@ -474,6 +560,8 @@ export const TrackingPage: React.FC = () => {
           Actualizado automáticamente cada 30 segundos · Keirost ERP
         </footer>
       </main>
+
+      {data.chatEnabled && token && <TrackingChatWidget token={token} />}
     </div>
   );
 };

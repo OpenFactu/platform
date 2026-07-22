@@ -35,6 +35,11 @@ export const ShipmentDetail: React.FC = () => {
   const [returnModal, setReturnModal] = useState<{ reason: string; cancelDn: boolean } | null>(
     null,
   );
+  /** Programar recogida del paquete en casa del cliente (pickup_return). */
+  const [pickupModal, setPickupModal] = useState<{ reason: string; warehouseId: string } | null>(
+    null,
+  );
+  const [warehouses, setWarehouses] = useState<any[]>([]);
 
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -150,6 +155,41 @@ export const ShipmentDetail: React.FC = () => {
     load();
   };
 
+  /** Abre el modal de recogida cargando los almacenes para el selector. */
+  const openPickupModal = async () => {
+    setPickupModal({ reason: '', warehouseId: '' });
+    try {
+      const r = await fetch('/api/warehouses', { headers });
+      const d = r.ok ? await r.json() : [];
+      setWarehouses(Array.isArray(d) ? d : []);
+    } catch {
+      setWarehouses([]);
+    }
+  };
+
+  /** Crea el envío pickup_return desde este envío. */
+  const submitPickup = async () => {
+    if (!id || !pickupModal) return;
+    const r = await fetch(`/api/logistics/shipments/${id}/schedule-pickup`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        reason: pickupModal.reason.trim() || null,
+        warehouseId: pickupModal.warehouseId || null,
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) {
+      toast.success(
+        `Recogida ${d.code || ''} programada — añádela a una ruta desde el planificador`,
+      );
+      setPickupModal(null);
+      load();
+    } else {
+      toast.error(d.error || 'No se pudo programar la recogida');
+    }
+  };
+
   /** Ejecuta la devolución con los datos del modal. */
   const submitReturn = async () => {
     if (!id || !returnModal) return;
@@ -235,26 +275,44 @@ export const ShipmentDetail: React.FC = () => {
   }
 
   const isInbound = shipment.sourceDocType === 'PDN';
+  /** Recogida en casa del cliente — todo el vocabulario cambia. */
+  const isPickup = shipment.kind === 'pickup_return';
 
   // [lng, lat] — maplibre usa este orden (GeoJSON).
   const centerLng = shipment.lastLng ?? shipment.destinationLng ?? -3.7038;
   const centerLat = shipment.lastLat ?? shipment.destinationLat ?? 40.4168;
 
   const prepBadge = (() => {
+    // Una recogida invierte el sentido: "entregado" significa que RECOGIMOS
+    // el paquete, "en camino" que vamos hacia el cliente a por él.
+    const pickupLabels: Record<string, string> = {
+      pending: 'Recogida pendiente',
+      dispatched: 'Asignada a ruta',
+      in_transit: 'De camino a recoger',
+      out_for_delivery: 'Recogiendo hoy',
+      delivered: 'Recogido',
+      postponed: 'Recogida aplazada',
+    };
     const label =
+      (isPickup ? pickupLabels[shipment.preparationStatus as string] : undefined) ||
       {
         draft: 'Borrador',
+        pending: 'Pendiente',
         picking: 'Preparando',
         packed: 'Empaquetado',
         ready: 'Listo',
         dispatched: 'Despachado',
         in_transit: 'En tránsito',
+        out_for_delivery: 'En reparto',
+        postponed: 'Aplazado',
         delivered: 'Entregado',
         receiving: 'Recepcionando',
         received: 'Recibido',
+        returned: 'Devuelto',
         cancelled: 'Cancelado',
         exception: 'Incidencia',
-      }[shipment.preparationStatus as string] || shipment.preparationStatus;
+      }[shipment.preparationStatus as string] ||
+      shipment.preparationStatus;
     const variant =
       shipment.preparationStatus === 'delivered' || shipment.preparationStatus === 'received'
         ? 'success'
@@ -282,7 +340,7 @@ export const ShipmentDetail: React.FC = () => {
             )}
             <div>
               <h1 className="text-lg font-black text-slate-900 dark:text-slate-100">
-                {isInbound ? 'Recepción' : 'Envío propio'} ·{' '}
+                {isInbound ? 'Recepción' : isPickup ? 'Recogida' : 'Envío propio'} ·{' '}
                 {shipment.trackingNumber || (shipment.id || '').slice(0, 8)}
               </h1>
               <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
@@ -322,6 +380,17 @@ export const ShipmentDetail: React.FC = () => {
                 ↩ Devolver
               </Button>
             )}
+            {!isInbound &&
+              shipment.kind !== 'pickup_return' &&
+              ['delivered', 'exception'].includes(shipment.status) && (
+                <Button
+                  variant="secondary"
+                  onClick={openPickupModal}
+                  className="flex items-center gap-2 !text-purple-700"
+                >
+                  📦 Programar recogida
+                </Button>
+              )}
             <Button variant="secondary" onClick={load} className="flex items-center gap-2">
               <RefreshCw size={14} /> Refrescar
             </Button>
@@ -359,6 +428,19 @@ export const ShipmentDetail: React.FC = () => {
                       ↩ Devolver
                     </button>
                   )}
+                  {!isInbound &&
+                    shipment.kind !== 'pickup_return' &&
+                    ['delivered', 'exception'].includes(shipment.status) && (
+                      <button
+                        onClick={() => {
+                          setActionsOpen(false);
+                          openPickupModal();
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 text-purple-700 dark:text-purple-300 flex items-center gap-2"
+                      >
+                        📦 Programar recogida
+                      </button>
+                    )}
                   {shipment.status !== 'cancelled' &&
                     shipment.status !== 'delivered' &&
                     shipment.status !== 'returned' && (
@@ -540,7 +622,7 @@ export const ShipmentDetail: React.FC = () => {
                   <Warehouse size={11} /> Recepción en
                 </>
               ) : (
-                <>📍 Dirección de envío</>
+                <>📍 {isPickup ? 'Dirección de recogida' : 'Dirección de envío'}</>
               )}
             </div>
             <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 whitespace-pre-line">
@@ -717,6 +799,63 @@ export const ShipmentDetail: React.FC = () => {
               </Button>
               <Button onClick={submitReturn} className="!bg-amber-600 hover:!bg-amber-700">
                 ↩ Registrar devolución
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal Programar recogida — crea un envío pickup_return con el mismo
+          destino: el conductor va a casa del cliente a RECOGER el paquete. */}
+      <Modal
+        isOpen={!!pickupModal}
+        onClose={() => setPickupModal(null)}
+        title="Programar recogida"
+        subtitle="Se crea un envío de recogida al mismo destino. El conductor verá «Recoger de» en su app y, al recogerlo, se generará la entrada de stock en borrador."
+      >
+        {pickupModal && (
+          <div className="space-y-4">
+            <div className="text-xs text-slate-600 dark:text-slate-300 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 px-3 py-2">
+              Recoger en: <b>{shipment.destinationAddress || '—'}</b>
+              {shipment.recipientName ? ` · ${shipment.recipientName}` : ''}
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                Motivo
+              </label>
+              <Input
+                placeholder="Contenido incorrecto, producto dañado…"
+                value={pickupModal.reason}
+                onChange={(e) => setPickupModal({ ...pickupModal, reason: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                Almacén de retorno
+              </label>
+              <select
+                value={pickupModal.warehouseId}
+                onChange={(e) => setPickupModal({ ...pickupModal, warehouseId: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 text-slate-800 dark:text-slate-100"
+              >
+                <option value="">
+                  {shipment.deliveryNoteId
+                    ? 'Automático (almacén del albarán origen)'
+                    : '— elige almacén —'}
+                </option>
+                {warehouses.map((w: any) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name || w.code || w.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setPickupModal(null)}>
+                Volver
+              </Button>
+              <Button onClick={submitPickup} className="!bg-purple-600 hover:!bg-purple-700">
+                📦 Programar recogida
               </Button>
             </div>
           </div>

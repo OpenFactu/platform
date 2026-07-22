@@ -8,9 +8,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      // Habilitado también en dev para poder probar la instalación desde
-      // el móvil sin tener que hacer `npm run build`.
-      devOptions: { enabled: true, type: 'module' },
+      // El service worker en dev cachea el propio bundle de la app (mismo
+      // origen que la página) y Workbox no activa una versión nueva hasta
+      // cerrar TODAS las pestañas — un simple refresco no alcanza, lo que
+      // hace parecer "roto" cualquier fix mientras se itera. Por eso queda
+      // apagado por default; activalo puntualmente con
+      // `VITE_PWA_DEV=true npm run dev:web` para probar la instalación
+      // desde el móvil sin tener que hacer `npm run build`.
+      devOptions: { enabled: process.env.VITE_PWA_DEV === 'true', type: 'module' },
       includeAssets: [
         'favicon.svg',
         'favicon-16.png',

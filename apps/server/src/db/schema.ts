@@ -32,11 +32,20 @@ export const globalUsers = pgTable('GlobalUser', {
   role: text('role').default('USER').notNull(),
   tenantId: text('tenantId').references(() => tenants.id),
   permissions: text('permissions'), // Almacena JSON de permisos granulares
+  // Foto de perfil — se usa en la tabla de Usuarios y en el chat de IA.
+  avatarImageUrl: text('avatarImageUrl'),
   // Firma del usuario para PDFs. Si está informada, prevalece sobre la
   // firma de empresa (modelo híbrido — override por usuario).
   signatureName: text('signatureName'),
   signatureRole: text('signatureRole'),
   signatureImageUrl: text('signatureImageUrl'),
+  // Recuperación de contraseña — se guarda solo el hash SHA-256 del token.
+  resetTokenHash: text('resetTokenHash'),
+  resetTokenExpiresAt: timestamp('resetTokenExpiresAt'),
+  // Autenticación en dos pasos (TOTP). El secreto se cifra en reposo (AES-GCM).
+  totpSecret: text('totpSecret'),
+  totpEnabled: boolean('totpEnabled').default(false).notNull(),
+  totpBackupCodes: text('totpBackupCodes'), // JSON con hashes SHA-256 de un solo uso
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
@@ -131,6 +140,57 @@ export const pluginTables = pgTable('PluginTable', {
   displayField: text('displayField'),
   description: text('description'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+/**
+ * Widget de dashboard creado desde la propia web (sin plugin en disco), por
+ * un admin del tenant. Dos formas, elegidas por `kind`:
+ *  - `metric`: muestra el valor de una métrica del catálogo curado
+ *    (`DASHBOARD_METRICS`) — nunca ejecuta SQL arbitrario del usuario.
+ *  - `code`: el admin escribe un componente React (TSX) directamente desde
+ *    la web (`sourceCode`), que el server transpila on-the-fly (esbuild) y
+ *    sirve como módulo ESM. El componente solo tiene acceso a llamadas de
+ *    lectura vía el helper `@openfactu/widget-api` (`get(path)` — sin
+ *    post/put/delete); ver `apps/web/src/sdk/sdk-proxy.ts`.
+ */
+export const userDashboardWidgets = pgTable('UserDashboardWidget', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenantId').notNull(),
+  title: text('title').notNull(),
+  subtitle: text('subtitle'),
+  /** `metric` (catálogo curado) | `code` (componente React del usuario) | `query` (declarativo con SQL de solo lectura, ver DeclarativeWidget). */
+  kind: text('kind').default('metric').notNull(),
+  /** Clave del catálogo de métricas curado (ej. 'items.count'). Solo si kind='metric'. */
+  metricKey: text('metricKey'),
+  /** Código fuente TSX del componente. Solo si kind='code'. */
+  sourceCode: text('sourceCode'),
+  /** { chartType: 'kpi'|'bar'|'table', sql, xField?, yField?, valueField? }. Solo si kind='query'. */
+  queryConfig: jsonb('queryConfig'),
+  /** Tamaño en la grid de 4 columnas: sm=1, md=2, lg=3, full=4. */
+  size: text('size').default('md').notNull(),
+  displayOrder: integer('displayOrder').default(100).notNull(),
+  createdBy: text('createdBy'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+/**
+ * Conversación guardada del chat de IA — vive en `public` acotada por
+ * tenantId + userId (mismo patrón que UserDashboardWidget: dato de usuario,
+ * no de negocio del tenant, así que no necesita su propia migración por
+ * tenant). `messages` guarda tal cual el array de UIMessage del AI SDK
+ * (partes de texto/razonamiento/tool-calls ya son JSON serializable).
+ */
+export const aiConversations = pgTable('AiConversation', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenantId').notNull(),
+  userId: text('userId').notNull(),
+  title: text('title'),
+  messages: jsonb('messages').notNull().default([]),
+  /** Último modelo usado en esta conversación — informativo, para el historial. */
+  model: text('model'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
 export const tenantPlugins = pgTable(
@@ -980,6 +1040,9 @@ export const documentSeries = pgTable('DocumentSeries', {
   prefix: text('prefix'),
   suffix: text('suffix'),
   isDefault: boolean('isDefault').default(false).notNull(),
+  // Modo de numeración: 'AUTO' (auto-incremento desde nextNumber) o 'MANUAL'
+  // (el número lo teclea el usuario al crear cada documento).
+  numberingMode: text('numberingMode').default('AUTO').notNull(),
 });
 
 // Grupos de Impuestos
@@ -1122,6 +1185,31 @@ export const itemZoneStocks = pgTable(
   }),
 );
 
+/**
+ * Cantidad de un lote/serie POR almacén — a diferencia de `itemBatches`
+ * (cantidad global), esto permite saber en qué almacén concreto está cada
+ * lote AHORA MISMO. Se mantiene con upserts por delta desde todos los flujos
+ * que tocan lotes (traspasos, entradas/salidas, facturas y albaranes de venta
+ * y compra, incluidas sus cancelaciones) — ver `StockPoster.ts`.
+ */
+export const itemBatchStocks = pgTable(
+  'ItemBatchStock',
+  {
+    itemId: text('itemId')
+      .notNull()
+      .references(() => items.id),
+    batchNum: text('batchNum').notNull(),
+    warehouseId: text('warehouseId')
+      .notNull()
+      .references(() => warehouses.id),
+    quantity: doublePrecision('quantity').default(0).notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  },
+  (t) => ({
+    pk: unique().on(t.itemId, t.batchNum, t.warehouseId),
+  }),
+);
+
 export const unitsOfMeasure = pgTable('UnitOfMeasure', {
   id: text('id').primaryKey(),
   code: text('code').unique().notNull(),
@@ -1195,6 +1283,8 @@ export const salesOrderLines = pgTable('SalesOrderLine', {
     .notNull(),
   warehouseId: text('warehouseId').references(() => warehouses.id),
   zoneId: text('zoneId').references(() => warehouseZones.id),
+  // OJO: la columna física en BD es "quantity" (común a todas las líneas de documento).
+  // A nivel de app se expone como orderedQty para emparejar con deliveredQty.
   orderedQty: decimal('quantity', { precision: 12, scale: 4 }).notNull(),
   deliveredQty: decimal('deliveredQty', { precision: 12, scale: 4 }).default('0').notNull(),
   price: decimal('price', { precision: 15, scale: 4 }).notNull(),
@@ -1450,6 +1540,8 @@ export const purchaseOrderLines = pgTable('PurchaseOrderLine', {
   warehouseId: text('warehouseId').references(() => warehouses.id),
   zoneId: text('zoneId').references(() => warehouseZones.id),
   batchNum: text('batchNum'),
+  // OJO: la columna física en BD es "quantity" (común a todas las líneas de documento).
+  // A nivel de app se expone como orderedQty para emparejar con receivedQty.
   orderedQty: decimal('quantity', { precision: 12, scale: 4 }).notNull(),
   receivedQty: decimal('receivedQty', { precision: 12, scale: 4 }).default('0').notNull(),
   price: decimal('price', { precision: 15, scale: 4 }).notNull(),
@@ -1660,6 +1752,15 @@ export const documentTemplates = pgTable('DocumentTemplate', {
   canvasLayout: jsonb('canvasLayout'),
   layoutVersion: integer('layoutVersion').default(1).notNull(),
   legacyHtml: boolean('legacyHtml').default(true).notNull(),
+  // Marca la fila SEMBRADA por el sistema (MigrationManager.seedDefaultTemplates/
+  // resyncDefaultTemplates), distinta de `isDefault` (qué plantilla se usa
+  // cuando no se pide un templateId concreto). Antes resyncDefaultTemplates
+  // regeneraba el html de la fila `isDefault=true` en cada reinicio del
+  // servidor — si el usuario promovía SU plantilla custom a predeterminada,
+  // esa fila se sobreescribía con el genérico de @openfactu/pdf y el diseño
+  // se perdía. Ahora solo se regeneran las filas `isFactoryDefault=true`,
+  // nunca una plantilla custom aunque esté marcada como predeterminada.
+  isFactoryDefault: boolean('isFactoryDefault').default(false).notNull(),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
@@ -1712,6 +1813,22 @@ export const notifications = pgTable('Notification', {
   link: text('link'),
   readAt: timestamp('readAt'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+// Mig 062 — Historial de backups (manuales y programados) del tenant
+export const backupRuns = pgTable('BackupRun', {
+  id: text('id').primaryKey(),
+  kind: text('kind').notNull().default('scheduled'), // scheduled | manual
+  status: text('status').notNull().default('running'), // running | ok | error
+  destination: text('destination').notNull(), // local | gdrive | onedrive
+  fileName: text('fileName'),
+  externalId: text('externalId'), // ruta relativa (local) o fileId/itemId (cloud)
+  sizeBytes: bigint('sizeBytes', { mode: 'number' }),
+  includeUploads: boolean('includeUploads').notNull().default(true),
+  error: text('error'),
+  createdByUserId: text('createdByUserId'),
+  startedAt: timestamp('startedAt').defaultNow().notNull(),
+  finishedAt: timestamp('finishedAt'),
 });
 
 // ════════════════════════════════════════════════════════════════════

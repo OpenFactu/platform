@@ -11,8 +11,13 @@
     "dev:server": "npm run dev --workspace=@openfactu/server",
     "dev:web": "npm run dev --workspace=@openfactu/web",
     "dev:web:https": "npm run dev:https --workspace=@openfactu/web",
-    "dev:all": "docker compose stop server web && docker compose up -d db && concurrently \"npm run dev:server\" \"npm run dev:web\"",
-    "dev:all:https": "docker compose stop server web && docker compose up -d db && concurrently \"npm run dev:server\" \"npm run dev:web:https\"",
+    "ensure-env": "node -e \"const fs=require('fs');if(!fs.existsSync('.env'))fs.copyFileSync('.env.example','.env')\"",
+    "dev:ai": "docker compose --profile ai-gpu stop ollama-gpu && docker compose --profile ai up -d ollama",
+    "dev:ai:gpu": "docker compose --profile ai stop ollama && docker compose --profile ai-gpu up -d ollama-gpu",
+    "dev:all": "npm run ensure-env && docker compose stop server web && docker compose up -d db && concurrently \"npm run dev:server\" \"npm run dev:web\"",
+    "dev:all:ai": "npm run ensure-env && docker compose stop server web && docker compose --profile ai-gpu stop ollama-gpu && docker compose --profile ai up -d db ollama && concurrently \"npm run dev:server\" \"npm run dev:web\"",
+    "dev:all:ai:gpu": "npm run ensure-env && docker compose stop server web && docker compose --profile ai stop ollama && docker compose --profile ai-gpu up -d db ollama-gpu && concurrently \"npm run dev:server\" \"npm run dev:web\"",
+    "dev:all:https": "npm run ensure-env && docker compose stop server web && docker compose up -d db && concurrently \"npm run dev:server\" \"npm run dev:web:https\"",
     "install:all": "npm install",
     "cli": "npx ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"esModuleInterop\":true}' packages/cli/bin/openfactu.ts",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,md,css}\" \"packages/**/*.{ts,tsx,js,jsx,json,md,css}\" \"plugins/**/*.{ts,tsx,js,jsx,json,md,css}\" \"*.{json,md}\"",
@@ -24,6 +29,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.2",
+    "@openfactu/common": "^0.1.1",
     "@openfactu/pdf": "^0.1.3",
     "drizzle-orm": "^0.45.2",
     "react-is": "^19.2.6"

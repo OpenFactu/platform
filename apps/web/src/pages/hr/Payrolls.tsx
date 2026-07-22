@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
 import { useAuth } from '../../context/AuthContext';
 import { Banknote, Plus, CheckCircle, Trash2, ListPlus, X, FileText } from 'lucide-react';
+import { ContextMenu } from '../../components/common/ContextMenu';
+import { withRowContextMenu } from '../../components/common/withRowContextMenu';
+import { useContextMenu } from '../../hooks/useContextMenu';
 
 interface Payroll {
   id: string;
@@ -367,6 +370,48 @@ export const Payrolls: React.FC = () => {
     },
   ];
 
+  const printPayslip = async (r: Payroll) => {
+    const res = await fetch(`/api/reports/payslip/${r.id}/pdf`, { headers: authHeaders });
+    if (!res.ok) {
+      toast.error('No se pudo generar el PDF');
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener');
+  };
+
+  const ctxMenu = useContextMenu<Payroll>();
+  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
+  const buildCtxItems = (r: Payroll) => [
+    {
+      label: r.status === 'draft' ? 'Editar líneas / pluses' : 'Ver líneas',
+      icon: <ListPlus size={14} />,
+      onClick: () => openLines(r),
+    },
+    {
+      label: 'Imprimir / descargar recibo',
+      icon: <FileText size={14} />,
+      onClick: () => printPayslip(r),
+    },
+    ...(r.status === 'draft'
+      ? [
+          {
+            label: 'Aprobar y asentar',
+            icon: <CheckCircle size={14} />,
+            onClick: () => handleApprove(r.id),
+            separatorBefore: true,
+          },
+          {
+            label: 'Eliminar',
+            icon: <Trash2 size={14} />,
+            destructive: true,
+            onClick: () => handleDelete(r.id),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4">
@@ -617,8 +662,16 @@ export const Payrolls: React.FC = () => {
       )}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} />
+        <Table columns={ctxColumns} data={rows} isLoading={loading} />
       </Card>
+      {ctxMenu.state && (
+        <ContextMenu
+          x={ctxMenu.state.x}
+          y={ctxMenu.state.y}
+          items={buildCtxItems(ctxMenu.state.data)}
+          onClose={ctxMenu.close}
+        />
+      )}
 
       {editLines && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

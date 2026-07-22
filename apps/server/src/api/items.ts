@@ -3,6 +3,7 @@ import * as schema from '../db/schema';
 import { eq, desc, like, sql, and } from 'drizzle-orm';
 import crypto from 'crypto';
 import { logAudit } from '../utils/audit';
+import { requireScope } from './middleware/apiToken';
 import { HookManager } from '../core/plugins/HookManager';
 
 const router = Router();
@@ -10,7 +11,7 @@ const router = Router();
 /**
  * GET /api/items
  */
-router.get('/', async (req: any, res) => {
+router.get('/', requireScope('read:maestros'), async (req: any, res) => {
   try {
     const rows = await req.tenantClient
       .select({
@@ -76,7 +77,7 @@ router.get('/', async (req: any, res) => {
 /**
  * POST /api/items
  */
-router.post('/', async (req: any, res) => {
+router.post('/', requireScope('write:maestros'), async (req: any, res) => {
   let { code, name, uomId, basePrice, categoryId, ...rest } = req.body;
 
   if (!name || !uomId) {
@@ -180,7 +181,7 @@ async function applyCustomCols(req: any, id: string, custom: Record<string, any>
 /**
  * PATCH /api/items/:id
  */
-router.patch('/:id', async (req: any, res) => {
+router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
   const { id } = req.params;
   try {
     const [oldItem] = await req.tenantClient
@@ -218,7 +219,7 @@ router.patch('/:id', async (req: any, res) => {
 /**
  * DELETE /api/items/:id
  */
-router.delete('/:id', async (req: any, res) => {
+router.delete('/:id', requireScope('write:maestros'), async (req: any, res) => {
   const { id } = req.params;
   try {
     const [oldItem] = await req.tenantClient
@@ -248,8 +249,15 @@ router.delete('/:id', async (req: any, res) => {
 /**
  * GET /api/items/:id/batches
  */
-router.get('/:id/batches', async (req: any, res) => {
+router.get('/:id/batches', requireScope('read:maestros'), async (req: any, res) => {
   const { id } = req.params;
+  // `?warehouseId=` restringe a lotes con stock REAL en ese almacén (vía
+  // itemBatchStocks) y devuelve la cantidad por-almacén en vez de la global
+  // del artículo — antes siempre se devolvía la cantidad global, pudiendo
+  // ofrecer como "disponible" un lote sin stock físico en el almacén pedido
+  // (p. ej. al elegir un lote alternativo durante el picking).
+  const warehouseId =
+    typeof req.query.warehouseId === 'string' && req.query.warehouseId ? req.query.warehouseId : undefined;
   try {
     const serialsQuery = req.tenantClient
       .select({
@@ -265,41 +273,57 @@ router.get('/:id/batches', async (req: any, res) => {
       .from(schema.itemSerials)
       .where(eq(schema.itemSerials.itemId, id));
 
-    const batchesQuery = req.tenantClient
-      .select({
-        id: schema.itemBatches.id,
-        batchNum: schema.itemBatches.batchNum,
-        quantity: schema.itemBatches.quantity,
-        expiryDate: schema.itemBatches.expiryDate,
-        warehouseId: schema.purchaseDeliveryNoteLines.warehouseId,
-        warehouseName: schema.warehouses.name,
-        zoneName: schema.warehouseZones.name,
-        type: sql<string>`'B'`,
-      })
-      .from(schema.itemBatches)
-      .leftJoin(
-        schema.purchaseDeliveryNoteLineBatches,
-        eq(schema.itemBatches.batchNum, schema.purchaseDeliveryNoteLineBatches.batchNum),
-      )
-      .leftJoin(
-        schema.purchaseDeliveryNoteLines,
-        and(
-          eq(
-            schema.purchaseDeliveryNoteLineBatches.deliveryLineId,
-            schema.purchaseDeliveryNoteLines.id,
-          ),
-          eq(schema.itemBatches.itemId, schema.purchaseDeliveryNoteLines.itemId),
-        ),
-      )
-      .leftJoin(
-        schema.warehouseZones,
-        eq(schema.purchaseDeliveryNoteLines.zoneId, schema.warehouseZones.id),
-      )
-      .leftJoin(
-        schema.warehouses,
-        eq(schema.purchaseDeliveryNoteLines.warehouseId, schema.warehouses.id),
-      )
-      .where(eq(schema.itemBatches.itemId, id));
+    const batchesQuery = warehouseId
+      ? req.tenantClient
+          .select({
+            id: schema.itemBatches.id,
+            batchNum: schema.itemBatches.batchNum,
+            quantity: schema.itemBatchStocks.quantity,
+            expiryDate: schema.itemBatches.expiryDate,
+            warehouseId: schema.itemBatchStocks.warehouseId,
+            warehouseName: schema.warehouses.name,
+            zoneName: sql<string | null>`NULL`,
+            type: sql<string>`'B'`,
+          })
+          .from(schema.itemBatches)
+          .innerJoin(
+            schema.itemBatchStocks,
+            and(
+              eq(schema.itemBatches.itemId, schema.itemBatchStocks.itemId),
+              eq(schema.itemBatches.batchNum, schema.itemBatchStocks.batchNum),
+            ),
+          )
+          .leftJoin(schema.warehouses, eq(schema.itemBatchStocks.warehouseId, schema.warehouses.id))
+          .where(
+            and(
+              eq(schema.itemBatches.itemId, id),
+              eq(schema.itemBatchStocks.warehouseId, warehouseId),
+              sql`${schema.itemBatchStocks.quantity} > 0`,
+            ),
+          )
+          .orderBy(desc(schema.itemBatchStocks.quantity))
+      : req.tenantClient
+          .select({
+            id: schema.itemBatches.id,
+            batchNum: schema.itemBatches.batchNum,
+            quantity: schema.itemBatches.quantity,
+            expiryDate: schema.itemBatches.expiryDate,
+            warehouseId: schema.itemBatchStocks.warehouseId,
+            warehouseName: schema.warehouses.name,
+            zoneName: sql<string | null>`NULL`,
+            type: sql<string>`'B'`,
+          })
+          .from(schema.itemBatches)
+          .leftJoin(
+            schema.itemBatchStocks,
+            and(
+              eq(schema.itemBatches.itemId, schema.itemBatchStocks.itemId),
+              eq(schema.itemBatches.batchNum, schema.itemBatchStocks.batchNum),
+            ),
+          )
+          .leftJoin(schema.warehouses, eq(schema.itemBatchStocks.warehouseId, schema.warehouses.id))
+          .where(eq(schema.itemBatches.itemId, id))
+          .orderBy(desc(schema.itemBatchStocks.quantity));
 
     const [serials, batches] = await Promise.all([serialsQuery, batchesQuery]);
     let allResults = [...serials, ...batches];
@@ -324,7 +348,7 @@ router.get('/:id/batches', async (req: any, res) => {
 /**
  * GET /api/items/:id/stock
  */
-router.get('/:id/stock', async (req: any, res) => {
+router.get('/:id/stock', requireScope('read:maestros'), async (req: any, res) => {
   const { id } = req.params;
   try {
     const warehouseStock = await req.tenantClient
@@ -347,43 +371,38 @@ router.get('/:id/stock', async (req: any, res) => {
       .leftJoin(schema.warehouseZones, eq(schema.itemZoneStocks.zoneId, schema.warehouseZones.id))
       .where(eq(schema.itemZoneStocks.itemId, id))
       .orderBy(desc(schema.itemZoneStocks.stock));
+    // Trazabilidad por lote: fuente = itemBatchStocks (ubicación ACTUAL, se
+    // mantiene con cada traspaso/entrada/salida/factura/albarán — ver
+    // StockPoster.ts/DocumentEngine.ts), no el albarán de compra original.
+    // Un mismo batchNum puede aparecer en varias filas, una por almacén en el
+    // que tenga stock ahora mismo (p.ej. tras un traspaso parcial).
     const batches = await req.tenantClient
       .select({
-        id: schema.itemBatches.id,
-        batchNum: schema.itemBatches.batchNum,
-        itemId: schema.itemBatches.itemId,
-        quantity: schema.itemBatches.quantity,
-        expiryDate: schema.itemBatches.expiryDate,
-        zoneId: schema.purchaseDeliveryNoteLines.zoneId,
-        zoneName: schema.warehouseZones.name,
+        batchNum: schema.itemBatchStocks.batchNum,
+        itemId: schema.itemBatchStocks.itemId,
+        quantity: schema.itemBatchStocks.quantity,
+        warehouseId: schema.itemBatchStocks.warehouseId,
         warehouseName: schema.warehouses.name,
+        expiryDate: schema.itemBatches.expiryDate,
       })
-      .from(schema.itemBatches)
+      .from(schema.itemBatchStocks)
+      .leftJoin(schema.warehouses, eq(schema.itemBatchStocks.warehouseId, schema.warehouses.id))
       .leftJoin(
-        schema.purchaseDeliveryNoteLineBatches,
-        eq(schema.itemBatches.batchNum, schema.purchaseDeliveryNoteLineBatches.batchNum),
-      )
-      .leftJoin(
-        schema.purchaseDeliveryNoteLines,
-        eq(
-          schema.purchaseDeliveryNoteLineBatches.deliveryLineId,
-          schema.purchaseDeliveryNoteLines.id,
+        schema.itemBatches,
+        and(
+          eq(schema.itemBatchStocks.itemId, schema.itemBatches.itemId),
+          eq(schema.itemBatchStocks.batchNum, schema.itemBatches.batchNum),
         ),
       )
-      .leftJoin(
-        schema.warehouseZones,
-        eq(schema.purchaseDeliveryNoteLines.zoneId, schema.warehouseZones.id),
-      )
-      .leftJoin(schema.warehouses, eq(schema.warehouseZones.warehouseId, schema.warehouses.id))
-      .where(eq(schema.itemBatches.itemId, id))
-      .orderBy(desc(schema.itemBatches.quantity));
+      .where(and(eq(schema.itemBatchStocks.itemId, id), sql`${schema.itemBatchStocks.quantity} > 0`))
+      .orderBy(desc(schema.itemBatchStocks.quantity));
     res.json({ warehouseStock, zoneStock, batches });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-router.get('/:id/uoms', async (req: any, res) => {
+router.get('/:id/uoms', requireScope('read:maestros'), async (req: any, res) => {
   const { id } = req.params;
   try {
     const [item] = await req.tenantClient
@@ -438,7 +457,7 @@ router.get('/:id/uoms', async (req: any, res) => {
   }
 });
 
-router.post('/:id/uoms', async (req: any, res) => {
+router.post('/:id/uoms', requireScope('write:maestros'), async (req: any, res) => {
   const { id: itemId } = req.params;
   const { uomId, factor } = req.body;
   try {
@@ -452,7 +471,7 @@ router.post('/:id/uoms', async (req: any, res) => {
   }
 });
 
-router.delete('/:itemId/uoms/:id', async (req: any, res) => {
+router.delete('/:itemId/uoms/:id', requireScope('write:maestros'), async (req: any, res) => {
   const { id } = req.params;
   try {
     await req.tenantClient

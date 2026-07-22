@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Badge, useToast } from '@openfactu/ui';
 import { useAuth } from '../../context/AuthContext';
 import { Timer, LogIn, LogOut, Coffee, RotateCcw, Download } from 'lucide-react';
+import { exportToXlsx } from '../../utils/exportXlsx';
 
 interface Entry {
   id: string;
@@ -45,6 +46,33 @@ export const Timeclock: React.FC = () => {
     () => ({ Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' }),
     [token, user?.tenantId],
   );
+
+  // Descarga los fichajes como .xlsx con formato: pide el JSON al endpoint de
+  // export y genera la hoja en cliente (utils/exportXlsx).
+  const exportEntriesExcel = async (params: URLSearchParams, filename: string, title: string) => {
+    params.set('format', 'json');
+    const r = await fetch(`/api/hr/timeclock/export?${params}`, { headers });
+    if (!r.ok) {
+      toast.error('No se pudo exportar');
+      return;
+    }
+    const data = await r.json();
+    await exportToXlsx({
+      filename,
+      sheetName: 'Fichajes',
+      title,
+      columns: [
+        { key: 'fecha', label: 'Fecha', type: 'date', width: 12 },
+        { key: 'hora', label: 'Hora', width: 10 },
+        { key: 'empleadoCodigo', label: 'Código', width: 10 },
+        { key: 'empleadoNombre', label: 'Nombre', width: 28 },
+        { key: 'tipo', label: 'Tipo', width: 14, format: (v) => KIND_LABEL[v] || v },
+        { key: 'origen', label: 'Origen', width: 10 },
+        { key: 'notas', label: 'Notas', width: 40 },
+      ],
+      rows: data,
+    });
+  };
 
   const fetchAll = async () => {
     setLoading(true);
@@ -163,28 +191,13 @@ export const Timeclock: React.FC = () => {
             <Button
               size="sm"
               variant="secondary"
-              onClick={async () => {
-                const r = await fetch(
-                  `/api/hr/timeclock/export?employeeId=${employee.id}&from=${monthStart}&format=csv`,
-                  {
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      'x-tenant-id': user?.tenantId || '',
-                    },
-                  },
-                );
-                if (!r.ok) {
-                  toast.error('No se pudo exportar');
-                  return;
-                }
-                const blob = await r.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `mis_fichajes_${monthStart}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
+              onClick={() =>
+                exportEntriesExcel(
+                  new URLSearchParams({ employeeId: employee.id, from: monthStart }),
+                  `mis_fichajes_${monthStart}`,
+                  `Mis fichajes · desde ${monthStart}`,
+                )
+              }
             >
               <Download size={14} /> Exportar mes
             </Button>
@@ -193,27 +206,19 @@ export const Timeclock: React.FC = () => {
             <Button
               size="sm"
               variant="secondary"
-              onClick={async () => {
+              onClick={() => {
                 const params = new URLSearchParams();
                 if (filters.employeeId) params.set('employeeId', filters.employeeId);
                 if (filters.from) params.set('from', filters.from);
                 if (filters.to) params.set('to', filters.to);
-                params.set('format', 'csv');
-                const r = await fetch(`/api/hr/timeclock/export?${params}`, { headers });
-                if (!r.ok) {
-                  toast.error('No se pudo exportar');
-                  return;
-                }
-                const blob = await r.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `fichajes_${filters.from}_${filters.to}.csv`;
-                a.click();
-                URL.revokeObjectURL(url);
+                exportEntriesExcel(
+                  params,
+                  `fichajes_${filters.from}_${filters.to}`,
+                  `Fichajes · ${filters.from} a ${filters.to}`,
+                );
               }}
             >
-              <Download size={14} /> Exportar CSV
+              <Download size={14} /> Exportar Excel
             </Button>
           )}
         </div>

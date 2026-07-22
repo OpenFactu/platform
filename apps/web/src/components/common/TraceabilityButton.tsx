@@ -2,8 +2,8 @@ import React from 'react';
 import { Button, usePopup } from '@openfactu/ui';
 import { Network } from 'lucide-react';
 import { TraceabilityPopupBody } from './TraceabilityPopupBody';
+import { DocType } from '@openfactu/common';
 
-type DocType = 'SO' | 'PO' | 'SDN' | 'PDN' | 'SINV' | 'PINV';
 
 interface Props {
   type: DocType;
@@ -22,6 +22,7 @@ export const TraceabilityButton: React.FC<Props> = ({ type, id, docCode, iconOnl
   const popup = usePopup();
 
   const open = () => {
+    
     popup.show({
       title: `Trazabilidad${docCode ? ` · ${docCode}` : ''}`,
       subtitle: 'Cadena completa de documentos relacionados.',
