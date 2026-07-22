@@ -57,29 +57,6 @@ export const LEGACY_NAV: Module[] = [
     subTabs: [{ id: 'dashboard', label: 'Dashboard', path: '/' }],
   },
   {
-    id: 'sales',
-    label: 'Ventas',
-    icon: 'ShoppingCart',
-    hiddenInLogisticsOnly: true,
-    subTabs: [
-      { id: 'sales-orders', label: 'Pedidos', path: '/sales-orders' },
-      { id: 'sales-delivery-notes', label: 'Albaranes', path: '/sales/delivery-notes' },
-      { id: 'sales-invoices', label: 'Facturas', path: '/sales/invoices' },
-      { id: 'pricelists', label: 'Tarifas', path: '/pricelists' },
-    ],
-  },
-  {
-    id: 'purchases',
-    label: 'Compras',
-    icon: 'Truck',
-    hiddenInLogisticsOnly: true,
-    subTabs: [
-      { id: 'purchase-orders', label: 'Pedidos', path: '/purchase-orders' },
-      { id: 'purchase-delivery-notes', label: 'Albaranes', path: '/purchases/delivery-notes' },
-      { id: 'purchase-invoices', label: 'Facturas', path: '/purchases/invoices' },
-    ],
-  },
-  {
     id: 'hr',
     hiddenInLogisticsOnly: true,
     label: 'Recursos Humanos',

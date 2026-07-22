@@ -28,12 +28,6 @@ import { Performance } from '@/pages/hr/Performance';
 import { LaborCost } from '@/pages/hr/LaborCost';
 import { Tasks } from '@/pages/hr/Tasks';
 import { Gantt } from '@/pages/hr/Gantt';
-import { PurchaseOrders } from '@/pages/Documents/PurchaseOrders';
-import { PurchaseDeliveryNotes } from '@/pages/Documents/PurchaseDeliveryNotes';
-import { PurchaseInvoices } from '@/pages/Documents/PurchaseInvoices';
-import { SalesOrders } from '@/pages/Documents/SalesOrders';
-import { SalesDeliveryNotes } from '@/pages/Documents/SalesDeliveryNotes';
-import { SalesInvoices } from '@/pages/Documents/SalesInvoices';
 import { AuditLogs } from '@/pages/AuditLogs';
 import { BackgroundTasks } from '@/pages/BackgroundTasks';
 import { CompanySettings } from '@/pages/CompanySettings';
@@ -48,11 +42,7 @@ import { ShipmentDetail } from '@/pages/logistics/ShipmentDetail';
 import { DriverApp } from '@/pages/logistics/DriverApp';
 import { UserTableList } from '@/pages/user-tables/UserTableList';
 import { UserTableDetail } from '@/pages/user-tables/UserTableDetail';
-import Documents from '@/pages/Documents/Documents';
-import { DocumentTemplateDesigner } from '@/pages/Documents/DocumentTemplateDesigner';
-import { DocumentTemplates } from '@/pages/Documents/DocumentTemplates';
 import { AiChat } from '@/pages/AiChat';
-import { DocumentSeries } from '@/pages/Documents/DocumentSeries';
 
 export type { RouteEntry, RouteMeta } from '@/modules/types';
 
@@ -111,154 +101,6 @@ const legacyRoutes: RouteEntry[] = [
     title: 'Webhooks',
     iconName: 'Webhook',
     permissionPath: '/settings/webhooks',
-  },
-  {
-    pattern: '/purchase-orders',
-    Component: PurchaseOrders,
-    title: 'Pedidos Compra',
-    iconName: 'FileDigit',
-    permissionPath: '/purchase-orders',
-  },
-  {
-    pattern: '/purchase-orders/new',
-    Component: PurchaseOrders,
-    title: 'Nuevo Pedido Compra',
-    iconName: 'FileDigit',
-    permissionPath: '/purchase-orders',
-  },
-  {
-    pattern: '/purchase-orders/:id',
-    Component: PurchaseOrders,
-    title: 'Pedido Compra',
-    iconName: 'FileDigit',
-    permissionPath: '/purchase-orders',
-  },
-  {
-    pattern: '/purchases/delivery-notes',
-    Component: PurchaseDeliveryNotes,
-    title: 'Albaranes Compra',
-    iconName: 'Truck',
-    permissionPath: '/purchases/delivery-notes',
-  },
-  {
-    pattern: '/purchases/delivery-notes/new',
-    Component: PurchaseDeliveryNotes,
-    title: 'Nuevo Albarán Compra',
-    iconName: 'Truck',
-    permissionPath: '/purchases/delivery-notes',
-  },
-  {
-    pattern: '/purchases/delivery-notes/:id',
-    Component: PurchaseDeliveryNotes,
-    title: 'Albarán Compra',
-    iconName: 'Truck',
-    permissionPath: '/purchases/delivery-notes',
-  },
-  {
-    pattern: '/purchases/invoices',
-    Component: PurchaseInvoices,
-    title: 'Facturas Compra',
-    iconName: 'FileStack',
-    permissionPath: '/purchases/invoices',
-  },
-  {
-    pattern: '/purchases/invoices/new',
-    Component: PurchaseInvoices,
-    title: 'Nueva Factura Compra',
-    iconName: 'FileStack',
-    permissionPath: '/purchases/invoices',
-  },
-  {
-    pattern: '/purchases/invoices/:id',
-    Component: PurchaseInvoices,
-    title: 'Factura Compra',
-    iconName: 'FileStack',
-    permissionPath: '/purchases/invoices',
-  },
-  {
-    pattern: '/sales-orders',
-    Component: SalesOrders,
-    title: 'Pedidos Venta',
-    iconName: 'FileDigit',
-    permissionPath: '/sales-orders',
-  },
-  {
-    pattern: '/sales-orders/new',
-    Component: SalesOrders,
-    title: 'Nuevo Pedido Venta',
-    iconName: 'FileDigit',
-    permissionPath: '/sales-orders',
-  },
-  {
-    pattern: '/sales-orders/:id',
-    Component: SalesOrders,
-    title: 'Pedido Venta',
-    iconName: 'FileDigit',
-    permissionPath: '/sales-orders',
-  },
-  {
-    pattern: '/sales/delivery-notes',
-    Component: SalesDeliveryNotes,
-    title: 'Albaranes Venta',
-    iconName: 'Truck',
-    permissionPath: '/sales/delivery-notes',
-  },
-  {
-    pattern: '/sales/delivery-notes/new',
-    Component: SalesDeliveryNotes,
-    title: 'Nuevo Albarán Venta',
-    iconName: 'Truck',
-    permissionPath: '/sales/delivery-notes',
-  },
-  {
-    pattern: '/sales/delivery-notes/:id',
-    Component: SalesDeliveryNotes,
-    title: 'Albarán Venta',
-    iconName: 'Truck',
-    permissionPath: '/sales/delivery-notes',
-  },
-  {
-    pattern: '/sales/invoices',
-    Component: SalesInvoices,
-    title: 'Facturas Venta',
-    iconName: 'FileStack',
-    permissionPath: '/sales/invoices',
-  },
-  {
-    pattern: '/sales/invoices/new',
-    Component: SalesInvoices,
-    title: 'Nueva Factura Venta',
-    iconName: 'FileStack',
-    permissionPath: '/sales/invoices',
-  },
-  {
-    pattern: '/sales/invoices/:id',
-    Component: SalesInvoices,
-    title: 'Factura Venta',
-    iconName: 'FileStack',
-    permissionPath: '/sales/invoices',
-  },
-  // ── Unified Documents Router ────────────────────────────────────
-  {
-    pattern: '/documents/:docType',
-    Component: Documents,
-    title: 'Documentos',
-    iconName: 'FileText',
-    permissionPath: '/documents',
-  },
-  {
-    pattern: '/documents/:docType/new',
-    Component: Documents,
-    title: 'Nuevo Documento',
-    iconName: 'FileText',
-    permissionPath: '/documents',
-  },
-  {
-    pattern: '/documents/:docType/:id',
-    Component: Documents,
-    title: 'Documento',
-    iconName: 'FileText',
-    permissionPath: '/documents',
   },
   {
     pattern: '/profile',
@@ -400,32 +242,11 @@ const legacyRoutes: RouteEntry[] = [
     permissionPath: '/hr/gantt',
   },
   {
-    pattern: '/document-series',
-    Component: DocumentSeries,
-    title: 'Series Doc.',
-    iconName: 'FileDigit',
-    permissionPath: '/document-series',
-  },
-  {
-    pattern: '/document-templates',
-    Component: DocumentTemplates,
-    title: 'Plantillas PDF',
-    iconName: 'FileCode',
-    permissionPath: '/document-templates',
-  },
-  {
     pattern: '/ai/chat',
     Component: AiChat,
     title: 'Asistente IA',
     iconName: 'Bot',
     permissionPath: '/ai/chat',
-  },
-  {
-    pattern: '/document-templates/:id/designer',
-    Component: DocumentTemplateDesigner,
-    title: 'Diseñador de plantilla',
-    iconName: 'FileCode',
-    permissionPath: '/document-templates',
   },
   {
     pattern: '/settings/company',

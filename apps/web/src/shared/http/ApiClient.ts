@@ -29,6 +29,8 @@ export interface BlobResult {
   blob: Blob;
   /** Nombre de archivo sugerido por el servidor vía Content-Disposition, si lo hay. */
   filename: string | null;
+  /** Cabeceras de la respuesta (algunos endpoints devuelven metadatos, p.ej. X-Render-Free-Errors). */
+  headers: Headers;
 }
 
 /**
@@ -88,13 +90,30 @@ export class ApiClient {
     return this.request<T>('POST', path, form, opts);
   }
 
+  /** POST que devuelve binario (p.ej. previews de PDF renderizadas al vuelo). */
+  async postBlob(path: string, body?: unknown, opts?: RequestOptions): Promise<BlobResult> {
+    const res = await this.rawFetch('POST', path, body, opts);
+    await this.throwIfNotOk(res, opts);
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+    return {
+      blob: await res.blob(),
+      filename: match ? decodeURIComponent(match[1]) : null,
+      headers: res.headers,
+    };
+  }
+
   /** Descarga binaria (PDF, zip, xlsx...). El click del anchor lo hace el llamador. */
   async getBlob(path: string, opts?: RequestOptions): Promise<BlobResult> {
     const res = await this.rawFetch('GET', path, undefined, opts);
     await this.throwIfNotOk(res, opts);
     const disposition = res.headers.get('Content-Disposition') || '';
     const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-    return { blob: await res.blob(), filename: match ? decodeURIComponent(match[1]) : null };
+    return {
+      blob: await res.blob(),
+      filename: match ? decodeURIComponent(match[1]) : null,
+      headers: res.headers,
+    };
   }
 
   private async request<T>(
