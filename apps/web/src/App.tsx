@@ -53,11 +53,14 @@ function App() {
 
   if (publicPath) {
     return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="/track/:token" element={<TrackingPage />} />
-        </Routes>
-      </BrowserRouter>
+      <>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/track/:token" element={<TrackingPage />} />
+          </Routes>
+        </BrowserRouter>
+        <DebugPanel />
+      </>
     );
   }
 
@@ -65,11 +68,14 @@ function App() {
   // x-kiosk-token (header) en cada fichaje. No requiere login del ERP.
   if (kioskPath) {
     return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="/kiosk" element={<KioskMode />} />
-        </Routes>
-      </BrowserRouter>
+      <>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/kiosk" element={<KioskMode />} />
+          </Routes>
+        </BrowserRouter>
+        <DebugPanel />
+      </>
     );
   }
 
@@ -127,7 +133,7 @@ function App() {
           </ScannerProvider>
         </MobileNavProvider>
       </TabsProvider>
-      {/* <DebugPanel /> */}
+      <DebugPanel />
     </>
   );
 }

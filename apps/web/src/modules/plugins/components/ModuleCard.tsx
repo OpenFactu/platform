@@ -55,7 +55,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
                 {module.label}
               </h3>
               {module.category && (
-                <Badge variant="teal" className="mt-1">
+                <Badge variant="info" className="mt-1">
                   {module.category}
                 </Badge>
               )}

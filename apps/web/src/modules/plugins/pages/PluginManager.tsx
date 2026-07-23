@@ -14,7 +14,7 @@ import type { PluginField } from '../domain/PluginField';
 import type { PluginTable } from '../domain/PluginTable';
 import type { Module } from '@/modules';
 
-export const PluginManager: React.FC = () => {
+export const appsPluginManager: React.FC = () => {
   const { token, user } = useAuth();
   const { reload: reloadManifests } = usePlugins();
   const toast = useToast();

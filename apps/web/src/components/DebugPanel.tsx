@@ -56,6 +56,9 @@ export const DebugPanel: React.FC = () => {
     } catch {
       /* noop */
     }
+
+    console.log('[DebugPanel] Position saved:', pos); 
+    console.log('[DebugPanel] debugEnabled:', debugEnabled);
   }, [pos]);
 
   const onDragPointerDown = (e: React.PointerEvent<HTMLElement>) => {

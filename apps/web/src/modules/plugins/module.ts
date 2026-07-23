@@ -1,5 +1,5 @@
 import type { ModuleManifest } from '../types';
-import { PluginManager } from './pages/PluginManager';
+import { appsPluginManager } from './pages/PluginManager';
 
 export const appsModule: ModuleManifest = {
   nav: {
@@ -12,7 +12,7 @@ export const appsModule: ModuleManifest = {
   routes: [
     {
       pattern: '/apps',
-      Component: PluginManager,
+      Component: appsPluginManager,
       title: 'Apps',
       iconName: 'LayoutGrid',
       permissionPath: '/apps',
