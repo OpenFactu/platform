@@ -158,18 +158,49 @@ function Step1Database({
   const popup = usePopup();
   const [showPass, setShowPass] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [testing, setTesting] = useState(false);
 
-  const handleNext = async () => {
+  const validate = (): number | null => {
     if (!data.host || !data.port || !data.user || !data.password) {
       toast.error('Completa todos los campos de la base de datos.');
-      return;
+      return null;
     }
 
     const port = parseInt(data.port);
     if (isNaN(port) || port < 1 || port > 65535) {
       toast.error('El puerto debe ser un número válido (1-65535).');
-      return;
+      return null;
     }
+
+    return port;
+  };
+
+  const handleTest = async () => {
+    const port = validate();
+    if (port === null) return;
+
+    setTesting(true);
+    try {
+      const json = await apiClient.post<any>(
+        '/api/setup/check-db',
+        { host: data.host, port, user: data.user, password: data.password },
+        { auth: false },
+      );
+      if (json.connected) {
+        toast.success(json.message || 'Conexión correcta.');
+      } else {
+        toast.error(json.message || 'No se pudo conectar.');
+      }
+    } catch {
+      toast.error('Error de red al verificar la conexión.');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleNext = async () => {
+    const port = validate();
+    if (port === null) return;
 
     setChecking(true);
     try {
@@ -268,8 +299,16 @@ function Step1Database({
         onToggle={() => setShowPass(!showPass)}
       />
       <button
+        onClick={handleTest}
+        disabled={testing || checking}
+        className={`w-full ${BTN_SECONDARY_CLS} disabled:opacity-50`}
+      >
+        {testing ? <Loader size="sm" className="mr-0" /> : <Database size={18} />}
+        <span>{testing ? 'Probando conexión...' : 'Probar conexión'}</span>
+      </button>
+      <button
         onClick={handleNext}
-        disabled={checking}
+        disabled={checking || testing}
         className={`w-full ${BTN_PRIMARY_CLS} disabled:opacity-50`}
       >
         {checking ? (
