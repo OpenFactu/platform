@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, Loader, useToast, Badge, FilterBar } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  Loader,
+  useToast,
+  Badge,
+  FilterBar,
+  SearchableSelect,
+} from '@openfactu/ui';
 import { useDataTable } from '@openfactu/common';
 import { useLocation } from 'react-router-dom';
 import { FileDigit, Plus, Trash2 } from 'lucide-react';
@@ -253,50 +263,45 @@ export const DocumentSeries: React.FC = () => {
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
               Tipo Documento
             </label>
-            <select
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
-              required
-              className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 mt-1"
-            >
-              {docTypeOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label} ({o.value})
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <SearchableSelect
+                value={docType}
+                onChange={(v) => setDocType(v)}
+                options={docTypeOptions.map((o) => ({
+                  label: `${o.label} (${o.value})`,
+                  value: o.value,
+                }))}
+                placeholder="Seleccionar tipo..."
+              />
+            </div>
           </div>
           <div className="md:col-span-1">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
               Numeración
             </label>
-            <select
-              value={numberingMode}
-              onChange={(e) => setNumberingMode(e.target.value)}
-              required
-              className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 mt-1"
-            >
-              <option value="AUTO">Automática</option>
-              <option value="MANUAL">Manual</option>
-            </select>
+            <div className="mt-1">
+              <SearchableSelect
+                value={numberingMode}
+                onChange={(v) => setNumberingMode(v)}
+                options={[
+                  { label: 'Automática', value: 'AUTO' },
+                  { label: 'Manual', value: 'MANUAL' },
+                ]}
+              />
+            </div>
           </div>
           <div className="md:col-span-1">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
               Aplica al Periodo
             </label>
-            <select
-              value={periodId}
-              onChange={(e) => setPeriodId(e.target.value)}
-              required
-              className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 mt-1"
-            >
-              <option value="">Seleccionar...</option>
-              {periods.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} - {p.name}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <SearchableSelect
+                value={periodId}
+                onChange={(v) => setPeriodId(v)}
+                options={periods.map((p) => ({ label: `${p.code} - ${p.name}`, value: p.id }))}
+                placeholder="Seleccionar..."
+              />
+            </div>
           </div>
           <div className="md:col-span-1">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
