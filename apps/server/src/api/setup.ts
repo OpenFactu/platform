@@ -4,6 +4,7 @@ import { SchemaManager } from '../core/tenant/SchemaManager';
 import { AuthService } from '../core/auth/AuthService';
 import { setCompanyConfig } from '../core/config/companyConfig';
 import { setConfigSection } from '../core/config/systemConfigSection';
+import { FLAGS_DEFAULTS } from '../core/config/appConfig';
 import * as schema from '../db/schema';
 import { eq } from 'drizzle-orm';
 import fs from 'fs';
@@ -326,6 +327,13 @@ router.post('/init', async (req, res) => {
           { publicBaseUrl: '' },
           { publicBaseUrl: publicBaseUrl.replace(/\/$/, '') },
         );
+      }
+
+      // Módulos elegidos en el paso 5 del wizard — solo llegan las claves que
+      // el admin desmarcó (el resto ya son `true` por defecto en FLAGS_DEFAULTS).
+      const { modules } = req.body;
+      if (modules && Object.keys(modules).length > 0) {
+        await setConfigSection(tenantDb, 'flags', FLAGS_DEFAULTS, modules);
       }
 
       // Seed de tipos de documento fiscales según país (F1/F2/R1 en ES,
