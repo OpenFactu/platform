@@ -706,7 +706,7 @@ export const SetupWizard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0A1628] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white dark:bg-[#1A2535] rounded-sm p-8 shadow-xl border border-[#E2E8F0] dark:border-[#2D3A4A]">
+      <div className="max-w-2xl w-full bg-white dark:bg-[#1A2535] rounded-sm p-8 shadow-xl border border-[#E2E8F0] dark:border-[#2D3A4A]">
         <WizardHeader />
         <StepIndicator step={step} />
 
