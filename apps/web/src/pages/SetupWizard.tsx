@@ -16,6 +16,7 @@ import { Loader, useToast, usePopup } from '@openfactu/ui';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { CORE_MODULES } from '@/modules';
 import { ModuleCard } from '@/modules/plugins/components/ModuleCard';
+import { FLAGS_DEFAULTS } from '@/context/ThemeContext';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -538,9 +539,9 @@ function Step5Modules({
                 <ModuleCard
                   key={m.id}
                   module={m}
-                  enabled={data[m.featureFlag as string] ?? true}
+                  enabled={data[m.featureFlag as string]}
                   onToggle={() =>
-                    onChange(m.featureFlag as string, !(data[m.featureFlag as string] ?? true))
+                    onChange(m.featureFlag as string, !data[m.featureFlag as string])
                   }
                   isToggling={false}
                 />
@@ -587,7 +588,10 @@ export const SetupWizard: React.FC = () => {
     },
     admin: { email: '', username: '', password: '' },
     modules: Object.fromEntries(
-      CORE_MODULES.filter((m) => m.featureFlag).map((m) => [m.featureFlag as string, true]),
+      CORE_MODULES.filter((m) => m.featureFlag).map((m) => [
+        m.featureFlag as string,
+        (FLAGS_DEFAULTS as unknown as Record<string, boolean>)[m.featureFlag as string] ?? true,
+      ]),
     ),
     company: {
       name: '',
@@ -629,9 +633,7 @@ export const SetupWizard: React.FC = () => {
             password: formData.db.password,
           },
           admin: formData.admin,
-          modules: Object.fromEntries(
-            Object.entries(formData.modules).filter(([, v]) => v === false),
-          ),
+          modules: formData.modules,
           company: {
             name: formData.company.name,
             nif: formData.company.nif,
