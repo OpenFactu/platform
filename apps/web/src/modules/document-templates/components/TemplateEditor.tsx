@@ -9,7 +9,7 @@ import {
   DEFAULT_VISUAL_OPTIONS,
   type VisualOptions,
 } from '@openfactu/pdf/browser';
-import { DOC_TYPE_OPTIONS, type DocType, type TemplateRow } from './constants';
+import { useDocTypeOptions, type DocType, type TemplateRow } from './constants';
 import { ModeTabs, type EditorMode } from './ModeTabs';
 import { VisualForm } from './VisualForm';
 import { AdvancedEditor, type AdvancedEditorHandle } from './AdvancedEditor';
@@ -42,6 +42,7 @@ interface Props {
 
 export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, token, tenantId }) => {
   const toast = useToast();
+  const DOC_TYPE_OPTIONS = useDocTypeOptions();
   const navigate = useNavigate();
   const { openTab } = useTabs();
   const initialMeta = template?.html ? parseMeta(template.html) : null;
@@ -142,7 +143,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
       await onSave(payload);
       toast.success('Plantilla guardada');
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined));
+      toast.error(e instanceof Error ? e.message : undefined);
     } finally {
       setSaving(false);
     }

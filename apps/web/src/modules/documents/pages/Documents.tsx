@@ -5,6 +5,7 @@ import {
   Card,
   Button,
   Input,
+  Loader,
   useToast,
   Badge,
   FilterBar,
@@ -22,7 +23,8 @@ import {
   DocSide,
   decomposeDocType,
 } from '@openfactu/common';
-import { getDocTypeConfig, DOC_TYPE_CONFIGS } from '../domain/docTypeConfig';
+import { getDocTypeConfig } from '../domain/docTypeConfig';
+import { useDocTypes } from '../domain/docTypeRegistry';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
 import { downloadPdf } from '@/utils/downloadPdf';
@@ -499,10 +501,14 @@ const Documents: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
 
+  // Tipos registrados en el servidor (SQ, plugins...) — los 6 core resuelven
+  // síncrono vía los mapas estáticos; el resto espera al fetch del registry.
+  const { loading: typesLoading } = useDocTypes();
   const config = useMemo(() => {
-    if (!docType || !DOC_TYPE_CONFIGS[docType as DocType]) return null;
-    return getDocTypeConfig(docType as DocType);
-  }, [docType]);
+    if (!docType) return null;
+    return getDocTypeConfig(docType as DocType) ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docType, typesLoading]);
 
   const [view, setView] = useState<'list' | 'form' | 'detail'>('list');
   const [listData, setListData] = useState<any[]>([]);
@@ -586,6 +592,13 @@ const Documents: React.FC = () => {
   };
 
   if (!config) {
+    if (typesLoading) {
+      return (
+        <div className="p-8 flex justify-center">
+          <Loader />
+        </div>
+      );
+    }
     return (
       <div className="p-8 text-center">
         <h2>Tipo no válido: {docType}</h2>

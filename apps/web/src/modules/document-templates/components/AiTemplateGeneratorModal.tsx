@@ -11,7 +11,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Button, Input, Badge, SearchableSelect, useToast } from '@openfactu/ui';
 import { Sparkles, Save, AlertTriangle, Loader2 } from 'lucide-react';
-import { DOC_TYPE_OPTIONS, type DocType } from './constants';
+import { useDocTypeOptions, type DocType } from './constants';
 import { useAuth } from '@/context/AuthContext';
 import { templatesApi } from '../api';
 
@@ -29,6 +29,7 @@ interface Props {
 }
 
 export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) => {
+  const DOC_TYPE_OPTIONS = useDocTypeOptions();
   const { token, user } = useAuth();
   const toast = useToast();
   const headers = {

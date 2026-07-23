@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTabs } from '../../context/TabsContext';
 import { useFormat } from '../../hooks/useFormat';
 
-type DocType = 'SO' | 'PO' | 'SDN' | 'PDN' | 'SINV' | 'PINV';
+type DocType = 'SO' | 'PO' | 'SDN' | 'PDN' | 'SINV' | 'PINV' | (string & {});
 
 interface DocRef {
   type: DocType;
@@ -67,7 +67,8 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
 
   useEffect(() => {
     setLoading(true);
-    coreApi.get(`/api/document-links?type=${type}&id=${id}`)
+    coreApi
+      .get(`/api/document-links?type=${type}&id=${id}`)
       .then((d) => {
         if (d.error) {
           toast.error(d.error);
