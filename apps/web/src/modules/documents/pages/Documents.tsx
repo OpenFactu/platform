@@ -27,7 +27,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
 import { downloadPdf } from '@/utils/downloadPdf';
 import { formatDocCode } from '@/utils/docCode';
-import { buildDetailLineColumns, buildFormLineColumns, statusBadgeProps } from '../components/documentLineCells';
+import {
+  buildDetailLineColumns,
+  buildFormLineColumns,
+  statusBadgeProps,
+} from '../components/documentLineCells';
+import { DocumentCardList } from '../components/DocumentCardList';
+import { MobileLineCards } from '../components/MobileLineCards';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useItemUoms } from '@/hooks/useItemUoms';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
 import { docsApi } from '../api';
@@ -45,6 +52,7 @@ const DocumentList: React.FC<{
   const { token, user } = useAuth();
   const toast = useToast();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
 
@@ -217,15 +225,55 @@ const DocumentList: React.FC<{
         </Button>
       </div>
 
-      <Table
-        columns={ctxColumns}
-        data={filteredData || []}
-        isLoading={loading}
-        onRowClick={onDetail}
-        selectable
-        selectedKeys={selectedKeys}
-        onSelectionChange={setSelectedKeys}
-      />
+      {isMobile ? (
+        <DocumentCardList
+          data={filteredData || []}
+          isLoading={loading}
+          onClick={onDetail}
+          emptyMessage="No hay documentos."
+          title={(item: any) => formatDocCode(item)}
+          subtitle={(item: any) => item.partnerName}
+          status={(item: any) => {
+            const props = statusBadgeProps(item.status, decomposeDocType(config.docType).kind) || {
+              variant: 'neutral' as const,
+              label: item.status,
+            };
+            return <Badge variant={props.variant}>{props.label}</Badge>;
+          }}
+          fields={[
+            { label: 'Fecha', value: (item: any) => fmt.date(item.date) },
+            {
+              label: 'Total',
+              value: (item: any) => (
+                <span className="font-black text-slate-900 dark:text-slate-100">
+                  {fmt.money(item.total)}
+                </span>
+              ),
+            },
+          ]}
+          actions={(item: any) => (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleQuickPdf(item.id)}
+              isLoading={downloadingId === item.id}
+              className="h-8 gap-2 text-ink-500 dark:text-ink-400"
+            >
+              <Download size={14} /> PDF
+            </Button>
+          )}
+        />
+      ) : (
+        <Table
+          columns={ctxColumns}
+          data={filteredData || []}
+          isLoading={loading}
+          onRowClick={onDetail}
+          selectable
+          selectedKeys={selectedKeys}
+          onSelectionChange={setSelectedKeys}
+        />
+      )}
       {ctxMenu.state && (
         <ContextMenu
           x={ctxMenu.state.x}
@@ -248,6 +296,7 @@ const DocumentForm: React.FC<{
 }> = ({ config, doc, onSubmit, onCancel }) => {
   const { state, setState, masters, actions, computations } = doc;
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const { get: getItemUoms } = useItemUoms();
   const { kind, side } = decomposeDocType(config.docType);
 
@@ -357,7 +406,11 @@ const DocumentForm: React.FC<{
             <Plus size={14} /> Añadir
           </Button>
         </div>
-        <Table columns={formColumns} data={state.lines} />
+        {isMobile ? (
+          <MobileLineCards columns={formColumns} lines={state.lines || []} />
+        ) : (
+          <Table columns={formColumns} data={state.lines} />
+        )}
         <div className="mt-4 flex justify-end gap-6 text-sm">
           <div>
             <span className="text-slate-500">Subtotal:</span>{' '}
@@ -383,6 +436,7 @@ const DocumentDetail: React.FC<{
 }> = ({ config, doc, onBack, onClone }) => {
   const { token, user } = useAuth();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const [downloading, setDownloading] = useState(false);
   const { kind, side } = decomposeDocType(config.docType);
 
@@ -428,7 +482,11 @@ const DocumentDetail: React.FC<{
       </Card>
       <Card className="p-6">
         <h3 className="font-bold mb-3">Líneas</h3>
-        <Table columns={detailColumns} data={doc.lines || []} />
+        {isMobile ? (
+          <MobileLineCards columns={detailColumns} lines={doc.lines || []} />
+        ) : (
+          <Table columns={detailColumns} data={doc.lines || []} />
+        )}
       </Card>
     </div>
   );

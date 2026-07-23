@@ -32,6 +32,9 @@ import {
 } from 'lucide-react';
 import { DocumentActionBar } from '../components/DocumentActionBar';
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
+import { DocumentCardList } from '../components/DocumentCardList';
+import { MobileLineCards } from '../components/MobileLineCards';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
@@ -74,11 +77,22 @@ const SOList: React.FC<{
   onCancel: (id: string) => void;
 
   doc: any;
-}> = ({ data, loading, partners, onCreate, onCreateFromClone, onDetail, onCopyToDelivery, onCancel, doc }) => {
+}> = ({
+  data,
+  loading,
+  partners,
+  onCreate,
+  onCreateFromClone,
+  onDetail,
+  onCopyToDelivery,
+  onCancel,
+  doc,
+}) => {
   const { token, user } = useAuth();
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const handleQuickPdf = async (id: string) => {
@@ -309,15 +323,57 @@ const SOList: React.FC<{
           onClear={() => setSelectedKeys(new Set())}
           onSent={() => setSelectedKeys(new Set())}
         />
-        <Table
-          columns={ctxColumns}
-          data={filteredData || []}
-          isLoading={loading}
-          onRowClick={onDetail}
-          selectable
-          selectedKeys={selectedKeys}
-          onSelectionChange={setSelectedKeys}
-        />
+        {isMobile ? (
+          <DocumentCardList
+            data={filteredData || []}
+            isLoading={loading}
+            onClick={onDetail}
+            emptyMessage="No hay pedidos."
+            title={(item: any) => formatDocCode(item)}
+            subtitle={(item: any) =>
+              item.partnerName || partners.find((p) => p.id === item.partnerId)?.name || '...'
+            }
+            status={(item: any) => (
+              <>
+                {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
+                {item.status === 'P' && <Badge variant="info">Parcial</Badge>}
+                {item.status === 'C' && <Badge variant="success">Cerrado</Badge>}
+              </>
+            )}
+            fields={[
+              { label: 'Fecha', value: (item: any) => fmt.date(item.date) },
+              {
+                label: 'Total',
+                value: (item: any) => (
+                  <span className="font-black text-slate-900 dark:text-slate-100">
+                    {fmt.money(item.total)}
+                  </span>
+                ),
+              },
+            ]}
+            actions={(item: any) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleQuickPdf(item.id)}
+                isLoading={downloadingId === item.id}
+                className="h-8 gap-2 text-ink-500 dark:text-ink-400"
+              >
+                <Download size={14} /> PDF
+              </Button>
+            )}
+          />
+        ) : (
+          <Table
+            columns={ctxColumns}
+            data={filteredData || []}
+            isLoading={loading}
+            onRowClick={onDetail}
+            selectable
+            selectedKeys={selectedKeys}
+            onSelectionChange={setSelectedKeys}
+          />
+        )}
       </Card>
       {ctxMenu.state && (
         <ContextMenu
@@ -364,6 +420,7 @@ const SOForm: React.FC<{
 }) => {
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const itemUoms = useItemUoms();
   const zonesWithStock = useZonesWithStock();
   const { flags } = useTheme();
@@ -416,7 +473,10 @@ const SOForm: React.FC<{
       pluginLineFields,
       getAvailableZones: zonesWithStock.get,
     });
-    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+    // El builder base ya trae su propia columna 'Proyecto' cuando hay
+    // proyectos en masters — la quitamos para no duplicarla con projectCol.
+    const rest = base.slice(0, -1).filter((c) => c.header !== 'Proyecto');
+    return [...rest, projectCol, base[base.length - 1]];
   }, [
     state.lines,
     masters.items,
@@ -627,7 +687,11 @@ const SOForm: React.FC<{
       <DocumentFiscalPanel kind="sales" state={state} setState={setState} collapsible />
 
       <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={state.lines} />
+        {isMobile ? (
+          <MobileLineCards columns={columns} lines={state.lines || []} />
+        ) : (
+          <Table columns={columns} data={state.lines} />
+        )}
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center border-t border-slate-200 dark:border-slate-700">
           <Button
             variant="ghost"
@@ -692,6 +756,7 @@ const SODetail: React.FC<{
   doc: any;
 }> = ({ order, onBack, onCopyToDelivery, onCancel, masters, setViewingBatch }) => {
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const partner = masters.partners.find((p: any) => p.id === order.partnerId);
   const canBeCancelled = order.status === 'O' || order.status === 'P';
   const canBeDelivered = order.status !== 'C' && order.status !== 'X';
@@ -732,11 +797,7 @@ const SODetail: React.FC<{
     >
       <div className="flex items-center gap-3 mb-4 -mt-2 flex-wrap">
         <CloneDocumentActions docType="SO" doc={order} show="copy" size={14} />
-        <TraceabilityButton
-          type="SO"
-          id={order.id}
-          docCode={formatDocCode(order)}
-        />
+        <TraceabilityButton type="SO" id={order.id} docCode={formatDocCode(order)} />
         <InternalOrderChip internalOrderId={order.internalOrderId} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -813,7 +874,11 @@ const SODetail: React.FC<{
       </div>
 
       <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={order.lines || []} />
+        {isMobile ? (
+          <MobileLineCards columns={columns} lines={order.lines || []} />
+        ) : (
+          <Table columns={columns} data={order.lines || []} />
+        )}
         <DocumentTotalsBlock
           subtotal={order.subtotal}
           tax={Number(order.total) - Number(order.subtotal)}
@@ -834,7 +899,6 @@ const SODetail: React.FC<{
     </DocumentDetailLayout>
   );
 };
-
 
 export const SalesOrders: React.FC = () => {
   const { token, user } = useAuth();
@@ -959,7 +1023,7 @@ export const SalesOrders: React.FC = () => {
       notifyDocChange(DocType.SalesOrder);
       currentTab.close();
     } catch (err) {
-      toast.error((err instanceof Error ? err.message : undefined));
+      toast.error(err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -971,7 +1035,7 @@ export const SalesOrders: React.FC = () => {
       notifyDocChange(DocType.SalesOrder);
       currentTab.close();
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined));
+      toast.error(e instanceof Error ? e.message : undefined);
     }
   };
 

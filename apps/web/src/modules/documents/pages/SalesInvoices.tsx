@@ -33,6 +33,9 @@ import {
 } from 'lucide-react';
 import { DocumentActionBar } from '../components/DocumentActionBar';
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
+import { DocumentCardList } from '../components/DocumentCardList';
+import { MobileLineCards } from '../components/MobileLineCards';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { ContextMenu } from '@/components/common/ContextMenu';
@@ -83,6 +86,7 @@ const InvoiceList: React.FC<{
   const { token, user } = useAuth();
   const toast = useToast();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const handleQuickPdf = async (id: string) => {
@@ -328,15 +332,69 @@ const InvoiceList: React.FC<{
           onClear={() => setSelectedKeys(new Set())}
           onSent={() => setSelectedKeys(new Set())}
         />
-        <Table
-          columns={ctxColumns}
-          data={filteredData || []}
-          isLoading={loading}
-          onRowClick={onDetail}
-          selectable
-          selectedKeys={selectedKeys}
-          onSelectionChange={setSelectedKeys}
-        />
+        {isMobile ? (
+          <DocumentCardList
+            data={filteredData || []}
+            isLoading={loading}
+            onClick={onDetail}
+            emptyMessage="No hay facturas."
+            title={(item: any) => formatDocCode(item)}
+            subtitle={(item: any) => item.partnerName}
+            status={(item: any) => {
+              if (item.status === 'D') return <Badge variant="warning">Borrador</Badge>;
+              if (item.status === 'O') return <Badge variant="success">Asentado</Badge>;
+              if (item.status === 'X') return <Badge variant="error">Cancelado</Badge>;
+              return <Badge variant="neutral">{item.status}</Badge>;
+            }}
+            fields={[
+              { label: 'Fecha', value: (item: any) => fmt.date(item.date) },
+              {
+                label: 'Total',
+                value: (item: any) => (
+                  <span className="font-black text-slate-900 dark:text-slate-100">
+                    {fmt.money(item.total)}
+                  </span>
+                ),
+              },
+              {
+                label: 'Cobro',
+                value: (item: any) => (
+                  <PaymentStatusBadge
+                    status={item.paymentStatus}
+                    isLocked={item.isLocked}
+                    compact
+                  />
+                ),
+              },
+              {
+                label: 'Desde albarán',
+                hidden: (item: any) => !item.baseDocCode,
+                value: (item: any) => item.baseDocCode,
+              },
+            ]}
+            actions={(item: any) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleQuickPdf(item.id)}
+                isLoading={downloadingId === item.id}
+                className="h-8 gap-2 text-ink-500 dark:text-ink-400"
+              >
+                <Download size={14} /> PDF
+              </Button>
+            )}
+          />
+        ) : (
+          <Table
+            columns={ctxColumns}
+            data={filteredData || []}
+            isLoading={loading}
+            onRowClick={onDetail}
+            selectable
+            selectedKeys={selectedKeys}
+            onSelectionChange={setSelectedKeys}
+          />
+        )}
       </Card>
       {ctxMenu.state && (
         <ContextMenu
@@ -378,6 +436,7 @@ const InvoiceForm: React.FC<{
   const fmt = useFormat();
   const toast = useToast();
   const itemUoms = useItemUoms();
+  const isMobile = useIsMobile();
 
   const handleFormSubmit = () => {
     const incomplete = findFirstIncompleteBatchLine(state.lines, masters);
@@ -421,7 +480,10 @@ const InvoiceForm: React.FC<{
       getItemUoms: itemUoms.get,
       pluginLineFields,
     });
-    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+    // El builder base ya trae su propia columna 'Proyecto' cuando hay
+    // proyectos en masters — la quitamos para no duplicarla con projectCol.
+    const rest = base.slice(0, -1).filter((c) => c.header !== 'Proyecto');
+    return [...rest, projectCol, base[base.length - 1]];
   }, [state.lines, masters.items, masters.taxGroups, pluginLineFields, projectCol]);
 
   return (
@@ -558,11 +620,19 @@ const InvoiceForm: React.FC<{
       </div>
 
       <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table
-          columns={columns}
-          data={state.lines || []}
-          emptyMessage="No hay líneas en la factura."
-        />
+        {isMobile ? (
+          <MobileLineCards
+            columns={columns}
+            lines={state.lines || []}
+            emptyMessage="No hay líneas en la factura."
+          />
+        ) : (
+          <Table
+            columns={columns}
+            data={state.lines || []}
+            emptyMessage="No hay líneas en la factura."
+          />
+        )}
         <div className="p-6 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col md:flex-row justify-between items-start md:items-center border-t border-slate-100 dark:border-slate-800 gap-6">
           <div className="flex flex-wrap items-center gap-3">
             <Button
@@ -641,6 +711,7 @@ const InvoiceDetail: React.FC<{
   setViewingBatch,
 }) => {
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const partner = masters.partners.find((p: any) => p.id === invoice.partnerId);
   const series = masters.series?.find((s: any) => s.id === invoice.seriesId);
   const period = masters.periods?.find((p: any) => p.id === invoice.periodId);
@@ -876,7 +947,11 @@ const InvoiceDetail: React.FC<{
       </div>
 
       <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={invoice.lines || []} />
+        {isMobile ? (
+          <MobileLineCards columns={columns} lines={invoice.lines || []} />
+        ) : (
+          <Table columns={columns} data={invoice.lines || []} />
+        )}
         <DocumentTotalsBlock
           subtotal={invoice.subtotal}
           tax={invoice.taxTotal}
@@ -900,7 +975,6 @@ const InvoiceDetail: React.FC<{
     </DocumentDetailLayout>
   );
 };
-
 
 export const SalesInvoices: React.FC = () => {
   const { token, user } = useAuth();
@@ -973,7 +1047,10 @@ export const SalesInvoices: React.FC = () => {
         setSelectedInvoice(data);
         currentTab.rename(formatDocCode(data));
       } catch (e) {
-        toast.error((e instanceof Error ? e.message : undefined) || 'Error al cargar el detalle de la factura');
+        toast.error(
+          (e instanceof Error ? e.message : undefined) ||
+            'Error al cargar el detalle de la factura',
+        );
       } finally {
         setDetailLoading(false);
       }
@@ -1055,7 +1132,8 @@ export const SalesInvoices: React.FC = () => {
           fiscalFields[k.replace('__fiscal_', '')] = v;
         }
       }
-      if ((doc.state as any).withholdingRate) fiscalFields.withholdingRate = (doc.state as any).withholdingRate;
+      if ((doc.state as any).withholdingRate)
+        fiscalFields.withholdingRate = (doc.state as any).withholdingRate;
       if (internalOrderId) fiscalFields.internalOrderId = internalOrderId;
 
       const created = await doc.actions.submitDocument({ ...fiscalFields, ...extra });
@@ -1068,7 +1146,7 @@ export const SalesInvoices: React.FC = () => {
       }
       currentTab.close();
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined));
+      toast.error(e instanceof Error ? e.message : undefined);
     }
   };
 
@@ -1082,7 +1160,7 @@ export const SalesInvoices: React.FC = () => {
       notifyDocChange(DocType.SalesInvoice);
       currentTab.close();
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined));
+      toast.error(e instanceof Error ? e.message : undefined);
     } finally {
       setCancelling(false);
     }
@@ -1098,7 +1176,7 @@ export const SalesInvoices: React.FC = () => {
       // Refetch el detalle para reflejar el nuevo status
       setSelectedInvoice({ ...selectedInvoice, status: 'O' });
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined));
+      toast.error(e instanceof Error ? e.message : undefined);
     } finally {
       setPosting(false);
     }

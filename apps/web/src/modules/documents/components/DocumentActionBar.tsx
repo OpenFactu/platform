@@ -50,7 +50,7 @@ export const DocumentActionBar: React.FC<Props> = ({
 }) => {
   const PrimaryIcon = primary?.icon;
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {onCancel && showCancel && (
         <Button
           variant="outline"

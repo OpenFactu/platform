@@ -36,6 +36,9 @@ import { InternalOrderHeaderField } from '@/modules/analytics/components/Interna
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
+import { DocumentCardList } from '../components/DocumentCardList';
+import { MobileLineCards } from '../components/MobileLineCards';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { PreparationButton } from '@/components/common/PreparationButton';
@@ -83,6 +86,7 @@ const PDNList: React.FC<{
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const { flags } = useTheme();
   const tabs = (() => {
     try {
@@ -371,15 +375,64 @@ const PDNList: React.FC<{
           onClear={() => setSelectedKeys(new Set())}
           onSent={() => setSelectedKeys(new Set())}
         />
-        <Table
-          columns={ctxColumns}
-          data={filteredData || []}
-          isLoading={loading}
-          onRowClick={onDetail}
-          selectable
-          selectedKeys={selectedKeys}
-          onSelectionChange={setSelectedKeys}
-        />
+        {isMobile ? (
+          <DocumentCardList
+            data={filteredData || []}
+            isLoading={loading}
+            onClick={onDetail}
+            emptyMessage="No hay albaranes."
+            title={(item: any) => formatDocCode(item)}
+            subtitle={(item: any) =>
+              item.partnerName || partners.find((p) => p.id === item.partnerId)?.name || '...'
+            }
+            status={(item: any) => (
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
+                {item.status === 'C' && <Badge variant="success">Facturado</Badge>}
+                {item.status === 'X' && <Badge variant="error">Cancelado</Badge>}
+                {item.hasActiveShipment && <Badge variant="info">En recepción</Badge>}
+              </div>
+            )}
+            fields={[
+              { label: 'Fecha', value: (item: any) => fmt.date(item.date) },
+              {
+                label: 'Total',
+                value: (item: any) => (
+                  <span className="font-black text-slate-900 dark:text-slate-100">
+                    {fmt.money(item.total)}
+                  </span>
+                ),
+              },
+              {
+                label: 'Pedido origen',
+                hidden: (item: any) => !item.orderDocNum,
+                value: (item: any) =>
+                  `${item.orderPrefix}-${item.periodCode}-${String(item.orderDocNum).padStart(6, '0')}`,
+              },
+            ]}
+            actions={(item: any) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleQuickPdf(item.id)}
+                isLoading={downloadingId === item.id}
+                className="h-8 gap-2 text-ink-500 dark:text-ink-400"
+              >
+                <Download size={14} /> PDF
+              </Button>
+            )}
+          />
+        ) : (
+          <Table
+            columns={ctxColumns}
+            data={filteredData || []}
+            isLoading={loading}
+            onRowClick={onDetail}
+            selectable
+            selectedKeys={selectedKeys}
+            onSelectionChange={setSelectedKeys}
+          />
+        )}
       </Card>
       {ctxMenu.state && (
         <ContextMenu
@@ -423,6 +476,7 @@ const PDNForm: React.FC<{
 }) => {
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const itemUoms = useItemUoms();
   const { flags } = useTheme();
   const warehouseLocation = flags.warehouseLocation;
@@ -456,7 +510,10 @@ const PDNForm: React.FC<{
       getItemUoms: itemUoms.get,
       pluginLineFields,
     });
-    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+    // El builder base ya trae su propia columna 'Proyecto' cuando hay
+    // proyectos en masters — la quitamos para no duplicarla con projectCol.
+    const rest = base.slice(0, -1).filter((c) => c.header !== 'Proyecto');
+    return [...rest, projectCol, base[base.length - 1]];
   }, [
     state.lines,
     state.warehouseId,
@@ -647,7 +704,11 @@ const PDNForm: React.FC<{
       <DocumentFiscalPanel kind="purchase" state={state} setState={setState} collapsible />
 
       <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={state.lines || []} />
+        {isMobile ? (
+          <MobileLineCards columns={columns} lines={state.lines || []} />
+        ) : (
+          <Table columns={columns} data={state.lines || []} />
+        )}
         <div className="p-6 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col md:flex-row justify-between items-start md:items-center border-t border-slate-200 dark:border-slate-700 gap-6">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm">
@@ -772,6 +833,7 @@ const PDNDetail: React.FC<{
   setViewingBatch: (l: any) => void;
 }> = ({ pdn, onBack, onCancel, onCopyToInvoice, masters, zones, setViewingBatch }) => {
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const { flags } = useTheme();
   const partner = masters.partners.find((p: any) => p.id === pdn.partnerId);
 
@@ -812,11 +874,7 @@ const PDNDetail: React.FC<{
     >
       <div className="flex items-center gap-3 mb-4 -mt-2 flex-wrap">
         <CloneDocumentActions docType="PDN" doc={pdn} show="copy" size={14} />
-        <TraceabilityButton
-          type="PDN"
-          id={pdn.id}
-          docCode={formatDocCode(pdn)}
-        />
+        <TraceabilityButton type="PDN" id={pdn.id} docCode={formatDocCode(pdn)} />
         <InternalOrderChip internalOrderId={pdn.internalOrderId} />
         {pdn.status === 'O' && flags.logisticsEnabled && (
           <PreparationButton docType="PDN" docId={pdn.id} />
@@ -877,7 +935,11 @@ const PDNDetail: React.FC<{
       </div>
 
       <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={pdn.lines || []} />
+        {isMobile ? (
+          <MobileLineCards columns={columns} lines={pdn.lines || []} />
+        ) : (
+          <Table columns={columns} data={pdn.lines || []} />
+        )}
         <DocumentTotalsBlock
           subtotal={pdn.subtotal || 0}
           tax={pdn.taxTotal || 0}
@@ -898,7 +960,6 @@ const PDNDetail: React.FC<{
     </DocumentDetailLayout>
   );
 };
-
 
 export const PurchaseDeliveryNotes: React.FC = () => {
   const { token, user } = useAuth();
@@ -1068,7 +1129,7 @@ export const PurchaseDeliveryNotes: React.FC = () => {
       notifyDocChange(DocType.PurchaseDeliveryNote);
       currentTab.close();
     } catch (err) {
-      toast.error((err instanceof Error ? err.message : undefined));
+      toast.error(err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -1094,11 +1155,7 @@ export const PurchaseDeliveryNotes: React.FC = () => {
         d = await doCall(false);
       } catch (err) {
         // 409 con requiresForce = recepción en curso — pedir confirmación y forzar.
-        if (
-          err instanceof ApiError &&
-          err.status === 409 &&
-          (err.body as any)?.requiresForce
-        ) {
+        if (err instanceof ApiError && err.status === 409 && (err.body as any)?.requiresForce) {
           if (!confirm('Recepción en curso. ¿Cancelar de todos modos?')) return;
           d = await doCall(true);
         } else {
@@ -1223,14 +1280,12 @@ export const PurchaseDeliveryNotes: React.FC = () => {
       }}
       onDetail={(p) => openTab(`/purchases/delivery-notes/${p.id}`, { title: formatDocCode(p) })}
       onCopyToInvoice={(p) => {
-        docsApi
-          .get('/api/purchases/delivery-notes', p.id)
-          .then((detail) => {
-            localStorage.setItem('copy_pdn_source', JSON.stringify(detail));
-            openTab(`/purchases/invoices/new?copyFrom=${p.id}`, {
-              title: `Factura ← ${formatDocCode(p)}`,
-            });
+        docsApi.get('/api/purchases/delivery-notes', p.id).then((detail) => {
+          localStorage.setItem('copy_pdn_source', JSON.stringify(detail));
+          openTab(`/purchases/invoices/new?copyFrom=${p.id}`, {
+            title: `Factura ← ${formatDocCode(p)}`,
           });
+        });
       }}
     />
   );
