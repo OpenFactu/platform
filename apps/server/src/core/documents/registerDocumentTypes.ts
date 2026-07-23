@@ -1,4 +1,5 @@
 import * as schema from '../../db/schema';
+import { registerDocTypeMeta } from '@openfactu/common';
 import { DocumentRegistry, type DocumentTypeConfig } from './DocumentRegistry';
 import { salesDeliveryNoteHooks } from './hooks/salesDeliveryNote';
 import { purchaseDeliveryNoteHooks } from './hooks/purchaseDeliveryNote';
@@ -37,6 +38,8 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasSalesAgent: true,
     statusLabels: { O: 'Emitida', C: 'Cerrada', X: 'Cancelada', D: 'Borrador' },
     baseDocType: 'SDN',
+    uiRoute: '/sales/invoices',
+    linesCarryBaseRef: true,
   },
   {
     docType: 'PINV',
@@ -64,6 +67,8 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasSalesAgent: false,
     statusLabels: { O: 'Registrada', C: 'Cerrada', X: 'Cancelada', D: 'Borrador' },
     baseDocType: 'PDN',
+    uiRoute: '/purchases/invoices',
+    linesCarryBaseRef: true,
   },
   {
     docType: 'SO',
@@ -89,6 +94,7 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasInternalOrder: true,
     hasSalesAgent: false,
     statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
+    uiRoute: '/sales-orders',
   },
   {
     docType: 'PO',
@@ -114,6 +120,7 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasInternalOrder: true,
     hasSalesAgent: false,
     statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
+    uiRoute: '/purchase-orders',
   },
   {
     docType: 'SDN',
@@ -140,6 +147,8 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasInternalOrder: false,
     hasSalesAgent: false,
     statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
+    uiRoute: '/sales/delivery-notes',
+    headerBaseRef: { column: 'orderId', baseDocType: 'SO' },
   },
   {
     docType: 'PDN',
@@ -166,12 +175,31 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasInternalOrder: false,
     hasSalesAgent: false,
     statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
+    uiRoute: '/purchases/delivery-notes',
+    headerBaseRef: { column: 'orderId', baseDocType: 'PO' },
   },
 ];
 
-// Registrar todos al importar
+/** Deriva kind de la categoría para el meta-registro de @openfactu/common. */
+function kindOf(category: string): 'order' | 'deliveryNote' | 'invoice' {
+  if (category === 'delivery_note') return 'deliveryNote';
+  if (category === 'invoice') return 'invoice';
+  return 'order';
+}
+
+// Registrar todos al importar — en el DocumentRegistry propio y en el
+// meta-registro runtime de @openfactu/common (decomposeDocType, labels...).
 for (const config of CONFIGS) {
   DocumentRegistry.register(config);
+  registerDocTypeMeta({
+    docType: config.docType,
+    kind: kindOf(config.category),
+    side: config.side === 'sales' ? 'sale' : 'purchase',
+    label: config.label,
+    labelPlural: config.labelPlural,
+    apiEndpoint: config.apiPath,
+    route: config.uiRoute,
+  });
 }
 
 export { CONFIGS };
