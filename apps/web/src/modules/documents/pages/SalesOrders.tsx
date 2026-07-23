@@ -925,6 +925,8 @@ export const SalesOrders: React.FC = () => {
   const [billToAddress, setBillToAddress] = useState('');
   const [shipToAddress, setShipToAddress] = useState('');
   const [internalOrderId, setInternalOrderId] = useState<string | null>(null);
+  // Presupuesto origen (flujo "Crear Pedido" desde un presupuesto).
+  const [quoteId, setQuoteId] = useState<string | null>(null);
 
   const doc = useDocument({
     token: token || '',
@@ -966,6 +968,43 @@ export const SalesOrders: React.FC = () => {
     } catch (e) {
       console.error('Error parseando clone payload', e);
     }
+  }, [isCreate]);
+
+  // Copy-from presupuesto: /sales-orders/new?copyFrom=<id> ("Crear Pedido"
+  // desde el detalle de un presupuesto). El pedido queda enlazado vía quoteId
+  // y el presupuesto pasa a Aceptado en el servidor al crearse.
+  useEffect(() => {
+    if (!isCreate) return;
+    const urlParams = new URLSearchParams(location.search);
+    if (!urlParams.get('copyFrom')) return;
+    const sourceData = localStorage.getItem('copy_quote_source');
+    if (!sourceData) return;
+    localStorage.removeItem('copy_quote_source');
+    try {
+      const quote = JSON.parse(sourceData);
+      setQuoteId(quote.id);
+      doc.setState.setPartnerId(quote.partnerId);
+      if (quote.internalOrderId) setInternalOrderId(quote.internalOrderId);
+      doc.setState.setLines(
+        (quote.lines || []).map((l: any) => ({
+          itemId: l.itemId,
+          quantity: Number(l.quantity) || 0,
+          price: Number(l.price) || 0,
+          taxGroupId: l.taxGroupId,
+          uomId: l.uomId,
+          uomFactor: l.uomFactor != null ? Number(l.uomFactor) : undefined,
+          description: l.description,
+          discountRate: l.discountRate != null ? Number(l.discountRate) : undefined,
+          withholdingRate: l.withholdingRate != null ? Number(l.withholdingRate) : undefined,
+          costCenterId: l.costCenterId,
+          profitCenterId: l.profitCenterId,
+          internalOrderId: l.internalOrderId,
+        })),
+      );
+    } catch (e) {
+      console.error('Error parsing copy_quote_source', e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCreate]);
 
   const authHeaders = {
@@ -1018,6 +1057,7 @@ export const SalesOrders: React.FC = () => {
         billToAddress,
         shipToAddress,
         internalOrderId,
+        ...(quoteId ? { quoteId } : {}),
       });
       toast.success(`Pedido registrado nº ${data.docNum}`);
       notifyDocChange(DocType.SalesOrder);

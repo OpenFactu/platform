@@ -1121,6 +1121,45 @@ export const SalesInvoices: React.FC = () => {
     }
   }, [isCreate]);
 
+  // Copy-from presupuesto: /sales/invoices/new?copyFrom=<id> ("Crear Factura"
+  // desde el detalle de un presupuesto). Las líneas llevan baseType 'SQ' —
+  // el presupuesto pasa a Aceptado en el servidor al asentar la factura.
+  useEffect(() => {
+    if (!isCreate) return;
+    const urlParams = new URLSearchParams(location.search);
+    if (!urlParams.get('copyFrom')) return;
+    const sourceData = localStorage.getItem('copy_quote_source');
+    if (!sourceData) return;
+    localStorage.removeItem('copy_quote_source');
+    try {
+      const quote = JSON.parse(sourceData);
+      doc.setState.setPartnerId(quote.partnerId);
+      if (quote.internalOrderId) setInternalOrderId(quote.internalOrderId);
+      doc.setState.setLines(
+        (quote.lines || []).map((l: any) => ({
+          itemId: l.itemId,
+          quantity: Number(l.quantity) || 0,
+          price: Number(l.price) || 0,
+          taxGroupId: l.taxGroupId,
+          uomId: l.uomId,
+          uomFactor: l.uomFactor != null ? Number(l.uomFactor) : undefined,
+          description: l.description,
+          discountRate: l.discountRate != null ? Number(l.discountRate) : undefined,
+          withholdingRate: l.withholdingRate != null ? Number(l.withholdingRate) : undefined,
+          costCenterId: l.costCenterId,
+          profitCenterId: l.profitCenterId,
+          internalOrderId: l.internalOrderId,
+          baseType: 'SQ',
+          baseId: quote.id,
+          baseLine: l.lineNum || l.id,
+        })),
+      );
+    } catch (e) {
+      console.error('Error parsing copy_quote_source', e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreate]);
+
   const handleSubmit = async (extra?: any) => {
     try {
       // Desprefijar los campos fiscales que el DocumentFiscalPanel guarda en

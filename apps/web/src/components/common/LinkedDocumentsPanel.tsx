@@ -25,6 +25,7 @@ interface LinkedData {
 }
 
 const TYPE_LABEL: Record<DocType, string> = {
+  SQ: 'Presupuesto',
   SO: 'Pedido venta',
   PO: 'Pedido compra',
   SDN: 'Albarán venta',
@@ -34,6 +35,7 @@ const TYPE_LABEL: Record<DocType, string> = {
 };
 
 const TYPE_PATH: Record<DocType, string> = {
+  SQ: '/sales/quotes',
   SO: '/sales-orders',
   PO: '/purchase-orders',
   SDN: '/sales/delivery-notes',
@@ -101,12 +103,14 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
   const renderDoc = (d: DocRef) => (
     <button
       key={d.id}
-      onClick={() => openTab(`${TYPE_PATH[d.type]}/${d.id}`, { title: d.code })}
+      onClick={() =>
+        openTab(`${TYPE_PATH[d.type] ?? `/documents/${d.type}`}/${d.id}`, { title: d.code })
+      }
       className="w-full group flex items-center gap-3 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50 hover:bg-blue-50/40 dark:hover:bg-blue-500/5 transition-all text-left"
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <Badge variant="info">{TYPE_LABEL[d.type]}</Badge>
+          <Badge variant="info">{TYPE_LABEL[d.type] ?? d.type}</Badge>
           <span className="font-mono font-black text-sm text-slate-800 dark:text-slate-100 truncate">
             {d.code}
           </span>
