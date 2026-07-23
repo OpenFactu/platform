@@ -9,6 +9,7 @@ import { useMobileNav } from '../../context/MobileNavContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { PluginIcon } from '../PluginIcon';
+import { NavIconChip } from './NavIconChip';
 import { TenantSwitcher } from '../TenantSwitcher';
 import type { Module } from '../../modules/registry';
 
@@ -399,15 +400,9 @@ export const IconSidebar: React.FC = () => {
                   'group relative w-11 h-11 flex items-center justify-center rounded-xs',
                   'transition-all duration-200 ease-out',
                   'hover:scale-110',
-                  isActive
-                    ? 'bg-accent/15 text-accent dark:bg-accent/20 dark:text-accent'
-                    : 'text-ink-500 dark:text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700 hover:text-accent dark:hover:text-accent',
                 )}
               >
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-accent" />
-                )}
-                <PluginIcon iconName={mod.icon} size={20} />
+                <NavIconChip iconName={mod.icon} size={18} active={isActive} />
                 <span
                   className={cn(
                     'absolute left-full ml-2 px-2 py-1 rounded-md',
@@ -560,7 +555,7 @@ const MobileModuleAccordion: React.FC<{
             : 'text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700 border-transparent',
         )}
       >
-        <PluginIcon iconName={mod.icon} size={22} />
+        <NavIconChip iconName={mod.icon} size={20} active={isActive} />
         <span className="flex-1 text-sm font-semibold tracking-tight">{mod.label}</span>
         {hasSubs && (
           <ChevronDown

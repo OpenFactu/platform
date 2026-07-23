@@ -6,11 +6,17 @@ interface PluginIconProps {
   iconName?: string;
   className?: string;
   size?: number;
+  strokeWidth?: number;
 }
 
-export const PluginIcon: React.FC<PluginIconProps> = ({ iconName, className, size = 18 }) => {
+export const PluginIcon: React.FC<PluginIconProps> = ({
+  iconName,
+  className,
+  size = 18,
+  strokeWidth,
+}) => {
   if (!iconName) {
-    return <LucideIcons.Puzzle size={size} className={className} />;
+    return <LucideIcons.Puzzle size={size} strokeWidth={strokeWidth} className={className} />;
   }
 
   // 1. Verificar si es una URL o ruta de archivo
@@ -33,9 +39,9 @@ export const PluginIcon: React.FC<PluginIconProps> = ({ iconName, className, siz
   // 2. Intentar buscar en Lucide
   const IconComponent = (LucideIcons as any)[iconName];
   if (IconComponent) {
-    return <IconComponent size={size} className={className} />;
+    return <IconComponent size={size} strokeWidth={strokeWidth} className={className} />;
   }
 
   // 3. Fallback final
-  return <LucideIcons.Puzzle size={size} className={className} />;
+  return <LucideIcons.Puzzle size={size} strokeWidth={strokeWidth} className={className} />;
 };
