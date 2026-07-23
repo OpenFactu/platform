@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Building, Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -31,11 +32,9 @@ export const TenantSwitcher: React.FC = () => {
   const load = async () => {
     if (tenants || !token) return;
     try {
-      const res = await fetch('/api/tenants/mine', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await coreApi.raw('GET', '/api/tenants/mine');
       if (!res.ok) throw new Error('http');
-      const data: TenantRow[] = await res.json();
+      const data: TenantRow[] = res.data;
       setTenants(data);
     } catch {
       toast.error('No se pudieron cargar las empresas');

@@ -7,6 +7,7 @@ import { PluginFieldsPanel } from '../PluginFieldsPanel';
 import { ContextMenu } from '../common/ContextMenu';
 import { withRowContextMenu } from '../common/withRowContextMenu';
 import { useContextMenu } from '../../hooks/useContextMenu';
+import { crudApi } from '@/shared/api';
 
 interface DimensionRow {
   id: string;
@@ -44,7 +45,7 @@ export const DimensionCrudPage: React.FC<Props> = ({
   autoCode,
   codePlaceholder,
 }) => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -64,13 +65,10 @@ export const DimensionCrudPage: React.FC<Props> = ({
   const toast = useToast();
   const popup = usePopup();
 
-  const authHeaders = { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' };
-
   const fetchRows = async () => {
     setLoading(true);
     try {
-      const res = await fetch(endpoint, { headers: authHeaders });
-      const data = await res.json();
+      const data = await crudApi.list<DimensionRow>(endpoint);
       setRows(Array.isArray(data) ? data : []);
     } catch {
       toast.error(`Error al cargar ${title.toLowerCase()}`);
@@ -106,24 +104,15 @@ export const DimensionCrudPage: React.FC<Props> = ({
       return;
     }
     setSubmitting(true);
-    const url = editing ? `${endpoint}/${editing.id}` : endpoint;
-    const method = editing ? 'PATCH' : 'POST';
+    const payload = { ...form, ...pluginValues };
     try {
-      const res = await fetch(url, {
-        method,
-        headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, ...pluginValues }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || 'Error al guardar');
-        return;
-      }
+      if (editing) await crudApi.update(endpoint, editing.id, payload);
+      else await crudApi.create(endpoint, payload);
       toast.success(editing ? 'Actualizado' : 'Creado');
       closeForm();
       fetchRows();
-    } catch {
-      toast.error('Error de red');
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al guardar');
     } finally {
       setSubmitting(false);
     }
@@ -138,16 +127,11 @@ export const DimensionCrudPage: React.FC<Props> = ({
     });
     if (!ok) return;
     try {
-      const res = await fetch(`${endpoint}/${id}`, { method: 'DELETE', headers: authHeaders });
-      if (res.ok) {
-        toast.success('Eliminado');
-        fetchRows();
-      } else {
-        const d = await res.json();
-        toast.error(d.error || 'Error al eliminar');
-      }
-    } catch {
-      toast.error('Error de red');
+      await crudApi.remove(endpoint, id);
+      toast.success('Eliminado');
+      fetchRows();
+    } catch (err) {
+      toast.error((err instanceof Error && err.message) || 'Error al eliminar');
     }
   };
 

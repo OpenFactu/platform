@@ -1,3 +1,4 @@
+import { apiClient, ApiError } from '@/shared/http';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -55,10 +56,10 @@ export const Login: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch(
+      const data = await apiClient.get<any>(
         `/api/memberships/tenants-for-user?email=${encodeURIComponent(emailOrUsername)}`,
+        { auth: false },
       );
-      const data = await res.json();
       if (Array.isArray(data)) {
         setTenants(data);
         if (data.length === 1) setSelectedTenant(data[0].id);
@@ -70,10 +71,10 @@ export const Login: React.FC = () => {
     // Foto de perfil (si la cuenta existe y tiene una) — mismo criterio de
     // "no revelar si el usuario existe": el endpoint siempre responde 200.
     try {
-      const res = await fetch(
+      const data = await apiClient.get<any>(
         `/api/auth/avatar-for-login?email=${encodeURIComponent(emailOrUsername)}`,
+        { auth: false },
       );
-      const data = await res.json();
       setLoginAvatarUrl(data?.avatarImageUrl || null);
     } catch {
       setLoginAvatarUrl(null);
@@ -86,39 +87,37 @@ export const Login: React.FC = () => {
     setError(null);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = await apiClient.post<any>(
+        '/api/auth/login',
+        {
           email,
           password,
           selectedTenantId: selectedTenant,
           ...(twoFactorRequired ? { totpCode: totpCode.trim() } : {}),
-        }),
-      });
-
-      const data = await res.json();
+        },
+        { auth: false },
+      );
 
       // La contraseña es correcta pero el usuario tiene 2FA: pedimos el código.
-      if (res.ok && data.twoFactorRequired) {
+      if (data.twoFactorRequired) {
         setTwoFactorRequired(true);
         setIsSubmitting(false);
         return;
       }
 
-      if (res.ok) {
-        login(data.token, data.user);
-        navigate('/');
-      } else {
+      login(data.token, data.user);
+      navigate('/');
+    } catch (err) {
+      if (err instanceof ApiError && err.status !== 0) {
         setError(
-          data.error ||
+          ((err.body as any)?.error as string) ||
             (twoFactorRequired
               ? 'Código 2FA inválido'
               : 'Credenciales incorrectas o empresa no válida'),
         );
+      } else {
+        setError('No se pudo establecer conexión con el servidor');
       }
-    } catch (err) {
-      setError('No se pudo establecer conexión con el servidor');
     } finally {
       setIsSubmitting(false);
     }

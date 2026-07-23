@@ -1,3 +1,4 @@
+import { apiClient } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GlobalLoader, PopupProvider } from '@openfactu/ui';
@@ -6,14 +7,14 @@ import { Login } from './pages/Login';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { TrackingPage } from './pages/public/TrackingPage';
-import { KioskMode } from './pages/hr/KioskMode';
+import { KioskMode } from '@/modules/hr/pages/KioskMode';
 import { useAuth } from './context/AuthContext';
 import { MainLayout } from './components/MainLayout';
 import { TabsProvider } from './context/TabsContext';
 import { MobileNavProvider } from './context/MobileNavContext';
 import { ScannerProvider } from './context/ScannerContext';
-import { AiChatProvider } from './context/AiChatContext';
-import { ChatLauncherPanel } from './components/ai/ChatLauncherPanel';
+import { AiChatProvider } from '@/modules/ai/AiChatContext';
+import { ChatLauncherPanel } from '@/modules/ai/components/ChatLauncherPanel';
 import { DebugPanel } from './components/DebugPanel';
 
 function App() {
@@ -28,9 +29,10 @@ function App() {
         // setupNeeded=true. Útil para volver a ver el wizard sin haber tirado
         // los tenants (modo debug).
         const force = new URLSearchParams(window.location.search).get('force') === '1';
-        const res = await fetch(`/api/setup/status?t=${Date.now()}${force ? '&force=1' : ''}`);
-        if (!res.ok) throw new Error('Servidor no disponible');
-        const data = await res.json();
+        const data = await apiClient.get<any>(
+          `/api/setup/status?t=${Date.now()}${force ? '&force=1' : ''}`,
+          { auth: false },
+        );
         console.log('[App] Setup Status:', data);
         setSetupNeeded(data.setupNeeded);
         setSetupChecked(true);

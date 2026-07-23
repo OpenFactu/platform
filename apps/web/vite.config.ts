@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -48,7 +49,6 @@ export default defineConfig({
         ],
       },
       workbox: {
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         // Cachea la shell de la SPA y los assets. /api/ nunca se cachea —
         // siempre debe ir a red para datos frescos.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
@@ -85,6 +85,9 @@ export default defineConfig({
   // (rompe hooks). Forzamos una única copia resuelta desde la app.
   resolve: {
     dedupe: ['react', 'react-dom'],
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+    },
   },
   server: {
     proxy: {

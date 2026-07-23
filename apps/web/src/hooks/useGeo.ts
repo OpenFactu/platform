@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
@@ -32,12 +33,10 @@ let _countriesPromise: Promise<Country[]> | null = null;
 const _regionsCache = new Map<string, Promise<GeoRow[]>>();
 const _subRegionsCache = new Map<string, Promise<GeoRow[]>>();
 
-async function request<T>(url: string, token: string | null): Promise<T> {
-  const res = await fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+async function request<T>(url: string): Promise<T> {
+  const res = await coreApi.raw<T>('GET', url);
   if (!res.ok) throw new Error(`Error ${res.status}`);
-  return res.json();
+  return res.data;
 }
 
 export function useGeo() {
@@ -52,7 +51,7 @@ export function useGeo() {
       return;
     }
     if (!_countriesPromise) {
-      _countriesPromise = request<Country[]>('/api/geo/countries', token).then((data) => {
+      _countriesPromise = request<Country[]>('/api/geo/countries').then((data) => {
         _countries = data;
         return data;
       });
@@ -79,7 +78,7 @@ export function useGeo() {
     async (countryCode: string): Promise<GeoRow[]> => {
       const key = countryCode.toUpperCase();
       if (!_regionsCache.has(key)) {
-        _regionsCache.set(key, request<GeoRow[]>(`/api/geo/countries/${key}/regions`, token));
+        _regionsCache.set(key, request<GeoRow[]>(`/api/geo/countries/${key}/regions`));
       }
       return _regionsCache.get(key)!;
     },
@@ -92,7 +91,7 @@ export function useGeo() {
       if (!_subRegionsCache.has(key)) {
         _subRegionsCache.set(
           key,
-          request<GeoRow[]>(`/api/geo/countries/${countryCode.toUpperCase()}/subregions`, token),
+          request<GeoRow[]>(`/api/geo/countries/${countryCode.toUpperCase()}/subregions`),
         );
       }
       return _subRegionsCache.get(key)!;
@@ -106,7 +105,7 @@ export function useGeo() {
       if (!_subRegionsCache.has(key)) {
         _subRegionsCache.set(
           key,
-          request<GeoRow[]>(`/api/geo/regions/${regionId}/subregions`, token),
+          request<GeoRow[]>(`/api/geo/regions/${regionId}/subregions`),
         );
       }
       return _subRegionsCache.get(key)!;
@@ -118,7 +117,7 @@ export function useGeo() {
     async (subRegionId: string, query: string): Promise<GeoRow[]> => {
       const q = encodeURIComponent(query.trim());
       const url = `/api/geo/subregions/${subRegionId}/localities?q=${q}&limit=50`;
-      return request<GeoRow[]>(url, token);
+      return request<GeoRow[]>(url);
     },
     [token],
   );

@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Input } from '@openfactu/ui';
 
@@ -29,8 +30,7 @@ export const PluginFields: React.FC<PluginFieldsProps> = ({
   useEffect(() => {
     const fetchFields = async () => {
       try {
-        const res = await fetch(`/api/plugins/fields/${tableName}`);
-        const data = await res.json();
+        const data = await coreApi.get(`/api/plugins/fields/${tableName}`);
         setFields(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error('Error loading plugin fields:', err);

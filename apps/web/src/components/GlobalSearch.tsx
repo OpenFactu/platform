@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
@@ -113,11 +114,9 @@ export const GlobalSearch: React.FC = () => {
     const handler = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
-          headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-        });
+        const res = await coreApi.raw('GET', `/api/search?q=${encodeURIComponent(query)}`);
         if (!res.ok) throw new Error('http');
-        const data: SearchResults = await res.json();
+        const data: SearchResults = res.data;
         setResults(data);
       } catch {
         setResults(EMPTY);

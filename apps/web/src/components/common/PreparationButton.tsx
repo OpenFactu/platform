@@ -2,6 +2,8 @@
  * Botón "Preparar" para albaranes de venta (SDN) y compra (PDN).
  * Llama a `/api/logistics/prep/from-<kind>/:id` y navega a Logística → Preparación.
  */
+import { prepTasksApi } from '@/modules/logistics/api';
+import { ApiError } from '@/shared/http';
 import React, { useState } from 'react';
 import { Button, useToast, cn } from '@openfactu/ui';
 import { ClipboardCheck } from 'lucide-react';
@@ -41,23 +43,7 @@ export const PreparationButton: React.FC<Props> = ({
   const onClick = async () => {
     setLoading(true);
     try {
-      const url =
-        docType === 'SDN'
-          ? `/api/logistics/prep/from-sdn/${docId}`
-          : `/api/logistics/prep/from-pdn/${docId}`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user?.tenantId || '',
-        },
-      });
-      const d = await res.json();
-      if (!res.ok) {
-        toast.error(d.error || 'Error al iniciar preparación');
-        return;
-      }
+      const d = docType === 'SDN' ? await prepTasksApi.fromSdn(docId) : await prepTasksApi.fromPdn(docId);
       toast.success(d.reused ? 'Preparación ya iniciada — abriendo' : 'Preparación iniciada');
       // Navegar DIRECTAMENTE al detalle del shipment creado, en lugar de
       // caer en la lista genérica de /logistics. Así el usuario ve el
@@ -70,8 +56,9 @@ export const PreparationButton: React.FC<Props> = ({
       } else {
         window.location.href = target;
       }
-    } catch (e: any) {
-      toast.error(e?.message || 'Error');
+    } catch (e) {
+      const msg = e instanceof ApiError ? (e.body as any)?.error : undefined;
+      toast.error(msg || (e as any)?.message || 'Error al iniciar preparación');
     } finally {
       setLoading(false);
     }

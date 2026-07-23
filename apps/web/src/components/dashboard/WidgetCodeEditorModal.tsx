@@ -5,6 +5,7 @@
  * botón "Probar" que compila el código en el server (esbuild) sin guardarlo,
  * para detectar errores de sintaxis antes de persistir.
  */
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Editor from '@monaco-editor/react';
@@ -63,15 +64,8 @@ export const WidgetCodeEditorModal: React.FC<Props> = ({
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch('/api/dashboard-widgets/test-compile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token ?? ''}`,
-        },
-        body: JSON.stringify({ code: value }),
-      });
-      const body = await res.json();
+      const res = await coreApi.raw('POST', '/api/dashboard-widgets/test-compile', { code: value });
+      const body = res.data;
       setTestResult(body);
     } catch (e: any) {
       setTestResult({ ok: false, error: e?.message || 'Error de red' });

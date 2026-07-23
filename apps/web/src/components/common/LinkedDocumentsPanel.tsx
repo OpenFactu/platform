@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Badge, useToast } from '@openfactu/ui';
 import { ArrowUp, ArrowDown, ScrollText, CreditCard, Link2, ChevronRight } from 'lucide-react';
@@ -66,10 +67,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/document-links?type=${type}&id=${id}`, {
-      headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-    })
-      .then((r) => r.json())
+    coreApi.get(`/api/document-links?type=${type}&id=${id}`)
       .then((d) => {
         if (d.error) {
           toast.error(d.error);

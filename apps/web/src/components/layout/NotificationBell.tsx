@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Bell, Check, CheckCheck, Inbox } from 'lucide-react';
 import { cn } from '@openfactu/ui';
@@ -51,9 +52,9 @@ export const NotificationBell: React.FC = () => {
 
   const loadCount = async () => {
     try {
-      const res = await fetch('/api/notifications/unread-count', { headers });
+      const res = await coreApi.raw('GET', '/api/notifications/unread-count');
       if (!res.ok) return;
-      const data = await res.json();
+      const data = res.data;
       const n = Number(data?.count || 0);
       if (n > prevUnread.current) {
         setShake(true);
@@ -68,9 +69,9 @@ export const NotificationBell: React.FC = () => {
 
   const loadList = async () => {
     try {
-      const res = await fetch('/api/notifications?limit=20', { headers });
+      const res = await coreApi.raw('GET', '/api/notifications?limit=20');
       if (!res.ok) return;
-      const data = await res.json();
+      const data = res.data;
       setNotifs(Array.isArray(data) ? data : []);
     } catch {
       /* silencioso */
@@ -120,7 +121,7 @@ export const NotificationBell: React.FC = () => {
 
   const markRead = async (id: string) => {
     try {
-      await fetch(`/api/notifications/${id}/read`, { method: 'POST', headers });
+      await coreApi.raw('POST', `/api/notifications/${id}/read`);
       setNotifs((ns) =>
         ns.map((n) => (n.id === id ? { ...n, readAt: new Date().toISOString() } : n)),
       );
@@ -132,7 +133,7 @@ export const NotificationBell: React.FC = () => {
 
   const markAll = async () => {
     try {
-      await fetch('/api/notifications/read-all', { method: 'POST', headers });
+      await coreApi.raw('POST', '/api/notifications/read-all');
       setNotifs((ns) => ns.map((n) => ({ ...n, readAt: n.readAt || new Date().toISOString() })));
       setUnread(0);
     } catch {

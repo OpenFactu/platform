@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import { useCallback } from 'react';
 import { useToast } from '@openfactu/ui';
 
@@ -17,7 +18,7 @@ import { useToast } from '@openfactu/ui';
  *   <button onClick={async () => {
  *     const data = await clone.read();
  *     if (data) {
- *       const res = await fetch(endpoint, { method: 'POST', body: JSON.stringify(data) });
+ *       const res = await coreApi.raw('POST', endpoint, data);
  *       ...
  *     }
  *   }}>Pegar</button>

@@ -1,3 +1,4 @@
+import { apiClient, ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, Loader2, ArrowLeft, CheckCircle2, ShieldAlert } from 'lucide-react';
@@ -38,20 +39,17 @@ export const ResetPassword: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, newPassword: password }),
+      await apiClient.post('/api/auth/reset-password', { token, newPassword: password }, {
+        auth: false,
       });
-      const data = await res.json();
-      if (res.ok) {
-        setDone(true);
-        setTimeout(() => navigate('/login'), 2500);
+      setDone(true);
+      setTimeout(() => navigate('/login'), 2500);
+    } catch (err) {
+      if (err instanceof ApiError && err.status !== 0) {
+        setError(((err.body as any)?.error as string) || 'El enlace no es válido o ha caducado');
       } else {
-        setError(data.error || 'El enlace no es válido o ha caducado');
+        setError('No se pudo establecer conexión con el servidor');
       }
-    } catch {
-      setError('No se pudo establecer conexión con el servidor');
     } finally {
       setIsSubmitting(false);
     }

@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, {
   createContext,
   useCallback,
@@ -36,8 +37,28 @@ export interface FlagsConfig {
   warehouseLocation: 'header' | 'line';
   /** Activa el módulo de logística (envíos, rutas, mapa en tiempo real). */
   logisticsEnabled: boolean;
+  /** Activa el chat de Keiro en la página pública de seguimiento (/track/:token). */
+  trackingChatEnabled: boolean;
   /** Oculta todos los módulos excepto logística e inventario. */
-  logisticsOnly?: boolean;
+  logisticsOnly: boolean;
+  /** Sub-módulos de RRHH avanzado — cada uno desbloquea un menú/ruta sobre el módulo HR base. */
+  hrShiftsEnabled: boolean;
+  hrTimeclockEnabled: boolean;
+  hrIncidentsEnabled: boolean;
+  hrPlanningEnabled: boolean;
+  /** RRHH avanzado+: convenios, evaluaciones, comisiones, rendimiento, coste laboral, tareas y Gantt. */
+  hrAdvancedEnabled: boolean;
+  /** Módulos core activables desde /apps. Default true: preserva el
+   *  comportamiento de cualquier tenant existente. */
+  inventoryEnabled: boolean;
+  salesEnabled: boolean;
+  purchasesEnabled: boolean;
+  partnersEnabled: boolean;
+  accountingEnabled: boolean;
+  analyticsEnabled: boolean;
+  reportsEnabled: boolean;
+  hrEnabled: boolean;
+  assistantEnabled: boolean;
 }
 
 // Defaults de la marca Keirost — paleta teal + ink (brand guide v1.0).
@@ -69,7 +90,22 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   enforceWarehouseZones: false,
   warehouseLocation: 'header',
   logisticsEnabled: false,
+  trackingChatEnabled: false,
   logisticsOnly: false,
+  hrShiftsEnabled: false,
+  hrTimeclockEnabled: false,
+  hrIncidentsEnabled: false,
+  hrPlanningEnabled: false,
+  hrAdvancedEnabled: false,
+  inventoryEnabled: true,
+  salesEnabled: true,
+  purchasesEnabled: true,
+  partnersEnabled: true,
+  accountingEnabled: true,
+  analyticsEnabled: true,
+  reportsEnabled: true,
+  hrEnabled: true,
+  assistantEnabled: true,
 };
 
 export interface ThemePreset {
@@ -303,11 +339,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     async <T,>(section: string): Promise<T | null> => {
       if (!token || !user?.tenantId) return null;
       try {
-        const res = await fetch(`/api/config/${section}`, {
-          headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user.tenantId },
-        });
+        const res = await coreApi.raw('GET', `/api/config/${section}`);
         if (!res.ok) return null;
-        return (await res.json()) as T;
+        return (res.data) as T;
       } catch {
         return null;
       }
@@ -339,20 +373,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const update = useCallback(
     async (section: 'branding' | 'format' | 'flags', patch: any) => {
       if (!token || !user?.tenantId) throw new Error('No autenticado');
-      const res = await fetch(`/api/config/${section}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-          'x-tenant-id': user.tenantId,
-        },
-        body: JSON.stringify(patch),
-      });
+      const res = await coreApi.raw('PUT', `/api/config/${section}`, patch);
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Error al guardar' }));
+        const err = (res.data ?? { error: 'Error al guardar' });
         throw new Error(err.error || 'Error al guardar');
       }
-      const data = await res.json();
+      const data = res.data;
       if (section === 'branding') setBranding({ ...BRANDING_DEFAULTS, ...data });
       if (section === 'format') setFormat({ ...FORMAT_DEFAULTS, ...data });
       if (section === 'flags') setFlags({ ...FLAGS_DEFAULTS, ...data });

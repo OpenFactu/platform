@@ -1,3 +1,4 @@
+import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Badge, useToast } from '@openfactu/ui';
 import { ChevronRight, ScrollText, CreditCard, FileDigit } from 'lucide-react';
@@ -50,10 +51,7 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/document-links?type=${type}&id=${id}`, {
-      headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' },
-    })
-      .then((r) => r.json())
+    coreApi.get(`/api/document-links?type=${type}&id=${id}`)
       .then((d) => {
         if (d.error) toast.error(d.error);
         else setData(d);

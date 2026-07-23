@@ -20,4 +20,20 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // fetch() solo es legal en src/shared/http: el resto de la app pasa por
+    // apiClient / los adaptadores api/ de cada módulo.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/shared/http/**'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.name='fetch'], CallExpression[callee.object.name='window'][callee.property.name='fetch']",
+          message: 'Usa apiClient / los adaptadores api/ del módulo en lugar de fetch().',
+        },
+      ],
+    },
+  },
 ]);

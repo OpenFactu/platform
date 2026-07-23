@@ -5,7 +5,7 @@ import { IconSidebar } from './layout/IconSidebar';
 import { TopHeader } from './layout/TopHeader';
 import { ModuleTabBar } from './layout/ModuleTabBar';
 import { MobileBottomNav } from './layout/MobileBottomNav';
-import { DriverLayout } from './layout/DriverLayout';
+import { DriverLayout } from '@/modules/logistics/components/DriverLayout';
 import { useAuth } from '../context/AuthContext';
 
 /**

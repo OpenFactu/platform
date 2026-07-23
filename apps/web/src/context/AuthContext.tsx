@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { apiClient, ApiError } from '@/shared/http';
+import { authApi } from '@/shared/api';
 
 interface User {
   id: string;
@@ -38,20 +40,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const res = await fetch('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (res.ok) {
-          const userData = await res.json();
-          setUser(userData);
-        } else {
+        const userData = await authApi.me();
+        setUser(userData);
+      } catch (err) {
+        if (err instanceof ApiError && err.status !== 0) {
           // Token expirado o inválido
           localStorage.removeItem('openfactu_token');
           setToken(null);
+        } else {
+          console.error('Error fetching auth status', err);
         }
-      } catch (err) {
-        console.error('Error fetching auth status', err);
       } finally {
         setLoading(false);
       }
@@ -62,38 +60,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUser = async () => {
     if (!token) return;
-    const res = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) setUser(await res.json());
+    try {
+      setUser(await authApi.me());
+    } catch {
+      /* mantener el usuario anterior si falla el refresh */
+    }
   };
 
   const login = (newToken: string, userData: User) => {
     localStorage.setItem('openfactu_token', newToken);
+    // Empujar el token al cliente HTTP ya mismo: si esperamos al useEffect de
+    // más abajo, cualquier otro efecto que dependa de `token` (fetchMe aquí
+    // mismo, notificaciones, user-tables...) puede disparar su petición ANTES
+    // de que apiClient tenga el token nuevo, y le llega un 401 que se
+    // interpreta como "token inválido" — cerrando la sesión recién creada.
+    apiClient.setAuth(newToken, userData.tenantId ?? null);
     setToken(newToken);
     setUser(userData);
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('openfactu_token');
     setToken(null);
     setUser(null);
-  };
+  }, []);
+
+  // Empuja el estado de auth al cliente HTTP central (único dueño de fetch).
+  useEffect(() => {
+    apiClient.setAuth(token, user?.tenantId ?? null);
+  }, [token, user?.tenantId]);
+
+  // Manejo global de 401: cualquier petición autenticada que devuelva 401 cierra sesión.
+  useEffect(() => {
+    apiClient.setOnUnauthorized(() => logout());
+    return () => apiClient.setOnUnauthorized(null);
+  }, [logout]);
 
   const switchTenant = async (tenantId: string) => {
     if (!token) throw new Error('No autenticado');
-    const res = await fetch('/api/auth/switch-tenant', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ tenantId }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Error al cambiar de empresa' }));
-      throw new Error(err.error || 'Error al cambiar de empresa');
-    }
-    const data = await res.json();
+    const data = await authApi.switchTenant(tenantId);
     localStorage.setItem('openfactu_token', data.token);
+    // Mismo motivo que en login(): empujar el token antes de que los efectos
+    // dependientes de `token` disparen sus peticiones.
+    apiClient.setAuth(data.token, data.user.tenantId ?? null);
     setToken(data.token);
     setUser(data.user);
   };
