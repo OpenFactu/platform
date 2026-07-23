@@ -10,9 +10,12 @@ import {
   ChevronRight,
   ChevronLeft,
   CheckCircle2,
+  LayoutGrid,
 } from 'lucide-react';
 import { Loader, useToast, usePopup } from '@openfactu/ui';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
+import { CORE_MODULES } from '@/modules';
+import { ModuleCard } from '@/modules/plugins/components/ModuleCard';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -48,6 +51,7 @@ interface SetupFormData {
   db: DbConfig;
   admin: AdminConfig;
   company: CompanyConfig;
+  modules: Record<string, boolean>;
 }
 
 // ── Shared Components ───────────────────────────────────────────────────────
@@ -100,6 +104,7 @@ function StepIndicator({ step }: { step: number }) {
     { id: 2, icon: User },
     { id: 3, icon: Building },
     { id: 4, icon: Settings },
+    { id: 5, icon: LayoutGrid },
   ];
   return (
     <div className="flex justify-center mt-4 gap-4">
@@ -376,14 +381,12 @@ function Step4CompanyDetails({
   data,
   onChange,
   onPrev,
-  onSubmit,
-  loading,
+  onNext,
 }: {
   data: Omit<CompanyConfig, 'name' | 'nif'>;
   onChange: (partial: Partial<Omit<CompanyConfig, 'name' | 'nif'>>) => void;
   onPrev: () => void;
-  onSubmit: () => void;
-  loading: boolean;
+  onNext: () => void;
 }) {
   return (
     <div className="space-y-3 animate-in fade-in slide-in-from-right-4">
@@ -487,6 +490,70 @@ function Step4CompanyDetails({
           <ChevronLeft size={18} /> Atrás
         </button>
         <button
+          onClick={onNext}
+          className="flex-1 bg-[#0D9488] text-white p-3 rounded-sm font-bold hover:bg-[#0A6E63] transition flex items-center justify-center gap-2 whitespace-nowrap shadow-md hover:shadow-lg"
+        >
+          Siguiente{' '}
+          <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Step5Modules({
+  data,
+  onChange,
+  onPrev,
+  onSubmit,
+  loading,
+}: {
+  data: Record<string, boolean>;
+  onChange: (key: string, value: boolean) => void;
+  onPrev: () => void;
+  onSubmit: () => void;
+  loading: boolean;
+}) {
+  const activatable = CORE_MODULES.filter((m) => Boolean(m.featureFlag));
+  const byCategory = activatable.reduce<Record<string, typeof activatable>>((acc, m) => {
+    const cat = m.category || 'General';
+    (acc[cat] = acc[cat] || []).push(m);
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
+      <h2 className="text-xl font-bold">5. Módulos</h2>
+      <p className="text-sm text-gray-600 dark:text-slate-400">
+        Elige qué módulos activar. Podrás cambiarlo después en Apps.
+      </p>
+      <div className="max-h-96 overflow-y-auto space-y-4 pr-1">
+        {Object.entries(byCategory).map(([category, mods]) => (
+          <div key={category}>
+            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+              {category}
+            </h3>
+            <div className="space-y-2">
+              {mods.map((m) => (
+                <ModuleCard
+                  key={m.id}
+                  module={m}
+                  enabled={data[m.featureFlag as string] ?? true}
+                  onToggle={() =>
+                    onChange(m.featureFlag as string, !(data[m.featureFlag as string] ?? true))
+                  }
+                  isToggling={false}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-3 mt-6">
+        <button onClick={onPrev} className={BTN_SECONDARY_CLS}>
+          <ChevronLeft size={18} /> Atrás
+        </button>
+        <button
           onClick={onSubmit}
           disabled={loading}
           className="flex-1 bg-[#0D9488] text-white p-3 rounded-sm font-bold hover:bg-[#0A6E63] transition flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap shadow-md hover:shadow-lg"
@@ -519,6 +586,9 @@ export const SetupWizard: React.FC = () => {
       password: 'openfactu_pass',
     },
     admin: { email: '', username: '', password: '' },
+    modules: Object.fromEntries(
+      CORE_MODULES.filter((m) => m.featureFlag).map((m) => [m.featureFlag as string, true]),
+    ),
     company: {
       name: '',
       nif: '',
@@ -543,6 +613,8 @@ export const SetupWizard: React.FC = () => {
     setFormData((prev) => ({ ...prev, admin: { ...prev.admin, ...partial } }));
   const updateCompany = (partial: Partial<CompanyConfig>) =>
     setFormData((prev) => ({ ...prev, company: { ...prev.company, ...partial } }));
+  const updateModule = (key: string, value: boolean) =>
+    setFormData((prev) => ({ ...prev, modules: { ...prev.modules, [key]: value } }));
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -557,6 +629,9 @@ export const SetupWizard: React.FC = () => {
             password: formData.db.password,
           },
           admin: formData.admin,
+          modules: Object.fromEntries(
+            Object.entries(formData.modules).filter(([, v]) => v === false),
+          ),
           company: {
             name: formData.company.name,
             nif: formData.company.nif,
@@ -618,6 +693,14 @@ export const SetupWizard: React.FC = () => {
             data={formData.company}
             onChange={updateCompany}
             onPrev={() => setStep(3)}
+            onNext={() => setStep(5)}
+          />
+        )}
+        {step === 5 && (
+          <Step5Modules
+            data={formData.modules}
+            onChange={updateModule}
+            onPrev={() => setStep(4)}
             onSubmit={handleSubmit}
             loading={loading}
           />
