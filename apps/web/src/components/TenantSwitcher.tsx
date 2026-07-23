@@ -95,35 +95,57 @@ export const TenantSwitcher: React.FC = () => {
 
       {open && (
         <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden z-50">
-          <div className="px-3 py-2 border-b border-slate-200 dark:border-slate-800">
+          <div className="px-3 py-2.5 border-b border-slate-200 dark:border-slate-800">
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
               Tus empresas
             </p>
           </div>
-          <ul className="max-h-64 overflow-auto py-1">
+          <ul className="max-h-64 overflow-auto py-1 divide-y divide-slate-100 dark:divide-slate-800/60">
             {tenants === null ? (
-              <li className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400 italic">
+              <li className="px-3 py-3 text-xs text-slate-500 dark:text-slate-400 italic">
                 Cargando…
               </li>
             ) : tenants.length === 0 ? (
-              <li className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400 italic">
+              <li className="px-3 py-3 text-xs text-slate-500 dark:text-slate-400 italic">
                 Sin empresas accesibles
               </li>
             ) : (
               tenants.map((t) => {
                 const active = t.id === user?.tenantId;
+                const initial = (t.name || '?').trim().charAt(0).toUpperCase();
                 return (
                   <li key={t.id}>
                     <button
                       onClick={() => handleSelect(t.id)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
                         active
-                          ? 'bg-primary/10 text-primary'
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
+                          ? 'bg-primary/10 border-l-2 border-primary'
+                          : 'border-l-2 border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
-                      <span className="flex-1 text-xs font-bold truncate">{t.name}</span>
-                      {active && <Check size={14} className="text-primary" />}
+                      <span
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-bold ${
+                          active
+                            ? 'bg-primary text-white'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
+                        {initial}
+                      </span>
+                      <span
+                        className={`flex-1 text-xs font-bold truncate ${
+                          active
+                            ? 'text-slate-900 dark:text-slate-100'
+                            : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        {t.name}
+                      </span>
+                      {active && (
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                          <Check size={11} strokeWidth={3} />
+                        </span>
+                      )}
                     </button>
                   </li>
                 );
