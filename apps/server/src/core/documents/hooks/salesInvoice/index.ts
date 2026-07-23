@@ -1,3 +1,5 @@
+import { eq } from 'drizzle-orm';
+import * as schema from '../../../../db/schema';
 import type { DocumentHooks } from '../../DocumentEngine';
 import { assertStockAvailable, resolveBatchDetailsFifo } from '../shared';
 
@@ -11,4 +13,21 @@ import { assertStockAvailable, resolveBatchDetailsFifo } from '../shared';
 export const salesInvoiceHooks: DocumentHooks = {
   beforeLine: assertStockAvailable,
   resolveBatchDetails: resolveBatchDetailsFifo,
+  // Facturar directamente un presupuesto (líneas con baseType 'SQ') lo marca
+  // como Aceptado — misma semántica que al convertirlo en pedido.
+  afterLinesProcessed: async ({ tx, request }) => {
+    const quoteIds = Array.from(
+      new Set(
+        (request.lines ?? [])
+          .filter((l: any) => l.baseType === 'SQ' && l.baseId)
+          .map((l: any) => l.baseId as string),
+      ),
+    );
+    for (const quoteId of quoteIds) {
+      await tx
+        .update(schema.salesQuotes)
+        .set({ status: 'A' })
+        .where(eq(schema.salesQuotes.id, quoteId));
+    }
+  },
 };

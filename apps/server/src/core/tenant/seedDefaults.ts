@@ -89,6 +89,12 @@ const SERIES: SeedSeries[] = [
     description: 'Serie por defecto de pedidos de compra',
     prefix: 'PC',
   },
+  {
+    docType: 'SQ',
+    name: 'Presupuestos',
+    description: 'Serie por defecto de presupuestos de venta',
+    prefix: 'PR',
+  },
 ];
 
 /**

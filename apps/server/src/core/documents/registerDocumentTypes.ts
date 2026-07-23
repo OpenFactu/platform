@@ -5,6 +5,7 @@ import { salesDeliveryNoteHooks } from './hooks/salesDeliveryNote';
 import { purchaseDeliveryNoteHooks } from './hooks/purchaseDeliveryNote';
 import { salesInvoiceHooks } from './hooks/salesInvoice';
 import { purchaseInvoiceHooks } from './hooks/purchaseInvoice';
+import { salesOrderHooks } from './hooks/salesOrder';
 
 /**
  * Configuraciones de los 6 tipos de documento del sistema.
@@ -83,6 +84,7 @@ const CONFIGS: DocumentTypeConfig[] = [
     eventPrefix: 'salesOrder',
     stockAction: 'NONE',
     closeBaseDocuments: false,
+    hooks: salesOrderHooks,
     initialStatus: 'O',
     headerPgName: 'SalesOrder',
     linePgName: 'SalesOrderLine',
@@ -95,6 +97,7 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasSalesAgent: false,
     statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
     uiRoute: '/sales-orders',
+    headerBaseRef: { column: 'quoteId', baseDocType: 'SQ' },
   },
   {
     docType: 'PO',
@@ -177,6 +180,35 @@ const CONFIGS: DocumentTypeConfig[] = [
     statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
     uiRoute: '/purchases/delivery-notes',
     headerBaseRef: { column: 'orderId', baseDocType: 'PO' },
+  },
+  {
+    docType: 'SQ',
+    side: 'sales',
+    category: 'quote',
+    label: 'Presupuesto',
+    labelPlural: 'Presupuestos',
+    tableName: 'salesQuotes',
+    schemaTable: schema.salesQuotes,
+    lineSchemaTable: schema.salesQuoteLines,
+    batchSchemaTable: null,
+    eventPrefix: 'salesQuote',
+    stockAction: 'NONE',
+    closeBaseDocuments: false,
+    initialStatus: 'O',
+    headerPgName: 'SalesQuote',
+    linePgName: 'SalesQuoteLine',
+    lineFk: 'quoteId',
+    headerRefKey: 'quoteId',
+    // Sin router Express propio — CRUD 100% vía el router genérico.
+    apiPath: '/api/documents/SQ',
+    hasFiscalFields: false,
+    hasWarehouse: false,
+    hasInternalOrder: true,
+    hasSalesAgent: true,
+    statusLabels: { O: 'Abierto', A: 'Aceptado', R: 'Rechazado', X: 'Cancelado' },
+    uiRoute: '/sales/quotes',
+    // Aceptar/Rechazar a mano desde la UI (y reabrir si fue un error).
+    manualStatusTransitions: { O: ['A', 'R'], A: ['O'], R: ['O'] },
   },
 ];
 

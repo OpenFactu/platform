@@ -1270,6 +1270,8 @@ export const salesOrders = pgTable('SalesOrder', {
   salesAgentId: text('salesAgentId'),
   createdBy: text('createdBy'),
   createdAt: timestamp('createdAt').defaultNow(),
+  // Mig 063 — enlace al presupuesto de venta que originó el pedido.
+  quoteId: text('quoteId'),
 });
 
 export const salesOrderLines = pgTable('SalesOrderLine', {
@@ -1303,6 +1305,66 @@ export const salesOrderLines = pgTable('SalesOrderLine', {
   withholdingAmount: decimal('withholdingAmount', { precision: 15, scale: 4 }),
   /** @deprecated Usar internalOrderId. Se conserva por compatibilidad. */
   projectId: text('projectId'),
+  costCenterId: text('costCenterId'),
+  profitCenterId: text('profitCenterId'),
+  internalOrderId: text('internalOrderId'),
+});
+
+// Mig 063 — Presupuestos de venta. Clon de SalesOrder sin campos de entrega
+// (no mueve ni reserva stock), con validez y ciclo O/A/R/X.
+export const salesQuotes = pgTable('SalesQuote', {
+  id: text('id').primaryKey(),
+  seriesId: text('seriesId')
+    .references(() => documentSeries.id)
+    .notNull(),
+  docNum: integer('docNum').notNull(),
+  periodId: text('periodId')
+    .references(() => accountingPeriods.id)
+    .notNull(),
+  partnerId: text('partnerId')
+    .references(() => businessPartners.id)
+    .notNull(),
+  date: timestamp('date').notNull(),
+  documentDate: timestamp('documentDate'),
+  validUntil: timestamp('validUntil'),
+  status: text('status').default('O').notNull(),
+  billToAddress: text('billToAddress'),
+  shipToAddress: text('shipToAddress'),
+  internalOrderId: text('internalOrderId').references(() => internalOrders.id, {
+    onDelete: 'set null',
+  }),
+  subtotal: decimal('subtotal', { precision: 15, scale: 4 }).default('0').notNull(),
+  taxTotal: decimal('taxTotal', { precision: 15, scale: 4 }).default('0').notNull(),
+  total: decimal('total', { precision: 15, scale: 4 }).default('0').notNull(),
+  taxBreakdown: text('taxBreakdown'),
+  salesAgentId: text('salesAgentId'),
+  createdBy: text('createdBy'),
+  createdAt: timestamp('createdAt').defaultNow(),
+});
+
+export const salesQuoteLines = pgTable('SalesQuoteLine', {
+  id: text('id').primaryKey(),
+  quoteId: text('quoteId')
+    .references(() => salesQuotes.id)
+    .notNull(),
+  lineNum: integer('lineNum').notNull(),
+  itemId: text('itemId')
+    .references(() => items.id)
+    .notNull(),
+  quantity: decimal('quantity', { precision: 12, scale: 4 }).notNull(),
+  price: decimal('price', { precision: 15, scale: 4 }).notNull(),
+  taxGroupId: text('taxGroupId').references(() => taxGroups.id),
+  lineTotal: decimal('lineTotal', { precision: 15, scale: 4 }).notNull(),
+  uomId: text('uomId').references(() => unitsOfMeasure.id),
+  uomFactor: decimal('uomFactor', { precision: 12, scale: 4 }).default('1.0000'),
+  pluginData: jsonb('pluginData').default({}),
+  description: text('description'),
+  discountRate: decimal('discountRate', { precision: 5, scale: 2 }).default('0'),
+  discountAmount: decimal('discountAmount', { precision: 15, scale: 4 }).default('0'),
+  taxRate: decimal('taxRate', { precision: 5, scale: 2 }),
+  taxAmount: decimal('taxAmount', { precision: 15, scale: 4 }),
+  withholdingRate: decimal('withholdingRate', { precision: 5, scale: 2 }),
+  withholdingAmount: decimal('withholdingAmount', { precision: 15, scale: 4 }),
   costCenterId: text('costCenterId'),
   profitCenterId: text('profitCenterId'),
   internalOrderId: text('internalOrderId'),
