@@ -52,6 +52,7 @@ function seedCommonMeta(types: ServerDocType[]): void {
       labelPlural: t.labelPlural,
       apiEndpoint: t.apiPath,
       route: t.uiRoute,
+      stockAction: t.stockAction,
     });
   }
 }

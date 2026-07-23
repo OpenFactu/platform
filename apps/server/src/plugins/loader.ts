@@ -126,6 +126,7 @@ function buildPluginContext(pluginId: string): PluginContext {
           labelPlural: config.labelPlural,
           apiEndpoint: config.apiPath,
           route: config.uiRoute,
+          stockAction: config.stockAction,
         });
         console.log(`[Plugin ${pluginId}] Tipo de documento registrado: ${config.docType}`);
       },

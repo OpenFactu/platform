@@ -231,6 +231,7 @@ for (const config of CONFIGS) {
     labelPlural: config.labelPlural,
     apiEndpoint: config.apiPath,
     route: config.uiRoute,
+    stockAction: config.stockAction,
   });
 }
 
