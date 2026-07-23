@@ -573,7 +573,7 @@ function Step5Modules({
             <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
               {category}
             </h3>
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-2">
               {mods.map((m) => (
                 <ModuleCard
                   key={m.id}
