@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTabs, CurrentTabProvider } from '../../context/TabsContext';
-import { staticRoutes } from './RouteRegistry';
+import { getStaticRoutes } from './RouteRegistry';
 import { TabBridge } from './TabBridge';
 import { PermittedRoute } from './PermittedRoute';
 import { usePlugins } from '../../context/PluginContext';
@@ -20,6 +20,7 @@ export const TabsHost: React.FC = () => {
   const { tabs, activeTabId } = useTabs();
   const { manifests } = usePlugins();
   const [mountedIds, setMountedIds] = useState<string[]>([]);
+  const staticRoutes = getStaticRoutes();
 
   useEffect(() => {
     if (!activeTabId) return;

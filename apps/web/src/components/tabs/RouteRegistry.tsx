@@ -11,15 +11,25 @@ export type { RouteEntry, RouteMeta } from '@/modules/types';
  */
 const legacyRoutes: RouteEntry[] = [];
 
-export const staticRoutes: RouteEntry[] = [...moduleRoutes, ...legacyRoutes];
-
-const matchCandidates = staticRoutes.map((r) => ({ path: r.pattern }));
+// `staticRoutes` se calcula de forma perezosa (no como const de módulo) porque
+// `moduleRoutes` viene de `@/modules`, y varias páginas de módulo importan
+// `TabsContext` → `RouteRegistry` → `@/modules` de vuelta. Leer `moduleRoutes`
+// en el top-level de este archivo dispara un ciclo de importación ES que
+// revienta con "Cannot access 'moduleRoutes' before initialization" en cuanto
+// algo (p.ej. SetupWizard) importa `@/modules` antes en el grafo de módulos.
+let _staticRoutes: RouteEntry[] | null = null;
+export function getStaticRoutes(): RouteEntry[] {
+  if (_staticRoutes === null) _staticRoutes = [...moduleRoutes, ...legacyRoutes];
+  return _staticRoutes;
+}
 
 export function resolveRouteMeta(pathname: string): RouteMeta | null {
+  const routes = getStaticRoutes();
+  const matchCandidates = routes.map((r) => ({ path: r.pattern }));
   const matches = matchRoutes(matchCandidates, pathname);
   if (!matches || matches.length === 0) return null;
   const matched = matches[0].route;
-  const entry = staticRoutes.find((r) => r.pattern === matched.path);
+  const entry = routes.find((r) => r.pattern === matched.path);
   if (!entry) return null;
   return { title: entry.title, iconName: entry.iconName, permissionPath: entry.permissionPath };
 }
