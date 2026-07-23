@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, Loader, useToast, Badge, FilterBar } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  Loader,
+  useToast,
+  Badge,
+  FilterBar,
+  SearchableSelect,
+} from '@openfactu/ui';
 import { useDataTable } from '@openfactu/common';
 import { useLocation } from 'react-router-dom';
 import { FileDigit, Plus, Trash2 } from 'lucide-react';
@@ -9,6 +19,18 @@ import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
 import { seriesApi } from '../api';
 import { crudApi } from '@/shared/api';
+import { useDocTypes } from '../domain/docTypeRegistry';
+
+// Fallback estático mientras llega (o si falla) GET /api/documents/types —
+// mismas etiquetas que se mostraban hardcodeadas antes del registry.
+const FALLBACK_DOC_TYPE_OPTIONS = [
+  { label: 'Pedido Compra', value: 'PO' },
+  { label: 'Albarán Compra', value: 'PDN' },
+  { label: 'Factura Compra', value: 'PINV' },
+  { label: 'Pedido Venta', value: 'SO' },
+  { label: 'Albarán Venta', value: 'SDN' },
+  { label: 'Factura Venta', value: 'SINV' },
+];
 
 export const DocumentSeries: React.FC = () => {
   const { token, user } = useAuth();
@@ -33,6 +55,18 @@ export const DocumentSeries: React.FC = () => {
   const [prefix, setPrefix] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const toast = useToast();
+
+  // Tipos de documento desde el registry del servidor (incluye SQ y tipos de
+  // plugins); fallback estático a los 6 core mientras carga.
+  const { types: serverDocTypes } = useDocTypes();
+  const docTypeOptions =
+    serverDocTypes.length > 0
+      ? serverDocTypes.map((t) => ({ label: t.label, value: t.docType }))
+      : FALLBACK_DOC_TYPE_OPTIONS;
+  const docTypeLabel = (dt: string) =>
+    serverDocTypes.find((t) => t.docType === dt)?.label ??
+    FALLBACK_DOC_TYPE_OPTIONS.find((o) => o.value === dt)?.label ??
+    dt;
 
   const fetchData = async () => {
     setLoading(true);
@@ -105,14 +139,7 @@ export const DocumentSeries: React.FC = () => {
           key: 'docType',
           type: 'select',
           label: 'Tipo',
-          options: [
-            { label: 'Pedido Compra', value: 'PO' },
-            { label: 'Albarán Compra', value: 'PDN' },
-            { label: 'Factura Compra', value: 'PINV' },
-            { label: 'Pedido Venta', value: 'SO' },
-            { label: 'Albarán Venta', value: 'SDN' },
-            { label: 'Factura Venta', value: 'SINV' },
-          ],
+          options: docTypeOptions,
         },
         {
           key: 'numberingMode',
@@ -142,17 +169,7 @@ export const DocumentSeries: React.FC = () => {
     },
     {
       header: 'Tipo',
-      cell: (c: any) => {
-        const types: Record<string, string> = {
-          PO: 'Pedidos Compra',
-          PDN: 'Albarán Compra',
-          PINV: 'Factura Compra',
-          SO: 'Pedido Venta',
-          SDN: 'Albarán Venta',
-          SINV: 'Factura Venta',
-        };
-        return types[c.docType] || c.docType;
-      },
+      cell: (c: any) => docTypeLabel(c.docType),
     },
     {
       header: 'Modo',
@@ -246,52 +263,45 @@ export const DocumentSeries: React.FC = () => {
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
               Tipo Documento
             </label>
-            <select
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
-              required
-              className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 mt-1"
-            >
-              <option value="PO">Pedido Compra (PO)</option>
-              <option value="PDN">Albarán Compra (PDN)</option>
-              <option value="PINV">Factura Compra (PINV)</option>
-              <hr />
-              <option value="SO">Pedido Venta (SO)</option>
-              <option value="SDN">Albarán Venta (SDN)</option>
-              <option value="SINV">Factura Venta (SINV)</option>
-            </select>
+            <div className="mt-1">
+              <SearchableSelect
+                value={docType}
+                onChange={(v) => setDocType(v)}
+                options={docTypeOptions.map((o) => ({
+                  label: `${o.label} (${o.value})`,
+                  value: o.value,
+                }))}
+                placeholder="Seleccionar tipo..."
+              />
+            </div>
           </div>
           <div className="md:col-span-1">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
               Numeración
             </label>
-            <select
-              value={numberingMode}
-              onChange={(e) => setNumberingMode(e.target.value)}
-              required
-              className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 mt-1"
-            >
-              <option value="AUTO">Automática</option>
-              <option value="MANUAL">Manual</option>
-            </select>
+            <div className="mt-1">
+              <SearchableSelect
+                value={numberingMode}
+                onChange={(v) => setNumberingMode(v)}
+                options={[
+                  { label: 'Automática', value: 'AUTO' },
+                  { label: 'Manual', value: 'MANUAL' },
+                ]}
+              />
+            </div>
           </div>
           <div className="md:col-span-1">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
               Aplica al Periodo
             </label>
-            <select
-              value={periodId}
-              onChange={(e) => setPeriodId(e.target.value)}
-              required
-              className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 mt-1"
-            >
-              <option value="">Seleccionar...</option>
-              {periods.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} - {p.name}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <SearchableSelect
+                value={periodId}
+                onChange={(v) => setPeriodId(v)}
+                options={periods.map((p) => ({ label: `${p.code} - ${p.name}`, value: p.id }))}
+                placeholder="Seleccionar..."
+              />
+            </div>
           </div>
           <div className="md:col-span-1">
             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
@@ -361,14 +371,7 @@ export const DocumentSeries: React.FC = () => {
               key: 'docType',
               label: 'Tipo',
               type: 'select',
-              options: [
-                { label: 'Pedido Compra', value: 'PO' },
-                { label: 'Albarán Compra', value: 'PDN' },
-                { label: 'Factura Compra', value: 'PINV' },
-                { label: 'Pedido Venta', value: 'SO' },
-                { label: 'Albarán Venta', value: 'SDN' },
-                { label: 'Factura Venta', value: 'SINV' },
-              ],
+              options: docTypeOptions,
             },
             {
               key: 'numberingMode',

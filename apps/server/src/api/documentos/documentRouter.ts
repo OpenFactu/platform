@@ -192,6 +192,41 @@ async function getDocumentWithLines(
 
 // ── Rutas ──────────────────────────────────────────────────────────
 
+/**
+ * GET /types — Proyección pública del DocumentRegistry.
+ *
+ * Fuente única de tipos de documento para el frontend: los mapas estáticos de
+ * la web solo cubren los 6 core; los tipos nuevos (SQ, plugins) llegan por
+ * aquí sin recompilar la web. OJO: registrada antes de /:docType para que
+ * Express no capture "types" como código de documento.
+ */
+router.get('/types', (_req, res) => {
+  const types = DocumentRegistry.getAll().map((c) => ({
+    docType: c.docType,
+    side: c.side,
+    category: c.category,
+    label: c.label,
+    labelPlural: c.labelPlural,
+    apiPath: c.apiPath,
+    uiRoute: c.uiRoute ?? `/documents/${c.docType}`,
+    initialStatus: c.initialStatus,
+    statusLabels: c.statusLabels,
+    statusOptions: Object.entries(c.statusLabels).map(([value, label]) => ({ value, label })),
+    partnerLabel: c.partnerLabel ?? (c.side === 'sales' ? 'Cliente' : 'Proveedor'),
+    partnerPlaceholder:
+      c.partnerPlaceholder ??
+      (c.side === 'sales' ? 'Seleccionar cliente...' : 'Seleccionar proveedor...'),
+    hasFiscalFields: c.hasFiscalFields,
+    hasWarehouse: c.hasWarehouse,
+    hasInternalOrder: c.hasInternalOrder,
+    hasSalesAgent: c.hasSalesAgent,
+    stockAction: c.stockAction,
+    baseDocType: c.baseDocType ?? null,
+    manualStatusTransitions: c.manualStatusTransitions ?? null,
+  }));
+  res.json(types);
+});
+
 /** GET /:docType — Lista documentos */
 router.get('/:docType', async (req: any, res) => {
   try {
@@ -467,6 +502,68 @@ router.post('/:docType/:id/cancel', async (req: any, res) => {
       entityId: req.params.id,
       action: 'DELETE',
       oldValue: { status: old?.status },
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /:docType/:id/status — Transición de estado MANUAL.
+ *
+ * Solo disponible para tipos cuya config declara `manualStatusTransitions`
+ * (p.ej. presupuesto Abierto→Aceptado/Rechazado). Para el resto devuelve 404:
+ * facturas/pedidos/albaranes cambian de estado solo vía su lógica de negocio
+ * (post/cancel/fulfillment), nunca a mano.
+ */
+router.post('/:docType/:id/status', async (req: any, res) => {
+  try {
+    const docType = req.params.docType as DocType;
+    if (!DocumentRegistry.has(docType)) {
+      return res.status(400).json({ error: `Tipo de documento no válido: ${docType}` });
+    }
+    const config = DocumentRegistry.get(docType);
+    const transitions = config.manualStatusTransitions;
+    if (!transitions) {
+      return res
+        .status(404)
+        .json({ error: 'Este tipo de documento no admite cambio de estado manual.' });
+    }
+    const newStatus = String(req.body?.status ?? '');
+    if (!config.statusLabels[newStatus]) {
+      return res.status(400).json({ error: `Estado no válido: ${newStatus}` });
+    }
+
+    const [header] = await req.tenantClient
+      .select()
+      .from(config.schemaTable)
+      .where(eq(config.schemaTable.id, req.params.id));
+    if (!header) return res.status(404).json({ error: 'No encontrado' });
+
+    const allowed = transitions[header.status] ?? [];
+    if (!allowed.includes(newStatus)) {
+      return res.status(400).json({
+        error: `Transición no permitida: ${config.statusLabels[header.status] ?? header.status} → ${config.statusLabels[newStatus]}`,
+      });
+    }
+
+    const [updated] = await req.tenantClient
+      .update(config.schemaTable)
+      .set({ status: newStatus })
+      .where(eq(config.schemaTable.id, req.params.id))
+      .returning();
+
+    res.json(updated);
+
+    logAudit({
+      tenantClient: req.tenantClient,
+      tenantId: req.tenantId || '',
+      userId: req.user?.id,
+      entityType: config.headerPgName,
+      entityId: req.params.id,
+      action: 'UPDATE',
+      oldValue: { status: header.status },
+      newValue: { status: newStatus },
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

@@ -1,4 +1,5 @@
 import type { ModuleManifest } from '../types';
+import { SalesQuotes } from './pages/SalesQuotes';
 import { SalesOrders } from './pages/SalesOrders';
 import { SalesDeliveryNotes } from './pages/SalesDeliveryNotes';
 import { SalesInvoices } from './pages/SalesInvoices';
@@ -25,6 +26,7 @@ export const documentsModule: ModuleManifest = {
       description: 'Pedidos, albaranes y facturas de venta, con tarifas de precio.',
       category: 'Ventas y compras',
       subTabs: [
+        { id: 'sales-quotes', label: 'Presupuestos', path: '/sales/quotes' },
         { id: 'sales-orders', label: 'Pedidos', path: '/sales-orders' },
         { id: 'sales-delivery-notes', label: 'Albaranes', path: '/sales/delivery-notes' },
         { id: 'sales-invoices', label: 'Facturas', path: '/sales/invoices' },
@@ -48,6 +50,13 @@ export const documentsModule: ModuleManifest = {
   ],
   routes: [
     // Ventas
+    ...['/sales/quotes', '/sales/quotes/new', '/sales/quotes/:id'].map((pattern, i) => ({
+      pattern,
+      Component: SalesQuotes,
+      title: i === 1 ? 'Nuevo Presupuesto' : i === 2 ? 'Presupuesto' : 'Presupuestos',
+      iconName: 'FileSignature',
+      permissionPath: '/sales/quotes',
+    })),
     ...['/sales-orders', '/sales-orders/new', '/sales-orders/:id'].map((pattern, i) => ({
       pattern,
       Component: SalesOrders,

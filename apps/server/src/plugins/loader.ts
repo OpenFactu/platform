@@ -7,6 +7,8 @@ import { HookManager } from '../core/plugins/HookManager';
 import { FactuApi } from '../core/plugins/FactuApi';
 import { TenantPluginCache } from '../core/plugins/TenantPluginCache';
 import { CarrierRegistry } from '../core/carriers/CarrierRegistry';
+import { DocumentRegistry } from '../core/documents/DocumentRegistry';
+import { registerDocTypeMeta } from '@openfactu/common';
 import { AiToolRegistry } from '../core/ai/AiToolRegistry';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import * as schema from '../db/schema';
@@ -66,7 +68,9 @@ function applyDashboardWidgetsToManifest(pluginId: string) {
  */
 function buildPluginContext(pluginId: string): PluginContext {
   if (!_app) {
-    throw new Error('[Plugins] No se puede construir el contexto: la app Express aún no está lista');
+    throw new Error(
+      '[Plugins] No se puede construir el contexto: la app Express aún no está lista',
+    );
   }
 
   // Reset ANTES de ejecutar init(): así un reload que deja de registrar un widget
@@ -93,6 +97,38 @@ function buildPluginContext(pluginId: string): PluginContext {
       onAfterCreate: (tableName: string, handler: any) => {
         const event = `${tableName.charAt(0).toLowerCase() + tableName.slice(1)}.afterCreate`;
         HookManager.register(event, handler, pluginId);
+      },
+      register: (config) => {
+        if (!config?.docType) {
+          throw new Error(`[Plugin ${pluginId}] documents.register: docType es obligatorio`);
+        }
+        if (DocumentRegistry.has(config.docType)) {
+          throw new Error(
+            `[Plugin ${pluginId}] documents.register: el tipo '${config.docType}' ya está registrado`,
+          );
+        }
+        if (!config.schemaTable || !config.lineSchemaTable) {
+          throw new Error(
+            `[Plugin ${pluginId}] documents.register: schemaTable y lineSchemaTable son obligatorios (créalas con migration.createTable + pgTable de drizzle-orm)`,
+          );
+        }
+        DocumentRegistry.register(config);
+        registerDocTypeMeta({
+          docType: config.docType,
+          kind:
+            config.category === 'delivery_note'
+              ? 'deliveryNote'
+              : config.category === 'invoice'
+                ? 'invoice'
+                : 'order',
+          side: config.side === 'sales' ? 'sale' : 'purchase',
+          label: config.label,
+          labelPlural: config.labelPlural,
+          apiEndpoint: config.apiPath,
+          route: config.uiRoute,
+          stockAction: config.stockAction,
+        });
+        console.log(`[Plugin ${pluginId}] Tipo de documento registrado: ${config.docType}`);
       },
     },
     factuApi: FactuApi,

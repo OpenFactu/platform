@@ -10,9 +10,10 @@ import type { DocumentHooks } from './DocumentEngine';
 export type { DocType };
 
 /**
- * Categoría funcional del documento.
+ * Categoría funcional del documento. Abierta: los 4 valores conocidos con
+ * autocompletado, más cualquier categoría aportada por tipos nuevos/plugins.
  */
-export type DocCategory = 'invoice' | 'order' | 'delivery_note';
+export type DocCategory = 'invoice' | 'order' | 'delivery_note' | 'quote' | (string & {});
 
 /**
  * Lado del documento (venta vs compra).
@@ -108,6 +109,30 @@ export interface DocumentTypeConfig {
 
   /** Tipo de documento base que puede servir como origen */
   baseDocType?: DocType;
+
+  /** Ruta del frontend para este tipo (p.ej. '/sales/invoices'). Si falta,
+   *  la UI genérica usa `/documents/{docType}`. */
+  uiRoute?: string;
+
+  /** Etiqueta del tercero ('Cliente'/'Proveedor'). Default derivado de `side`. */
+  partnerLabel?: string;
+
+  /** Placeholder del selector de tercero. Default derivado de `side`. */
+  partnerPlaceholder?: string;
+
+  /** FK de cabecera hacia un documento padre (p.ej. SDN.orderId → SO,
+   *  SO.quoteId → SQ). Alimenta el grafo de trazabilidad genérico. */
+  headerBaseRef?: { column: string; baseDocType: DocType };
+
+  /** true si las líneas llevan baseType/baseId hacia documentos base
+   *  (SINV/PINV). Alimenta el grafo de trazabilidad genérico. */
+  linesCarryBaseRef?: boolean;
+
+  /** Transiciones de estado manuales permitidas vía
+   *  POST /api/documents/:docType/:id/status (p.ej. presupuesto
+   *  Abierto→Aceptado/Rechazado). Si falta, el endpoint devuelve 404 para
+   *  este tipo — los documentos con lógica fiscal/stock no se tocan a mano. */
+  manualStatusTransitions?: Record<string, string[]>;
 }
 
 /**

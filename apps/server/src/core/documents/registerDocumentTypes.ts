@@ -1,9 +1,11 @@
 import * as schema from '../../db/schema';
+import { registerDocTypeMeta } from '@openfactu/common';
 import { DocumentRegistry, type DocumentTypeConfig } from './DocumentRegistry';
 import { salesDeliveryNoteHooks } from './hooks/salesDeliveryNote';
 import { purchaseDeliveryNoteHooks } from './hooks/purchaseDeliveryNote';
 import { salesInvoiceHooks } from './hooks/salesInvoice';
 import { purchaseInvoiceHooks } from './hooks/purchaseInvoice';
+import { salesOrderHooks } from './hooks/salesOrder';
 
 /**
  * Configuraciones de los 6 tipos de documento del sistema.
@@ -37,6 +39,8 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasSalesAgent: true,
     statusLabels: { O: 'Emitida', C: 'Cerrada', X: 'Cancelada', D: 'Borrador' },
     baseDocType: 'SDN',
+    uiRoute: '/sales/invoices',
+    linesCarryBaseRef: true,
   },
   {
     docType: 'PINV',
@@ -64,6 +68,8 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasSalesAgent: false,
     statusLabels: { O: 'Registrada', C: 'Cerrada', X: 'Cancelada', D: 'Borrador' },
     baseDocType: 'PDN',
+    uiRoute: '/purchases/invoices',
+    linesCarryBaseRef: true,
   },
   {
     docType: 'SO',
@@ -78,6 +84,7 @@ const CONFIGS: DocumentTypeConfig[] = [
     eventPrefix: 'salesOrder',
     stockAction: 'NONE',
     closeBaseDocuments: false,
+    hooks: salesOrderHooks,
     initialStatus: 'O',
     headerPgName: 'SalesOrder',
     linePgName: 'SalesOrderLine',
@@ -89,6 +96,8 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasInternalOrder: true,
     hasSalesAgent: false,
     statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
+    uiRoute: '/sales-orders',
+    headerBaseRef: { column: 'quoteId', baseDocType: 'SQ' },
   },
   {
     docType: 'PO',
@@ -114,6 +123,7 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasInternalOrder: true,
     hasSalesAgent: false,
     statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
+    uiRoute: '/purchase-orders',
   },
   {
     docType: 'SDN',
@@ -140,6 +150,8 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasInternalOrder: false,
     hasSalesAgent: false,
     statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
+    uiRoute: '/sales/delivery-notes',
+    headerBaseRef: { column: 'orderId', baseDocType: 'SO' },
   },
   {
     docType: 'PDN',
@@ -166,12 +178,61 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasInternalOrder: false,
     hasSalesAgent: false,
     statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
+    uiRoute: '/purchases/delivery-notes',
+    headerBaseRef: { column: 'orderId', baseDocType: 'PO' },
+  },
+  {
+    docType: 'SQ',
+    side: 'sales',
+    category: 'quote',
+    label: 'Presupuesto',
+    labelPlural: 'Presupuestos',
+    tableName: 'salesQuotes',
+    schemaTable: schema.salesQuotes,
+    lineSchemaTable: schema.salesQuoteLines,
+    batchSchemaTable: null,
+    eventPrefix: 'salesQuote',
+    stockAction: 'NONE',
+    closeBaseDocuments: false,
+    initialStatus: 'O',
+    headerPgName: 'SalesQuote',
+    linePgName: 'SalesQuoteLine',
+    lineFk: 'quoteId',
+    headerRefKey: 'quoteId',
+    // Sin router Express propio — CRUD 100% vía el router genérico.
+    apiPath: '/api/documents/SQ',
+    hasFiscalFields: false,
+    hasWarehouse: false,
+    hasInternalOrder: true,
+    hasSalesAgent: true,
+    statusLabels: { O: 'Abierto', A: 'Aceptado', R: 'Rechazado', X: 'Cancelado' },
+    uiRoute: '/sales/quotes',
+    // Aceptar/Rechazar a mano desde la UI (y reabrir si fue un error).
+    manualStatusTransitions: { O: ['A', 'R'], A: ['O'], R: ['O'] },
   },
 ];
 
-// Registrar todos al importar
+/** Deriva kind de la categoría para el meta-registro de @openfactu/common. */
+function kindOf(category: string): 'order' | 'deliveryNote' | 'invoice' {
+  if (category === 'delivery_note') return 'deliveryNote';
+  if (category === 'invoice') return 'invoice';
+  return 'order';
+}
+
+// Registrar todos al importar — en el DocumentRegistry propio y en el
+// meta-registro runtime de @openfactu/common (decomposeDocType, labels...).
 for (const config of CONFIGS) {
   DocumentRegistry.register(config);
+  registerDocTypeMeta({
+    docType: config.docType,
+    kind: kindOf(config.category),
+    side: config.side === 'sales' ? 'sale' : 'purchase',
+    label: config.label,
+    labelPlural: config.labelPlural,
+    apiEndpoint: config.apiPath,
+    route: config.uiRoute,
+    stockAction: config.stockAction,
+  });
 }
 
 export { CONFIGS };

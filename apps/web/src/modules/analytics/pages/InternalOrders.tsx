@@ -76,8 +76,18 @@ export const InternalOrders: React.FC = () => {
   };
   const openEdit = (r: InternalOrder) => {
     setEditing(r);
-    setForm(r);
-    setPluginValues(r);
+    // Partimos la fila en mitades disjuntas: los campos de plugin (p_*) van a
+    // pluginValues y el resto a form. Si compartieran claves, el spread
+    // { ...form, ...pluginValues } del submit pisaría los campos editados
+    // con los valores originales de la fila.
+    const native: Partial<InternalOrder> = {};
+    const plugin: Record<string, any> = {};
+    for (const [k, v] of Object.entries(r)) {
+      if (k.startsWith('p_')) plugin[k] = v;
+      else native[k] = v;
+    }
+    setForm(native);
+    setPluginValues(plugin);
   };
   const closeForm = () => {
     setEditing(null);

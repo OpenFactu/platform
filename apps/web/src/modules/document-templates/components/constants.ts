@@ -1,4 +1,5 @@
 import type { DocType as PdfDocType } from '@/utils/visualTemplateBuilder';
+import { getCachedDocType, useDocTypes } from '@/modules/documents/domain/docTypeRegistry';
 
 /**
  * `FREE` es un tipo extendido propio (no existe en el paquete @openfactu/pdf).
@@ -37,6 +38,44 @@ export const DOC_TYPE_OPTIONS = (Object.keys(DOC_TYPE_LABELS) as DocType[]).map(
   label: DOC_TYPE_LABELS[v],
   value: v,
 }));
+
+// ── Versión registry-aware ─────────────────────────────────────────
+// Los exports estáticos de arriba solo conocen los 6 tipos core (+FREE/LABEL).
+// Estos helpers consultan además GET /api/documents/types para que los tipos
+// nuevos (SQ, plugins) aparezcan en el diseñador sin recompilar la web.
+
+/** Colores por categoría para tipos que no están en DOC_TYPE_COLORS. */
+const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
+  invoice: DOC_TYPE_COLORS.SINV,
+  delivery_note: DOC_TYPE_COLORS.SDN,
+  order: DOC_TYPE_COLORS.SO,
+  quote:
+    'bg-sky-50 dark:bg-sky-900 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-600',
+};
+
+export function getDocTypeLabel(dt: DocType): string {
+  return DOC_TYPE_LABELS[dt] ?? getCachedDocType(dt)?.label ?? dt;
+}
+
+export function getDocTypeColor(dt: DocType): string {
+  if (DOC_TYPE_COLORS[dt]) return DOC_TYPE_COLORS[dt];
+  const server = getCachedDocType(dt);
+  return (
+    CATEGORY_FALLBACK_COLORS[server?.category ?? ''] ??
+    'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-600'
+  );
+}
+
+/** Hook: opciones de tipo de documento (registry + FREE/LABEL). */
+export function useDocTypeOptions(): { label: string; value: DocType }[] {
+  const { types } = useDocTypes();
+  if (types.length === 0) return DOC_TYPE_OPTIONS;
+  return [
+    ...types.map((t) => ({ label: t.label, value: t.docType as DocType })),
+    { label: DOC_TYPE_LABELS.FREE, value: 'FREE' as DocType },
+    { label: DOC_TYPE_LABELS.LABEL, value: 'LABEL' as DocType },
+  ];
+}
 
 export interface TemplateRow {
   id: string;

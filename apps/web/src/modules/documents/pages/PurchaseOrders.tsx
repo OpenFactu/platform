@@ -36,6 +36,9 @@ import { InternalOrderHeaderField } from '@/modules/analytics/components/Interna
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
+import { DocumentCardList } from '../components/DocumentCardList';
+import { MobileLineCards } from '../components/MobileLineCards';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
@@ -88,6 +91,7 @@ const POList: React.FC<{
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const handleQuickPdf = async (id: string) => {
@@ -318,15 +322,58 @@ const POList: React.FC<{
           onClear={() => setSelectedKeys(new Set())}
           onSent={() => setSelectedKeys(new Set())}
         />
-        <Table
-          columns={ctxColumns}
-          data={filteredData || []}
-          isLoading={loading}
-          onRowClick={onDetail}
-          selectable
-          selectedKeys={selectedKeys}
-          onSelectionChange={setSelectedKeys}
-        />
+        {isMobile ? (
+          <DocumentCardList
+            data={filteredData || []}
+            isLoading={loading}
+            onClick={onDetail}
+            emptyMessage="No hay pedidos."
+            title={(item: any) => formatDocCode(item)}
+            subtitle={(item: any) =>
+              item.partnerName || partners.find((p) => p.id === item.partnerId)?.name || '...'
+            }
+            status={(item: any) => (
+              <>
+                {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
+                {item.status === 'P' && <Badge variant="info">Parcial</Badge>}
+                {item.status === 'C' && <Badge variant="success">Cerrado</Badge>}
+                {item.status === 'X' && <Badge variant="error">Cancelado</Badge>}
+              </>
+            )}
+            fields={[
+              { label: 'Fecha', value: (item: any) => fmt.date(item.date) },
+              {
+                label: 'Total',
+                value: (item: any) => (
+                  <span className="font-black text-slate-900 dark:text-slate-100">
+                    {fmt.money(item.total)}
+                  </span>
+                ),
+              },
+            ]}
+            actions={(item: any) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleQuickPdf(item.id)}
+                isLoading={downloadingId === item.id}
+                className="h-8 gap-2 text-ink-500 dark:text-ink-400"
+              >
+                <Download size={14} /> PDF
+              </Button>
+            )}
+          />
+        ) : (
+          <Table
+            columns={ctxColumns}
+            data={filteredData || []}
+            isLoading={loading}
+            onRowClick={onDetail}
+            selectable
+            selectedKeys={selectedKeys}
+            onSelectionChange={setSelectedKeys}
+          />
+        )}
       </Card>
       {ctxMenu.state && (
         <ContextMenu
@@ -362,6 +409,7 @@ const POForm: React.FC<{
 }> = ({ onBack, onSubmit, state, setState, masters, actions, computations, extraState }) => {
   const fmt = useFormat();
   const itemUoms = useItemUoms();
+  const isMobile = useIsMobile();
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const { flags } = useTheme();
   const warehouseLocation = flags.warehouseLocation;
@@ -411,7 +459,10 @@ const POForm: React.FC<{
       warehouseLocation,
       pluginLineFields,
     });
-    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+    // El builder base ya trae su propia columna 'Proyecto' cuando hay
+    // proyectos en masters — la quitamos para no duplicarla con projectCol.
+    const rest = base.slice(0, -1).filter((c) => c.header !== 'Proyecto');
+    return [...rest, projectCol, base[base.length - 1]];
   }, [
     state.lines,
     masters.items,
@@ -621,7 +672,11 @@ const POForm: React.FC<{
       <DocumentFiscalPanel kind="purchase" state={state} setState={setState} collapsible />
 
       <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={state.lines} />
+        {isMobile ? (
+          <MobileLineCards columns={columns} lines={state.lines || []} />
+        ) : (
+          <Table columns={columns} data={state.lines} />
+        )}
         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center border-t border-slate-200 dark:border-slate-700">
           <Button
             variant="ghost"
@@ -673,6 +728,7 @@ const PODetail: React.FC<{
   setViewingBatch?: (l: any) => void;
 }> = ({ order, onBack, onCopyToDelivery, onCancel, masters, setViewingBatch }) => {
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const partner = masters.partners.find((p: any) => p.id === order.partnerId);
   const canBeCancelled = order.status === 'O' || order.status === 'P';
   const canBeReceived = order.status !== 'C' && order.status !== 'X';
@@ -713,11 +769,7 @@ const PODetail: React.FC<{
     >
       <div className="flex items-center gap-3 mb-4 -mt-2 flex-wrap">
         <CloneDocumentActions docType="PO" doc={order} show="copy" size={14} />
-        <TraceabilityButton
-          type="PO"
-          id={order.id}
-          docCode={formatDocCode(order)}
-        />
+        <TraceabilityButton type="PO" id={order.id} docCode={formatDocCode(order)} />
         <InternalOrderChip internalOrderId={order.internalOrderId} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -794,7 +846,11 @@ const PODetail: React.FC<{
       </div>
 
       <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={order.lines || []} />
+        {isMobile ? (
+          <MobileLineCards columns={columns} lines={order.lines || []} />
+        ) : (
+          <Table columns={columns} data={order.lines || []} />
+        )}
         <DocumentTotalsBlock
           subtotal={order.subtotal}
           tax={Number(order.total) - Number(order.subtotal)}
@@ -921,7 +977,10 @@ export const PurchaseOrders: React.FC = () => {
         setSelectedOrder(data);
         currentTab.rename(formatDocCode(data));
       } catch (err) {
-        toast.error((err instanceof Error ? (err instanceof Error ? err.message : undefined) : undefined) || 'Error de red al cargar el pedido');
+        toast.error(
+          (err instanceof Error ? (err instanceof Error ? err.message : undefined) : undefined) ||
+            'Error de red al cargar el pedido',
+        );
       } finally {
         setDetailLoading(false);
       }
@@ -957,7 +1016,7 @@ export const PurchaseOrders: React.FC = () => {
       notifyDocChange(DocType.PurchaseOrder);
       currentTab.close();
     } catch (err) {
-      toast.error((err instanceof Error ? err.message : undefined));
+      toast.error(err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -968,7 +1027,7 @@ export const PurchaseOrders: React.FC = () => {
       notifyDocChange(DocType.PurchaseOrder);
       currentTab.close();
     } catch (err) {
-      toast.error((err instanceof Error ? err.message : undefined));
+      toast.error(err instanceof Error ? err.message : undefined);
     }
   };
 

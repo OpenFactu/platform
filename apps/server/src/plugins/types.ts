@@ -37,6 +37,27 @@ export interface PluginContext {
   documents: {
     onBeforeCreate: (tableName: string, handler: HookHandler) => void;
     onAfterCreate: (tableName: string, handler: HookHandler) => void;
+    /**
+     * Registrar un tipo de documento nuevo (estilo object-type): hereda gratis
+     * el flujo genérico completo — API CRUD (`/api/documents/{docType}`),
+     * numeración por serie, cancelación, stock según `stockAction`, PDF con
+     * plantilla por defecto, hooks/eventos (`{eventPrefix}.beforeCreate` /
+     * `.afterCreate`), grafo de trazabilidad y página genérica de UI
+     * (`/documents/{docType}`).
+     *
+     * Las tablas (cabecera y líneas) las crea el propio plugin — normalmente
+     * con `migration.createTable` — y se referencian en la config vía
+     * `schemaTable`/`lineSchemaTable` (objetos pgTable de drizzle-orm
+     * construidos por el plugin) más `headerPgName`/`linePgName`.
+     *
+     * Validaciones: `docType` obligatorio y sin colisionar con un tipo ya
+     * registrado; tablas de cabecera/líneas presentes.
+     *
+     * Limitación conocida: el seeding de la plantilla PDF por defecto corre
+     * en el arranque (syncAllTenants), que puede preceder a la carga del
+     * plugin — la plantilla del tipo nuevo aparece al siguiente reinicio.
+     */
+    register: (config: import('../core/documents/DocumentRegistry').DocumentTypeConfig) => void;
   };
   /** FactuAPI — crea documentos programáticamente con toda la lógica de negocio. */
   factuApi: typeof FactuApi;

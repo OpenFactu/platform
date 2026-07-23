@@ -35,6 +35,9 @@ import { InternalOrderHeaderField } from '@/modules/analytics/components/Interna
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
+import { DocumentCardList } from '../components/DocumentCardList';
+import { MobileLineCards } from '../components/MobileLineCards';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { PreparationButton } from '@/components/common/PreparationButton';
@@ -79,6 +82,7 @@ const SDNList: React.FC<{
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const { flags } = useTheme();
   const tabs = (() => {
     try {
@@ -372,15 +376,69 @@ const SDNList: React.FC<{
           onClear={() => setSelectedKeys(new Set())}
           onSent={() => setSelectedKeys(new Set())}
         />
-        <Table
-          columns={ctxColumns}
-          data={filteredData || []}
-          isLoading={loading}
-          onRowClick={onDetail}
-          selectable
-          selectedKeys={selectedKeys}
-          onSelectionChange={setSelectedKeys}
-        />
+        {isMobile ? (
+          <DocumentCardList
+            data={filteredData || []}
+            isLoading={loading}
+            onClick={onDetail}
+            emptyMessage="No hay albaranes."
+            title={(item: any) => formatDocCode(item)}
+            subtitle={(item: any) =>
+              item.partnerName || partners.find((p) => p.id === item.partnerId)?.name || '...'
+            }
+            status={(item: any) => (
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
+                {item.status === 'C' && <Badge variant="success">Facturado</Badge>}
+                {item.status === 'X' && <Badge variant="error">Cancelado</Badge>}
+                {item.hasActiveShipment && item.activeShipmentStatus === 'delivered' && (
+                  <Badge variant="success">Entregado</Badge>
+                )}
+                {item.hasActiveShipment && item.activeShipmentStatus !== 'delivered' && (
+                  <Badge variant="info">En preparación</Badge>
+                )}
+              </div>
+            )}
+            fields={[
+              { label: 'Fecha', value: (item: any) => fmt.date(item.date) },
+              {
+                label: 'Total',
+                value: (item: any) => (
+                  <span className="font-black text-slate-900 dark:text-slate-100">
+                    {fmt.money(item.total)}
+                  </span>
+                ),
+              },
+              {
+                label: 'Pedido origen',
+                hidden: (item: any) => !item.orderDocNum,
+                value: (item: any) =>
+                  `${item.orderPrefix}-${item.periodCode}-${String(item.orderDocNum).padStart(6, '0')}`,
+              },
+            ]}
+            actions={(item: any) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleQuickPdf(item.id)}
+                isLoading={downloadingId === item.id}
+                className="h-8 gap-2 text-ink-500 dark:text-ink-400"
+              >
+                <Download size={14} /> PDF
+              </Button>
+            )}
+          />
+        ) : (
+          <Table
+            columns={ctxColumns}
+            data={filteredData || []}
+            isLoading={loading}
+            onRowClick={onDetail}
+            selectable
+            selectedKeys={selectedKeys}
+            onSelectionChange={setSelectedKeys}
+          />
+        )}
       </Card>
       {ctxMenu.state && (
         <ContextMenu
@@ -424,6 +482,7 @@ const SDNForm: React.FC<{
 }) => {
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const itemUoms = useItemUoms();
   const zonesWithStock = useZonesWithStock();
   const { flags } = useTheme();
@@ -451,7 +510,10 @@ const SDNForm: React.FC<{
       pluginLineFields,
       getAvailableZones: zonesWithStock.get,
     });
-    return [...base.slice(0, -1), projectCol, base[base.length - 1]];
+    // El builder base ya trae su propia columna 'Proyecto' cuando hay
+    // proyectos en masters — la quitamos para no duplicarla con projectCol.
+    const rest = base.slice(0, -1).filter((c) => c.header !== 'Proyecto');
+    return [...rest, projectCol, base[base.length - 1]];
   }, [
     state.lines,
     state.warehouseId,
@@ -642,7 +704,11 @@ const SDNForm: React.FC<{
       <DocumentFiscalPanel kind="sales" state={state} setState={setState} collapsible />
 
       <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={state.lines || []} />
+        {isMobile ? (
+          <MobileLineCards columns={columns} lines={state.lines || []} />
+        ) : (
+          <Table columns={columns} data={state.lines || []} />
+        )}
         <div className="p-6 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col md:flex-row justify-between items-start md:items-center border-t border-slate-200 dark:border-slate-700 gap-6">
           <div className="flex flex-wrap items-center gap-3">
             <Button
@@ -750,6 +816,7 @@ const SDNDetail: React.FC<{
   setViewingBatch: (l: any) => void;
 }> = ({ sdn, onBack, onCancel, onCopyToInvoice, masters, zones, setViewingBatch }) => {
   const fmt = useFormat();
+  const isMobile = useIsMobile();
   const { flags } = useTheme();
   const tabs = useTabs();
   const partner = masters.partners.find((p: any) => p.id === sdn.partnerId);
@@ -791,11 +858,7 @@ const SDNDetail: React.FC<{
     >
       <div className="flex items-center gap-3 mb-4 -mt-2 flex-wrap">
         <CloneDocumentActions docType="SDN" doc={sdn} show="copy" size={14} />
-        <TraceabilityButton
-          type="SDN"
-          id={sdn.id}
-          docCode={formatDocCode(sdn)}
-        />
+        <TraceabilityButton type="SDN" id={sdn.id} docCode={formatDocCode(sdn)} />
         <InternalOrderChip internalOrderId={sdn.internalOrderId} />
         {sdn.status === 'O' && !sdn.hasActiveShipment && flags.logisticsEnabled && (
           <PreparationButton docType="SDN" docId={sdn.id} />
@@ -871,7 +934,11 @@ const SDNDetail: React.FC<{
       </div>
 
       <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={columns} data={sdn.lines || []} />
+        {isMobile ? (
+          <MobileLineCards columns={columns} lines={sdn.lines || []} />
+        ) : (
+          <Table columns={columns} data={sdn.lines || []} />
+        )}
         <DocumentTotalsBlock
           subtotal={sdn.subtotal}
           tax={sdn.taxTotal}
@@ -892,7 +959,6 @@ const SDNDetail: React.FC<{
     </DocumentDetailLayout>
   );
 };
-
 
 export const SalesDeliveryNotes: React.FC = () => {
   const { token, user } = useAuth();
@@ -1061,7 +1127,7 @@ export const SalesDeliveryNotes: React.FC = () => {
       notifyDocChange(DocType.SalesDeliveryNote);
       currentTab.close();
     } catch (err) {
-      toast.error((err instanceof Error ? err.message : undefined));
+      toast.error(err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -1088,11 +1154,7 @@ export const SalesDeliveryNotes: React.FC = () => {
         d = await doCall(false);
       } catch (err) {
         // 409 con requiresForce = envío ya en ruta — pedir confirmación explícita.
-        if (
-          err instanceof ApiError &&
-          err.status === 409 &&
-          (err.body as any)?.requiresForce
-        ) {
+        if (err instanceof ApiError && err.status === 409 && (err.body as any)?.requiresForce) {
           if (
             !confirm(
               'El envío está en ruta. El conductor tendrá que volver sin entregar.\n\n¿Cancelar de todos modos?',
@@ -1206,14 +1268,12 @@ export const SalesDeliveryNotes: React.FC = () => {
       }}
       onDetail={(p) => openTab(`/sales/delivery-notes/${p.id}`, { title: formatDocCode(p) })}
       onCopyToInvoice={(p) => {
-        docsApi
-          .get('/api/sales/delivery-notes', p.id)
-          .then((detail) => {
-            localStorage.setItem('copy_pdn_source', JSON.stringify(detail));
-            openTab(`/sales/invoices/new?copyFrom=${p.id}`, {
-              title: `Factura ← ${formatDocCode(p)}`,
-            });
+        docsApi.get('/api/sales/delivery-notes', p.id).then((detail) => {
+          localStorage.setItem('copy_pdn_source', JSON.stringify(detail));
+          openTab(`/sales/invoices/new?copyFrom=${p.id}`, {
+            title: `Factura ← ${formatDocCode(p)}`,
           });
+        });
       }}
     />
   );

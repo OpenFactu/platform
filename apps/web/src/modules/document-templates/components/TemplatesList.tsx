@@ -12,7 +12,14 @@ import {
   Pencil,
   Sparkles,
 } from 'lucide-react';
-import { DOC_TYPE_LABELS, DOC_TYPE_COLORS, type DocType, type TemplateRow } from './constants';
+import {
+  DOC_TYPE_LABELS,
+  getDocTypeLabel,
+  getDocTypeColor,
+  useDocTypeOptions,
+  type DocType,
+  type TemplateRow,
+} from './constants';
 import { useAuth } from '@/context/AuthContext';
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
@@ -33,8 +40,6 @@ interface Props {
   onReload?: () => void;
 }
 
-const DOC_TYPES = Object.keys(DOC_TYPE_LABELS) as DocType[];
-
 export const TemplatesList: React.FC<Props> = ({
   data,
   loading,
@@ -51,6 +56,10 @@ export const TemplatesList: React.FC<Props> = ({
   const toast = useToast();
   const [resyncing, setResyncing] = useState(false);
   const [selectedType, setSelectedType] = useState<DocType | null>(null);
+
+  // Tipos desde el registry del servidor (+FREE/LABEL); fallback a los 8
+  // estáticos mientras carga.
+  const DOC_TYPES = useDocTypeOptions().map((o) => o.value);
 
   const handleResyncDefaults = async () => {
     if (
@@ -271,14 +280,14 @@ export const TemplatesList: React.FC<Props> = ({
                     >
                       <span className="flex items-center gap-2 min-w-0">
                         <span
-                          className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${DOC_TYPE_COLORS[docType]}`}
+                          className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${getDocTypeColor(docType)}`}
                         >
                           {docType}
                         </span>
                         <span
                           className={`text-sm truncate ${active ? 'font-bold text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}
                         >
-                          {DOC_TYPE_LABELS[docType]}
+                          {getDocTypeLabel(docType)}
                         </span>
                       </span>
                       <span
@@ -300,13 +309,13 @@ export const TemplatesList: React.FC<Props> = ({
           >
             {selectedType && (
               <div
-                className={`px-6 py-3 border-b flex items-center justify-between ${DOC_TYPE_COLORS[selectedType]}`}
+                className={`px-6 py-3 border-b flex items-center justify-between ${getDocTypeColor(selectedType)}`}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black uppercase tracking-widest">
                     {selectedType}
                   </span>
-                  <span className="font-bold text-sm">{DOC_TYPE_LABELS[selectedType]}</span>
+                  <span className="font-bold text-sm">{getDocTypeLabel(selectedType)}</span>
                 </div>
                 <span className="text-[10px] font-bold opacity-70">{rows.length} plantilla(s)</span>
               </div>

@@ -113,18 +113,11 @@ async function resolveSignature(ctx: {
   let createdBy: string | null = (header as any)?.createdBy || null;
   if (!createdBy && (header as any)?.id) {
     try {
-      const tables: Record<string, string> = {
-        SINV: 'SalesInvoice',
-        PINV: 'PurchaseInvoice',
-        SO: 'SalesOrder',
-        PO: 'PurchaseOrder',
-        SDN: 'SalesDeliveryNote',
-        PDN: 'PurchaseDeliveryNote',
-      };
-      // Detectamos el tipo por propiedades de la cabecera — si es factura
-      // suele haber `isLocked`; si no, buscamos el `id` en cada tabla.
+      // Sondeamos las tablas de cabecera de TODOS los tipos registrados
+      // (registry-driven; antes era un mapa hardcodeado de 6).
+      const tables = DocumentRegistry.getAll().map((c) => c.headerPgName);
       const { sql } = await import('drizzle-orm');
-      for (const tbl of Object.values(tables)) {
+      for (const tbl of tables) {
         try {
           const r: any = await db.execute(
             sql.raw(

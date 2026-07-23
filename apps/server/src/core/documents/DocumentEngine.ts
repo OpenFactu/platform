@@ -454,6 +454,16 @@ export class DocumentEngine {
       headerValues.orderId = (request as any).orderId || null;
     }
 
+    // Presupuesto origen (SO generado desde un SQ) — mismo patrón que orderId.
+    if ((def.schemaTable as any).quoteId !== undefined) {
+      headerValues.quoteId = (request as any).quoteId || null;
+    }
+
+    // Validez del presupuesto (solo tablas que la declaran, p.ej. SalesQuote).
+    if ((def.schemaTable as any).validUntil !== undefined && (request as any).validUntil) {
+      headerValues.validUntil = new Date((request as any).validUntil);
+    }
+
     // Proyecto en cabecera (las líneas heredan si no traen propio).
     if (def.schemaTable.internalOrderId) {
       headerValues.internalOrderId = (request as any).internalOrderId || null;

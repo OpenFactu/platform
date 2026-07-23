@@ -18,6 +18,7 @@ import {
   DOC_TYPE_LABELS,
   decomposeDocType,
 } from '@openfactu/common';
+import { getCachedDocType } from './docTypeRegistry';
 
 export interface DocTypeConfig {
   docType: DocType;
@@ -87,6 +88,27 @@ export const DOC_TYPE_CONFIGS: Record<DocType, DocTypeConfig> = Object.fromEntri
   Object.values(DocType).map((dt) => [dt, buildConfig(dt)]),
 ) as Record<DocType, DocTypeConfig>;
 
+/**
+ * Config de un tipo de documento. Los 6 core salen de los mapas estáticos
+ * (output idéntico al histórico); cualquier otro código se resuelve contra la
+ * caché de GET /api/documents/types (ver docTypeRegistry.ts) — devuelve
+ * undefined si el tipo no existe o el fetch aún no ha llegado, así que el
+ * llamador debe guardar contra ello (Documents.tsx ya lo hace).
+ */
 export function getDocTypeConfig(dt: DocType): DocTypeConfig {
-  return DOC_TYPE_CONFIGS[dt];
+  const staticCfg = DOC_TYPE_CONFIGS[dt];
+  if (staticCfg) return staticCfg;
+  const server = getCachedDocType(dt);
+  if (server) {
+    return {
+      docType: dt,
+      apiEndpoint: server.apiPath,
+      label: server.label,
+      labelPlural: server.labelPlural,
+      partnerLabel: server.partnerLabel,
+      partnerPlaceholder: server.partnerPlaceholder,
+      statusOptions: server.statusOptions.map(({ value, label }) => ({ label, value })),
+    };
+  }
+  return undefined as unknown as DocTypeConfig;
 }

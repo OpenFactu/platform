@@ -4,8 +4,22 @@ import crypto from 'crypto';
 import { ClientFactory } from './ClientFactory';
 import { sql, eq, and } from 'drizzle-orm';
 import * as schema from '../../db/schema';
-import { getDefaultTemplate, DEFAULT_TEMPLATE_NAMES, ALL_DOC_TYPES } from '@openfactu/pdf';
+import { getDefaultTemplate, getDefaultTemplateName, DEFAULT_TEMPLATE_NAMES } from '@openfactu/pdf';
+import { DocumentRegistry, type DocumentTypeConfig } from '../documents/DocumentRegistry';
 import { seedDefaults } from './seedDefaults';
+
+/**
+ * HTML de plantilla de fábrica para un tipo. Los 6 core van SIN overrides
+ * (byte-idéntico al histórico — el resync compara/reescribe estas filas en
+ * cada boot); los tipos nuevos reciben su título/etiqueta desde la config.
+ */
+function factoryTemplateHtml(config: DocumentTypeConfig): string {
+  if (DEFAULT_TEMPLATE_NAMES[config.docType]) return getDefaultTemplate(config.docType);
+  return getDefaultTemplate(config.docType, {
+    title: config.label,
+    partnerLabel: config.partnerLabel ?? (config.side === 'sales' ? 'Cliente' : 'Proveedor'),
+  });
+}
 
 /**
  * MigrationManager lee archivos .sql de la carpeta /migrations
@@ -165,7 +179,12 @@ export class MigrationManager {
     const db = ClientFactory.getClient(schemaName);
     let updated = 0;
     console.log(`[Templates] Resync plantillas por defecto en ${schemaName}…`);
-    for (const docType of ALL_DOC_TYPES) {
+    // Iteramos los tipos del DocumentRegistry (poblado por
+    // registerDocumentTypes antes de syncAllTenants), no el ALL_DOC_TYPES de
+    // @openfactu/pdf — así los tipos nuevos (SQ, plugins) también reciben su
+    // plantilla. Para los 6 core el nombre/HTML emitido es byte-idéntico.
+    for (const config of DocumentRegistry.getAll()) {
+      const docType = config.docType;
       const [existing] = await db
         .select()
         .from(schema.documentTemplates)
@@ -175,7 +194,7 @@ export class MigrationManager {
             eq(schema.documentTemplates.isFactoryDefault, true),
           ),
         );
-      const html = getDefaultTemplate(docType);
+      const html = factoryTemplateHtml(config);
       const hasSignature = html.includes('signature-block');
       if (!hasSignature) {
         console.warn(
@@ -185,7 +204,7 @@ export class MigrationManager {
       if (existing) {
         await db
           .update(schema.documentTemplates)
-          .set({ html, name: DEFAULT_TEMPLATE_NAMES[docType] })
+          .set({ html, name: getDefaultTemplateName(docType, config.label) })
           .where(eq(schema.documentTemplates.id, existing.id));
       } else {
         // No hay fila de fábrica para este docType (tenant nuevo, o backfill
@@ -205,7 +224,7 @@ export class MigrationManager {
         await db.insert(schema.documentTemplates).values({
           id: crypto.randomUUID(),
           docType,
-          name: DEFAULT_TEMPLATE_NAMES[docType],
+          name: getDefaultTemplateName(docType, config.label),
           html,
           isDefault: !currentDefault,
           isFactoryDefault: true,
@@ -222,7 +241,8 @@ export class MigrationManager {
   private static async seedDefaultTemplates(schemaName: string) {
     const db = ClientFactory.getClient(schemaName);
     try {
-      for (const docType of ALL_DOC_TYPES) {
+      for (const config of DocumentRegistry.getAll()) {
+        const docType = config.docType;
         const existing = await db
           .select({ id: schema.documentTemplates.id })
           .from(schema.documentTemplates)
@@ -232,8 +252,8 @@ export class MigrationManager {
         await db.insert(schema.documentTemplates).values({
           id: crypto.randomUUID(),
           docType,
-          name: DEFAULT_TEMPLATE_NAMES[docType],
-          html: getDefaultTemplate(docType),
+          name: getDefaultTemplateName(docType, config.label),
+          html: factoryTemplateHtml(config),
           isDefault: true,
           isFactoryDefault: true,
         });

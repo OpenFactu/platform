@@ -781,18 +781,15 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
       // placeholder junto al IVA0 del maestro).
       const zeroGroup = (masters.taxGroups ?? []).find((t: any) => Number(t.rate) === 0);
       return (
-        <select
+        <SearchableSelect
           value={line.taxGroupId || zeroGroup?.id || ''}
           disabled={locked}
-          onChange={(e) => actions.updateLine(idx, 'taxGroupId', e.target.value)}
-          className={`h-9 w-full border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-center bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 px-2 ${locked ? disabledInputCls : ''}`}
-        >
-          {(masters.taxGroups ?? []).map((t: any) => (
-            <option key={t.id} value={t.id}>
-              {Number(t.rate)}%
-            </option>
-          ))}
-        </select>
+          onChange={(v) => actions.updateLine(idx, 'taxGroupId', v)}
+          options={(masters.taxGroups ?? []).map((t: any) => ({
+            label: `${Number(t.rate)}%`,
+            value: t.id,
+          }))}
+        />
       );
     },
   });
