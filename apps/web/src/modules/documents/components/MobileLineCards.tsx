@@ -61,7 +61,7 @@ export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
               {first && renderCell(first, line, idx)}
             </div>
             {actionCols.length > 0 && (
-              <div className="shrink-0">
+              <div className="shrink-0 self-center flex items-center">
                 {actionCols.map((c, i) => (
                   <React.Fragment key={i}>{renderCell(c, line, idx)}</React.Fragment>
                 ))}

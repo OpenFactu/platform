@@ -41,6 +41,7 @@ import { formatDocCode } from '@/utils/docCode';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
+import { useDocTypes } from '../domain/docTypeRegistry';
 import { docsApi } from '../api';
 import { apiClient } from '@/shared/http';
 
@@ -756,6 +757,11 @@ export const SalesQuotes: React.FC = () => {
   const isCreate = location.pathname.endsWith('/new');
   const isDetail = !!detailId;
   const isList = !isCreate && !isDetail;
+
+  // Siembra el meta-registro de @openfactu/common con los tipos del servidor
+  // (incluido el stockAction de SQ) — sin esto, la validación de lotes de
+  // useDocument no sabe que un presupuesto no mueve stock.
+  useDocTypes();
 
   const dataVersion = useDataVersion('SQ');
   const [quotes, setQuotes] = useState<any[]>([]);
