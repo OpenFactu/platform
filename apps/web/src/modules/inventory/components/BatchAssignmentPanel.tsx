@@ -175,7 +175,9 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
   // cambiada después de crear la línea) y mostraría lotes/zonas de un
   // almacén que ya no es el seleccionado.
   const lineWarehouseId =
-    warehouseLocation === 'line' ? selectedLine?.warehouseId || headerWarehouseId : headerWarehouseId;
+    warehouseLocation === 'line'
+      ? selectedLine?.warehouseId || headerWarehouseId
+      : headerWarehouseId;
   const defaultZoneId = selectedLine?.zoneId || '';
   // En venta, el "stock disponible" debe ser el de ESE almacén — un lote
   // puede existir físicamente en otro almacén distinto al de la línea, y
@@ -527,7 +529,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
       subtitle="Asigna lotes y series a las líneas del documento"
       maxWidth="7xl"
     >
-      <div className="flex flex-col gap-4 max-h-[85vh]">
+      <div className="flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
         {/* ----------- TOP GRID: Líneas del documento ----------- */}
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 overflow-hidden">
           <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -538,8 +540,8 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
               {traceableLines.length} línea{traceableLines.length === 1 ? '' : 's'} con trazabilidad
             </p>
           </div>
-          <div className="max-h-[180px] overflow-y-auto">
-            <table className="w-full text-[12px]">
+          <div className="max-h-[180px] overflow-auto">
+            <table className="w-full text-[12px] min-w-[520px]">
               <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
                 <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                   <th className="px-3 py-2 text-left">#</th>
@@ -645,7 +647,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
 
         {/* ----------- BOTTOM: Dos grids lado a lado ----------- */}
         {selectedLine && selectedItem && (
-          <div className="grid grid-cols-2 gap-4 min-h-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
             {/* -------- IZQUIERDA: Lista de lotes/series existentes -------- */}
             <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 flex flex-col overflow-hidden min-h-[320px]">
               <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
@@ -1012,7 +1014,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
         )}
 
         {/* ----------- FOOTER ----------- */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
           <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
             {
               traceableLines.filter(({ originalIdx }) => {
