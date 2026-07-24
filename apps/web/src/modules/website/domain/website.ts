@@ -55,5 +55,9 @@ export interface WebsiteAsset {
   id: string;
   fileName: string;
   mime: string;
+  size: number;
+  /** Backend físico donde vive el archivo: local | gdrive | onedrive */
+  provider: string;
+  uploadedAt: string;
   publicUrl: string;
 }

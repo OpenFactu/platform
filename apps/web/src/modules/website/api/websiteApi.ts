@@ -38,6 +38,8 @@ export const websiteApi = {
     form.append('file', file);
     return apiClient.postForm<WebsiteAsset>('/api/website/assets', form);
   },
+  listAssets: () => apiClient.get<WebsiteAsset[]>('/api/website/assets'),
+  deleteAsset: (id: string) => apiClient.delete<{ ok: true }>(`/api/website/assets/${id}`),
 
   listSubmissions: () => apiClient.get<WebsiteSubmission[]>('/api/website/submissions'),
   markSubmissionRead: (id: string) =>

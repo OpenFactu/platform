@@ -6,6 +6,7 @@ import { ArrowLeft, Eye, Maximize2, Minimize2, Rocket, Save } from 'lucide-react
 import { websiteApi } from '../api/websiteApi';
 import type { WebsitePage, WebsiteSite } from '../domain/website';
 import { useSiteTheme } from '../hooks/useSiteTheme';
+import { MediaLibraryModal } from '../components/MediaLibraryModal';
 
 const AUTOSAVE_MS = 1500;
 
@@ -118,6 +119,23 @@ export const PageEditor: React.FC = () => {
     return asset.publicUrl;
   };
 
+  // Biblioteca de medios: pickImage devuelve una promesa que se resuelve al
+  // elegir un medio en el modal (o null al cerrarlo)
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const libraryResolver = useRef<((url: string | null) => void) | null>(null);
+
+  const pickImage = () =>
+    new Promise<string | null>((resolve) => {
+      libraryResolver.current = resolve;
+      setLibraryOpen(true);
+    });
+
+  const closeLibrary = (url: string | null) => {
+    setLibraryOpen(false);
+    libraryResolver.current?.(url);
+    libraryResolver.current = null;
+  };
+
   if (!site || !page || !doc) return <Loader />;
 
   const ctx: RenderContext = {
@@ -181,8 +199,14 @@ export const PageEditor: React.FC = () => {
           theme={theme}
           ctx={ctx}
           uploadImage={uploadImage}
+          pickImage={pickImage}
         />
       </div>
+      <MediaLibraryModal
+        open={libraryOpen}
+        onClose={() => closeLibrary(null)}
+        onSelect={(url) => closeLibrary(url)}
+      />
     </div>
   );
 };
