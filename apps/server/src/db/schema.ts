@@ -246,6 +246,26 @@ export const apiTokens = pgTable('ApiToken', {
 });
 
 /**
+ * Resolución pública de sitios web (módulo Website). Vive en `public` porque
+ * el serving de la web resuelve slug/hostname → tenant ANTES del tenant
+ * context, con una sola query indexada (nunca iterando tenants). El UNIQUE en
+ * `value` reserva además los slugs globalmente entre tenants.
+ */
+export const websiteHosts = pgTable('WebsiteHost', {
+  id: text('id').primaryKey(),
+  /** slug | subdomain | domain */
+  kind: text('kind').notNull(),
+  /** Slug ('acme') o hostname completo en minúsculas ('acme.webs.com'). */
+  value: text('value').notNull().unique(),
+  tenantId: text('tenantId').notNull(),
+  siteId: text('siteId').notNull(),
+  /** Solo aplica a kind='domain': verificación DNS pendiente hasta true. */
+  verified: boolean('verified').default(false).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+/**
  * DATOS GEOGRÁFICOS GENÉRICOS (public, compartidos entre tenants)
  * Soporta multi-país con jerarquía flexible:
  *   Country → Region (opcional) → SubRegion → Locality
@@ -2453,4 +2473,70 @@ export const goodsIssueLines = pgTable('GoodsIssueLine', {
   batchNum: text('batchNum'),
   uomId: text('uomId'),
   notes: text('notes'),
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// MÓDULO WEBSITE (migración 064_website.sql)
+// Landing builder por tenant: un site (MVP: uno por tenant) con páginas de
+// bloques JSON (@openfactu/site-builder). `blocksDraft` es lo que se edita;
+// "Publicar" lo copia a `blocksPublished`, que es lo único que se sirve.
+// ─────────────────────────────────────────────────────────────────────────
+
+export const websiteSites = pgTable('WebsiteSite', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  /** Slug público (keirost.com/site/<slug>); reservado globalmente en public."WebsiteHost". */
+  slug: text('slug').notNull(),
+  /** draft | published */
+  status: text('status').default('draft').notNull(),
+  /** Parcial de SiteTheme; null = usa el branding del tenant tal cual. */
+  themeOverrides: jsonb('themeOverrides'),
+  seoTitle: text('seoTitle'),
+  seoDescription: text('seoDescription'),
+  ogImageUrl: text('ogImageUrl'),
+  publishedAt: timestamp('publishedAt'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+export const websitePages = pgTable(
+  'WebsitePage',
+  {
+    id: text('id').primaryKey(),
+    siteId: text('siteId')
+      .notNull()
+      .references(() => websiteSites.id, { onDelete: 'cascade' }),
+    /** Ruta dentro del site: '/', '/servicios', ... */
+    path: text('path').notNull(),
+    title: text('title').notNull(),
+    seoTitle: text('seoTitle'),
+    seoDescription: text('seoDescription'),
+    ogImageUrl: text('ogImageUrl'),
+    isHome: boolean('isHome').default(false).notNull(),
+    /** draft | published */
+    status: text('status').default('draft').notNull(),
+    blocksDraft: jsonb('blocksDraft')
+      .default({ version: 1, blocks: [] })
+      .notNull(),
+    blocksPublished: jsonb('blocksPublished'),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+  },
+  (t) => ({
+    pathUnique: unique().on(t.siteId, t.path),
+  }),
+);
+
+export const websiteFormSubmissions = pgTable('WebsiteFormSubmission', {
+  id: text('id').primaryKey(),
+  siteId: text('siteId').notNull(),
+  pageId: text('pageId'),
+  blockId: text('blockId'),
+  name: text('name'),
+  email: text('email'),
+  message: text('message'),
+  /** ip, userAgent, referer */
+  meta: jsonb('meta'),
+  read: boolean('read').default(false).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
 });

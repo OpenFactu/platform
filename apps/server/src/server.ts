@@ -12,6 +12,7 @@ import userModulesRouter from './api/userModules';
 import automationsRouter from './api/automations';
 import dashboardWidgetsRouter from './api/dashboardWidgets';
 import logisticsRouter, { publicTrackRouter } from './api/logistics';
+import { publicSiteRouter } from './api/publicSite';
 import apiTokensRouter from './api/apiTokens';
 import { apiTokenMiddleware } from './api/middleware/apiToken';
 import { AutomationRunner } from './core/automations/AutomationRunner';
@@ -160,6 +161,8 @@ app.use('/api/setup', setupRouter);
 app.use('/api/auth', authRouter);
 // Endpoint público de tracking — no requiere auth; se identifica por token.
 app.use('/api/logistics', publicTrackRouter);
+// Webs públicas de tenants (módulo Website) — sin auth; resuelve por slug.
+app.use('/site', publicSiteRouter);
 
 // 1b. Middleware de tokens de API — antes del tenantContextMiddleware.
 //     Si el Authorization es `Bearer tk_…`, resuelve tenantId + scopes.
@@ -473,6 +476,16 @@ const start = async () => {
           "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         CREATE INDEX IF NOT EXISTS "AiConversation_tenant_user_idx" ON "AiConversation" ("tenantId", "userId");
+        CREATE TABLE IF NOT EXISTS "WebsiteHost" (
+          "id" TEXT PRIMARY KEY,
+          "kind" TEXT NOT NULL,
+          "value" TEXT UNIQUE NOT NULL,
+          "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+          "siteId" TEXT NOT NULL,
+          "verified" BOOLEAN NOT NULL DEFAULT FALSE,
+          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
       `),
       );
       console.log('[Bootstrap] Tablas del schema publico verificadas.');

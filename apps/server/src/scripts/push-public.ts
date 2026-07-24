@@ -104,6 +104,17 @@ async function ensureCoreTables() {
         "newValue" JSONB,
         "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS "WebsiteHost" (
+        "id" TEXT PRIMARY KEY,
+        "kind" TEXT NOT NULL,
+        "value" TEXT UNIQUE NOT NULL,
+        "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
+        "siteId" TEXT NOT NULL,
+        "verified" BOOLEAN NOT NULL DEFAULT FALSE,
+        "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
     `),
     );
     console.log('   ✅ Tablas Core aseguradas manualmente.');
