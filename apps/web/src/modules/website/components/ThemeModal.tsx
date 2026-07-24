@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Modal, useToast } from '@openfactu/ui';
-import { RotateCcw } from 'lucide-react';
+import { Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import { FONT_OPTIONS, useTheme } from '@/context/ThemeContext';
+import { AdvancedEditor } from '@/modules/document-templates/components/AdvancedEditor';
 import { websiteApi } from '../api/websiteApi';
 import type { WebsiteSite } from '../domain/website';
 
@@ -31,13 +32,25 @@ export const ThemeModal: React.FC<Props> = ({ open, onClose, site, onSaved }) =>
   const [overrides, setOverrides] = useState(site.themeOverrides ?? {});
   const [customCss, setCustomCss] = useState(site.customCss ?? '');
   const [saving, setSaving] = useState(false);
+  const [cssFullscreen, setCssFullscreen] = useState(false);
 
   useEffect(() => {
     if (open) {
       setOverrides(site.themeOverrides ?? {});
       setCustomCss(site.customCss ?? '');
+      setCssFullscreen(false);
     }
   }, [open, site.themeOverrides, site.customCss]);
+
+  // Esc sale del CSS a pantalla completa
+  useEffect(() => {
+    if (!cssFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCssFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [cssFullscreen]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -120,21 +133,40 @@ export const ThemeModal: React.FC<Props> = ({ open, onClose, site, onSaved }) =>
           </p>
         </div>
         <div>
-          <label className="text-xs font-bold text-slate-500 block mb-1">
-            CSS personalizado (avanzado)
-          </label>
-          <textarea
-            value={customCss}
-            onChange={(e) => setCustomCss(e.target.value)}
-            placeholder={'.sb-hero { padding: 120px 24px; }'}
-            spellCheck={false}
-            className="w-full h-40 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-900 text-slate-100 font-mono text-xs resize-y"
-          />
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-bold text-slate-500">CSS personalizado (avanzado)</label>
+            <button
+              type="button"
+              onClick={() => setCssFullscreen(true)}
+              title="Pantalla completa"
+              className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"
+            >
+              <Maximize2 size={13} />
+            </button>
+          </div>
+          <div className="h-40 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <AdvancedEditor value={customCss} onChange={setCustomCss} language="css" />
+          </div>
           <p className="text-[11px] text-slate-400 mt-1">
             Se añade después de los estilos de la web, así que puede sobreescribirlos. Solo para
             quien sepa CSS — no se valida.
           </p>
         </div>
+        {cssFullscreen && (
+          <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-900 flex flex-col p-4 gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                CSS personalizado — pantalla completa
+              </span>
+              <Button size="sm" variant="secondary" onClick={() => setCssFullscreen(false)}>
+                <Minimize2 size={14} className="mr-2" /> Salir (Esc)
+              </Button>
+            </div>
+            <div className="flex-1 min-h-0 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <AdvancedEditor value={customCss} onChange={setCustomCss} language="css" />
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between pt-2">
           <Button variant="secondary" size="sm" onClick={() => setOverrides({})}>
             <RotateCcw size={14} className="mr-2" /> Volver al branding
