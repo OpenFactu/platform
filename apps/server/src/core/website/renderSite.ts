@@ -103,6 +103,19 @@ export function invalidateSiteCache(tenantId: string, siteId?: string) {
   }
 }
 
+/** Paths publicados de un site (sitemap.xml y validación del contacto). */
+export async function listPublishedPaths(
+  tenantId: string,
+  siteId: string,
+): Promise<{ path: string; updatedAt: Date | null }[]> {
+  const db = await ClientFactory.getTenantClient(tenantId);
+  const rows = await db
+    .select({ path: schema.websitePages.path, updatedAt: schema.websitePages.updatedAt })
+    .from(schema.websitePages)
+    .where(and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')));
+  return rows;
+}
+
 export interface RenderOptions {
   /** Prefijo de URLs internas: '/site/acme' en modo slug, '' bajo dominio propio. */
   basePath: string;
@@ -149,7 +162,8 @@ export async function renderSitePage(
 
   const ctx: RenderContext = {
     basePath: opts.basePath,
-    contactEndpoint: `${opts.basePath}/contact`,
+    // En modo slug el form postea a /site/<slug>/contact; bajo dominio propio a /__contact
+    contactEndpoint: opts.basePath ? `${opts.basePath}/contact` : '/__contact',
     pages: publishedPages,
     sent: opts.sent,
   };

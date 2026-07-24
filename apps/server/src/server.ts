@@ -12,7 +12,7 @@ import userModulesRouter from './api/userModules';
 import automationsRouter from './api/automations';
 import dashboardWidgetsRouter from './api/dashboardWidgets';
 import logisticsRouter, { publicTrackRouter } from './api/logistics';
-import { publicSiteRouter } from './api/publicSite';
+import { publicSiteHostMiddleware, publicSiteRouter } from './api/publicSite';
 import websiteRouter from './api/website';
 import apiTokensRouter from './api/apiTokens';
 import { apiTokenMiddleware } from './api/middleware/apiToken';
@@ -163,6 +163,9 @@ app.use('/api/auth', authRouter);
 // Endpoint público de tracking — no requiere auth; se identifica por token.
 app.use('/api/logistics', publicTrackRouter);
 // Webs públicas de tenants (módulo Website) — sin auth; resuelve por slug.
+// El middleware de Host atiende subdominios/dominios propios registrados en
+// WebsiteHost y no toca el resto de peticiones (cache TTL 60s, incl. negativos).
+app.use(publicSiteHostMiddleware);
 app.use('/site', publicSiteRouter);
 
 // 1b. Middleware de tokens de API — antes del tenantContextMiddleware.
