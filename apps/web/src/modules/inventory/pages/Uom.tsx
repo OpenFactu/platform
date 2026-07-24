@@ -42,7 +42,7 @@ export const Uom: React.FC = () => {
   }, [user?.tenantId]);
 
   const handleCreate = async () => {
-    if (!newRow?.name || !newRow?.symbol) return;
+    if (!newRow?.name || !newRow?.code) return;
     try {
       await uomApi.create(newRow);
       setNewRow(null);
@@ -112,7 +112,7 @@ export const Uom: React.FC = () => {
           </p>
         </div>
         <Button
-          onClick={() => setNewRow({ name: '', symbol: '', baseValue: '1.0000', baseUomId: null })}
+          onClick={() => setNewRow({ name: '', code: '', baseValue: '1.0000', baseUomId: null })}
           disabled={!!newRow || !canWrite}
           className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
         >
