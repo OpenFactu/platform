@@ -112,6 +112,19 @@
             if (parsed && parsed.appName) {
               document.title = parsed.appName;
             }
+            if (parsed && parsed.fontSans) {
+              document.documentElement.style.setProperty('--font-sans', parsed.fontSans);
+            }
+            if (parsed && parsed.fontDisplay) {
+              document.documentElement.style.setProperty('--font-display', parsed.fontDisplay);
+            }
+            if (parsed && parsed.fontUrl) {
+              var fontLink = document.createElement('link');
+              fontLink.rel = 'stylesheet';
+              fontLink.href = parsed.fontUrl;
+              fontLink.setAttribute('data-tenant-font', '');
+              document.head.appendChild(fontLink);
+            }
           }
         } catch (e) { /* noop */ }
       })();

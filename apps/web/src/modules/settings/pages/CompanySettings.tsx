@@ -23,7 +23,13 @@ import { FiscalSettingsTab } from '../components/FiscalSettingsTab';
 import { EmailSettingsTab } from '../components/EmailSettingsTab';
 import { AiSettingsTab } from '../components/AiSettingsTab';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme, THEME_PRESETS } from '@/context/ThemeContext';
+import {
+  useTheme,
+  THEME_PRESETS,
+  FONT_OPTIONS,
+  fontOptionFor,
+  googleFontsUrl,
+} from '@/context/ThemeContext';
 import { KeirostLogo } from '@/components/branding/KeirostLogo';
 import { formatCurrency, formatDate } from '@openfactu/common';
 import { CountrySelect } from '@/components/geo/CountrySelect';
@@ -82,6 +88,36 @@ type TabId =
   | 'catalogs'
   | 'app'
   | 'ai';
+
+/**
+ * Vista previa de la fuente seleccionada en el borrador de branding. Inyecta el
+ * stylesheet de Google Fonts de la opción (deduplicado por href) para que se
+ * vea sin necesidad de guardar; ThemeContext gestiona la fuente ya aplicada.
+ */
+const FontPreview: React.FC<{ fontId: string }> = ({ fontId }) => {
+  const font = fontOptionFor(fontId);
+  useEffect(() => {
+    const url = googleFontsUrl(font);
+    if (!url) return;
+    const existing = Array.from(
+      document.head.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
+    );
+    if (existing.some((l) => l.href === url)) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = url;
+    link.setAttribute('data-font-preview', '');
+    document.head.appendChild(link);
+  }, [font]);
+  return (
+    <p
+      className="mt-2 text-sm text-slate-600 dark:text-slate-300"
+      style={{ fontFamily: font.sans }}
+    >
+      AaBbCc 0123 — Ejemplo de texto con esta fuente
+    </p>
+  );
+};
 
 export const CompanySettings: React.FC = () => {
   const { token, user } = useAuth();
@@ -646,13 +682,16 @@ export const CompanySettings: React.FC = () => {
                     className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
                     value={brandingDraft.fontFamily}
                     onChange={(e) =>
-                      setBrandingDraft({ ...brandingDraft, fontFamily: e.target.value as any })
+                      setBrandingDraft({ ...brandingDraft, fontFamily: e.target.value })
                     }
                   >
-                    <option value="sans">Sans-serif (Helvetica)</option>
-                    <option value="serif">Serif (Georgia)</option>
-                    <option value="mono">Monospace</option>
+                    {FONT_OPTIONS.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.label}
+                      </option>
+                    ))}
                   </select>
+                  <FontPreview fontId={brandingDraft.fontFamily} />
                 </div>
                 <div>
                   <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">

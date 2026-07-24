@@ -14,7 +14,8 @@ export interface BrandingConfig {
   colorAccent: string;
   logoUrl: string;
   appName: string;
-  fontFamily: 'sans' | 'serif' | 'mono';
+  /** Id de una entrada de FONT_OPTIONS; valores desconocidos caen a 'sans'. */
+  fontFamily: string;
   themeMode: 'light' | 'dark';
 }
 
@@ -258,15 +259,73 @@ function rgbToHex(rgb: [number, number, number]): string {
   return `#${toHex(rgb[0])}${toHex(rgb[1])}${toHex(rgb[2])}`;
 }
 
-function fontStackForFamily(family: BrandingConfig['fontFamily']): string {
-  switch (family) {
-    case 'serif':
-      return "Georgia, 'Times New Roman', Times, serif";
-    case 'mono':
-      return "'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace";
-    default:
-      return "-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
-  }
+export interface FontOption {
+  id: string;
+  label: string;
+  /** Spec `family=` de fonts.googleapis.com/css2. Ausente = fuente ya cargada o del sistema. */
+  google?: string;
+  /** Stack para --font-sans (cuerpo, tablas, formularios). */
+  sans: string;
+  /** Stack para --font-display (títulos, KPIs). */
+  display: string;
+}
+
+/**
+ * Catálogo de familias tipográficas del branding. La opción 'sans' es la marca
+ * Keirost por defecto (DM Sans + Space Grotesk, definidas en index.css); el
+ * resto pisa --font-sans y --font-display a la vez para que el cambio afecte a
+ * TODA la app. --font-mono (código) no se toca nunca.
+ */
+export const FONT_OPTIONS: FontOption[] = [
+  {
+    id: 'sans',
+    label: 'Keirost — DM Sans (por defecto)',
+    sans: "'DM Sans', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
+    display: "'Space Grotesk', system-ui, sans-serif",
+  },
+  {
+    id: 'roboto',
+    label: 'Roboto',
+    google: 'Roboto:wght@300;400;500;700',
+    sans: "'Roboto', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
+    display: "'Roboto', system-ui, sans-serif",
+  },
+  {
+    id: 'roboto-flex',
+    label: 'Roboto Flex (estilo Google)',
+    google: 'Roboto+Flex:opsz,wght@8..144,300..800',
+    sans: "'Roboto Flex', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
+    display: "'Roboto Flex', system-ui, sans-serif",
+  },
+  {
+    id: 'geist',
+    label: 'Geist',
+    google: 'Geist:wght@300..800',
+    sans: "'Geist', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
+    display: "'Geist', system-ui, sans-serif",
+  },
+  {
+    id: 'serif',
+    label: 'Serif (Georgia)',
+    sans: "Georgia, 'Times New Roman', Times, serif",
+    display: "Georgia, 'Times New Roman', Times, serif",
+  },
+  {
+    id: 'mono',
+    label: 'Monospace',
+    sans: "'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace",
+    display: "'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace",
+  },
+];
+
+export function fontOptionFor(id: string | undefined): FontOption {
+  return FONT_OPTIONS.find((f) => f.id === id) || FONT_OPTIONS[0];
+}
+
+export function googleFontsUrl(font: FontOption): string | null {
+  return font.google
+    ? `https://fonts.googleapis.com/css2?family=${font.google}&display=swap`
+    : null;
 }
 
 const CACHE_KEY = 'openfactu_theme';
@@ -288,6 +347,11 @@ interface CachedTheme {
   colorAccent?: string;
   fontFamily?: BrandingConfig['fontFamily'];
   logoUrl?: string;
+  // Fuente precomputada (ausente con la opción por defecto) para que el script
+  // inline de index.html la aplique antes de montar React, como los *Rgb.
+  fontSans?: string;
+  fontDisplay?: string;
+  fontUrl?: string;
 }
 
 function readCache(): CachedTheme | null {
@@ -413,7 +477,29 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.style.setProperty('--color-accent-rgb', accentRgbStr);
     root.style.setProperty('--color-accent-fg-rgb', accentFgRgbStr);
 
-    root.style.setProperty('--font-sans', fontStackForFamily(branding.fontFamily));
+    const font = fontOptionFor(branding.fontFamily);
+    if (font.id === 'sans') {
+      // Defaults de index.css (DM Sans + Space Grotesk)
+      root.style.removeProperty('--font-sans');
+      root.style.removeProperty('--font-display');
+    } else {
+      root.style.setProperty('--font-sans', font.sans);
+      root.style.setProperty('--font-display', font.display);
+    }
+    const fontUrl = googleFontsUrl(font);
+    let fontLink = document.head.querySelector<HTMLLinkElement>('link[data-tenant-font]');
+    if (fontUrl) {
+      if (!fontLink) {
+        fontLink = document.createElement('link');
+        fontLink.rel = 'stylesheet';
+        fontLink.setAttribute('data-tenant-font', '');
+        document.head.appendChild(fontLink);
+      }
+      if (fontLink.href !== fontUrl) fontLink.href = fontUrl;
+    } else if (fontLink) {
+      fontLink.remove();
+    }
+
     document.title = branding.appName;
     root.classList.toggle('dark', branding.themeMode === 'dark');
 
@@ -457,6 +543,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         colorPrimaryFgRgb: primaryFgRgbStr,
         colorAccentRgb: accentRgbStr,
         colorAccentFgRgb: accentFgRgbStr,
+        ...(font.id !== 'sans'
+          ? { fontSans: font.sans, fontDisplay: font.display, fontUrl: fontUrl || undefined }
+          : {}),
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
     } catch {

@@ -3,7 +3,8 @@ export interface BrandingConfig {
   colorAccent: string;
   logoUrl: string;
   appName: string;
-  fontFamily: 'sans' | 'serif' | 'mono';
+  /** Id del catálogo de fuentes de la web (FONT_OPTIONS); 'sans' es el default. */
+  fontFamily: string;
   themeMode: 'light' | 'dark';
 }
 
