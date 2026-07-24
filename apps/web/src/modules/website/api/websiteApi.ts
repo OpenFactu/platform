@@ -33,12 +33,15 @@ export const websiteApi = {
     return blob.text();
   },
 
-  uploadAsset: (file: File): Promise<WebsiteAsset> => {
+  uploadAsset: (file: File, folder?: string | null): Promise<WebsiteAsset> => {
     const form = new FormData();
     form.append('file', file);
+    if (folder) form.append('folder', folder);
     return apiClient.postForm<WebsiteAsset>('/api/website/assets', form);
   },
   listAssets: () => apiClient.get<WebsiteAsset[]>('/api/website/assets'),
+  updateAssetMeta: (id: string, patch: { folder?: string | null; tags?: string[] }) =>
+    apiClient.put<WebsiteAsset>(`/api/website/assets/${id}`, patch),
   deleteAsset: (id: string) => apiClient.delete<{ ok: true }>(`/api/website/assets/${id}`),
 
   listSubmissions: () => apiClient.get<WebsiteSubmission[]>('/api/website/submissions'),
