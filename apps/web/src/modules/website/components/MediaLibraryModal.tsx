@@ -82,12 +82,12 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
       <div className="space-y-4">
         <div className="flex justify-end">
           <Button size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-            <Upload size={14} className="mr-2" /> {uploading ? 'Subiendo…' : 'Subir imagen'}
+            <Upload size={14} className="mr-2" /> {uploading ? 'Subiendo…' : 'Subir imagen o vídeo'}
           </Button>
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -112,12 +112,21 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
                 onClick={() => onSelect(asset.publicUrl)}
                 className="group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-teal-500 hover:ring-2 hover:ring-teal-500/30 transition-all text-left bg-slate-50 dark:bg-slate-800"
               >
-                <img
-                  src={asset.publicUrl}
-                  alt={asset.fileName}
-                  loading="lazy"
-                  className="w-full h-28 object-cover"
-                />
+                {asset.mime.startsWith('video/') ? (
+                  <video
+                    src={asset.publicUrl}
+                    muted
+                    preload="metadata"
+                    className="w-full h-28 object-cover bg-black"
+                  />
+                ) : (
+                  <img
+                    src={asset.publicUrl}
+                    alt={asset.fileName}
+                    loading="lazy"
+                    className="w-full h-28 object-cover"
+                  />
+                )}
                 <div className="p-2">
                   <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate">
                     {asset.fileName}

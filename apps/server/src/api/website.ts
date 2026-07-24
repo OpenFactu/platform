@@ -44,7 +44,7 @@ import { sanitizeHtml } from '../core/website/sanitizeHtml';
 
 const upload = multer({
   dest: '/tmp/openfactu-website-assets/',
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB por imagen
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100 MB (vídeos; las imágenes suelen ser mucho menos)
 });
 
 const router = Router();
@@ -474,9 +474,9 @@ router.get('/pages/:id/preview', async (req: any, res) => {
 router.post('/assets', upload.single('file'), async (req: any, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'falta el archivo (campo "file")' });
-    if (!/^image\//.test(req.file.mimetype)) {
+    if (!/^(image|video)\//.test(req.file.mimetype)) {
       fs.promises.unlink(req.file.path).catch(() => {});
-      return res.status(400).json({ error: 'Solo se admiten imágenes' });
+      return res.status(400).json({ error: 'Solo se admiten imágenes o vídeos' });
     }
     const site = await getOrCreateSite(req);
     const tenantSchema = req.tenantSchema;

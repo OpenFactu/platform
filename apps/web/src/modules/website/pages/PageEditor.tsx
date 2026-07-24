@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { SiteEditor, type PageDocument, type RenderContext } from '@openfactu/site-builder';
 import { Badge, Button, Loader, useToast } from '@openfactu/ui';
-import { ArrowLeft, Eye, Maximize2, Minimize2, Rocket, Save } from 'lucide-react';
+import { ArrowLeft, Eye, Maximize2, Minimize2, Palette, Rocket, Save } from 'lucide-react';
 import { websiteApi } from '../api/websiteApi';
 import type { WebsitePage, WebsiteSite } from '../domain/website';
 import { useSiteTheme } from '../hooks/useSiteTheme';
 import { MediaLibraryModal } from '../components/MediaLibraryModal';
+import { ThemeModal } from '../components/ThemeModal';
 
 const AUTOSAVE_MS = 1500;
 
@@ -122,6 +123,7 @@ export const PageEditor: React.FC = () => {
   // Biblioteca de medios: pickImage devuelve una promesa que se resuelve al
   // elegir un medio en el modal (o null al cerrarlo)
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [themeOpen, setThemeOpen] = useState(false);
   const libraryResolver = useRef<((url: string | null) => void) | null>(null);
 
   const pickImage = () =>
@@ -182,6 +184,14 @@ export const PageEditor: React.FC = () => {
           <Button
             size="sm"
             variant="secondary"
+            onClick={() => setThemeOpen(true)}
+            title="Tema de la web (colores y fuente)"
+          >
+            <Palette size={14} />
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => setFullscreen((f) => !f)}
             title={fullscreen ? 'Salir de pantalla completa (Esc)' : 'Pantalla completa'}
           >
@@ -206,6 +216,12 @@ export const PageEditor: React.FC = () => {
         open={libraryOpen}
         onClose={() => closeLibrary(null)}
         onSelect={(url) => closeLibrary(url)}
+      />
+      <ThemeModal
+        open={themeOpen}
+        onClose={() => setThemeOpen(false)}
+        site={site}
+        onSaved={(updated) => setSite(updated)}
       />
     </div>
   );
