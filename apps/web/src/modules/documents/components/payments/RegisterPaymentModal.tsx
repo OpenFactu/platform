@@ -95,7 +95,11 @@ export const RegisterPaymentModal: React.FC<Props> = ({
   };
 
   return (
-    <Modal isOpen={open} onClose={onClose} title="{kind === 'sales' ? t('invoice.registerPayment') : t('invoice.registerPaymentPurchase')}">
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      title={kind === 'sales' ? t('invoice.registerPayment') : t('invoice.registerPaymentPurchase')}
+    >
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xs bg-accent/10 text-accent">
