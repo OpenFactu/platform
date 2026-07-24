@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { SiteEditor, type PageDocument, type RenderContext } from '@openfactu/site-builder';
 import { Badge, Button, Loader, useToast } from '@openfactu/ui';
-import { ArrowLeft, Eye, Rocket, Save } from 'lucide-react';
+import { ArrowLeft, Eye, Maximize2, Minimize2, Rocket, Save } from 'lucide-react';
 import { websiteApi } from '../api/websiteApi';
 import type { WebsitePage, WebsiteSite } from '../domain/website';
 import { useSiteTheme } from '../hooks/useSiteTheme';
@@ -22,7 +22,18 @@ export const PageEditor: React.FC = () => {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Esc sale del modo pantalla completa
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [fullscreen]);
 
   const theme = useSiteTheme(site);
 
@@ -116,7 +127,13 @@ export const PageEditor: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] min-h-[480px] animate-in fade-in duration-300">
+    <div
+      className={
+        fullscreen
+          ? 'flex flex-col fixed inset-0 z-[100] bg-white dark:bg-slate-900'
+          : 'flex flex-col h-[calc(100vh-7rem)] min-h-[480px] animate-in fade-in duration-300'
+      }
+    >
       <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div className="flex items-center gap-3 min-w-0">
           <Button size="sm" variant="secondary" onClick={() => navigate('/website/pages')}>
@@ -143,6 +160,14 @@ export const PageEditor: React.FC = () => {
           </Button>
           <Button size="sm" variant="secondary" onClick={handlePreview}>
             <Eye size={14} className="mr-1" /> Vista previa
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => setFullscreen((f) => !f)}
+            title={fullscreen ? 'Salir de pantalla completa (Esc)' : 'Pantalla completa'}
+          >
+            {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </Button>
           <Button size="sm" onClick={handlePublish} disabled={publishing}>
             <Rocket size={14} className="mr-1" /> {publishing ? 'Publicando…' : 'Publicar'}
