@@ -107,6 +107,11 @@ export default defineConfig({
   // al resolver named exports. Forzamos pre-bundling para que esbuild los
   // convierta a ESM igual que cuando vienen del registry.
   optimizeDeps: {
+    // Con paquetes junction-linkados, la caché de prebundle (.vite/deps) NO se
+    // invalida al recompilar su dist — el navegador se queda con código viejo.
+    // force re-optimiza en cada arranque (coste: ~1s). Quitar cuando todos los
+    // @openfactu/* vengan de npm en lugar de junctions.
+    force: true,
     include: [
       '@openfactu/common',
       '@openfactu/pdf',
