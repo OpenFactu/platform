@@ -84,10 +84,8 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const refreshModels = useCallback(async () => {
     if (!user?.tenantId) return;
     try {
-      const r = await coreApi.get('/api/ai/available-models');
-      const d: AvailableModelsDTO = r.ok
-        ? r.data
-        : { provider: '', current: '', options: [] };
+      const r = await coreApi.get<AvailableModelsDTO>('/api/ai/available-models');
+      const d: AvailableModelsDTO = r || { provider: '', current: '', options: [] };
       setAvailableModels(d);
       const providerChanged =
         knownProviderRef.current !== null && knownProviderRef.current !== d.provider;

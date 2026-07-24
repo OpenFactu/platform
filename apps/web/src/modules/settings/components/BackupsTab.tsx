@@ -97,10 +97,8 @@ export const BackupsTab: React.FC = () => {
   };
 
   const loadRuns = async (): Promise<BackupRun[]> => {
-    const res = await coreApi.get('/api/backups');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const body = res.data;
-    const list: BackupRun[] = body.runs || [];
+    const body = await coreApi.get<{ runs?: BackupRun[] }>('/api/backups');
+    const list: BackupRun[] = body?.runs || [];
     setRuns(list);
     return list;
   };
@@ -114,9 +112,8 @@ export const BackupsTab: React.FC = () => {
           loadRuns().catch(() => []),
           coreApi
             .raw('GET', '/api/config/storage/oauth/status')
-            .catch(() => null)
-            .then(setCloudStatus)
-            .catch(() => undefined),
+            .then((r) => setCloudStatus(r.ok ? r.data : null))
+            .catch(() => setCloudStatus(null)),
         ]);
         if (!cfgRes.ok) throw new Error(`HTTP ${cfgRes.status}`);
         setConfig(cfgRes.data);

@@ -114,26 +114,8 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const fetchManifests = useCallback(async () => {
     try {
-      const token = localStorage.getItem('openfactu_token');
-      const fetchHeaders: Record<string, string> = {};
-      if (token) fetchHeaders['Authorization'] = `Bearer ${token}`;
-
-      const res = await coreApi.get('/api/plugins/manifests');
-      if (!res.ok) {
-        setManifests([]);
-        return;
-      }
-      const text = await res.text();
-      if (!text.trim()) {
-        setManifests([]);
-        return;
-      }
-      try {
-        const data = JSON.parse(text);
-        setManifests(Array.isArray(data) ? data : []);
-      } catch {
-        setManifests([]);
-      }
+      const data = await coreApi.get<PluginManifest[]>('/api/plugins/manifests');
+      setManifests(Array.isArray(data) ? data : []);
     } catch {
       setManifests([]);
     } finally {
@@ -151,9 +133,9 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setUserTables([]);
       return;
     }
-    coreApi.raw('GET', '/api/user-tables/menu')
-      .catch(() => ([]))
-      .then((d) => setUserTables(Array.isArray(d) ? d : []))
+    coreApi
+      .raw('GET', '/api/user-tables/menu')
+      .then((r) => setUserTables(r.ok && Array.isArray(r.data) ? r.data : []))
       .catch(() => setUserTables([]));
   }, [authToken, authUser?.tenantId]);
 
