@@ -44,19 +44,33 @@ export interface ResolvedHost {
   tenantId: string;
   siteId: string;
   kind: string;
+  /** Schema físico del tenant — lo necesita StorageResolver para los assets. */
+  schemaName: string;
 }
 
 /** Resuelve un slug o hostname (lowercase) contra public."WebsiteHost". */
 export async function resolveHostValue(value: string): Promise<ResolvedHost | null> {
   const publicDb = ClientFactory.getClient('public');
   const [row] = await publicDb
-    .select()
+    .select({
+      kind: schema.websiteHosts.kind,
+      tenantId: schema.websiteHosts.tenantId,
+      siteId: schema.websiteHosts.siteId,
+      verified: schema.websiteHosts.verified,
+      schemaName: schema.tenants.schemaName,
+    })
     .from(schema.websiteHosts)
+    .innerJoin(schema.tenants, eq(schema.tenants.id, schema.websiteHosts.tenantId))
     .where(eq(schema.websiteHosts.value, value.toLowerCase()));
   if (!row) return null;
   // Los dominios propios solo sirven una vez verificados
   if (row.kind === 'domain' && !row.verified) return null;
-  return { tenantId: row.tenantId, siteId: row.siteId, kind: row.kind };
+  return {
+    tenantId: row.tenantId,
+    siteId: row.siteId,
+    kind: row.kind,
+    schemaName: row.schemaName,
+  };
 }
 
 /** Compone el tema del site: branding del tenant + overrides guardados. */

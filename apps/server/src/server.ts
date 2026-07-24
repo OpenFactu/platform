@@ -13,6 +13,7 @@ import automationsRouter from './api/automations';
 import dashboardWidgetsRouter from './api/dashboardWidgets';
 import logisticsRouter, { publicTrackRouter } from './api/logistics';
 import { publicSiteRouter } from './api/publicSite';
+import websiteRouter from './api/website';
 import apiTokensRouter from './api/apiTokens';
 import { apiTokenMiddleware } from './api/middleware/apiToken';
 import { AutomationRunner } from './core/automations/AutomationRunner';
@@ -182,6 +183,7 @@ app.use('/api/user-modules', userModulesRouter);
 app.use('/api/automations', automationsRouter);
 app.use('/api/dashboard-widgets', dashboardWidgetsRouter);
 app.use('/api/logistics', logisticsRouter);
+app.use('/api/website', websiteRouter);
 app.use('/api/dev-keys', devKeysRouter);
 // 4. Rustas de creación y gestion de usarios
 app.use('/api/users', usersRouter);

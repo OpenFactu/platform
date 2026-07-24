@@ -1,4 +1,9 @@
 import { Router } from 'express';
+import { and, eq, isNull } from 'drizzle-orm';
+import * as schema from '../db/schema';
+import { ClientFactory } from '../core/tenant/ClientFactory';
+import { StorageResolver } from '../core/storage/StorageResolver';
+import type { StorageProviderId } from '../core/storage/StorageAdapter';
 import { renderSitePage, resolveHostValue } from '../core/website/renderSite';
 
 /**
@@ -40,6 +45,49 @@ async function serveBySlug(slug: string, path: string, sent: boolean, res: any) 
   }
   res.type('html').send(html);
 }
+
+/**
+ * GET /site/:slug/assets/:id — sirve una imagen del site. Solo attachments
+ * con entityType='WebsiteAsset' y entityId = site resuelto: los adjuntos
+ * normales del ERP siguen siendo privados.
+ */
+publicSiteRouter.get('/:slug/assets/:id', async (req, res) => {
+  try {
+    const resolved = await resolveHostValue(req.params.slug);
+    if (!resolved || resolved.kind !== 'slug') return res.status(404).end();
+
+    const db = ClientFactory.getClient(resolved.schemaName);
+    const [row] = await db
+      .select()
+      .from(schema.attachments)
+      .where(
+        and(
+          eq(schema.attachments.id, req.params.id),
+          eq(schema.attachments.entityType, 'WebsiteAsset'),
+          eq(schema.attachments.entityId, resolved.siteId),
+          isNull(schema.attachments.deletedAt),
+        ),
+      );
+    if (!row) return res.status(404).end();
+
+    const adapter = await StorageResolver.forProvider(
+      row.provider as StorageProviderId,
+      db,
+      resolved.schemaName,
+    );
+    const dl = await adapter.download({
+      tenantSchema: resolved.schemaName,
+      externalId: row.externalId,
+    });
+    res.setHeader('Content-Type', row.mime);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    if (row.size) res.setHeader('Content-Length', String(row.size));
+    dl.stream.pipe(res);
+  } catch (err: any) {
+    console.error('[Website] Error sirviendo asset:', err.message);
+    res.status(500).end();
+  }
+});
 
 publicSiteRouter.get('/:slug', async (req, res) => {
   try {

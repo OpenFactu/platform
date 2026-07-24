@@ -60,6 +60,10 @@ export interface FlagsConfig {
   reportsEnabled: boolean;
   hrEnabled: boolean;
   assistantEnabled: boolean;
+  /** Activa el módulo Website: creación y publicación de la web pública del
+   *  tenant (landing builder). Off por defecto — cada empresa lo activa desde
+   *  /apps cuando quiera tener web. */
+  websiteEnabled: boolean;
 }
 
 export const BRANDING_DEFAULTS: BrandingConfig = {
@@ -103,6 +107,7 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   reportsEnabled: true,
   hrEnabled: true,
   assistantEnabled: true,
+  websiteEnabled: false,
 };
 
 /**
