@@ -95,6 +95,11 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // Webs públicas del módulo Website (assets del editor, "Ver web" en dev)
+      '/site': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
   // Paquetes @openfactu/* se publican como CommonJS. Cuando están linkados
@@ -106,6 +111,7 @@ export default defineConfig({
       '@openfactu/common',
       '@openfactu/pdf',
       '@openfactu/pdf/browser',
+      '@openfactu/site-builder',
       '@openfactu/ui',
       '@openfactu/plugin-sdk',
       '@zxing/browser',
