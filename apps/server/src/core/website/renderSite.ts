@@ -174,12 +174,33 @@ export async function renderSitePage(
     sent: opts.sent,
   };
 
-  const html = renderPageToHtml(page.blocksPublished, theme, ctx, {
+  let html = renderPageToHtml(page.blocksPublished, theme, ctx, {
     title: page.seoTitle || `${page.title} — ${site.name}`,
     description: page.seoDescription || site.seoDescription || undefined,
     ogImageUrl: page.ogImageUrl || site.ogImageUrl || undefined,
   });
 
+  // En modo slug (mismo origen que el ERP) inyectamos un botón flotante de
+  // edición que SOLO se pinta si el navegador tiene sesión del ERP (token en
+  // localStorage) — los visitantes normales no ven nada. Bajo dominio propio
+  // no aplica (otro origen, el localStorage del ERP no existe allí).
+  if (opts.basePath) {
+    html = html.replace('</body>', `${editButtonSnippet(page.id)}</body>`);
+  }
+
   if (!opts.sent) htmlCache.set(cacheKey, html);
   return html;
+}
+
+function editButtonSnippet(pageId: string): string {
+  return (
+    '<script>(function(){try{' +
+    "if(!localStorage.getItem('openfactu_token'))return;" +
+    "var a=document.createElement('a');" +
+    `a.href='/website/editor/${pageId}';` +
+    "a.textContent='\\u270F\\uFE0F Editar esta p\\u00E1gina';" +
+    "a.style.cssText='position:fixed;bottom:20px;right:20px;z-index:9999;background:#0f172a;color:#fff;padding:10px 16px;border-radius:999px;font:600 13px system-ui,sans-serif;text-decoration:none;box-shadow:0 4px 14px rgba(15,23,42,.3)';" +
+    'document.body.appendChild(a);' +
+    '}catch(e){}})()</script>'
+  );
 }

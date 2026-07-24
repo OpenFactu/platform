@@ -30,7 +30,7 @@ import multer from 'multer';
 import fs from 'fs';
 import crypto from 'crypto';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
-import { migrateDocument } from '@openfactu/site-builder/schema';
+import { migrateDocument, walkBlocks } from '@openfactu/site-builder/schema';
 import type { RenderContext } from '@openfactu/site-builder/render';
 import { renderPageToHtml } from '@openfactu/site-builder/render';
 import * as schema from '../db/schema';
@@ -123,14 +123,22 @@ async function getOrCreateSite(req: any) {
   return site;
 }
 
-/** Sanitiza el HTML de los bloques richText de un documento al publicar. */
+/**
+ * Sanitiza el HTML libre de un documento al publicar: bloques richText y
+ * html, incluidos los anidados dentro de columns (walkBlocks recorre todo el
+ * árbol — sin esto, el HTML dentro de una columna sería un agujero XSS).
+ */
 function sanitizeDocument(doc: any) {
   const migrated = migrateDocument(doc);
-  for (const block of migrated.blocks) {
-    if (block.type === 'richText' && typeof (block.props as any).html === 'string') {
-      (block.props as any).html = sanitizeHtml((block.props as any).html);
+  walkBlocks(migrated, (block) => {
+    const props = block.props as any;
+    if (block.type === 'richText' && typeof props.html === 'string') {
+      props.html = sanitizeHtml(props.html);
     }
-  }
+    if (block.type === 'html' && typeof props.code === 'string') {
+      props.code = sanitizeHtml(props.code);
+    }
+  });
   return migrated;
 }
 
