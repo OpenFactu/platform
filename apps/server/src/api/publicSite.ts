@@ -8,6 +8,7 @@ import type { StorageProviderId } from '../core/storage/StorageAdapter';
 import { notifyTenant } from '../core/realtime/notifyTenant';
 import {
   listPublishedPaths,
+  rawAssetId,
   renderSitePage,
   resolveHostValue,
   type ResolvedHost,
@@ -183,7 +184,7 @@ publicSiteRouter.get('/:slug/assets/:id', async (req, res) => {
       .from(schema.attachments)
       .where(
         and(
-          eq(schema.attachments.id, req.params.id),
+          eq(schema.attachments.id, rawAssetId(req.params.id)),
           eq(schema.attachments.entityType, 'WebsiteAsset'),
           eq(schema.attachments.entityId, resolved.siteId),
           isNull(schema.attachments.deletedAt),
@@ -309,7 +310,7 @@ export async function publicSiteHostMiddleware(req: any, res: any, next: any) {
 
     // Assets: /__assets/:id
     if (req.method === 'GET' && req.path.startsWith('/__assets/')) {
-      const assetId = req.path.slice('/__assets/'.length);
+      const assetId = rawAssetId(req.path.slice('/__assets/'.length));
       const db = ClientFactory.getClient(resolved.schemaName);
       const [row] = await db
         .select()

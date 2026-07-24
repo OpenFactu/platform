@@ -1,3 +1,4 @@
+import path from 'path';
 import { and, eq } from 'drizzle-orm';
 import type { RenderContext, SiteTheme } from '@openfactu/site-builder/render';
 import { renderPageToHtml } from '@openfactu/site-builder/render';
@@ -5,6 +6,24 @@ import { ClientFactory } from '../tenant/ClientFactory';
 import * as schema from '../../db/schema';
 import { getConfigSection } from '../config/systemConfigSection';
 import { BRANDING_DEFAULTS } from '../config/appConfig';
+
+/**
+ * URL pública de un asset con la extensión real del archivo (p.ej.
+ * `/site/acme/assets/<uuid>.mp4`). El id de BD nunca lleva puntos, así que
+ * `rawAssetId` puede recuperarlo aunque el navegador o un consumidor
+ * (carrusel, galería) añadan la extensión — es lo que permite que un simple
+ * `<img>` vs `<video>` se decida por extensión sin tener que guardar el tipo
+ * de medio en cada bloque que referencia una imagen/vídeo.
+ */
+export function assetPublicUrl(basePath: string, id: string, fileName: string): string {
+  const ext = path.extname(fileName || '').toLowerCase();
+  return `${basePath}/${id}${ext}`;
+}
+
+/** Recupera el id de BD (UUID, sin puntos) de un segmento de ruta que puede traer extensión. */
+export function rawAssetId(param: string): string {
+  return param.split('.')[0];
+}
 
 /**
  * Serving de sitios web públicos (módulo Website). Resuelve slug/host →

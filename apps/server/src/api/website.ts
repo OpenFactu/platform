@@ -39,7 +39,7 @@ import { StorageResolver } from '../core/storage/StorageResolver';
 import type { StorageProviderId } from '../core/storage/StorageAdapter';
 import { getConfigSection } from '../core/config/systemConfigSection';
 import { BRANDING_DEFAULTS } from '../core/config/appConfig';
-import { buildSiteTheme, invalidateSiteCache } from '../core/website/renderSite';
+import { assetPublicUrl, buildSiteTheme, invalidateSiteCache } from '../core/website/renderSite';
 import { sanitizeHtml } from '../core/website/sanitizeHtml';
 
 const upload = multer({
@@ -508,7 +508,10 @@ router.post('/assets', upload.single('file'), async (req: any, res) => {
       })
       .returning();
 
-    res.json({ ...row, publicUrl: `/site/${site.slug}/assets/${id}` });
+    res.json({
+      ...row,
+      publicUrl: assetPublicUrl(`/site/${site.slug}/assets`, id, req.file.originalname),
+    });
   } catch (e: any) {
     console.error('[Website.assets.upload] error:', e?.stack || e);
     if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
@@ -530,7 +533,12 @@ router.get('/assets', async (req: any, res) => {
         ),
       )
       .orderBy(desc(schema.attachments.uploadedAt));
-    res.json(rows.map((r: any) => ({ ...r, publicUrl: `/site/${site.slug}/assets/${r.id}` })));
+    res.json(
+      rows.map((r: any) => ({
+        ...r,
+        publicUrl: assetPublicUrl(`/site/${site.slug}/assets`, r.id, r.fileName),
+      })),
+    );
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error al listar assets' });
   }
