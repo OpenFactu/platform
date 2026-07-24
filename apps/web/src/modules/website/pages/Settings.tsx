@@ -136,8 +136,8 @@ export const Settings: React.FC = () => {
       <Card className="space-y-4">
         <h2 className="font-black text-slate-800 dark:text-slate-100">Tema</h2>
         <p className="text-xs text-slate-400 -mt-2">
-          Por defecto la web usa el branding de la empresa; aquí puedes sobreescribirlo solo para
-          la web.
+          Por defecto la web usa el branding de la empresa; aquí puedes sobreescribirlo solo para la
+          web.
         </p>
         <div className="grid md:grid-cols-3 gap-4">
           <div>

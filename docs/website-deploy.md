@@ -42,7 +42,7 @@ otro host (incluido el del ERP) pasa de largo.
 3. **Verificación** (pendiente de automatizar; hoy manual): comprobar la
    titularidad (p.ej. TXT `_keirost-verify.<dominio>` con un token) y marcar
    `verified = true` en `public."WebsiteHost"`.
-4. **TLS por dominio**: la opción recomendada es Caddy con *on-demand TLS*,
+4. **TLS por dominio**: la opción recomendada es Caddy con _on-demand TLS_,
    que emite el certificado de cada dominio en el primer acceso y solo si
    nosotros lo autorizamos:
 

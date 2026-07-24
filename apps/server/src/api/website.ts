@@ -325,9 +325,7 @@ async function getPage(req: any) {
   const [page] = await req.tenantClient
     .select()
     .from(schema.websitePages)
-    .where(
-      and(eq(schema.websitePages.id, req.params.id), eq(schema.websitePages.siteId, site.id)),
-    );
+    .where(and(eq(schema.websitePages.id, req.params.id), eq(schema.websitePages.siteId, site.id)));
   return { site, page };
 }
 
@@ -389,10 +387,9 @@ router.delete('/pages/:id', async (req: any, res) => {
   try {
     const { page } = await getPage(req);
     if (!page) return res.status(404).json({ error: 'Página no encontrada' });
-    if (page.isHome) return res.status(400).json({ error: 'La página de inicio no se puede borrar' });
-    await req.tenantClient
-      .delete(schema.websitePages)
-      .where(eq(schema.websitePages.id, page.id));
+    if (page.isHome)
+      return res.status(400).json({ error: 'La página de inicio no se puede borrar' });
+    await req.tenantClient.delete(schema.websitePages).where(eq(schema.websitePages.id, page.id));
     invalidateSiteCache(req.tenantId, page.siteId);
     res.json({ ok: true });
   } catch (e: any) {
@@ -525,9 +522,7 @@ router.get('/assets', async (req: any, res) => {
         ),
       )
       .orderBy(desc(schema.attachments.uploadedAt));
-    res.json(
-      rows.map((r: any) => ({ ...r, publicUrl: `/site/${site.slug}/assets/${r.id}` })),
-    );
+    res.json(rows.map((r: any) => ({ ...r, publicUrl: `/site/${site.slug}/assets/${r.id}` })));
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error al listar assets' });
   }

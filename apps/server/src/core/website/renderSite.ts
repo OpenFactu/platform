@@ -112,7 +112,9 @@ export async function listPublishedPaths(
   const rows = await db
     .select({ path: schema.websitePages.path, updatedAt: schema.websitePages.updatedAt })
     .from(schema.websitePages)
-    .where(and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')));
+    .where(
+      and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')),
+    );
   return rows;
 }
 
@@ -149,13 +151,17 @@ export async function renderSitePage(
   const [page] = await db
     .select()
     .from(schema.websitePages)
-    .where(and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.path, normalizedPath)));
+    .where(
+      and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.path, normalizedPath)),
+    );
   if (!page || page.status !== 'published' || !page.blocksPublished) return null;
 
   const publishedPages = await db
     .select({ path: schema.websitePages.path, title: schema.websitePages.title })
     .from(schema.websitePages)
-    .where(and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')));
+    .where(
+      and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')),
+    );
 
   const branding = await getConfigSection(db, 'branding', BRANDING_DEFAULTS);
   const theme = buildSiteTheme(branding, site);

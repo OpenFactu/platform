@@ -60,7 +60,12 @@ function contactRateLimited(ip: string, siteId: string): boolean {
  * limit + insert + notificación a los miembros, y redirige de vuelta a la
  * página con ?sent=1 para que el renderer pinte el banner de éxito.
  */
-async function handleContactSubmission(resolved: ResolvedHost, req: any, res: any, basePath: string) {
+async function handleContactSubmission(
+  resolved: ResolvedHost,
+  req: any,
+  res: any,
+  basePath: string,
+) {
   const { name, email, message, website } = (req.body ?? {}) as Record<string, string>;
 
   // Volver a la página de origen (mismo path), o a la home del site
@@ -77,7 +82,9 @@ async function handleContactSubmission(resolved: ResolvedHost, req: any, res: an
   // Honeypot relleno → bot: respondemos éxito sin guardar nada
   if (website) return res.redirect(303, redirectTo);
 
-  const ip = String(req.headers['x-forwarded-for'] ?? req.socket?.remoteAddress ?? '').split(',')[0];
+  const ip = String(req.headers['x-forwarded-for'] ?? req.socket?.remoteAddress ?? '').split(
+    ',',
+  )[0];
   if (contactRateLimited(ip, resolved.siteId)) return res.redirect(303, redirectTo);
 
   if (!message && !email && !name) return res.redirect(303, redirectTo);
@@ -108,11 +115,17 @@ async function handleContactSubmission(resolved: ResolvedHost, req: any, res: an
   res.redirect(303, redirectTo);
 }
 
-function sitemapXml(origin: string, basePath: string, paths: { path: string; updatedAt: Date | null }[]): string {
+function sitemapXml(
+  origin: string,
+  basePath: string,
+  paths: { path: string; updatedAt: Date | null }[],
+): string {
   const urls = paths
     .map((p) => {
       const loc = `${origin}${basePath}${p.path === '/' ? '' : p.path}`;
-      const lastmod = p.updatedAt ? `<lastmod>${p.updatedAt.toISOString().slice(0, 10)}</lastmod>` : '';
+      const lastmod = p.updatedAt
+        ? `<lastmod>${p.updatedAt.toISOString().slice(0, 10)}</lastmod>`
+        : '';
       return `<url><loc>${loc}</loc>${lastmod}</url>`;
     })
     .join('');
@@ -213,7 +226,9 @@ publicSiteRouter.get('/:slug/sitemap.xml', async (req, res) => {
 publicSiteRouter.get('/:slug/robots.txt', async (req, res) => {
   res
     .type('text/plain')
-    .send(`User-agent: *\nAllow: /\nSitemap: ${req.protocol}://${req.get('host')}/site/${req.params.slug}/sitemap.xml\n`);
+    .send(
+      `User-agent: *\nAllow: /\nSitemap: ${req.protocol}://${req.get('host')}/site/${req.params.slug}/sitemap.xml\n`,
+    );
 });
 
 publicSiteRouter.get('/:slug', async (req, res) => {
@@ -331,7 +346,9 @@ export async function publicSiteHostMiddleware(req: any, res: any, next: any) {
     if (req.path === '/robots.txt') {
       return res
         .type('text/plain')
-        .send(`User-agent: *\nAllow: /\nSitemap: ${req.protocol}://${req.get('host')}/sitemap.xml\n`);
+        .send(
+          `User-agent: *\nAllow: /\nSitemap: ${req.protocol}://${req.get('host')}/sitemap.xml\n`,
+        );
     }
 
     const pagePath = req.path.replace(/\/+$/, '') || '/';

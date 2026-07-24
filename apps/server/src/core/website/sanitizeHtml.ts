@@ -73,10 +73,7 @@ export function sanitizeHtml(input: string): string {
   let html = String(input);
 
   // Fuera bloques peligrosos completos (script/style/iframe/etc.)
-  html = html.replace(
-    /<(script|style|iframe|object|embed|form|svg|math)[\s\S]*?<\/\1\s*>/gi,
-    '',
-  );
+  html = html.replace(/<(script|style|iframe|object|embed|form|svg|math)[\s\S]*?<\/\1\s*>/gi, '');
   // Fuera comentarios HTML
   html = html.replace(/<!--[\s\S]*?-->/g, '');
 

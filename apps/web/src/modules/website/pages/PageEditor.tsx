@@ -70,9 +70,12 @@ export const PageEditor: React.FC = () => {
     saveTimer.current = setTimeout(() => save(next), AUTOSAVE_MS);
   };
 
-  useEffect(() => () => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    },
+    [],
+  );
 
   const handlePreview = async () => {
     if (!pageId || !doc) return;
