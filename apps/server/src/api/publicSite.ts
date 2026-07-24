@@ -89,7 +89,10 @@ async function handleContactSubmission(
   } catch {
     /* referer ausente o inválido */
   }
-  const redirectTo = `${backPath}?sent=1`;
+  // #contacto lleva el navegador directo a la sección del formulario tras la
+  // recarga — sin esto el usuario aterriza arriba del todo y no ve el banner
+  // de éxito sin bajar manualmente.
+  const redirectTo = `${backPath}?sent=1#contacto`;
 
   // Honeypot relleno → bot: respondemos éxito sin guardar nada
   if (website) return res.redirect(303, redirectTo);
