@@ -8,10 +8,13 @@ export interface Uom {
   baseValue?: number | string | null;
 }
 
-/** Unidad alternativa de un artículo (factor de conversión sobre la base). */
+/** Unidad de un artículo devuelta por /api/items/:id/uoms (base + alternativas). */
 export interface ItemUomAlternative {
-  id: string;
+  /** La unidad base no lleva id (no es una fila de ItemAlternativeUom). */
+  id?: string;
   uomId: string;
-  uomCode?: string | null;
-  factor: number;
+  code?: string | null;
+  name?: string | null;
+  factor: number | string;
+  isBase?: boolean;
 }

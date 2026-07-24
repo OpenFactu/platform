@@ -98,13 +98,15 @@ const AlternativeUomsPanel: React.FC<{
               </thead>
               <tbody>
                 {alternatives.map((a: any) => (
-                  <tr key={a.id} className="border-t border-slate-100">
-                    <td className="py-2">{a.uomCode || a.uomId}</td>
+                  <tr key={a.id || a.uomId} className="border-t border-slate-100">
+                    <td className="py-2">{a.code || a.name || a.uomId}</td>
                     <td className="py-2">{a.factor}</td>
                     <td className="py-2 w-20">
-                      <Button size="sm" variant="secondary" onClick={() => handleRemove(a.id)}>
-                        Eliminar
-                      </Button>
+                      {!a.isBase && (
+                        <Button size="sm" variant="secondary" onClick={() => handleRemove(a.id)}>
+                          Eliminar
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -358,7 +360,7 @@ export const Items: React.FC = () => {
         const uom = uoms.find((u) => u.id === i.uomId);
         return (
           <span className="font-mono text-[11px] font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 uppercase">
-            {uom?.symbol || '?'}
+            {uom?.code || '?'}
           </span>
         );
       },

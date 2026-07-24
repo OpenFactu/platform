@@ -2,9 +2,10 @@ import { apiClient } from '@/shared/http';
 import type { Uom } from '../domain/uom';
 
 export interface UomInput {
-  code?: string;
+  code: string;
   name: string;
-  symbol: string;
+  /** @deprecated el servidor lo acepta como alias de code; usar code. */
+  symbol?: string;
 }
 
 export const uomApi = {
