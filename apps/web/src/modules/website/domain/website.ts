@@ -10,7 +10,11 @@ export interface WebsiteSite {
     colorAccent?: string;
     fontId?: string;
     logoUrl?: string;
+    /** Redondez de esquinas: none|sm|md|lg (default 'md' si se omite). */
+    radius?: string;
   } | null;
+  /** CSS libre inyectado en <head> tras el CSS base — el "editor CSS" avanzado. */
+  customCss: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
   ogImageUrl: string | null;
@@ -60,4 +64,6 @@ export interface WebsiteAsset {
   provider: string;
   uploadedAt: string;
   publicUrl: string;
+  folder: string | null;
+  tags: string[] | null;
 }

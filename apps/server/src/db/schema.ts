@@ -1879,6 +1879,10 @@ export const attachments = pgTable('Attachment', {
   uploadedBy: text('uploadedBy'),
   uploadedAt: timestamp('uploadedAt').defaultNow().notNull(),
   deletedAt: timestamp('deletedAt'),
+  /** Organización de la biblioteca de medios del módulo Website (migración 065).
+   *  Sin uso en el resto de consumidores de Attachment. */
+  folder: text('folder'),
+  tags: text('tags').array(),
 });
 
 /**
@@ -2491,6 +2495,8 @@ export const websiteSites = pgTable('WebsiteSite', {
   status: text('status').default('draft').notNull(),
   /** Parcial de SiteTheme; null = usa el branding del tenant tal cual. */
   themeOverrides: jsonb('themeOverrides'),
+  /** CSS libre inyectado en <head> tras baseCss (migración 066). */
+  customCss: text('customCss'),
   seoTitle: text('seoTitle'),
   seoDescription: text('seoDescription'),
   ogImageUrl: text('ogImageUrl'),
@@ -2515,9 +2521,7 @@ export const websitePages = pgTable(
     isHome: boolean('isHome').default(false).notNull(),
     /** draft | published */
     status: text('status').default('draft').notNull(),
-    blocksDraft: jsonb('blocksDraft')
-      .default({ version: 1, blocks: [] })
-      .notNull(),
+    blocksDraft: jsonb('blocksDraft').default({ version: 1, blocks: [] }).notNull(),
     blocksPublished: jsonb('blocksPublished'),
     createdAt: timestamp('createdAt').defaultNow().notNull(),
     updatedAt: timestamp('updatedAt').defaultNow().notNull(),

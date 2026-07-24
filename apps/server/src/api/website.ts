@@ -15,8 +15,9 @@
  *   POST   /api/website/pages/:id/publish   — publicar una página
  *   POST   /api/website/publish             — publicar todas
  *   GET    /api/website/pages/:id/preview   — HTML del draft (mismo renderer)
- *   POST   /api/website/assets              — subir imagen (multipart "file")
+ *   POST   /api/website/assets              — subir imagen/vídeo (multipart "file", campo opcional "folder")
  *   GET    /api/website/assets              — listar assets del site
+ *   PUT    /api/website/assets/:id          — actualizar carpeta/etiquetas
  *   DELETE /api/website/assets/:id
  *   GET    /api/website/submissions         — mensajes del formulario público
  *   PUT    /api/website/submissions/:id/read
@@ -173,7 +174,8 @@ router.put('/site', async (req: any, res) => {
   try {
     const db = req.tenantClient;
     const site = await getOrCreateSite(req);
-    const { name, slug, themeOverrides, seoTitle, seoDescription, ogImageUrl } = req.body ?? {};
+    const { name, slug, themeOverrides, customCss, seoTitle, seoDescription, ogImageUrl } =
+      req.body ?? {};
 
     if (slug !== undefined && slug !== site.slug) {
       if (!SLUG_RE.test(slug)) {
@@ -200,6 +202,8 @@ router.put('/site', async (req: any, res) => {
         name: name ?? site.name,
         slug: slug ?? site.slug,
         themeOverrides: themeOverrides !== undefined ? themeOverrides : site.themeOverrides,
+        customCss:
+          customCss !== undefined ? String(customCss).slice(0, 20000) || null : site.customCss,
         seoTitle: seoTitle !== undefined ? seoTitle : site.seoTitle,
         seoDescription: seoDescription !== undefined ? seoDescription : site.seoDescription,
         ogImageUrl: ogImageUrl !== undefined ? ogImageUrl : site.ogImageUrl,
@@ -457,11 +461,17 @@ router.get('/pages/:id/preview', async (req: any, res) => {
       contactEndpoint: `/site/${site.slug}/contact`,
       pages: allPages,
     };
-    const html = renderPageToHtml(page.blocksDraft, theme, ctx, {
-      title: page.seoTitle || `${page.title} — ${site.name}`,
-      description: page.seoDescription || site.seoDescription || undefined,
-      ogImageUrl: page.ogImageUrl || site.ogImageUrl || undefined,
-    });
+    const html = renderPageToHtml(
+      page.blocksDraft,
+      theme,
+      ctx,
+      {
+        title: page.seoTitle || `${page.title} — ${site.name}`,
+        description: page.seoDescription || site.seoDescription || undefined,
+        ogImageUrl: page.ogImageUrl || site.ogImageUrl || undefined,
+      },
+      site.customCss || undefined,
+    );
     res.type('html').send(html);
   } catch (e: any) {
     console.error('[Website.preview] error:', e?.stack || e);
@@ -493,6 +503,10 @@ router.post('/assets', upload.single('file'), async (req: any, res) => {
     fs.promises.unlink(req.file.path).catch(() => {});
 
     const id = crypto.randomUUID();
+    const folder =
+      String(req.body?.folder ?? '')
+        .trim()
+        .slice(0, 80) || null;
     const [row] = await req.tenantClient
       .insert(schema.attachments)
       .values({
@@ -505,6 +519,7 @@ router.post('/assets', upload.single('file'), async (req: any, res) => {
         provider: adapter.id,
         externalId: ref.externalId,
         uploadedBy: req.user?.id ?? null,
+        folder,
       })
       .returning();
 
@@ -541,6 +556,54 @@ router.get('/assets', async (req: any, res) => {
     );
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error al listar assets' });
+  }
+});
+
+/**
+ * PUT /api/website/assets/:id — actualiza carpeta y/o etiquetas de un asset
+ * (organización de la biblioteca de medios; no toca el archivo en sí).
+ */
+router.put('/assets/:id', async (req: any, res) => {
+  try {
+    const site = await getOrCreateSite(req);
+    const [row] = await req.tenantClient
+      .select()
+      .from(schema.attachments)
+      .where(eq(schema.attachments.id, req.params.id));
+    if (!row || row.entityType !== ASSET_ENTITY || row.entityId !== site.id) {
+      return res.status(404).json({ error: 'No encontrado' });
+    }
+    const { folder, tags } = req.body ?? {};
+    const patch: Record<string, unknown> = {};
+    if (folder !== undefined) {
+      patch.folder =
+        String(folder ?? '')
+          .trim()
+          .slice(0, 80) || null;
+    }
+    if (tags !== undefined) {
+      const list = Array.isArray(tags) ? tags : [];
+      patch.tags = list
+        .map((t: unknown) =>
+          String(t ?? '')
+            .trim()
+            .slice(0, 40),
+        )
+        .filter(Boolean)
+        .slice(0, 20);
+    }
+    const [updated] = await req.tenantClient
+      .update(schema.attachments)
+      .set(patch)
+      .where(eq(schema.attachments.id, req.params.id))
+      .returning();
+    res.json({
+      ...updated,
+      publicUrl: assetPublicUrl(`/site/${site.slug}/assets`, updated.id, updated.fileName),
+    });
+  } catch (e: any) {
+    console.error('[Website.assets.updateMeta] error:', e?.stack || e);
+    res.status(500).json({ error: e?.message || 'Error al actualizar el asset' });
   }
 });
 

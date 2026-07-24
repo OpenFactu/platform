@@ -210,6 +210,7 @@ export const PageEditor: React.FC = () => {
           ctx={ctx}
           uploadImage={uploadImage}
           pickImage={pickImage}
+          customCss={site.customCss ?? undefined}
         />
       </div>
       <MediaLibraryModal

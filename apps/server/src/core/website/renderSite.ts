@@ -92,12 +92,19 @@ export async function resolveHostValue(value: string): Promise<ResolvedHost | nu
   };
 }
 
+/** Niveles de redondez de esquinas que ofrece el editor, en px. */
+const RADIUS_PRESETS: Record<string, number> = { none: 0, sm: 6, md: 12, lg: 20 };
+const DEFAULT_RADIUS = 'md';
+
 /** Compone el tema del site: branding del tenant + overrides guardados. */
 export function buildSiteTheme(
   branding: typeof BRANDING_DEFAULTS,
   site: { name: string; themeOverrides?: unknown },
 ): SiteTheme {
-  const overrides = (site.themeOverrides ?? {}) as Partial<SiteTheme> & { fontId?: string };
+  const overrides = (site.themeOverrides ?? {}) as Partial<SiteTheme> & {
+    fontId?: string;
+    radius?: string;
+  };
   const fontId = overrides.fontId ?? branding.fontFamily;
   const font = WEBSITE_FONTS[fontId] ?? WEBSITE_FONTS.sans;
   return {
@@ -109,6 +116,7 @@ export function buildSiteTheme(
       : undefined,
     logoUrl: overrides.logoUrl ?? branding.logoUrl ?? undefined,
     siteName: site.name,
+    radiusPx: RADIUS_PRESETS[overrides.radius ?? DEFAULT_RADIUS] ?? RADIUS_PRESETS[DEFAULT_RADIUS],
   };
 }
 
@@ -193,11 +201,17 @@ export async function renderSitePage(
     sent: opts.sent,
   };
 
-  let html = renderPageToHtml(page.blocksPublished, theme, ctx, {
-    title: page.seoTitle || `${page.title} — ${site.name}`,
-    description: page.seoDescription || site.seoDescription || undefined,
-    ogImageUrl: page.ogImageUrl || site.ogImageUrl || undefined,
-  });
+  let html = renderPageToHtml(
+    page.blocksPublished,
+    theme,
+    ctx,
+    {
+      title: page.seoTitle || `${page.title} — ${site.name}`,
+      description: page.seoDescription || site.seoDescription || undefined,
+      ogImageUrl: page.ogImageUrl || site.ogImageUrl || undefined,
+    },
+    site.customCss || undefined,
+  );
 
   // En modo slug (mismo origen que el ERP) inyectamos un botón flotante de
   // edición que SOLO se pinta si el navegador tiene sesión del ERP (token en
