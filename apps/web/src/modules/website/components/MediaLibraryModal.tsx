@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Badge, Button, Loader, Modal, useToast } from '@openfactu/ui';
+import { Badge, Button, Modal, Skeleton, useToast } from '@openfactu/ui';
 import { Cloud, HardDrive, Trash2, Upload } from 'lucide-react';
 import { websiteApi } from '../api/websiteApi';
 import type { WebsiteAsset } from '../domain/website';
@@ -98,7 +98,20 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
         </div>
 
         {loading ? (
-          <Loader />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div
+                key={i}
+                className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700"
+              >
+                <Skeleton className="h-28 w-full rounded-none" />
+                <div className="p-2 space-y-2">
+                  <Skeleton className="h-3 w-3/4" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : assets.length === 0 ? (
           <div className="py-12 text-center text-slate-400">
             La biblioteca está vacía. Sube tu primera imagen.
