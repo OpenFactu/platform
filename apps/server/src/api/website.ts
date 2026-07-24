@@ -38,6 +38,7 @@ import * as schema from '../db/schema';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import { StorageResolver } from '../core/storage/StorageResolver';
 import type { StorageProviderId } from '../core/storage/StorageAdapter';
+import { sanitizeFolderSegment } from '../core/storage/folderName';
 import { getConfigSection } from '../core/config/systemConfigSection';
 import { BRANDING_DEFAULTS } from '../core/config/appConfig';
 import { assetPublicUrl, buildSiteTheme, invalidateSiteCache } from '../core/website/renderSite';
@@ -490,6 +491,7 @@ router.post('/assets', upload.single('file'), async (req: any, res) => {
     }
     const site = await getOrCreateSite(req);
     const tenantSchema = req.tenantSchema;
+    const folder = sanitizeFolderSegment(req.body?.folder);
     const adapter = await StorageResolver.forTenant(req.tenantClient, tenantSchema);
     const content = await fs.promises.readFile(req.file.path);
     const ref = await adapter.upload({
@@ -499,14 +501,11 @@ router.post('/assets', upload.single('file'), async (req: any, res) => {
       fileName: req.file.originalname,
       mime: req.file.mimetype,
       content,
+      subPath: folder ? [folder] : undefined,
     });
     fs.promises.unlink(req.file.path).catch(() => {});
 
     const id = crypto.randomUUID();
-    const folder =
-      String(req.body?.folder ?? '')
-        .trim()
-        .slice(0, 80) || null;
     const [row] = await req.tenantClient
       .insert(schema.attachments)
       .values({
@@ -559,9 +558,22 @@ router.get('/assets', async (req: any, res) => {
   }
 });
 
+/** Lee un stream de lectura entero en memoria (assets de la web: hasta 100MB). */
+function bufferFromStream(stream: NodeJS.ReadableStream): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on('data', (c: Buffer) => chunks.push(c));
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+    stream.on('error', reject);
+  });
+}
+
 /**
- * PUT /api/website/assets/:id — actualiza carpeta y/o etiquetas de un asset
- * (organización de la biblioteca de medios; no toca el archivo en sí).
+ * PUT /api/website/assets/:id — actualiza carpeta y/o etiquetas de un asset.
+ * Cambiar la carpeta MUEVE el archivo de verdad en el almacenamiento físico
+ * (descarga + resube a la nueva subcarpeta + borra el original) — el `id` de
+ * BD no cambia, así que las URLs públicas ya insertadas en páginas siguen
+ * funcionando; solo cambian `externalId`/`provider` internos.
  */
 router.put('/assets/:id', async (req: any, res) => {
   try {
@@ -575,12 +587,42 @@ router.put('/assets/:id', async (req: any, res) => {
     }
     const { folder, tags } = req.body ?? {};
     const patch: Record<string, unknown> = {};
+
     if (folder !== undefined) {
-      patch.folder =
-        String(folder ?? '')
-          .trim()
-          .slice(0, 80) || null;
+      const newFolder = sanitizeFolderSegment(folder);
+      if (newFolder !== (row.folder ?? null)) {
+        const oldAdapter = await StorageResolver.forProvider(
+          row.provider as StorageProviderId,
+          req.tenantClient,
+          req.tenantSchema,
+        );
+        const dl = await oldAdapter.download({
+          tenantSchema: req.tenantSchema,
+          externalId: row.externalId,
+        });
+        const content = await bufferFromStream(dl.stream);
+        const newAdapter = await StorageResolver.forTenant(req.tenantClient, req.tenantSchema);
+        const ref = await newAdapter.upload({
+          tenantSchema: req.tenantSchema,
+          entityType: ASSET_ENTITY,
+          entityId: site.id,
+          fileName: row.fileName,
+          mime: row.mime,
+          content,
+          subPath: newFolder ? [newFolder] : undefined,
+        });
+        await oldAdapter
+          .delete({ tenantSchema: req.tenantSchema, externalId: row.externalId })
+          .catch((e: any) =>
+            console.warn('[Website.assets.move] borrado del origen falló:', e?.message),
+          );
+        patch.folder = newFolder;
+        patch.provider = newAdapter.id;
+        patch.externalId = ref.externalId;
+        patch.size = ref.size;
+      }
     }
+
     if (tags !== undefined) {
       const list = Array.isArray(tags) ? tags : [];
       patch.tags = list

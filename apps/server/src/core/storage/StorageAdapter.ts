@@ -23,6 +23,12 @@ export interface UploadInput {
    * (futuras integraciones con streams). Cada adapter decide cómo consumirlo.
    */
   content: Buffer;
+  /**
+   * Segmentos de subcarpeta REAL dentro de `entityId` (ya saneados por el
+   * llamador — ver core/storage/folderName.ts). Opcional: sin esto, el
+   * archivo va directo en la carpeta de la entidad, como antes.
+   */
+  subPath?: string[];
 }
 
 export interface DownloadInput {
