@@ -45,6 +45,8 @@ export interface WebsiteSubmission {
   name: string | null;
   email: string | null;
   message: string | null;
+  /** ip/userAgent/referer + fields (campos de formularios personalizados) */
+  meta: { fields?: Record<string, string> } | null;
   read: boolean;
   createdAt: string;
 }

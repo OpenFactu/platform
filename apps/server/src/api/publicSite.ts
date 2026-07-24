@@ -66,7 +66,18 @@ async function handleContactSubmission(
   res: any,
   basePath: string,
 ) {
-  const { name, email, message, website } = (req.body ?? {}) as Record<string, string>;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const { name, email, message, website } = body as Record<string, string>;
+
+  // Campos extra de formularios personalizados (bloque `form`): todo lo que
+  // no sea un campo estándar se guarda en meta.fields, con límites defensivos.
+  const extraFields: Record<string, string> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (['name', 'email', 'message', 'website'].includes(key)) continue;
+    if (Object.keys(extraFields).length >= 30) break;
+    const k = String(key).slice(0, 60);
+    extraFields[k] = (Array.isArray(value) ? value.join(', ') : String(value ?? '')).slice(0, 2000);
+  }
 
   // Volver a la página de origen (mismo path), o a la home del site
   const referer = String(req.headers.referer ?? '');
@@ -87,7 +98,9 @@ async function handleContactSubmission(
   )[0];
   if (contactRateLimited(ip, resolved.siteId)) return res.redirect(303, redirectTo);
 
-  if (!message && !email && !name) return res.redirect(303, redirectTo);
+  if (!message && !email && !name && Object.keys(extraFields).length === 0) {
+    return res.redirect(303, redirectTo);
+  }
 
   const db = await ClientFactory.getTenantClient(resolved.tenantId);
   await db.insert(schema.websiteFormSubmissions).values({
@@ -100,6 +113,7 @@ async function handleContactSubmission(
       ip,
       userAgent: String(req.headers['user-agent'] ?? '').slice(0, 300),
       referer: referer.slice(0, 300),
+      ...(Object.keys(extraFields).length > 0 ? { fields: extraFields } : {}),
     },
   });
 

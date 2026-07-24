@@ -96,6 +96,18 @@ export const Messages: React.FC = () => {
                 <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
                   {row.message}
                 </p>
+                {row.meta?.fields && Object.keys(row.meta.fields).length > 0 && (
+                  <dl className="mt-2 grid gap-x-6 gap-y-1 md:grid-cols-2 text-xs bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3">
+                    {Object.entries(row.meta.fields).map(([key, value]) => (
+                      <div key={key} className="flex gap-2 min-w-0">
+                        <dt className="font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                          {key.replace(/_/g, ' ')}:
+                        </dt>
+                        <dd className="text-slate-700 dark:text-slate-200 truncate">{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
               </li>
             ))}
           </ul>
