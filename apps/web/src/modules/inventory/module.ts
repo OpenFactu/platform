@@ -1,5 +1,6 @@
 import type { ModuleManifest } from '../types';
 import { Items } from './pages/Items';
+import { ItemDetail } from './pages/ItemDetail';
 import { Categories } from './pages/Categories';
 import { Uom } from './pages/Uom';
 import { Warehouses } from './pages/Warehouses';
@@ -27,6 +28,13 @@ export const inventoryModule: ModuleManifest = {
       Component: Items,
       title: 'Catálogo',
       iconName: 'Grid',
+      permissionPath: '/items',
+    },
+    {
+      pattern: '/items/:itemId',
+      Component: ItemDetail,
+      title: 'Ficha de artículo',
+      iconName: 'Package',
       permissionPath: '/items',
     },
     {

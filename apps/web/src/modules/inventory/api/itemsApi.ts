@@ -7,6 +7,8 @@ export type ItemInput = Record<string, unknown>;
 
 export const itemsApi = {
   list: () => apiClient.get<Item[]>('/api/items'),
+  /** Ficha completa de un artículo (incluye campos custom p_*). */
+  get: (id: string) => apiClient.get<Item>(`/api/items/${id}`),
   create: (data: ItemInput) => apiClient.post<Item>('/api/items', data),
   update: (id: string, data: ItemInput) => apiClient.patch<Item>(`/api/items/${id}`, data),
   /** Desglose de stock por almacén/zona/lote para el modal de detalle. */
