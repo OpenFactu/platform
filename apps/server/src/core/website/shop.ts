@@ -71,6 +71,16 @@ export async function loadShopData(db: any, checkoutEndpoint: string): Promise<S
   };
 }
 
+/** Paths de fichas de producto publicables (sitemap). */
+export async function listWebProductPaths(tenantId: string): Promise<string[]> {
+  const db = await ClientFactory.getTenantClient(tenantId);
+  const rows = await db
+    .select({ id: schema.items.id })
+    .from(schema.items)
+    .where(eq(schema.items.webVisible, true));
+  return rows.map((r: any) => `/p/${r.id}`);
+}
+
 // ─── Checkout ────────────────────────────────────────────────────────────
 
 // Rate limit en memoria: máx 5 pedidos/minuto por IP+site (mismo patrón que
@@ -263,6 +273,8 @@ export async function handleShopCheckout(
   order.seriesId = series.id;
   order.periodId = period.id;
   order.date = now;
+  // Marca de origen: llega al header vía toCreateRequest → buildHeaderValues
+  order.customFields.origin = 'web';
   if (shipTo) order.shipToAddress = shipTo;
   for (const l of validLines) {
     const item = itemById.get(l.itemId);

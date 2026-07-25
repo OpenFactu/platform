@@ -1293,6 +1293,8 @@ export const salesOrders = pgTable('SalesOrder', {
   taxBreakdown: text('taxBreakdown'),
   // Comercial asignado (para cálculo de comisiones).
   salesAgentId: text('salesAgentId'),
+  // Mig 068 — 'web' si el pedido entró por la tienda pública; NULL desde el ERP.
+  origin: text('origin'),
   createdBy: text('createdBy'),
   createdAt: timestamp('createdAt').defaultNow(),
   // Mig 063 — enlace al presupuesto de venta que originó el pedido.

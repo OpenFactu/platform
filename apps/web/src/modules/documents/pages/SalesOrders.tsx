@@ -127,6 +127,12 @@ const SOList: React.FC<{
             { label: 'Cerrado', value: 'C' },
           ],
         },
+        {
+          key: 'origin',
+          type: 'select',
+          label: 'Origen',
+          options: [{ label: '🌐 Web', value: 'web' }],
+        },
         { key: 'date', type: 'date', label: 'Fecha' },
       ],
     });
@@ -177,11 +183,12 @@ const SOList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => item.status || '',
       cell: (item: any) => (
-        <>
+        <span className="inline-flex items-center gap-1.5">
           {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
           {item.status === 'P' && <Badge variant="info">Parcial</Badge>}
           {item.status === 'C' && <Badge variant="success">Cerrado</Badge>}
-        </>
+          {item.origin === 'web' && <Badge variant="info">🌐 Web</Badge>}
+        </span>
       ),
     },
     {
@@ -311,6 +318,12 @@ const SOList: React.FC<{
                 { label: 'Cerrado', value: 'C' },
               ],
             },
+            {
+              key: 'origin',
+              label: 'Origen',
+              type: 'select',
+              options: [{ label: '🌐 Web', value: 'web' }],
+            },
             { key: 'date', label: 'Fecha', type: 'date' },
           ]}
           searchPlaceholder="Buscar pedido..."
@@ -334,11 +347,12 @@ const SOList: React.FC<{
               item.partnerName || partners.find((p) => p.id === item.partnerId)?.name || '...'
             }
             status={(item: any) => (
-              <>
+              <span className="inline-flex items-center gap-1.5">
                 {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
                 {item.status === 'P' && <Badge variant="info">Parcial</Badge>}
                 {item.status === 'C' && <Badge variant="success">Cerrado</Badge>}
-              </>
+                {item.origin === 'web' && <Badge variant="info">🌐 Web</Badge>}
+              </span>
             )}
             fields={[
               { label: 'Fecha', value: (item: any) => fmt.date(item.date) },

@@ -474,6 +474,11 @@ export class DocumentEngine {
       headerValues.salesAgentId = (request as any).salesAgentId || null;
     }
 
+    // Origen del documento (p. ej. 'web' cuando lo crea la tienda pública).
+    if ((def.schemaTable as any).origin !== undefined) {
+      headerValues.origin = (request as any).origin || null;
+    }
+
     const creatorUserId = user?.id || null;
     if (creatorUserId) headerValues.createdBy = creatorUserId;
 

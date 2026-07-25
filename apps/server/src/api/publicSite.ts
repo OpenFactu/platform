@@ -9,11 +9,12 @@ import { notifyTenant } from '../core/realtime/notifyTenant';
 import {
   listPublishedPaths,
   rawAssetId,
+  renderProductPage,
   renderSitePage,
   resolveHostValue,
   type ResolvedHost,
 } from '../core/website/renderSite';
-import { handleShopCheckout } from '../core/website/shop';
+import { handleShopCheckout, listWebProductPaths } from '../core/website/shop';
 
 /**
  * Serving público de sitios web (módulo Website) — SIN autenticación.
@@ -231,6 +232,27 @@ publicSiteRouter.post(
 );
 
 /**
+ * GET /site/:slug/p/:itemId — ficha pública de un producto de la tienda.
+ * Registrada ANTES del catch-all /:slug/* para ganarle el match.
+ */
+publicSiteRouter.get('/:slug/p/:itemId', async (req, res) => {
+  try {
+    const resolved = await resolveHostValue(req.params.slug);
+    if (!resolved || resolved.kind !== 'slug') {
+      return res.status(404).type('html').send(notFoundHtml());
+    }
+    const html = await renderProductPage(resolved.tenantId, resolved.siteId, req.params.itemId, {
+      basePath: `/site/${req.params.slug}`,
+    });
+    if (!html) return res.status(404).type('html').send(notFoundHtml());
+    res.type('html').send(html);
+  } catch (err: any) {
+    console.error('[Website] Error en ficha de producto:', err.message);
+    res.status(500).type('html').send(notFoundHtml());
+  }
+});
+
+/**
  * POST /site/:slug/checkout — pedido de la tienda (bloque shop). Crea un
  * Pedido de venta 'O' vía FactuApi; sin pago online.
  */
@@ -254,8 +276,10 @@ publicSiteRouter.get('/:slug/sitemap.xml', async (req, res) => {
     const resolved = await resolveHostValue(req.params.slug);
     if (!resolved || resolved.kind !== 'slug') return res.status(404).end();
     const paths = await listPublishedPaths(resolved.tenantId, resolved.siteId);
+    const productPaths = await listWebProductPaths(resolved.tenantId);
+    const all = [...paths, ...productPaths.map((p) => ({ path: p, updatedAt: null }))];
     const origin = `${req.protocol}://${req.get('host')}`;
-    res.type('application/xml').send(sitemapXml(origin, `/site/${req.params.slug}`, paths));
+    res.type('application/xml').send(sitemapXml(origin, `/site/${req.params.slug}`, all));
   } catch (err: any) {
     res.status(500).end();
   }
@@ -395,8 +419,10 @@ export async function publicSiteHostMiddleware(req: any, res: any, next: any) {
 
     if (req.path === '/sitemap.xml') {
       const paths = await listPublishedPaths(resolved.tenantId, resolved.siteId);
+      const productPaths = await listWebProductPaths(resolved.tenantId);
+      const all = [...paths, ...productPaths.map((p) => ({ path: p, updatedAt: null }))];
       const origin = `${req.protocol}://${req.get('host')}`;
-      return res.type('application/xml').send(sitemapXml(origin, '', paths));
+      return res.type('application/xml').send(sitemapXml(origin, '', all));
     }
     if (req.path === '/robots.txt') {
       return res
@@ -404,6 +430,16 @@ export async function publicSiteHostMiddleware(req: any, res: any, next: any) {
         .send(
           `User-agent: *\nAllow: /\nSitemap: ${req.protocol}://${req.get('host')}/sitemap.xml\n`,
         );
+    }
+
+    // Ficha de producto bajo dominio propio: /p/:itemId
+    const productMatch = req.path.match(/^\/p\/([\w-]+)\/?$/);
+    if (productMatch) {
+      const html = await renderProductPage(resolved.tenantId, resolved.siteId, productMatch[1], {
+        basePath: '',
+      });
+      if (!html) return res.status(404).type('html').send(notFoundHtml());
+      return res.type('html').send(html);
     }
 
     const pagePath = req.path.replace(/\/+$/, '') || '/';

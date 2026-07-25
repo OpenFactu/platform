@@ -239,6 +239,86 @@ export async function renderSitePage(
   return html;
 }
 
+/**
+ * Ficha pública de un producto (`/p/:itemId`): página sintética
+ * [navbar, productDetail] renderizada con el mismo tema/CSS del site y la
+ * misma caché que las páginas normales (la invalidación al tocar artículos en
+ * items.ts la cubre). Devuelve null si el site no está publicado o el
+ * artículo no es webVisible.
+ */
+export async function renderProductPage(
+  tenantId: string,
+  siteId: string,
+  itemId: string,
+  opts: RenderOptions,
+): Promise<string | null> {
+  const path = `/p/${itemId}`;
+  const cacheKey = `${tenantId}:${siteId}:${opts.basePath}:${path}`;
+  if (htmlCache.has(cacheKey)) return htmlCache.get(cacheKey)!;
+
+  const db = await ClientFactory.getTenantClient(tenantId);
+  const [site] = await db
+    .select()
+    .from(schema.websiteSites)
+    .where(eq(schema.websiteSites.id, siteId));
+  if (!site || site.status !== 'published') return null;
+
+  const shop = await loadShopData(db, opts.basePath ? `${opts.basePath}/checkout` : '/__checkout');
+  const product = shop.products.find((p) => p.id === itemId);
+  if (!product) return null;
+
+  const publishedPages = await db
+    .select({ path: schema.websitePages.path, title: schema.websitePages.title })
+    .from(schema.websitePages)
+    .where(
+      and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')),
+    );
+
+  const branding = await getConfigSection(db, 'branding', BRANDING_DEFAULTS);
+  const theme = buildSiteTheme(branding, site);
+
+  const ctx: RenderContext = {
+    basePath: opts.basePath,
+    contactEndpoint: opts.basePath ? `${opts.basePath}/contact` : '/__contact',
+    pages: publishedPages,
+    shop: { ...shop, product },
+  };
+
+  const doc = {
+    version: 1,
+    blocks: [
+      {
+        id: 'nav',
+        type: 'navbar',
+        props: {
+          showLogo: true,
+          sticky: true,
+          variant: 'classic',
+          side: 'left',
+          links: [],
+          autoPageLinks: true,
+        },
+      },
+      { id: 'product', type: 'productDetail', props: {} },
+    ],
+  };
+
+  const html = renderPageToHtml(
+    doc,
+    theme,
+    ctx,
+    {
+      title: `${product.name} — ${site.name}`,
+      description: product.description || undefined,
+      ogImageUrl: product.images[0] || undefined,
+    },
+    site.customCss || undefined,
+  );
+
+  htmlCache.set(cacheKey, html);
+  return html;
+}
+
 function editButtonSnippet(pageId: string): string {
   return (
     '<script>(function(){try{' +
