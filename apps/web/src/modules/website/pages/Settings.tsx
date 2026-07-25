@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Badge, Button, Card, Input, Loader, useToast } from '@openfactu/ui';
-import { Globe, Link2, Plus, Save, Settings2, Trash2 } from 'lucide-react';
+import { Globe, Link2, Plus, Save, Settings2, ShoppingCart, Trash2 } from 'lucide-react';
 import { FONT_OPTIONS, useTheme } from '@/context/ThemeContext';
+import { priceListsApi } from '@/modules/documents/api/docsApi';
 import { websiteApi } from '../api/websiteApi';
 import type { WebsiteHost, WebsiteSite } from '../domain/website';
 
@@ -11,6 +12,7 @@ export const Settings: React.FC = () => {
   const { branding } = useTheme();
   const [site, setSite] = useState<WebsiteSite | null>(null);
   const [hosts, setHosts] = useState<WebsiteHost[]>([]);
+  const [priceLists, setPriceLists] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newHost, setNewHost] = useState<{ kind: 'subdomain' | 'domain'; value: string } | null>(
@@ -19,9 +21,14 @@ export const Settings: React.FC = () => {
 
   const fetchAll = async () => {
     try {
-      const [s, h] = await Promise.all([websiteApi.getSite(), websiteApi.listHosts()]);
+      const [s, h, pl] = await Promise.all([
+        websiteApi.getSite(),
+        websiteApi.listHosts(),
+        priceListsApi.list().catch(() => []),
+      ]);
       setSite(s);
       setHosts(h);
+      setPriceLists(Array.isArray(pl) ? pl : []);
     } catch {
       toast.error('Error al cargar los ajustes');
     } finally {
@@ -49,6 +56,7 @@ export const Settings: React.FC = () => {
         seoTitle: site.seoTitle,
         seoDescription: site.seoDescription,
         ogImageUrl: site.ogImageUrl,
+        priceListId: site.priceListId,
       });
       setSite(updated);
       toast.success('Ajustes guardados');
@@ -173,6 +181,34 @@ export const Settings: React.FC = () => {
               ))}
             </select>
           </div>
+        </div>
+      </Card>
+
+      <Card className="space-y-4">
+        <h2 className="font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <ShoppingCart size={16} /> Tienda
+        </h2>
+        <div>
+          <label className="text-xs font-bold text-slate-500 block mb-1">
+            Tarifa de precios de la web
+          </label>
+          <select
+            value={site.priceListId ?? ''}
+            onChange={(e) => patch({ priceListId: e.target.value || null })}
+            className="h-10 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-sm"
+          >
+            <option value="">Precio base de los artículos</option>
+            {priceLists.map((pl) => (
+              <option key={pl.id} value={pl.id}>
+                {pl.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-slate-400 mt-1">
+            La tienda muestra (y el checkout cobra) los precios de esta tarifa. Si el precio de
+            tarifa es menor que el base, el producto sale como oferta: precio anterior tachado y
+            badge de descuento. Los artículos sin precio en la tarifa usan su precio base.
+          </p>
         </div>
       </Card>
 

@@ -18,11 +18,29 @@ import type { ResolvedHost } from './renderSite';
 
 const eurFormatter = new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' });
 
+/** Precios netos de una tarifa, por itemId. */
+async function loadPriceListMap(db: any, priceListId: string): Promise<Map<string, number>> {
+  const rows = await db
+    .select({ itemId: schema.itemPrices.itemId, price: schema.itemPrices.price })
+    .from(schema.itemPrices)
+    .where(eq(schema.itemPrices.priceListId, priceListId));
+  return new Map(rows.map((r: any) => [r.itemId, Number(r.price) || 0]));
+}
+
+const toGross = (net: number, rate: number) => Math.round(net * (1 + rate / 100) * 100) / 100;
+
 /**
  * Catálogo público: artículos marcados "Vender en la web" con su precio
- * BRUTO (base + IVA del grupo de impuestos del artículo) ya formateado.
+ * BRUTO (neto + IVA del grupo de impuestos del artículo) ya formateado.
+ * Con `priceListId` (tarifa de la web del site) el precio efectivo sale de
+ * la tarifa; si es menor que el base, el producto se marca como oferta
+ * (comparePriceLabel tachado + discountPercent para el badge).
  */
-export async function loadShopData(db: any, checkoutEndpoint: string): Promise<ShopRenderData> {
+export async function loadShopData(
+  db: any,
+  checkoutEndpoint: string,
+  priceListId?: string | null,
+): Promise<ShopRenderData> {
   const rows = await db
     .select({
       id: schema.items.id,
@@ -40,16 +58,24 @@ export async function loadShopData(db: any, checkoutEndpoint: string): Promise<S
     .where(eq(schema.items.webVisible, true))
     .orderBy(schema.items.name);
 
+  const listPrices = priceListId ? await loadPriceListMap(db, priceListId) : null;
+
   const products = rows.map((r: any) => {
-    const net = Number(r.basePrice) || 0;
+    const baseNet = Number(r.basePrice) || 0;
+    const listNet = listPrices?.get(r.id);
+    const net = listNet ?? baseNet;
     const rate = Number(r.taxRate) || 0;
-    const gross = Math.round(net * (1 + rate / 100) * 100) / 100;
+    const gross = toGross(net, rate);
+    // Oferta solo cuando la tarifa realmente abarata el precio base
+    const isOffer = listNet != null && listNet < baseNet && baseNet > 0;
     return {
       id: r.id,
       name: r.name,
       description: r.webDescription || undefined,
       priceGross: gross,
       priceLabel: eurFormatter.format(gross),
+      comparePriceLabel: isOffer ? eurFormatter.format(toGross(baseNet, rate)) : undefined,
+      discountPercent: isOffer ? Math.round((1 - listNet / baseNet) * 100) : undefined,
       images: Array.isArray(r.webImages)
         ? r.webImages.filter((u: any) => typeof u === 'string')
         : [],
@@ -258,7 +284,17 @@ export async function handleShopCheckout(
     email,
     phone: String(customer.phone ?? ''),
   });
-  const prices = await resolveEffectivePrices(db, itemRows, partner.priceListId ?? null);
+  // La tarifa de la web manda (es el precio que el visitante VIO); si el site
+  // no tiene tarifa, cae a la del cliente y por último al precio base.
+  const [siteRow] = await db
+    .select({ priceListId: schema.websiteSites.priceListId })
+    .from(schema.websiteSites)
+    .where(eq(schema.websiteSites.id, resolved.siteId));
+  const prices = await resolveEffectivePrices(
+    db,
+    itemRows,
+    siteRow?.priceListId ?? partner.priceListId ?? null,
+  );
 
   const address = String(customer.address ?? '')
     .trim()

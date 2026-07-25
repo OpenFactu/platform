@@ -203,7 +203,11 @@ export async function renderSitePage(
     if (b.type === 'shop') hasShop = true;
   });
   const shop = hasShop
-    ? await loadShopData(db, opts.basePath ? `${opts.basePath}/checkout` : '/__checkout')
+    ? await loadShopData(
+        db,
+        opts.basePath ? `${opts.basePath}/checkout` : '/__checkout',
+        site.priceListId,
+      )
     : undefined;
 
   const ctx: RenderContext = {
@@ -263,7 +267,11 @@ export async function renderProductPage(
     .where(eq(schema.websiteSites.id, siteId));
   if (!site || site.status !== 'published') return null;
 
-  const shop = await loadShopData(db, opts.basePath ? `${opts.basePath}/checkout` : '/__checkout');
+  const shop = await loadShopData(
+    db,
+    opts.basePath ? `${opts.basePath}/checkout` : '/__checkout',
+    site.priceListId,
+  );
   const product = shop.products.find((p) => p.id === itemId);
   if (!product) return null;
 

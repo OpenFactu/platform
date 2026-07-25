@@ -2504,6 +2504,8 @@ export const websiteSites = pgTable('WebsiteSite', {
   themeOverrides: jsonb('themeOverrides'),
   /** CSS libre inyectado en <head> tras baseCss (migración 066). */
   customCss: text('customCss'),
+  /** Mig 069 — tarifa de la tienda web (precios y ofertas); null = basePrice. */
+  priceListId: text('priceListId').references(() => priceLists.id),
   seoTitle: text('seoTitle'),
   seoDescription: text('seoDescription'),
   ogImageUrl: text('ogImageUrl'),

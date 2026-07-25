@@ -176,8 +176,25 @@ router.put('/site', async (req: any, res) => {
   try {
     const db = req.tenantClient;
     const site = await getOrCreateSite(req);
-    const { name, slug, themeOverrides, customCss, seoTitle, seoDescription, ogImageUrl } =
-      req.body ?? {};
+    const {
+      name,
+      slug,
+      themeOverrides,
+      customCss,
+      seoTitle,
+      seoDescription,
+      ogImageUrl,
+      priceListId,
+    } = req.body ?? {};
+
+    // Tarifa de la tienda: debe existir (o null para volver a basePrice)
+    if (priceListId !== undefined && priceListId !== null) {
+      const [pl] = await db
+        .select({ id: schema.priceLists.id })
+        .from(schema.priceLists)
+        .where(eq(schema.priceLists.id, String(priceListId)));
+      if (!pl) return res.status(400).json({ error: 'Tarifa no encontrada' });
+    }
 
     if (slug !== undefined && slug !== site.slug) {
       if (!SLUG_RE.test(slug)) {
@@ -209,6 +226,7 @@ router.put('/site', async (req: any, res) => {
         seoTitle: seoTitle !== undefined ? seoTitle : site.seoTitle,
         seoDescription: seoDescription !== undefined ? seoDescription : site.seoDescription,
         ogImageUrl: ogImageUrl !== undefined ? ogImageUrl : site.ogImageUrl,
+        priceListId: priceListId !== undefined ? priceListId : site.priceListId,
         updatedAt: new Date(),
       })
       .where(eq(schema.websiteSites.id, site.id))
@@ -467,7 +485,7 @@ router.get('/pages/:id/preview', async (req: any, res) => {
       if (b.type === 'shop') hasShop = true;
     });
     const shop = hasShop
-      ? await loadShopData(req.tenantClient, `/site/${site.slug}/checkout`)
+      ? await loadShopData(req.tenantClient, `/site/${site.slug}/checkout`, site.priceListId)
       : undefined;
 
     const ctx: RenderContext = {

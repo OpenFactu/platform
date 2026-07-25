@@ -15,6 +15,8 @@ export interface WebsiteSite {
   } | null;
   /** CSS libre inyectado en <head> tras el CSS base — el "editor CSS" avanzado. */
   customCss: string | null;
+  /** Tarifa (PriceList) de la tienda web; null = precios base. */
+  priceListId: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
   ogImageUrl: string | null;
