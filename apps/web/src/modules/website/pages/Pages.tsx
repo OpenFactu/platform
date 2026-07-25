@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge, Button, Card, Input, Loader, useToast } from '@openfactu/ui';
-import { ExternalLink, Globe, Pencil, Plus, Rocket, Save, Trash2, X } from 'lucide-react';
+import { ExternalLink, Globe, Pencil, Plus, Rocket, Save, Tag, Trash2, X } from 'lucide-react';
 import { websiteApi } from '../api/websiteApi';
 import type { WebsitePage, WebsiteSite } from '../domain/website';
+
+/** Ruta reservada: sus bloques renderizan TODAS las fichas de producto /p/… */
+const PRODUCT_TEMPLATE_PATH = '/plantilla-producto';
 
 /** Lista de páginas del site: crear, editar (→ editor), publicar y ver la web. */
 export const Pages: React.FC = () => {
@@ -58,6 +61,43 @@ export const Pages: React.FC = () => {
     }
   };
 
+  /** Abre la plantilla de producto — creándola con un diseño inicial si no existe. */
+  const handleProductTemplate = async () => {
+    const existing = pages.find((p) => p.path === PRODUCT_TEMPLATE_PATH);
+    if (existing) return navigate(`/website/editor/${existing.id}`);
+    try {
+      const page = await websiteApi.createPage({
+        title: 'Plantilla de producto',
+        path: PRODUCT_TEMPLATE_PATH,
+      });
+      // Diseño de partida: menú + ficha completa (luego se sustituye por piezas si quieren)
+      await websiteApi.updatePage(page.id, {
+        blocksDraft: {
+          version: 1,
+          blocks: [
+            {
+              id: 'nav',
+              type: 'navbar',
+              props: {
+                showLogo: true,
+                sticky: true,
+                variant: 'classic',
+                side: 'left',
+                links: [],
+                autoPageLinks: true,
+              },
+            },
+            { id: 'product', type: 'productDetail', props: {} },
+          ],
+        } as WebsitePage['blocksDraft'],
+      });
+      toast.success('Plantilla creada — al publicarla, todas las fichas /p/… la usarán');
+      navigate(`/website/editor/${page.id}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al crear la plantilla');
+    }
+  };
+
   const handlePublishAll = async () => {
     setPublishing(true);
     try {
@@ -106,6 +146,13 @@ export const Pages: React.FC = () => {
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => window.open(publicUrl, '_blank')}>
             <ExternalLink size={16} className="mr-2" /> Ver web
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleProductTemplate}
+            title="Diseña cómo se ven las fichas de producto (/p/…) de la tienda"
+          >
+            <Tag size={16} className="mr-2" /> Plantilla de producto
           </Button>
           <Button variant="secondary" onClick={handlePublishAll} disabled={publishing}>
             <Rocket size={16} className="mr-2" /> {publishing ? 'Publicando…' : 'Publicar todo'}
@@ -168,6 +215,11 @@ export const Pages: React.FC = () => {
                     {page.isHome && (
                       <Badge variant="neutral" className="ml-2 text-[10px]">
                         Inicio
+                      </Badge>
+                    )}
+                    {page.path === PRODUCT_TEMPLATE_PATH && (
+                      <Badge variant="info" className="ml-2 text-[10px]">
+                        Plantilla de producto
                       </Badge>
                     )}
                   </p>

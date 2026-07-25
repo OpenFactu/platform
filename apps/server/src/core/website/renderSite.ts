@@ -61,6 +61,14 @@ const WEBSITE_FONTS: Record<string, { stack: string; google?: string }> = {
   mono: { stack: "'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace" },
 };
 
+/**
+ * Ruta reservada de la plantilla de producto: si el site tiene una página
+ * publicada en este path, sus bloques se usan para renderizar TODAS las
+ * fichas /p/:itemId (el producto se inyecta en ctx.shop.product). No aparece
+ * en el menú automático ni en el sitemap.
+ */
+export const PRODUCT_TEMPLATE_PATH = '/plantilla-producto';
+
 export interface ResolvedHost {
   tenantId: string;
   siteId: string;
@@ -144,7 +152,8 @@ export async function listPublishedPaths(
     .where(
       and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')),
     );
-  return rows;
+  // La plantilla de producto no es una página navegable
+  return rows.filter((r: any) => r.path !== PRODUCT_TEMPLATE_PATH);
 }
 
 export interface RenderOptions {
@@ -185,12 +194,14 @@ export async function renderSitePage(
     );
   if (!page || page.status !== 'published' || !page.blocksPublished) return null;
 
-  const publishedPages = await db
-    .select({ path: schema.websitePages.path, title: schema.websitePages.title })
-    .from(schema.websitePages)
-    .where(
-      and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')),
-    );
+  const publishedPages = (
+    await db
+      .select({ path: schema.websitePages.path, title: schema.websitePages.title })
+      .from(schema.websitePages)
+      .where(
+        and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')),
+      )
+  ).filter((p: any) => p.path !== PRODUCT_TEMPLATE_PATH);
 
   const branding = await getConfigSection(db, 'branding', BRANDING_DEFAULTS);
   const theme = buildSiteTheme(branding, site);
@@ -275,12 +286,14 @@ export async function renderProductPage(
   const product = shop.products.find((p) => p.id === itemId);
   if (!product) return null;
 
-  const publishedPages = await db
-    .select({ path: schema.websitePages.path, title: schema.websitePages.title })
-    .from(schema.websitePages)
-    .where(
-      and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')),
-    );
+  const publishedPages = (
+    await db
+      .select({ path: schema.websitePages.path, title: schema.websitePages.title })
+      .from(schema.websitePages)
+      .where(
+        and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')),
+      )
+  ).filter((p: any) => p.path !== PRODUCT_TEMPLATE_PATH);
 
   const branding = await getConfigSection(db, 'branding', BRANDING_DEFAULTS);
   const theme = buildSiteTheme(branding, site);
@@ -292,24 +305,39 @@ export async function renderProductPage(
     shop: { ...shop, product },
   };
 
-  const doc = {
-    version: 1,
-    blocks: [
-      {
-        id: 'nav',
-        type: 'navbar',
-        props: {
-          showLogo: true,
-          sticky: true,
-          variant: 'classic',
-          side: 'left',
-          links: [],
-          autoPageLinks: true,
-        },
-      },
-      { id: 'product', type: 'productDetail', props: {} },
-    ],
-  };
+  // Plantilla editable: si el site tiene publicada la página reservada
+  // /plantilla-producto, sus bloques mandan; si no, diseño automático.
+  const [template] = await db
+    .select()
+    .from(schema.websitePages)
+    .where(
+      and(
+        eq(schema.websitePages.siteId, siteId),
+        eq(schema.websitePages.path, PRODUCT_TEMPLATE_PATH),
+      ),
+    );
+
+  const doc =
+    template?.status === 'published' && template.blocksPublished
+      ? template.blocksPublished
+      : {
+          version: 1,
+          blocks: [
+            {
+              id: 'nav',
+              type: 'navbar',
+              props: {
+                showLogo: true,
+                sticky: true,
+                variant: 'classic',
+                side: 'left',
+                links: [],
+                autoPageLinks: true,
+              },
+            },
+            { id: 'product', type: 'productDetail', props: {} },
+          ],
+        };
 
   const html = renderPageToHtml(
     doc,

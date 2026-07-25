@@ -41,7 +41,12 @@ import type { StorageProviderId } from '../core/storage/StorageAdapter';
 import { sanitizeFolderSegment } from '../core/storage/folderName';
 import { getConfigSection } from '../core/config/systemConfigSection';
 import { BRANDING_DEFAULTS } from '../core/config/appConfig';
-import { assetPublicUrl, buildSiteTheme, invalidateSiteCache } from '../core/website/renderSite';
+import {
+  assetPublicUrl,
+  buildSiteTheme,
+  invalidateSiteCache,
+  PRODUCT_TEMPLATE_PATH,
+} from '../core/website/renderSite';
 import { loadShopData } from '../core/website/shop';
 import { sanitizeHtml } from '../core/website/sanitizeHtml';
 
@@ -469,24 +474,34 @@ router.get('/pages/:id/preview', async (req: any, res) => {
     const { site, page } = await getPage(req);
     if (!page) return res.status(404).json({ error: 'Página no encontrada' });
 
-    const allPages = await req.tenantClient
-      .select({ path: schema.websitePages.path, title: schema.websitePages.title })
-      .from(schema.websitePages)
-      .where(eq(schema.websitePages.siteId, site.id));
+    const allPages = (
+      await req.tenantClient
+        .select({ path: schema.websitePages.path, title: schema.websitePages.title })
+        .from(schema.websitePages)
+        .where(eq(schema.websitePages.siteId, site.id))
+    ).filter((p: any) => p.path !== PRODUCT_TEMPLATE_PATH);
 
     const branding = await getConfigSection(req.tenantClient, 'branding', BRANDING_DEFAULTS);
     const theme = buildSiteTheme(branding, site);
 
     // El preview enseña la tienda con los productos reales (mismo dato que
-    // el público) — solo si el draft lleva un bloque shop.
+    // el público). Si el draft lleva piezas de producto (plantilla de
+    // producto), se inyecta el primer producto real como muestra.
     const draftDoc = migrateDocument(page.blocksDraft);
     let hasShop = false;
+    let hasProductBits = false;
     walkBlocks(draftDoc, (b) => {
       if (b.type === 'shop') hasShop = true;
+      if (b.type === 'productDetail' || b.type.startsWith('product')) hasProductBits = true;
     });
-    const shop = hasShop
-      ? await loadShopData(req.tenantClient, `/site/${site.slug}/checkout`, site.priceListId)
-      : undefined;
+    const shopData =
+      hasShop || hasProductBits
+        ? await loadShopData(req.tenantClient, `/site/${site.slug}/checkout`, site.priceListId)
+        : undefined;
+    const shop =
+      shopData && hasProductBits && !hasShop
+        ? { ...shopData, product: shopData.products[0] }
+        : shopData;
 
     const ctx: RenderContext = {
       basePath: `/site/${site.slug}`,

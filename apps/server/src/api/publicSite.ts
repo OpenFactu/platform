@@ -26,6 +26,27 @@ export const publicSiteRouter = Router();
 
 const SLUG_RE = /^[a-z0-9-]{3,40}$/;
 
+/**
+ * Descarga con reintento: OneDrive/Drive fallan puntualmente (refresh de
+ * token, hiccup de red) y una imagen rota en la tienda es muy visible — un
+ * segundo intento absorbe la mayoría de los microcortes.
+ */
+async function downloadWithRetry(
+  adapter: { download: (args: any) => Promise<any> },
+  args: any,
+  tries = 2,
+): Promise<any> {
+  let lastErr: any;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await adapter.download(args);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr;
+}
+
 function notFoundHtml(): string {
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -202,16 +223,20 @@ publicSiteRouter.get('/:slug/assets/:id', async (req, res) => {
       db,
       resolved.schemaName,
     );
-    const dl = await adapter.download({
+    const dl = await downloadWithRetry(adapter, {
       tenantSchema: resolved.schemaName,
       externalId: row.externalId,
     });
     res.setHeader('Content-Type', row.mime);
     res.setHeader('Cache-Control', 'public, max-age=86400');
     if (row.size) res.setHeader('Content-Length', String(row.size));
+    dl.stream.on('error', (e: any) => {
+      console.error('[Website] Stream de asset roto:', req.params.id, e?.message);
+      res.destroy();
+    });
     dl.stream.pipe(res);
   } catch (err: any) {
-    console.error('[Website] Error sirviendo asset:', err.message);
+    console.error('[Website] Error sirviendo asset:', req.params.id, err.message);
     res.status(500).end();
   }
 });
@@ -377,12 +402,16 @@ export async function publicSiteHostMiddleware(req: any, res: any, next: any) {
         db,
         resolved.schemaName,
       );
-      const dl = await adapter.download({
+      const dl = await downloadWithRetry(adapter, {
         tenantSchema: resolved.schemaName,
         externalId: row.externalId,
       });
       res.setHeader('Content-Type', row.mime);
       res.setHeader('Cache-Control', 'public, max-age=86400');
+      dl.stream.on('error', (e: any) => {
+        console.error('[Website] Stream de asset roto (host):', assetId, e?.message);
+        res.destroy();
+      });
       dl.stream.pipe(res);
       return;
     }
