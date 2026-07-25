@@ -45,7 +45,7 @@ import {
   assetPublicUrl,
   buildSiteTheme,
   invalidateSiteCache,
-  PRODUCT_TEMPLATE_PATH,
+  listNavPages,
 } from '../core/website/renderSite';
 import { loadShopData } from '../core/website/shop';
 import { sanitizeHtml } from '../core/website/sanitizeHtml';
@@ -313,7 +313,11 @@ router.get('/pages', async (req: any, res) => {
       .select()
       .from(schema.websitePages)
       .where(eq(schema.websitePages.siteId, site.id))
-      .orderBy(desc(schema.websitePages.isHome), asc(schema.websitePages.path));
+      .orderBy(
+        desc(schema.websitePages.isHome),
+        asc(schema.websitePages.navOrder),
+        asc(schema.websitePages.path),
+      );
     res.json(rows);
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error al listar páginas' });
@@ -380,7 +384,8 @@ router.put('/pages/:id', async (req: any, res) => {
   try {
     const { site, page } = await getPage(req);
     if (!page) return res.status(404).json({ error: 'Página no encontrada' });
-    const { title, path, seoTitle, seoDescription, ogImageUrl, blocksDraft } = req.body ?? {};
+    const { title, path, seoTitle, seoDescription, ogImageUrl, blocksDraft, navOrder, showInNav } =
+      req.body ?? {};
 
     let normalizedPath = page.path;
     if (path !== undefined && path !== page.path) {
@@ -409,10 +414,19 @@ router.put('/pages/:id', async (req: any, res) => {
         ogImageUrl: ogImageUrl !== undefined ? ogImageUrl : page.ogImageUrl,
         // migrateDocument normaliza y descarta bloques corruptos
         blocksDraft: blocksDraft !== undefined ? migrateDocument(blocksDraft) : page.blocksDraft,
+        navOrder:
+          navOrder !== undefined
+            ? navOrder === null
+              ? null
+              : Math.max(0, Math.floor(Number(navOrder)) || 0)
+            : page.navOrder,
+        showInNav: showInNav !== undefined ? !!showInNav : page.showInNav,
         updatedAt: new Date(),
       })
       .where(eq(schema.websitePages.id, page.id))
       .returning();
+    // El menú automático sale en TODAS las páginas publicadas cacheadas
+    invalidateSiteCache(req.tenantId, site.id);
     res.json(updated);
   } catch (e: any) {
     console.error('[Website.pages.put] error:', e?.stack || e);
@@ -474,12 +488,7 @@ router.get('/pages/:id/preview', async (req: any, res) => {
     const { site, page } = await getPage(req);
     if (!page) return res.status(404).json({ error: 'Página no encontrada' });
 
-    const allPages = (
-      await req.tenantClient
-        .select({ path: schema.websitePages.path, title: schema.websitePages.title })
-        .from(schema.websitePages)
-        .where(eq(schema.websitePages.siteId, site.id))
-    ).filter((p: any) => p.path !== PRODUCT_TEMPLATE_PATH);
+    const allPages = await listNavPages(req.tenantClient, site.id, false);
 
     const branding = await getConfigSection(req.tenantClient, 'branding', BRANDING_DEFAULTS);
     const theme = buildSiteTheme(branding, site);

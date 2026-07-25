@@ -1,5 +1,5 @@
 import path from 'path';
-import { and, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import type { RenderContext, SiteTheme } from '@openfactu/site-builder/render';
 import { renderPageToHtml } from '@openfactu/site-builder/render';
 import { migrateDocument, walkBlocks } from '@openfactu/site-builder/schema';
@@ -140,6 +140,39 @@ export function invalidateSiteCache(tenantId: string, siteId?: string) {
   }
 }
 
+/**
+ * Páginas del menú automático (navbar/footer): publicadas, visibles en nav
+ * (mig 070), en su orden (home primero, luego navOrder, NULL al final) y sin
+ * la plantilla de producto.
+ */
+export async function listNavPages(
+  db: any,
+  siteId: string,
+  /** false = incluye borradores (preview del editor). */
+  publishedOnly = true,
+): Promise<{ path: string; title: string }[]> {
+  const rows = await db
+    .select({
+      path: schema.websitePages.path,
+      title: schema.websitePages.title,
+      showInNav: schema.websitePages.showInNav,
+    })
+    .from(schema.websitePages)
+    .where(
+      publishedOnly
+        ? and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published'))
+        : eq(schema.websitePages.siteId, siteId),
+    )
+    .orderBy(
+      desc(schema.websitePages.isHome),
+      asc(schema.websitePages.navOrder),
+      asc(schema.websitePages.path),
+    );
+  return rows
+    .filter((r: any) => r.showInNav !== false && r.path !== PRODUCT_TEMPLATE_PATH)
+    .map((r: any) => ({ path: r.path, title: r.title }));
+}
+
 /** Paths publicados de un site (sitemap.xml y validación del contacto). */
 export async function listPublishedPaths(
   tenantId: string,
@@ -194,14 +227,7 @@ export async function renderSitePage(
     );
   if (!page || page.status !== 'published' || !page.blocksPublished) return null;
 
-  const publishedPages = (
-    await db
-      .select({ path: schema.websitePages.path, title: schema.websitePages.title })
-      .from(schema.websitePages)
-      .where(
-        and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')),
-      )
-  ).filter((p: any) => p.path !== PRODUCT_TEMPLATE_PATH);
+  const publishedPages = await listNavPages(db, siteId);
 
   const branding = await getConfigSection(db, 'branding', BRANDING_DEFAULTS);
   const theme = buildSiteTheme(branding, site);
@@ -286,14 +312,7 @@ export async function renderProductPage(
   const product = shop.products.find((p) => p.id === itemId);
   if (!product) return null;
 
-  const publishedPages = (
-    await db
-      .select({ path: schema.websitePages.path, title: schema.websitePages.title })
-      .from(schema.websitePages)
-      .where(
-        and(eq(schema.websitePages.siteId, siteId), eq(schema.websitePages.status, 'published')),
-      )
-  ).filter((p: any) => p.path !== PRODUCT_TEMPLATE_PATH);
+  const publishedPages = await listNavPages(db, siteId);
 
   const branding = await getConfigSection(db, 'branding', BRANDING_DEFAULTS);
   const theme = buildSiteTheme(branding, site);

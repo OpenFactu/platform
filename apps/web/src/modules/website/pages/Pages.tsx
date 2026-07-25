@@ -1,7 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge, Button, Card, Input, Loader, useToast } from '@openfactu/ui';
-import { ExternalLink, Globe, Pencil, Plus, Rocket, Save, Tag, Trash2, X } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Globe,
+  Pencil,
+  Plus,
+  Rocket,
+  Save,
+  Tag,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { websiteApi } from '../api/websiteApi';
 import type { WebsitePage, WebsiteSite } from '../domain/website';
 
@@ -58,6 +72,37 @@ export const Pages: React.FC = () => {
       fetchAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al eliminar');
+    }
+  };
+
+  /**
+   * Reordena la página en el menú automático: intercambia posición con su
+   * vecina y persiste navOrder secuencial para toda la lista (así el orden
+   * queda estable aunque haya páginas sin navOrder previo).
+   */
+  const handleMove = async (page: WebsitePage, dir: -1 | 1) => {
+    const idx = pages.findIndex((p) => p.id === page.id);
+    const swapWith = pages[idx + dir];
+    if (!swapWith) return;
+    const next = [...pages];
+    next[idx] = swapWith;
+    next[idx + dir] = page;
+    setPages(next);
+    try {
+      await Promise.all(next.map((p, i) => websiteApi.updatePage(p.id, { navOrder: i })));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al reordenar');
+      fetchAll();
+    }
+  };
+
+  /** Muestra/oculta la página del menú automático (sigue publicada por URL). */
+  const handleToggleNav = async (page: WebsitePage) => {
+    try {
+      await websiteApi.updatePage(page.id, { showInNav: !page.showInNav });
+      fetchAll();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Error al cambiar visibilidad');
     }
   };
 
@@ -170,6 +215,7 @@ export const Pages: React.FC = () => {
               <th className="px-6 py-4">Página</th>
               <th className="px-6 py-4">Ruta</th>
               <th className="px-6 py-4">Estado</th>
+              <th className="px-6 py-4">Menú</th>
               <th className="px-6 py-4 text-right">Acciones</th>
             </tr>
           </thead>
@@ -192,6 +238,7 @@ export const Pages: React.FC = () => {
                     className="h-9 font-mono text-sm"
                   />
                 </td>
+                <td className="px-4 py-3" />
                 <td className="px-4 py-3" />
                 <td className="px-4 py-3 text-right space-x-1">
                   <Button size="sm" onClick={handleCreate}>
@@ -232,6 +279,39 @@ export const Pages: React.FC = () => {
                     <Badge variant="success">Publicada</Badge>
                   ) : (
                     <Badge variant="neutral">Borrador</Badge>
+                  )}
+                </td>
+                <td className="px-6 py-3">
+                  {page.path !== PRODUCT_TEMPLATE_PATH && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleMove(page, -1)}
+                        disabled={pages.findIndex((p) => p.id === page.id) === 0}
+                        title="Subir en el menú"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleMove(page, 1)}
+                        disabled={pages.findIndex((p) => p.id === page.id) === pages.length - 1}
+                        title="Bajar en el menú"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleToggleNav(page)}
+                        title={
+                          page.showInNav === false
+                            ? 'Oculta del menú (visible por URL) — pulsar para mostrar'
+                            : 'Visible en el menú — pulsar para ocultar'
+                        }
+                        className={`p-1.5 rounded-lg ${page.showInNav === false ? 'text-slate-300 dark:text-slate-600 hover:text-slate-500' : 'text-teal-600 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-500/10'}`}
+                      >
+                        {page.showInNav === false ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
                   )}
                 </td>
                 <td className="px-6 py-3 text-right space-x-1">

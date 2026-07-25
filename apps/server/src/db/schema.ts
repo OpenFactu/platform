@@ -2528,6 +2528,10 @@ export const websitePages = pgTable(
     seoDescription: text('seoDescription'),
     ogImageUrl: text('ogImageUrl'),
     isHome: boolean('isHome').default(false).notNull(),
+    /** Mig 070 — posición en el menú automático (menor primero, NULL al final). */
+    navOrder: integer('navOrder'),
+    /** Mig 070 — false = publicada pero fuera del menú automático. */
+    showInNav: boolean('showInNav').default(true).notNull(),
     /** draft | published */
     status: text('status').default('draft').notNull(),
     blocksDraft: jsonb('blocksDraft').default({ version: 1, blocks: [] }).notNull(),

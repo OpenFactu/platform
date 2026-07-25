@@ -33,6 +33,10 @@ export interface WebsitePage {
   seoDescription: string | null;
   ogImageUrl: string | null;
   isHome: boolean;
+  /** Posición en el menú automático (menor primero; null al final). */
+  navOrder: number | null;
+  /** false = publicada pero fuera del menú automático. */
+  showInNav: boolean;
   status: 'draft' | 'published';
   blocksDraft: PageDocument;
   blocksPublished: PageDocument | null;
