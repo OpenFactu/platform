@@ -42,6 +42,7 @@ import { sanitizeFolderSegment } from '../core/storage/folderName';
 import { getConfigSection } from '../core/config/systemConfigSection';
 import { BRANDING_DEFAULTS } from '../core/config/appConfig';
 import { assetPublicUrl, buildSiteTheme, invalidateSiteCache } from '../core/website/renderSite';
+import { loadShopData } from '../core/website/shop';
 import { sanitizeHtml } from '../core/website/sanitizeHtml';
 
 const upload = multer({
@@ -457,13 +458,26 @@ router.get('/pages/:id/preview', async (req: any, res) => {
 
     const branding = await getConfigSection(req.tenantClient, 'branding', BRANDING_DEFAULTS);
     const theme = buildSiteTheme(branding, site);
+
+    // El preview enseña la tienda con los productos reales (mismo dato que
+    // el público) — solo si el draft lleva un bloque shop.
+    const draftDoc = migrateDocument(page.blocksDraft);
+    let hasShop = false;
+    walkBlocks(draftDoc, (b) => {
+      if (b.type === 'shop') hasShop = true;
+    });
+    const shop = hasShop
+      ? await loadShopData(req.tenantClient, `/site/${site.slug}/checkout`)
+      : undefined;
+
     const ctx: RenderContext = {
       basePath: `/site/${site.slug}`,
       contactEndpoint: `/site/${site.slug}/contact`,
       pages: allPages,
+      shop,
     };
     const html = renderPageToHtml(
-      page.blocksDraft,
+      draftDoc,
       theme,
       ctx,
       {

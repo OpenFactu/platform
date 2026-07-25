@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { logAudit } from '../utils/audit';
 import { requireScope } from './middleware/apiToken';
 import { HookManager } from '../core/plugins/HookManager';
+import { invalidateSiteCache } from '../core/website/renderSite';
 
 const router = Router();
 
@@ -29,6 +30,9 @@ router.get('/', requireScope('read:maestros'), async (req: any, res) => {
         manageBy: schema.items.manageBy,
         defaultWarehouseId: schema.items.defaultWarehouseId,
         defaultZoneId: schema.items.defaultZoneId,
+        webVisible: schema.items.webVisible,
+        webDescription: schema.items.webDescription,
+        webImages: schema.items.webImages,
         committed: sql`(SELECT COALESCE(SUM("quantity" - "deliveredQty"), 0) FROM "SalesOrderLine" WHERE "itemId" = ${schema.items.id})`,
         ordered: sql`(SELECT COALESCE(SUM("quantity" - "receivedQty"), 0) FROM "PurchaseOrderLine" WHERE "itemId" = ${schema.items.id})`,
       })
@@ -126,6 +130,9 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
 
     await applyCustomCols(req, id, customCols);
 
+    // La tienda de la web pública cachea HTML con los productos dentro
+    invalidateSiteCache(req.tenantId);
+
     res.json(item);
 
     logAudit({
@@ -199,6 +206,8 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
 
     await applyCustomCols(req, id, customCols);
 
+    invalidateSiteCache(req.tenantId);
+
     res.json(item);
 
     logAudit({
@@ -228,6 +237,7 @@ router.delete('/:id', requireScope('write:maestros'), async (req: any, res) => {
       .where(eq(schema.items.id, id));
 
     await req.tenantClient.delete(schema.items).where(eq(schema.items.id, id));
+    invalidateSiteCache(req.tenantId);
     res.json({ success: true });
 
     if (oldItem) {

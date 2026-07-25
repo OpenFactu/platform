@@ -2,6 +2,8 @@ import path from 'path';
 import { and, eq } from 'drizzle-orm';
 import type { RenderContext, SiteTheme } from '@openfactu/site-builder/render';
 import { renderPageToHtml } from '@openfactu/site-builder/render';
+import { migrateDocument, walkBlocks } from '@openfactu/site-builder/schema';
+import { loadShopData } from './shop';
 import { ClientFactory } from '../tenant/ClientFactory';
 import * as schema from '../../db/schema';
 import { getConfigSection } from '../config/systemConfigSection';
@@ -193,16 +195,28 @@ export async function renderSitePage(
   const branding = await getConfigSection(db, 'branding', BRANDING_DEFAULTS);
   const theme = buildSiteTheme(branding, site);
 
+  // La tienda solo consulta el catálogo si la página realmente lleva un
+  // bloque shop — el resto de páginas no pagan la query de artículos.
+  const doc = migrateDocument(page.blocksPublished);
+  let hasShop = false;
+  walkBlocks(doc, (b) => {
+    if (b.type === 'shop') hasShop = true;
+  });
+  const shop = hasShop
+    ? await loadShopData(db, opts.basePath ? `${opts.basePath}/checkout` : '/__checkout')
+    : undefined;
+
   const ctx: RenderContext = {
     basePath: opts.basePath,
     // En modo slug el form postea a /site/<slug>/contact; bajo dominio propio a /__contact
     contactEndpoint: opts.basePath ? `${opts.basePath}/contact` : '/__contact',
     pages: publishedPages,
     sent: opts.sent,
+    shop,
   };
 
   let html = renderPageToHtml(
-    page.blocksPublished,
+    doc,
     theme,
     ctx,
     {

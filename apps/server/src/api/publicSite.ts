@@ -13,6 +13,7 @@ import {
   resolveHostValue,
   type ResolvedHost,
 } from '../core/website/renderSite';
+import { handleShopCheckout } from '../core/website/shop';
 
 /**
  * Serving público de sitios web (módulo Website) — SIN autenticación.
@@ -229,6 +230,25 @@ publicSiteRouter.post(
   },
 );
 
+/**
+ * POST /site/:slug/checkout — pedido de la tienda (bloque shop). Crea un
+ * Pedido de venta 'O' vía FactuApi; sin pago online.
+ */
+publicSiteRouter.post('/:slug/checkout', express.json({ limit: '64kb' }), async (req, res) => {
+  try {
+    const resolved = await resolveHostValue(req.params.slug);
+    if (!resolved || resolved.kind !== 'slug') return res.status(404).json({ ok: false });
+    const ip = String(req.headers['x-forwarded-for'] ?? req.socket?.remoteAddress ?? '').split(
+      ',',
+    )[0];
+    const { status, body } = await handleShopCheckout(resolved, req.body, ip);
+    res.status(status).json(body);
+  } catch (err: any) {
+    console.error('[Website] Error en checkout:', err.message);
+    res.status(500).json({ ok: false, error: 'No se pudo registrar el pedido.' });
+  }
+});
+
 publicSiteRouter.get('/:slug/sitemap.xml', async (req, res) => {
   try {
     const resolved = await resolveHostValue(req.params.slug);
@@ -296,6 +316,7 @@ async function resolveHostCached(hostname: string): Promise<ResolvedHost | null>
 }
 
 const contactBodyParser = express.urlencoded({ extended: false, limit: '32kb' });
+const checkoutBodyParser = express.json({ limit: '64kb' });
 
 /**
  * Middleware global (montado en server.ts ANTES de /api): si el Host de la
@@ -340,6 +361,22 @@ export async function publicSiteHostMiddleware(req: any, res: any, next: any) {
       res.setHeader('Cache-Control', 'public, max-age=86400');
       dl.stream.pipe(res);
       return;
+    }
+
+    // Checkout de la tienda: POST /__checkout
+    if (req.method === 'POST' && req.path === '/__checkout') {
+      return checkoutBodyParser(req, res, async () => {
+        try {
+          const ip = String(
+            req.headers['x-forwarded-for'] ?? req.socket?.remoteAddress ?? '',
+          ).split(',')[0];
+          const { status, body } = await handleShopCheckout(resolved, req.body, ip);
+          res.status(status).json(body);
+        } catch (err: any) {
+          console.error('[Website] Error en checkout (host):', err.message);
+          res.status(500).json({ ok: false, error: 'No se pudo registrar el pedido.' });
+        }
+      });
     }
 
     // Formulario de contacto: POST /__contact

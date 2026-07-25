@@ -16,6 +16,7 @@ import { BarcodeScanButton } from '@/components/scanner/BarcodeScanButton';
 import { ContextMenu } from '@/components/common/ContextMenu';
 import { withRowContextMenu } from '@/components/common/withRowContextMenu';
 import { useContextMenu } from '@/hooks/useContextMenu';
+import { ItemWebFields } from '../components/ItemWebFields';
 import { categoriesApi, itemsApi, uomApi, warehousesApi, zonesApi } from '../api';
 import type { Category } from '../domain/category';
 import type { Item } from '../domain/item';
@@ -181,9 +182,14 @@ export const Items: React.FC = () => {
   const [defaultZoneId, setDefaultZoneId] = useState('');
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [customValues, setCustomValues] = useState<Record<string, any>>({});
+  const [webVisible, setWebVisible] = useState(false);
+  const [webDescription, setWebDescription] = useState('');
+  const [webImages, setWebImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'generales' | 'logistica' | 'unidades'>('generales');
+  const [activeTab, setActiveTab] = useState<'generales' | 'logistica' | 'unidades' | 'web'>(
+    'generales',
+  );
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
   const toast = useToast();
 
@@ -242,6 +248,9 @@ export const Items: React.FC = () => {
       setBoxTareWeightKg(selectedItem.boxTareWeightKg?.toString() || '');
       setDefaultWarehouseId(selectedItem.defaultWarehouseId || '');
       setDefaultZoneId(selectedItem.defaultZoneId || '');
+      setWebVisible(!!selectedItem.webVisible);
+      setWebDescription(selectedItem.webDescription || '');
+      setWebImages(Array.isArray(selectedItem.webImages) ? selectedItem.webImages : []);
       // Extraer los campos custom (`p_*`) del item para pre-rellenar el panel.
       const custom: Record<string, any> = {};
       for (const [k, v] of Object.entries(selectedItem)) {
@@ -265,6 +274,9 @@ export const Items: React.FC = () => {
       setBoxTareWeightKg('');
       setDefaultWarehouseId('');
       setDefaultZoneId('');
+      setWebVisible(false);
+      setWebDescription('');
+      setWebImages([]);
       setCustomValues({});
     }
   }, [selectedItem]);
@@ -301,6 +313,9 @@ export const Items: React.FC = () => {
         boxTareWeightKg: kind === 'box' && boxTareWeightKg ? Number(boxTareWeightKg) : null,
         defaultWarehouseId: defaultWarehouseId || null,
         defaultZoneId: defaultZoneId || null,
+        webVisible,
+        webDescription: webDescription.trim() || null,
+        webImages,
         ...customValues, // campos personalizados p_*
       };
       const saved = selectedItem
@@ -618,6 +633,12 @@ export const Items: React.FC = () => {
               className={`flex-1 pb-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'unidades' ? 'border-blue-500 text-blue-600 dark:text-blue-300' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 dark:hover:text-slate-600'}`}
             >
               Unidades
+            </button>
+            <button
+              onClick={() => setActiveTab('web')}
+              className={`flex-1 pb-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${activeTab === 'web' ? 'border-blue-500 text-blue-600 dark:text-blue-300' : 'border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 dark:hover:text-slate-600'}`}
+            >
+              Web
             </button>
           </div>
 
@@ -971,6 +992,19 @@ export const Items: React.FC = () => {
 
             {activeTab === 'unidades' && (
               <AlternativeUomsPanel itemId={selectedItem?.id} baseUomId={uomId} uoms={uoms} />
+            )}
+
+            {activeTab === 'web' && (
+              <div className="animate-in slide-in-from-left-2 duration-200">
+                <ItemWebFields
+                  webVisible={webVisible}
+                  setWebVisible={setWebVisible}
+                  webDescription={webDescription}
+                  setWebDescription={setWebDescription}
+                  webImages={webImages}
+                  setWebImages={setWebImages}
+                />
+              </div>
             )}
 
             <PluginFieldsPanel

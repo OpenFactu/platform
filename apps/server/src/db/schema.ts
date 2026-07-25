@@ -1127,6 +1127,11 @@ export const items = pgTable('Item', {
   boxHeightMm: integer('boxHeightMm'),
   boxMaxWeightKg: doublePrecision('boxMaxWeightKg'),
   boxTareWeightKg: doublePrecision('boxTareWeightKg'),
+  // Mig 067 — ecommerce del módulo Website: catálogo por flag.
+  webVisible: boolean('webVisible').default(false).notNull(),
+  webDescription: text('webDescription'),
+  /** URLs públicas (biblioteca de medios del site) de la ficha web. */
+  webImages: jsonb('webImages').$type<string[]>().default([]).notNull(),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
