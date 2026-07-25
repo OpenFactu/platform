@@ -797,7 +797,10 @@ const InvoiceDetail: React.FC<{
         invoiceId={invoice.id}
         invoiceCode={docCode}
         remaining={remaining}
-        onSuccess={() => setPaymentsRefreshKey((v) => v + 1)}
+        onSuccess={() => {
+          setPaymentsRefreshKey((v) => v + 1);
+          notifyDocChange(DocType.PurchaseInvoice);
+        }}
       />
       <SendInvoiceModal
         open={emailModalOpen}
@@ -814,7 +817,10 @@ const InvoiceDetail: React.FC<{
             kind="purchase"
             invoiceId={invoice.id}
             refreshKey={paymentsRefreshKey}
-            onChanged={() => setPaymentsRefreshKey((v) => v + 1)}
+            onChanged={() => {
+              setPaymentsRefreshKey((v) => v + 1);
+              notifyDocChange(DocType.PurchaseInvoice);
+            }}
           />
         </div>
       )}
