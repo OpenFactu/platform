@@ -5,7 +5,18 @@
  */
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Modal,
+  Badge,
+  Loader,
+  Checkbox,
+  EmptyState,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
 import { Plus, Trash2, Copy, Key, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -29,12 +40,14 @@ const ALL_SCOPES = [
   {
     id: 'write:ventas',
     label: 'Escribir ventas',
-    description: 'FactuAPI: crear/asentar/cancelar facturas, pedidos y albaranes de venta (SINV/SO/SDN)',
+    description:
+      'FactuAPI: crear/asentar/cancelar facturas, pedidos y albaranes de venta (SINV/SO/SDN)',
   },
   {
     id: 'write:compras',
     label: 'Escribir compras',
-    description: 'FactuAPI: crear/asentar/cancelar facturas, pedidos y albaranes de compra (PINV/PO/PDN)',
+    description:
+      'FactuAPI: crear/asentar/cancelar facturas, pedidos y albaranes de compra (PINV/PO/PDN)',
   },
   {
     id: 'read:maestros',
@@ -61,6 +74,7 @@ const ALL_SCOPES = [
 export const ApiTokens: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<ApiToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -99,7 +113,10 @@ export const ApiTokens: React.FC = () => {
       toast.error('Selecciona al menos un scope.');
       return;
     }
-    const res = await coreApi.raw('POST', '/api/admin/api-tokens', { name: form.name.trim(), scopes: form.scopes });
+    const res = await coreApi.raw('POST', '/api/admin/api-tokens', {
+      name: form.name.trim(),
+      scopes: form.scopes,
+    });
     const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error creando token');
@@ -112,11 +129,16 @@ export const ApiTokens: React.FC = () => {
   };
 
   const revoke = async (t: ApiToken) => {
-    if (!confirm(`¿Revocar token "${t.name}"? Las integraciones que lo usen dejarán de funcionar.`))
-      return;
+    const ok = await popup.confirm({
+      title: 'Revocar token',
+      message: `¿Revocar el token "${t.name}"? Las integraciones que lo usen dejarán de funcionar de inmediato.`,
+      tone: 'danger',
+      confirmLabel: 'Revocar',
+    });
+    if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/admin/api-tokens/${t.id}`);
     if (!res.ok) {
-      const d = (res.data ?? {});
+      const d = res.data ?? {};
       toast.error(d.error || 'Error al revocar');
       return;
     }
@@ -164,7 +186,18 @@ export const ApiTokens: React.FC = () => {
           <Loader />
         </div>
       ) : rows.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">Sin tokens creados.</Card>
+        <Card bodyClassName="p-0">
+          <EmptyState
+            icon={<Key size={28} />}
+            title="Sin tokens creados"
+            hint="Crea una credencial para que un sistema externo consuma la API sin usar tu usuario."
+            action={
+              <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2">
+                <Plus size={14} /> Nuevo token
+              </Button>
+            }
+          />
+        </Card>
       ) : (
         <Card bodyClassName="p-0">
           <ul>
@@ -196,13 +229,15 @@ export const ApiTokens: React.FC = () => {
                   </div>
                 </div>
                 {!t.revokedAt && (
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => revoke(t)}
-                    className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                     title="Revocar"
                   >
                     <Trash2 size={14} />
-                  </button>
+                  </Button>
                 )}
               </li>
             ))}
@@ -218,16 +253,12 @@ export const ApiTokens: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Nombre descriptivo
-            </label>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Ej: webhook SEUR producción"
-            />
-          </div>
+          <Input
+            label="Nombre descriptivo"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Ej: webhook SEUR producción"
+          />
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
               Scopes
@@ -235,12 +266,12 @@ export const ApiTokens: React.FC = () => {
             <div className="space-y-2">
               {ALL_SCOPES.map((s) => (
                 <label key={s.id} className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.scopes.includes(s.id)}
-                    onChange={() => toggleScope(s.id)}
-                    className="mt-0.5"
-                  />
+                  <span className="mt-0.5">
+                    <Checkbox
+                      checked={form.scopes.includes(s.id)}
+                      onChange={() => toggleScope(s.id)}
+                    />
+                  </span>
                   <div>
                     <div className="text-sm font-medium text-slate-800 dark:text-slate-100">
                       {s.label}{' '}

@@ -33,7 +33,7 @@ export const TwoFactorSettings: React.FC = () => {
   const loadStatus = async () => {
     try {
       const res = await coreApi.raw('GET', '/api/2fa/status');
-      if (res.ok) setEnabled((res.data).enabled);
+      if (res.ok) setEnabled(res.data.enabled);
     } catch {
       /* ignore */
     }
@@ -180,14 +180,16 @@ export const TwoFactorSettings: React.FC = () => {
               ))}
             </div>
             <div className="flex justify-between items-center">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={copyBackupCodes}
-                className="inline-flex items-center gap-1.5 text-sm font-bold text-accent hover:text-accent/80"
+                className="flex items-center gap-1.5"
               >
                 {copied ? <Check size={15} /> : <Copy size={15} />}
                 {copied ? 'Copiado' : 'Copiar códigos'}
-              </button>
+              </Button>
               <Button onClick={closeSetup}>Hecho</Button>
             </div>
           </div>

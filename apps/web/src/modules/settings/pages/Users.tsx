@@ -1,6 +1,17 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, SearchableSelect } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  PasswordInput,
+  Select,
+  SearchableSelect,
+  Loader,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
+import type { PasswordRequirement } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import {
   UserPlus,
@@ -19,8 +30,6 @@ import {
   TrendingUp,
   Calendar,
   Eye,
-  EyeOff,
-  KeyRound,
   Pencil,
   AlertTriangle,
   UsersRound,
@@ -148,6 +157,24 @@ const PERMISSION_GROUPS = [
 ];
 
 const EMPTY_PERM: PermSet = { read: false, write: false, delete: false };
+
+/**
+ * Requisitos que se muestran bajo el campo de contraseña. Son informativos —
+ * no bloquean el submit (el backend es la autoridad); solo guían al admin
+ * cuando escribe una contraseña a mano en lugar de generarla.
+ */
+const PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
+  { label: 'Al menos 8 caracteres', test: (v) => v.length >= 8 },
+  { label: 'Mayúsculas y minúsculas', test: (v) => /[a-z]/.test(v) && /[A-Z]/.test(v) },
+  { label: 'Al menos un número', test: (v) => /\d/.test(v) },
+];
+
+/** Roles de membership por empresa. */
+const MEMBERSHIP_ROLE_OPTIONS = [
+  { value: 'USER', label: 'USER' },
+  { value: 'ADMIN', label: 'ADMIN' },
+  { value: 'DRIVER', label: 'DRIVER' },
+];
 
 const defaultPermissions = (): Permissions => {
   const perms: Permissions = {};
@@ -322,6 +349,7 @@ export const Users: React.FC = () => {
   const isPrivileged = currentUser?.role === 'SUPERUSER' || currentUser?.role === 'ADMIN';
 
   const toast = useToast();
+  const popup = usePopup();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -332,19 +360,9 @@ export const Users: React.FC = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [globalRole, setGlobalRole] = useState('USER');
-
-  // Genera una contraseña robusta y la revela para que el admin la copie.
-  // Sirve como "resetear contraseña" al editar un usuario existente.
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
-    const bytes = new Uint32Array(14);
-    crypto.getRandomValues(bytes);
-    const pwd = Array.from(bytes, (b) => chars[b % chars.length]).join('');
-    setPassword(pwd);
-    setShowPassword(true);
-  };
+  // El generar/mostrar contraseña (y su estado `showPassword`) los aporta
+  // ahora PasswordInput: `generator` rellena el campo y lo revela solo.
 
   // Memberships
   const [memberships, setMemberships] = useState<MembershipEntry[]>([]);
@@ -384,7 +402,6 @@ export const Users: React.FC = () => {
     setUsername('');
     setEmail('');
     setPassword('');
-    setShowPassword(false);
     setGlobalRole('USER');
     setMemberships([]);
   };
@@ -482,15 +499,18 @@ export const Users: React.FC = () => {
         const permStr = JSON.stringify(m.permissions);
         if (m.isNew && !m.isDeleted) {
           await coreApi.raw('POST', '/api/memberships', {
-              userId,
-              tenantId: m.tenantId,
-              role: m.role,
-              permissions: permStr,
-            });
+            userId,
+            tenantId: m.tenantId,
+            role: m.role,
+            permissions: permStr,
+          });
         } else if (!m.isNew && m.isDeleted && m.id) {
           await coreApi.raw('DELETE', `/api/memberships/${m.id}`);
         } else if (!m.isNew && !m.isDeleted && m.id) {
-          await coreApi.raw('PATCH', `/api/memberships/${m.id}`, { role: m.role, permissions: permStr });
+          await coreApi.raw('PATCH', `/api/memberships/${m.id}`, {
+            role: m.role,
+            permissions: permStr,
+          });
         }
       }
 
@@ -505,7 +525,14 @@ export const Users: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar usuario',
+      message:
+        'Se eliminará el usuario y sus accesos a las empresas asignadas. No se puede deshacer.',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       const res = await coreApi.raw('DELETE', `/api/users/${id}`);
       if (res.ok) {
@@ -560,72 +587,58 @@ export const Users: React.FC = () => {
             <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">
               {editingUser ? `Editando: ${editingUser.username}` : 'Nuevo Usuario'}
             </h2>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={resetForm}
-              className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              title="Cerrar formulario"
             >
               <X size={18} />
-            </button>
+            </Button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Identidad */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Nombre de Usuario"
+                type="text"
+                placeholder="jdoe"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+              <Input
+                label={
+                  <span className="inline-flex items-center gap-1">
+                    <Mail size={10} /> Email
+                  </span>
+                }
+                type="email"
+                placeholder="ejemplo@empresa.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  Nombre de Usuario
-                </label>
-                <Input
-                  type="text"
-                  placeholder="jdoe"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
+                {/* PasswordInput trae el ojo de mostrar/ocultar y el botón de
+                    generar (que además revela el valor), así que sustituye al
+                    Input de tipo password + los dos botones sueltos que había.
+                    `required={!editingUser}` se mantiene: al editar, vacío
+                    significa «no cambiar». Fortaleza y requisitos solo cuando
+                    hay algo escrito, para no pintar 3 avisos en rojo en el
+                    caso normal de edición sin tocar la contraseña. */}
+                <PasswordInput
+                  label={editingUser ? 'Nueva Contraseña (vacío = no cambiar)' : 'Contraseña'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required={!editingUser}
+                  generator={{ length: 14 }}
+                  showStrength={!!password}
+                  requirements={password ? PASSWORD_REQUIREMENTS : undefined}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                  <Mail size={10} className="inline mr-1" />
-                  Email
-                </label>
-                <Input
-                  type="email"
-                  placeholder="ejemplo@empresa.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                    {editingUser ? 'Nueva Contraseña (vacío = no cambiar)' : 'Contraseña'}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={generatePassword}
-                    className="inline-flex items-center gap-1 text-[10px] font-black text-accent hover:text-accent/80 uppercase tracking-widest"
-                  >
-                    <KeyRound size={11} /> Generar
-                  </button>
-                </div>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required={!editingUser}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-accent transition-colors"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
                 {editingUser && (
                   <p className="text-[10px] text-slate-400 dark:text-slate-500">
                     Escribe o genera una nueva contraseña para restablecer el acceso del usuario.
@@ -645,7 +658,10 @@ export const Users: React.FC = () => {
                   Rol Global {!isPrivileged && <Lock size={9} className="text-rose-400" />}
                 </label>
                 {isPrivileged ? (
-                  <SearchableSelect
+                  // 2–3 opciones fijas → Select. La etiqueta con iconos se queda
+                  // arriba (Select solo acepta `label` de texto), de ahí ariaLabel.
+                  <Select
+                    ariaLabel="Rol global"
                     value={globalRole}
                     onChange={(v) => setGlobalRole(v)}
                     options={[
@@ -732,13 +748,16 @@ export const Users: React.FC = () => {
                         <span className="text-[10px] text-rose-500 font-black uppercase">
                           Se eliminará al guardar
                         </span>
-                        <button
+                        <Button
                           type="button"
-                          className="ml-auto text-rose-400 hover:text-rose-600 dark:hover:text-rose-300"
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto"
+                          title="Deshacer eliminación"
                           onClick={() => updateMembership(idx, { isDeleted: false })}
                         >
                           <X size={14} />
-                        </button>
+                        </Button>
                       </div>
                     );
 
@@ -759,48 +778,42 @@ export const Users: React.FC = () => {
                           <Building2 size={18} />
                         </div>
 
-                        {/* Selector de empresa */}
-                        <select
-                          value={m.tenantId}
-                          onChange={(e) => updateMembership(idx, { tenantId: e.target.value })}
-                          disabled={!isPrivileged}
-                          className="flex-1 bg-transparent border-0 text-sm font-bold text-ink-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/30 rounded-xs px-2 py-1 disabled:cursor-not-allowed"
-                        >
-                          {allTenants
-                            .filter((t) => !usedTenantIds.includes(t.id) || t.id === m.tenantId)
-                            .map((t) => (
-                              <option key={t.id} value={t.id}>
-                                {t.name}
-                              </option>
-                            ))}
-                        </select>
+                        {/* Selector de empresa — lista de servidor → SearchableSelect */}
+                        <div className="flex-1">
+                          <SearchableSelect
+                            options={allTenants
+                              .filter((t) => !usedTenantIds.includes(t.id) || t.id === m.tenantId)
+                              .map((t) => ({ value: t.id, label: t.name }))}
+                            value={m.tenantId}
+                            onChange={(v) => updateMembership(idx, { tenantId: v })}
+                            disabled={!isPrivileged}
+                            placeholder="Elige empresa"
+                          />
+                        </div>
 
-                        {/* Rol de membership */}
-                        <select
+                        {/* Rol de membership — 3 opciones fijas → Select */}
+                        <Select
+                          ariaLabel="Rol en la empresa"
+                          options={MEMBERSHIP_ROLE_OPTIONS}
                           value={m.role}
-                          onChange={(e) =>
-                            updateMembership(idx, {
-                              role: e.target.value as 'USER' | 'ADMIN' | 'DRIVER',
-                            })
+                          onChange={(v) =>
+                            updateMembership(idx, { role: v as 'USER' | 'ADMIN' | 'DRIVER' })
                           }
                           disabled={!isPrivileged}
-                          className="bg-white dark:bg-ink-900 border border-line dark:border-ink-700 rounded-xs py-1.5 px-2 text-xs font-bold text-ink-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:bg-line-2 dark:disabled:bg-ink-800"
-                        >
-                          <option value="USER">USER</option>
-                          <option value="ADMIN">ADMIN</option>
-                          <option value="DRIVER">DRIVER</option>
-                        </select>
+                          containerClassName="w-32"
+                        />
 
                         {/* Toggle permisos */}
                         {m.role === 'USER' && (
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => updateMembership(idx, { expanded: !m.expanded })}
-                            className="p-2 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
                             title="Configurar permisos"
                           >
                             {m.expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                          </button>
+                          </Button>
                         )}
                         {m.role === 'ADMIN' && (
                           <span className="text-[10px] font-black text-blue-600 dark:text-blue-300 uppercase bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-lg">
@@ -808,15 +821,17 @@ export const Users: React.FC = () => {
                           </span>
                         )}
 
-                        {/* Eliminar */}
+                        {/* Eliminar — sigue siendo solo para roles privilegiados */}
                         {isPrivileged && (
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => removeMembership(idx)}
-                            className="p-2 text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-all"
+                            title="Quitar acceso a esta empresa"
                           >
                             <X size={15} />
-                          </button>
+                          </Button>
                         )}
                       </div>
 
@@ -824,8 +839,10 @@ export const Users: React.FC = () => {
                       {m.role === 'USER' && m.expanded && (
                         <div className="px-4 pb-4 border-t border-slate-100 dark:border-slate-800">
                           <div className="flex justify-end gap-2 pt-3 pb-1">
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="sm"
                               disabled={!isPrivileged}
                               onClick={() => {
                                 const all = defaultPermissions();
@@ -834,21 +851,20 @@ export const Users: React.FC = () => {
                                 });
                                 updateMembership(idx, { permissions: all });
                               }}
-                              className="text-[10px] font-black text-blue-600 dark:text-blue-300 hover:underline disabled:opacity-40"
                             >
                               Activar Todo
-                            </button>
-                            <span className="text-slate-300 dark:text-slate-600">|</span>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="sm"
                               disabled={!isPrivileged}
                               onClick={() =>
                                 updateMembership(idx, { permissions: defaultPermissions() })
                               }
-                              className="text-[10px] font-black text-slate-400 dark:text-slate-500 hover:underline disabled:opacity-40"
                             >
                               Limpiar
-                            </button>
+                            </Button>
                           </div>
                           <PermissionsEditor
                             permissions={m.permissions}

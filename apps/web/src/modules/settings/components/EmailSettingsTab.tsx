@@ -11,7 +11,7 @@
 
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import { Card, Button, Input, Checkbox, NumberInput, PasswordInput, useToast } from '@openfactu/ui';
 import { Mail, Send, Plug, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -60,7 +60,10 @@ export const EmailSettingsTab: React.FC = () => {
         const data = res.data;
         setCfg({ ...EMPTY, ...data });
       } catch (e) {
-        toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error');
+        toast.error(
+          (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+            'Error',
+        );
       } finally {
         setLoading(false);
       }
@@ -74,13 +77,16 @@ export const EmailSettingsTab: React.FC = () => {
       const payload: any = { ...cfg };
       if (newPassword) payload.password = newPassword;
       const res = await coreApi.raw('PUT', '/api/email/config', payload);
-      if (!res.ok) throw new Error((res.data).error || 'Error');
+      if (!res.ok) throw new Error(res.data.error || 'Error');
       const data = res.data;
       setCfg({ ...EMPTY, ...data });
       setNewPassword('');
       toast.success('Configuración guardada');
     } catch (e) {
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al guardar');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al guardar',
+      );
     } finally {
       setSaving(false);
     }
@@ -105,8 +111,15 @@ export const EmailSettingsTab: React.FC = () => {
         toast.error(`Fallo: ${data.error}`);
       }
     } catch (e) {
-      setVerifyResult({ ok: false, detail: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error' });
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error');
+      setVerifyResult({
+        ok: false,
+        detail:
+          (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error',
+      });
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error',
+      );
     } finally {
       setVerifying(false);
     }
@@ -127,8 +140,15 @@ export const EmailSettingsTab: React.FC = () => {
         toast.error(data.error || 'Fallo al enviar');
       }
     } catch (e) {
-      setTestResult({ ok: false, detail: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error' });
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error');
+      setTestResult({
+        ok: false,
+        detail:
+          (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error',
+      });
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error',
+      );
     } finally {
       setSendingTest(false);
     }
@@ -145,12 +165,9 @@ export const EmailSettingsTab: React.FC = () => {
             <h2 className="text-lg font-bold">Servidor SMTP</h2>
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={cfg.enabled}
-              onChange={(e) => setCfg({ ...cfg, enabled: e.target.checked })}
-            />
+          {/* Checkbox y no Switch: no se persiste al marcarlo, sino al pulsar «Guardar». */}
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox checked={cfg.enabled} onChange={(v) => setCfg({ ...cfg, enabled: v })} />
             <span>Activar envío de correo desde este tenant</span>
           </label>
 
@@ -163,20 +180,19 @@ export const EmailSettingsTab: React.FC = () => {
               />
             </Field>
             <Field label="Puerto">
-              <Input
-                type="number"
-                value={String(cfg.port)}
-                onChange={(e) => setCfg({ ...cfg, port: Number(e.target.value) || 0 })}
+              <NumberInput
+                value={cfg.port}
+                onChange={(v) => setCfg({ ...cfg, port: v ?? 0 })}
+                min={1}
+                max={65535}
+                emptyValue="zero"
+                thousandSeparator={false}
               />
             </Field>
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={cfg.secure}
-              onChange={(e) => setCfg({ ...cfg, secure: e.target.checked })}
-            />
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox checked={cfg.secure} onChange={(v) => setCfg({ ...cfg, secure: v })} />
             <span>Conexión segura (TLS directo, puerto 465). Desmarcado = STARTTLS en 587.</span>
           </label>
 
@@ -189,8 +205,9 @@ export const EmailSettingsTab: React.FC = () => {
               />
             </Field>
             <Field label="Password" hint={cfg.passwordSet ? 'guardada' : undefined}>
-              <Input
-                type="password"
+              {/* Sin showStrength: es una contraseña de aplicación que da el
+                  proveedor SMTP, no una que el usuario elija. */}
+              <PasswordInput
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder={cfg.passwordSet ? '•••••••• (dejar vacío = no cambiar)' : 'Contraseña'}

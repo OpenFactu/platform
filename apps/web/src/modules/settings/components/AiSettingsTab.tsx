@@ -12,7 +12,18 @@
 import { apiClient } from '@/shared/http';
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, Button, Input, Badge, SearchableSelect, Modal, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  PasswordInput,
+  Checkbox,
+  Badge,
+  Select,
+  SearchableSelect,
+  Modal,
+  useToast,
+} from '@openfactu/ui';
 import {
   Bot,
   Plug,
@@ -114,7 +125,13 @@ const FAMILY_COLORS: Record<string, string> = {
   mixtral: 'bg-fuchsia-500',
   command: 'bg-lime-600',
 };
-const FALLBACK_PALETTE = ['bg-slate-500', 'bg-teal-500', 'bg-rose-500', 'bg-amber-500', 'bg-sky-500'];
+const FALLBACK_PALETTE = [
+  'bg-slate-500',
+  'bg-teal-500',
+  'bg-rose-500',
+  'bg-amber-500',
+  'bg-sky-500',
+];
 const familyOf = (name: string) => {
   const base = (name.split('/').pop() || name).toLowerCase();
   return base.match(/^[a-z]+/)?.[0] || base;
@@ -180,7 +197,7 @@ export const AiSettingsTab: React.FC = () => {
         ]);
         if (!provRes.ok || !cfgRes.ok) throw new Error('No se pudo cargar la configuración de IA');
         setProviders(provRes.data);
-        setCfg({ ...EMPTY, ...(cfgRes.data) });
+        setCfg({ ...EMPTY, ...cfgRes.data });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Error');
       } finally {
@@ -227,8 +244,8 @@ export const AiSettingsTab: React.FC = () => {
       };
       if (newApiKey) payload.apiKey = newApiKey;
       const res = await coreApi.raw('PUT', '/api/ai/config', payload);
-      if (!res.ok) throw new Error((res.data).error || 'Error');
-      setCfg({ ...EMPTY, ...(res.data) });
+      if (!res.ok) throw new Error(res.data.error || 'Error');
+      setCfg({ ...EMPTY, ...res.data });
       setNewApiKey('');
       toast.success('Configuración guardada');
     } catch (e) {
@@ -263,7 +280,10 @@ export const AiSettingsTab: React.FC = () => {
     if (!hfQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await coreApi.raw('GET', `/api/ai/local/models/search?q=${encodeURIComponent(hfQuery)}`);
+      const res = await coreApi.raw(
+        'GET',
+        `/api/ai/local/models/search?q=${encodeURIComponent(hfQuery)}`,
+      );
       const data = res.data;
       if (!res.ok) throw new Error(data.error || 'Error al buscar');
       setHfResults(data.results || []);
@@ -284,9 +304,13 @@ export const AiSettingsTab: React.FC = () => {
       [name]: { status: 'iniciando…', pct: -1, completedMb: 0, totalMb: 0 },
     }));
     try {
-      const res = await apiClient.postStream('/api/ai/local/models/pull', { name }, {
-        signal: controller.signal,
-      });
+      const res = await apiClient.postStream(
+        '/api/ai/local/models/pull',
+        { name },
+        {
+          signal: controller.signal,
+        },
+      );
       if (!res.body) throw new Error('Sin cuerpo de respuesta');
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -366,20 +390,23 @@ export const AiSettingsTab: React.FC = () => {
     }
     setApplyingContext(true);
     try {
-      const res = await coreApi.raw('POST', '/api/ai/local/models/apply-context', { baseModel: cfg.model, contextWindow: cfg.contextWindow });
+      const res = await coreApi.raw('POST', '/api/ai/local/models/apply-context', {
+        baseModel: cfg.model,
+        contextWindow: cfg.contextWindow,
+      });
       const data = res.data;
       if (!res.ok) throw new Error(data.error || 'Error al aplicar la ventana de contexto');
 
       const putRes = await coreApi.raw('PUT', '/api/ai/config', {
-          enabled: cfg.enabled,
-          provider: cfg.provider,
-          model: data.modelName,
-          baseUrl: cfg.baseUrl,
-          localBackend: cfg.localBackend,
-          contextWindow: cfg.contextWindow,
-          supportsImages: cfg.supportsImages,
-        });
-      if (putRes.ok) setCfg({ ...EMPTY, ...(putRes.data) });
+        enabled: cfg.enabled,
+        provider: cfg.provider,
+        model: data.modelName,
+        baseUrl: cfg.baseUrl,
+        localBackend: cfg.localBackend,
+        contextWindow: cfg.contextWindow,
+        supportsImages: cfg.supportsImages,
+      });
+      if (putRes.ok) setCfg({ ...EMPTY, ...putRes.data });
       toast.success(`Modelo creado y seleccionado: ${data.modelName}`);
       void loadLocalModels();
     } catch (e) {
@@ -391,7 +418,10 @@ export const AiSettingsTab: React.FC = () => {
 
   const removeModel = async (name: string) => {
     try {
-      const res = await coreApi.raw('DELETE', `/api/ai/local/models?name=${encodeURIComponent(name)}`);
+      const res = await coreApi.raw(
+        'DELETE',
+        `/api/ai/local/models?name=${encodeURIComponent(name)}`,
+      );
       const data = res.data;
       if (!res.ok) throw new Error(data.error || 'Error al borrar');
       toast.success(`Modelo ${name} eliminado`);
@@ -415,12 +445,9 @@ export const AiSettingsTab: React.FC = () => {
             <h2 className="text-lg font-bold">Proveedor de IA</h2>
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={cfg.enabled}
-              onChange={(e) => setCfg({ ...cfg, enabled: e.target.checked })}
-            />
+          {/* Checkbox y no Switch: el flag se persiste con «Guardar», no al marcarlo. */}
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox checked={cfg.enabled} onChange={(v) => setCfg({ ...cfg, enabled: v })} />
             <span>Activar el asistente de IA en este tenant</span>
           </label>
 
@@ -447,8 +474,8 @@ export const AiSettingsTab: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             {activeProvider?.needsApiKey !== false && (
               <Field label="API key" hint={cfg.apiKeySet ? 'guardada' : undefined}>
-                <Input
-                  type="password"
+                {/* Sin showStrength ni generator: la key la emite el proveedor. */}
+                <PasswordInput
                   value={newApiKey}
                   onChange={(e) => setNewApiKey(e.target.value)}
                   placeholder={cfg.apiKeySet ? '•••••••• (dejar vacío = no cambiar)' : 'API key'}
@@ -466,7 +493,9 @@ export const AiSettingsTab: React.FC = () => {
             )}
             {isLocal && (
               <Field label="Backend local">
-                <SearchableSelect
+                {/* Dos opciones fijas: Select, no SearchableSelect. */}
+                <Select
+                  ariaLabel="Backend local"
                   options={[
                     { value: 'ollama', label: 'Ollama' },
                     { value: 'vllm', label: 'vLLM' },
@@ -480,11 +509,10 @@ export const AiSettingsTab: React.FC = () => {
             )}
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox
               checked={cfg.supportsImages}
-              onChange={(e) => setCfg({ ...cfg, supportsImages: e.target.checked })}
+              onChange={(v) => setCfg({ ...cfg, supportsImages: v })}
             />
             <span>El modelo elegido acepta imágenes (visión)</span>
           </label>
@@ -675,13 +703,15 @@ export const AiSettingsTab: React.FC = () => {
                     >
                       {cfg.model === m.name ? 'En uso' : 'Usar'}
                     </Button>
-                    <button
-                      className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       title="Eliminar modelo"
                       onClick={() => removeModel(m.name)}
                     >
                       <Trash2 size={14} />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>

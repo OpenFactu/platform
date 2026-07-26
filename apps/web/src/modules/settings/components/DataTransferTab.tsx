@@ -10,8 +10,16 @@
 
 import { coreApi } from '@/shared/api';
 import { apiClient } from '@/shared/http';
-import React, { useEffect, useRef, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import React, { useEffect, useState } from 'react';
+import {
+  Card,
+  Button,
+  Input,
+  Checkbox,
+  FileDropzone,
+  SearchableSelect,
+  useToast,
+} from '@openfactu/ui';
 import { Download, Upload, FileSpreadsheet, AlertTriangle, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -32,7 +40,6 @@ export const DataTransferTab: React.FC = () => {
   const [includeUploads, setIncludeUploads] = useState(true);
   const [importName, setImportName] = useState('');
   const [importFile, setImportFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Lista de empresas accesibles para que SUPERUSER pueda elegir cuál exportar.
   const [tenants, setTenants] = useState<Array<{ id: string; name: string }>>([]);
@@ -175,7 +182,6 @@ export const DataTransferTab: React.FC = () => {
           toast.success(`Empresa "${importName}" importada (id: ${body.tenantId})`);
           setImportFile(null);
           setImportName('');
-          if (fileInputRef.current) fileInputRef.current.value = '';
         } else {
           toast.error(`Importación falló: ${body?.error || `HTTP ${xhr.status}`}`);
         }
@@ -224,17 +230,15 @@ export const DataTransferTab: React.FC = () => {
             Keirost.
           </p>
           <div className="flex items-center gap-2">
-            <select
-              value={exportTenantId}
-              onChange={(e) => setExportTenantId(e.target.value)}
-              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-            >
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+            {/* Lista dinámica de servidor → SearchableSelect. */}
+            <div className="flex-1">
+              <SearchableSelect
+                options={tenants.map((t) => ({ value: t.id, label: t.name }))}
+                value={exportTenantId}
+                onChange={setExportTenantId}
+                placeholder="— Elige una empresa —"
+              />
+            </div>
             <Button
               onClick={() =>
                 downloadFile(
@@ -250,12 +254,7 @@ export const DataTransferTab: React.FC = () => {
             </Button>
           </div>
           <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeUploads}
-              onChange={(e) => setIncludeUploads(e.target.checked)}
-              className="w-4 h-4"
-            />
+            <Checkbox checked={includeUploads} onChange={setIncludeUploads} />
             <span>
               Incluir archivos adjuntos (storage/uploads). Desactiva si solo quieres datos y el zip
               pesa demasiado.
@@ -282,12 +281,17 @@ export const DataTransferTab: React.FC = () => {
             value={importName}
             onChange={(e) => setImportName(e.target.value)}
           />
-          <input
-            ref={fileInputRef}
-            type="file"
+          {/* Zona de subida visible del backup: FileDropzone acepta también
+              arrastrar el .zip y muestra el archivo elegido con su tamaño. */}
+          <FileDropzone
             accept=".zip"
-            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-            className="block w-full text-sm text-slate-500 dark:text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900/30 dark:file:text-blue-200 hover:file:bg-blue-100"
+            label="Arrastra el .zip del export o haz clic para elegirlo"
+            hint="Un único fichero .zip generado por «Exportar empresa»"
+            files={importFile ? [importFile] : []}
+            onFiles={(files) => setImportFile(files[0] ?? null)}
+            onRemoveFile={() => setImportFile(null)}
+            onReject={() => toast.error('Solo se acepta un fichero .zip')}
+            disabled={busy === 'import'}
           />
           <Button onClick={doImport} disabled={busy === 'import' || !importFile}>
             <Upload size={14} className="mr-2" />
@@ -338,21 +342,18 @@ export const DataTransferTab: React.FC = () => {
               marcha atrás salvo que tengas un backup — expórtala o haz un backup primero si no
               estás seguro.
             </p>
-            <select
+            {/* `clearable`: dejarlo sin empresa elegida es un estado válido (y el
+                más seguro) en la zona de peligro. */}
+            <SearchableSelect
+              options={tenants.map((t) => ({ value: t.id, label: t.name }))}
               value={deleteTenantId}
-              onChange={(e) => {
-                setDeleteTenantId(e.target.value);
+              onChange={(v) => {
+                setDeleteTenantId(v);
                 setDeleteConfirmText('');
               }}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-rose-300 dark:border-rose-800 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-            >
-              <option value="">— Elige una empresa —</option>
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+              placeholder="— Elige una empresa —"
+              clearable
+            />
             {deleteTenant && (
               <>
                 <p className="text-xs text-slate-600 dark:text-slate-300">

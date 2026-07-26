@@ -1,6 +1,19 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Modal, Loader, Badge, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Textarea,
+  Checkbox,
+  Select,
+  EmptyState,
+  Modal,
+  Loader,
+  Badge,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
 import { Plus, Trash2, Play, Zap, History, Edit2, Pause, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
@@ -42,6 +55,26 @@ const EVENT_OPTIONS = [
   { value: 'item.afterCreate', label: 'Artículo creado' },
 ];
 
+const TRIGGER_TYPE_OPTIONS = [
+  { value: 'schedule', label: 'Programado (cron)' },
+  { value: 'event', label: 'Evento del sistema' },
+  { value: 'manual', label: 'Manual (solo botón)' },
+];
+
+const ACTION_TYPE_OPTIONS = [
+  { value: 'email', label: 'Enviar email' },
+  { value: 'webhook', label: 'Llamar a webhook (HTTP POST)' },
+  { value: 'notification', label: 'Notificación interna' },
+];
+
+const HTTP_METHOD_OPTIONS = ['POST', 'PUT', 'GET'].map((m) => ({ value: m, label: m }));
+
+const NOTIFY_ROLE_OPTIONS = [
+  { value: 'ADMIN', label: 'Administradores' },
+  { value: 'USER', label: 'Todos los usuarios' },
+  { value: 'SUPERUSER', label: 'Superusers' },
+];
+
 const defaultForm = (): any => ({
   id: null,
   name: '',
@@ -60,6 +93,7 @@ export const Automations: React.FC = () => {
   const { token, user } = useAuth();
   const fmt = useFormat();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<Automation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -188,7 +222,13 @@ export const Automations: React.FC = () => {
   };
 
   const remove = async (a: Automation) => {
-    if (!confirm(`¿Eliminar automatización "${a.name}"?`)) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar automatización',
+      message: `Se eliminará "${a.name}" y su historial de ejecuciones dejará de estar accesible.`,
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     await coreApi.raw('DELETE', `/api/automations/${a.id}`);
     load();
   };
@@ -233,10 +273,17 @@ export const Automations: React.FC = () => {
           <Loader />
         </div>
       ) : rows.length === 0 ? (
-        <Card bodyClassName="py-16 text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Aún no has creado automatizaciones.
-          </p>
+        <Card bodyClassName="p-0">
+          <EmptyState
+            icon={<Zap size={28} />}
+            title="Aún no has creado automatizaciones"
+            hint="Lanza un email, un webhook o una notificación según un horario o un evento del sistema."
+            action={
+              <Button onClick={openCreate} className="flex items-center gap-2">
+                <Plus size={14} /> Nueva
+              </Button>
+            }
+          />
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -246,13 +293,18 @@ export const Automations: React.FC = () => {
                 key={a.id}
                 className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
               >
-                <button
+                {/* Acción inmediata (PATCH al pulsar), de ahí que sea un Button
+                    con icono de estado y no un Checkbox del formulario. */}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => toggleEnabled(a)}
                   title={a.enabled ? 'Desactivar' : 'Activar'}
-                  className={`p-1.5 rounded ${a.enabled ? 'text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10' : 'text-slate-300 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                  className={a.enabled ? 'text-emerald-500' : undefined}
                 >
                   {a.enabled ? <CheckCircle2 size={16} /> : <Pause size={16} />}
-                </button>
+                </Button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
@@ -271,34 +323,42 @@ export const Automations: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => runNow(a)}
                   title="Ejecutar ahora"
-                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
                 >
                   <Play size={14} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => openLogs(a)}
                   title="Historial"
-                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
                 >
                   <History size={14} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => openEdit(a)}
                   title="Editar"
-                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
                 >
                   <Edit2 size={14} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => remove(a)}
                   title="Eliminar"
-                  className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                 >
                   <Trash2 size={14} />
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -321,11 +381,12 @@ export const Automations: React.FC = () => {
               />
             </FieldBox>
             <FieldBox label="Activada">
-              <label className="flex items-center gap-2 h-10">
-                <input
-                  type="checkbox"
+              {/* Checkbox y no Switch: se persiste con «Crear»/«Guardar». El
+                  toggle inmediato es el botón del listado. */}
+              <label className="flex items-center gap-2 h-10 cursor-pointer">
+                <Checkbox
                   checked={form.enabled}
-                  onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
+                  onChange={(v) => setForm({ ...form, enabled: v })}
                 />
                 <span className="text-sm">Sí, se ejecuta</span>
               </label>
@@ -340,15 +401,12 @@ export const Automations: React.FC = () => {
 
           <SectionTitle>Trigger</SectionTitle>
           <FieldBox label="Cuándo se ejecuta">
-            <select
+            <Select
+              ariaLabel="Cuándo se ejecuta"
+              options={TRIGGER_TYPE_OPTIONS}
               value={form.triggerType}
-              onChange={(e) => setForm({ ...form, triggerType: e.target.value })}
-              className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-            >
-              <option value="schedule">Programado (cron)</option>
-              <option value="event">Evento del sistema</option>
-              <option value="manual">Manual (solo botón)</option>
-            </select>
+              onChange={(v) => setForm({ ...form, triggerType: v })}
+            />
           </FieldBox>
           {form.triggerType === 'schedule' && (
             <FieldBox label="Cron (m h dom mon dow). Ejemplos: '0 9 * * 1' = lunes 9:00; '*/15 * * * *' = cada 15 min">
@@ -361,31 +419,24 @@ export const Automations: React.FC = () => {
           )}
           {form.triggerType === 'event' && (
             <FieldBox label="Evento">
-              <select
+              {/* Opciones derivadas de EVENT_OPTIONS (10 entradas, estáticas). */}
+              <Select
+                ariaLabel="Evento"
+                options={EVENT_OPTIONS}
                 value={form.event}
-                onChange={(e) => setForm({ ...form, event: e.target.value })}
-                className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-              >
-                {EVENT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, event: v })}
+              />
             </FieldBox>
           )}
 
           <SectionTitle>Acción</SectionTitle>
           <FieldBox label="Qué hace">
-            <select
+            <Select
+              ariaLabel="Qué hace"
+              options={ACTION_TYPE_OPTIONS}
               value={form.actionType}
-              onChange={(e) => setForm({ ...form, actionType: e.target.value })}
-              className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-            >
-              <option value="email">Enviar email</option>
-              <option value="webhook">Llamar a webhook (HTTP POST)</option>
-              <option value="notification">Notificación interna</option>
-            </select>
+              onChange={(v) => setForm({ ...form, actionType: v })}
+            />
           </FieldBox>
 
           {form.actionType === 'email' && (
@@ -408,13 +459,13 @@ export const Automations: React.FC = () => {
                 />
               </FieldBox>
               <FieldBox label="Cuerpo">
-                <textarea
+                <Textarea
                   value={form.email.body}
                   onChange={(e) =>
                     setForm({ ...form, email: { ...form.email, body: e.target.value } })
                   }
                   rows={6}
-                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 font-mono"
+                  className="font-mono"
                 />
               </FieldBox>
             </>
@@ -433,27 +484,22 @@ export const Automations: React.FC = () => {
                   />
                 </FieldBox>
                 <FieldBox label="Método">
-                  <select
+                  <Select
+                    ariaLabel="Método HTTP"
+                    options={HTTP_METHOD_OPTIONS}
                     value={form.webhook.method}
-                    onChange={(e) =>
-                      setForm({ ...form, webhook: { ...form.webhook, method: e.target.value } })
-                    }
-                    className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                  >
-                    <option>POST</option>
-                    <option>PUT</option>
-                    <option>GET</option>
-                  </select>
+                    onChange={(v) => setForm({ ...form, webhook: { ...form.webhook, method: v } })}
+                  />
                 </FieldBox>
               </Grid2>
               <FieldBox label="Body (JSON — soporta {{ path }})">
-                <textarea
+                <Textarea
                   value={form.webhook.body}
                   onChange={(e) =>
                     setForm({ ...form, webhook: { ...form.webhook, body: e.target.value } })
                   }
                   rows={6}
-                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 font-mono"
+                  className="font-mono"
                 />
               </FieldBox>
             </>
@@ -462,20 +508,14 @@ export const Automations: React.FC = () => {
           {form.actionType === 'notification' && (
             <>
               <FieldBox label="Destinatarios">
-                <select
+                <Select
+                  ariaLabel="Destinatarios"
+                  options={NOTIFY_ROLE_OPTIONS}
                   value={form.notification.role}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      notification: { ...form.notification, role: e.target.value },
-                    })
+                  onChange={(v) =>
+                    setForm({ ...form, notification: { ...form.notification, role: v } })
                   }
-                  className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                >
-                  <option value="ADMIN">Administradores</option>
-                  <option value="USER">Todos los usuarios</option>
-                  <option value="SUPERUSER">Superusers</option>
-                </select>
+                />
               </FieldBox>
               <FieldBox label="Título">
                 <Input
@@ -489,7 +529,7 @@ export const Automations: React.FC = () => {
                 />
               </FieldBox>
               <FieldBox label="Cuerpo">
-                <textarea
+                <Textarea
                   value={form.notification.body}
                   onChange={(e) =>
                     setForm({
@@ -498,7 +538,6 @@ export const Automations: React.FC = () => {
                     })
                   }
                   rows={4}
-                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2"
                 />
               </FieldBox>
             </>
@@ -528,11 +567,18 @@ export const Automations: React.FC = () => {
               <Loader />
             </div>
           ) : logs.length === 0 ? (
-            <div className="text-center text-xs text-slate-400 py-10">Sin ejecuciones aún.</div>
+            <EmptyState
+              icon={<History size={24} />}
+              title="Sin ejecuciones aún"
+              hint="Usa «Ejecutar ahora» para probarla sin esperar al trigger."
+            />
           ) : (
             <ul>
               {logs.map((r) => (
-                <li key={r.id} className="px-3 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0 flex items-start gap-3">
+                <li
+                  key={r.id}
+                  className="px-3 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0 flex items-start gap-3"
+                >
                   <Badge variant={r.status === 'ok' ? 'success' : 'error'}>{r.status}</Badge>
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">

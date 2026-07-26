@@ -1,6 +1,17 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Checkbox,
+  ColorInput,
+  NumberInput,
+  Select,
+  Tabs,
+  Loader,
+  useToast,
+} from '@openfactu/ui';
 import {
   Building,
   Save,
@@ -75,6 +86,43 @@ const EMPTY: CompanyConfig = {
   currency: 'EUR',
   fiscalYearStart: '01-01',
 };
+
+const CURRENCY_OPTIONS = [
+  { value: 'EUR', label: '€ EUR' },
+  { value: 'USD', label: '$ USD' },
+  { value: 'GBP', label: '£ GBP' },
+];
+
+const THEME_MODE_OPTIONS = [
+  { value: 'light', label: 'Claro' },
+  { value: 'dark', label: 'Oscuro' },
+];
+
+const LOCALE_OPTIONS = [
+  { value: 'es-ES', label: 'Español (España)' },
+  { value: 'es-MX', label: 'Español (México)' },
+  { value: 'pt-PT', label: 'Português (Portugal)' },
+  { value: 'pt-BR', label: 'Português (Brasil)' },
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'fr-FR', label: 'Français' },
+  { value: 'it-IT', label: 'Italiano' },
+  { value: 'de-DE', label: 'Deutsch' },
+];
+
+const DATE_FORMAT_OPTIONS = ['dd/MM/yyyy', 'dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yyyy'].map((v) => ({
+  value: v,
+  label: v,
+}));
+
+const WAREHOUSE_LOCATION_OPTIONS = [
+  { value: 'header', label: 'En la cabecera' },
+  { value: 'line', label: 'En cada línea' },
+];
+
+/** Paletas de acceso rápido para los ColorInput: los colores de los presets de marca. */
+const PRESET_PRIMARY_COLORS = Array.from(new Set(THEME_PRESETS.map((p) => p.colorPrimary)));
+const PRESET_ACCENT_COLORS = Array.from(new Set(THEME_PRESETS.map((p) => p.colorAccent)));
 
 type TabId =
   | 'fiscal'
@@ -174,8 +222,9 @@ export const CompanySettings: React.FC = () => {
   useEffect(() => {
     if (!user?.tenantId || !token) return;
     const headers = { Authorization: `Bearer ${token}`, 'x-tenant-id': user.tenantId || '' };
-    coreApi.get('/api/config/app')
-      .catch(() => (null))
+    coreApi
+      .get('/api/config/app')
+      .catch(() => null)
       .then((d) => {
         if (d) setAppConfig({ publicBaseUrl: d.publicBaseUrl ?? '' });
       })
@@ -310,25 +359,20 @@ export const CompanySettings: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs — scroll horizontal cuando no caben, sin wrap */}
-      <div className="border-b border-line dark:border-ink-700 overflow-x-auto">
-        <div className="flex gap-1 min-w-max">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-colors shrink-0 ${
-                activeTab === t.id
-                  ? 'text-accent border-accent'
-                  : 'text-ink-500 dark:text-ink-400 border-transparent hover:text-accent dark:hover:text-accent'
-              }`}
-            >
-              <t.icon size={13} />
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Pestañas internas de la pantalla (no la navegación de módulo):
+          `scrollable` reproduce el scroll horizontal que había a mano. */}
+      <Tabs
+        variant="underline"
+        size="sm"
+        scrollable
+        items={tabs.map((t) => ({
+          key: t.id,
+          label: t.label,
+          icon: <t.icon size={13} />,
+        }))}
+        value={activeTab}
+        onChange={(key) => setActiveTab(key as TabId)}
+      />
 
       {activeTab === 'fiscal' && (
         <div className="space-y-6">
@@ -460,20 +504,12 @@ export const CompanySettings: React.FC = () => {
                 Preferencias
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300">
-                    Moneda
-                  </label>
-                  <select
-                    className="w-full rounded-[2px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[13px] px-3 py-2"
-                    value={fiscal.currency}
-                    onChange={(e) => setF('currency', e.target.value)}
-                  >
-                    <option value="EUR">€ EUR</option>
-                    <option value="USD">$ USD</option>
-                    <option value="GBP">£ GBP</option>
-                  </select>
-                </div>
+                <Select
+                  label="Moneda"
+                  options={CURRENCY_OPTIONS}
+                  value={fiscal.currency}
+                  onChange={(v) => setF('currency', v)}
+                />
                 <Input
                   label="Inicio del año fiscal (MM-DD)"
                   value={fiscal.fiscalYearStart}
@@ -582,49 +618,22 @@ export const CompanySettings: React.FC = () => {
               <h2 className="font-mono text-[10px] tracking-[1.5px] uppercase text-[var(--k-ink-400)]">
                 Colores
               </h2>
+              {/* ColorInput reemplaza el par «selector nativo + campo hex» que
+                  estaba montado a mano; `presets` ofrece la paleta de los
+                  presets de marca para no tener que teclear el hex. */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Color primario
-                  </label>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="color"
-                      className="h-9 w-12 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
-                      value={brandingDraft.colorPrimary}
-                      onChange={(e) =>
-                        setBrandingDraft({ ...brandingDraft, colorPrimary: e.target.value })
-                      }
-                    />
-                    <Input
-                      value={brandingDraft.colorPrimary}
-                      onChange={(e) =>
-                        setBrandingDraft({ ...brandingDraft, colorPrimary: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Color acento
-                  </label>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="color"
-                      className="h-9 w-12 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
-                      value={brandingDraft.colorAccent}
-                      onChange={(e) =>
-                        setBrandingDraft({ ...brandingDraft, colorAccent: e.target.value })
-                      }
-                    />
-                    <Input
-                      value={brandingDraft.colorAccent}
-                      onChange={(e) =>
-                        setBrandingDraft({ ...brandingDraft, colorAccent: e.target.value })
-                      }
-                    />
-                  </div>
-                </div>
+                <ColorInput
+                  label="Color primario"
+                  value={brandingDraft.colorPrimary}
+                  onChange={(v) => setBrandingDraft({ ...brandingDraft, colorPrimary: v })}
+                  presets={PRESET_PRIMARY_COLORS}
+                />
+                <ColorInput
+                  label="Color acento"
+                  value={brandingDraft.colorAccent}
+                  onChange={(v) => setBrandingDraft({ ...brandingDraft, colorAccent: v })}
+                  presets={PRESET_ACCENT_COLORS}
+                />
               </div>
             </div>
           </Card>
@@ -634,20 +643,14 @@ export const CompanySettings: React.FC = () => {
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                 Marca
               </h2>
+              <Input
+                label="Nombre de la aplicación"
+                value={brandingDraft.appName}
+                onChange={(e) => setBrandingDraft({ ...brandingDraft, appName: e.target.value })}
+              />
               <div>
-                <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                  Nombre de la aplicación
-                </label>
                 <Input
-                  value={brandingDraft.appName}
-                  onChange={(e) => setBrandingDraft({ ...brandingDraft, appName: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                  URL del logo
-                </label>
-                <Input
+                  label="URL del logo"
                   value={brandingDraft.logoUrl}
                   onChange={(e) => setBrandingDraft({ ...brandingDraft, logoUrl: e.target.value })}
                   placeholder="https://..."
@@ -675,39 +678,21 @@ export const CompanySettings: React.FC = () => {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Familia tipográfica
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
+                  {/* Opciones derivadas de FONT_OPTIONS (6 entradas) → Select. */}
+                  <Select
+                    label="Familia tipográfica"
+                    options={FONT_OPTIONS.map((f) => ({ value: f.id, label: f.label }))}
                     value={brandingDraft.fontFamily}
-                    onChange={(e) =>
-                      setBrandingDraft({ ...brandingDraft, fontFamily: e.target.value })
-                    }
-                  >
-                    {FONT_OPTIONS.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setBrandingDraft({ ...brandingDraft, fontFamily: v })}
+                  />
                   <FontPreview fontId={brandingDraft.fontFamily} />
                 </div>
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Modo
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
-                    value={brandingDraft.themeMode}
-                    onChange={(e) =>
-                      setBrandingDraft({ ...brandingDraft, themeMode: e.target.value as any })
-                    }
-                  >
-                    <option value="light">Claro</option>
-                    <option value="dark">Oscuro</option>
-                  </select>
-                </div>
+                <Select
+                  label="Modo"
+                  options={THEME_MODE_OPTIONS}
+                  value={brandingDraft.themeMode}
+                  onChange={(v) => setBrandingDraft({ ...brandingDraft, themeMode: v as any })}
+                />
               </div>
             </div>
           </Card>
@@ -741,75 +726,35 @@ export const CompanySettings: React.FC = () => {
                 Regionalización
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Locale
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
-                    value={formatDraft.locale}
-                    onChange={(e) => setFormatDraft({ ...formatDraft, locale: e.target.value })}
-                  >
-                    <option value="es-ES">Español (España)</option>
-                    <option value="es-MX">Español (México)</option>
-                    <option value="pt-PT">Português (Portugal)</option>
-                    <option value="pt-BR">Português (Brasil)</option>
-                    <option value="en-GB">English (UK)</option>
-                    <option value="en-US">English (US)</option>
-                    <option value="fr-FR">Français</option>
-                    <option value="it-IT">Italiano</option>
-                    <option value="de-DE">Deutsch</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Formato de fecha
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
-                    value={formatDraft.dateFormat}
-                    onChange={(e) => setFormatDraft({ ...formatDraft, dateFormat: e.target.value })}
-                  >
-                    <option value="dd/MM/yyyy">dd/MM/yyyy</option>
-                    <option value="dd-MM-yyyy">dd-MM-yyyy</option>
-                    <option value="yyyy-MM-dd">yyyy-MM-dd</option>
-                    <option value="MM/dd/yyyy">MM/dd/yyyy</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Decimales importes
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={6}
-                    value={formatDraft.decimalPrecision}
-                    onChange={(e) =>
-                      setFormatDraft({
-                        ...formatDraft,
-                        decimalPrecision: Number(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                    Decimales cantidades
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={6}
-                    value={formatDraft.quantityPrecision}
-                    onChange={(e) =>
-                      setFormatDraft({
-                        ...formatDraft,
-                        quantityPrecision: Number(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
+                <Select
+                  label="Locale"
+                  options={LOCALE_OPTIONS}
+                  value={formatDraft.locale}
+                  onChange={(v) => setFormatDraft({ ...formatDraft, locale: v })}
+                />
+                <Select
+                  label="Formato de fecha"
+                  options={DATE_FORMAT_OPTIONS}
+                  value={formatDraft.dateFormat}
+                  onChange={(v) => setFormatDraft({ ...formatDraft, dateFormat: v })}
+                />
+                {/* `emptyValue="zero"`: 0 decimales es una opción legítima. */}
+                <NumberInput
+                  label="Decimales importes"
+                  value={formatDraft.decimalPrecision}
+                  onChange={(v) => setFormatDraft({ ...formatDraft, decimalPrecision: v ?? 0 })}
+                  min={0}
+                  max={6}
+                  emptyValue="zero"
+                />
+                <NumberInput
+                  label="Decimales cantidades"
+                  value={formatDraft.quantityPrecision}
+                  onChange={(v) => setFormatDraft({ ...formatDraft, quantityPrecision: v ?? 0 })}
+                  min={0}
+                  max={6}
+                  emptyValue="zero"
+                />
               </div>
 
               <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -944,19 +889,15 @@ export const CompanySettings: React.FC = () => {
                     (junto con la ubicación/zona).
                   </div>
                 </div>
-                <select
+                <Select
+                  ariaLabel="Ubicación del almacén en documentos"
+                  options={WAREHOUSE_LOCATION_OPTIONS}
                   value={flagsDraft.warehouseLocation}
-                  onChange={(e) =>
-                    setFlagsDraft({
-                      ...flagsDraft,
-                      warehouseLocation: e.target.value as 'header' | 'line',
-                    })
+                  onChange={(v) =>
+                    setFlagsDraft({ ...flagsDraft, warehouseLocation: v as 'header' | 'line' })
                   }
-                  className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="header">En la cabecera</option>
-                  <option value="line">En cada línea</option>
-                </select>
+                  containerClassName="w-48"
+                />
               </div>
             </div>
           </Card>
@@ -989,16 +930,12 @@ export const CompanySettings: React.FC = () => {
                 Esta URL se usa en los emails de seguimiento de envíos, webhooks y enlaces
                 compartidos con clientes. Debe ser accesible desde internet.
               </p>
-              <div>
-                <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                  URL base
-                </label>
-                <Input
-                  value={appConfig.publicBaseUrl}
-                  onChange={(e) => setAppConfig({ ...appConfig, publicBaseUrl: e.target.value })}
-                  placeholder="https://miempresa.com"
-                />
-              </div>
+              <Input
+                label="URL base"
+                value={appConfig.publicBaseUrl}
+                onChange={(e) => setAppConfig({ ...appConfig, publicBaseUrl: e.target.value })}
+                placeholder="https://miempresa.com"
+              />
             </div>
           </Card>
 
@@ -1044,13 +981,13 @@ const FlagRow: React.FC<{
   checked: boolean;
   onChange: (v: boolean) => void;
 }> = ({ label, hint, checked, onChange }) => (
+  // Checkbox y no Switch: aunque son flags de empresa, aquí se editan sobre un
+  // borrador (`flagsDraft`) y solo se persisten al pulsar «Guardar
+  // comportamiento» — no al mover el control.
   <label className="flex items-start gap-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-0 cursor-pointer">
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-      className="mt-1 h-4 w-4 accent-primary cursor-pointer"
-    />
+    <span className="mt-1">
+      <Checkbox checked={checked} onChange={onChange} />
+    </span>
     <div className="flex-1">
       <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{label}</p>
       <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>

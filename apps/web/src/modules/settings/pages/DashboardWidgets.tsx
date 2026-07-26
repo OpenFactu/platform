@@ -6,9 +6,13 @@ import {
   Input,
   Loader,
   useToast,
+  usePopup,
   Modal,
   Badge,
+  Select,
   SearchableSelect,
+  NumberInput,
+  EmptyState,
 } from '@openfactu/ui';
 import { LayoutGrid, Plus, Trash2, Edit2, Code2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -62,6 +66,7 @@ const defaultForm = () => ({
 export const DashboardWidgets: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<WidgetRow[]>([]);
   const [metrics, setMetrics] = useState<MetricOption[]>([]);
@@ -171,10 +176,16 @@ export const DashboardWidgets: React.FC = () => {
   };
 
   const remove = async (row: WidgetRow) => {
-    if (!confirm(`¿Eliminar el widget "${row.title}"?`)) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar widget',
+      message: `¿Eliminar el widget "${row.title}" del dashboard?`,
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/dashboard-widgets/${row.id}`);
     if (!res.ok) {
-      const err = (res.data ?? {});
+      const err = res.data ?? {};
       toast.error(err.error || 'Error al eliminar');
       return;
     }
@@ -236,13 +247,17 @@ export const DashboardWidgets: React.FC = () => {
           <Loader />
         </div>
       ) : rows.length === 0 ? (
-        <Card bodyClassName="py-16 text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Aún no has creado ningún widget.
-          </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-            Pulsa "Nuevo widget" para añadir uno al Dashboard.
-          </p>
+        <Card bodyClassName="p-0">
+          <EmptyState
+            icon={<LayoutGrid size={28} />}
+            title="Aún no has creado ningún widget"
+            hint="Elige una métrica del catálogo o escribe tu propio componente React para el Dashboard."
+            action={
+              <Button onClick={openCreate} className="flex items-center gap-2">
+                <Plus size={14} /> Nuevo widget
+              </Button>
+            }
+          />
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -277,20 +292,24 @@ export const DashboardWidgets: React.FC = () => {
                     {r.value ?? '—'}
                   </span>
                 )}
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => openEdit(r)}
                   title="Editar"
-                  className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-primary hover:bg-primary/10 rounded"
                 >
                   <Edit2 size={13} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => remove(r)}
                   title="Eliminar"
-                  className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                 >
                   <Trash2 size={13} />
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -336,25 +355,17 @@ export const DashboardWidgets: React.FC = () => {
               </div>
             )}
           </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Título
-            </label>
-            <Input
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="Artículos en catálogo"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Subtítulo (opcional)
-            </label>
-            <Input
-              value={form.subtitle}
-              onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-            />
-          </div>
+          <Input
+            label="Título"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="Artículos en catálogo"
+          />
+          <Input
+            label="Subtítulo (opcional)"
+            value={form.subtitle}
+            onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
+          />
           {form.kind === 'metric' ? (
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
@@ -388,26 +399,20 @@ export const DashboardWidgets: React.FC = () => {
             </div>
           ) : null}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Tamaño
-              </label>
-              <SearchableSelect
-                value={form.size}
-                onChange={(value) => setForm({ ...form, size: value as typeof form.size })}
-                options={WIDGET_SIZE_OPTIONS}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Orden
-              </label>
-              <Input
-                type="number"
-                value={form.displayOrder}
-                onChange={(e) => setForm({ ...form, displayOrder: Number(e.target.value) || 0 })}
-              />
-            </div>
+            {/* 4 opciones fijas: Select, no SearchableSelect. */}
+            <Select
+              label="Tamaño"
+              value={form.size}
+              onChange={(value) => setForm({ ...form, size: value as typeof form.size })}
+              options={WIDGET_SIZE_OPTIONS}
+            />
+            <NumberInput
+              label="Orden"
+              value={form.displayOrder}
+              onChange={(v) => setForm({ ...form, displayOrder: v ?? 0 })}
+              emptyValue="zero"
+              thousandSeparator={false}
+            />
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
             <Button variant="secondary" onClick={() => setShowModal(false)}>

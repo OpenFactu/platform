@@ -1,6 +1,6 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Input, Button, useToast } from '@openfactu/ui';
+import { Card, Input, Button, Checkbox, ColorInput, FileDropzone, useToast } from '@openfactu/ui';
 import {
   Landmark,
   Coins,
@@ -16,6 +16,20 @@ import { FiscalCatalogTable } from '@/components/fiscal/FiscalCatalogTable';
 import { PaymentTermsEditor } from '@/modules/accounting/components/PaymentTermsEditor';
 import { useAuth } from '@/context/AuthContext';
 import { validateIban, validateSwift, formatIban } from '@/utils/bankValidation';
+
+/** Paleta de arranque para el color principal del PDF. */
+const PDF_COLOR_PRESETS = [
+  '#0D9488',
+  '#2563EB',
+  '#7C3AED',
+  '#DB2777',
+  '#DC2626',
+  '#EA580C',
+  '#CA8A04',
+  '#16A34A',
+  '#0F172A',
+  '#64748B',
+];
 
 /**
  * Pestaña "Fiscal" dentro de Configuración de Empresa. Gestiona los
@@ -94,8 +108,8 @@ export const FiscalSettingsTab: React.FC = () => {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">IBAN</label>
               <Input
+                label="IBAN"
                 value={bank.company_iban}
                 onChange={(e) => setBank({ ...bank, company_iban: e.target.value })}
                 onBlur={(e) => setBank({ ...bank, company_iban: formatIban(e.target.value) })}
@@ -103,18 +117,14 @@ export const FiscalSettingsTab: React.FC = () => {
               />
               <IbanFeedback value={bank.company_iban} />
             </div>
+            <Input
+              label="Banco"
+              value={bank.company_bank_name}
+              onChange={(e) => setBank({ ...bank, company_bank_name: e.target.value })}
+            />
             <div>
-              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">Banco</label>
               <Input
-                value={bank.company_bank_name}
-                onChange={(e) => setBank({ ...bank, company_bank_name: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">
-                SWIFT / BIC
-              </label>
-              <Input
+                label="SWIFT / BIC"
                 value={bank.company_bank_swift}
                 onChange={(e) =>
                   setBank({ ...bank, company_bank_swift: e.target.value.toUpperCase() })
@@ -123,43 +133,28 @@ export const FiscalSettingsTab: React.FC = () => {
               />
               <SwiftFeedback value={bank.company_bank_swift} />
             </div>
-            <div>
-              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">
-                Régimen fiscal
-              </label>
-              <Input
-                value={bank.company_fiscal_regime}
-                onChange={(e) => setBank({ ...bank, company_fiscal_regime: e.target.value })}
-                placeholder="General / Simplificado / Recargo equivalencia..."
-              />
-            </div>
+            <Input
+              label="Régimen fiscal"
+              value={bank.company_fiscal_regime}
+              onChange={(e) => setBank({ ...bank, company_fiscal_regime: e.target.value })}
+              placeholder="General / Simplificado / Recargo equivalencia..."
+            />
             <div className="md:col-span-2">
-              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">
-                Pie legal de factura (opcional)
-              </label>
               <Input
+                label="Pie legal de factura (opcional)"
                 value={bank.company_invoice_footer}
                 onChange={(e) => setBank({ ...bank, company_invoice_footer: e.target.value })}
                 placeholder="Texto legal que aparece al pie del PDF"
               />
             </div>
-            <div>
-              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">
-                Color principal PDF
-              </label>
-              <div className="flex gap-2 items-center">
-                <input
-                  type="color"
-                  className="h-9 w-12 rounded-xs border border-line dark:border-ink-700 cursor-pointer"
-                  value={bank.company_invoice_color}
-                  onChange={(e) => setBank({ ...bank, company_invoice_color: e.target.value })}
-                />
-                <Input
-                  value={bank.company_invoice_color}
-                  onChange={(e) => setBank({ ...bank, company_invoice_color: e.target.value })}
-                />
-              </div>
-            </div>
+            {/* ColorInput ya trae muestra + campo hex; el par de controles
+                (selector de color nativo + Input) que había aquí era eso a mano. */}
+            <ColorInput
+              label="Color principal PDF"
+              value={bank.company_invoice_color}
+              onChange={(v) => setBank({ ...bank, company_invoice_color: v })}
+              presets={PDF_COLOR_PRESETS}
+            />
           </div>
           <div className="flex flex-col items-end gap-2">
             {!isAdmin && (
@@ -182,17 +177,12 @@ export const FiscalSettingsTab: React.FC = () => {
             <h2 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 flex items-center gap-2">
               <PenLine size={14} /> Firma / representante
             </h2>
+            {/* Checkbox y no Switch: se persiste con el «Guardar» de arriba
+                (mismo estado `bank`), no al marcarlo. */}
             <label className="inline-flex items-center gap-2 text-xs cursor-pointer">
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-accent cursor-pointer"
+              <Checkbox
                 checked={bank.signature_show_in_pdf === 'true'}
-                onChange={(e) =>
-                  setBank({
-                    ...bank,
-                    signature_show_in_pdf: e.target.checked ? 'true' : 'false',
-                  })
-                }
+                onChange={(v) => setBank({ ...bank, signature_show_in_pdf: v ? 'true' : 'false' })}
               />
               <span className="text-ink-700 dark:text-slate-200 font-bold">Mostrar en PDF</span>
             </label>
@@ -202,24 +192,18 @@ export const FiscalSettingsTab: React.FC = () => {
             URL de imagen (rúbrica escaneada), se imprime encima.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">
-                Nombre del firmante
-              </label>
-              <Input
-                value={bank.signature_name}
-                onChange={(e) => setBank({ ...bank, signature_name: e.target.value })}
-                placeholder="Juan García Pérez"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">Cargo</label>
-              <Input
-                value={bank.signature_role}
-                onChange={(e) => setBank({ ...bank, signature_role: e.target.value })}
-                placeholder="Administrador único / Apoderado"
-              />
-            </div>
+            <Input
+              label="Nombre del firmante"
+              value={bank.signature_name}
+              onChange={(e) => setBank({ ...bank, signature_name: e.target.value })}
+              placeholder="Juan García Pérez"
+            />
+            <Input
+              label="Cargo"
+              value={bank.signature_role}
+              onChange={(e) => setBank({ ...bank, signature_role: e.target.value })}
+              placeholder="Administrador único / Apoderado"
+            />
             <div className="md:col-span-2">
               <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">
                 Imagen de la firma (opcional) · PNG o JPG, máx. 500 KB
@@ -236,43 +220,40 @@ export const FiscalSettingsTab: React.FC = () => {
                   placeholder="Pega una URL o sube un PNG →"
                   className="flex-1"
                 />
-                <label className="inline-flex items-center gap-2 px-3 py-2 border border-line dark:border-ink-700 rounded-xs bg-white dark:bg-ink-900 text-ink-700 dark:text-slate-200 text-sm font-bold cursor-pointer hover:bg-accent/5 transition-colors whitespace-nowrap">
-                  <Upload size={14} />
-                  Subir PNG
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (!f) return;
-                      if (f.size > 500 * 1024) {
-                        toast.error('Máximo 500 KB');
-                        e.target.value = '';
-                        return;
-                      }
-                      const reader = new FileReader();
-                      reader.onload = () => {
-                        setBank({
-                          ...bank,
-                          signature_image_url: String(reader.result || ''),
-                        });
-                      };
-                      reader.onerror = () => toast.error('No se pudo leer el fichero');
-                      reader.readAsDataURL(f);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
+                {/* El límite de 500 KB se sigue comprobando a mano (maxSizeMb
+                    trabaja en MB y no cuadra exacto con 500 KB). */}
+                <FileDropzone
+                  variant="button"
+                  accept="image/png,image/jpeg"
+                  icon={<Upload size={14} />}
+                  label="Subir PNG"
+                  className="whitespace-nowrap"
+                  onFiles={(files) => {
+                    const f = files[0];
+                    if (!f) return;
+                    if (f.size > 500 * 1024) {
+                      toast.error('Máximo 500 KB');
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      setBank({ ...bank, signature_image_url: String(reader.result || '') });
+                    };
+                    reader.onerror = () => toast.error('No se pudo leer el fichero');
+                    reader.readAsDataURL(f);
+                  }}
+                  onReject={() => toast.error('Solo PNG o JPG')}
+                />
                 {bank.signature_image_url && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setBank({ ...bank, signature_image_url: '' })}
-                    className="p-2 text-ink-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xs transition-colors"
                     title="Quitar firma"
                   >
                     <XIcon size={14} />
-                  </button>
+                  </Button>
                 )}
               </div>
               {bank.signature_image_url && (

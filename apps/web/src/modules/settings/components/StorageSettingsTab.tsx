@@ -23,7 +23,7 @@
 
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import { Card, Button, Input, useToast, usePopup } from '@openfactu/ui';
 import { HardDrive, Cloud, CheckCircle2, AlertTriangle, Save, Link2, Unlink } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -66,6 +66,7 @@ const SECRET_SET = '__SET__';
 export const StorageSettingsTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [config, setConfig] = useState<StorageConfig>({ provider: 'local' });
   // Panel que se está viendo/editando — independiente del backend realmente
   // activo (config.provider). Ver comentario de cabecera.
@@ -169,7 +170,10 @@ export const StorageSettingsTab: React.FC = () => {
       await patchConfig(patch);
       toast.success('Configuración guardada');
     } catch (e) {
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al guardar');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al guardar',
+      );
     } finally {
       setSaving(false);
     }
@@ -194,21 +198,24 @@ export const StorageSettingsTab: React.FC = () => {
     } catch (e) {
       popup?.close();
       setConnecting(false);
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al iniciar la conexión');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al iniciar la conexión',
+      );
     }
   };
 
   const disconnect = async (p: CloudProvider) => {
-    if (
-      !window.confirm(
-        `¿Desconectar ${PROVIDER_LABELS[p]}? Los backups y subidas a este proveedor dejarán de funcionar.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await popup.confirm({
+      title: `Desconectar ${PROVIDER_LABELS[p]}`,
+      message: `Los backups y subidas a ${PROVIDER_LABELS[p]} dejarán de funcionar. Los archivos ya subidos siguen accesibles mientras la autorización no se revoque en el proveedor.`,
+      tone: 'danger',
+      confirmLabel: 'Desconectar',
+    });
+    if (!ok) return;
     try {
       const res = await coreApi.raw('POST', `/api/config/storage/oauth/${p}/disconnect`);
-      if (!res.ok) throw new Error((res.data)?.error || `HTTP ${res.status}`);
+      if (!res.ok) throw new Error(res.data?.error || `HTTP ${res.status}`);
       toast.success(`${PROVIDER_LABELS[p]} desconectado`);
       const cfgRes = await coreApi.raw('GET', '/api/config/storage');
       if (cfgRes.ok) {
@@ -218,7 +225,10 @@ export const StorageSettingsTab: React.FC = () => {
       }
       await loadOauthStatus();
     } catch (e) {
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al desconectar');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al desconectar',
+      );
     }
   };
 
@@ -229,7 +239,11 @@ export const StorageSettingsTab: React.FC = () => {
       const body = res.data;
       setHealth(body);
     } catch (e) {
-      setHealth({ ok: false, provider: 'unknown', detail: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) });
+      setHealth({
+        ok: false,
+        provider: 'unknown',
+        detail: e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined,
+      });
     }
   };
 

@@ -11,7 +11,19 @@
 
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  PasswordInput,
+  Checkbox,
+  EmptyState,
+  Modal,
+  Badge,
+  Loader,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
 import { Plus, Trash2, Edit2, Webhook, Send } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -38,6 +50,7 @@ const AVAILABLE_EVENTS = [
 export const WebhooksSettings: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [subs, setSubs] = useState<Sub[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -96,7 +109,13 @@ export const WebhooksSettings: React.FC = () => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('¿Eliminar webhook?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar webhook',
+      message: 'Dejarás de recibir eventos en esa URL. La suscripción no se puede recuperar.',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     await coreApi.raw('DELETE', `/api/webhooks/${id}`);
     load();
   };
@@ -139,8 +158,17 @@ export const WebhooksSettings: React.FC = () => {
           <Loader />
         </div>
       ) : subs.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-          Sin suscripciones. Crea la primera para recibir eventos en tu sistema.
+        <Card bodyClassName="p-0">
+          <EmptyState
+            icon={<Webhook size={28} />}
+            title="Sin suscripciones"
+            hint="Crea la primera para recibir eventos del sistema en tu propia URL."
+            action={
+              <Button onClick={openNew} className="flex items-center gap-2">
+                <Plus size={14} /> Nuevo
+              </Button>
+            }
+          />
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -163,25 +191,34 @@ export const WebhooksSettings: React.FC = () => {
                     {s.events.length === 0 ? 'Todos los eventos' : s.events.join(', ')}
                   </div>
                 </div>
-                <button
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => test(s.id)}
-                  className="px-2 py-1 text-[11px] rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800"
                   title="Enviar ping de prueba"
+                  className="flex items-center gap-1"
                 >
-                  <Send size={11} className="inline" /> Probar
-                </button>
-                <button
+                  <Send size={11} /> Probar
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => openEdit(s)}
-                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
+                  title="Editar"
                 >
                   <Edit2 size={13} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => remove(s.id)}
-                  className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded"
+                  title="Eliminar"
                 >
                   <Trash2 size={13} />
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -195,37 +232,28 @@ export const WebhooksSettings: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3 pt-2">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Nombre
-            </label>
-            <Input
-              value={form.name || ''}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Integración con ERP interno"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              URL
-            </label>
-            <Input
-              value={form.url || ''}
-              onChange={(e) => setForm({ ...form, url: e.target.value })}
-              placeholder="https://miempresa.com/hooks/keirost"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Secreto (opcional) — para firma HMAC-SHA256
-            </label>
-            <Input
-              type="password"
-              value={form.secret || ''}
-              onChange={(e) => setForm({ ...form, secret: e.target.value })}
-              placeholder="Genera una cadena aleatoria"
-            />
-          </div>
+          <Input
+            label="Nombre"
+            value={form.name || ''}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Integración con ERP interno"
+          />
+          <Input
+            label="URL"
+            value={form.url || ''}
+            onChange={(e) => setForm({ ...form, url: e.target.value })}
+            placeholder="https://miempresa.com/hooks/keirost"
+          />
+          {/* `generator`: el secreto HMAC es una cadena aleatoria, así que el
+              botón de generar sustituye al «Genera una cadena aleatoria» que
+              antes solo era un placeholder. */}
+          <PasswordInput
+            label="Secreto (opcional) — para firma HMAC-SHA256"
+            value={form.secret || ''}
+            onChange={(e) => setForm({ ...form, secret: e.target.value })}
+            generator={{ length: 40 }}
+            placeholder="Genera una cadena aleatoria"
+          />
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
               Eventos a recibir (vacío = todos)
@@ -236,8 +264,7 @@ export const WebhooksSettings: React.FC = () => {
                   key={e.value}
                   className="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-slate-50 dark:bg-slate-800/40 cursor-pointer"
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={(form.events || []).includes(e.value)}
                     onChange={() => toggleEvent(e.value)}
                   />
@@ -247,11 +274,10 @@ export const WebhooksSettings: React.FC = () => {
               ))}
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox
               checked={form.isActive !== false}
-              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+              onChange={(v) => setForm({ ...form, isActive: v })}
             />
             Activo
           </label>

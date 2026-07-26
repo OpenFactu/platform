@@ -1,7 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import { Card, Button, Input, Select, useToast } from '@openfactu/ui';
 import { Building, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { CountrySelect } from '@/components/geo/CountrySelect';
@@ -28,6 +28,13 @@ interface FormState {
   currency: string;
   fiscalYearStart: string;
 }
+
+/** Monedas soportadas al dar de alta la empresa (se puede cambiar después). */
+const CURRENCY_OPTIONS = [
+  { value: 'EUR', label: '€ EUR' },
+  { value: 'USD', label: '$ USD' },
+  { value: 'GBP', label: '£ GBP' },
+];
 
 const EMPTY: FormState = {
   name: '',
@@ -65,7 +72,7 @@ export const NewCompany: React.FC = () => {
     try {
       const res = await coreApi.raw('POST', '/api/tenants', data);
       if (!res.ok) {
-        const err = (res.data ?? { error: 'Error al crear empresa' });
+        const err = res.data ?? { error: 'Error al crear empresa' };
         throw new Error(err.error || 'Error al crear empresa');
       }
       const created = res.data;
@@ -82,12 +89,15 @@ export const NewCompany: React.FC = () => {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <button
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
           onClick={() => navigate(-1)}
-          className="p-2 hover:bg-white dark:hover:bg-slate-900 rounded-lg transition shadow-sm border"
+          title="Volver"
         >
           <ArrowLeft size={18} />
-        </button>
+        </Button>
         <div className="p-2 bg-emerald-100 text-emerald-700 dark:text-emerald-200 rounded-lg">
           <Building size={22} />
         </div>
@@ -140,12 +150,11 @@ export const NewCompany: React.FC = () => {
           <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             Domicilio
           </h2>
-          <div>
-            <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-              Dirección
-            </label>
-            <Input value={data.address} onChange={(e) => set('address', e.target.value)} />
-          </div>
+          <Input
+            label="Dirección"
+            value={data.address}
+            onChange={(e) => set('address', e.target.value)}
+          />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <RegionSelect
               countryCode={data.country}
@@ -193,22 +202,24 @@ export const NewCompany: React.FC = () => {
             Contacto
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Email</label>
-              <Input
-                type="email"
-                value={data.email}
-                onChange={(e) => set('email', e.target.value)}
-              />
-            </div>
+            <Input
+              label="Email"
+              type="email"
+              value={data.email}
+              onChange={(e) => set('email', e.target.value)}
+            />
             <PhoneInput
               countryCode={data.country}
               value={data.phone}
               onChange={(v) => set('phone', v)}
             />
             <div className="md:col-span-2">
-              <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">Web</label>
-              <Input value={data.website} onChange={(e) => set('website', e.target.value)} />
+              <Input
+                label="Web"
+                value={data.website}
+                onChange={(e) => set('website', e.target.value)}
+                placeholder="https://miempresa.com"
+              />
             </div>
           </div>
         </div>
@@ -220,30 +231,18 @@ export const NewCompany: React.FC = () => {
             Preferencias
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                Moneda
-              </label>
-              <select
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900"
-                value={data.currency}
-                onChange={(e) => set('currency', e.target.value)}
-              >
-                <option value="EUR">€ EUR</option>
-                <option value="USD">$ USD</option>
-                <option value="GBP">£ GBP</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-slate-500 dark:text-slate-400 block mb-1">
-                Inicio del año fiscal (MM-DD)
-              </label>
-              <Input
-                value={data.fiscalYearStart}
-                onChange={(e) => set('fiscalYearStart', e.target.value)}
-                placeholder="01-01"
-              />
-            </div>
+            <Select
+              label="Moneda"
+              options={CURRENCY_OPTIONS}
+              value={data.currency}
+              onChange={(v) => set('currency', v)}
+            />
+            <Input
+              label="Inicio del año fiscal (MM-DD)"
+              value={data.fiscalYearStart}
+              onChange={(e) => set('fiscalYearStart', e.target.value)}
+              placeholder="01-01"
+            />
           </div>
         </div>
       </Card>
