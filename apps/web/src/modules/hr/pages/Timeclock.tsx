@@ -2,7 +2,7 @@ import { timeclockApi, employeesApi } from '../api';
 import type { TimeclockEntry as Entry } from '../domain/timeclock';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Badge, useToast } from '@openfactu/ui';
+import { Card, Button, Badge, useToast, Tabs, DatePicker, SearchableSelect } from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Timer, LogIn, LogOut, Coffee, RotateCcw, Download } from 'lucide-react';
@@ -21,6 +21,12 @@ const KIND_VARIANT: Record<string, BadgeProps['variant']> = {
   break_start: 'warning',
   break_end: 'neutral',
 };
+
+// Vistas de la página (sólo visibles para admin).
+const TABS = [
+  { key: 'me', label: 'Mis fichajes' },
+  { key: 'all', label: 'Todos' },
+];
 
 export const Timeclock: React.FC = () => {
   const { token, user } = useAuth();
@@ -111,6 +117,17 @@ export const Timeclock: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, filters.employeeId, filters.from, filters.to, user?.tenantId]);
 
+  // Opciones del desplegable de empleados (maestro del servidor).
+  const employeeOptions = useMemo(
+    () =>
+      allEmployees.map((e) => ({
+        value: e.id,
+        label: `${e.firstName} ${e.lastName}`,
+        secondaryLabel: e.code,
+      })),
+    [allEmployees],
+  );
+
   const punch = async (kind: Entry['kind']) => {
     let coords: { latitude?: number; longitude?: number } = {};
     if (navigator.geolocation) {
@@ -154,31 +171,15 @@ export const Timeclock: React.FC = () => {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {/* Lo que cambia es la vista completa, no un filtro → Tabs. */}
           {isAdmin && (
-            <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <button
-                onClick={() => setTab('me')}
-                className={
-                  'px-3 py-1.5 text-sm font-bold transition ' +
-                  (tab === 'me'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800')
-                }
-              >
-                Mis fichajes
-              </button>
-              <button
-                onClick={() => setTab('all')}
-                className={
-                  'px-3 py-1.5 text-sm font-bold transition ' +
-                  (tab === 'all'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800')
-                }
-              >
-                Todos
-              </button>
-            </div>
+            <Tabs
+              items={TABS}
+              value={tab}
+              onChange={(k) => setTab(k as 'me' | 'all')}
+              variant="segmented"
+              size="sm"
+            />
           )}
           {tab === 'me' && employee && (
             <Button
@@ -294,44 +295,31 @@ export const Timeclock: React.FC = () => {
           <Card className="p-4" noPadding>
             <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
               <div>
+                {/* SearchableSelect no tiene prop `label` → se conserva el
+                    <label> suelto. El vacío es válido («Todos») → clearable. */}
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                   Empleado
                 </label>
-                <select
+                <SearchableSelect
+                  options={employeeOptions}
                   value={filters.employeeId}
-                  onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">Todos</option>
-                  {allEmployees.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.code} — {e.firstName} {e.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Desde
-                </label>
-                <input
-                  type="date"
-                  value={filters.from}
-                  onChange={(e) => setFilters({ ...filters, from: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+                  onChange={(v) => setFilters({ ...filters, employeeId: v })}
+                  placeholder="Todos"
+                  clearable
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Hasta
-                </label>
-                <input
-                  type="date"
-                  value={filters.to}
-                  onChange={(e) => setFilters({ ...filters, to: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                />
-              </div>
+              {/* El rango se guarda como '' cuando se vacía, igual que hacía el
+                  <input type="date">. */}
+              <DatePicker
+                label="Desde"
+                value={filters.from || null}
+                onChange={(v) => setFilters({ ...filters, from: v ?? '' })}
+              />
+              <DatePicker
+                label="Hasta"
+                value={filters.to || null}
+                onChange={(v) => setFilters({ ...filters, to: v ?? '' })}
+              />
               <div className="text-xs text-slate-500">
                 <span className="font-bold text-slate-700 dark:text-slate-300">
                   {allEntries.length}

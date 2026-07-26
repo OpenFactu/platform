@@ -3,7 +3,7 @@ import type { Task } from '../domain/task';
 import type { Employee } from '../domain/employee';
 import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api/internalOrdersApi';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Card, Button, Input, useToast, cn } from '@openfactu/ui';
+import { Card, Button, Input, useToast, cn, Tabs, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { CalendarRange, ChevronLeft, ChevronRight, GanttChart, Plus, X } from 'lucide-react';
@@ -43,6 +43,12 @@ function addDays(d: Date, n: number): Date {
 }
 
 type View = 'week' | 'month';
+
+// Amplitud del calendario. Lo que cambia es la vista completa, no un filtro.
+const VIEW_TABS = [
+  { key: 'week', label: 'Semana' },
+  { key: 'month', label: 'Mes' },
+];
 
 export const Gantt: React.FC = () => {
   const { token, user } = useAuth();
@@ -91,6 +97,21 @@ export const Gantt: React.FC = () => {
     if (user?.tenantId) fetchAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.tenantId, cursor.getTime(), view, filterProject]);
+
+  // Opciones de los desplegables de maestros (vienen del servidor).
+  const projectOptions = useMemo(
+    () => projects.map((p) => ({ value: p.id, label: p.name, secondaryLabel: p.code })),
+    [projects],
+  );
+  const employeeOptions = useMemo(
+    () =>
+      employees.map((e) => ({
+        value: e.id,
+        label: `${e.firstName} ${e.lastName}`,
+        secondaryLabel: e.code,
+      })),
+    [employees],
+  );
 
   const navigate = (dir: -1 | 1) => {
     const next = new Date(cursor);
@@ -210,34 +231,23 @@ export const Gantt: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <select
+          {/* Maestro del servidor → SearchableSelect; el vacío es válido
+              («todos los proyectos») → clearable. */}
+          <SearchableSelect
+            options={projectOptions}
             value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value)}
-            className="h-8 px-2 rounded-xs border border-line dark:border-ink-700 bg-white dark:bg-ink-800 text-xs font-medium text-ink-900 dark:text-slate-100 focus:outline-none focus:border-accent"
-          >
-            <option value="">Todos los proyectos</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.code} — {p.name}
-              </option>
-            ))}
-          </select>
-          <div className="inline-flex rounded-xs border border-line dark:border-ink-700 overflow-hidden h-8">
-            {(['week', 'month'] as View[]).map((v) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                className={cn(
-                  'px-3 text-xs font-bold transition-colors',
-                  view === v
-                    ? 'bg-accent text-white'
-                    : 'bg-white dark:bg-ink-800 text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700',
-                )}
-              >
-                {v === 'week' ? 'Semana' : 'Mes'}
-              </button>
-            ))}
-          </div>
+            onChange={(v) => setFilterProject(v)}
+            placeholder="Todos los proyectos"
+            clearable
+            className="w-56"
+          />
+          <Tabs
+            items={VIEW_TABS}
+            value={view}
+            onChange={(k) => setView(k as View)}
+            variant="segmented"
+            size="sm"
+          />
           <Button size="sm" variant="secondary" onClick={() => navigate(-1)} title="Anterior">
             <ChevronLeft size={14} />
           </Button>
@@ -351,7 +361,9 @@ export const Gantt: React.FC = () => {
                   toast.success('Tarea creada · arrástrala a un día para programarla');
                 } catch (err) {
                   toast.error(
-                    err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'No se pudo crear',
+                    err instanceof ApiError
+                      ? ((err.body as any)?.error ?? err.message)
+                      : 'No se pudo crear',
                   );
                 }
               }}
@@ -361,13 +373,15 @@ export const Gantt: React.FC = () => {
                 <h3 className="text-base font-bold text-ink-900 dark:text-slate-100">
                   Nueva tarea
                 </h3>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setQuickCreate(null)}
-                  className="p-1 rounded-xs text-ink-400 hover:text-ink-700 dark:hover:text-slate-200"
+                  title="Cerrar"
                 >
                   <X size={16} />
-                </button>
+                </Button>
               </div>
               <Input
                 label="Título"
@@ -377,21 +391,18 @@ export const Gantt: React.FC = () => {
                 required
               />
               <div>
+                {/* SearchableSelect no tiene prop `label` → se conserva el
+                    <label> suelto. El vacío es válido → clearable. */}
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
                   Asignada a (opcional)
                 </label>
-                <select
+                <SearchableSelect
+                  options={employeeOptions}
                   value={quickCreate.assigneeId}
-                  onChange={(e) => setQuickCreate({ ...quickCreate, assigneeId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xs border border-line dark:border-ink-700 bg-white dark:bg-ink-800 text-sm text-ink-900 dark:text-slate-100 focus:outline-none focus:border-accent"
-                >
-                  <option value="">— sin asignar —</option>
-                  {employees.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.firstName} {e.lastName}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setQuickCreate({ ...quickCreate, assigneeId: v })}
+                  placeholder="— sin asignar —"
+                  clearable
+                />
               </div>
               <p className="text-[11px] text-ink-500 dark:text-ink-400">
                 Se creará sin fechas. Arrástrala desde "Sin programar" a un día del calendario para

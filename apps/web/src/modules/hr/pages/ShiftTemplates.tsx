@@ -1,7 +1,7 @@
 import { shiftTemplatesApi } from '../api';
 import type { ShiftTemplate } from '../domain/shift';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast } from '@openfactu/ui';
+import { Table, Card, Button, Input, useToast, ColorInput } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Clock, Plus, Pencil, Trash2 } from 'lucide-react';
@@ -164,15 +164,12 @@ export const ShiftTemplates: React.FC = () => {
                   setEditing({ ...editing, breakMinutes: Number(e.target.value) || 0 })
                 }
               />
-              <div>
-                <label className="block text-sm mb-1">Color</label>
-                <input
-                  type="color"
-                  value={editing.color || '#6366F1'}
-                  onChange={(e) => setEditing({ ...editing, color: e.target.value })}
-                  className="w-full h-9 rounded border"
-                />
-              </div>
+              {/* ColorInput sí tiene prop `label` → el <label> suelto desaparece. */}
+              <ColorInput
+                label="Color"
+                value={editing.color || '#6366F1'}
+                onChange={(v) => setEditing({ ...editing, color: v })}
+              />
             </div>
 
             {/* Turno partido opcional */}

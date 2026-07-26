@@ -1,7 +1,7 @@
 import { collectiveAgreementsApi } from '../api';
 import type { CollectiveAgreement as Agreement } from '../domain/collectiveAgreement';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import { Card, Button, Input, useToast, usePopup } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
@@ -26,6 +26,7 @@ export const CollectiveAgreements: React.FC = () => {
   const [editing, setEditing] = useState<Partial<Agreement> | null>(null);
   const [loading, setLoading] = useState(true);
   const toast = useToast();
+  const popup = usePopup();
   const headers = useMemo(
     () => ({ Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' }),
     [token, user?.tenantId],
@@ -66,7 +67,13 @@ export const CollectiveAgreements: React.FC = () => {
   };
 
   const remove = async (a: Agreement) => {
-    if (!confirm(`¿Borrar convenio ${a.code}?`)) return;
+    const ok = await popup.confirm({
+      title: 'Borrar convenio',
+      message: `¿Borrar convenio ${a.code}?`,
+      tone: 'danger',
+      confirmLabel: 'Borrar',
+    });
+    if (!ok) return;
     await collectiveAgreementsApi.remove(a.id);
     fetchAll();
   };
@@ -195,15 +202,24 @@ export const CollectiveAgreements: React.FC = () => {
                 </td>
                 <td className="p-3 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setEditing(r)}
-                      className="text-slate-500 hover:text-indigo-600"
+                      title="Editar"
                     >
                       <Pencil size={16} />
-                    </button>
-                    <button onClick={() => remove(r)} className="text-slate-400 hover:text-red-500">
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => remove(r)}
+                      title="Borrar"
+                    >
                       <Trash2 size={16} />
-                    </button>
+                    </Button>
                   </div>
                 </td>
               </tr>

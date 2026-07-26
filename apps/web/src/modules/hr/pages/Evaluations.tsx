@@ -2,7 +2,18 @@ import { evaluationsApi, employeesApi } from '../api';
 import type { EvaluationCycle as Cycle, Competency, Evaluation } from '../domain/evaluation';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Badge,
+  useToast,
+  Select,
+  SearchableSelect,
+  NumberInput,
+  DatePicker,
+  Tabs,
+} from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ClipboardCheck, Plus, Pencil, Trash2, X, Save, CheckCircle } from 'lucide-react';
@@ -26,6 +37,37 @@ const STATUS_LABEL: Record<string, string> = {
   manager_done: 'Evaluado',
 };
 
+// Estados que puede tener un ciclo: las etiquetas se reutilizan de STATUS_LABEL
+// en lugar de repetirlas en el desplegable.
+const CYCLE_STATUS_OPTIONS = (['draft', 'active', 'closed'] as const).map((value) => ({
+  value,
+  label: STATUS_LABEL[value],
+}));
+
+const TABS = [
+  { key: 'cycles', label: 'Ciclos' },
+  { key: 'competencies', label: 'Competencias' },
+];
+
+/**
+ * `weight` se mantiene numérico en el formulario (es lo que emite NumberInput);
+ * el servidor lo guarda como decimal en texto, así que se convierte al abrir y
+ * al guardar.
+ *
+ * Los campos se enumeran a mano en lugar de derivarlos con
+ * `Omit<Partial<Competency>, 'weight'>`: `Competency` tiene un índice
+ * `[key: string]: unknown`, y `Omit` sobre un tipo con índice descarta todas las
+ * propiedades con nombre, dejándolas en `unknown`.
+ */
+type CompetencyForm = {
+  id?: string;
+  code?: string;
+  name?: string;
+  weight: number | null;
+  scaleMax?: number;
+  isActive?: boolean;
+};
+
 export const Evaluations: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
@@ -38,12 +80,18 @@ export const Evaluations: React.FC = () => {
   const [competencies, setCompetencies] = useState<Competency[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [editingCycle, setEditingCycle] = useState<Partial<Cycle> | null>(null);
-  const [editingComp, setEditingComp] = useState<Partial<Competency> | null>(null);
+  const [editingComp, setEditingComp] = useState<CompetencyForm | null>(null);
   const [openCycle, setOpenCycle] = useState<Cycle | null>(null);
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [scoreEditing, setScoreEditing] = useState<{ evaluationId: string; emp: any } | null>(null);
+  // `null` = puntuación sin rellenar (el servidor ya lo guarda como NULL).
   const [scores, setScores] = useState<
-    Array<{ competencyId: string; scoreSelf?: number; scoreManager?: number; comments?: string }>
+    Array<{
+      competencyId: string;
+      scoreSelf?: number | null;
+      scoreManager?: number | null;
+      comments?: string;
+    }>
   >([]);
 
   const fetchAll = async () => {
@@ -59,6 +107,19 @@ export const Evaluations: React.FC = () => {
   useEffect(() => {
     if (user?.tenantId) fetchAll();
   }, [user?.tenantId]);
+
+  // Empleados activos que aún no están en el ciclo abierto.
+  const addableEmployeeOptions = useMemo(
+    () =>
+      employees
+        .filter((e) => e.status === 'active' && !evaluations.some((ev) => ev.employeeId === e.id))
+        .map((e) => ({
+          value: e.id,
+          label: `${e.firstName} ${e.lastName}`,
+          secondaryLabel: e.code,
+        })),
+    [employees, evaluations],
+  );
 
   const fetchEvaluations = async (cycleId: string) => {
     const d = await evaluationsApi.listByCycle(cycleId);
@@ -93,7 +154,11 @@ export const Evaluations: React.FC = () => {
       return;
     }
     try {
-      await evaluationsApi.saveCompetency(editingComp.id, editingComp);
+      // El peso viaja como decimal en texto; el formulario lo mantiene numérico.
+      await evaluationsApi.saveCompetency(editingComp.id, {
+        ...editingComp,
+        weight: String(editingComp.weight ?? 1),
+      });
       setEditingComp(null);
       fetchAll();
     } catch (err) {
@@ -117,10 +182,12 @@ export const Evaluations: React.FC = () => {
         .filter((c) => c.isActive)
         .map((c) => {
           const s: any = map.get(c.id);
+          // `!= null` y no truthy: un 0 es una puntuación válida y con el
+          // check anterior se perdía al reabrir la evaluación.
           return {
             competencyId: c.id,
-            scoreSelf: s?.scoreSelf ? Number(s.scoreSelf) : undefined,
-            scoreManager: s?.scoreManager ? Number(s.scoreManager) : undefined,
+            scoreSelf: s?.scoreSelf != null ? Number(s.scoreSelf) : null,
+            scoreManager: s?.scoreManager != null ? Number(s.scoreManager) : null,
             comments: s?.comments || '',
           };
         }),
@@ -167,26 +234,13 @@ export const Evaluations: React.FC = () => {
             puntuación final como Σ(score × peso) / Σpeso.
           </p>
         </div>
-        <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <button
-            onClick={() => setTab('cycles')}
-            className={
-              'px-3 py-1.5 text-sm font-bold ' +
-              (tab === 'cycles' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-900')
-            }
-          >
-            Ciclos
-          </button>
-          <button
-            onClick={() => setTab('competencies')}
-            className={
-              'px-3 py-1.5 text-sm font-bold ' +
-              (tab === 'competencies' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-900')
-            }
-          >
-            Competencias
-          </button>
-        </div>
+        {/* Lo que cambia es la vista completa, no un filtro → Tabs. */}
+        <Tabs
+          items={TABS}
+          value={tab}
+          onChange={(k) => setTab(k as 'cycles' | 'competencies')}
+          variant="segmented"
+        />
       </div>
 
       {tab === 'cycles' && !openCycle && (
@@ -205,36 +259,26 @@ export const Evaluations: React.FC = () => {
                   onChange={(e) => setEditingCycle({ ...editingCycle, name: e.target.value })}
                   required
                 />
-                <Input
+                {/* El `required` de los <input type="date"> era redundante:
+                    saveCycle ya avisa si falta nombre o fechas. */}
+                <DatePicker
                   label="Inicio"
-                  type="date"
-                  value={editingCycle.startDate || ''}
-                  onChange={(e) => setEditingCycle({ ...editingCycle, startDate: e.target.value })}
-                  required
+                  value={editingCycle.startDate || null}
+                  onChange={(v) => setEditingCycle({ ...editingCycle, startDate: v ?? '' })}
                 />
-                <Input
+                <DatePicker
                   label="Fin"
-                  type="date"
-                  value={editingCycle.endDate || ''}
-                  onChange={(e) => setEditingCycle({ ...editingCycle, endDate: e.target.value })}
-                  required
+                  value={editingCycle.endDate || null}
+                  onChange={(v) => setEditingCycle({ ...editingCycle, endDate: v ?? '' })}
                 />
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Estado
-                  </label>
-                  <select
-                    value={editingCycle.status || 'draft'}
-                    onChange={(e) =>
-                      setEditingCycle({ ...editingCycle, status: e.target.value as any })
-                    }
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                  >
-                    <option value="draft">Borrador</option>
-                    <option value="active">Activo</option>
-                    <option value="closed">Cerrado</option>
-                  </select>
-                </div>
+                <Select
+                  label="Estado"
+                  options={CYCLE_STATUS_OPTIONS}
+                  value={editingCycle.status || 'draft'}
+                  onChange={(v) =>
+                    setEditingCycle({ ...editingCycle, status: v as Cycle['status'] })
+                  }
+                />
                 <div className="md:col-span-4 flex justify-end gap-2">
                   <Button type="button" variant="secondary" onClick={() => setEditingCycle(null)}>
                     Cancelar
@@ -276,12 +320,15 @@ export const Evaluations: React.FC = () => {
                         >
                           Abrir
                         </Button>
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setEditingCycle(c)}
-                          className="text-slate-500 hover:text-indigo-600"
+                          title="Editar"
                         >
                           <Pencil size={16} />
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -310,28 +357,16 @@ export const Evaluations: React.FC = () => {
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                 Añadir empleado al ciclo
               </label>
-              <select
-                onChange={(e) => {
-                  if (e.target.value) {
-                    addEvaluation(e.target.value);
-                    e.target.value = '';
-                  }
+              {/* Actúa como acción, no como campo: el valor vuelve siempre a
+                  vacío tras añadir al empleado. */}
+              <SearchableSelect
+                options={addableEmployeeOptions}
+                value=""
+                onChange={(v) => {
+                  if (v) addEvaluation(v);
                 }}
-                defaultValue=""
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-              >
-                <option value="">— elegir empleado —</option>
-                {employees
-                  .filter(
-                    (e) =>
-                      e.status === 'active' && !evaluations.some((ev) => ev.employeeId === e.id),
-                  )
-                  .map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.code} — {e.firstName} {e.lastName}
-                    </option>
-                  ))}
-              </select>
+                placeholder="— elegir empleado —"
+              />
             </div>
             <table className="w-full text-sm">
               <thead>
@@ -375,7 +410,7 @@ export const Evaluations: React.FC = () => {
           <div className="flex justify-end">
             <Button
               size="sm"
-              onClick={() => setEditingComp({ scaleMax: 5, isActive: true, weight: '1' })}
+              onClick={() => setEditingComp({ scaleMax: 5, isActive: true, weight: 1 })}
             >
               <Plus size={14} /> Nueva competencia
             </Button>
@@ -397,20 +432,18 @@ export const Evaluations: React.FC = () => {
                     required
                   />
                 </div>
-                <Input
+                <NumberInput
                   label="Peso"
-                  type="number"
-                  step="0.01"
-                  value={String(editingComp.weight ?? '1')}
-                  onChange={(e) => setEditingComp({ ...editingComp, weight: e.target.value })}
+                  value={editingComp.weight}
+                  onChange={(v) => setEditingComp({ ...editingComp, weight: v })}
+                  precision={2}
+                  min={0}
+                  emptyValue="zero"
                 />
-                <Input
+                <NumberInput
                   label="Escala (1..N)"
-                  type="number"
-                  value={String(editingComp.scaleMax ?? 5)}
-                  onChange={(e) =>
-                    setEditingComp({ ...editingComp, scaleMax: Number(e.target.value) })
-                  }
+                  value={editingComp.scaleMax ?? 5}
+                  onChange={(v) => setEditingComp({ ...editingComp, scaleMax: v ?? 5 })}
                 />
                 <div className="md:col-span-4 flex justify-end gap-2">
                   <Button type="button" variant="secondary" onClick={() => setEditingComp(null)}>
@@ -440,12 +473,15 @@ export const Evaluations: React.FC = () => {
                     <td className="p-3 text-right tabular-nums">{Number(c.weight).toFixed(2)}</td>
                     <td className="p-3 text-right tabular-nums">{c.scaleMax}</td>
                     <td className="p-3 text-right">
-                      <button
-                        onClick={() => setEditingComp(c)}
-                        className="text-slate-500 hover:text-indigo-600"
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingComp({ ...c, weight: Number(c.weight ?? 1) })}
+                        title="Editar competencia"
                       >
                         <Pencil size={16} />
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))}

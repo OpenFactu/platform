@@ -10,6 +10,13 @@ import { Timer, LogIn, LogOut, Coffee, RotateCcw, Delete, Check, AlertCircle } f
  * El kiosko se autentica con `x-kiosk-token` en cada llamada; no requiere
  * login del ERP. Esta ruta queda fuera del MainLayout (definida en
  * App.tsx).
+ *
+ * Excepción deliberada al barrido de @openfactu/ui: los `<button>` de esta
+ * pantalla son las teclas de un terminal táctil, no controles de formulario.
+ * Cada uno define su propio alto (h-16/h-20), su rejilla y su respuesta al
+ * toque (`active:scale-95`) sobre una superficie oscura fija que no usa los
+ * tokens del tema del tenant; `Button` no aporta nada aquí y habría que
+ * anularle todos los estilos.
  */
 export const KioskMode: React.FC = () => {
   const [pin, setPin] = useState('');
@@ -79,10 +86,14 @@ export const KioskMode: React.FC = () => {
       let d: any;
       let punchOk = true;
       try {
-        d = await apiClient.post('/api/hr/timeclock/kiosk/punch', { pin, kind }, {
-          auth: false,
-          headers: { 'x-kiosk-token': token, 'x-tenant-id': tenantId },
-        });
+        d = await apiClient.post(
+          '/api/hr/timeclock/kiosk/punch',
+          { pin, kind },
+          {
+            auth: false,
+            headers: { 'x-kiosk-token': token, 'x-tenant-id': tenantId },
+          },
+        );
       } catch (e) {
         if (e instanceof ApiError) {
           punchOk = false;

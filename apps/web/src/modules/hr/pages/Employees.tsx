@@ -1,7 +1,17 @@
 import { employeesApi, departmentsApi } from '../api';
 import type { Employee } from '../domain/employee';
-import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  useToast,
+  Badge,
+  usePopup,
+  Select,
+  SearchableSelect,
+} from '@openfactu/ui';
 import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +32,13 @@ const STATUS_LABELS: Record<string, string> = {
   leave: 'Baja',
   terminated: 'Baja definitiva',
 };
+
+// Estados del formulario: etiquetas propias (más explícitas que las del listado).
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Activo' },
+  { value: 'leave', label: 'Baja temporal' },
+  { value: 'terminated', label: 'Baja definitiva' },
+];
 
 export const Employees: React.FC = () => {
   const { token, user } = useAuth();
@@ -72,6 +89,20 @@ export const Employees: React.FC = () => {
   useEffect(() => {
     if (user?.tenantId) fetchAll();
   }, [user?.tenantId]);
+
+  // Opciones de los desplegables de maestros (vienen del servidor).
+  const departmentOptions = useMemo(
+    () => departments.map((d) => ({ value: d.id, label: d.name, secondaryLabel: d.code })),
+    [departments],
+  );
+  const costCenterOptions = useMemo(
+    () => costCenters.map((c) => ({ value: c.id, label: c.name, secondaryLabel: c.code })),
+    [costCenters],
+  );
+  const userOptions = useMemo(
+    () => usersAvailable.map((u) => ({ value: u.id, label: u.username, secondaryLabel: u.email })),
+    [usersAvailable],
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -278,70 +309,51 @@ export const Employees: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
+                {/* SearchableSelect no tiene prop `label` → se conserva el
+                    <label> suelto. El vacío es válido («sin asignar») →
+                    clearable. */}
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Departamento
                 </label>
-                <select
+                <SearchableSelect
+                  options={departmentOptions}
                   value={form.departmentId || ''}
-                  onChange={(e) => setForm({ ...form, departmentId: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">— sin asignar —</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.code} — {d.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, departmentId: v || null })}
+                  placeholder="— sin asignar —"
+                  clearable
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Centro de coste
                 </label>
-                <select
+                <SearchableSelect
+                  options={costCenterOptions}
                   value={form.costCenterId || ''}
-                  onChange={(e) => setForm({ ...form, costCenterId: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">— sin asignar —</option>
-                  {costCenters.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} — {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, costCenterId: v || null })}
+                  placeholder="— sin asignar —"
+                  clearable
+                />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Estado
-                </label>
-                <select
-                  value={form.status || 'active'}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="active">Activo</option>
-                  <option value="leave">Baja temporal</option>
-                  <option value="terminated">Baja definitiva</option>
-                </select>
-              </div>
+              {/* Tres opciones estáticas → Select, que sí tiene prop `label`. */}
+              <Select
+                label="Estado"
+                options={STATUS_OPTIONS}
+                value={form.status || 'active'}
+                onChange={(v) => setForm({ ...form, status: v as Employee['status'] })}
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Usuario asociado
               </label>
-              <select
+              <SearchableSelect
+                options={userOptions}
                 value={(form as any).userId || ''}
-                onChange={(e) => setForm({ ...form, userId: e.target.value || null } as any)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-              >
-                <option value="">— sin vincular (no podrá iniciar sesión) —</option>
-                {usersAvailable.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.username} · {u.email}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, userId: v || null } as any)}
+                placeholder="— sin vincular (no podrá iniciar sesión) —"
+                clearable
+              />
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Vincula este empleado a un usuario del sistema. Si el empleado es repartidor, crea
                 primero el usuario con rol <b>DRIVER</b> en Usuarios y selecciónalo aquí.

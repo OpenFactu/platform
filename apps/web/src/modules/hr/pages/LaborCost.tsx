@@ -1,10 +1,19 @@
 import { hrReportsApi } from '../api';
 import type { LaborCostRow as Row } from '../api/hrReportsApi';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button } from '@openfactu/ui';
+import { Card, Button, DatePicker, Select } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { PiggyBank, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
+
+// Dimensiones de agrupación, en un solo sitio: las `options` del desplegable se
+// derivan de aquí.
+const GROUP_BY_OPTIONS = [
+  { value: 'employee', label: 'Empleado' },
+  { value: 'department', label: 'Departamento' },
+  { value: 'costCenter', label: 'Centro de coste' },
+  { value: 'project', label: 'Proyecto' },
+];
 
 export const LaborCost: React.FC = () => {
   const { token, user } = useAuth();
@@ -82,43 +91,24 @@ export const LaborCost: React.FC = () => {
 
       <Card noPadding>
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Desde
-            </label>
-            <input
-              type="date"
-              value={filters.from}
-              onChange={(e) => setFilters({ ...filters, from: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Hasta
-            </label>
-            <input
-              type="date"
-              value={filters.to}
-              onChange={(e) => setFilters({ ...filters, to: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Agrupar por
-            </label>
-            <select
-              value={filters.groupBy}
-              onChange={(e) => setFilters({ ...filters, groupBy: e.target.value as any })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            >
-              <option value="employee">Empleado</option>
-              <option value="department">Departamento</option>
-              <option value="costCenter">Centro de coste</option>
-              <option value="project">Proyecto</option>
-            </select>
-          </div>
+          {/* El rango se guarda como '' cuando se vacía, igual que hacía el
+              <input type="date">. */}
+          <DatePicker
+            label="Desde"
+            value={filters.from || null}
+            onChange={(v) => setFilters({ ...filters, from: v ?? '' })}
+          />
+          <DatePicker
+            label="Hasta"
+            value={filters.to || null}
+            onChange={(v) => setFilters({ ...filters, to: v ?? '' })}
+          />
+          <Select
+            label="Agrupar por"
+            options={GROUP_BY_OPTIONS}
+            value={filters.groupBy}
+            onChange={(v) => setFilters({ ...filters, groupBy: v as typeof filters.groupBy })}
+          />
           <div className="text-xs text-slate-500">
             <span className="font-bold text-slate-700 dark:text-slate-300">{rows.length}</span>{' '}
             grupos

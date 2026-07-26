@@ -2,7 +2,16 @@ import { objectivesApi, employeesApi } from '../api';
 import type { Objective } from '../domain/evaluation';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Badge, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Badge,
+  useToast,
+  usePopup,
+  Select,
+  SearchableSelect,
+} from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Target, Plus, Pencil, Trash2 } from 'lucide-react';
@@ -21,6 +30,14 @@ const STATUS_LABEL: Record<string, string> = {
   missed: 'No alcanzado',
 };
 
+// Las etiquetas del desplegable se reutilizan de STATUS_LABEL en lugar de
+// repetirlas en el JSX.
+const STATUS_OPTIONS = (['pending', 'in_progress', 'achieved', 'missed'] as const).map((value) => ({
+  value,
+  label: STATUS_LABEL[value],
+}));
+const STATUS_FILTER_OPTIONS = [{ value: '', label: 'Todos' }, ...STATUS_OPTIONS];
+
 const empty = (): Partial<Objective> => ({
   title: '',
   description: '',
@@ -35,6 +52,7 @@ const empty = (): Partial<Objective> => ({
 export const Objectives: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<Objective[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [editing, setEditing] = useState<Partial<Objective> | null>(null);
@@ -59,6 +77,17 @@ export const Objectives: React.FC = () => {
     if (user?.tenantId) fetchAll();
   }, [user?.tenantId, filter.employeeId, filter.status]);
 
+  // Opciones del desplegable de empleados (viene del servidor).
+  const employeeOptions = useMemo(
+    () =>
+      employees.map((e) => ({
+        value: e.id,
+        label: `${e.firstName} ${e.lastName}`,
+        secondaryLabel: e.code,
+      })),
+    [employees],
+  );
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing?.title || !editing?.employeeId) {
@@ -80,7 +109,13 @@ export const Objectives: React.FC = () => {
   };
 
   const remove = async (o: Objective) => {
-    if (!confirm('¿Borrar objetivo?')) return;
+    const ok = await popup.confirm({
+      title: 'Borrar objetivo',
+      message: `¿Borrar el objetivo "${o.title}"?`,
+      tone: 'danger',
+      confirmLabel: 'Borrar',
+    });
+    if (!ok) return;
     await objectivesApi.remove(o.id);
     fetchAll();
   };
@@ -104,38 +139,25 @@ export const Objectives: React.FC = () => {
       <Card noPadding>
         <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
           <div>
+            {/* SearchableSelect no tiene prop `label` → se conserva el <label>
+                suelto. El vacío es válido («Todos») → clearable. */}
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
               Empleado
             </label>
-            <select
+            <SearchableSelect
+              options={employeeOptions}
               value={filter.employeeId}
-              onChange={(e) => setFilter({ ...filter, employeeId: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            >
-              <option value="">Todos</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.code} — {e.firstName} {e.lastName}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setFilter({ ...filter, employeeId: v })}
+              placeholder="Todos"
+              clearable
+            />
           </div>
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Estado
-            </label>
-            <select
-              value={filter.status}
-              onChange={(e) => setFilter({ ...filter, status: e.target.value })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            >
-              <option value="">Todos</option>
-              <option value="pending">Pendiente</option>
-              <option value="in_progress">En curso</option>
-              <option value="achieved">Conseguido</option>
-              <option value="missed">No alcanzado</option>
-            </select>
-          </div>
+          <Select
+            label="Estado"
+            options={STATUS_FILTER_OPTIONS}
+            value={filter.status}
+            onChange={(v) => setFilter({ ...filter, status: v })}
+          />
           <div className="text-xs text-slate-500">
             <span className="font-bold text-slate-700 dark:text-slate-300">{rows.length}</span>{' '}
             objetivos
@@ -147,22 +169,17 @@ export const Objectives: React.FC = () => {
         <Card noPadding>
           <form onSubmit={save} className="p-6 grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
+              {/* El `required` del <select> nativo se pierde al pasar a
+                  SearchableSelect, pero `save` ya avisa si falta el empleado. */}
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                 Empleado
               </label>
-              <select
+              <SearchableSelect
+                options={employeeOptions}
                 value={editing.employeeId || ''}
-                onChange={(e) => setEditing({ ...editing, employeeId: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                required
-              >
-                <option value="">— elegir —</option>
-                {employees.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.code} — {e.firstName} {e.lastName}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setEditing({ ...editing, employeeId: v })}
+                placeholder="— elegir —"
+              />
             </div>
             <div className="md:col-span-3">
               <Input
@@ -206,21 +223,12 @@ export const Objectives: React.FC = () => {
               value={(editing.dueDate || '').slice(0, 10)}
               onChange={(e) => setEditing({ ...editing, dueDate: e.target.value })}
             />
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                Estado
-              </label>
-              <select
-                value={editing.status || 'pending'}
-                onChange={(e) => setEditing({ ...editing, status: e.target.value as any })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-              >
-                <option value="pending">Pendiente</option>
-                <option value="in_progress">En curso</option>
-                <option value="achieved">Conseguido</option>
-                <option value="missed">No alcanzado</option>
-              </select>
-            </div>
+            <Select
+              label="Estado"
+              options={STATUS_OPTIONS}
+              value={editing.status || 'pending'}
+              onChange={(v) => setEditing({ ...editing, status: v as Objective['status'] })}
+            />
             <div className="md:col-span-4">
               <Input
                 label="Descripción"
@@ -284,18 +292,24 @@ export const Objectives: React.FC = () => {
                   <td className="p-3 text-xs text-slate-500">{r.dueDate?.slice(0, 10) || '—'}</td>
                   <td className="p-3 text-right">
                     <div className="flex justify-end gap-2">
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setEditing(r)}
-                        className="text-slate-500 hover:text-indigo-600"
+                        title="Editar"
                       >
                         <Pencil size={16} />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => remove(r)}
-                        className="text-slate-400 hover:text-red-500"
+                        title="Borrar"
                       >
                         <Trash2 size={16} />
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>

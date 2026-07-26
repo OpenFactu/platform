@@ -1,7 +1,6 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Search,
   Users,
   Package,
   FileStack,
@@ -11,8 +10,8 @@ import {
   UserRound,
   Briefcase,
   BookOpen,
-  X,
 } from 'lucide-react';
+import { SearchInput } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
 import { useTabs } from '../context/TabsContext';
 import { useFormat } from '../hooks/useFormat';
@@ -80,13 +79,10 @@ export const GlobalSearch: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Ctrl+K → focus
+  // El Ctrl+K lo gestiona el propio SearchInput (prop `shortcut`); aquí solo
+  // queda el Escape, que además cierra el desplegable de resultados.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
       if (e.key === 'Escape' && open) {
         setOpen(false);
         inputRef.current?.blur();
@@ -285,57 +281,36 @@ export const GlobalSearch: React.FC = () => {
 
   return (
     <div ref={wrapperRef} className="relative max-w-md w-full">
-      <div className="relative group">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search
-            size={16}
-            className="text-slate-400 dark:text-slate-500 group-focus-within:text-primary transition-colors"
-          />
-        </div>
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          placeholder="Buscar interlocutores, artículos o documentos (Ctrl+K)..."
-          className="block w-full pl-10 pr-9 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
-        />
-        {query && (
-          <button
-            onClick={() => {
-              setQuery('');
-              setResults(EMPTY);
-              inputRef.current?.focus();
-            }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 rounded"
-            aria-label="Limpiar"
-          >
-            <X size={14} />
-          </button>
-        )}
-      </div>
+      {/* SearchInput ya trae el icono, el botón de limpiar, el spinner de carga
+          y el atajo Ctrl+K (con su pista visible), que aquí estaban a mano. */}
+      <SearchInput
+        inputRef={inputRef}
+        value={query}
+        onChange={(v) => {
+          setQuery(v);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder="Buscar interlocutores, artículos o documentos…"
+        shortcut="mod+k"
+        showShortcutHint
+        clearable
+        onClear={() => setResults(EMPTY)}
+        loading={loading}
+      />
 
       {showDropdown && (
-        <div className="absolute left-0 right-0 mt-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden z-50 max-h-[70vh] overflow-y-auto">
+        <div className="absolute left-0 right-0 mt-2 bg-bg-card border border-border-default rounded-xl overflow-hidden z-50 max-h-[70vh] overflow-y-auto">
           {loading ? (
-            <div className="p-4 text-xs text-slate-500 dark:text-slate-400 text-center">
-              Buscando…
-            </div>
+            <div className="p-4 text-xs text-fg-muted text-center">Buscando…</div>
           ) : noResults ? (
-            <div className="p-4 text-xs text-slate-500 dark:text-slate-400 text-center italic">
+            <div className="p-4 text-xs text-fg-muted text-center italic">
               Sin resultados para "{query}"
             </div>
           ) : (
             sections.map((section) => (
-              <div
-                key={section.key}
-                className="border-b border-slate-100 dark:border-slate-800 last:border-0"
-              >
-                <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <div key={section.key} className="border-b border-border-subtle last:border-0">
+                <div className="px-3 py-1.5 bg-bg-muted text-[10px] font-black uppercase tracking-widest text-fg-muted flex items-center gap-2">
                   <section.icon size={11} />
                   {section.label}
                 </div>
@@ -352,12 +327,10 @@ export const GlobalSearch: React.FC = () => {
                         }}
                         className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors"
                       >
-                        <span className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
+                        <span className="text-sm font-bold text-fg-default truncate">
                           {item.primary}
                         </span>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                          {item.secondary}
-                        </span>
+                        <span className="text-[11px] text-fg-muted truncate">{item.secondary}</span>
                       </button>
                     </li>
                   ))}

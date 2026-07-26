@@ -7,7 +7,7 @@ import type {
 } from '../domain/shift';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import { Card, Button, Input, useToast, NumberInput, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import {
   Repeat,
@@ -228,16 +228,16 @@ export const ShiftPatterns: React.FC = () => {
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                 />
                 <div className="flex items-center gap-2">
+                  {/* La etiqueta va en línea, no encima, así que se mantiene el
+                      <label> suelto en lugar de la prop `label`. */}
                   <label className="text-sm">Semanas:</label>
-                  <input
-                    type="number"
+                  <NumberInput
+                    value={editing.cycleWeeks}
+                    onChange={(v) => setEditing({ ...editing, cycleWeeks: v ?? 1 })}
                     min={1}
                     max={12}
-                    value={editing.cycleWeeks}
-                    onChange={(e) =>
-                      setEditing({ ...editing, cycleWeeks: Number(e.target.value) || 1 })
-                    }
-                    className="w-16 px-2 py-1 rounded border"
+                    inputSize="sm"
+                    containerClassName="w-20"
                   />
                 </div>
                 <Button onClick={save}>
@@ -262,15 +262,20 @@ export const ShiftPatterns: React.FC = () => {
                   <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
                     Pincel:
                   </span>
+                  {/* Muestras de color: el relleno lo manda el color de la
+                      plantilla, así que el `style` inline se conserva sobre el
+                      Button. */}
                   {templates
                     .filter((t: any) => t.isActive)
                     .map((t: any) => (
-                      <button
+                      <Button
                         key={t.id}
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => setBrush(t.id)}
                         className={
-                          'px-2.5 py-1 rounded-md text-xs font-bold border-2 transition ' +
+                          'px-2.5 py-1 rounded-md text-xs font-bold border-2 ' +
                           (brush === t.id
                             ? 'ring-2 ring-indigo-300/50 border-indigo-500'
                             : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300')
@@ -282,20 +287,22 @@ export const ShiftPatterns: React.FC = () => {
                         title={`${t.name} · ${t.startTime}–${t.endTime}`}
                       >
                         {t.code}
-                      </button>
+                      </Button>
                     ))}
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setBrush('')}
                     className={
-                      'px-2.5 py-1 rounded-md text-xs font-bold border-2 transition ' +
+                      'px-2.5 py-1 rounded-md text-xs font-bold border-2 ' +
                       (!brush
                         ? 'border-slate-500 bg-slate-200 dark:bg-slate-700'
                         : 'border-dashed border-slate-300 hover:border-slate-400')
                     }
                   >
                     Borrar
-                  </button>
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button
@@ -352,35 +359,44 @@ export const ShiftPatterns: React.FC = () => {
                         <td className="border-b border-r border-slate-200 dark:border-slate-700 px-2 py-2 text-center text-slate-700 dark:text-slate-200">
                           <div className="font-black mb-1">{w + 1}</div>
                           <div className="flex items-center justify-center gap-1">
-                            <button
+                            {/* Micro-acciones dentro de la matriz: se mantiene el
+                                relleno reducido con className para no romper la
+                                densidad de la cuadrícula. */}
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="sm"
                               onClick={() =>
                                 brush
                                   ? fillRow(w, [1, 2, 3, 4, 5], brush)
                                   : toast.error('Elige pincel')
                               }
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 font-bold"
+                              className="text-[10px] px-1.5 py-0.5 font-bold"
                               title="Aplicar pincel a Lun-Vie de esta semana"
                             >
                               L-V
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="sm"
                               onClick={() => fillRow(w, [1, 2, 3, 4, 5, 6, 7], '')}
-                              className="text-[10px] p-1 rounded text-slate-400 hover:text-rose-500"
+                              className="text-[10px] p-1"
                               title="Vaciar esta semana"
                             >
                               <Eraser size={11} />
-                            </button>
+                            </Button>
                             {w > 0 && (
-                              <button
+                              <Button
                                 type="button"
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => copyWeek(w - 1, w)}
-                                className="text-[10px] p-1 rounded text-slate-400 hover:text-indigo-500"
+                                className="text-[10px] p-1"
                                 title={`Copiar semana ${w} aquí`}
                               >
                                 <Copy size={11} />
-                              </button>
+                              </Button>
                             )}
                           </div>
                         </td>
@@ -406,6 +422,12 @@ export const ShiftPatterns: React.FC = () => {
                                   : '')
                               }
                             >
+                              {/* Excepción deliberada: <select> nativo. La celda
+                                  es una superficie de pintado y su `onClick`
+                                  distingue el control por `tagName === 'SELECT'`;
+                                  además el relleno del control y de cada opción
+                                  es el color arbitrario de la plantilla, que
+                                  `Select` no puede expresar (no acepta `style`). */}
                               <select
                                 value={tplId}
                                 onChange={(e) => setSlot(w, d + 1, e.target.value)}
@@ -457,12 +479,15 @@ export const ShiftPatterns: React.FC = () => {
                             (offset {a.weekOffset} · desde {a.validFrom})
                           </span>
                         </span>
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => removeAssignment(a)}
-                          className="text-slate-400 hover:text-red-500"
+                          title="Quitar asignación"
                         >
                           <Trash2 size={14} />
-                        </button>
+                        </Button>
                       </li>
                     );
                   })}
@@ -519,28 +544,35 @@ const AssignmentForm: React.FC<{
 }> = ({ onAdd, employees, cycleWeeks }) => {
   const [employeeId, setEmployeeId] = useState('');
   const [validFrom, setValidFrom] = useState('');
-  const [weekOffset, setWeekOffset] = useState(0);
+  // `weekOffset` puede quedar vacío en el NumberInput → null; al añadir se
+  // normaliza a 0.
+  const [weekOffset, setWeekOffset] = useState<number | null>(0);
+  const employeeOptions = useMemo(
+    () =>
+      employees
+        .filter((e) => e.status === 'active')
+        .map((e) => ({
+          value: e.id,
+          label: `${e.firstName} ${e.lastName}`,
+          secondaryLabel: e.code,
+        })),
+    [employees],
+  );
   return (
     <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
       <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto_auto] gap-3 items-end">
         <div className="min-w-0">
+          {/* SearchableSelect no tiene prop `label` → se conserva el <label>
+              suelto. */}
           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
             Empleado
           </label>
-          <select
+          <SearchableSelect
+            options={employeeOptions}
             value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-          >
-            <option value="">— seleccionar —</option>
-            {employees
-              .filter((e) => e.status === 'active')
-              .map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.code} — {e.firstName} {e.lastName}
-                </option>
-              ))}
-          </select>
+            onChange={(v) => setEmployeeId(v)}
+            placeholder="— seleccionar —"
+          />
         </div>
         <Input
           label="Desde"
@@ -549,19 +581,19 @@ const AssignmentForm: React.FC<{
           onChange={(e) => setValidFrom(e.target.value)}
         />
         <div className="w-24">
-          <Input
+          <NumberInput
             label="Offset"
-            type="number"
+            value={weekOffset}
+            onChange={(v) => setWeekOffset(v)}
             min={0}
             max={cycleWeeks - 1}
-            value={weekOffset}
-            onChange={(e) => setWeekOffset(Number(e.target.value))}
+            emptyValue="zero"
           />
         </div>
         <Button
           onClick={() => {
             if (!employeeId || !validFrom) return;
-            onAdd(employeeId, validFrom, weekOffset);
+            onAdd(employeeId, validFrom, weekOffset ?? 0);
             setEmployeeId('');
             setValidFrom('');
             setWeekOffset(0);

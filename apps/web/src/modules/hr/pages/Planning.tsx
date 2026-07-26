@@ -1,9 +1,15 @@
-import { shiftAssignmentsApi, employeesApi, shiftTemplatesApi, incidentsApi, incidentTypesApi } from '../api';
+import {
+  shiftAssignmentsApi,
+  employeesApi,
+  shiftTemplatesApi,
+  incidentsApi,
+  incidentTypesApi,
+} from '../api';
 import type { ShiftAssignment, ShiftTemplate } from '../domain/shift';
 import type { Employee } from '../domain/employee';
 import type { Incident, IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import { Card, Button, Input, useToast, Tabs, Checkbox } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import {
   CalendarDays,
@@ -23,6 +29,12 @@ import {
 import { ApiError } from '@/shared/http';
 
 const DAY_LABEL = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+// Amplitud del calendario. Lo que cambia es la vista completa, no un filtro.
+const VIEW_TABS = [
+  { key: 'week', label: 'Semana' },
+  { key: 'month', label: 'Mes (5 sem)' },
+];
 
 function startOfWeek(d: Date): Date {
   const out = new Date(d);
@@ -359,30 +371,13 @@ export const Planning: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <button
-              onClick={() => setView('week')}
-              className={
-                'px-3 py-1.5 text-sm font-medium transition ' +
-                (view === 'week'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800')
-              }
-            >
-              Semana
-            </button>
-            <button
-              onClick={() => setView('month')}
-              className={
-                'px-3 py-1.5 text-sm font-medium transition ' +
-                (view === 'month'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800')
-              }
-            >
-              Mes (5 sem)
-            </button>
-          </div>
+          <Tabs
+            items={VIEW_TABS}
+            value={view}
+            onChange={(k) => setView(k as 'week' | 'month')}
+            variant="segmented"
+            size="sm"
+          />
           <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
             <ChevronLeft size={16} />
           </Button>
@@ -565,6 +560,10 @@ export const Planning: React.FC = () => {
                             <Plus size={14} />
                           </div>
                         ) : (
+                          // Excepción deliberada: no es un control, es la zona
+                          // de acción de la celda del calendario (ocupa el ancho
+                          // completo, se revela en hover y el `onClick` del <td>
+                          // la localiza con `closest('[data-add-split]')`).
                           <button
                             data-add-split
                             onClick={(ev) => {
@@ -662,9 +661,15 @@ export const Planning: React.FC = () => {
                     })}
                   </p>
                 </div>
-                <button onClick={() => setModal(null)} className="text-slate-400">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setModal(null)}
+                  title="Cerrar"
+                >
                   <X size={20} />
-                </button>
+                </Button>
               </div>
 
               <div>
@@ -672,14 +677,20 @@ export const Planning: React.FC = () => {
                   Plantilla
                 </label>
                 <div className="flex flex-wrap gap-2">
+                  {/* Muestras de color: el relleno lo manda el color de la
+                      plantilla, así que el `style` inline se conserva sobre el
+                      Button. */}
                   {templates
                     .filter((t: any) => t.isActive)
                     .map((t: any) => (
-                      <button
+                      <Button
                         key={t.id}
+                        type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => onPickTemplate(t.id)}
                         className={
-                          'px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ' +
+                          'px-3 py-1.5 rounded-lg text-xs font-bold border-2 ' +
                           (form.shiftTemplateId === t.id
                             ? 'border-indigo-500 ring-2 ring-indigo-300/50'
                             : 'border-slate-200 dark:border-slate-700 hover:border-slate-300')
@@ -691,19 +702,22 @@ export const Planning: React.FC = () => {
                         }}
                       >
                         {t.code} · {t.startTime}–{t.endTime}
-                      </button>
+                      </Button>
                     ))}
-                  <button
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setForm((f) => ({ ...f, shiftTemplateId: '' }))}
                     className={
-                      'px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ' +
+                      'px-3 py-1.5 rounded-lg text-xs font-bold border-2 ' +
                       (!form.shiftTemplateId
                         ? 'border-slate-500 bg-slate-100 dark:bg-slate-700'
                         : 'border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400')
                     }
                   >
                     Personalizado
-                  </button>
+                  </Button>
                   {templates.length === 0 && (
                     <p className="text-xs text-slate-400 italic">
                       No hay plantillas. Crea una en Plantillas de turno.
@@ -750,12 +764,12 @@ export const Planning: React.FC = () => {
               {/* Tramo 2 (sólo en creación) */}
               {modal.kind === 'create' && (
                 <div className="rounded-lg border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/40 dark:bg-amber-500/5 p-3">
+                  {/* Campo del formulario (se persiste al crear) → Checkbox, que
+                      no tiene prop `label`: se conserva el <label> envolvente. */}
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={form.secondEnabled}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
+                      onChange={(checked) => {
                         const date = modal.date;
                         const tpl: any = form.shiftTemplateId ? tplMap[form.shiftTemplateId] : null;
                         const defS = tpl?.secondStartTime || form.endAt.slice(11, 16) || '16:00';

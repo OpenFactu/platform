@@ -1,7 +1,7 @@
 import { incidentTypesApi } from '../api';
 import type { IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import { Table, Card, Button, Input, useToast, Badge, usePopup, Checkbox } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { AlertOctagon, Plus, Pencil, Trash2 } from 'lucide-react';
@@ -144,11 +144,11 @@ export const IncidentTypes: React.FC = () => {
                 ['paid', 'Retribuido'],
                 ['isActive', 'Activo'],
               ].map(([k, lbl]) => (
+                // Checkbox no tiene prop `label` → se conserva el <label> envolvente.
                 <label key={k} className="flex items-center gap-2 select-none">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={Boolean((editing as any)[k])}
-                    onChange={(e) => setEditing({ ...editing, [k]: e.target.checked })}
+                    onChange={(checked) => setEditing({ ...editing, [k]: checked })}
                   />
                   {lbl}
                 </label>

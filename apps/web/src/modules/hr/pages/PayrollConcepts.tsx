@@ -1,7 +1,17 @@
 import { payrollConceptsApi } from '../api';
 import type { PayrollConcept as Concept } from '../domain/payroll';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  useToast,
+  Badge,
+  usePopup,
+  Select,
+  Checkbox,
+} from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ListChecks, Plus, Pencil, Trash2, Wand2 } from 'lucide-react';
@@ -22,6 +32,18 @@ const CALC_LABELS: Record<Concept['calculation'], string> = {
   percent_of_base: '% sobre base',
   per_hour: 'Por hora',
 };
+
+// Los desplegables del formulario usan el nombre largo del tipo; KIND_LABELS es
+// la versión abreviada para el Badge del listado, así que no se reutiliza aquí.
+const KIND_OPTIONS = [
+  { value: 'devengo', label: 'Devengo' },
+  { value: 'deduccion', label: 'Deducción' },
+  { value: 'aportacion_empresa', label: 'Aportación empresa' },
+];
+const CALC_OPTIONS = (['fixed', 'percent_of_base', 'per_hour'] as const).map((value) => ({
+  value,
+  label: CALC_LABELS[value],
+}));
 
 const empty = (): Partial<Concept> => ({
   code: '',
@@ -192,36 +214,23 @@ export const PayrollConcepts: React.FC = () => {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Tipo
-                </label>
-                <select
-                  value={editing.kind}
-                  onChange={(e) => setEditing({ ...editing, kind: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="devengo">Devengo</option>
-                  <option value="deduccion">Deducción</option>
-                  <option value="aportacion_empresa">Aportación empresa</option>
-                </select>
-              </div>
+              {/* Listas estáticas y cortas → Select, que sí tiene prop `label`. */}
+              <Select
+                label="Tipo"
+                options={KIND_OPTIONS}
+                value={editing.kind || 'devengo'}
+                onChange={(v) => setEditing({ ...editing, kind: v as Concept['kind'] })}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Cálculo
-                </label>
-                <select
-                  value={editing.calculation}
-                  onChange={(e) => setEditing({ ...editing, calculation: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="fixed">Fijo</option>
-                  <option value="percent_of_base">% sobre base</option>
-                  <option value="per_hour">Por hora</option>
-                </select>
-              </div>
+              <Select
+                label="Cálculo"
+                options={CALC_OPTIONS}
+                value={editing.calculation || 'fixed'}
+                onChange={(v) =>
+                  setEditing({ ...editing, calculation: v as Concept['calculation'] })
+                }
+              />
               <Input
                 type="number"
                 step="0.01"
@@ -236,20 +245,20 @@ export const PayrollConcepts: React.FC = () => {
                 value={editing.defaultPercent ?? ''}
                 onChange={(e) => setEditing({ ...editing, defaultPercent: e.target.value || null })}
               />
+              {/* Campos de formulario (se persisten al guardar) → Checkbox, que
+                  no tiene prop `label`: se conserva el <label> envolvente. */}
               <div className="flex items-end gap-3 pb-2">
                 <label className="text-sm flex items-center gap-2 select-none">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={!!editing.taxableIrpf}
-                    onChange={(e) => setEditing({ ...editing, taxableIrpf: e.target.checked })}
+                    onChange={(checked) => setEditing({ ...editing, taxableIrpf: checked })}
                   />
                   Sujeto a IRPF
                 </label>
                 <label className="text-sm flex items-center gap-2 select-none">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={!!editing.taxableSs}
-                    onChange={(e) => setEditing({ ...editing, taxableSs: e.target.checked })}
+                    onChange={(checked) => setEditing({ ...editing, taxableSs: checked })}
                   />
                   Sujeto a SS
                 </label>
@@ -257,10 +266,9 @@ export const PayrollConcepts: React.FC = () => {
             </div>
             <div className="flex items-center gap-3">
               <label className="text-sm flex items-center gap-2 select-none">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={editing.isActive ?? true}
-                  onChange={(e) => setEditing({ ...editing, isActive: e.target.checked })}
+                  onChange={(checked) => setEditing({ ...editing, isActive: checked })}
                 />
                 Activo
               </label>

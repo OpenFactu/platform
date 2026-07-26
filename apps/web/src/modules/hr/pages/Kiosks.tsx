@@ -1,7 +1,7 @@
 import { kiosksApi } from '../api';
 import type { Kiosk } from '../domain/kiosk';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import { Card, Button, Input, useToast, usePopup } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import {
   Tablet,
@@ -20,6 +20,7 @@ export const Kiosks: React.FC = () => {
   const [editing, setEditing] = useState<Partial<Kiosk> | null>(null);
   const [loading, setLoading] = useState(true);
   const toast = useToast();
+  const popup = usePopup();
   const headers = useMemo(
     () => ({ Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' }),
     [token, user?.tenantId],
@@ -56,13 +57,25 @@ export const Kiosks: React.FC = () => {
   };
 
   const regenerate = async (k: Kiosk) => {
-    if (!confirm('¿Regenerar token? El kiosko deberá ser configurado de nuevo.')) return;
+    const ok = await popup.confirm({
+      title: 'Regenerar token',
+      message: '¿Regenerar token? El kiosko deberá ser configurado de nuevo.',
+      tone: 'danger',
+      confirmLabel: 'Regenerar',
+    });
+    if (!ok) return;
     await kiosksApi.regenerateToken(k.id);
     fetchAll();
   };
 
   const remove = async (k: Kiosk) => {
-    if (!confirm(`Eliminar kiosko "${k.name}"?`)) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar kiosko',
+      message: `¿Eliminar el kiosko "${k.name}"?`,
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     await kiosksApi.remove(k.id);
     fetchAll();
   };
@@ -154,46 +167,56 @@ export const Kiosks: React.FC = () => {
                 <td className="p-3 font-mono text-xs">
                   <div className="flex items-center gap-2">
                     {k.token.slice(0, 8)}…
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => copy(k.token)}
-                      className="text-slate-400 hover:text-indigo-500"
                       title="Copiar token completo"
                     >
                       <Copy size={14} />
-                    </button>
+                    </Button>
                   </div>
                 </td>
                 <td className="p-3">{k.isActive ? 'Sí' : 'No'}</td>
                 <td className="p-3 text-right">
                   <div className="flex items-center justify-end gap-3">
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => copyLink(k)}
-                      className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 font-medium"
                       title="Copiar enlace al portapapeles"
                     >
                       <LinkIcon size={14} /> Copiar enlace
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => openKiosk(k)}
-                      className="text-slate-500 hover:text-emerald-600"
                       title="Abrir kiosko en nueva pestaña"
                     >
                       <ExternalLink size={14} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => regenerate(k)}
-                      className="text-slate-500 hover:text-amber-500"
                       title="Regenerar token"
                     >
                       <RefreshCw size={14} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => remove(k)}
-                      className="text-slate-400 hover:text-red-500"
                       title="Eliminar"
                     >
                       <Trash2 size={14} />
-                    </button>
+                    </Button>
                   </div>
                 </td>
               </tr>
