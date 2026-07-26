@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
+import { Card, Button, Input, Loader, useToast, Badge, useContextMenu } from '@openfactu/ui';
+import type { ContextMenuItem } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Hash, Plus, Trash2, ArrowRightLeft, Save, X, Settings2, Pencil } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { uomApi } from '../api';
 import type { Uom as UomEntity } from '../domain/uom';
 
@@ -75,8 +74,8 @@ export const Uom: React.FC = () => {
     }
   };
 
-  const ctxMenu = useContextMenu<any>();
-  const buildCtxItems = (u: any) => [
+  const { contextMenu, openContextMenu } = useContextMenu();
+  const buildCtxItems = (u: any): ContextMenuItem[] => [
     {
       label: 'Editar',
       icon: <Pencil size={14} />,
@@ -184,7 +183,13 @@ export const Uom: React.FC = () => {
             {uoms.map((u) => (
               <tr
                 key={u.id}
-                onContextMenu={(e) => ctxMenu.open(e, u)}
+                onContextMenu={(e) => {
+                  // openContextMenu solo hace preventDefault: mantenemos el
+                  // stopPropagation que traía el hook local para no disparar
+                  // menús de contenedores superiores.
+                  e.stopPropagation();
+                  openContextMenu(e, buildCtxItems(u));
+                }}
                 className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group"
               >
                 <td className="px-6 py-4">
@@ -324,14 +329,7 @@ export const Uom: React.FC = () => {
           </tbody>
         </table>
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
+      {contextMenu}
     </div>
   );
 };

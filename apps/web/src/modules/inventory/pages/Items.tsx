@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, useToast } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import StockDetailModal from '../components/StockDetailModal';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { Package, Plus, Search, Settings2, Boxes, Tag, Copy, Trash2 } from 'lucide-react';
+import { Package, Plus, Search, Settings2, Boxes, Tag, Copy } from 'lucide-react';
 import { usePluginListColumns } from '@/components/plugin-fields';
 import { LabelPrintButton } from '@/modules/document-templates/components/LabelPrintButton';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { BarcodeScanButton } from '@/components/scanner/BarcodeScanButton';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { ItemCreateWizard } from '../components/ItemCreateWizard';
 import { categoriesApi, itemsApi, uomApi, warehousesApi, zonesApi } from '../api';
 import type { Category } from '../domain/category';
@@ -31,10 +29,6 @@ export const Items: React.FC = () => {
     user?.role === 'SUPERUSER' ||
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.write;
-  const canDelete =
-    user?.role === 'SUPERUSER' ||
-    user?.role === 'ADMIN' ||
-    user?.permissions?.[location.pathname]?.delete;
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [uoms, setUoms] = useState<Uom[]>([]);
@@ -206,51 +200,38 @@ export const Items: React.FC = () => {
       ),
     },
     {
-      header: 'Acciones',
+      // La impresión de etiquetas es un componente con su propio modal, no un
+      // simple onClick, así que no cabe en `rowActions` y se queda en su
+      // columna. El resto de acciones de la antigua columna "Acciones" viven
+      // ahora en el menú de fila.
+      header: '',
+      id: 'label',
       align: 'right' as const,
       accessor: (i: any) => (
         <div className="flex items-center justify-end gap-1">
-          <button
-            onClick={() => handleViewStock(i)}
-            title="Ver Inventario"
-            className="p-2 text-slate-300 dark:text-slate-600 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-all"
-          >
-            <Boxes size={14} />
-          </button>
           <LabelPrintButton
             params={{ itemId: i.id }}
             title="Imprimir etiqueta del artículo"
             className="p-2 text-slate-300 dark:text-slate-600 hover:text-purple-600 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all"
             triggerLabel={<Tag size={14} />}
           />
-          <button
-            onClick={() => openDetail(i)}
-            title="Abrir ficha"
-            className="p-2 text-slate-300 dark:text-slate-600 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all"
-          >
-            <Settings2 size={14} />
-          </button>
-          <button
-            disabled={!canDelete}
-            className={`p-2 transition-colors rounded-lg ${canDelete ? 'text-slate-200 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10' : 'text-slate-100 cursor-not-allowed grayscale'}`}
-          >
-            <Trash2 size={14} />
-          </button>
         </div>
       ),
     },
   ];
 
   // Columnas extra aportadas por campos personalizados. Se insertan ANTES
-  // de la última columna del core (Acciones) para que Acciones quede a la
+  // de la última columna del core (etiquetas) para que esa quede a la
   // derecha del todo.
   const pluginCols = usePluginListColumns('Item');
-  const actionsCol = columns[columns.length - 1];
+  const labelCol = columns[columns.length - 1];
   const restCols = columns.slice(0, -1);
-  const allColumns = [...restCols, ...pluginCols, actionsCol];
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(allColumns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (i: any) => [
+  const allColumns = [...restCols, ...pluginCols, labelCol];
+
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que los permisos se declaran
+  // una vez en lugar de duplicarse entre una columna de botones y el menú.
+  const rowActions = (i: any): RowAction[] => [
     { label: 'Ver Inventario', icon: <Boxes size={14} />, onClick: () => handleViewStock(i) },
     {
       label: 'Abrir ficha',
@@ -344,15 +325,12 @@ export const Items: React.FC = () => {
               </Button>
             }
           >
-            <Table columns={ctxColumns} data={filteredItems} isLoading={loading} />
-            {ctxMenu.state && (
-              <ContextMenu
-                x={ctxMenu.state.x}
-                y={ctxMenu.state.y}
-                items={buildCtxItems(ctxMenu.state.data)}
-                onClose={ctxMenu.close}
-              />
-            )}
+            <Table
+              columns={allColumns}
+              data={filteredItems}
+              isLoading={loading}
+              rowActions={rowActions}
+            />
           </Card>
         </div>
       </div>

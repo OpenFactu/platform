@@ -12,6 +12,7 @@ import {
   SearchableSelect,
   cn,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
@@ -38,9 +39,6 @@ import { MobileLineCards } from '../components/MobileLineCards';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
@@ -226,35 +224,15 @@ const InvoiceList: React.FC<{
         <PaymentStatusBadge status={item.paymentStatus} isLocked={item.isLocked} compact />
       ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (item: any) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleQuickPdf(item.id);
-          }}
-          isLoading={downloadingId === item.id}
-          className="h-8 w-8 p-0 text-ink-500 dark:text-ink-400 hover:text-accent hover:bg-accent/10 dark:hover:bg-accent/15"
-          title="Descargar PDF"
-        >
-          <Download size={14} />
-        </Button>
-      ),
-    },
   ];
 
   const pluginCols = usePluginListColumns('SalesInvoice', { fmt });
-  const actionsCol = columns[columns.length - 1];
-  const restCols = columns.slice(0, -1);
-  const allColumns = [...restCols, ...pluginCols, actionsCol];
+  const allColumns = [...columns, ...pluginCols];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(allColumns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (item: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que no hay que duplicarlas
+  // entre una columna de botones y el menú contextual.
+  const rowActions = (item: any): RowAction[] => [
     { label: 'Ver Factura', icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: 'Descargar PDF',
@@ -386,9 +364,10 @@ const InvoiceList: React.FC<{
           />
         ) : (
           <Table
-            columns={ctxColumns}
+            columns={allColumns}
             data={filteredData || []}
             isLoading={loading}
+            rowActions={rowActions}
             onRowClick={onDetail}
             selectable
             selectedKeys={selectedKeys}
@@ -396,14 +375,6 @@ const InvoiceList: React.FC<{
           />
         )}
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

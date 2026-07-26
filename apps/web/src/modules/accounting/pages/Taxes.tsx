@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
+import { Card, Button, Input, Loader, useToast, Badge, useContextMenu } from '@openfactu/ui';
+import type { ContextMenuItem } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Percent, Plus, Trash2, Edit3, Save, X, Info } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { taxesApi } from '../api';
 import type { Tax } from '../domain/accounting';
 
@@ -82,8 +81,8 @@ export const Taxes: React.FC = () => {
     }
   };
 
-  const ctxMenu = useContextMenu<Tax>();
-  const buildCtxItems = (t: Tax) => [
+  const { contextMenu, openContextMenu } = useContextMenu();
+  const buildCtxItems = (t: Tax): ContextMenuItem[] => [
     {
       label: 'Editar',
       icon: <Edit3 size={14} />,
@@ -190,7 +189,7 @@ export const Taxes: React.FC = () => {
             {taxes.map((t) => (
               <tr
                 key={t.id}
-                onContextMenu={(e) => ctxMenu.open(e, t)}
+                onContextMenu={(e) => openContextMenu(e, buildCtxItems(t))}
                 className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group"
               >
                 <td className="p-6">
@@ -309,14 +308,7 @@ export const Taxes: React.FC = () => {
           </tbody>
         </table>
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
+      {contextMenu}
     </div>
   );
 };

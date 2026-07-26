@@ -2,19 +2,19 @@ import { packagesApi, platformsApi, stagingAreasApi } from '../api';
 import { itemsApi, warehousesApi } from '@/modules/inventory/api';
 import { partnersApi } from '@/modules/partners/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Modal, Loader, Badge, useToast } from '@openfactu/ui';
+import { Card, Button, Input, Modal, Loader, Badge, useToast, DropdownMenu } from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import {
   Plus,
   Trash2,
   QrCode,
   Edit2,
+  MoreVertical,
   Package as PackageIcon,
   Boxes,
   Printer,
   Tag,
 } from 'lucide-react';
-import { RowActionsMenu } from '../components/RowActionsMenu';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
 import type { Platform } from '../domain/platform';
@@ -494,8 +494,9 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                   </button>
 
                   {/* Resto — kebab, no rompe en móvil. */}
-                  <RowActionsMenu
-                    actions={[
+                  <DropdownMenu
+                    align="end"
+                    items={[
                       {
                         label: 'Artículos esperados',
                         icon: <PackageIcon size={14} />,
@@ -524,7 +525,15 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                         destructive: true,
                       },
                     ]}
-                  />
+                  >
+                    <button
+                      type="button"
+                      className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded shrink-0"
+                      title="Más acciones"
+                    >
+                      <MoreVertical size={13} />
+                    </button>
+                  </DropdownMenu>
                 </li>
               );
             })}

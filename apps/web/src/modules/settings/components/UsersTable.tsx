@@ -1,9 +1,6 @@
 import React from 'react';
-import { Table, Badge, type TableColumn } from '@openfactu/ui';
+import { Table, Badge, type TableColumn, type RowAction } from '@openfactu/ui';
 import { Building2, Edit2, Trash2 } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -105,35 +102,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         return <span className="text-xs text-rose-400 font-bold">Sin asignar</span>;
       },
     },
-    {
-      header: 'Acciones',
-      align: 'right',
-      cell: (u) => (
-        <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={() => onEdit(u)}
-            disabled={!canWrite}
-            className="p-2 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all disabled:opacity-30"
-          >
-            <Edit2 size={15} />
-          </button>
-          {u.role !== 'SUPERUSER' && (
-            <button
-              onClick={() => canDelete && onDelete(u.id)}
-              disabled={!canDelete}
-              className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-all disabled:opacity-30"
-            >
-              <Trash2 size={15} />
-            </button>
-          )}
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<UserRow>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (u: UserRow) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que los permisos se declaran
+  // una vez en lugar de duplicarse entre una columna de botones y el menú.
+  const rowActions = (u: UserRow): RowAction[] => [
     { label: 'Editar', icon: <Edit2 size={14} />, disabled: !canWrite, onClick: () => onEdit(u) },
     ...(u.role !== 'SUPERUSER'
       ? [
@@ -149,22 +123,13 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   ];
 
   return (
-    <>
-      <Table
-        columns={ctxColumns}
-        data={users}
-        isLoading={loading}
-        emptyMessage="No hay usuarios registrados."
-        rowKey={(u: UserRow) => u.id}
-      />
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
-    </>
+    <Table
+      columns={columns}
+      data={users}
+      isLoading={loading}
+      emptyMessage="No hay usuarios registrados."
+      rowKey={(u: UserRow) => u.id}
+      rowActions={rowActions}
+    />
   );
 };

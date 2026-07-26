@@ -10,13 +10,11 @@ import {
   FilterBar,
   SearchableSelect,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useDataTable } from '@openfactu/common';
 import { useLocation } from 'react-router-dom';
 import { FileDigit, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { seriesApi } from '../api';
 import { crudApi } from '@/shared/api';
 import { useDocTypes } from '../domain/docTypeRegistry';
@@ -204,24 +202,12 @@ export const DocumentSeries: React.FC = () => {
           </Badge>
         ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (c: any) => (
-        <button
-          onClick={() => canDelete && handleDelete(c.id)}
-          disabled={!canDelete}
-          className={`transition-colors ${canDelete ? 'text-slate-400 dark:text-slate-500 hover:text-red-500' : 'text-slate-100 cursor-not-allowed grayscale'}`}
-        >
-          <Trash2 size={16} />
-        </button>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (c: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que el permiso se declara una
+  // vez en lugar de duplicarse entre una columna de botones y el menú.
+  const rowActions = (c: any): RowAction[] => [
     {
       label: 'Eliminar',
       icon: <Trash2 size={14} />,
@@ -390,16 +376,8 @@ export const DocumentSeries: React.FC = () => {
             },
           ]}
         />
-        <Table columns={ctxColumns} data={filteredData} isLoading={loading} />
+        <Table columns={columns} data={filteredData} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

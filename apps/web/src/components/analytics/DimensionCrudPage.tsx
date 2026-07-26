@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Plus, Trash2, Pencil } from 'lucide-react';
 import { PluginFieldsPanel } from '../PluginFieldsPanel';
-import { ContextMenu } from '../common/ContextMenu';
-import { withRowContextMenu } from '../common/withRowContextMenu';
-import { useContextMenu } from '../../hooks/useContextMenu';
 import { crudApi } from '@/shared/api';
 
 interface DimensionRow {
@@ -164,40 +162,18 @@ export const DimensionCrudPage: React.FC<Props> = ({
           <Badge variant="neutral">Inactivo</Badge>
         ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: DimensionRow) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              openEdit(r);
-            }}
-            disabled={!canWrite}
-            className={`transition-colors ${canWrite ? 'text-slate-500 hover:text-blue-600' : 'text-slate-300 cursor-not-allowed'}`}
-          >
-            <Pencil size={16} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (canDelete) handleDelete(r.id);
-            }}
-            disabled={!canDelete}
-            className={`transition-colors ${canDelete ? 'text-slate-400 hover:text-red-500' : 'text-slate-200 cursor-not-allowed'}`}
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<DimensionRow>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: DimensionRow) => [
-    { label: 'Editar', icon: <Pencil size={14} />, disabled: !canWrite, onClick: () => openEdit(r) },
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que los permisos se declaran
+  // una vez en lugar de duplicarse entre una columna de botones y el menú.
+  const rowActions = (r: DimensionRow): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => openEdit(r),
+    },
     {
       label: 'Eliminar',
       icon: <Trash2 size={14} />,
@@ -302,20 +278,13 @@ export const DimensionCrudPage: React.FC<Props> = ({
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
         <Table
-          columns={ctxColumns}
+          columns={columns}
           data={rows}
           isLoading={loading}
+          rowActions={rowActions}
           onRowClick={(r: any) => openEdit(r)}
         />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

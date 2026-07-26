@@ -4,12 +4,9 @@ import type { Employee } from '../domain/employee';
 import type { IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { AlertTriangle, Plus, UserCheck, X, Check, Ban } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { ApiError } from '@/shared/http';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -125,52 +122,12 @@ export const Incidents: React.FC = () => {
         <Badge variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</Badge>
       ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: Incident) => {
-        const t = typeMap[r.incidentTypeId];
-        return (
-          <div className="flex items-center justify-end gap-2">
-            {r.status === 'pending' && (
-              <>
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => setStatus(r, 'approved')}
-                  title="Aprobar"
-                >
-                  <Check size={14} /> Aprobar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => setStatus(r, 'rejected')}
-                  title="Rechazar"
-                >
-                  <Ban size={14} /> Rechazar
-                </Button>
-              </>
-            )}
-            {r.status === 'approved' && t?.requiresSubstitution && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => openSubstitute(r)}
-                title="Asignar sustituto"
-              >
-                <UserCheck size={14} /> Sustituto
-              </Button>
-            )}
-          </div>
-        );
-      },
-    },
   ];
 
-  const ctxMenu = useContextMenu<Incident>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: Incident) => {
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // (pendiente / aprobada) se declaran una vez en lugar de duplicarse.
+  const rowActions = (r: Incident): RowAction[] => {
     const t = typeMap[r.incidentTypeId];
     return [
       ...(r.status === 'pending'
@@ -286,16 +243,8 @@ export const Incidents: React.FC = () => {
       )}
 
       <Card noPadding>
-        <Table columns={ctxColumns} data={rows} isLoading={loading} />
+        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
 
       {substituting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

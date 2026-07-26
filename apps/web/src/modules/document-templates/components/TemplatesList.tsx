@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Badge, Loader, useToast } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import {
   FileCode,
   Plus,
@@ -21,9 +22,6 @@ import {
   type TemplateRow,
 } from './constants';
 import { useAuth } from '@/context/AuthContext';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { templatesApi } from '../api';
 
 interface Props {
@@ -120,69 +118,13 @@ export const TemplatesList: React.FC<Props> = ({
       accessor: (item: TemplateRow) =>
         item.updatedAt ? new Date(item.updatedAt).toLocaleString('es-ES') : '—',
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (item: TemplateRow) => (
-        <div className="flex items-center justify-end gap-1">
-          {(item.docType === 'FREE' || item.docType === 'LABEL') && onGenerate && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e: any) => {
-                e.stopPropagation();
-                onGenerate(item);
-              }}
-              title="Generar documento"
-              className="text-blue-600 hover:text-blue-700"
-            >
-              <FileDown size={14} />
-            </Button>
-          )}
-          {!item.isDefault && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e: any) => {
-                e.stopPropagation();
-                onSetDefault(item);
-              }}
-              title="Marcar como default"
-            >
-              <Star size={14} />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e: any) => {
-              e.stopPropagation();
-              onDuplicate(item);
-            }}
-            title="Duplicar"
-          >
-            <Copy size={14} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e: any) => {
-              e.stopPropagation();
-              onDelete(item);
-            }}
-            title="Borrar"
-            className="text-rose-500 hover:text-rose-700"
-          >
-            <Trash2 size={14} />
-          </Button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<TemplateRow>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (item: TemplateRow) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que los condicionales de cada
+  // acción se declaran una vez en lugar de duplicarse entre una columna de
+  // botones y el menú.
+  const rowActions = (item: TemplateRow): RowAction[] => [
     { label: 'Editar', icon: <Pencil size={14} />, onClick: () => onEdit(item) },
     ...(onGenerate && (item.docType === 'FREE' || item.docType === 'LABEL')
       ? [
@@ -325,18 +267,10 @@ export const TemplatesList: React.FC<Props> = ({
                 <AlertCircle size={14} /> Sin plantillas para este tipo
               </div>
             ) : (
-              <Table columns={ctxColumns} data={rows} onRowClick={onEdit} />
+              <Table columns={columns} data={rows} rowActions={rowActions} onRowClick={onEdit} />
             )}
           </Card>
         </div>
-      )}
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
       )}
     </div>
   );

@@ -12,6 +12,7 @@ import {
   SearchableSelect,
   Checkbox,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import {
   Users,
   Plus,
@@ -28,9 +29,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useGeo, type GeoRow } from '@/hooks/useGeo';
 import { TaxIdInput } from '@/components/geo/TaxIdInput';
 import { PostalCodeInput } from '@/components/geo/PostalCodeInput';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { PhoneInput } from '@/components/geo/PhoneInput';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 import { usePluginListColumns } from '@/components/plugin-fields';
@@ -386,9 +384,7 @@ export const Partners: React.FC = () => {
       setIsModalOpen(false);
       fetchPartners();
     } catch (err) {
-      toast.error(
-        err instanceof Error ? `Error: ${err.message}` : 'Error de red al guardar socio',
-      );
+      toast.error(err instanceof Error ? `Error: ${err.message}` : 'Error de red al guardar socio');
     }
   };
 
@@ -428,23 +424,21 @@ export const Partners: React.FC = () => {
       header: 'Direcciones',
       cell: (p: any) => <Badge variant="info">{p.addresses?.length || 0}</Badge>,
     },
-    {
-      header: '',
-      cell: (p: any) => (
-        <Button variant="secondary" size="sm" onClick={() => openModal(p)} disabled={!canWrite}>
-          <Edit2 size={14} />
-        </Button>
-      ),
-    },
   ];
 
   const pluginCols = usePluginListColumns('BusinessPartner');
-  const actionsCol = columns[columns.length - 1];
-  const allColumns = [...columns.slice(0, -1), ...pluginCols, actionsCol];
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(allColumns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (p: any) => [
-    { label: 'Editar', icon: <Edit2 size={14} />, disabled: !canWrite, onClick: () => openModal(p) },
+  const allColumns = [...columns, ...pluginCols];
+
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que el permiso de escritura se
+  // declara una vez en lugar de duplicarse entre una columna de botones y el menú.
+  const rowActions = (p: any): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Edit2 size={14} />,
+      disabled: !canWrite,
+      onClick: () => openModal(p),
+    },
   ];
 
   const countryOptions = countries.map((c) => ({
@@ -474,16 +468,8 @@ export const Partners: React.FC = () => {
       </div>
 
       <Card className="overflow-hidden" noPadding>
-        <Table columns={ctxColumns} data={partners} isLoading={loading} />
+        <Table columns={allColumns} data={partners} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
 
       <Modal
         isOpen={isModalOpen}

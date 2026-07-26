@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
+import { Card, Button, Input, Loader, useToast, Badge, useContextMenu } from '@openfactu/ui';
+import type { ContextMenuItem } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Network, Plus, Trash2, Save, X, UserCheck, ShoppingBag, Pencil } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { partnerGroupsApi } from '../api';
 
 export const PartnerGroups: React.FC = () => {
@@ -82,8 +81,8 @@ export const PartnerGroups: React.FC = () => {
     }
   };
 
-  const ctxMenu = useContextMenu<any>();
-  const buildCtxItems = (g: any) => [
+  const { contextMenu, openContextMenu } = useContextMenu();
+  const buildCtxItems = (g: any): ContextMenuItem[] => [
     {
       label: 'Editar',
       icon: <Pencil size={14} />,
@@ -201,7 +200,13 @@ export const PartnerGroups: React.FC = () => {
             {groups.map((g) => (
               <tr
                 key={g.id}
-                onContextMenu={(e) => ctxMenu.open(e, g)}
+                onContextMenu={(e) => {
+                  // openContextMenu sólo hace preventDefault; el stopPropagation
+                  // lo hacía el hook local y hay que conservarlo para no abrir
+                  // también un menú de un contenedor padre.
+                  e.stopPropagation();
+                  openContextMenu(e, buildCtxItems(g));
+                }}
                 className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group"
               >
                 <td className="px-6 py-4">
@@ -354,14 +359,7 @@ export const PartnerGroups: React.FC = () => {
           </tbody>
         </table>
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
+      {contextMenu}
     </div>
   );
 };

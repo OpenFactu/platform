@@ -2,7 +2,8 @@ import { priceListsApi, type PriceList, type PriceListEntry } from '../api';
 import { itemsApi } from '@/modules/inventory/api';
 import type { Item } from '@/modules/inventory/domain/item';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
+import { Card, Button, Input, Loader, useToast, Badge, useContextMenu } from '@openfactu/ui';
+import type { ContextMenuItem } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -18,8 +19,6 @@ import {
   TrendingDown,
   Pencil,
 } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 
 export const PriceLists: React.FC = () => {
   const { user } = useAuth();
@@ -144,8 +143,8 @@ export const PriceLists: React.FC = () => {
     }
   };
 
-  const ctxMenu = useContextMenu<any>();
-  const buildCtxItems = (l: any) => [
+  const { contextMenu, openContextMenu } = useContextMenu();
+  const buildCtxItems = (l: any): ContextMenuItem[] => [
     {
       label: 'Editar',
       icon: <Pencil size={14} />,
@@ -241,7 +240,12 @@ export const PriceLists: React.FC = () => {
                       setSelectedList(l);
                       fetchPrices(l.id);
                     }}
-                    onContextMenu={(e) => ctxMenu.open(e, l)}
+                    onContextMenu={(e) => {
+                      // El hook del paquete solo hace preventDefault; el
+                      // stopPropagation lo mantenemos como antes.
+                      e.stopPropagation();
+                      openContextMenu(e, buildCtxItems(l));
+                    }}
                     className={`cursor-pointer transition-all group border-l-2 ${selectedList?.id === l.id ? 'bg-slate-100 dark:bg-slate-800 border-l-primary' : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
                   >
                     <td className="px-6 py-3">
@@ -367,7 +371,10 @@ export const PriceLists: React.FC = () => {
                     {filteredItems.map((item) => {
                       const itemPrice = prices.find((p) => p.itemId === item.id);
                       const diff = itemPrice
-                        ? (parseFloat(String(itemPrice.price)) / parseFloat(String(item.basePrice)) - 1) * 100
+                        ? (parseFloat(String(itemPrice.price)) /
+                            parseFloat(String(item.basePrice)) -
+                            1) *
+                          100
                         : 0;
                       return (
                         <tr
@@ -473,14 +480,7 @@ export const PriceLists: React.FC = () => {
           )}
         </div>
       </div>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
+      {contextMenu}
     </div>
   );
 };

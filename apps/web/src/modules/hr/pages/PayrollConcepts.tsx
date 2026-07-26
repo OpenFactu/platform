@@ -2,11 +2,9 @@ import { payrollConceptsApi } from '../api';
 import type { PayrollConcept as Concept } from '../domain/payroll';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ListChecks, Plus, Pencil, Trash2, Wand2 } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { ApiError } from '@/shared/http';
 
 const KIND_LABELS: Record<Concept['kind'], string> = {
@@ -78,7 +76,9 @@ export const PayrollConcepts: React.FC = () => {
       setEditing(null);
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error al guardar');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error al guardar',
+      );
     }
   };
 
@@ -118,33 +118,12 @@ export const PayrollConcepts: React.FC = () => {
       header: 'Activo',
       cell: (r: Concept) => (r.isActive ? 'Sí' : 'No'),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: Concept) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => setEditing(r)}
-            className="text-slate-500 hover:text-indigo-600"
-            title="Editar"
-          >
-            <Pencil size={16} />
-          </button>
-          <button
-            onClick={() => remove(r)}
-            className="text-slate-400 hover:text-red-500"
-            title="Eliminar"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<Concept>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: Concept) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que no hace falta duplicarlas
+  // en una columna de botones.
+  const rowActions = (r: Concept): RowAction[] => [
     { label: 'Editar', icon: <Pencil size={14} />, onClick: () => setEditing(r) },
     {
       label: 'Eliminar',
@@ -180,7 +159,9 @@ export const PayrollConcepts: React.FC = () => {
                 }
                 fetchAll();
               } catch (err) {
-                toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+                toast.error(
+                  err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error',
+                );
               }
             }}
             title="Crea de un click los conceptos típicos: salario base, pluses, IRPF, SS empleado y SS empresa"
@@ -295,16 +276,8 @@ export const PayrollConcepts: React.FC = () => {
       )}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={ctxColumns} data={rows} isLoading={loading} />
+        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

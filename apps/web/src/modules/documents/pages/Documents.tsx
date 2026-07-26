@@ -11,10 +11,8 @@ import {
   FilterBar,
   SearchableSelect,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { Plus, ArrowLeft, Save, Download, Eye } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import {
   useDocument,
   useDataTable,
@@ -151,42 +149,12 @@ const DocumentList: React.FC<{
         return <Badge variant={props.variant}>{props.label}</Badge>;
       },
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (item: any) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickPdf(item.id);
-            }}
-            isLoading={downloadingId === item.id}
-            className="h-8 w-8 p-0"
-            title="PDF"
-          >
-            <Download size={14} />
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDetail(item);
-            }}
-          >
-            Ver
-          </Button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (item: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que no hay que duplicarlas
+  // entre una columna de botones y el menú contextual.
+  const rowActions = (item: any): RowAction[] => [
     { label: 'Ver', icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: 'Descargar PDF',
@@ -267,21 +235,14 @@ const DocumentList: React.FC<{
         />
       ) : (
         <Table
-          columns={ctxColumns}
+          columns={columns}
           data={filteredData || []}
           isLoading={loading}
+          rowActions={rowActions}
           onRowClick={onDetail}
           selectable
           selectedKeys={selectedKeys}
           onSelectionChange={setSelectedKeys}
-        />
-      )}
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
         />
       )}
     </div>

@@ -36,24 +36,48 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { Band, BandKind, CanvasElement, CanvasLayout, createDocumentLabelLayout, createEmptyLayout, createLabelLayout, ElementKind, ElementStyle, LinesTableColumn, LinesTableElement, PAGE_SIZE_LABELS, ParamDef, PageSize, resolvePageDimensions } from '../components/canvas/types';
+import {
+  Band,
+  BandKind,
+  CanvasElement,
+  CanvasLayout,
+  createDocumentLabelLayout,
+  createEmptyLayout,
+  createLabelLayout,
+  ElementKind,
+  ElementStyle,
+  LinesTableColumn,
+  LinesTableElement,
+  PAGE_SIZE_LABELS,
+  ParamDef,
+  PageSize,
+  resolvePageDimensions,
+} from '../components/canvas/types';
 import { useAuth } from '@/context/AuthContext';
 import { TemplateRow } from '../components/constants';
-import { buildSimpleLabelLayout, defaultSimpleArticleSettings } from '../components/canvas/buildSimpleLabel';
+import {
+  buildSimpleLabelLayout,
+  defaultSimpleArticleSettings,
+} from '../components/canvas/buildSimpleLabel';
 import { compileCanvas } from '../components/canvas/compileCanvas';
 import { usePluginFields } from '../components/canvas/usePluginFields';
 import { useQueryFields } from '../components/canvas/useQueryFields';
-import { ContextMenu, ContextMenuItem } from '@/components/common/ContextMenu';
+// El menú del canvas se queda con ContextMenu a pelo (no con rowActions de
+// Table): es el único sitio de la app que usa `submenu`, que RowAction no tiene.
+import { ContextMenu, type ContextMenuItem } from '@openfactu/ui';
 import { CssEditorModal } from '../components/canvas/CssEditorModal';
 import { ImportFromTemplateDialog } from '../components/canvas/ImportFromTemplateDialog';
 import { SimpleLabelEditor } from '../components/SimpleLabelEditor';
-import { FieldDef, FieldGroup, getFieldGroupsForFieldElement, getLineFieldGroup, inferDefaultFormat } from '../components/canvas/fieldRegistry';
+import {
+  FieldDef,
+  FieldGroup,
+  getFieldGroupsForFieldElement,
+  getLineFieldGroup,
+  inferDefaultFormat,
+} from '../components/canvas/fieldRegistry';
 import { extractPlaceholders } from '../components/canvas/params';
 import { SqlEditorModal } from '../components/SqlEditorModal';
 import { templatesApi } from '../api';
-
-
-
 
 const BAND_LABELS: Record<BandKind, string> = {
   pageHeader: 'Cabecera de página',
@@ -583,8 +607,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
                       ? ({
                           ...e,
                           // Si la columna viene de una query, enganchamos la tabla a esa fuente.
-                          source:
-                            desc.lineSource ?? (e as LinesTableElement).source,
+                          source: desc.lineSource ?? (e as LinesTableElement).source,
                           columns: [...(e as LinesTableElement).columns, newCol],
                         } as LinesTableElement)
                       : e,
@@ -730,7 +753,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(url);
     } catch (e) {
-      toast.error(`Preview falló: ${(e instanceof Error ? e.message : undefined)}`);
+      toast.error(`Preview falló: ${e instanceof Error ? e.message : undefined}`);
     } finally {
       setPreviewLoading(false);
     }
@@ -763,7 +786,9 @@ export const DocumentTemplateDesigner: React.FC = () => {
       setSelectedElementId(null);
       toast.success('Layout importado');
     } catch (e) {
-      toast.error(`No se pudo importar: ${(e instanceof Error ? e.message : undefined) || 'JSON inválido'}`);
+      toast.error(
+        `No se pudo importar: ${(e instanceof Error ? e.message : undefined) || 'JSON inválido'}`,
+      );
     }
   };
 
@@ -898,7 +923,9 @@ export const DocumentTemplateDesigner: React.FC = () => {
     if (yMm != null) clone.y = Math.max(0, Math.round(yMm));
     setLayout((prev) => ({
       ...prev,
-      bands: prev.bands.map((b) => (b.id === bandId ? { ...b, elements: [...b.elements, clone] } : b)),
+      bands: prev.bands.map((b) =>
+        b.id === bandId ? { ...b, elements: [...b.elements, clone] } : b,
+      ),
     }));
     setSelectedElementId(clone.id);
   };
@@ -930,10 +957,18 @@ export const DocumentTemplateDesigner: React.FC = () => {
 
   const handleAddElementToBand = (bandId: string, kind: ElementKind, xMm: number, yMm: number) => {
     const size = DEFAULT_SIZE[kind];
-    const newEl = buildDefaultElement(kind, Math.max(0, Math.round(xMm)), Math.max(0, Math.round(yMm)), size.w, size.h);
+    const newEl = buildDefaultElement(
+      kind,
+      Math.max(0, Math.round(xMm)),
+      Math.max(0, Math.round(yMm)),
+      size.w,
+      size.h,
+    );
     setLayout((prev) => ({
       ...prev,
-      bands: prev.bands.map((b) => (b.id === bandId ? { ...b, elements: [...b.elements, newEl] } : b)),
+      bands: prev.bands.map((b) =>
+        b.id === bandId ? { ...b, elements: [...b.elements, newEl] } : b,
+      ),
     }));
     setSelectedElementId(newEl.id);
   };
@@ -976,17 +1011,66 @@ export const DocumentTemplateDesigner: React.FC = () => {
       const hidden = !!el?.hidden;
       const canStyle = !!el && 'style' in el;
       return [
-        { label: 'Duplicar', icon: <Copy size={14} />, onClick: () => handleDuplicateElement(t.bandId, t.elementId) },
-        { label: 'Copiar', icon: <Copy size={14} />, onClick: () => handleCopyElement(t.elementId) },
-        { label: 'Pegar', icon: <ClipboardPaste size={14} />, disabled: !hasClip, onClick: () => handlePasteElement(t.bandId) },
-        { label: 'Copiar estilo', disabled: !canStyle, onClick: () => handleCopyStyle(t.elementId) },
-        { label: 'Pegar estilo', disabled: !hasStyleClip || !canStyle, onClick: () => handlePasteStyle(t.elementId) },
-        { label: 'Traer al frente', icon: <BringToFront size={14} />, separatorBefore: true, onClick: () => handleZOrder(t.bandId, t.elementId, 'front') },
-        { label: 'Enviar al fondo', icon: <SendToBack size={14} />, onClick: () => handleZOrder(t.bandId, t.elementId, 'back') },
-        { label: hidden ? 'Mostrar' : 'Ocultar', icon: hidden ? <Eye size={14} /> : <EyeOff size={14} />, separatorBefore: true, onClick: () => handleUpdateElement(t.elementId, { hidden: !hidden }) },
-        { label: locked ? 'Desbloquear' : 'Bloquear', icon: locked ? <Unlock size={14} /> : <Lock size={14} />, onClick: () => handleUpdateElement(t.elementId, { locked: !locked }) },
-        { label: 'Editar CSS', icon: <Code size={14} />, onClick: () => setCssElementId(t.elementId) },
-        { label: 'Eliminar', icon: <Trash2 size={14} />, destructive: true, separatorBefore: true, onClick: () => handleDeleteElement(t.bandId, t.elementId) },
+        {
+          label: 'Duplicar',
+          icon: <Copy size={14} />,
+          onClick: () => handleDuplicateElement(t.bandId, t.elementId),
+        },
+        {
+          label: 'Copiar',
+          icon: <Copy size={14} />,
+          onClick: () => handleCopyElement(t.elementId),
+        },
+        {
+          label: 'Pegar',
+          icon: <ClipboardPaste size={14} />,
+          disabled: !hasClip,
+          onClick: () => handlePasteElement(t.bandId),
+        },
+        {
+          label: 'Copiar estilo',
+          disabled: !canStyle,
+          onClick: () => handleCopyStyle(t.elementId),
+        },
+        {
+          label: 'Pegar estilo',
+          disabled: !hasStyleClip || !canStyle,
+          onClick: () => handlePasteStyle(t.elementId),
+        },
+        {
+          label: 'Traer al frente',
+          icon: <BringToFront size={14} />,
+          separatorBefore: true,
+          onClick: () => handleZOrder(t.bandId, t.elementId, 'front'),
+        },
+        {
+          label: 'Enviar al fondo',
+          icon: <SendToBack size={14} />,
+          onClick: () => handleZOrder(t.bandId, t.elementId, 'back'),
+        },
+        {
+          label: hidden ? 'Mostrar' : 'Ocultar',
+          icon: hidden ? <Eye size={14} /> : <EyeOff size={14} />,
+          separatorBefore: true,
+          onClick: () => handleUpdateElement(t.elementId, { hidden: !hidden }),
+        },
+        {
+          label: locked ? 'Desbloquear' : 'Bloquear',
+          icon: locked ? <Unlock size={14} /> : <Lock size={14} />,
+          onClick: () => handleUpdateElement(t.elementId, { locked: !locked }),
+        },
+        {
+          label: 'Editar CSS',
+          icon: <Code size={14} />,
+          onClick: () => setCssElementId(t.elementId),
+        },
+        {
+          label: 'Eliminar',
+          icon: <Trash2 size={14} />,
+          destructive: true,
+          separatorBefore: true,
+          onClick: () => handleDeleteElement(t.bandId, t.elementId),
+        },
       ];
     }
     if (t.scope === 'band') {
@@ -999,10 +1083,28 @@ export const DocumentTemplateDesigner: React.FC = () => {
             onClick: () => handleAddElementToBand(t.bandId, p.kind, t.xMm, t.yMm),
           })),
         },
-        { label: 'Pegar', icon: <ClipboardPaste size={14} />, disabled: !hasClip, onClick: () => handlePasteElement(t.bandId, t.xMm, t.yMm) },
-        { label: 'Ocultar banda', icon: <EyeOff size={14} />, separatorBefore: true, onClick: () => handleUpdateBand(t.bandId, { hidden: true }) },
-        { label: 'Subir banda', icon: <ChevronUp size={14} />, onClick: () => handleMoveBand(t.bandId, -1) },
-        { label: 'Bajar banda', icon: <ChevronDown size={14} />, onClick: () => handleMoveBand(t.bandId, 1) },
+        {
+          label: 'Pegar',
+          icon: <ClipboardPaste size={14} />,
+          disabled: !hasClip,
+          onClick: () => handlePasteElement(t.bandId, t.xMm, t.yMm),
+        },
+        {
+          label: 'Ocultar banda',
+          icon: <EyeOff size={14} />,
+          separatorBefore: true,
+          onClick: () => handleUpdateBand(t.bandId, { hidden: true }),
+        },
+        {
+          label: 'Subir banda',
+          icon: <ChevronUp size={14} />,
+          onClick: () => handleMoveBand(t.bandId, -1),
+        },
+        {
+          label: 'Bajar banda',
+          icon: <ChevronDown size={14} />,
+          onClick: () => handleMoveBand(t.bandId, 1),
+        },
         {
           label: 'Eliminar sección',
           icon: <Trash2 size={14} />,
@@ -1015,11 +1117,21 @@ export const DocumentTemplateDesigner: React.FC = () => {
     }
     // canvas vacío
     return [
-      { label: 'Pegar', icon: <ClipboardPaste size={14} />, disabled: !hasClip, onClick: () => {
-        const firstVisible = layout.bands.find((b) => !b.hidden);
-        if (firstVisible) handlePasteElement(firstVisible.id, 5, 5);
-      } },
-      { label: 'Editar CSS global', icon: <Code size={14} />, separatorBefore: true, onClick: () => setGlobalCssOpen(true) },
+      {
+        label: 'Pegar',
+        icon: <ClipboardPaste size={14} />,
+        disabled: !hasClip,
+        onClick: () => {
+          const firstVisible = layout.bands.find((b) => !b.hidden);
+          if (firstVisible) handlePasteElement(firstVisible.id, 5, 5);
+        },
+      },
+      {
+        label: 'Editar CSS global',
+        icon: <Code size={14} />,
+        separatorBefore: true,
+        onClick: () => setGlobalCssOpen(true),
+      },
     ];
   };
 
@@ -1218,9 +1330,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
             {activeDrag ? (
               <div
                 className={`px-2 py-1 rounded shadow-lg text-xs font-medium pointer-events-none ${
-                  activeDrag.kind === 'field'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-800 text-white'
+                  activeDrag.kind === 'field' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-white'
                 }`}
               >
                 {activeDrag.label}
@@ -1282,8 +1392,18 @@ const Toolbar: React.FC<ToolbarProps> = ({
     </button>
     <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">{title}</div>
     <div className="flex-1" />
-    <ToolbarButton icon={<Undo size={16} />} label="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={onUndo} />
-    <ToolbarButton icon={<Redo size={16} />} label="Rehacer (Ctrl+Y)" disabled={!canRedo} onClick={onRedo} />
+    <ToolbarButton
+      icon={<Undo size={16} />}
+      label="Deshacer (Ctrl+Z)"
+      disabled={!canUndo}
+      onClick={onUndo}
+    />
+    <ToolbarButton
+      icon={<Redo size={16} />}
+      label="Rehacer (Ctrl+Y)"
+      disabled={!canRedo}
+      onClick={onRedo}
+    />
     <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
     <button
       type="button"
@@ -1349,7 +1469,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
       }`}
       title="Autoguardado activado"
     >
-      {saveState === 'saving' ? 'Guardando…' : saveState === 'saved' ? '✓ Guardado' : '● Sin guardar'}
+      {saveState === 'saving'
+        ? 'Guardando…'
+        : saveState === 'saved'
+          ? '✓ Guardado'
+          : '● Sin guardar'}
     </span>
     <button
       onClick={onSave}
@@ -1453,7 +1577,8 @@ function guessColumnFormat(
   name: string,
 ): 'currency' | 'date' | 'number' | 'percent' | 'address' | undefined {
   const n = name.toLowerCase();
-  if (/(price|precio|total|amount|importe|subtotal|valor|coste|\bcost\b)/.test(n)) return 'currency';
+  if (/(price|precio|total|amount|importe|subtotal|valor|coste|\bcost\b)/.test(n))
+    return 'currency';
   if (/(date|fecha|expiry|caducidad|created|updated|vencimiento)/.test(n)) return 'date';
   if (/(qty|cantidad|quantity|stock|units|unidades|count|num|cant)/.test(n)) return 'number';
   return undefined;
@@ -1518,7 +1643,9 @@ function buildFieldDescriptors(args: {
     }
   }
   const baseLine = getLineFieldGroup();
-  const lineFields = baseLine ? [...baseLine.fields, ...args.linePluginFields] : args.linePluginFields;
+  const lineFields = baseLine
+    ? [...baseLine.fields, ...args.linePluginFields]
+    : args.linePluginFields;
   for (const f of lineFields) {
     out.push({
       key: `l-${f.path}`,
@@ -1549,7 +1676,9 @@ const FieldsPanel: React.FC<{ descriptors: FieldDescriptor[]; isFreeOrLabel: boo
   const groups = Array.from(new Set(filtered.map((d) => d.group)));
   return (
     <aside className="w-56 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
-      <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">Campos</div>
+      <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">
+        Campos
+      </div>
       <div className="px-2 pb-1">
         <input
           value={q}
@@ -2175,7 +2304,8 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
             style={{
               width: vertical ? 0 : '100%',
               height: vertical ? '100%' : 0,
-              [vertical ? 'borderLeft' : 'borderTop']: `${ds.borderWidth ?? 1}px ${ds.borderStyle && ds.borderStyle !== 'none' ? ds.borderStyle : 'solid'} ${ds.borderColor ?? '#94a3b8'}`,
+              [vertical ? 'borderLeft' : 'borderTop']:
+                `${ds.borderWidth ?? 1}px ${ds.borderStyle && ds.borderStyle !== 'none' ? ds.borderStyle : 'solid'} ${ds.borderColor ?? '#94a3b8'}`,
             }}
           />
         </div>
@@ -2199,7 +2329,7 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
       return (
         <div style={base} className="font-mono text-slate-700 dark:text-slate-300">
           {element.prefix}
-          {`Σ ${element.op}(${element.op === 'count' ? element.source ?? 'lines' : element.path ?? ''})`}
+          {`Σ ${element.op}(${element.op === 'count' ? (element.source ?? 'lines') : (element.path ?? '')})`}
           {element.suffix}
         </div>
       );
@@ -2300,198 +2430,203 @@ const PageInspector: React.FC<{
 }> = ({ layout, onUpdatePage, onUpdateBand, onAddBand, onDeleteBand, onMoveBand }) => {
   const [cssOpen, setCssOpen] = useState(false);
   return (
-  <div className="px-3 py-3 space-y-4 text-sm">
-    <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500">Página</div>
-    <Section title="Formato">
-      <Label>Tamaño</Label>
-      <select
-        value={layout.pageSize}
-        onChange={(e) => onUpdatePage({ pageSize: e.target.value as PageSize })}
-        className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-      >
-        <optgroup label="Documento">
-          <option value="A4">{PAGE_SIZE_LABELS.A4}</option>
-          <option value="Letter">{PAGE_SIZE_LABELS.Letter}</option>
-        </optgroup>
-        <optgroup label="Tiquets / Recibos">
-          <option value="Ticket80">{PAGE_SIZE_LABELS.Ticket80}</option>
-          <option value="Ticket58">{PAGE_SIZE_LABELS.Ticket58}</option>
-        </optgroup>
-        <optgroup label="Etiquetas">
-          <option value="Label100x62">{PAGE_SIZE_LABELS.Label100x62}</option>
-          <option value="Label70x37">{PAGE_SIZE_LABELS.Label70x37}</option>
-          <option value="Label50x25">{PAGE_SIZE_LABELS.Label50x25}</option>
-        </optgroup>
-        <optgroup label="Otros">
-          <option value="Custom">{PAGE_SIZE_LABELS.Custom}</option>
-        </optgroup>
-      </select>
-      {layout.pageSize === 'Custom' && (
+    <div className="px-3 py-3 space-y-4 text-sm">
+      <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500">Página</div>
+      <Section title="Formato">
+        <Label>Tamaño</Label>
+        <select
+          value={layout.pageSize}
+          onChange={(e) => onUpdatePage({ pageSize: e.target.value as PageSize })}
+          className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+        >
+          <optgroup label="Documento">
+            <option value="A4">{PAGE_SIZE_LABELS.A4}</option>
+            <option value="Letter">{PAGE_SIZE_LABELS.Letter}</option>
+          </optgroup>
+          <optgroup label="Tiquets / Recibos">
+            <option value="Ticket80">{PAGE_SIZE_LABELS.Ticket80}</option>
+            <option value="Ticket58">{PAGE_SIZE_LABELS.Ticket58}</option>
+          </optgroup>
+          <optgroup label="Etiquetas">
+            <option value="Label100x62">{PAGE_SIZE_LABELS.Label100x62}</option>
+            <option value="Label70x37">{PAGE_SIZE_LABELS.Label70x37}</option>
+            <option value="Label50x25">{PAGE_SIZE_LABELS.Label50x25}</option>
+          </optgroup>
+          <optgroup label="Otros">
+            <option value="Custom">{PAGE_SIZE_LABELS.Custom}</option>
+          </optgroup>
+        </select>
+        {layout.pageSize === 'Custom' && (
+          <div className="grid grid-cols-2 gap-2">
+            <NumberField
+              label="Ancho (mm)"
+              value={layout.customWidthMm ?? 100}
+              onChange={(v) => onUpdatePage({ customWidthMm: Math.max(10, v) })}
+            />
+            <NumberField
+              label="Alto (mm)"
+              value={layout.customHeightMm ?? 100}
+              onChange={(v) => onUpdatePage({ customHeightMm: Math.max(10, v) })}
+            />
+          </div>
+        )}
+        <Label>Márgenes (mm)</Label>
         <div className="grid grid-cols-2 gap-2">
           <NumberField
-            label="Ancho (mm)"
-            value={layout.customWidthMm ?? 100}
-            onChange={(v) => onUpdatePage({ customWidthMm: Math.max(10, v) })}
+            label="Arriba"
+            value={layout.margins.top}
+            onChange={(v) => onUpdatePage({ margins: { ...layout.margins, top: v } })}
           />
           <NumberField
-            label="Alto (mm)"
-            value={layout.customHeightMm ?? 100}
-            onChange={(v) => onUpdatePage({ customHeightMm: Math.max(10, v) })}
+            label="Derecha"
+            value={layout.margins.right}
+            onChange={(v) => onUpdatePage({ margins: { ...layout.margins, right: v } })}
+          />
+          <NumberField
+            label="Abajo"
+            value={layout.margins.bottom}
+            onChange={(v) => onUpdatePage({ margins: { ...layout.margins, bottom: v } })}
+          />
+          <NumberField
+            label="Izquierda"
+            value={layout.margins.left}
+            onChange={(v) => onUpdatePage({ margins: { ...layout.margins, left: v } })}
           />
         </div>
-      )}
-      <Label>Márgenes (mm)</Label>
-      <div className="grid grid-cols-2 gap-2">
-        <NumberField
-          label="Arriba"
-          value={layout.margins.top}
-          onChange={(v) => onUpdatePage({ margins: { ...layout.margins, top: v } })}
-        />
-        <NumberField
-          label="Derecha"
-          value={layout.margins.right}
-          onChange={(v) => onUpdatePage({ margins: { ...layout.margins, right: v } })}
-        />
-        <NumberField
-          label="Abajo"
-          value={layout.margins.bottom}
-          onChange={(v) => onUpdatePage({ margins: { ...layout.margins, bottom: v } })}
-        />
-        <NumberField
-          label="Izquierda"
-          value={layout.margins.left}
-          onChange={(v) => onUpdatePage({ margins: { ...layout.margins, left: v } })}
-        />
-      </div>
-    </Section>
-    <Section title="Bandas (alto en mm)">
-      {layout.bands.map((b, i) => (
-        <div key={b.id} className={`flex items-center gap-1 ${b.hidden ? 'opacity-50' : ''}`}>
-          {b.kind === 'custom' ? (
-            <input
-              value={b.label ?? ''}
-              placeholder="Sección"
-              onChange={(e) => onUpdateBand(b.id, { label: e.target.value })}
-              className="flex-1 min-w-0 px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-            />
-          ) : (
-            <div className="flex-1 min-w-0 truncate text-xs text-slate-600 dark:text-slate-300">
-              {bandLabel(b)}
-            </div>
-          )}
-          <button
-            type="button"
-            title={b.hidden ? 'Mostrar banda' : 'Ocultar banda'}
-            onClick={() => onUpdateBand(b.id, { hidden: !b.hidden })}
-            className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            {b.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
-          </button>
-          <button
-            type="button"
-            title="Subir"
-            disabled={i === 0}
-            onClick={() => onMoveBand(b.id, -1)}
-            className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
-          >
-            <ChevronUp size={14} />
-          </button>
-          <button
-            type="button"
-            title="Bajar"
-            disabled={i === layout.bands.length - 1}
-            onClick={() => onMoveBand(b.id, 1)}
-            className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
-          >
-            <ChevronDown size={14} />
-          </button>
-          <input
-            type="number"
-            min={0}
-            value={b.height}
-            onChange={(e) =>
-              onUpdateBand(b.id, { height: Math.max(0, Number(e.target.value) || 0) })
-            }
-            className="w-14 px-1.5 py-1 text-xs text-right rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-          />
-          {b.kind === 'custom' && (
+      </Section>
+      <Section title="Bandas (alto en mm)">
+        {layout.bands.map((b, i) => (
+          <div key={b.id} className={`flex items-center gap-1 ${b.hidden ? 'opacity-50' : ''}`}>
+            {b.kind === 'custom' ? (
+              <input
+                value={b.label ?? ''}
+                placeholder="Sección"
+                onChange={(e) => onUpdateBand(b.id, { label: e.target.value })}
+                className="flex-1 min-w-0 px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+              />
+            ) : (
+              <div className="flex-1 min-w-0 truncate text-xs text-slate-600 dark:text-slate-300">
+                {bandLabel(b)}
+              </div>
+            )}
             <button
               type="button"
-              title="Eliminar sección"
-              onClick={() => onDeleteBand(b.id)}
-              className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30"
+              title={b.hidden ? 'Mostrar banda' : 'Ocultar banda'}
+              onClick={() => onUpdateBand(b.id, { hidden: !b.hidden })}
+              className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
-              <Trash2 size={14} />
+              {b.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
             </button>
-          )}
+            <button
+              type="button"
+              title="Subir"
+              disabled={i === 0}
+              onClick={() => onMoveBand(b.id, -1)}
+              className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
+            >
+              <ChevronUp size={14} />
+            </button>
+            <button
+              type="button"
+              title="Bajar"
+              disabled={i === layout.bands.length - 1}
+              onClick={() => onMoveBand(b.id, 1)}
+              className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
+            >
+              <ChevronDown size={14} />
+            </button>
+            <input
+              type="number"
+              min={0}
+              value={b.height}
+              onChange={(e) =>
+                onUpdateBand(b.id, { height: Math.max(0, Number(e.target.value) || 0) })
+              }
+              className="w-14 px-1.5 py-1 text-xs text-right rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+            />
+            {b.kind === 'custom' && (
+              <button
+                type="button"
+                title="Eliminar sección"
+                onClick={() => onDeleteBand(b.id)}
+                className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={onAddBand}
+          className="flex items-center gap-1 mt-1 px-2 py-1 text-xs rounded border border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
+          <Plus size={13} /> Añadir banda
+        </button>
+        <div className="pt-1 text-[11px] text-slate-400">
+          Total (visibles):{' '}
+          {layout.bands.filter((b) => !b.hidden).reduce((a, b) => a + b.height, 0)}mm. Útil de
+          página:{' '}
+          {resolvePageDimensions(layout).height - layout.margins.top - layout.margins.bottom}mm.
         </div>
-      ))}
-      <button
-        type="button"
-        onClick={onAddBand}
-        className="flex items-center gap-1 mt-1 px-2 py-1 text-xs rounded border border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-      >
-        <Plus size={13} /> Añadir banda
-      </button>
-      <div className="pt-1 text-[11px] text-slate-400">
-        Total (visibles): {layout.bands.filter((b) => !b.hidden).reduce((a, b) => a + b.height, 0)}mm.
-        Útil de página:{' '}
-        {resolvePageDimensions(layout).height - layout.margins.top - layout.margins.bottom}mm.
+      </Section>
+      <WatermarkInspector
+        watermark={layout.watermark}
+        onChange={(w) => onUpdatePage({ watermark: w })}
+      />
+      <PageNumbersInspector
+        value={layout.pageNumbers}
+        onChange={(pn) => onUpdatePage({ pageNumbers: pn })}
+      />
+      <TraceabilityFooterInspector
+        showDocQr={layout.showDocQr}
+        showDocBarcode={layout.showDocBarcode}
+        onChange={(v) => onUpdatePage(v)}
+      />
+      <QueriesInspector
+        queries={layout.queries}
+        testParams={layout.testParams ?? {}}
+        paramsSchema={layout.paramsSchema}
+        onChange={(q) => onUpdatePage({ queries: q })}
+        onTestParamsChange={(p) => onUpdatePage({ testParams: p })}
+      />
+      <ParamsSchemaInspector
+        queries={layout.queries}
+        schema={layout.paramsSchema}
+        onChange={(s) => onUpdatePage({ paramsSchema: s })}
+      />
+      <Section title="CSS personalizado">
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+          Hoja de estilos global del documento. Se aplica al compilar y puede apuntar a las clases
+          que pongas en cada elemento (ej.{' '}
+          <code>
+            .mi-clase {'{'} color:red {'}'}
+          </code>
+          ).
+        </p>
+        <button
+          type="button"
+          onClick={() => setCssOpen(true)}
+          className="flex items-center gap-2 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+        >
+          <Code size={14} /> Editar CSS global
+          {layout.customCss ? (
+            <span className="text-emerald-600 dark:text-emerald-400">●</span>
+          ) : null}
+        </button>
+      </Section>
+      <div className="text-[11px] text-slate-400 italic">
+        Selecciona un elemento para editar sus propiedades.
       </div>
-    </Section>
-    <WatermarkInspector
-      watermark={layout.watermark}
-      onChange={(w) => onUpdatePage({ watermark: w })}
-    />
-    <PageNumbersInspector
-      value={layout.pageNumbers}
-      onChange={(pn) => onUpdatePage({ pageNumbers: pn })}
-    />
-    <TraceabilityFooterInspector
-      showDocQr={layout.showDocQr}
-      showDocBarcode={layout.showDocBarcode}
-      onChange={(v) => onUpdatePage(v)}
-    />
-    <QueriesInspector
-      queries={layout.queries}
-      testParams={layout.testParams ?? {}}
-      paramsSchema={layout.paramsSchema}
-      onChange={(q) => onUpdatePage({ queries: q })}
-      onTestParamsChange={(p) => onUpdatePage({ testParams: p })}
-    />
-    <ParamsSchemaInspector
-      queries={layout.queries}
-      schema={layout.paramsSchema}
-      onChange={(s) => onUpdatePage({ paramsSchema: s })}
-    />
-    <Section title="CSS personalizado">
-      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-        Hoja de estilos global del documento. Se aplica al compilar y puede apuntar a las clases
-        que pongas en cada elemento (ej. <code>.mi-clase {'{'} color:red {'}'}</code>).
-      </p>
-      <button
-        type="button"
-        onClick={() => setCssOpen(true)}
-        className="flex items-center gap-2 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-      >
-        <Code size={14} /> Editar CSS global
-        {layout.customCss ? (
-          <span className="text-emerald-600 dark:text-emerald-400">●</span>
-        ) : null}
-      </button>
-    </Section>
-    <div className="text-[11px] text-slate-400 italic">
-      Selecciona un elemento para editar sus propiedades.
+      <CssEditorModal
+        open={cssOpen}
+        value={layout.customCss ?? ''}
+        onChange={(v) => onUpdatePage({ customCss: v.trim() ? v : undefined })}
+        onClose={() => setCssOpen(false)}
+        title="CSS global del documento"
+        helpText="Reglas CSS completas. Se inyectan tras el CSS base, así que pueden sobreescribir estilos por defecto. Apunta a elementos con la clase que les pongas en su inspector."
+      />
     </div>
-    <CssEditorModal
-      open={cssOpen}
-      value={layout.customCss ?? ''}
-      onChange={(v) => onUpdatePage({ customCss: v.trim() ? v : undefined })}
-      onClose={() => setCssOpen(false)}
-      title="CSS global del documento"
-      helpText="Reglas CSS completas. Se inyectan tras el CSS base, así que pueden sobreescribir estilos por defecto. Apunta a elementos con la clase que les pongas en su inspector."
-    />
-  </div>
   );
 };
 
@@ -2614,7 +2749,12 @@ const QueryEditor: React.FC<{
         });
       }
     } catch (e) {
-      setResult({ ok: false, error: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error de red' });
+      setResult({
+        ok: false,
+        error:
+          (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error de red',
+      });
     } finally {
       setTesting(false);
     }
@@ -2892,7 +3032,9 @@ const ParamsSchemaInspector: React.FC<{
                 <textarea
                   value={p.optionsQuery ?? ''}
                   onChange={(e) => update(name, { optionsQuery: e.target.value || undefined })}
-                  placeholder={'Consulta de opciones (SELECT value, label …). Tiene prioridad sobre las manuales.'}
+                  placeholder={
+                    'Consulta de opciones (SELECT value, label …). Tiene prioridad sobre las manuales.'
+                  }
                   rows={2}
                   className="w-full px-2 py-1 text-[11px] font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
                 />
@@ -3073,7 +3215,16 @@ const SourceColumnPicker: React.FC<{
   pathLabel?: string;
   queryNames: string[];
   queryColumns: Record<string, string[]>;
-}> = ({ source, path, onSource, onPath, showPath = true, pathLabel = 'Columna', queryNames, queryColumns }) => {
+}> = ({
+  source,
+  path,
+  onSource,
+  onPath,
+  showPath = true,
+  pathLabel = 'Columna',
+  queryNames,
+  queryColumns,
+}) => {
   const queryName = source && source.startsWith('query:') ? source.slice('query:'.length) : null;
   const cols = queryName ? (queryColumns[queryName] ?? []) : [];
   return (
@@ -4103,7 +4254,12 @@ const LinesTableEditor: React.FC<{
   const baseLineGroup = getLineFieldGroup();
   const lineGroup = queryName
     ? queryCols.length > 0
-      ? { group: 'lines' as const, label: `Consulta: ${queryName}`, icon: 'ListOrdered' as const, fields: queryCols.map((c) => ({ path: c, type: 'string' as const, description: c })) }
+      ? {
+          group: 'lines' as const,
+          label: `Consulta: ${queryName}`,
+          icon: 'ListOrdered' as const,
+          fields: queryCols.map((c) => ({ path: c, type: 'string' as const, description: c })),
+        }
       : null
     : baseLineGroup
       ? { ...baseLineGroup, fields: [...baseLineGroup.fields, ...extraLineFields] }
@@ -4116,7 +4272,7 @@ const LinesTableEditor: React.FC<{
   const addColumn = () => {
     // Si la fuente es una query, por defecto proponemos su primera columna libre.
     const used = new Set(element.columns.map((c) => c.path));
-    const nextCol = queryName ? queryCols.find((c) => !used.has(c)) ?? queryCols[0] : null;
+    const nextCol = queryName ? (queryCols.find((c) => !used.has(c)) ?? queryCols[0]) : null;
     const base = nextCol
       ? { label: shortLabel(nextCol), path: nextCol, format: guessColumnFormat(nextCol) }
       : { label: 'Nueva', path: 'itemName' as string };

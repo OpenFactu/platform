@@ -10,6 +10,7 @@ import {
   FilterBar,
   SearchableSelect,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
@@ -41,9 +42,6 @@ import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { PreparationButton } from '@/components/common/PreparationButton';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
@@ -201,77 +199,25 @@ const SDNList: React.FC<{
       ),
     },
     {
+      // `PreparationButton` es un componente con estado propio (loading, toast,
+      // llamada a /api/logistics/prep) y no cabe en un `RowAction`, así que se
+      // queda como columna. El resto de acciones pasan a `rowActions`.
       header: 'Acciones',
       align: 'right' as const,
-      cell: (item: any) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickPdf(item.id);
-            }}
-            isLoading={downloadingId === item.id}
-            className="h-8 w-8 p-0 text-ink-500 dark:text-ink-400 hover:text-accent hover:bg-accent/10 dark:hover:bg-accent/15"
-            title="Descargar PDF"
-          >
-            <Download size={14} />
-          </Button>
-          {item.status === 'O' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCopyToInvoice(item);
-              }}
-              className="text-blue-600 dark:text-blue-300 font-bold hover:bg-blue-50 dark:hover:bg-blue-500/10 gap-1 uppercase text-[10px]"
-            >
-              <Copy size={12} /> Facturar
-            </Button>
-          )}
-          {item.status === 'O' && !item.hasActiveShipment && flags.logisticsEnabled && (
-            <div onClick={(e) => e.stopPropagation()} className="inline-flex">
-              <PreparationButton docType="SDN" docId={item.id} compact />
-            </div>
-          )}
-          {item.hasActiveShipment && item.activeShipmentId && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                const path = `/logistics/shipments/${item.activeShipmentId}`;
-                if (tabs && (tabs as any).openTab) {
-                  (tabs as any).openTab(path, { title: 'Envío en preparación' });
-                } else {
-                  window.location.href = path;
-                }
-              }}
-              className="text-accent font-bold hover:bg-accent/10 gap-1 uppercase text-[10px]"
-            >
-              Ver preparación
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDetail(item);
-            }}
-          >
-            Ver
-          </Button>
-        </div>
-      ),
+      cell: (item: any) =>
+        item.status === 'O' && !item.hasActiveShipment && flags.logisticsEnabled ? (
+          <div onClick={(e) => e.stopPropagation()} className="inline-flex">
+            <PreparationButton docType="SDN" docId={item.id} compact />
+          </div>
+        ) : null,
     },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (item: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // se declaran una vez en lugar de duplicarse entre una columna de botones y
+  // el menú contextual.
+  const rowActions = (item: any): RowAction[] => [
     { label: 'Ver Albarán', icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: 'Descargar PDF',
@@ -430,9 +376,10 @@ const SDNList: React.FC<{
           />
         ) : (
           <Table
-            columns={ctxColumns}
+            columns={columns}
             data={filteredData || []}
             isLoading={loading}
+            rowActions={rowActions}
             onRowClick={onDetail}
             selectable
             selectedKeys={selectedKeys}
@@ -440,14 +387,6 @@ const SDNList: React.FC<{
           />
         )}
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

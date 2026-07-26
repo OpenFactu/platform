@@ -143,24 +143,6 @@ html.dark .k-aurora--global > span {
 
 /* k-row-in, k-card-in y k-pop-in los aporta @openfactu/ui/styles.css. */
 
-/* Menú kebab (RowActionsMenu) — abre con fade + scale desde la esquina superior derecha. */
-@keyframes row-actions-menu-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.92);
-  }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-.row-actions-menu-in {
-  animation: row-actions-menu-in 0.18s cubic-bezier(0.2, 0, 0, 1) both;
-}
-
 /* Sacudida al llegar una nueva notificación */
 @keyframes k-bell-shake {
   0%,

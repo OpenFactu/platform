@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
+import { Card, Button, Input, Loader, useToast, Badge, useContextMenu } from '@openfactu/ui';
+import type { ContextMenuItem } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Layers, Plus, Trash2, Save, X, Network, Pencil } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { categoriesApi } from '../api';
 import type { Category } from '../domain/category';
 
@@ -83,8 +82,8 @@ export const Categories: React.FC = () => {
     }
   };
 
-  const ctxMenu = useContextMenu<any>();
-  const buildCtxItems = (c: any) => [
+  const { contextMenu, openContextMenu } = useContextMenu();
+  const buildCtxItems = (c: any): ContextMenuItem[] => [
     {
       label: 'Editar',
       icon: <Pencil size={14} />,
@@ -186,7 +185,13 @@ export const Categories: React.FC = () => {
             {categories.map((c) => (
               <tr
                 key={c.id}
-                onContextMenu={(e) => ctxMenu.open(e, c)}
+                onContextMenu={(e) => {
+                  // openContextMenu solo hace preventDefault: mantenemos el
+                  // stopPropagation que traía el hook local para no disparar
+                  // menús de contenedores superiores.
+                  e.stopPropagation();
+                  openContextMenu(e, buildCtxItems(c));
+                }}
                 className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group"
               >
                 <td className="px-6 py-3">
@@ -305,14 +310,7 @@ export const Categories: React.FC = () => {
           </tbody>
         </table>
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
+      {contextMenu}
     </div>
   );
 };

@@ -9,12 +9,9 @@ import type { Payroll } from '../domain/payroll';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Banknote, Plus, CheckCircle, Trash2, ListPlus, X, FileText } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { ApiError } from '@/shared/http';
 
 const STATUS_VARIANTS: Record<string, BadgeProps['variant']> = {
@@ -278,54 +275,6 @@ export const Payrolls: React.FC = () => {
         <Badge variant={STATUS_VARIANTS[r.status]}>{STATUS_LABELS[r.status]}</Badge>
       ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: Payroll) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => openLines(r)}
-            className="text-indigo-600 hover:text-indigo-700"
-            title={r.status === 'draft' ? 'Editar líneas / pluses' : 'Ver líneas'}
-          >
-            <ListPlus size={16} />
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                const { blob } = await payrollsApi.payslipPdf(r.id);
-                const url = URL.createObjectURL(blob);
-                window.open(url, '_blank', 'noopener');
-              } catch {
-                toast.error('No se pudo generar el PDF');
-              }
-            }}
-            className="text-slate-500 hover:text-indigo-600"
-            title="Imprimir / descargar recibo de nómina (PDF)"
-          >
-            <FileText size={16} />
-          </button>
-          {r.status === 'draft' && (
-            <>
-              <button
-                onClick={() => handleApprove(r.id)}
-                className="text-emerald-600 hover:text-emerald-700"
-                title="Aprobar y asentar"
-              >
-                <CheckCircle size={16} />
-              </button>
-              <button
-                onClick={() => handleDelete(r.id)}
-                className="text-slate-400 hover:text-red-500"
-                title="Eliminar"
-              >
-                <Trash2 size={16} />
-              </button>
-            </>
-          )}
-        </div>
-      ),
-    },
   ];
 
   const printPayslip = async (r: Payroll) => {
@@ -338,9 +287,11 @@ export const Payrolls: React.FC = () => {
     }
   };
 
-  const ctxMenu = useContextMenu<Payroll>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: Payroll) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // (solo un borrador se aprueba o se elimina) se declaran una vez en lugar de
+  // duplicarse entre una columna de botones y el menú.
+  const rowActions = (r: Payroll): RowAction[] => [
     {
       label: r.status === 'draft' ? 'Editar líneas / pluses' : 'Ver líneas',
       icon: <ListPlus size={14} />,
@@ -604,16 +555,8 @@ export const Payrolls: React.FC = () => {
       )}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={ctxColumns} data={rows} isLoading={loading} />
+        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
 
       {editLines && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

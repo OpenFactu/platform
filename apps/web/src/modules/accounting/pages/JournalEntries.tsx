@@ -1,13 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
-import type { TableColumn } from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { ScrollText, Plus, Trash2, Pencil, CheckCircle, Undo2 } from 'lucide-react';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { journalEntriesApi, chartOfAccountsApi, periodsApi } from '../api';
 
 interface Line {
@@ -75,7 +72,6 @@ export const JournalEntries: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
   const popup = usePopup();
-
 
   const fetchAll = async () => {
     setLoading(true);
@@ -232,53 +228,12 @@ export const JournalEntries: React.FC = () => {
         <Badge variant={STATUS_VARIANT[r.status] || 'neutral'}>{STATUS_LABEL[r.status]}</Badge>
       ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: Entry) => (
-        <div className="flex items-center justify-end gap-2">
-          {r.status === 'draft' && canWrite && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePost(r.id);
-              }}
-              className="text-emerald-600 hover:text-emerald-700"
-              title="Postear"
-            >
-              <CheckCircle size={16} />
-            </button>
-          )}
-          {r.status === 'posted' && canWrite && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleReverse(r.id);
-              }}
-              className="text-amber-600 hover:text-amber-700"
-              title="Reversar"
-            >
-              <Undo2 size={16} />
-            </button>
-          )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              openEdit(r);
-            }}
-            className="text-slate-500 hover:text-blue-600"
-            title="Ver"
-          >
-            <Pencil size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<Entry>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: Entry) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // (draft / posted) y de permiso se declaran una vez en lugar de duplicarse.
+  const rowActions = (r: Entry): RowAction[] => [
     ...(r.status === 'draft' && canWrite
       ? [{ label: 'Postear', icon: <CheckCircle size={14} />, onClick: () => handlePost(r.id) }]
       : []),
@@ -479,16 +434,8 @@ export const JournalEntries: React.FC = () => {
       )}
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={ctxColumns} data={rows} isLoading={loading} />
+        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

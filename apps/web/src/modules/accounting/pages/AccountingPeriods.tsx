@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Card, Button, Input, Loader, useToast, Badge, usePopup } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Calendar, Plus, Trash2, Lock, AlertTriangle } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { periodsApi } from '../api';
 import type { AccountingPeriod } from '../domain/accounting';
 
@@ -64,9 +62,7 @@ export const AccountingPeriods: React.FC = () => {
       fetchPeriods();
       toast.success('Periodo creado correctamente');
     } catch (err) {
-      toast.error(
-        err instanceof Error ? `Error: ${err.message}` : 'Error al crear Periodo',
-      );
+      toast.error(err instanceof Error ? `Error: ${err.message}` : 'Error al crear Periodo');
     } finally {
       setIsSubmitting(false);
     }
@@ -145,37 +141,20 @@ export const AccountingPeriods: React.FC = () => {
         );
       },
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (c: any) => (
-        <div className="flex items-center justify-end gap-2">
-          {c.status === 'O' && canWrite && (
-            <button
-              onClick={() => openClosePreview(c.id)}
-              className="text-amber-600 hover:text-amber-700 transition-colors"
-              title="Cerrar período"
-            >
-              <Lock size={16} />
-            </button>
-          )}
-          <button
-            onClick={() => canDelete && handleDelete(c.id)}
-            disabled={!canDelete}
-            className={`transition-colors ${canDelete ? 'text-slate-400 dark:text-slate-500 hover:text-red-500' : 'text-slate-100 cursor-not-allowed grayscale'}`}
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (c: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // y permiso se declaran una vez en lugar de duplicarse.
+  const rowActions = (c: any): RowAction[] => [
     ...(c.status === 'O' && canWrite
-      ? [{ label: 'Cerrar período', icon: <Lock size={14} />, onClick: () => openClosePreview(c.id) }]
+      ? [
+          {
+            label: 'Cerrar período',
+            icon: <Lock size={14} />,
+            onClick: () => openClosePreview(c.id),
+          },
+        ]
       : []),
     {
       label: 'Eliminar',
@@ -244,16 +223,8 @@ export const AccountingPeriods: React.FC = () => {
       </Card>
 
       <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={ctxColumns} data={periods} isLoading={loading} />
+        <Table columns={columns} data={periods} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

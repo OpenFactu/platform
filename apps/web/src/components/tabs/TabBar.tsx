@@ -1,8 +1,7 @@
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
-import { cn } from '@openfactu/ui';
-import { ContextMenu } from '../common/ContextMenu';
-import { useContextMenu } from '../../hooks/useContextMenu';
+import { cn, useContextMenu } from '@openfactu/ui';
+import type { ContextMenuItem } from '@openfactu/ui';
 import { Tab, useTabs } from '../../context/TabsContext';
 
 const resolveIcon = (name?: string): React.ComponentType<any> => {
@@ -12,7 +11,7 @@ const resolveIcon = (name?: string): React.ComponentType<any> => {
 
 export const TabBar: React.FC = () => {
   const { tabs, activeTabId, setActiveTab, closeTab, resetTabs } = useTabs();
-  const ctxMenu = useContextMenu<Tab>();
+  const { contextMenu, openContextMenu } = useContextMenu();
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
     if (e.button === 1) {
@@ -22,12 +21,13 @@ export const TabBar: React.FC = () => {
   };
 
   const handleContextMenu = (e: React.MouseEvent, tab: Tab) => {
-    e.preventDefault();
+    // openContextMenu ya hace preventDefault, pero no stopPropagation: hay que
+    // mantenerlo para que el menú de la pestaña no burbujee al contenedor.
     e.stopPropagation();
-    ctxMenu.open(e, tab);
+    openContextMenu(e, buildCtxItems(tab));
   };
 
-  const buildCtxItems = (tab: Tab) => {
+  const buildCtxItems = (tab: Tab): ContextMenuItem[] => {
     const idx = tabs.findIndex((t) => t.id === tab.id);
     const rightTabs = idx === -1 ? [] : tabs.slice(idx + 1);
 
@@ -105,14 +105,7 @@ export const TabBar: React.FC = () => {
           );
         })}
       </div>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
+      {contextMenu}
     </>
   );
 };

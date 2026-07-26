@@ -2,14 +2,12 @@ import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Table, Button, Loader, useToast, Badge } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { Plus, Trash2, Eye, Table as TableIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { useFormat } from '@/hooks/useFormat';
 import { usePluginFields, PluginFieldValue } from '@/components/plugin-fields';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 
 interface TableMeta {
   tableName: string;
@@ -127,29 +125,17 @@ export const UserTableList: React.FC = () => {
     } else toast.error('Error al eliminar');
   };
 
-  const actionCol = {
-    header: '',
-    align: 'right' as const,
-    width: '60px',
-    cell: (r: any) => (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          removeRow(r);
-        }}
-        className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
-        title="Eliminar"
-      >
-        <Trash2 size={13} />
-      </button>
-    ),
-  };
+  const allColumns = [...baseCols, ...pluginCols];
 
-  const allColumns = [...baseCols, ...pluginCols, actionCol];
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(allColumns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: any) => [
-    { label: 'Ver / Editar', icon: <Eye size={14} />, onClick: () => openTab(`/u/${name}/${r.id}`) },
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que ya no hace falta una
+  // columna extra con el botón de borrar.
+  const rowActions = (r: any): RowAction[] => [
+    {
+      label: 'Ver / Editar',
+      icon: <Eye size={14} />,
+      onClick: () => openTab(`/u/${name}/${r.id}`),
+    },
     {
       label: 'Eliminar',
       icon: <Trash2 size={14} />,
@@ -188,19 +174,12 @@ export const UserTableList: React.FC = () => {
       ) : (
         <Card noPadding>
           <Table
-            columns={ctxColumns}
+            columns={allColumns}
             data={rows}
+            rowActions={rowActions}
             onRowClick={(r: any) => openTab(`/u/${name}/${r.id}`)}
           />
         </Card>
-      )}
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
       )}
     </div>
   );
