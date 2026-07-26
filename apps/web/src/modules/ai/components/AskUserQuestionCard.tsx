@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from '@openfactu/ui';
+import { Button, Input } from '@openfactu/ui';
 import { HelpCircle, Check, Send } from 'lucide-react';
 
 export interface QuestionOption {
@@ -140,7 +140,7 @@ export const AskUserQuestionCard: React.FC<{
 
       {allowFreeText && (
         <div className="flex items-center gap-2">
-          <input
+          <Input
             type="text"
             value={freeText}
             onChange={(e) => setFreeText(e.target.value)}
@@ -153,17 +153,20 @@ export const AskUserQuestionCard: React.FC<{
             placeholder={freeTextPlaceholder || 'Escribe tu respuesta…'}
             disabled={disabled || answered}
             autoFocus={options.length === 0}
-            className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+            inputSize="sm"
+            containerClassName="flex-1"
           />
-          <button
+          <Button
             type="button"
+            variant="accent"
+            size="sm"
             onClick={submitFreeText}
             disabled={disabled || answered || !freeText.trim()}
-            className="shrink-0 p-1.5 rounded-lg bg-accent text-white disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
             title="Enviar respuesta"
+            className="shrink-0"
           >
             <Send size={14} />
-          </button>
+          </Button>
         </div>
       )}
 

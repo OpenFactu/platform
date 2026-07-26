@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   Loader,
+  usePopup,
   useToast,
   Badge,
   FilterBar,
@@ -461,12 +462,15 @@ const InvoiceForm: React.FC<{
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
         <div className="flex items-center gap-4">
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             onClick={onBack}
-            className="p-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 dark:hover:text-slate-600 transition-all shadow-sm"
+            title="Volver"
+            className="rounded-2xl"
           >
             <ArrowLeft size={20} />
-          </button>
+          </Button>
           <div>
             <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tighter flex items-center gap-3">
               {state.lines.some((l: any) => l.baseId)
@@ -551,14 +555,13 @@ const InvoiceForm: React.FC<{
                     <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
                       Número de documento (manual) *
                     </label>
-                    <input
+                    <Input
                       type="number"
                       min={1}
                       step={1}
                       value={state.manualNumber}
                       onChange={(e) => setState.setManualNumber(e.target.value)}
                       placeholder="Ej: 1050"
-                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     />
                   </div>
                 )}
@@ -956,6 +959,7 @@ const InvoiceDetail: React.FC<{
 export const SalesInvoices: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const params = useParams();
   const location = useLocation();
   const { openTab } = useTabs();
@@ -1168,7 +1172,14 @@ export const SalesInvoices: React.FC = () => {
 
   const handleCancel = async () => {
     if (!selectedInvoice) return;
-    if (!confirm('¿Seguro que deseas cancelar esta factura?')) return;
+    const ok = await popup.confirm({
+      title: 'Cancelar factura',
+      message: '¿Seguro que deseas cancelar esta factura?',
+      tone: 'danger',
+      confirmLabel: 'Cancelar factura',
+      cancelLabel: 'Volver',
+    });
+    if (!ok) return;
     try {
       setCancelling(true);
       await docsApi.cancel('/api/sales/invoices', selectedInvoice.id);

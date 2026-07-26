@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   Loader,
+  Textarea,
   useToast,
   Badge,
   FilterBar,
@@ -439,12 +440,9 @@ const POForm: React.FC<{
     <div className="p-4 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-white dark:hover:bg-slate-900 rounded-lg transition shadow-sm border"
-          >
+          <Button type="button" variant="secondary" onClick={onBack} title="Volver">
             <ArrowLeft size={20} />
-          </button>
+          </Button>
           <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
             Nuevo Pedido de Compra
           </h1>
@@ -491,20 +489,22 @@ const POForm: React.FC<{
               <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 Dirección Facturación
               </label>
-              <textarea
+              <Textarea
                 value={extraState.billToAddress}
                 onChange={(e) => extraState.setBillToAddress(e.target.value)}
-                className="w-full h-20 border rounded-lg p-2 text-xs bg-slate-50 dark:bg-slate-800/50"
+                rows={3}
+                className="text-xs"
               />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
                 Dirección de Envío
               </label>
-              <textarea
+              <Textarea
                 value={extraState.shipToAddress}
                 onChange={(e) => extraState.setShipToAddress(e.target.value)}
-                className="w-full h-20 border rounded-lg p-2 text-xs bg-slate-50 dark:bg-slate-800/50"
+                rows={3}
+                className="text-xs"
               />
             </div>
           </div>
@@ -558,14 +558,13 @@ const POForm: React.FC<{
                     <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
                       Número de documento (manual) *
                     </label>
-                    <input
+                    <Input
                       type="number"
                       min={1}
                       step={1}
                       value={state.manualNumber}
                       onChange={(e) => setState.setManualNumber(e.target.value)}
                       placeholder="Ej: 1050"
-                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     />
                   </div>
                 )}

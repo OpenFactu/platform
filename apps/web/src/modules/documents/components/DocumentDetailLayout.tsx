@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge } from '@openfactu/ui';
+import { Badge, Button } from '@openfactu/ui';
 import { ArrowLeft } from 'lucide-react';
 
 type StatusVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';
@@ -25,13 +25,16 @@ export const DocumentDetailLayout: React.FC<Props> = ({
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
       <div className="space-y-3 pb-6 border-b border-slate-100 dark:border-slate-800">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
             onClick={onBack}
             aria-label="Volver"
-            className="p-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm transition-all text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 shrink-0"
+            className="p-2.5 shrink-0"
           >
             <ArrowLeft size={18} />
-          </button>
+          </Button>
           <div className="flex-1" />
           {actions && <div className="shrink-0 max-w-full">{actions}</div>}
         </div>

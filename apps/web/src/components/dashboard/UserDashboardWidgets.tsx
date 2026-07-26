@@ -1,10 +1,9 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Card } from '@openfactu/ui';
+import { Chart } from '@openfactu/ui/charts';
 import { LayoutGrid, AlertCircle, Loader2 } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 import { getDynamicImportApiBase } from '../../utils/dynamicImportBase';
 
 type QueryResult =
@@ -79,14 +78,14 @@ const CodeWidgetRenderer: React.FC<{ widgetId: string; tenantId: string }> = ({
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 text-rose-600 dark:text-rose-300 text-xs">
+      <div className="flex items-center gap-2 text-danger-fg text-xs">
         <AlertCircle size={14} /> {error}
       </div>
     );
   }
   if (!Component) {
     return (
-      <div className="flex items-center justify-center py-6 text-slate-400">
+      <div className="flex items-center justify-center py-6 text-fg-subtle">
         <Loader2 size={18} className="animate-spin" />
       </div>
     );
@@ -99,16 +98,10 @@ const CodeWidgetRenderer: React.FC<{ widgetId: string; tenantId: string }> = ({
  * desde el server (`resolveQueryWidget`), aquí solo se pinta según
  * `chartType`. Sin fetch propio — los datos llegan en `w.queryResult`.
  */
-const QueryWidgetRenderer: React.FC<{ result?: QueryResult; isDark: boolean }> = ({
-  result,
-  isDark,
-}) => {
-  const axisColor = isDark ? '#94a3b8' : '#64748b';
-  const gridColor = isDark ? '#1e293b' : '#e2e8f0';
-
+const QueryWidgetRenderer: React.FC<{ result?: QueryResult }> = ({ result }) => {
   if (!result || !('chartType' in result)) {
     return (
-      <div className="flex items-center gap-2 text-rose-600 dark:text-rose-300 text-xs py-2">
+      <div className="flex items-center gap-2 text-danger-fg text-xs py-2">
         <AlertCircle size={14} /> {(result && 'error' in result && result.error) || 'Sin datos'}
       </div>
     );
@@ -117,10 +110,10 @@ const QueryWidgetRenderer: React.FC<{ result?: QueryResult; isDark: boolean }> =
   if (result.chartType === 'kpi') {
     return (
       <div className="flex items-center gap-3 py-2">
-        <div className="p-2.5 rounded-xs bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300">
+        <div className="p-2.5 rounded-xs bg-accent/10 text-accent">
           <LayoutGrid size={18} />
         </div>
-        <p className="text-3xl font-black text-slate-900 dark:text-slate-100 tabular-nums">
+        <p className="text-3xl font-black text-fg-default tabular-nums">
           {String(result.value ?? '—')}
         </p>
       </div>
@@ -128,26 +121,18 @@ const QueryWidgetRenderer: React.FC<{ result?: QueryResult; isDark: boolean }> =
   }
 
   if (result.chartType === 'bar') {
+    // El Chart del paquete trae ejes, rejilla, tooltip y paleta ya tematizados.
+    // Antes esto eran ocho componentes de recharts con los colores del modo
+    // oscuro calculados a mano y la barra en un verde fijo (#10b981).
     return (
-      <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={result.rows} margin={{ left: 0, right: 8 }}>
-            <CartesianGrid stroke={gridColor} strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="x" stroke={axisColor} fontSize={10} />
-            <YAxis stroke={axisColor} fontSize={10} width={40} />
-            <Tooltip
-              contentStyle={{
-                background: isDark ? '#0f172a' : '#fff',
-                border: `1px solid ${gridColor}`,
-                borderRadius: 8,
-                color: isDark ? '#f1f5f9' : '#0f172a',
-                fontSize: 12,
-              }}
-            />
-            <Bar dataKey="y" fill="#10b981" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      <Chart
+        type="bar"
+        data={result.rows}
+        xKey="x"
+        series={[{ key: 'y' }]}
+        height={192}
+        aria-label="Resultado de la consulta"
+      />
     );
   }
 
@@ -156,7 +141,7 @@ const QueryWidgetRenderer: React.FC<{ result?: QueryResult; isDark: boolean }> =
     <div className="overflow-x-auto max-h-56">
       <table className="text-xs w-full">
         <thead>
-          <tr className="text-left text-slate-400 border-b border-slate-100 dark:border-slate-800">
+          <tr className="text-left text-fg-subtle border-b border-border-subtle">
             {result.columns.map((c) => (
               <th key={c} className="pr-3 py-1 font-bold uppercase tracking-wider text-[10px]">
                 {c}
@@ -166,9 +151,9 @@ const QueryWidgetRenderer: React.FC<{ result?: QueryResult; isDark: boolean }> =
         </thead>
         <tbody>
           {result.rows.map((row, i) => (
-            <tr key={i} className="border-b border-slate-50 dark:border-slate-800/60 last:border-0">
+            <tr key={i} className="border-b border-border-subtle last:border-0">
               {result.columns.map((c) => (
-                <td key={c} className="pr-3 py-1 text-slate-700 dark:text-slate-200">
+                <td key={c} className="pr-3 py-1 text-fg-body">
                   {String(row[c] ?? '')}
                 </td>
               ))}
@@ -188,8 +173,6 @@ const QueryWidgetRenderer: React.FC<{ result?: QueryResult; isDark: boolean }> =
  */
 export const UserDashboardWidgets: React.FC = () => {
   const { token, user } = useAuth();
-  const { branding } = useTheme();
-  const isDark = branding.themeMode === 'dark';
   const [widgets, setWidgets] = useState<UserDashboardWidget[]>([]);
 
   useEffect(() => {
@@ -210,13 +193,13 @@ export const UserDashboardWidgets: React.FC = () => {
             {w.kind === 'code' ? (
               <CodeWidgetRenderer widgetId={w.id} tenantId={user?.tenantId || ''} />
             ) : w.kind === 'query' ? (
-              <QueryWidgetRenderer result={w.queryResult} isDark={isDark} />
+              <QueryWidgetRenderer result={w.queryResult} />
             ) : (
               <div className="flex items-center gap-3 py-2">
-                <div className="p-2.5 rounded-xs bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300">
+                <div className="p-2.5 rounded-xs bg-accent/10 text-accent">
                   <LayoutGrid size={18} />
                 </div>
-                <p className="text-3xl font-black text-slate-900 dark:text-slate-100 tabular-nums">
+                <p className="text-3xl font-black text-fg-default tabular-nums">
                   {w.value ?? '—'}
                 </p>
               </div>

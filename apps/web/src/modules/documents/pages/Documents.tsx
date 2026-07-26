@@ -276,9 +276,9 @@ const DocumentForm: React.FC<{
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
-        <button onClick={onCancel} className="flex items-center gap-2 text-sm text-slate-500">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="gap-2">
           <ArrowLeft size={16} /> Volver
-        </button>
+        </Button>
         <div className="flex gap-3">
           <Button variant="ghost" onClick={onCancel}>
             Cancelar
@@ -417,9 +417,9 @@ const DocumentDetail: React.FC<{
 
   return (
     <div className="p-4 space-y-6">
-      <button onClick={onBack} className="flex items-center gap-2 text-sm text-slate-500">
+      <Button type="button" variant="ghost" size="sm" onClick={onBack} className="gap-2">
         <ArrowLeft size={16} /> Volver
-      </button>
+      </Button>
       <Card className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div>

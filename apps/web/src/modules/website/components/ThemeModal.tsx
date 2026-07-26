@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Modal, useToast } from '@openfactu/ui';
+import { Button, ColorInput, Modal, Select, useToast } from '@openfactu/ui';
 import { Maximize2, Minimize2, RotateCcw } from 'lucide-react';
 import { FONT_OPTIONS, useTheme } from '@/context/ThemeContext';
 import { AdvancedEditor } from '@/modules/document-templates/components/AdvancedEditor';
@@ -79,70 +79,46 @@ export const ThemeModal: React.FC<Props> = ({ open, onClose, site, onSaved }) =>
     >
       <div className="space-y-5">
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1">Color primario</label>
-            <input
-              type="color"
-              value={overrides.colorPrimary ?? branding.colorPrimary}
-              onChange={(e) => setOverrides((o) => ({ ...o, colorPrimary: e.target.value }))}
-              className="h-11 w-full rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1">Color de acento</label>
-            <input
-              type="color"
-              value={overrides.colorAccent ?? branding.colorAccent}
-              onChange={(e) => setOverrides((o) => ({ ...o, colorAccent: e.target.value }))}
-              className="h-11 w-full rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
-            />
-          </div>
+          <ColorInput
+            label="Color primario"
+            value={overrides.colorPrimary ?? branding.colorPrimary}
+            onChange={(v) => setOverrides((o) => ({ ...o, colorPrimary: v }))}
+          />
+          <ColorInput
+            label="Color de acento"
+            value={overrides.colorAccent ?? branding.colorAccent}
+            onChange={(v) => setOverrides((o) => ({ ...o, colorAccent: v }))}
+          />
         </div>
-        <div>
-          <label className="text-xs font-bold text-slate-500 block mb-1">Fuente</label>
-          <select
-            value={overrides.fontId ?? ''}
-            onChange={(e) => setOverrides((o) => ({ ...o, fontId: e.target.value || undefined }))}
-            className="h-11 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-sm"
-          >
-            <option value="">Como el branding ({branding.fontFamily})</option>
-            {FONT_OPTIONS.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-bold text-slate-500 block mb-1">
-            Redondez de esquinas
-          </label>
-          <select
-            value={overrides.radius ?? 'md'}
-            onChange={(e) => setOverrides((o) => ({ ...o, radius: e.target.value }))}
-            className="h-11 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-sm"
-          >
-            {RADIUS_OPTIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Afecta a botones, tarjetas, imágenes, carrusel y galería de toda la web.
-          </p>
-        </div>
+        <Select
+          label="Fuente"
+          value={overrides.fontId ?? ''}
+          onChange={(v) => setOverrides((o) => ({ ...o, fontId: v || undefined }))}
+          options={[
+            { value: '', label: `Como el branding (${branding.fontFamily})` },
+            ...FONT_OPTIONS.map((f) => ({ value: f.id, label: f.label })),
+          ]}
+        />
+        <Select
+          label="Redondez de esquinas"
+          value={overrides.radius ?? 'md'}
+          onChange={(v) => setOverrides((o) => ({ ...o, radius: v }))}
+          options={RADIUS_OPTIONS}
+          helperText="Afecta a botones, tarjetas, imágenes, carrusel y galería de toda la web."
+        />
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-xs font-bold text-slate-500">CSS personalizado (avanzado)</label>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => setCssFullscreen(true)}
               title="Pantalla completa"
-              className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"
+              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             >
               <Maximize2 size={13} />
-            </button>
+            </Button>
           </div>
           <div className="h-40 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
             <AdvancedEditor value={customCss} onChange={setCustomCss} language="css" />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Input, Button, useToast } from '@openfactu/ui';
+import { Modal, Input, Button, Textarea, useToast } from '@openfactu/ui';
 import { Mail } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { documentEmailApi } from '../../api';
@@ -112,12 +112,7 @@ export const SendInvoiceModal: React.FC<Props> = ({
             <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
           </Field>
           <Field label="Mensaje">
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={6}
-              className="flex w-full rounded-[2px] border border-[var(--k-line)] dark:border-slate-700 bg-white dark:bg-slate-900 text-[13px] text-[var(--k-ink-900)] dark:text-slate-100 px-3 py-2 focus-visible:outline-none focus-visible:border-accent"
-            />
+            <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} />
           </Field>
           <p className="text-[10px] text-ink-400 font-mono">
             El PDF se genera y adjunta automáticamente.

@@ -1,6 +1,15 @@
 import React, { useRef, useState } from 'react';
-import { Badge, Button, Input, Modal, Skeleton } from '@openfactu/ui';
-import { Cloud, Folder, HardDrive, Pencil, Search, Trash2, Upload } from 'lucide-react';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Input,
+  Modal,
+  SegmentedControl,
+  Skeleton,
+  usePopup,
+} from '@openfactu/ui';
+import { Cloud, Folder, HardDrive, ImageOff, Pencil, Search, Trash2, Upload } from 'lucide-react';
 import type { WebsiteAsset } from '../domain/website';
 import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import type { MediaTypeFilter } from '../utils/mediaFilters';
@@ -33,6 +42,7 @@ interface Props {
  */
 export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
   const fileRef = useRef<HTMLInputElement>(null);
+  const popup = usePopup();
   const {
     assets,
     totalCount,
@@ -50,7 +60,13 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
 
   const handleDelete = async (asset: WebsiteAsset, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`¿Eliminar "${asset.fileName}" de la biblioteca?`)) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar archivo',
+      message: `¿Eliminar "${asset.fileName}" de la biblioteca?`,
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     remove(asset);
   };
 
@@ -71,31 +87,22 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
     >
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={filters.query}
-              onChange={(e) => setFilters((f) => ({ ...f, query: e.target.value }))}
-              placeholder="Buscar por nombre de archivo…"
-              className="pl-8 h-9"
-            />
-          </div>
-          <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0">
-            {TYPE_TABS.map((tab) => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setFilters((f) => ({ ...f, type: tab.value }))}
-                className={`px-3 h-9 text-xs font-bold transition-colors ${
-                  filters.type === tab.value
-                    ? 'bg-primary text-primary-fg'
-                    : 'bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <Input
+            value={filters.query}
+            onChange={(e) => setFilters((f) => ({ ...f, query: e.target.value }))}
+            placeholder="Buscar por nombre de archivo…"
+            leftIcon={<Search size={14} />}
+            inputSize="sm"
+            containerClassName="flex-1"
+          />
+          <SegmentedControl<MediaTypeFilter>
+            options={TYPE_TABS}
+            value={filters.type}
+            onChange={(v) => setFilters((f) => ({ ...f, type: v }))}
+            size="sm"
+            aria-label="Filtrar por tipo de medio"
+            className="shrink-0"
+          />
           <Button size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
             <Upload size={14} className="mr-2" /> {uploading ? 'Subiendo…' : 'Subir'}
           </Button>
@@ -194,13 +201,13 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
             ))}
           </div>
         ) : totalCount === 0 ? (
-          <div className="py-12 text-center text-slate-400">
-            La biblioteca está vacía. Sube tu primer archivo.
-          </div>
+          <EmptyState
+            icon={<ImageOff size={28} />}
+            title="La biblioteca está vacía"
+            hint="Sube tu primer archivo."
+          />
         ) : assets.length === 0 ? (
-          <div className="py-12 text-center text-slate-400">
-            Ningún archivo coincide con los filtros.
-          </div>
+          <EmptyState icon={<Search size={28} />} title="Ningún archivo coincide con los filtros" />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[50vh] overflow-y-auto pr-1">
             {assets.map((asset) => (

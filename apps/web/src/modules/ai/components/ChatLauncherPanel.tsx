@@ -18,6 +18,7 @@
  * cercana y esa elección se recuerda entre sesiones (localStorage).
  */
 import React, { useEffect, useRef, useState } from 'react';
+import { Button } from '@openfactu/ui';
 import { Bot, Loader2, Maximize2, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAiChatContext } from '@/modules/ai/AiChatContext';
@@ -198,25 +199,29 @@ export const ChatLauncherPanel: React.FC = () => {
               <span className="k-shimmer-text">{ASSISTANT_NAME}</span>
             </div>
             <div className="flex items-center gap-1">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   openTab('/ai/chat');
                   setOpen(false);
                 }}
-                className="p-1.5 rounded-md text-slate-400 hover:text-accent hover:bg-accent/5 transition-colors"
                 title="Abrir a pantalla completa"
+                className="text-slate-400 hover:text-accent"
               >
                 <Maximize2 size={16} />
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setOpen(false)}
-                className="p-1.5 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
                 title="Cerrar"
+                className="text-slate-400 hover:text-rose-500"
               >
                 <X size={16} />
-              </button>
+              </Button>
             </div>
           </div>
 

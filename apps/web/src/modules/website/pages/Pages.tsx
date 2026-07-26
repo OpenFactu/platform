@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Button, Card, Input, Loader, useToast } from '@openfactu/ui';
+import { Badge, Button, Card, Input, Loader, usePopup, useToast } from '@openfactu/ui';
 import {
   ArrowDown,
   ArrowUp,
@@ -25,6 +25,7 @@ const PRODUCT_TEMPLATE_PATH = '/plantilla-producto';
 /** Lista de páginas del site: crear, editar (→ editor), publicar y ver la web. */
 export const Pages: React.FC = () => {
   const toast = useToast();
+  const popup = usePopup();
   const navigate = useNavigate();
   const [site, setSite] = useState<WebsiteSite | null>(null);
   const [pages, setPages] = useState<WebsitePage[]>([]);
@@ -65,7 +66,13 @@ export const Pages: React.FC = () => {
   };
 
   const handleDelete = async (page: WebsitePage) => {
-    if (!confirm(`¿Eliminar la página "${page.title}"?`)) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar página',
+      message: `¿Eliminar la página "${page.title}"?`,
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       await websiteApi.deletePage(page.id);
       toast.success('Página eliminada');
@@ -284,33 +291,41 @@ export const Pages: React.FC = () => {
                 <td className="px-6 py-3">
                   {page.path !== PRODUCT_TEMPLATE_PATH && (
                     <div className="flex items-center gap-1">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleMove(page, -1)}
                         disabled={pages.findIndex((p) => p.id === page.id) === 0}
                         title="Subir en el menú"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <ArrowUp size={14} />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleMove(page, 1)}
                         disabled={pages.findIndex((p) => p.id === page.id) === pages.length - 1}
                         title="Bajar en el menú"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-500/10 disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <ArrowDown size={14} />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleToggleNav(page)}
                         title={
                           page.showInNav === false
                             ? 'Oculta del menú (visible por URL) — pulsar para mostrar'
                             : 'Visible en el menú — pulsar para ocultar'
                         }
-                        className={`p-1.5 rounded-lg ${page.showInNav === false ? 'text-slate-300 dark:text-slate-600 hover:text-slate-500' : 'text-teal-600 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-500/10'}`}
+                        className={
+                          page.showInNav === false
+                            ? 'text-slate-300 dark:text-slate-600'
+                            : 'text-teal-600 dark:text-teal-300'
+                        }
                       >
                         {page.showInNav === false ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </td>
@@ -318,13 +333,16 @@ export const Pages: React.FC = () => {
                   <Button size="sm" onClick={() => navigate(`/website/editor/${page.id}`)}>
                     <Pencil size={14} className="mr-2" /> Editar
                   </Button>
-                  <button
-                    onClick={() => !page.isHome && handleDelete(page)}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(page)}
                     disabled={page.isHome}
-                    className={`p-2 transition-all rounded-xl ${!page.isHome ? 'text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10' : 'text-slate-100 dark:text-slate-800 cursor-not-allowed'}`}
+                    title={page.isHome ? 'La página de inicio no se puede eliminar' : 'Eliminar'}
+                    className="text-slate-300 dark:text-slate-600 hover:text-rose-500"
                   >
                     <Trash2 size={16} />
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}

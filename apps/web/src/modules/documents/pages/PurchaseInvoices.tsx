@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   Loader,
+  usePopup,
   useToast,
   Badge,
   FilterBar,
@@ -452,12 +453,15 @@ const InvoiceForm: React.FC<{
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
         <div className="flex items-center gap-4">
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             onClick={onBack}
-            className="p-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 dark:hover:text-slate-600 transition-all shadow-sm"
+            title="Volver"
+            className="rounded-2xl"
           >
             <ArrowLeft size={20} />
-          </button>
+          </Button>
           <div>
             <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tighter flex items-center gap-3">
               {state.lines.some((l: any) => l.baseId)
@@ -541,14 +545,13 @@ const InvoiceForm: React.FC<{
                     <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
                       Número de documento (manual) *
                     </label>
-                    <input
+                    <Input
                       type="number"
                       min={1}
                       step={1}
                       value={state.manualNumber}
                       onChange={(e) => setState.setManualNumber(e.target.value)}
                       placeholder="Ej: 1050"
-                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     />
                   </div>
                 )}
@@ -597,24 +600,19 @@ const InvoiceForm: React.FC<{
         <div className="p-6 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col md:flex-row justify-between items-start md:items-center border-t border-slate-100 dark:border-slate-800 gap-6">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm">
-              <button
-                onClick={() => Array(1).fill(0).forEach(actions.addLine)}
-                className="h-8 min-w-[36px] px-2 rounded-lg text-[10px] font-black bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all"
-              >
-                +1
-              </button>
-              <button
-                onClick={() => Array(5).fill(0).forEach(actions.addLine)}
-                className="h-8 min-w-[36px] px-2 rounded-lg text-[10px] font-black bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all"
-              >
-                +5
-              </button>
-              <button
-                onClick={() => Array(10).fill(0).forEach(actions.addLine)}
-                className="h-8 min-w-[36px] px-2 rounded-lg text-[10px] font-black bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all"
-              >
-                +10
-              </button>
+              {[1, 5, 10].map((n) => (
+                <Button
+                  key={n}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => Array(n).fill(0).forEach(actions.addLine)}
+                  title={`Añadir ${n} línea${n === 1 ? '' : 's'}`}
+                  className="h-8 min-w-[36px] px-2 text-[10px] font-black"
+                >
+                  +{n}
+                </Button>
+              ))}
             </div>
             <Button
               variant="secondary"
@@ -956,6 +954,7 @@ export const PurchaseInvoices: React.FC = () => {
   const { token, user } = useAuth();
   const { flags } = useTheme();
   const toast = useToast();
+  const popup = usePopup();
   const params = useParams();
   const location = useLocation();
   const { openTab } = useTabs();
@@ -1117,11 +1116,17 @@ export const PurchaseInvoices: React.FC = () => {
   };
 
   const handleCancel = async (id: string) => {
-    if (
-      flags.confirmBeforeCancel &&
-      !confirm('¿Estás seguro de cancelar esta factura? Los albaranes se reabrirán.')
-    )
-      return;
+    // El flag de la empresa decide si se pide confirmación — no se toca.
+    if (flags.confirmBeforeCancel) {
+      const ok = await popup.confirm({
+        title: 'Cancelar factura',
+        message: '¿Estás seguro de cancelar esta factura? Los albaranes se reabrirán.',
+        tone: 'danger',
+        confirmLabel: 'Cancelar factura',
+        cancelLabel: 'Volver',
+      });
+      if (!ok) return;
+    }
     try {
       await docsApi.cancel('/api/purchases/invoices', id);
       toast.success('Factura cancelada y stock/albaranes revertidos');

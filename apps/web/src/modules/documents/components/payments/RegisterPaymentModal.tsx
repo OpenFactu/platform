@@ -1,7 +1,7 @@
 import { paymentMethodsApi, paymentsApi } from '@/modules/accounting/api';
 import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
-import { Modal, Input, Button, useToast } from '@openfactu/ui';
+import { Modal, Input, Button, SearchableSelect, useToast } from '@openfactu/ui';
 import { CreditCard } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nContext';
 import type { PaymentMethod } from '@/modules/accounting/domain/accounting';
@@ -138,18 +138,13 @@ export const RegisterPaymentModal: React.FC<Props> = ({
             <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
               {t('payment.method')}
             </label>
-            <select
+            <SearchableSelect
               value={methodId}
-              onChange={(e) => setMethodId(e.target.value)}
-              className="w-full px-3 py-2 border border-line dark:border-ink-700 rounded-xs bg-white dark:bg-ink-900 text-ink-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
-            >
-              <option value="">—</option>
-              {methods.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
+              onChange={setMethodId}
+              options={methods.map((m) => ({ value: m.id, label: m.name }))}
+              placeholder="—"
+              clearable
+            />
           </div>
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">

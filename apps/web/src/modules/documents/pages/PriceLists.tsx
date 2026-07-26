@@ -2,7 +2,17 @@ import { priceListsApi, type PriceList, type PriceListEntry } from '../api';
 import { itemsApi } from '@/modules/inventory/api';
 import type { Item } from '@/modules/inventory/domain/item';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Badge, useContextMenu } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Loader,
+  useToast,
+  Badge,
+  useContextMenu,
+  usePopup,
+  EmptyState,
+} from '@openfactu/ui';
 import type { ContextMenuItem } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -32,6 +42,7 @@ export const PriceLists: React.FC = () => {
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
   const toast = useToast();
+  const popup = usePopup();
   // States for Price Lists
   const [lists, setLists] = useState<PriceList[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,7 +125,13 @@ export const PriceLists: React.FC = () => {
   };
 
   const handleDeleteList = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar esta lista de precios?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar lista de precios',
+      message: '¿Seguro que deseas eliminar esta lista de precios?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       await priceListsApi.remove(id);
       if (selectedList?.id === id) setSelectedList(null);
@@ -293,26 +310,32 @@ export const PriceLists: React.FC = () => {
                         </>
                       ) : (
                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               canWrite && setEditingListId(l.id);
                             }}
                             disabled={!canWrite}
-                            className={`p-1.5 border border-transparent rounded-lg transition-all ${canWrite ? 'text-slate-300 dark:text-slate-600 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-white dark:hover:bg-slate-900 hover:border-blue-100 dark:hover:border-blue-500/20' : 'text-slate-100 cursor-not-allowed grayscale'}`}
+                            className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-blue-600 dark:hover:text-blue-300"
                           >
                             <Plus size={14} className="rotate-45" />
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               canDelete && handleDeleteList(l.id);
                             }}
                             disabled={!canDelete}
-                            className={`p-1.5 border border-transparent rounded-lg transition-all ${canDelete ? 'text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-white dark:hover:bg-slate-900 hover:border-rose-100 dark:hover:border-rose-500/20' : 'text-slate-100 cursor-not-allowed grayscale'}`}
+                            className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500"
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </Button>
                         </div>
                       )}
                     </td>
@@ -343,18 +366,14 @@ export const PriceLists: React.FC = () => {
                     Asignación masiva de precios especiales
                   </p>
                 </div>
-                <div className="relative">
-                  <Search
-                    size={14}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                  />
-                  <input
-                    placeholder="Buscador por código o nombre..."
-                    value={searchItem}
-                    onChange={(e) => setSearchItem(e.target.value)}
-                    className="h-9 w-full md:w-64 pl-9 pr-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none font-medium"
-                  />
-                </div>
+                <Input
+                  leftIcon={<Search size={14} />}
+                  inputSize="sm"
+                  placeholder="Buscador por código o nombre..."
+                  value={searchItem}
+                  onChange={(e) => setSearchItem(e.target.value)}
+                  containerClassName="w-full md:w-64"
+                />
               </div>
 
               <div className="overflow-x-auto max-h-[800px] scrollbar-thin scrollbar-thumb-slate-200">
@@ -425,7 +444,10 @@ export const PriceLists: React.FC = () => {
                                   className="h-9 w-full pl-6 pr-2 rounded-lg border border-slate-100 dark:border-slate-800 text-xs font-black text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all outline-none text-right"
                                 />
                               </div>
-                              <button
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => {
                                   const input = document.getElementById(
                                     `price-input-${item.id}`,
@@ -433,20 +455,11 @@ export const PriceLists: React.FC = () => {
                                   handleUpdatePrice(item.id, input.value);
                                 }}
                                 disabled={savingItems.includes(item.id) || !canWrite}
-                                className={`p-2 rounded-lg transition-all ${
-                                  savingItems.includes(item.id)
-                                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
-                                    : canWrite
-                                      ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 hover:bg-blue-600 hover:text-white shadow-sm'
-                                      : 'bg-slate-50 dark:bg-slate-800/50 text-slate-100 cursor-not-allowed grayscale'
-                                }`}
+                                isLoading={savingItems.includes(item.id)}
+                                className="p-2 text-blue-600 dark:text-blue-300"
                               >
-                                {savingItems.includes(item.id) ? (
-                                  <Loader size="sm" />
-                                ) : (
-                                  <Save size={14} />
-                                )}
-                              </button>
+                                {!savingItems.includes(item.id) && <Save size={14} />}
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -467,16 +480,12 @@ export const PriceLists: React.FC = () => {
               </div>
             </Card>
           ) : (
-            <div className="h-full min-h-[400px] flex flex-col items-center justify-center p-12 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[2.5rem] text-slate-400 dark:text-slate-500 bg-slate-50/50 dark:bg-slate-800/50">
-              <Tag size={40} className="text-slate-200 mb-4" />
-              <h3 className="text-lg font-black text-slate-700 dark:text-slate-200 tracking-tight">
-                Potencia Comercial
-              </h3>
-              <p className="max-w-xs text-center font-medium mt-2 text-xs text-slate-400 dark:text-slate-500 leading-relaxed">
-                Selecciona una lista de la izquierda para empezar a optimizar tus márgenes de
-                beneficio de forma masiva.
-              </p>
-            </div>
+            <EmptyState
+              icon={<Tag size={40} />}
+              title="Potencia Comercial"
+              hint="Selecciona una lista de la izquierda para empezar a optimizar tus márgenes de beneficio de forma masiva."
+              className="h-full min-h-[400px] border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[2.5rem] bg-slate-50/50 dark:bg-slate-800/50"
+            />
           )}
         </div>
       </div>

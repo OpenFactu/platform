@@ -21,6 +21,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
+import { Button } from '@openfactu/ui';
 import {
   Bot,
   Loader2,
@@ -165,14 +166,16 @@ export const AiChat: React.FC = () => {
             sobraba. Solo queda el toggle de pantalla completa, pegado a la
             esquina en vez de en su propia fila (dejaba un hueco vacío raro
             cuando no hay nada más en esa fila). */}
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => setFullscreen((v) => !v)}
-          className="absolute top-3 right-3 z-10 p-2 rounded-md text-slate-400 hover:text-accent hover:bg-accent/5 transition-colors"
           title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+          className="absolute top-3 right-3 z-10 text-slate-400 hover:text-accent"
         >
           {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-        </button>
+        </Button>
         <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full">
           {messages.length === 0 ? (
             // ── Estado vacío: hero centrado + compositor, estilo ChatGPT ──

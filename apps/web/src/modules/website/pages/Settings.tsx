@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Badge, Button, Card, Input, Loader, useToast } from '@openfactu/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  ColorInput,
+  Input,
+  Loader,
+  SearchableSelect,
+  Select,
+  usePopup,
+  useToast,
+} from '@openfactu/ui';
 import { Globe, Link2, Plus, Save, Settings2, ShoppingCart, Trash2 } from 'lucide-react';
 import { FONT_OPTIONS, useTheme } from '@/context/ThemeContext';
 import { priceListsApi } from '@/modules/documents/api/docsApi';
@@ -9,6 +20,7 @@ import type { WebsiteHost, WebsiteSite } from '../domain/website';
 /** Ajustes del site: identidad, slug, tema, SEO y dominios. Solo admins. */
 export const Settings: React.FC = () => {
   const toast = useToast();
+  const popup = usePopup();
   const { branding } = useTheme();
   const [site, setSite] = useState<WebsiteSite | null>(null);
   const [hosts, setHosts] = useState<WebsiteHost[]>([]);
@@ -81,7 +93,13 @@ export const Settings: React.FC = () => {
   };
 
   const handleRemoveHost = async (host: WebsiteHost) => {
-    if (!confirm(`¿Quitar ${host.value}?`)) return;
+    const ok = await popup.confirm({
+      title: 'Quitar dominio',
+      message: `¿Quitar ${host.value}?`,
+      tone: 'danger',
+      confirmLabel: 'Quitar',
+    });
+    if (!ok) return;
     try {
       await websiteApi.removeHost(host.id);
       fetchAll();
@@ -148,39 +166,25 @@ export const Settings: React.FC = () => {
           web.
         </p>
         <div className="grid md:grid-cols-3 gap-4">
-          <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1">Color primario</label>
-            <input
-              type="color"
-              value={overrides.colorPrimary ?? branding.colorPrimary}
-              onChange={(e) => patchTheme({ colorPrimary: e.target.value })}
-              className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1">Color de acento</label>
-            <input
-              type="color"
-              value={overrides.colorAccent ?? branding.colorAccent}
-              onChange={(e) => patchTheme({ colorAccent: e.target.value })}
-              className="h-10 w-full rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1">Fuente</label>
-            <select
-              value={overrides.fontId ?? ''}
-              onChange={(e) => patchTheme({ fontId: e.target.value || undefined })}
-              className="h-10 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-sm"
-            >
-              <option value="">Como el branding ({branding.fontFamily})</option>
-              {FONT_OPTIONS.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ColorInput
+            label="Color primario"
+            value={overrides.colorPrimary ?? branding.colorPrimary}
+            onChange={(v) => patchTheme({ colorPrimary: v })}
+          />
+          <ColorInput
+            label="Color de acento"
+            value={overrides.colorAccent ?? branding.colorAccent}
+            onChange={(v) => patchTheme({ colorAccent: v })}
+          />
+          <Select
+            label="Fuente"
+            value={overrides.fontId ?? ''}
+            onChange={(v) => patchTheme({ fontId: v || undefined })}
+            options={[
+              { value: '', label: `Como el branding (${branding.fontFamily})` },
+              ...FONT_OPTIONS.map((f) => ({ value: f.id, label: f.label })),
+            ]}
+          />
         </div>
       </Card>
 
@@ -192,18 +196,15 @@ export const Settings: React.FC = () => {
           <label className="text-xs font-bold text-slate-500 block mb-1">
             Tarifa de precios de la web
           </label>
-          <select
+          <SearchableSelect
             value={site.priceListId ?? ''}
-            onChange={(e) => patch({ priceListId: e.target.value || null })}
-            className="h-10 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-sm"
-          >
-            <option value="">Precio base de los artículos</option>
-            {priceLists.map((pl) => (
-              <option key={pl.id} value={pl.id}>
-                {pl.name}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => patch({ priceListId: v || null })}
+            options={[
+              { value: '', label: 'Precio base de los artículos' },
+              ...priceLists.map((pl) => ({ value: pl.id, label: pl.name })),
+            ]}
+            placeholder="Precio base de los artículos"
+          />
           <p className="text-[11px] text-slate-400 mt-1">
             La tienda muestra (y el checkout cobra) los precios de esta tarifa. Si el precio de
             tarifa es menor que el base, el producto sale como oferta: precio anterior tachado y
@@ -257,16 +258,16 @@ export const Settings: React.FC = () => {
         </p>
         {newHost && (
           <div className="flex gap-2 items-center bg-teal-50/40 dark:bg-teal-500/5 p-3 rounded-xl">
-            <select
+            <Select
+              ariaLabel="Tipo de host"
               value={newHost.kind}
-              onChange={(e) =>
-                setNewHost({ ...newHost, kind: e.target.value as 'subdomain' | 'domain' })
-              }
-              className="h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 text-xs"
-            >
-              <option value="subdomain">Subdominio</option>
-              <option value="domain">Dominio propio</option>
-            </select>
+              onChange={(v) => setNewHost({ ...newHost, kind: v as 'subdomain' | 'domain' })}
+              options={[
+                { value: 'subdomain', label: 'Subdominio' },
+                { value: 'domain', label: 'Dominio propio' },
+              ]}
+              containerClassName="w-44 shrink-0"
+            />
             <Input
               placeholder={newHost.kind === 'subdomain' ? 'acme.keirost.app' : 'www.miempresa.com'}
               value={newHost.value}
@@ -299,12 +300,15 @@ export const Settings: React.FC = () => {
                 {host.kind === 'slug' && <Badge variant="neutral">Slug</Badge>}
               </div>
               {host.kind !== 'slug' && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => handleRemoveHost(host)}
-                  className="p-2 text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all"
+                  title="Quitar dominio"
+                  className="text-slate-300 dark:text-slate-600 hover:text-rose-500"
                 >
                   <Trash2 size={15} />
-                </button>
+                </Button>
               )}
             </li>
           ))}

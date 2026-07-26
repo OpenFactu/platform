@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '@openfactu/ui';
 import { Download, FileSpreadsheet, FileText, File as FileIcon } from 'lucide-react';
 
 const ICONS: Record<string, React.ElementType> = {
@@ -39,14 +40,16 @@ export const FileDownloadCard: React.FC<{ filename: string; mimeType: string; ba
         <div className="text-sm font-medium truncate">{filename}</div>
         <div className="text-[11px] text-slate-400">Generado por Keiro</div>
       </div>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={handleDownload}
-        className="p-2 rounded-md text-accent hover:bg-accent/10 transition-colors shrink-0"
         title="Descargar"
+        className="shrink-0 text-accent"
       >
         <Download size={16} />
-      </button>
+      </Button>
     </div>
   );
 };

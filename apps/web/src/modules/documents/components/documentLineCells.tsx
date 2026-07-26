@@ -636,19 +636,15 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
       cell: (line: any, idx: number) => {
         const locked = !!line.baseId;
         return (
-          <select
+          <SearchableSelect
+            options={(masters.warehouses ?? []).map((w: any) => ({ value: w.id, label: w.name }))}
             value={line.warehouseId || ''}
+            onChange={(v) => actions.updateLine(idx, 'warehouseId', v)}
             disabled={locked}
-            onChange={(e) => actions.updateLine(idx, 'warehouseId', e.target.value)}
-            className={`h-9 w-full max-w-[160px] border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-left px-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 ${locked ? disabledInputCls : ''}`}
-          >
-            <option value="">(Sin almacén)</option>
-            {(masters.warehouses ?? []).map((w: any) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
+            placeholder="(Sin almacén)"
+            clearable
+            className="max-w-[160px]"
+          />
         );
       },
     });
@@ -823,21 +819,17 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
       cell: (line: any, idx: number) => {
         const locked = !!line.baseId;
         return (
-          <select
-            value={line.internalOrderId || ''}
-            disabled={locked}
-            onChange={(e) => actions.updateLine(idx, 'internalOrderId', e.target.value || null)}
-            className={`h-9 w-full border border-slate-200 dark:border-slate-700 rounded-lg text-xs px-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 ${locked ? disabledInputCls : ''}`}
-          >
-            <option value="">—</option>
-            {(masters.internalOrders ?? [])
+          <SearchableSelect
+            options={(masters.internalOrders ?? [])
+              // Sólo las abiertas, salvo la que ya tenga asignada esta línea.
               .filter((p: any) => p.status === 'open' || p.id === line.internalOrderId)
-              .map((p: any) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} · {p.name}
-                </option>
-              ))}
-          </select>
+              .map((p: any) => ({ value: p.id, label: `${p.code} · ${p.name}` }))}
+            value={line.internalOrderId || ''}
+            onChange={(v) => actions.updateLine(idx, 'internalOrderId', v || null)}
+            disabled={locked}
+            placeholder="—"
+            clearable
+          />
         );
       },
     });

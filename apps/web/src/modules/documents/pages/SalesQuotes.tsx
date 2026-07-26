@@ -1,6 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { Table, Card, Button, Input, Loader, useToast, Badge, FilterBar } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  Loader,
+  usePopup,
+  useToast,
+  Badge,
+  FilterBar,
+} from '@openfactu/ui';
 import { SearchableSelect } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -325,12 +335,15 @@ const QuoteForm: React.FC<{
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
         <div className="flex items-center gap-4">
-          <button
+          <Button
+            type="button"
+            variant="secondary"
             onClick={onBack}
-            className="p-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-all shadow-sm"
+            title="Volver"
+            className="rounded-2xl"
           >
             <ArrowLeft size={20} />
-          </button>
+          </Button>
           <div>
             <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tighter">
               Nuevo Presupuesto
@@ -709,6 +722,7 @@ const QuoteDetail: React.FC<{
 export const SalesQuotes: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const params = useParams();
   const location = useLocation();
   const { openTab } = useTabs();
@@ -813,7 +827,14 @@ export const SalesQuotes: React.FC = () => {
 
   const handleCancel = async () => {
     if (!selectedQuote) return;
-    if (!confirm('¿Seguro que deseas cancelar este presupuesto?')) return;
+    const ok = await popup.confirm({
+      title: 'Cancelar presupuesto',
+      message: '¿Seguro que deseas cancelar este presupuesto?',
+      tone: 'danger',
+      confirmLabel: 'Cancelar presupuesto',
+      cancelLabel: 'Volver',
+    });
+    if (!ok) return;
     setIsCancelling(true);
     try {
       await docsApi.cancel(API, selectedQuote.id);

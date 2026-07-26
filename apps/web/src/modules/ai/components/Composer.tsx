@@ -119,14 +119,16 @@ export const Composer: React.FC<{
               {quotedText}
             </p>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={clearQuote}
-            className="shrink-0 p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
             title="Quitar cita"
+            className="shrink-0 text-slate-400 hover:text-rose-500"
           >
             <X size={14} />
-          </button>
+          </Button>
         </div>
       )}
       <div
@@ -196,15 +198,17 @@ export const Composer: React.FC<{
                     e.target.value = '';
                   }}
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={attachments.length >= MAX_ATTACHMENTS || busy}
-                  className="p-1.5 rounded-md text-slate-400 hover:text-accent hover:bg-accent/5 disabled:opacity-40"
                   title="Adjuntar imagen"
+                  className="text-slate-400 hover:text-accent"
                 >
                   <Paperclip size={18} />
-                </button>
+                </Button>
               </>
             )}
             <input
@@ -218,15 +222,17 @@ export const Composer: React.FC<{
                 e.target.value = '';
               }}
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => docInputRef.current?.click()}
               disabled={busy || extractingDocs}
-              className="p-1.5 rounded-md text-slate-400 hover:text-accent hover:bg-accent/5 disabled:opacity-40"
               title="Adjuntar Excel, PDF, Word, CSV o TXT"
+              className="text-slate-400 hover:text-accent"
             >
               <FileUp size={18} />
-            </button>
+            </Button>
             {!supportsImages && (
               <span
                 className="text-slate-300 dark:text-slate-600"

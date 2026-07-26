@@ -118,6 +118,9 @@ export default defineConfig({
       '@openfactu/pdf/browser',
       '@openfactu/site-builder',
       '@openfactu/ui',
+      // Subruta propia: los gráficos viven aparte porque arrastran recharts
+      // (peerDependency opcional), y Vite la prebundlea como entrada distinta.
+      '@openfactu/ui/charts',
       '@openfactu/plugin-sdk',
       '@zxing/browser',
       '@zxing/library',
