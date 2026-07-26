@@ -19,7 +19,7 @@
     "@openfactu/common": "^0.2.1",
     "@openfactu/site-builder": "^0.1.0",
     "@openfactu/pdf": "^0.0.2",
-    "@openfactu/ui": "^0.2.1",
+    "@openfactu/ui": "^0.4.0",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "ai": "^7.0.31",

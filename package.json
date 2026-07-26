@@ -19,6 +19,7 @@
     "dev:all:ai:gpu": "npm run ensure-env && docker compose stop server web && docker compose --profile ai stop ollama && docker compose --profile ai-gpu up -d db ollama-gpu && concurrently \"npm run dev:server\" \"npm run dev:web\"",
     "dev:all:https": "npm run ensure-env && docker compose stop server web && docker compose up -d db && concurrently \"npm run dev:server\" \"npm run dev:web:https\"",
     "install:all": "npm install",
+    "link:local": "node scripts/link-local.mjs",
     "cli": "npx ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"esModuleInterop\":true}' packages/cli/bin/openfactu.ts",
     "format": "prettier --write \"apps/**/*.{ts,tsx,js,jsx,json,md,css}\" \"packages/**/*.{ts,tsx,js,jsx,json,md,css}\" \"plugins/**/*.{ts,tsx,js,jsx,json,md,css}\" \"*.{json,md}\"",
     "format:check": "prettier --check \"apps/**/*.{ts,tsx,js,jsx,json,md,css}\" \"packages/**/*.{ts,tsx,js,jsx,json,md,css}\" \"plugins/**/*.{ts,tsx,js,jsx,json,md,css}\" \"*.{json,md}\""
