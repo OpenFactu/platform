@@ -8,6 +8,7 @@ import {
   Building2,
   AlertTriangle,
 } from 'lucide-react';
+import { Tabs } from '@openfactu/ui';
 import { ShipmentsTab } from '../components/ShipmentsTab';
 import { RoutesTab } from '../components/RoutesTab';
 import { PackagesTab } from '../components/PackagesTab';
@@ -30,15 +31,16 @@ type Tab =
 export const LogisticsHub: React.FC = () => {
   const [tab, setTab] = useState<Tab>('preparation');
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'preparation', label: 'Preparación', icon: <ClipboardCheck size={14} /> },
-    { id: 'shipments', label: 'Envíos', icon: <Truck size={14} /> },
-    { id: 'incidents', label: 'Incidencias', icon: <AlertTriangle size={14} /> },
-    { id: 'routes', label: 'Rutas', icon: <MapPin size={14} /> },
-    { id: 'vehicles', label: 'Vehículos', icon: <Truck size={14} /> },
-    { id: 'packages', label: 'Paquetes', icon: <PackageIcon size={14} /> },
-    { id: 'staging', label: 'Acopios', icon: <Warehouse size={14} /> },
-    { id: 'platforms', label: 'Plataformas', icon: <Building2 size={14} /> },
+  // Fuente de verdad de las pestañas: `Tabs` deriva sus items de aquí.
+  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+    { key: 'preparation', label: 'Preparación', icon: <ClipboardCheck size={14} /> },
+    { key: 'shipments', label: 'Envíos', icon: <Truck size={14} /> },
+    { key: 'incidents', label: 'Incidencias', icon: <AlertTriangle size={14} /> },
+    { key: 'routes', label: 'Rutas', icon: <MapPin size={14} /> },
+    { key: 'vehicles', label: 'Vehículos', icon: <Truck size={14} /> },
+    { key: 'packages', label: 'Paquetes', icon: <PackageIcon size={14} /> },
+    { key: 'staging', label: 'Acopios', icon: <Warehouse size={14} /> },
+    { key: 'platforms', label: 'Plataformas', icon: <Building2 size={14} /> },
   ];
 
   return (
@@ -57,25 +59,8 @@ export const LogisticsHub: React.FC = () => {
         </div>
       </header>
 
-      {/* Tabs — scroll horizontal cuando no caben, sin wrap (patrón CompanySettings). */}
-      <div className="border-b border-line dark:border-ink-700 overflow-x-auto">
-        <div className="flex gap-1 min-w-max">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-colors shrink-0 ${
-                tab === t.id
-                  ? 'text-accent border-accent'
-                  : 'text-ink-500 dark:text-ink-400 border-transparent hover:text-accent dark:hover:text-accent'
-              }`}
-            >
-              {t.icon}
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Scroll horizontal cuando no caben, sin wrap (patrón CompanySettings). */}
+      <Tabs items={tabs} value={tab} onChange={(k) => setTab(k as Tab)} scrollable />
 
       {tab === 'preparation' && <PreparationTab />}
       {tab === 'shipments' && <ShipmentsTab />}

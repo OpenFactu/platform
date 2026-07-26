@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
+import { Button } from '@openfactu/ui';
 import { DriverApp } from '@/modules/logistics/pages/DriverApp';
 import { useAuth } from '@/context/AuthContext';
 
@@ -23,13 +24,9 @@ export const DriverLayout: React.FC = () => {
           <span className="font-bold text-slate-800 dark:text-slate-100">{user?.username}</span>{' '}
           <span className="text-slate-500">· repartidor</span>
         </div>
-        <button
-          onClick={logout}
-          className="flex items-center gap-1 text-xs text-slate-500 hover:text-rose-500"
-          title="Cerrar sesión"
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={logout} title="Cerrar sesión">
           <LogOut size={14} /> Salir
-        </button>
+        </Button>
       </header>
       <div className="flex-1 min-h-0">
         <MemoryRouter initialEntries={['/driver']}>

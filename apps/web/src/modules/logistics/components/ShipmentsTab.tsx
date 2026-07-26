@@ -2,9 +2,23 @@ import { carriersApi, routesApi, shipmentsApi, vehiclesApi } from '../api';
 import { warehousesApi } from '@/modules/inventory/api';
 import { employeesApi } from '@/modules/hr/api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Modal,
+  Badge,
+  Loader,
+  useToast,
+  usePopup,
+  DatePicker,
+  SearchableSelect,
+  Textarea,
+  EmptyState,
+  Pagination,
+} from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
-import { Plus, Trash2, MapPin, Search, ChevronLeft, ChevronRight, Mail } from 'lucide-react';
+import { Plus, Trash2, MapPin, Search, Mail, Truck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { useFormat } from '@/hooks/useFormat';
@@ -87,6 +101,7 @@ export const ShipmentsTab: React.FC = () => {
   const { openTab } = useTabs();
   const fmt = useFormat();
   const toast = useToast();
+  const popup = usePopup();
 
   const [rows, setRows] = useState<Shipment[]>([]);
   const [total, setTotal] = useState(0);
@@ -207,7 +222,13 @@ export const ShipmentsTab: React.FC = () => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('¿Eliminar envío?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar envío',
+      message: 'Se eliminará el envío y su seguimiento. Esta acción no se puede deshacer.',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     await shipmentsApi.remove(id);
     load();
   };
@@ -235,44 +256,83 @@ export const ShipmentsTab: React.FC = () => {
     setPage(1);
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const hasFilters = !!q || statuses.length > 0 || !!routeId || !!fromDate || !!toDate;
+
+  // Opciones de los selectores: una vez por render en lugar de una por <option>.
+  const carrierOptions = useMemo(
+    () => [
+      { value: 'propio', label: 'Propio (flota interna)' },
+      ...carriers.map((c: any) => ({ value: c.code || c.id, label: c.name })),
+      { value: '__custom__', label: 'Otro…' },
+    ],
+    [carriers],
+  );
+
+  const driverOptions = useMemo(
+    () =>
+      employees.map((emp: any) => ({
+        value: emp.id,
+        label:
+          [emp.firstName, emp.lastName].filter(Boolean).join(' ').trim() ||
+          emp.code ||
+          emp.email ||
+          '(sin nombre)',
+        secondaryLabel: emp.code || undefined,
+      })),
+    [employees],
+  );
+
+  const vehicleOptions = useMemo(
+    () =>
+      vehicles.map((v: any) => ({
+        value: v.plate,
+        label: v.plate,
+        secondaryLabel:
+          [[v.brand, v.model].filter(Boolean).join(' '), v.code ? `(${v.code})` : '']
+            .filter(Boolean)
+            .join(' ') || undefined,
+      })),
+    [vehicles],
+  );
+
+  const warehouseOptions = useMemo(
+    () => warehouses.map((w: any) => ({ value: w.id, label: w.name })),
+    [warehouses],
+  );
 
   return (
     <div className="space-y-3">
       {/* Barra de filtros */}
       <Card bodyClassName="p-3 space-y-3">
         <div className="flex flex-col md:flex-row gap-2">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={q}
-              onChange={(e) => {
-                setPage(1);
-                setQ(e.target.value);
-              }}
-              placeholder="Buscar por tracking, dirección o conductor…"
-              className="!pl-9"
-            />
-          </div>
+          <Input
+            value={q}
+            onChange={(e) => {
+              setPage(1);
+              setQ(e.target.value);
+            }}
+            placeholder="Buscar por tracking, dirección o conductor…"
+            leftIcon={<Search size={14} />}
+            containerClassName="flex-1"
+          />
           <div className="flex gap-2 items-center shrink-0">
-            <Input
-              type="date"
-              value={fromDate}
-              onChange={(e) => {
+            <DatePicker
+              value={fromDate || null}
+              onChange={(v) => {
                 setPage(1);
-                setFromDate(e.target.value);
+                setFromDate(v ?? '');
               }}
+              clearable
               className="w-[130px]"
             />
             <span className="text-slate-400 text-xs">→</span>
-            <Input
-              type="date"
-              value={toDate}
-              onChange={(e) => {
+            <DatePicker
+              value={toDate || null}
+              onChange={(v) => {
                 setPage(1);
-                setToDate(e.target.value);
+                setToDate(v ?? '');
               }}
+              clearable
               className="w-[130px]"
             />
           </div>
@@ -284,23 +344,17 @@ export const ShipmentsTab: React.FC = () => {
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Estado:
           </div>
-          {STATUS_OPTIONS.map((s) => {
-            const active = statuses.includes(s);
-            return (
-              <button
-                key={s}
-                onClick={() => toggleStatus(s)}
-                className={
-                  'text-[11px] px-2.5 py-1 rounded-full border transition ' +
-                  (active
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-primary')
-                }
-              >
-                {STATUS_LABEL[s]}
-              </button>
-            );
-          })}
+          {STATUS_OPTIONS.map((s) => (
+            <Button
+              key={s}
+              type="button"
+              size="sm"
+              variant={statuses.includes(s) ? 'primary' : 'outline'}
+              onClick={() => toggleStatus(s)}
+            >
+              {STATUS_LABEL[s]}
+            </Button>
+          ))}
           <div className="flex-1 min-w-[180px]">
             <RoutePicker
               value={routeId}
@@ -314,12 +368,9 @@ export const ShipmentsTab: React.FC = () => {
             />
           </div>
           {hasFilters && (
-            <button
-              onClick={clearFilters}
-              className="text-[11px] text-slate-500 hover:text-rose-500 underline"
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
               Limpiar filtros
-            </button>
+            </Button>
           )}
         </div>
       </Card>
@@ -330,8 +381,27 @@ export const ShipmentsTab: React.FC = () => {
           <Loader />
         </div>
       ) : rows.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-          {hasFilters ? 'Ningún envío coincide con los filtros.' : 'Sin envíos aún.'}
+        <Card bodyClassName="py-10">
+          <EmptyState
+            icon={<Truck size={28} />}
+            title={hasFilters ? 'Ningún envío coincide con los filtros' : 'Sin envíos aún'}
+            hint={
+              hasFilters
+                ? 'Prueba a quitar algún filtro o amplía el rango de fechas.'
+                : 'Crea el primer envío para empezar a hacer seguimiento.'
+            }
+            action={
+              hasFilters ? (
+                <Button type="button" variant="secondary" size="sm" onClick={clearFilters}>
+                  Limpiar filtros
+                </Button>
+              ) : (
+                <Button type="button" size="sm" onClick={() => setShowModal(true)}>
+                  <Plus size={14} className="mr-1" /> Nuevo envío
+                </Button>
+              )
+            }
+          />
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -392,35 +462,42 @@ export const ShipmentsTab: React.FC = () => {
                         {s.lastLat != null && s.lastLng != null ? timeAgo(s.lastLocationAt) : '—'}
                       </td>
                       <td className="px-4 py-2 text-right whitespace-nowrap">
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             openTab(`/logistics/shipments/${s.id}`);
                           }}
-                          className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
                           title="Ver detalle"
                         >
                           <MapPin size={13} />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             resendNotification(s.id, s.status);
                           }}
-                          className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
                           title="Reenviar notificación al destinatario"
                         >
                           <Mail size={13} />
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             remove(s.id);
                           }}
-                          className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
+                          title="Eliminar envío"
                         >
                           <Trash2 size={13} />
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   );
@@ -428,34 +505,15 @@ export const ShipmentsTab: React.FC = () => {
               </tbody>
             </table>
           </div>
-          {/* Pagination */}
-          <div className="flex items-center justify-between px-4 py-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
-            <span>
-              {total === 0
-                ? '0'
-                : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, total)}`}{' '}
-              de <b>{total}</b>
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-                className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <span className="px-2 text-slate-700 dark:text-slate-200">
-                Página {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-                className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          </div>
+          {/* Paginación (sin selector de tamaño: PAGE_SIZE es fijo) */}
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onPageChange={setPage}
+            pageSizeOptions={[]}
+            className="px-4 py-2 border-t border-slate-100 dark:border-slate-800"
+          />
         </Card>
       )}
 
@@ -475,30 +533,24 @@ export const ShipmentsTab: React.FC = () => {
               Tipo
             </label>
             <div className="grid grid-cols-2 gap-2">
-              <button
+              <Button
                 type="button"
+                variant={(form.kind || 'delivery') === 'delivery' ? 'primary' : 'outline'}
                 onClick={() => setForm({ ...form, kind: 'delivery' })}
-                className={
-                  'h-10 rounded-lg border text-xs font-bold uppercase tracking-wider transition-colors ' +
-                  ((form.kind || 'delivery') === 'delivery'
-                    ? 'bg-primary text-white border-primary'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700')
-                }
+                className="h-10 w-full"
               >
                 📦 Entrega
-              </button>
-              <button
+              </Button>
+              {/* `accent` para la recogida: la acción excepcional se distingue
+                  de la entrega normal igual que hacía el ámbar de antes. */}
+              <Button
                 type="button"
+                variant={form.kind === 'pickup_return' ? 'accent' : 'outline'}
                 onClick={() => setForm({ ...form, kind: 'pickup_return' })}
-                className={
-                  'h-10 rounded-lg border text-xs font-bold uppercase tracking-wider transition-colors ' +
-                  (form.kind === 'pickup_return'
-                    ? 'bg-amber-500 text-white border-amber-500'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700')
-                }
+                className="h-10 w-full"
               >
                 ↩ Recogida de devolución
-              </button>
+              </Button>
             </div>
             {form.kind === 'pickup_return' && (
               <p className="text-[11px] text-amber-600 mt-1">
@@ -518,10 +570,10 @@ export const ShipmentsTab: React.FC = () => {
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Operador
                 </label>
-                <select
+                <SearchableSelect
+                  options={carrierOptions}
                   value={carrierMode}
-                  onChange={(e) => {
-                    const v = e.target.value;
+                  onChange={(v) => {
                     setCarrierMode(v);
                     if (v === '__custom__') {
                       setForm({ ...form, carrier: '' });
@@ -529,16 +581,8 @@ export const ShipmentsTab: React.FC = () => {
                       setForm({ ...form, carrier: v });
                     }
                   }}
-                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                >
-                  <option value="propio">Propio (flota interna)</option>
-                  {carriers.map((c: any) => (
-                    <option key={c.id} value={c.code || c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                  <option value="__custom__">Otro…</option>
-                </select>
+                />
+
                 {carrierMode === '__custom__' && (
                   <Input
                     className="mt-2"
@@ -549,10 +593,8 @@ export const ShipmentsTab: React.FC = () => {
                 )}
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                  Nº de tracking
-                </label>
                 <Input
+                  label="Nº de tracking"
                   value={form.trackingNumber || ''}
                   onChange={(e) => setForm({ ...form, trackingNumber: e.target.value })}
                   placeholder="Opcional"
@@ -571,10 +613,10 @@ export const ShipmentsTab: React.FC = () => {
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Conductor
                 </label>
-                <select
+                <SearchableSelect
+                  options={driverOptions}
                   value={form.driverEmployeeId || ''}
-                  onChange={(e) => {
-                    const empId = e.target.value;
+                  onChange={(empId) => {
                     const emp = employees.find((x: any) => x.id === empId);
                     setForm({
                       ...form,
@@ -585,19 +627,9 @@ export const ShipmentsTab: React.FC = () => {
                       driverPhone: emp?.phone || form.driverPhone || null,
                     });
                   }}
-                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                >
-                  <option value="">— seleccionar —</option>
-                  {employees.map((emp: any) => {
-                    const name = [emp.firstName, emp.lastName].filter(Boolean).join(' ').trim();
-                    return (
-                      <option key={emp.id} value={emp.id}>
-                        {name || emp.code || emp.email || '(sin nombre)'}
-                        {emp.code ? ` · ${emp.code}` : ''}
-                      </option>
-                    );
-                  })}
-                </select>
+                  clearable
+                  placeholder="— seleccionar —"
+                />
                 {employees.length === 0 && (
                   <p className="text-[11px] text-slate-500 mt-1">
                     No hay empleados activos. Da de alta en RRHH → Empleados.
@@ -608,10 +640,10 @@ export const ShipmentsTab: React.FC = () => {
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Vehículo
                 </label>
-                <select
+                <SearchableSelect
+                  options={vehicleOptions}
                   value={form.vehiclePlate || ''}
-                  onChange={(e) => {
-                    const plate = e.target.value;
+                  onChange={(plate) => {
                     const v = vehicles.find((x: any) => x.plate === plate);
                     setForm({
                       ...form,
@@ -619,19 +651,9 @@ export const ShipmentsTab: React.FC = () => {
                       carrier: form.carrier || (v ? 'propio' : form.carrier),
                     });
                   }}
-                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                >
-                  <option value="">— seleccionar —</option>
-                  {vehicles.map((v: any) => (
-                    <option key={v.id} value={v.plate}>
-                      {v.plate}
-                      {v.brand || v.model
-                        ? ` · ${[v.brand, v.model].filter(Boolean).join(' ')}`
-                        : ''}
-                      {v.code ? ` (${v.code})` : ''}
-                    </option>
-                  ))}
-                </select>
+                  clearable
+                  placeholder="— seleccionar —"
+                />
                 {vehicles.length === 0 && (
                   <p className="text-[11px] text-slate-500 mt-1">
                     No hay vehículos activos. Da de alta en Logística → Vehículos.
@@ -693,18 +715,14 @@ export const ShipmentsTab: React.FC = () => {
                   Almacén de destino al devolverlo
                   <span className="text-rose-500 ml-0.5">*</span>
                 </label>
-                <select
+                {/* Obligatorio, pero el aviso ya lo da `create()` con toast —
+                    SearchableSelect no tiene `required`. */}
+                <SearchableSelect
+                  options={warehouseOptions}
                   value={form.returnWarehouseId || ''}
-                  onChange={(e) => setForm({ ...form, returnWarehouseId: e.target.value || null })}
-                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                >
-                  <option value="">— seleccionar —</option>
-                  {warehouses.map((w: any) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, returnWarehouseId: v || null })}
+                  placeholder="— seleccionar —"
+                />
                 <p className="text-[11px] text-slate-500 mt-1">
                   Al confirmar la recogida, se generará una entrada de stock (GoodsReceipt draft)
                   sobre este almacén para que la revises.
@@ -747,28 +765,21 @@ export const ShipmentsTab: React.FC = () => {
               Detalles adicionales
             </div>
             <div className="grid grid-cols-1 gap-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                  Fecha estimada de entrega
-                </label>
-                <Input
-                  type="datetime-local"
-                  value={form.estimatedDelivery || ''}
-                  onChange={(e) => setForm({ ...form, estimatedDelivery: e.target.value || null })}
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                  Notas internas
-                </label>
-                <textarea
-                  rows={3}
-                  value={form.notes || ''}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value || null })}
-                  placeholder="Instrucciones para el conductor, observaciones, etc."
-                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 outline-none focus:border-primary"
-                />
-              </div>
+              {/* datetime-local: la librería no tiene selector de fecha+hora,
+                  así que se queda como Input nativo. */}
+              <Input
+                label="Fecha estimada de entrega"
+                type="datetime-local"
+                value={form.estimatedDelivery || ''}
+                onChange={(e) => setForm({ ...form, estimatedDelivery: e.target.value || null })}
+              />
+              <Textarea
+                label="Notas internas"
+                rows={3}
+                value={form.notes || ''}
+                onChange={(e) => setForm({ ...form, notes: e.target.value || null })}
+                placeholder="Instrucciones para el conductor, observaciones, etc."
+              />
             </div>
           </div>
 

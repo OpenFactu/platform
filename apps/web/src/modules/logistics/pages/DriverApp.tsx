@@ -1,6 +1,16 @@
 import { packagesApi, routesApi, shipmentsApi, stagingAreasApi } from '../api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Card, Button, Badge, Loader, Modal, Input, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Badge,
+  Loader,
+  Modal,
+  Input,
+  DatePicker,
+  EmptyState,
+  useToast,
+} from '@openfactu/ui';
 import {
   MapPin,
   Play,
@@ -400,7 +410,9 @@ export const DriverApp: React.FC = () => {
     const pending = detail.stops.filter((s) => s.status === 'pending' || s.status === 'en_route');
     const now = new Date().toISOString();
     await Promise.all(
-      pending.map((s) => routesApi.updateStop(selectedId, s.id, { status: 'arrived', arrivedAt: now })),
+      pending.map((s) =>
+        routesApi.updateStop(selectedId, s.id, { status: 'arrived', arrivedAt: now }),
+      ),
     );
     setConfirmBulkArrive(null);
     loadDetail(selectedId);
@@ -633,6 +645,9 @@ export const DriverApp: React.FC = () => {
                     <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                       {scanResult.myRoutes.length > 1 ? 'Tus rutas en este acopio' : 'Tu ruta'}
                     </div>
+                    {/* Fila clicable (tarjeta de ruta), no un control: se queda
+                        como <button> crudo — es estructura y además un objetivo
+                        táctil grande a propósito. */}
                     {scanResult.myRoutes.map((r) => (
                       <button
                         key={r.id}
@@ -725,16 +740,12 @@ export const DriverApp: React.FC = () => {
       >
         {postponeFor && (
           <div className="pt-2 space-y-4">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Motivo
-              </label>
-              <Input
-                value={postponeFor.reason}
-                onChange={(e) => setPostponeFor({ ...postponeFor, reason: e.target.value })}
-                placeholder="No había nadie para recibirlo"
-              />
-            </div>
+            <Input
+              label="Motivo"
+              value={postponeFor.reason}
+              onChange={(e) => setPostponeFor({ ...postponeFor, reason: e.target.value })}
+              placeholder="No había nadie para recibirlo"
+            />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setPostponeFor(null)}>
                 Cancelar
@@ -757,16 +768,14 @@ export const DriverApp: React.FC = () => {
       >
         {exceptionFor && (
           <div className="pt-2 space-y-4">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Descripción<span className="text-rose-500 ml-0.5">*</span>
-              </label>
-              <Input
-                value={exceptionFor.reason}
-                onChange={(e) => setExceptionFor({ ...exceptionFor, reason: e.target.value })}
-                placeholder="Describe la incidencia"
-              />
-            </div>
+            {/* Obligatorio: `submitException` ya avisa con toast si viene vacío. */}
+            <Input
+              label="Descripción"
+              requiredMark
+              value={exceptionFor.reason}
+              onChange={(e) => setExceptionFor({ ...exceptionFor, reason: e.target.value })}
+              placeholder="Describe la incidencia"
+            />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setExceptionFor(null)}>
                 Cancelar
@@ -795,44 +804,47 @@ export const DriverApp: React.FC = () => {
             </h1>
             <p className="text-xs text-slate-500">Tus rutas asignadas</p>
           </div>
-          <button
+          {/* Botón táctil grande: se conservan flex-col y el relleno original
+              para no perder superficie de toque en móvil. */}
+          <Button
+            type="button"
             onClick={() => setScanOpen(true)}
-            className="flex flex-col items-center justify-center gap-0.5 px-4 py-2 rounded-xl bg-primary text-white shadow-md active:scale-95 transition-transform"
+            className="flex-col gap-0.5 px-4 py-2 rounded-xl shadow-md active:scale-95"
             title="Escanear acopio"
           >
             <QrCode size={22} />
             <span className="text-[10px] font-bold tracking-wide">ESCANEAR</span>
-          </button>
+          </Button>
         </header>
         {renderScanModals()}
 
         {/* Filtro de fecha — por defecto solo las rutas de hoy. */}
         <div className="flex items-center gap-2 mb-3">
-          <button
+          {/* `h-8 px-3` se mantiene: son los chips de filtro de la app móvil. */}
+          <Button
+            type="button"
+            size="sm"
+            variant={dateFilter === todayStr() ? 'primary' : 'outline'}
             onClick={() => setDateFilter(todayStr())}
-            className={`h-8 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition ${
-              dateFilter === todayStr()
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-            }`}
+            className="h-8 px-3 rounded-lg"
           >
             Hoy
-          </button>
-          <button
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={!dateFilter ? 'primary' : 'outline'}
             onClick={() => setDateFilter('')}
-            className={`h-8 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition ${
-              !dateFilter
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-            }`}
+            className="h-8 px-3 rounded-lg"
           >
             Todas
-          </button>
-          <Input
-            type="date"
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="ml-auto !w-auto"
+          </Button>
+          {/* '' = todas las fechas, de ahí el `|| null` / `?? ''`. */}
+          <DatePicker
+            value={dateFilter || null}
+            onChange={(v) => setDateFilter(v ?? '')}
+            clearable
+            className="ml-auto w-auto"
           />
         </div>
 
@@ -841,16 +853,31 @@ export const DriverApp: React.FC = () => {
             <Loader />
           </div>
         ) : routes.length === 0 ? (
-          <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-            No tienes rutas asignadas.
+          <Card bodyClassName="py-10">
+            <EmptyState icon={<RouteIcon size={28} />} title="No tienes rutas asignadas" />
           </Card>
         ) : visibleRoutes.length === 0 ? (
-          <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-            Sin rutas para {dateFilter === todayStr() ? 'hoy' : 'ese día'} — usa «Todas» para ver el
-            resto.
+          <Card bodyClassName="py-10">
+            <EmptyState
+              icon={<RouteIcon size={28} />}
+              title={`Sin rutas para ${dateFilter === todayStr() ? 'hoy' : 'ese día'}`}
+              hint="Usa «Todas» para ver el resto."
+              action={
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setDateFilter('')}
+                >
+                  Ver todas
+                </Button>
+              }
+            />
           </Card>
         ) : (
           <div className="space-y-2">
+            {/* Tarjeta de ruta completa: estructura clicable, no un botón de
+                acción. Se queda cruda para conservar el área táctil del móvil. */}
             {visibleRoutes.map((r) => (
               <button
                 key={r.id}
@@ -1005,23 +1032,27 @@ export const DriverApp: React.FC = () => {
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-3 space-y-3">
       {renderScanModals()}
       <div className="flex items-center justify-between">
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => {
             stopGps();
             setSelectedId(null);
           }}
-          className="text-xs text-slate-500 underline"
         >
           ← Mis rutas
-        </button>
+        </Button>
         <div className="flex items-center gap-3">
-          <button
+          {/* `p-2` se conserva: el icono de 18px necesita el área táctil. */}
+          <Button
+            type="button"
             onClick={() => setScanOpen(true)}
-            className="p-2 rounded-lg bg-primary text-white shadow-sm active:scale-95 transition-transform"
+            className="p-2 rounded-lg shadow-sm active:scale-95"
             title="Escanear acopio"
           >
             <QrCode size={18} />
-          </button>
+          </Button>
           <div className="text-[11px] text-slate-500">
             {lastFix ? `GPS: ${lastFix.lat.toFixed(4)}, ${lastFix.lng.toFixed(4)}` : 'GPS inactivo'}
           </div>
@@ -1168,6 +1199,8 @@ export const DriverApp: React.FC = () => {
       {/* Mini-mapa con todas las paradas */}
       {mapPoints.length > 0 && (
         <Card bodyClassName="p-0 overflow-hidden">
+          {/* Cabecera desplegable de la sección (todo el ancho, con su borde
+              inferior): estructura, no un botón de acción. Se queda cruda. */}
           <button
             type="button"
             onClick={() => setMapOpen((v) => !v)}
@@ -1180,6 +1213,9 @@ export const DriverApp: React.FC = () => {
           </button>
           {mapOpen && (
             <div style={{ height: 320 }} className="relative">
+              {/* Controles superpuestos al mapa: se quedan como <button> crudos
+                  — envolverlos en Button rompe el posicionamiento absoluto y el
+                  hit-testing sobre el canvas de maplibre. */}
               <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
                 <button
                   type="button"
@@ -1216,6 +1252,7 @@ export const DriverApp: React.FC = () => {
         maxWidth="full"
       >
         <div style={{ height: '75vh' }} className="relative">
+          {/* Overlay del mapa: <button> crudo a propósito (ver mini-mapa). */}
           <button
             type="button"
             onClick={() => centerMap(mapRefFull)}
@@ -1267,12 +1304,14 @@ export const DriverApp: React.FC = () => {
            iniciar la ruta, como el resto de acciones. */}
       {routeStarted &&
         detail.stops.some((s) => s.status === 'pending' || s.status === 'en_route') && (
-          <button
+          // `h-10 w-full` intacto: es la acción táctil grande de la ruta.
+          <Button
+            type="button"
             onClick={markAllArrived}
-            className="w-full flex items-center justify-center gap-2 h-10 rounded-xl bg-blue-500 text-white text-sm font-black uppercase tracking-wider shadow-sm active:scale-[0.98] transition-all mb-2"
+            className="w-full h-10 rounded-xl mb-2 text-sm !bg-blue-500 hover:!bg-blue-600 !text-white shadow-sm active:scale-[0.98]"
           >
             <MapPin size={16} /> Llegué en todas las paradas pendientes
-          </button>
+          </Button>
         )}
 
       <div className="space-y-2">
@@ -1389,21 +1428,29 @@ export const DriverApp: React.FC = () => {
                       <CheckCircle2 size={14} /> {isPickup ? 'Recogí' : 'Entregué'}
                     </Button>
                   </div>
+                  {/* Se conservan `flex-1 h-9` (área táctil) y el tono
+                      ámbar/rosa que distingue las dos acciones negativas. */}
                   <div className="flex gap-2 mt-2">
-                    <button
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
                       disabled={!routeStarted}
                       onClick={() => markPostponed(s.id, s.shipmentId)}
-                      className="flex-1 inline-flex items-center justify-center gap-1 h-9 px-3 rounded-lg bg-amber-50 text-amber-800 text-[11px] font-bold uppercase tracking-wider border border-amber-200 hover:bg-amber-100 active:scale-[0.97] transition disabled:opacity-40 disabled:pointer-events-none"
+                      className="flex-1 h-9 rounded-lg text-[11px] font-bold uppercase tracking-wider !bg-amber-50 !text-amber-800 !border-amber-200 hover:!bg-amber-100 dark:!bg-amber-500/10 dark:!text-amber-300 dark:!border-amber-500/30 active:scale-[0.97]"
                     >
                       ⏸ Aplazar
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
                       disabled={!routeStarted}
                       onClick={() => reportException(s.id, s.shipmentId)}
-                      className="flex-1 inline-flex items-center justify-center gap-1 h-9 px-3 rounded-lg bg-rose-50 text-rose-700 text-[11px] font-bold uppercase tracking-wider border border-rose-200 hover:bg-rose-100 active:scale-[0.97] transition disabled:opacity-40 disabled:pointer-events-none"
+                      className="flex-1 h-9 rounded-lg text-[11px] font-bold uppercase tracking-wider !bg-rose-50 !text-rose-700 !border-rose-200 hover:!bg-rose-100 dark:!bg-rose-500/10 dark:!text-rose-300 dark:!border-rose-500/30 active:scale-[0.97]"
                     >
                       ⚠ Incidencia
-                    </button>
+                    </Button>
                   </div>
                 </>
               )}

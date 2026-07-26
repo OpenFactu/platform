@@ -6,6 +6,11 @@
  *
  * Se coloca absolutamente en la esquina superior izquierda del contenedor
  * del mapa. El contenedor padre debe tener `position: relative`.
+ *
+ * Excepción deliberada al barrido de @openfactu/ui: el <input> y el botón de
+ * limpiar son parte de un overlay posicionado sobre el mapa (y comparten
+ * estilos con el modo `inline`). Sustituirlos por `Input`/`Button` rompe el
+ * posicionamiento absoluto y el hit-testing contra los gestos de MapLibre.
  */
 
 import { geocodeApi } from '@/modules/logistics/api';

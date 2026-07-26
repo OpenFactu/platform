@@ -14,7 +14,7 @@
 
 import { incidentsApi, shipmentsApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Badge, Loader, Button, Input, Modal, useToast } from '@openfactu/ui';
+import { Card, Badge, Loader, Button, Textarea, Modal, useToast } from '@openfactu/ui';
 import { AlertTriangle, CheckCircle2, MessageCircle, RefreshCw, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
@@ -397,18 +397,13 @@ export const IncidentsTab: React.FC = () => {
               <b>Motivo original:</b> {returnModal.reason}
             </div>
           )}
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Motivo de la devolución (opcional)
-            </label>
-            <textarea
-              value={returnReason}
-              onChange={(e) => setReturnReason(e.target.value)}
-              rows={3}
-              placeholder="Resumen breve — p. ej. cliente rechazó, producto dañado…"
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 text-slate-800 dark:text-slate-100"
-            />
-          </div>
+          <Textarea
+            label="Motivo de la devolución (opcional)"
+            value={returnReason}
+            onChange={(e) => setReturnReason(e.target.value)}
+            rows={3}
+            placeholder="Resumen breve — p. ej. cliente rechazó, producto dañado…"
+          />
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <Button
               variant="secondary"

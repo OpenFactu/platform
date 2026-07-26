@@ -1,7 +1,17 @@
 import { packagesApi, stagingAreasApi } from '../api';
 import { itemsApi } from '@/modules/inventory/api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  NumberInput,
+  Modal,
+  Badge,
+  Loader,
+  SearchableSelect,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import { Plus, Trash2, Lock, Warehouse, Boxes } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +31,7 @@ const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
 export const PackagesTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<Package[]>([]);
   const [boxes, setBoxes] = useState<Item[]>([]);
   const [areas, setAreas] = useState<StagingArea[]>([]);
@@ -31,7 +42,10 @@ export const PackagesTab: React.FC = () => {
   const [linesFor, setLinesFor] = useState<Package | null>(null);
   const [lines, setLines] = useState<PackageLine[]>([]);
   const [newLineItemId, setNewLineItemId] = useState('');
-  const [newLineQty, setNewLineQty] = useState<string>('1');
+  // number puro: antes era string porque venía de `e.target.value` de un
+  // <input type="number">; con NumberInput el valor ya llega numérico y `null`
+  // representa el campo vacío.
+  const [newLineQty, setNewLineQty] = useState<number | null>(1);
 
   const load = async () => {
     setLoading(true);
@@ -57,12 +71,12 @@ export const PackagesTab: React.FC = () => {
       setLines([]);
     }
     setNewLineItemId('');
-    setNewLineQty('1');
+    setNewLineQty(1);
   };
 
   const addLine = async () => {
     if (!linesFor || !newLineItemId) return;
-    const qty = Number(newLineQty);
+    const qty = newLineQty ?? 0;
     if (!Number.isFinite(qty) || qty <= 0) {
       toast.error('Cantidad inválida');
       return;
@@ -73,7 +87,7 @@ export const PackagesTab: React.FC = () => {
       const d = await packagesApi.listLines(linesFor.id);
       setLines(Array.isArray(d) ? d : []);
       setNewLineItemId('');
-      setNewLineQty('1');
+      setNewLineQty(1);
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
       toast.error(msg || 'Error al añadir');
@@ -122,13 +136,38 @@ export const PackagesTab: React.FC = () => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('¿Eliminar paquete?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar paquete',
+      message: '¿Eliminar el paquete?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     await packagesApi.remove(id);
     load();
   };
 
   const boxMap = new Map(boxes.map((b) => [b.id, b] as const));
   const areaMap = new Map(areas.map((a) => [a.id, a] as const));
+
+  // Opciones de los desplegables de maestros: una vez por render en lugar de
+  // una por fila de la lista.
+  const areaOptions = useMemo(
+    () => areas.map((a) => ({ value: a.id, label: a.name, secondaryLabel: a.code })),
+    [areas],
+  );
+  const boxOptions = useMemo(
+    () => boxes.map((b) => ({ value: b.id, label: b.name, secondaryLabel: b.code })),
+    [boxes],
+  );
+  const contentItemOptions = useMemo(
+    () =>
+      allItems
+        // No metes cajas dentro de cajas.
+        .filter((i) => i.kind !== 'box')
+        .map((i) => ({ value: i.id, label: i.name, secondaryLabel: i.code })),
+    [allItems],
+  );
 
   return (
     <div className="space-y-3">
@@ -165,47 +204,50 @@ export const PackagesTab: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Selector inline para mover el paquete entre acopios. */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                {/* Selector inline para mover el paquete entre acopios: los
+                    acopios vienen del servidor → SearchableSelect. */}
+                <div className="flex items-center gap-1.5 shrink-0" title="Mover a un acopio">
                   <Warehouse size={13} className="text-slate-400" />
-                  <select
+                  <SearchableSelect
+                    options={areaOptions}
                     value={p.stagingAreaId || ''}
-                    onChange={(e) => moveToArea(p.id, e.target.value || null)}
+                    onChange={(v) => moveToArea(p.id, v || null)}
                     disabled={p.status === 'shipped' || p.status === 'delivered'}
-                    className="h-7 px-2 text-[11px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Mover a un acopio"
-                  >
-                    <option value="">— sin acopio —</option>
-                    {areas.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.code} · {a.name}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="— sin acopio —"
+                    clearable
+                    className="w-44"
+                  />
                 </div>
 
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => openLines(p)}
-                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
                   title="Contenido de la caja"
                 >
                   <Boxes size={13} />
-                </button>
+                </Button>
                 {p.status === 'open' && (
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => seal(p.id)}
-                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
                     title="Sellar"
                   >
                     <Lock size={13} />
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => remove(p.id)}
-                  className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
+                  title="Eliminar"
                 >
                   <Trash2 size={13} />
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -220,21 +262,18 @@ export const PackagesTab: React.FC = () => {
       >
         <div className="space-y-3 pt-4">
           <div>
+            {/* Artículos y acopios vienen del servidor → SearchableSelect (no
+                tiene prop `label`, se conserva el <label> suelto). */}
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
               Caja (artículo tipo box)
             </label>
-            <select
+            <SearchableSelect
+              options={boxOptions}
               value={form.boxItemId || ''}
-              onChange={(e) => setForm({ ...form, boxItemId: e.target.value || null })}
-              className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-            >
-              <option value="">— sin caja —</option>
-              {boxes.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.code} · {b.name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setForm({ ...form, boxItemId: v || null })}
+              placeholder="— sin caja —"
+              clearable
+            />
             {boxes.length === 0 && (
               <p className="text-[11px] text-amber-600 mt-1">
                 No hay artículos marcados como caja. Edita un artículo y actívalo como caja.
@@ -245,35 +284,23 @@ export const PackagesTab: React.FC = () => {
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
               Acopio
             </label>
-            <select
+            <SearchableSelect
+              options={areaOptions}
               value={form.stagingAreaId || ''}
-              onChange={(e) => setForm({ ...form, stagingAreaId: e.target.value || null })}
-              className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-            >
-              <option value="">— sin acopio —</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.code} · {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Peso (kg)
-            </label>
-            <Input
-              type="number"
-              step="0.01"
-              value={form.weightKg ?? ''}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  weightKg: e.target.value === '' ? null : Number(e.target.value),
-                })
-              }
+              onChange={(v) => setForm({ ...form, stagingAreaId: v || null })}
+              placeholder="— sin acopio —"
+              clearable
             />
           </div>
+          {/* `weightKg` es doublePrecision en el servidor: llega y se envía
+              numérico, y el campo vacío queda en null. */}
+          <NumberInput
+            label="Peso (kg)"
+            value={form.weightKg ?? null}
+            onChange={(v) => setForm({ ...form, weightKg: v })}
+            precision={2}
+            min={0}
+          />
           <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
@@ -298,32 +325,22 @@ export const PackagesTab: React.FC = () => {
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Artículo
                 </label>
-                <select
+                <SearchableSelect
+                  options={contentItemOptions}
                   value={newLineItemId}
-                  onChange={(e) => setNewLineItemId(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                >
-                  <option value="">— seleccionar —</option>
-                  {allItems
-                    .filter((i) => i.kind !== 'box') // no metes cajas dentro de cajas
-                    .map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.code} · {i.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div className="w-24">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                  Cantidad
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={newLineQty}
-                  onChange={(e) => setNewLineQty(e.target.value)}
+                  onChange={setNewLineItemId}
+                  placeholder="— seleccionar —"
+                  clearable
                 />
               </div>
+              <NumberInput
+                label="Cantidad"
+                value={newLineQty}
+                onChange={setNewLineQty}
+                precision={2}
+                min={0}
+                containerClassName="w-24"
+              />
               <Button
                 onClick={addLine}
                 disabled={
@@ -364,13 +381,15 @@ export const PackagesTab: React.FC = () => {
                           {Number(l.quantity).toFixed(2)} {it?.uomCode ? String(it.uomCode) : ''}
                         </span>
                         {linesFor.status !== 'shipped' && linesFor.status !== 'delivered' && (
-                          <button
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => removeLine(l.id)}
-                            className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                             title="Quitar"
                           >
                             <Trash2 size={13} />
-                          </button>
+                          </Button>
                         )}
                       </li>
                     );

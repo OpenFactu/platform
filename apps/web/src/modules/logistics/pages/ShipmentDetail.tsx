@@ -2,7 +2,18 @@ import { shipmentsApi } from '../api';
 import { warehousesApi } from '@/modules/inventory/api';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Button, Badge, Loader, Modal, Input, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Badge,
+  Loader,
+  Modal,
+  Input,
+  Checkbox,
+  DropdownMenu,
+  SearchableSelect,
+  useToast,
+} from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import {
   ArrowLeft,
@@ -34,7 +45,6 @@ export const ShipmentDetail: React.FC = () => {
   const [positions, setPositions] = useState<ShipmentPosition[]>([]);
   const [events, setEvents] = useState<ShipmentEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionsOpen, setActionsOpen] = useState(false);
   const [cancelModal, setCancelModal] = useState<{ reason: string; cancelDn: boolean } | null>(
     null,
   );
@@ -304,16 +314,49 @@ export const ShipmentDetail: React.FC = () => {
     return { label, variant };
   })();
 
+  // Mismas acciones que la barra de escritorio, en forma de items para el
+  // DropdownMenu del móvil (mismas condiciones de visibilidad).
+  const actionItems = [
+    { label: 'Refrescar', icon: <RefreshCw size={14} />, onClick: load },
+    ...(shipment.status !== 'cancelled' && shipment.status !== 'returned'
+      ? [
+          {
+            label: '↩ Devolver',
+            onClick: () => setReturnModal({ reason: '', cancelDn: false }),
+          },
+        ]
+      : []),
+    ...(!isInbound &&
+    shipment.kind !== 'pickup_return' &&
+    ['delivered', 'exception'].includes(shipment.status)
+      ? [{ label: '📦 Programar recogida', onClick: openPickupModal }]
+      : []),
+    ...(shipment.status !== 'cancelled' &&
+    shipment.status !== 'delivered' &&
+    shipment.status !== 'returned'
+      ? [
+          {
+            label: '✕ Cancelar',
+            destructive: true,
+            onClick: () => setCancelModal({ reason: '', cancelDn: false }),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
       <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => openTab('/logistics')}
-            className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+            title="Volver al centro logístico"
           >
             <ArrowLeft size={14} />
-          </button>
+          </Button>
           <div className="flex items-center gap-2">
             {isInbound ? (
               <PackageCheck className="text-emerald-600 dark:text-emerald-300" size={22} />
@@ -377,68 +420,14 @@ export const ShipmentDetail: React.FC = () => {
               <RefreshCw size={14} /> Refrescar
             </Button>
           </div>
-          {/* Móvil: kebab con las mismas acciones */}
-          <div className="md:hidden relative">
-            <button
-              onClick={() => setActionsOpen((v) => !v)}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-              aria-label="Más acciones"
-            >
-              <MoreVertical size={16} />
-            </button>
-            {actionsOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setActionsOpen(false)} />
-                <div className="absolute right-0 mt-1 z-50 min-w-[220px] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg py-1">
-                  <button
-                    onClick={() => {
-                      setActionsOpen(false);
-                      load();
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center gap-2"
-                  >
-                    <RefreshCw size={14} /> Refrescar
-                  </button>
-                  {shipment.status !== 'cancelled' && shipment.status !== 'returned' && (
-                    <button
-                      onClick={() => {
-                        setActionsOpen(false);
-                        setReturnModal({ reason: '', cancelDn: false });
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 text-amber-700 dark:text-amber-300 flex items-center gap-2"
-                    >
-                      ↩ Devolver
-                    </button>
-                  )}
-                  {!isInbound &&
-                    shipment.kind !== 'pickup_return' &&
-                    ['delivered', 'exception'].includes(shipment.status) && (
-                      <button
-                        onClick={() => {
-                          setActionsOpen(false);
-                          openPickupModal();
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 text-purple-700 dark:text-purple-300 flex items-center gap-2"
-                      >
-                        📦 Programar recogida
-                      </button>
-                    )}
-                  {shipment.status !== 'cancelled' &&
-                    shipment.status !== 'delivered' &&
-                    shipment.status !== 'returned' && (
-                      <button
-                        onClick={() => {
-                          setActionsOpen(false);
-                          setCancelModal({ reason: '', cancelDn: false });
-                        }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 text-rose-600 dark:text-rose-300 flex items-center gap-2"
-                      >
-                        ✕ Cancelar
-                      </button>
-                    )}
-                </div>
-              </>
-            )}
+          {/* Móvil: kebab con las mismas acciones. DropdownMenu ya gestiona
+              apertura, cierre al elegir y click fuera. */}
+          <div className="md:hidden">
+            <DropdownMenu align="end" items={actionItems}>
+              <Button type="button" variant="outline" size="sm" aria-label="Más acciones">
+                <MoreVertical size={16} />
+              </Button>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -701,22 +690,19 @@ export const ShipmentDetail: React.FC = () => {
       >
         {cancelModal && (
           <div className="space-y-4">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Motivo (opcional)
-              </label>
-              <Input
-                placeholder="Ej: cliente pidió cancelar, error en la preparación…"
-                value={cancelModal.reason}
-                onChange={(e) => setCancelModal({ ...cancelModal, reason: e.target.value })}
-              />
-            </div>
+            <Input
+              label="Motivo (opcional)"
+              placeholder="Ej: cliente pidió cancelar, error en la preparación…"
+              value={cancelModal.reason}
+              onChange={(e) => setCancelModal({ ...cancelModal, reason: e.target.value })}
+            />
             {shipment.deliveryNoteId && (
+              // Campo del formulario del modal → Checkbox (no tiene prop
+              // `label`, se conserva el <label> que lo envuelve).
               <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={cancelModal.cancelDn}
-                  onChange={(e) => setCancelModal({ ...cancelModal, cancelDn: e.target.checked })}
+                  onChange={(v) => setCancelModal({ ...cancelModal, cancelDn: v })}
                   className="mt-1"
                 />
                 <span className="text-xs text-slate-700 dark:text-slate-200">
@@ -748,22 +734,17 @@ export const ShipmentDetail: React.FC = () => {
       >
         {returnModal && (
           <div className="space-y-4">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Motivo
-              </label>
-              <Input
-                placeholder="Rechazo del cliente, dañado, dirección errónea…"
-                value={returnModal.reason}
-                onChange={(e) => setReturnModal({ ...returnModal, reason: e.target.value })}
-              />
-            </div>
+            <Input
+              label="Motivo"
+              placeholder="Rechazo del cliente, dañado, dirección errónea…"
+              value={returnModal.reason}
+              onChange={(e) => setReturnModal({ ...returnModal, reason: e.target.value })}
+            />
             {shipment.deliveryNoteId && (
               <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={returnModal.cancelDn}
-                  onChange={(e) => setReturnModal({ ...returnModal, cancelDn: e.target.checked })}
+                  onChange={(v) => setReturnModal({ ...returnModal, cancelDn: v })}
                   className="mt-1"
                 />
                 <span className="text-xs text-slate-700 dark:text-slate-200">
@@ -801,36 +782,34 @@ export const ShipmentDetail: React.FC = () => {
               Recoger en: <b>{shipment.destinationAddress || '—'}</b>
               {shipment.recipientName ? ` · ${shipment.recipientName}` : ''}
             </div>
+            <Input
+              label="Motivo"
+              placeholder="Contenido incorrecto, producto dañado…"
+              value={pickupModal.reason}
+              onChange={(e) => setPickupModal({ ...pickupModal, reason: e.target.value })}
+            />
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Motivo
-              </label>
-              <Input
-                placeholder="Contenido incorrecto, producto dañado…"
-                value={pickupModal.reason}
-                onChange={(e) => setPickupModal({ ...pickupModal, reason: e.target.value })}
-              />
-            </div>
-            <div>
+              {/* Almacenes del servidor → SearchableSelect (sin prop `label`).
+                  El vacío es válido (lo deduce el backend del albarán origen),
+                  así que va `clearable`. */}
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                 Almacén de retorno
               </label>
-              <select
+              <SearchableSelect
+                options={warehouses.map((w: any) => ({
+                  value: w.id,
+                  label: w.name || w.code || w.id,
+                  secondaryLabel: w.name && w.code ? w.code : undefined,
+                }))}
                 value={pickupModal.warehouseId}
-                onChange={(e) => setPickupModal({ ...pickupModal, warehouseId: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 text-slate-800 dark:text-slate-100"
-              >
-                <option value="">
-                  {shipment.deliveryNoteId
+                onChange={(v) => setPickupModal({ ...pickupModal, warehouseId: v })}
+                placeholder={
+                  shipment.deliveryNoteId
                     ? 'Automático (almacén del albarán origen)'
-                    : '— elige almacén —'}
-                </option>
-                {warehouses.map((w: any) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name || w.code || w.id}
-                  </option>
-                ))}
-              </select>
+                    : '— elige almacén —'
+                }
+                clearable
+              />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setPickupModal(null)}>

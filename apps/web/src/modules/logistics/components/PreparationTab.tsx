@@ -4,7 +4,7 @@
  */
 import { routesApi, shipmentsApi, stagingAreasApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Badge, Loader, Modal, useToast } from '@openfactu/ui';
+import { Card, Button, Badge, Loader, Modal, SearchableSelect, useToast } from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import {
   Box,
@@ -277,18 +277,19 @@ export const PreparationTab: React.FC = () => {
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
               Acopio destino
             </label>
-            <select
+            {/* Acopios vienen del servidor → SearchableSelect (no tiene prop
+                `label`, se conserva el <label> suelto). */}
+            <SearchableSelect
+              options={stagingAreas.map((a) => ({
+                value: a.id,
+                label: a.name,
+                secondaryLabel: a.code,
+              }))}
               value={stagingAreaId}
-              onChange={(e) => setStagingAreaId(e.target.value)}
-              className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-            >
-              <option value="">— seleccionar —</option>
-              {stagingAreas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.code} · {a.name}
-                </option>
-              ))}
-            </select>
+              onChange={setStagingAreaId}
+              placeholder="— seleccionar —"
+              clearable
+            />
             {stagingAreas.length === 0 && (
               <p className="text-[11px] text-amber-600 mt-1">
                 No hay acopios. Crea uno primero en Logística → Acopios.

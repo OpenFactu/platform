@@ -16,7 +16,9 @@ import {
   Modal,
   Badge,
   Loader,
+  Checkbox,
   useToast,
+  usePopup,
   SearchableSelect,
 } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, Truck, Plug, CheckCircle2 } from 'lucide-react';
@@ -27,6 +29,7 @@ import type { Carrier, CarrierAccount, CarrierAdapterInfo } from '../domain/carr
 export const CarriersSettings: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [adapters, setAdapters] = useState<CarrierAdapterInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,7 +111,13 @@ export const CarriersSettings: React.FC = () => {
   };
 
   const removeCarrier = async (id: string) => {
-    if (!confirm('¿Eliminar transportista y todas sus cuentas?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar transportista',
+      message: '¿Eliminar el transportista y todas sus cuentas?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     await carriersApi.remove(id);
     loadCarriers();
   };
@@ -137,7 +146,13 @@ export const CarriersSettings: React.FC = () => {
   };
 
   const removeAccount = async (id: string, carrierId: string) => {
-    if (!confirm('¿Eliminar cuenta?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar cuenta',
+      message: '¿Eliminar la cuenta del transportista?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     await carriersApi.removeAccount(id);
     loadAccounts(carrierId);
   };
@@ -226,18 +241,24 @@ export const CarriersSettings: React.FC = () => {
                         <div className="text-[11px] text-slate-500 mt-0.5 truncate">{c.notes}</div>
                       )}
                     </div>
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => openEditCarrier(c)}
-                      className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
+                      title="Editar"
                     >
                       <Edit2 size={13} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => removeCarrier(c.id)}
-                      className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded"
+                      title="Eliminar"
                     >
                       <Trash2 size={13} />
-                    </button>
+                    </Button>
                   </div>
                   {isOpen && (
                     <div className="px-4 pb-3 bg-slate-50/50 dark:bg-slate-800/30">
@@ -245,12 +266,14 @@ export const CarriersSettings: React.FC = () => {
                         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                           Cuentas
                         </div>
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => openNewAccount(c)}
-                          className="text-[11px] text-primary hover:underline"
                         >
-                          + Añadir cuenta
-                        </button>
+                          <Plus size={12} /> Añadir cuenta
+                        </Button>
                       </div>
                       {accounts.filter((a) => a.carrierId === c.id).length === 0 ? (
                         <div className="text-[11px] text-slate-500 italic py-2">
@@ -269,18 +292,24 @@ export const CarriersSettings: React.FC = () => {
                                 {a.sandbox && <Badge variant="warning">sandbox</Badge>}
                                 {a.isDefault && <Badge variant="info">default</Badge>}
                                 <div className="flex-1" />
-                                <button
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
                                   onClick={() => testAccount(a.id)}
-                                  className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
+                                  title="Probar conexión"
                                 >
                                   <CheckCircle2 size={11} /> Probar
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => removeAccount(a.id, c.id)}
-                                  className="p-1 text-slate-400 hover:text-rose-500"
+                                  title="Eliminar cuenta"
                                 >
                                   <Trash2 size={12} />
-                                </button>
+                                </Button>
                               </li>
                             ))}
                         </ul>
@@ -303,26 +332,19 @@ export const CarriersSettings: React.FC = () => {
       >
         <div className="space-y-3 pt-4">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Nombre
-              </label>
-              <Input
-                value={form.name || ''}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="Seur, DHL, Transporte propio…"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Código (opcional)
-              </label>
-              <Input
-                value={form.code || ''}
-                onChange={(e) => setForm({ ...form, code: e.target.value })}
-                placeholder="SEUR"
-              />
-            </div>
+            <Input
+              label="Nombre"
+              requiredMark
+              value={form.name || ''}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Seur, DHL, Transporte propio…"
+            />
+            <Input
+              label="Código (opcional)"
+              value={form.code || ''}
+              onChange={(e) => setForm({ ...form, code: e.target.value })}
+              placeholder="SEUR"
+            />
           </div>
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
@@ -339,20 +361,17 @@ export const CarriersSettings: React.FC = () => {
               llamadas externas.
             </p>
           </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Notas
-            </label>
-            <Input
-              value={form.notes || ''}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
-          </div>
+          <Input
+            label="Notas"
+            value={form.notes || ''}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
+          {/* Campo de formulario (se guarda con "Guardar") → Checkbox, que NO
+              tiene prop `label`: se conserva el <label> que lo envuelve. */}
           <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={form.isActive !== false}
-              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+              onChange={(v) => setForm({ ...form, isActive: v })}
             />
             Activo
           </label>
@@ -373,16 +392,13 @@ export const CarriersSettings: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Nombre de la cuenta
-            </label>
-            <Input
-              value={accountForm.name || ''}
-              onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })}
-              placeholder="Producción, staging, cuenta secundaria…"
-            />
-          </div>
+          <Input
+            label="Nombre de la cuenta"
+            requiredMark
+            value={accountForm.name || ''}
+            onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })}
+            placeholder="Producción, staging, cuenta secundaria…"
+          />
           {selectedAdapter && selectedAdapter.credentialFields.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -391,18 +407,17 @@ export const CarriersSettings: React.FC = () => {
               {selectedAdapter.credentialFields.map((f) => (
                 <div key={f.key}>
                   <label className="text-xs block mb-0.5">
-                    {f.label} {f.required && <span className="text-rose-500">*</span>}
+                    {f.label} {f.required && <span className="text-danger">*</span>}
                   </label>
                   {f.type === 'checkbox' ? (
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={!!accountForm.credentials?.[f.key]}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setAccountForm({
                           ...accountForm,
                           credentials: {
                             ...accountForm.credentials,
-                            [f.key]: e.target.checked,
+                            [f.key]: v,
                           },
                         })
                       }
@@ -433,18 +448,16 @@ export const CarriersSettings: React.FC = () => {
             </div>
           )}
           <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={!!accountForm.sandbox}
-              onChange={(e) => setAccountForm({ ...accountForm, sandbox: e.target.checked })}
+              onChange={(v) => setAccountForm({ ...accountForm, sandbox: v })}
             />
             Sandbox (pruebas)
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={!!accountForm.isDefault}
-              onChange={(e) => setAccountForm({ ...accountForm, isDefault: e.target.checked })}
+              onChange={(v) => setAccountForm({ ...accountForm, isDefault: v })}
             />
             Cuenta por defecto
           </label>

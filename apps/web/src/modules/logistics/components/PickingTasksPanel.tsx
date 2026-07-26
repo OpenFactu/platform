@@ -7,7 +7,17 @@
 import { prepTasksApi } from '../api';
 import { itemsApi } from '@/modules/inventory/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Badge, Loader, SearchableSelect, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  NumberInput,
+  Badge,
+  Loader,
+  SearchableSelect,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import { Check, X, Layers3, Package, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -32,6 +42,7 @@ const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
 export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [tasks, setTasks] = useState<PickingTask[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,12 +129,13 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
   }
 
   const resync = async () => {
-    if (
-      !confirm(
-        'Resincronizar tareas con el albarán: las tareas pendientes se regeneran con los lotes/series actuales del albarán. Las ya pickeadas se conservan.',
-      )
-    )
-      return;
+    const ok = await popup.confirm({
+      title: 'Resincronizar tareas',
+      message:
+        'Las tareas pendientes se regeneran con los lotes/series actuales del albarán. Las ya pickeadas se conservan.',
+      confirmLabel: 'Resincronizar',
+    });
+    if (!ok) return;
     try {
       const d = await prepTasksApi.resyncShipment(shipmentId);
       toast.success(
@@ -144,15 +156,16 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
             Progreso: <b>{done}</b> / {total}
           </span>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={resync}
               title="Regenerar tareas pendientes con los lotes/series actuales del albarán"
-              className="inline-flex items-center gap-1 h-6 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-[0.1em] hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-sm active:scale-[0.97] transition-all"
             >
               <RefreshCw size={10} />
               Sincronizar
-            </button>
+            </Button>
             <span>{progress}%</span>
           </div>
         </div>
@@ -205,45 +218,50 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                     <span className="text-[11px] text-slate-500">
                       Pedido: <b>{t.requestedQty}</b>
                     </span>
-                    <Input
-                      type="number"
-                      step="0.01"
+                    {/* `pickedQty` ya es number en PickingTask (el servidor lo
+                        devuelve numérico), así que no hace falta convertir; con
+                        emptyValue="zero" vaciar el campo deja 0 en vez de null. */}
+                    <NumberInput
                       value={t.pickedQty}
-                      onChange={(e) => {
-                        const v = Number(e.target.value);
+                      onChange={(v) =>
                         setTasks((xs) =>
-                          xs.map((x) => (x.id === t.id ? { ...x, pickedQty: v } : x)),
-                        );
-                      }}
-                      onBlur={(e) => {
-                        const v = Number(e.target.value);
-                        if (v !== t.pickedQty) return; // ya reflejado
-                        // disparado sobre el mismo valor — ignorar
-                      }}
-                      className="w-20"
+                          xs.map((x) => (x.id === t.id ? { ...x, pickedQty: v ?? 0 } : x)),
+                        )
+                      }
+                      precision={2}
+                      min={0}
+                      emptyValue="zero"
+                      align="right"
+                      inputSize="sm"
+                      containerClassName="w-20"
                     />
                     <Button
+                      type="button"
                       variant="secondary"
+                      size="sm"
                       onClick={() => patchTask(t.id, { pickedQty: t.pickedQty })}
-                      className="!px-2 !py-1"
                       title="Guardar cantidad"
                     >
                       Guardar
                     </Button>
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => patchTask(t.id, { status: 'done', pickedQty: t.requestedQty })}
-                      className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded"
                       title="Completado"
                     >
                       <Check size={14} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => patchTask(t.id, { status: 'missing' })}
-                      className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                       title="No disponible"
                     >
                       <X size={14} />
-                    </button>
+                    </Button>
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     {/* El selector de Lote/serie solo aparece si el artículo se
@@ -298,7 +316,8 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                         )
                       }
                       onBlur={() => patchTask(t.id, { notes: t.notes })}
-                      className="flex-1 text-xs"
+                      inputSize="sm"
+                      containerClassName="flex-1"
                     />
                   </div>
                 </li>
