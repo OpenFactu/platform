@@ -1,7 +1,16 @@
 import { paymentTermsApi } from '../api';
 import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
-import { Button, Input, useToast, usePopup, Badge } from '@openfactu/ui';
+import {
+  Button,
+  Input,
+  useToast,
+  usePopup,
+  Badge,
+  Checkbox,
+  NumberInput,
+  PercentInput,
+} from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X, CalendarClock, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { PaymentTerm, PaymentTermLine as SplitLine } from '../domain/accounting';
@@ -141,20 +150,24 @@ export const PaymentTermsEditor: React.FC = () => {
                   </td>
                   <td className="py-2 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => openEditor(t)}
-                        className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded"
                         title="Editar"
                       >
                         <Edit3 size={14} />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleDelete(t.id, t.name)}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                         title="Eliminar"
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -261,11 +274,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
         </div>
         <div className="flex items-end">
           <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-            />
+            <Checkbox checked={isActive} onChange={setIsActive} />
             Activo
           </label>
         </div>
@@ -301,37 +310,37 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
                 <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="py-2 px-3 text-slate-400 font-mono">{i + 1}</td>
                   <td className="py-2 px-3">
-                    <input
-                      type="number"
-                      min={0}
+                    <NumberInput
                       value={l.days}
-                      onChange={(e) => updateLine(i, { days: Number(e.target.value) })}
-                      className="w-28 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono"
+                      onChange={(v) => updateLine(i, { days: v ?? 0 })}
+                      min={0}
+                      emptyValue="zero"
+                      inputSize="sm"
+                      containerClassName="w-28"
                     />
                   </td>
                   <td className="py-2 px-3">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={0.01}
-                        value={l.percentage}
-                        onChange={(e) => updateLine(i, { percentage: Number(e.target.value) })}
-                        className="w-24 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono"
-                      />
-                      <span className="text-slate-400 text-xs">%</span>
-                    </div>
+                    {/* PercentInput ya pone el sufijo %, los 2 decimales y el
+                        límite 0–100; el <span>%</span> de al lado sobraba. */}
+                    <PercentInput
+                      value={l.percentage}
+                      onChange={(v) => updateLine(i, { percentage: v ?? 0 })}
+                      emptyValue="zero"
+                      inputSize="sm"
+                      containerClassName="w-28"
+                    />
                   </td>
                   <td className="py-2 px-3 text-right">
                     {lines.length > 1 && (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => removeLine(i)}
-                        className="p-1 text-slate-400 hover:text-rose-600"
+                        title="Quitar plazo"
                       >
                         <Trash2 size={13} />
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>

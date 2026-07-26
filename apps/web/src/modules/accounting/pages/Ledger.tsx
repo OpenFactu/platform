@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, useToast, Badge } from '@openfactu/ui';
+import { Table, Card, useToast, Badge, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { BookOpenCheck } from 'lucide-react';
 import { chartOfAccountsApi, journalEntriesApi } from '../api';
@@ -12,7 +12,6 @@ export const Ledger: React.FC = () => {
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
-
 
   useEffect(() => {
     if (!user?.tenantId) return;
@@ -97,18 +96,15 @@ export const Ledger: React.FC = () => {
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Cuenta
             </label>
-            <select
+            {/* SearchableSelect y no Select: el plan contable puede tener cientos
+                de cuentas y sin buscador es inmanejable. */}
+            <SearchableSelect
+              options={accounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` }))}
               value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            >
-              <option value="">— seleccionar cuenta —</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.code} — {a.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSelected}
+              placeholder="— seleccionar cuenta —"
+              clearable
+            />
           </div>
           {account && (
             <div className="flex items-center gap-2">

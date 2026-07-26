@@ -1,5 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  useToast,
+  Badge,
+  usePopup,
+  Select,
+  SearchableSelect,
+  CurrencyInput,
+} from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -10,8 +21,10 @@ import { journalEntriesApi, chartOfAccountsApi, periodsApi } from '../api';
 interface Line {
   id?: string;
   accountId: string;
-  debit: number | string;
-  credit: number | string;
+  // number puro: antes admitían string porque venían de e.target.value de un
+  // <input type="number">; con CurrencyInput el valor ya llega numérico.
+  debit: number;
+  credit: number;
   description?: string;
   partnerId?: string | null;
   costCenterId?: string | null;
@@ -144,6 +157,12 @@ export const JournalEntries: React.FC = () => {
   const updateLine = (i: number, patch: Partial<Line>) =>
     setLines(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
+  // Una vez por render en lugar de una vez por línea del asiento.
+  const accountOptions = useMemo(
+    () => accounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` })),
+    [accounts],
+  );
+
   const totalDebit = useMemo(() => lines.reduce((s, l) => s + Number(l.debit || 0), 0), [lines]);
   const totalCredit = useMemo(() => lines.reduce((s, l) => s + Number(l.credit || 0), 0), [lines]);
   const balanced = Math.abs(totalDebit - totalCredit) < 0.01;
@@ -156,6 +175,14 @@ export const JournalEntries: React.FC = () => {
     }
     if (lines.length < 2) {
       toast.error('Un asiento necesita al menos 2 líneas');
+      return;
+    }
+    // Antes lo cubría el `required` del <select> nativo de la línea. SearchableSelect
+    // no tiene equivalente, así que el aviso se da aquí: sin esto el asiento se
+    // enviaría con líneas sin cuenta.
+    const sinCuenta = lines.findIndex((l) => !l.accountId);
+    if (sinCuenta !== -1) {
+      toast.error(`La línea ${sinCuenta + 1} no tiene cuenta`);
       return;
     }
     if (!balanced) {
@@ -278,25 +305,18 @@ export const JournalEntries: React.FC = () => {
                 disabled={isReadOnly}
                 required
               />
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Período
-                </label>
-                <select
-                  value={header.periodId || ''}
-                  onChange={(e) => setHeader({ ...header, periodId: e.target.value })}
-                  disabled={isReadOnly}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm disabled:opacity-60"
-                  required
-                >
-                  <option value="">— seleccionar —</option>
-                  {periods.map((p) => (
-                    <option key={p.id} value={p.id} disabled={p.status !== 'O'}>
-                      {p.code} — {p.name} {p.status !== 'O' ? '(cerrado)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Período"
+                options={periods.map((p) => ({
+                  value: p.id,
+                  label: `${p.code} — ${p.name}${p.status !== 'O' ? ' (cerrado)' : ''}`,
+                  disabled: p.status !== 'O',
+                }))}
+                value={header.periodId || ''}
+                onChange={(v) => setHeader({ ...header, periodId: v })}
+                disabled={isReadOnly}
+                placeholder="— seleccionar —"
+              />
               <Input
                 label="Concepto"
                 value={(header.description as string) || ''}
@@ -322,60 +342,55 @@ export const JournalEntries: React.FC = () => {
                     <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
                       <td className="p-2 text-slate-400">{i + 1}</td>
                       <td className="p-2">
-                        <select
+                        <SearchableSelect
+                          options={accountOptions}
                           value={l.accountId}
-                          onChange={(e) => updateLine(i, { accountId: e.target.value })}
+                          onChange={(v) => updateLine(i, { accountId: v })}
                           disabled={isReadOnly}
-                          className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs disabled:opacity-60"
-                          required
-                        >
-                          <option value="">—</option>
-                          {accounts.map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.code} — {a.name}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="—"
+                        />
                       </td>
                       <td className="p-2">
-                        <input
+                        <Input
                           value={l.description || ''}
                           onChange={(e) => updateLine(i, { description: e.target.value })}
                           disabled={isReadOnly}
-                          className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs disabled:opacity-60"
+                          inputSize="sm"
                         />
                       </td>
                       <td className="p-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={l.debit || ''}
-                          onChange={(e) => updateLine(i, { debit: e.target.value, credit: 0 })}
+                        <CurrencyInput
+                          value={l.debit}
+                          onChange={(v) => updateLine(i, { debit: v ?? 0, credit: 0 })}
+                          min={0}
+                          emptyValue="zero"
                           disabled={isReadOnly}
-                          className="w-28 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-right disabled:opacity-60"
+                          inputSize="sm"
+                          containerClassName="w-28"
                         />
                       </td>
                       <td className="p-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={l.credit || ''}
-                          onChange={(e) => updateLine(i, { credit: e.target.value, debit: 0 })}
+                        <CurrencyInput
+                          value={l.credit}
+                          onChange={(v) => updateLine(i, { credit: v ?? 0, debit: 0 })}
+                          min={0}
+                          emptyValue="zero"
                           disabled={isReadOnly}
-                          className="w-28 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-right disabled:opacity-60"
+                          inputSize="sm"
+                          containerClassName="w-28"
                         />
                       </td>
                       <td className="p-2">
                         {!isReadOnly && lines.length > 2 && (
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => removeLine(i)}
-                            className="text-slate-400 hover:text-red-500"
+                            title="Quitar línea"
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </Button>
                         )}
                       </td>
                     </tr>
@@ -400,14 +415,10 @@ export const JournalEntries: React.FC = () => {
               </table>
               {!isReadOnly && (
                 <div className="p-2 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700">
-                  <button
-                    type="button"
-                    onClick={addLine}
-                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                  >
-                    <Plus size={14} />
+                  <Button type="button" variant="ghost" size="sm" onClick={addLine}>
+                    <Plus size={14} className="mr-1" />
                     Añadir línea
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>

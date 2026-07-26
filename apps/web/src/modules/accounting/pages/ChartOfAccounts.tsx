@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  useToast,
+  Badge,
+  usePopup,
+  Select,
+  SearchableSelect,
+  Checkbox,
+} from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -27,6 +38,8 @@ const TYPE_LABELS: Record<string, string> = {
   income: 'Ingreso',
   expense: 'Gasto',
 };
+// Las opciones del desplegable salen de TYPE_LABELS para no repetir la lista.
+const TYPE_OPTIONS = Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }));
 const TYPE_VARIANTS: Record<string, any> = {
   asset: 'success',
   liability: 'warning',
@@ -265,42 +278,29 @@ export const ChartOfAccounts: React.FC = () => {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
               />
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Tipo
-                </label>
-                <select
-                  value={form.type || 'asset'}
-                  onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="asset">Activo</option>
-                  <option value="liability">Pasivo</option>
-                  <option value="equity">Patrimonio</option>
-                  <option value="income">Ingreso</option>
-                  <option value="expense">Gasto</option>
-                </select>
-              </div>
+              <Select
+                label="Tipo"
+                options={TYPE_OPTIONS}
+                value={form.type || 'asset'}
+                onChange={(v) => setForm({ ...form, type: v as Account['type'] })}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
                   Cuenta padre (opcional)
                 </label>
-                <select
-                  value={form.parentId || ''}
-                  onChange={(e) => setForm({ ...form, parentId: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">— sin padre —</option>
-                  {rows
+                {/* SearchableSelect y no Select: el plan contable puede tener
+                    cientos de cuentas y sin buscador es inmanejable. */}
+                <SearchableSelect
+                  options={rows
                     .filter((r) => r.id !== editing?.id)
-                    .map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.code} — {r.name}
-                      </option>
-                    ))}
-                </select>
+                    .map((r) => ({ value: r.id, label: `${r.code} — ${r.name}` }))}
+                  value={form.parentId || ''}
+                  onChange={(v) => setForm({ ...form, parentId: v || null })}
+                  placeholder="— sin padre —"
+                  clearable
+                />
               </div>
               <Input
                 label="Notas"
@@ -309,20 +309,21 @@ export const ChartOfAccounts: React.FC = () => {
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
               />
             </div>
+            {/* Checkbox y no Switch: son campos del formulario, no se persisten
+                hasta pulsar Guardar. El <label> se queda porque Checkbox no
+                tiene prop `label` — renderiza solo el input. */}
             <div className="flex items-center gap-6">
               <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={!!form.isAnalytical}
-                  onChange={(e) => setForm({ ...form, isAnalytical: e.target.checked })}
+                  onChange={(checked) => setForm({ ...form, isAnalytical: checked })}
                 />
                 Cuenta analítica (exige dimensión)
               </label>
               <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={form.isActive !== false}
-                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                  onChange={(checked) => setForm({ ...form, isActive: checked })}
                 />
                 Activa
               </label>
