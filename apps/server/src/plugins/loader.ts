@@ -34,6 +34,16 @@ function resetDashboardWidgets(pluginId: string) {
   programmaticDashboardWidgets.set(pluginId, new Map());
 }
 
+// Invariante: un plugin está en activePlugins ⇔ su último init() terminó bien.
+// La mantienen tanto loadPlugins() (arranque) como reloadPlugin() (hot-reload),
+// para que un plugin que falló en el boot pero se arregla en caliente quede
+// instalado sin reiniciar el servidor (y viceversa: uno roto salga de la lista).
+function setPluginActive(pluginId: string, active: boolean) {
+  const idx = activePlugins.indexOf(pluginId);
+  if (active && idx < 0) activePlugins.push(pluginId);
+  if (!active && idx >= 0) activePlugins.splice(idx, 1);
+}
+
 function registerDashboardWidget(pluginId: string, widget: PluginDashboardWidgetInput) {
   if (!programmaticDashboardWidgets.has(pluginId)) {
     programmaticDashboardWidgets.set(pluginId, new Map());
@@ -200,7 +210,7 @@ export const loadPlugins = async (app: Express) => {
           const context: PluginContext = buildPluginContext(folder);
 
           await initFn(context);
-          activePlugins.push(folder);
+          setPluginActive(folder, true);
           console.log(`[Plugins] Plugin cargado y activado exitosamente: ${folder}`);
         } else {
           console.warn(`[Plugins] El plugin ${folder} no exporta una función 'init'.`);
@@ -235,6 +245,7 @@ export async function reloadPlugin(
   const pluginPath = path.join(pluginsDir, pluginId);
 
   if (!fs.existsSync(pluginPath)) {
+    setPluginActive(pluginId, false);
     return { success: false, error: `Plugin ${pluginId} no encontrado` };
   }
 
@@ -285,11 +296,19 @@ export async function reloadPlugin(
       const context: PluginContext = buildPluginContext(pluginId);
 
       await initFn(context);
+      // Un reload con init() exitoso equivale a la carga del arranque: entra en
+      // activePlugins aunque hubiera fallado en el boot o sea un plugin nuevo.
+      setPluginActive(pluginId, true);
+    } else {
+      setPluginActive(pluginId, false);
+      console.warn(`[Plugins] El plugin ${pluginId} no exporta una función 'init'.`);
     }
 
     console.log(`[Plugins] ✓ Plugin ${pluginId} recargado`);
     return { success: true };
   } catch (err: any) {
+    // El init() falló con los hooks ya desregistrados: el plugin no está operativo.
+    setPluginActive(pluginId, false);
     console.error(`[Plugins] ✗ Error recargando ${pluginId}:`, err.message);
     return { success: false, error: err.message };
   }

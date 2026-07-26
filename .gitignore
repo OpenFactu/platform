@@ -10,7 +10,7 @@ node_modules/
 apps/*/node_modules/
 packages/*/node_modules/
 plugins/*/node_modules/
-
+plugins/*
 # OS/Editor
 .DS_Store
 .idea/
