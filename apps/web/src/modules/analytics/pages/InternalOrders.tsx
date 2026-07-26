@@ -1,5 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  Select,
+  SearchableSelect,
+  useToast,
+  Badge,
+  usePopup,
+} from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -26,6 +36,13 @@ const TYPE_LABELS: Record<string, string> = {
   internal_order: 'Orden interna',
   wbs: 'WBS',
 };
+
+const TYPE_OPTIONS = Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }));
+
+const STATUS_OPTIONS = [
+  { value: 'open', label: 'Abierto' },
+  { value: 'closed', label: 'Cerrado' },
+];
 
 export const InternalOrders: React.FC = () => {
   const { user } = useAuth();
@@ -91,6 +108,11 @@ export const InternalOrders: React.FC = () => {
     setForm({});
     setPluginValues({});
   };
+
+  const costCenterOptions = useMemo(
+    () => costCenters.map((c) => ({ value: c.id, label: `${c.code} — ${c.name}` })),
+    [costCenters],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,20 +239,13 @@ export const InternalOrders: React.FC = () => {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
               />
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Tipo
-                </label>
-                <select
-                  value={form.type || 'project'}
-                  onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="project">Proyecto</option>
-                  <option value="internal_order">Orden interna</option>
-                  <option value="wbs">WBS</option>
-                </select>
-              </div>
+              {/* Las opciones salen de TYPE_LABELS para no repetir los valores. */}
+              <Select
+                label="Tipo"
+                options={TYPE_OPTIONS}
+                value={form.type || 'project'}
+                onChange={(v) => setForm({ ...form, type: v as InternalOrder['type'] })}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
@@ -255,35 +270,25 @@ export const InternalOrders: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {/* SearchableSelect no tiene prop `label`: se conserva el <label>,
+                    con el mismo estilo que el que pinta el Select de al lado. */}
+                <label className="block text-[12px] font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Centro de coste
                 </label>
-                <select
+                <SearchableSelect
+                  options={costCenterOptions}
                   value={form.costCenterId || ''}
-                  onChange={(e) => setForm({ ...form, costCenterId: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">— sin asignar —</option>
-                  {costCenters.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} — {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, costCenterId: v || null })}
+                  placeholder="— sin asignar —"
+                  clearable
+                />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Estado
-                </label>
-                <select
-                  value={form.status || 'open'}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="open">Abierto</option>
-                  <option value="closed">Cerrado</option>
-                </select>
-              </div>
+              <Select
+                label="Estado"
+                options={STATUS_OPTIONS}
+                value={form.status || 'open'}
+                onChange={(v) => setForm({ ...form, status: v as InternalOrder['status'] })}
+              />
             </div>
             <Input
               label="Notas"

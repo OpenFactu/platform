@@ -30,7 +30,8 @@ export const UserTableDetail: React.FC = () => {
   useEffect(() => {
     if (isNew || !id || !user?.tenantId) return;
     setLoading(true);
-    coreApi.get(`/api/user-tables/${tblName}/rows/${id}`)
+    coreApi
+      .get(`/api/user-tables/${tblName}/rows/${id}`)
       .then((d) => setValues(d || {}))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,12 +70,15 @@ export const UserTableDetail: React.FC = () => {
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
       <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => openTab(`/u/${name}`)}
-            className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50"
+            title="Volver"
           >
             <ArrowLeft size={14} />
-          </button>
+          </Button>
           <h1 className="text-lg font-black text-slate-900 dark:text-slate-100">
             {isNew ? 'Nuevo registro' : 'Editar registro'}
           </h1>

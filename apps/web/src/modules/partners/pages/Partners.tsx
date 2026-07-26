@@ -11,6 +11,8 @@ import {
   Badge,
   SearchableSelect,
   Checkbox,
+  Tabs,
+  EmptyState,
 } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import {
@@ -52,11 +54,6 @@ const descCls = 'text-xs text-slate-400 dark:text-slate-500 mt-1';
 const sectionTitleCls =
   'text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3';
 const sectionDescCls = 'text-xs text-slate-400 dark:text-slate-500 mb-3';
-const tabBaseCls =
-  'px-5 py-2.5 border-b-2 flex items-center gap-2 text-sm font-medium transition-colors';
-const tabActiveCls = 'border-accent text-accent';
-const tabInactiveCls =
-  'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300';
 const dividerCls = 'border-t border-slate-200 dark:border-slate-700';
 const footerCls = 'flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700';
 
@@ -128,22 +125,21 @@ const MunicipalitySearch: React.FC<MunicipalitySearchProps> = ({
 
   return (
     <div ref={wrapperRef} className="relative">
-      {label && <label className={labelCls}>{label}</label>}
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          value={query}
-          disabled={disabled || !subRegionId}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          placeholder={subRegionId ? 'Buscar municipio...' : 'Selecciona antes la provincia'}
-          className="w-full outline-none pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm disabled:opacity-50 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
-        />
-      </div>
+      {/* El icono de lupa lo pinta `leftIcon`; el <label> pasa a la prop `label`,
+          igual que en el PostalCodeInput de al lado. */}
+      <Input
+        label={label}
+        type="text"
+        value={query}
+        disabled={disabled || !subRegionId}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder={subRegionId ? 'Buscar municipio...' : 'Selecciona antes la provincia'}
+        leftIcon={<Search size={14} />}
+      />
       {open && subRegionId && query.trim().length >= 1 && (
         <div className="absolute left-0 right-0 top-full z-[100999] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg max-h-52 overflow-auto">
           {loading ? (
@@ -478,24 +474,23 @@ export const Partners: React.FC = () => {
         maxWidth="5xl"
       >
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="flex border-b border-slate-200 dark:border-slate-700">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setActiveTab(t.key as typeof activeTab)}
-                className={`${tabBaseCls} ${activeTab === t.key ? tabActiveCls : tabInactiveCls}`}
-              >
-                <t.icon size={15} />
-                {t.label}
-                {t.key === 'addresses' && addresses.length > 0 && (
+          {/* Tabs variant="underline" reproduce el subrayado que se pintaba a mano
+              y añade la navegación con flechas del patrón WAI-ARIA tablist. */}
+          <Tabs
+            items={TABS.map((t) => ({
+              key: t.key,
+              label: t.label,
+              icon: <t.icon size={15} />,
+              badge:
+                t.key === 'addresses' && addresses.length > 0 ? (
                   <Badge variant="neutral" className="ml-1 scale-75">
                     {addresses.length}
                   </Badge>
-                )}
-              </button>
-            ))}
-          </div>
+                ) : undefined,
+            }))}
+            value={activeTab}
+            onChange={(key) => setActiveTab(key as typeof activeTab)}
+          />
 
           <div className="min-h-[300px]">
             {activeTab === 'general' && (
@@ -741,9 +736,16 @@ export const Partners: React.FC = () => {
                   </Button>
                 </div>
                 {addresses.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed rounded-lg">
-                    No hay direcciones definidas. Añade una dirección de facturación o envío.
-                  </div>
+                  <EmptyState
+                    icon={<MapPin size={28} />}
+                    title="No hay direcciones definidas"
+                    hint="Añade una dirección de facturación o envío."
+                    action={
+                      <Button type="button" variant="secondary" size="sm" onClick={addAddress}>
+                        + Nueva Dirección
+                      </Button>
+                    }
+                  />
                 ) : (
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
                     {addresses.map((addr, idx) => {
@@ -755,13 +757,16 @@ export const Partners: React.FC = () => {
                           key={idx}
                           className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50/50 dark:bg-slate-800/50 relative group"
                         >
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => removeAddress(idx)}
-                            className="absolute top-3 right-3 text-slate-400 dark:text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Quitar dirección"
+                            className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <Trash2 size={15} />
-                          </button>
+                          </Button>
 
                           <div className="grid grid-cols-3 gap-3 mb-3">
                             <div>

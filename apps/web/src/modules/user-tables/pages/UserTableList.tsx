@@ -1,7 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Table, Button, Loader, useToast, Badge } from '@openfactu/ui';
+import { Card, Table, Button, Loader, useToast, usePopup, Badge } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { Plus, Trash2, Eye, Table as TableIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -24,6 +24,7 @@ export const UserTableList: React.FC = () => {
   const { openTab } = useTabs();
   const fmt = useFormat();
   const toast = useToast();
+  const popup = usePopup();
 
   const [meta, setMeta] = useState<TableMeta | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -117,7 +118,13 @@ export const UserTableList: React.FC = () => {
   }, [meta, fmt]);
 
   const removeRow = async (r: any) => {
-    if (!confirm('¿Eliminar este registro?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar registro',
+      message: '¿Eliminar este registro? Esta acción no se puede deshacer.',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/user-tables/${tblName}/rows/${r.id}`);
     if (res.ok) {
       toast.success('Eliminado');

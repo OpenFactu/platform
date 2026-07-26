@@ -4,7 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { Slot } from '@/components/Slot';
 import { DashboardPluginWidgets } from '@/components/plugins/DashboardPluginWidgets';
 import { UserDashboardWidgets } from '@/components/dashboard/UserDashboardWidgets';
-import { Card, Badge, DashboardSkeleton } from '@openfactu/ui';
+import {
+  Card,
+  Badge,
+  DashboardSkeleton,
+  SegmentedControl,
+  EmptyState as UiEmptyState,
+} from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useFormat } from '@/hooks/useFormat';
@@ -106,6 +112,11 @@ const DOC_TYPE_ICONS: Record<string, any> = {
   salesDeliveryNote: Truck,
   purchaseDeliveryNote: Truck,
 };
+
+const SCOPE_OPTIONS: { value: 'active' | 'all'; label: string }[] = [
+  { value: 'active', label: 'Periodo activo' },
+  { value: 'all', label: 'Histórico' },
+];
 
 const STATUS_COLORS: Record<string, string> = {
   Abiertas: '#f59e0b', // amber
@@ -281,29 +292,17 @@ export const Dashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Toggle filtro de período */}
-          <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
-            <button
-              onClick={() => setScope('active')}
-              className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                scope === 'active'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              Periodo activo
-            </button>
-            <button
-              onClick={() => setScope('all')}
-              className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                scope === 'all'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              Histórico
-            </button>
-          </div>
+          {/* Toggle filtro de período: es un filtro de lo que se está viendo, no
+              un cambio de vista, así que va con SegmentedControl (grupo de radio). */}
+          <SegmentedControl
+            options={SCOPE_OPTIONS}
+            value={scope}
+            // SegmentedControl emite string; el estado es la unión 'all' | 'active'.
+            onChange={(v) => setScope(v as 'all' | 'active')}
+            size="sm"
+            uppercase
+            aria-label="Ámbito del periodo"
+          />
           <Badge
             variant="success"
             className="px-2.5 py-1 text-[10px] font-black uppercase flex items-center gap-1.5"
@@ -863,16 +862,12 @@ const KpiCard: React.FC<KpiCardProps> = ({
   );
 };
 
+// Adaptador sobre el EmptyState de @openfactu/ui: los ~10 llamantes de este
+// archivo pasan el icono como componente (icon={Package}) y la librería lo
+// espera ya como elemento. Así se quita el estado vacío pintado a mano sin
+// tocar cada uso.
 const EmptyState: React.FC<{ icon: any; title: string; hint: string }> = ({
   icon: Icon,
   title,
   hint,
-}) => (
-  <div className="h-full flex flex-col items-center justify-center text-center space-y-2">
-    <div className="mx-auto w-12 h-12 bg-surface dark:bg-ink-800 border-2 border-dashed border-line dark:border-ink-700 rounded-sm flex items-center justify-center text-ink-400 dark:text-slate-300">
-      <Icon size={20} />
-    </div>
-    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{title}</p>
-    <p className="text-xs text-slate-400 dark:text-slate-400">{hint}</p>
-  </div>
-);
+}) => <UiEmptyState icon={<Icon size={20} />} title={title} hint={hint} className="h-full" />;

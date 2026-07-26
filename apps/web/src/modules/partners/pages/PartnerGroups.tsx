@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Badge, useContextMenu } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Checkbox,
+  useToast,
+  usePopup,
+  Badge,
+  useContextMenu,
+} from '@openfactu/ui';
 import type { ContextMenuItem } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -18,6 +27,7 @@ export const PartnerGroups: React.FC = () => {
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
   const toast = useToast();
+  const popup = usePopup();
   const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -71,7 +81,13 @@ export const PartnerGroups: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar este grupo?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar grupo',
+      message: '¿Seguro que deseas eliminar este grupo?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       await partnerGroupsApi.remove(id);
       fetchGroups();
@@ -166,21 +182,18 @@ export const PartnerGroups: React.FC = () => {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-2 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                    {/* Checkbox no tiene prop `label`: el <label> envolvente se conserva. */}
                     <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={newRow.isCustomer}
-                        onChange={(e) => setNewRow({ ...newRow, isCustomer: e.target.checked })}
-                        className="rounded text-blue-600 dark:text-blue-300"
+                        onChange={(checked) => setNewRow({ ...newRow, isCustomer: checked })}
                       />
                       <span>Cliente</span>
                     </label>
                     <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={newRow.isVendor}
-                        onChange={(e) => setNewRow({ ...newRow, isVendor: e.target.checked })}
-                        className="rounded text-blue-600 dark:text-blue-300"
+                        onChange={(checked) => setNewRow({ ...newRow, isVendor: checked })}
                       />
                       <span>Proveedor</span>
                     </label>
@@ -278,32 +291,26 @@ export const PartnerGroups: React.FC = () => {
                   {editingId === g.id ? (
                     <div className="flex flex-col gap-2">
                       <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={g.isCustomer}
-                          onChange={(e) =>
+                          onChange={(checked) =>
                             setGroups(
                               groups.map((x) =>
-                                x.id === g.id ? { ...x, isCustomer: e.target.checked } : x,
+                                x.id === g.id ? { ...x, isCustomer: checked } : x,
                               ),
                             )
                           }
-                          className="rounded text-blue-600 dark:text-blue-300"
                         />
                         <span>Cliente</span>
                       </label>
                       <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={g.isVendor}
-                          onChange={(e) =>
+                          onChange={(checked) =>
                             setGroups(
-                              groups.map((x) =>
-                                x.id === g.id ? { ...x, isVendor: e.target.checked } : x,
-                              ),
+                              groups.map((x) => (x.id === g.id ? { ...x, isVendor: checked } : x)),
                             )
                           }
-                          className="rounded text-blue-600 dark:text-blue-300"
                         />
                         <span>Proveedor</span>
                       </label>
@@ -337,20 +344,26 @@ export const PartnerGroups: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => canWrite && setEditingId(g.id)}
                         disabled={!canWrite}
-                        className={`p-2 transition-all rounded-xl ${canWrite ? 'text-slate-300 dark:text-slate-600 hover:text-blue-500 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10' : 'text-slate-100 cursor-not-allowed grayscale'}`}
+                        title="Editar"
                       >
                         <Plus size={16} className="rotate-45" />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => canDelete && handleDelete(g.id)}
                         disabled={!canDelete}
-                        className={`p-2 transition-all rounded-xl ${canDelete ? 'text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10' : 'text-slate-100 cursor-not-allowed grayscale'}`}
+                        title="Eliminar"
                       >
                         <Trash2 size={16} />
-                      </button>
+                      </Button>
                     </>
                   )}
                 </td>
