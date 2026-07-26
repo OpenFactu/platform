@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Button, usePopup, useToast } from '@openfactu/ui';
+import { Button, usePopup, useToast, Textarea, Checkbox, Select } from '@openfactu/ui';
 import { Download, ClipboardPaste } from 'lucide-react';
 import { exportToXlsx, type XlsxColumnType } from '../../utils/exportXlsx';
 
@@ -234,21 +234,17 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
 
   return (
     <div className="space-y-4">
-      <textarea
+      <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Pega aquí las celdas copiadas desde Excel..."
-        className="w-full h-40 font-mono text-xs p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+        className="h-40 font-mono text-xs"
       />
 
       {matrix.length > 0 && (
         <>
           <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={hasHeader}
-              onChange={(e) => setHasHeader(e.target.checked)}
-            />
+            <Checkbox checked={hasHeader} onChange={setHasHeader} />
             La primera fila es cabecera
           </label>
 
@@ -264,19 +260,16 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
                       <div className="text-slate-500 mb-1 truncate">
                         {hasHeader ? h : `Col ${i + 1}`}
                       </div>
-                      <select
+                      <Select
+                        options={columns.map((c) => ({
+                          value: c.key,
+                          label: `${c.label}${c.required ? ' *' : ''}`,
+                        }))}
                         value={mapping[i] || ''}
-                        onChange={(e) => setMapping({ ...mapping, [i]: e.target.value || null })}
-                        className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
-                      >
-                        <option value="">— ignorar —</option>
-                        {columns.map((c) => (
-                          <option key={c.key} value={c.key}>
-                            {c.label}
-                            {c.required ? ' *' : ''}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(v) => setMapping({ ...mapping, [i]: v || null })}
+                        placeholder="— ignorar —"
+                        ariaLabel={`Columna ${hasHeader ? h : i + 1}`}
+                      />
                     </th>
                   ))}
                 </tr>

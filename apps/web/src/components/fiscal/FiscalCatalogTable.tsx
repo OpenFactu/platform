@@ -1,6 +1,6 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Input, useToast } from '@openfactu/ui';
+import { Button, Input, useToast, usePopup, Checkbox, Select, NumberInput } from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -40,6 +40,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
 }) => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -92,10 +93,16 @@ export const FiscalCatalogTable: React.FC<Props> = ({
   };
 
   const remove = async (id: string) => {
-    if (!confirm('¿Eliminar este registro?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar registro',
+      message: 'Esta acción no se puede deshacer.',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       const res = await coreApi.raw('DELETE', `${endpoint}/${id}`);
-      if (!res.ok) throw new Error((res.data)?.error || 'Error');
+      if (!res.ok) throw new Error(res.data?.error || 'Error');
       toast.success('Eliminado');
       await load();
     } catch (e: any) {
@@ -127,43 +134,40 @@ export const FiscalCatalogTable: React.FC<Props> = ({
       if (col.type === 'boolean') {
         return (
           <label className="inline-flex items-center gap-1.5 text-xs text-ink-700 dark:text-slate-200 cursor-pointer">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={!!val}
-              onChange={(e) => setDraft({ ...draft, [col.key]: e.target.checked })}
-              className="h-4 w-4 accent-accent cursor-pointer"
+              onChange={(checked) => setDraft({ ...draft, [col.key]: checked })}
             />
           </label>
         );
       }
       if (col.type === 'select' && col.options) {
         return (
-          <select
-            value={val ?? ''}
-            onChange={(e) => setDraft({ ...draft, [col.key]: e.target.value })}
-            className="h-8 w-full px-2 border border-line dark:border-ink-700 rounded-xs bg-white dark:bg-ink-900 text-ink-900 dark:text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-          >
-            <option value="" disabled>
-              —
-            </option>
-            {col.options.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <Select
+            options={col.options}
+            value={(val as string) ?? ''}
+            onChange={(v) => setDraft({ ...draft, [col.key]: v })}
+            placeholder="—"
+            ariaLabel={col.label}
+          />
+        );
+      }
+      if (col.type === 'number') {
+        return (
+          <NumberInput
+            value={(val as number) ?? null}
+            onChange={(v) => setDraft({ ...draft, [col.key]: v })}
+            placeholder={col.placeholder}
+            inputSize="sm"
+          />
         );
       }
       return (
         <Input
-          type={col.type === 'number' ? 'number' : 'text'}
-          value={val ?? ''}
-          onChange={(e) => {
-            const v = col.type === 'number' ? Number(e.target.value) : e.target.value;
-            setDraft({ ...draft, [col.key]: v });
-          }}
+          value={(val as string) ?? ''}
+          onChange={(e) => setDraft({ ...draft, [col.key]: e.target.value })}
           placeholder={col.placeholder}
-          className="h-8 text-xs"
+          inputSize="sm"
         />
       );
     }
@@ -231,33 +235,45 @@ export const FiscalCatalogTable: React.FC<Props> = ({
                 <td className="px-3 py-2 text-right">
                   {editingId === row.id ? (
                     <div className="inline-flex gap-1">
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => save(draft, false)}
-                        className="p-1 rounded-xs text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                        title="Guardar"
                       >
                         <Check size={14} />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={cancel}
-                        className="p-1 rounded-xs text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700"
+                        title="Cancelar"
                       >
                         <X size={14} />
-                      </button>
+                      </Button>
                     </div>
                   ) : (
                     <div className="inline-flex gap-1">
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => startEdit(row)}
-                        className="p-1 rounded-xs text-ink-500 hover:text-accent hover:bg-line-2 dark:hover:bg-ink-700"
+                        title="Editar"
                       >
                         <Edit3 size={14} />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => remove(row.id)}
-                        className="p-1 rounded-xs text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                        title="Eliminar"
                       >
                         <Trash2 size={14} />
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </td>
@@ -272,18 +288,24 @@ export const FiscalCatalogTable: React.FC<Props> = ({
                 ))}
                 <td className="px-3 py-2 text-right">
                   <div className="inline-flex gap-1">
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => save(draft, true)}
-                      className="p-1 rounded-xs text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                      title="Guardar"
                     >
                       <Check size={14} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={cancel}
-                      className="p-1 rounded-xs text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700"
+                      title="Cancelar"
                     >
                       <X size={14} />
-                    </button>
+                    </Button>
                   </div>
                 </td>
               </tr>
