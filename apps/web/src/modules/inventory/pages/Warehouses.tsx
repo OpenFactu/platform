@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Modal } from '@openfactu/ui';
+import { Card, Button, Input, Loader, useToast, usePopup, Modal } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -47,6 +47,7 @@ export const Warehouses: React.FC = () => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   const toast = useToast();
+  const popup = usePopup();
 
   const fetchWarehouses = async () => {
     setLoading(true);
@@ -118,7 +119,13 @@ export const Warehouses: React.FC = () => {
   };
 
   const deleteBin = async (id: string) => {
-    if (!confirm('¿Eliminar esta ubicación?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar ubicación',
+      message: '¿Seguro que quieres eliminar esta ubicación del almacén?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     if (!selectedWarehouse) return;
     try {
       await zonesApi.remove(id);
@@ -298,18 +305,12 @@ export const Warehouses: React.FC = () => {
 
               {/* Búsqueda */}
               <Card bodyClassName="p-3">
-                <div className="relative">
-                  <Search
-                    size={14}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
-                  <input
-                    value={binQuery}
-                    onChange={(e) => setBinQuery(e.target.value)}
-                    placeholder="Buscar por código o descripción..."
-                    className="w-full pl-9 pr-3 h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                  />
-                </div>
+                <Input
+                  leftIcon={<Search size={14} />}
+                  value={binQuery}
+                  onChange={(e) => setBinQuery(e.target.value)}
+                  placeholder="Buscar por código o descripción..."
+                />
                 {binQuery && (
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
                     {totalVisible} coincidencias
@@ -367,17 +368,16 @@ export const Warehouses: React.FC = () => {
                                   <span className="flex-1 text-[11px] text-slate-500 dark:text-slate-400 truncate">
                                     {b.description || '—'}
                                   </span>
-                                  <button
-                                    onClick={() => canDelete && deleteBin(b.id)}
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deleteBin(b.id)}
                                     disabled={!canDelete}
-                                    className={`p-1.5 rounded-md ${
-                                      canDelete
-                                        ? 'text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10'
-                                        : 'text-slate-200 cursor-not-allowed'
-                                    }`}
+                                    title="Eliminar ubicación"
                                   >
                                     <Trash2 size={13} />
-                                  </button>
+                                  </Button>
                                 </li>
                               ))}
                             </ul>

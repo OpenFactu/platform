@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Checkbox } from '@openfactu/ui';
+import { Button, Checkbox, Textarea } from '@openfactu/ui';
 import { Globe, ImagePlus, X } from 'lucide-react';
 import { MediaLibraryModal } from '@/modules/website/components/MediaLibraryModal';
 
@@ -45,19 +45,14 @@ export const ItemWebFields: React.FC<Props> = ({
         precio base con su IVA incluido.
       </p>
 
-      <div>
-        <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 block">
-          Descripción para la web
-        </label>
-        <textarea
-          value={webDescription}
-          onChange={(e) => setWebDescription(e.target.value)}
-          rows={3}
-          maxLength={600}
-          placeholder="Texto que ven los visitantes (independiente de la descripción interna)."
-          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-y"
-        />
-      </div>
+      <Textarea
+        label="Descripción para la web"
+        value={webDescription}
+        onChange={(e) => setWebDescription(e.target.value)}
+        rows={3}
+        maxLength={600}
+        placeholder="Texto que ven los visitantes (independiente de la descripción interna)."
+      />
 
       <div>
         <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 block">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Badge, Button, Card, Loader, useToast } from '@openfactu/ui';
+import { Badge, Button, Card, Loader, usePopup, useToast } from '@openfactu/ui';
 import { ArrowLeft, Boxes, Package, Save, Tag } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
@@ -29,6 +29,7 @@ export const ItemDetail: React.FC = () => {
   const { itemId } = useParams<{ itemId: string }>();
   const navigate = useNavigate();
   const toast = useToast();
+  const popup = usePopup();
   const { user } = useAuth();
   const canWrite =
     user?.role === 'SUPERUSER' || user?.role === 'ADMIN' || user?.permissions?.['/items']?.write;
@@ -78,12 +79,21 @@ export const ItemDetail: React.FC = () => {
 
   const handleSave = async () => {
     if (!itemId) return;
+    // La unidad base ya no la protege el `required` del <select> nativo (que
+    // nunca validó nada aquí, no hay <form>): se comprueba explícitamente.
+    if (!form.values.uomId) {
+      toast.error('Selecciona la unidad base del artículo');
+      return;
+    }
     if (form.values.barcode.trim()) {
       const v = validateBarcode(form.values.barcode);
       if (!v.valid) {
-        const ok = confirm(
-          `El código de barras parece inválido (${v.format}: ${v.reason}). ¿Guardar de todos modos?`,
-        );
+        const ok = await popup.confirm({
+          title: 'Código de barras inválido',
+          message: `El código de barras parece inválido (${v.format}: ${v.reason}). ¿Guardar de todos modos?`,
+          tone: 'warning',
+          confirmLabel: 'Guardar igualmente',
+        });
         if (!ok) return;
       }
     }
@@ -149,12 +159,15 @@ export const ItemDetail: React.FC = () => {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => navigate('/items')}
-              className="text-[11px] font-bold text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 flex items-center gap-1 mb-1"
+              className="mb-1 gap-1"
             >
               <ArrowLeft size={12} /> Catálogo
-            </button>
+            </Button>
             <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight font-display truncate">
               {form.values.name || item.name}
             </h1>

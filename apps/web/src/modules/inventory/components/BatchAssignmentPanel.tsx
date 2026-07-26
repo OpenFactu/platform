@@ -1,6 +1,16 @@
 import { stockApi } from '@/modules/inventory/api';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Modal, Button, Input, cn } from '@openfactu/ui';
+import {
+  Modal,
+  Button,
+  Input,
+  NumberInput,
+  DatePicker,
+  SearchableSelect,
+  Switch,
+  EmptyState,
+  cn,
+} from '@openfactu/ui';
 import {
   Search,
   ChevronRight,
@@ -106,7 +116,10 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
   const [availableByItem, setAvailableByItem] = useState<Record<string, AvailableBatch[]>>({});
   const [loadingAvail, setLoadingAvail] = useState(false);
   const [draftBatch, setDraftBatch] = useState('');
-  const [draftQty, setDraftQty] = useState<string>('');
+  // number puro: antes era string porque venía de e.target.value de un
+  // <input type="number">; con NumberInput el valor ya llega numérico y
+  // `null` representa el campo vacío.
+  const [draftQty, setDraftQty] = useState<number | null>(null);
   const [draftExpiry, setDraftExpiry] = useState('');
   const [cameraOpen, setCameraOpen] = useState(false);
   const draftInputRef = useRef<HTMLInputElement>(null);
@@ -127,7 +140,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
     );
     setLeftSearch('');
     setDraftBatch('');
-    setDraftQty('');
+    setDraftQty(null);
     setDraftExpiry('');
   }, [isOpen]);
 
@@ -195,6 +208,11 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
     const base = (zones ?? []).filter((z) => !lineWarehouseId || z.warehouseId === lineWarehouseId);
     return stockZones ? base.filter((z) => stockZones.some((sz) => sz.zoneId === z.id)) : base;
   }, [zones, lineWarehouseId, stockZones]);
+  // Una sola vez por render en lugar de una por fila asignada.
+  const zoneOptions = useMemo(
+    () => availableZones.map((z) => ({ value: z.id, label: z.name })),
+    [availableZones],
+  );
 
   // Auto-advance: cuando la línea actual queda balanceada, saltar a la siguiente incompleta.
   // Sólo se dispara en transición de "no cuadrada" a "cuadrada" para no hacer saltos locos.
@@ -391,7 +409,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
       }
     } else {
       // Lotes: cada batchNum recibe la cantidad del input (0 si vacío, editable luego).
-      const qtyPer = Number(draftQty || 0);
+      const qtyPer = draftQty ?? 0;
       if (qtyPer <= 0 && tokens.length === 1) return; // lote suelto sin cantidad → bloqueamos
       const expiry = draftExpiry || undefined;
       for (const num of tokens) {
@@ -411,7 +429,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
       updatePending(selectedIdx, currentAssigned);
     }
     setDraftBatch('');
-    setDraftQty('');
+    setDraftQty(null);
     setDraftExpiry('');
     // Mantener foco para seguir pum pum pum
     setTimeout(() => draftInputRef.current?.focus(), 0);
@@ -447,7 +465,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
             added++;
           }
         } else {
-          const qtyPer = Number(draftQty || 0);
+          const qtyPer = draftQty ?? 0;
           const expiry = draftExpiry || undefined;
           for (const num of tokens) {
             if (existing.has(num)) continue;
@@ -657,49 +675,41 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                     : `${manageBy === 'S' ? 'Series' : 'Lotes'} existentes`}
                 </p>
                 {isSale && (
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
                     onClick={autoFillRemaining}
                     disabled={isBalanced}
                     title="Asigna automáticamente en orden FIFO hasta completar la cantidad pendiente"
-                    className={cn(
-                      'inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg',
-                      'text-[10px] font-black uppercase tracking-[0.15em] transition-all',
-                      isBalanced
-                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'
-                        : 'bg-primary text-white shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.98]',
-                    )}
+                    className="gap-1.5"
                   >
                     <Zap size={11} className={isBalanced ? '' : 'animate-pulse'} />
                     Auto FIFO
-                  </button>
+                  </Button>
                 )}
               </div>
 
               {/* Search */}
               <div className="p-2 border-b border-slate-100 dark:border-slate-800">
-                <div className="relative">
-                  <Search
-                    size={12}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder={`Buscar ${manageBy === 'S' ? 'serie' : 'lote'}...`}
-                    value={leftSearch}
-                    onChange={(e) => setLeftSearch(e.target.value)}
-                    className="w-full h-8 pl-7 pr-2.5 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-shadow"
-                  />
-                </div>
+                <Input
+                  inputSize="sm"
+                  leftIcon={<Search size={12} />}
+                  placeholder={`Buscar ${manageBy === 'S' ? 'serie' : 'lote'}...`}
+                  value={leftSearch}
+                  onChange={(e) => setLeftSearch(e.target.value)}
+                />
               </div>
 
               {/* Crear nuevo (solo compra) */}
               {!isSale && (
                 <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-amber-50/40 dark:bg-amber-500/5 space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <input
-                      ref={draftInputRef}
-                      type="text"
+                    {/* El lector USB y la cámara escriben aquí: `inputRef` expone el
+                        <input> interno para mantener el foco entre lecturas, y el
+                        onPaste sigue tokenizando lo pegado. */}
+                    <Input
+                      inputRef={draftInputRef}
+                      inputSize="sm"
                       value={draftBatch}
                       onChange={(e) => setDraftBatch(e.target.value)}
                       onPaste={handleDraftPaste}
@@ -708,7 +718,8 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                           ? 'S0001 o S0001,S0002 o S0001-S0010...'
                           : 'L-001 o L-001,L-002...'
                       }
-                      className="flex-1 min-w-0 h-8 px-2.5 text-[11px] font-mono font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-shadow"
+                      containerClassName="flex-1 min-w-0"
+                      className="font-mono font-bold"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -718,12 +729,14 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                     />
                     {manageBy === 'B' && (
                       <>
-                        <input
-                          type="number"
+                        <NumberInput
                           value={draftQty}
-                          onChange={(e) => setDraftQty(e.target.value)}
+                          onChange={setDraftQty}
+                          precision={2}
+                          min={0}
                           placeholder="Cant."
-                          className="w-16 h-8 px-2 text-[11px] text-right font-bold tabular-nums bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-shadow"
+                          inputSize="sm"
+                          containerClassName="w-20 shrink-0"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
@@ -731,31 +744,36 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                             }
                           }}
                         />
-                        <input
-                          type="date"
-                          value={draftExpiry}
-                          onChange={(e) => setDraftExpiry(e.target.value)}
-                          className="w-32 h-8 px-2 text-[10px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-shadow"
+                        <DatePicker
+                          value={draftExpiry || null}
+                          onChange={(v) => setDraftExpiry(v ?? '')}
+                          clearable
+                          className="w-36 shrink-0"
                         />
                       </>
                     )}
-                    <button
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="sm"
                       onClick={() => setCameraOpen(true)}
-                      className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-sm active:scale-[0.96] transition-all shrink-0"
                       title="Escanear con cámara"
+                      className="shrink-0"
                     >
                       <Camera size={14} />
-                    </button>
-                    <button
+                    </Button>
+                    {/* `draftQty == null` y no `!draftQty`: teclear 0 debe seguir
+                        habilitando el botón (antes '0' era string y era truthy). */}
+                    <Button
                       type="button"
+                      size="sm"
                       onClick={addDraft}
-                      disabled={!draftBatch.trim() || (manageBy === 'B' && !draftQty)}
-                      className="h-8 w-8 flex items-center justify-center rounded-lg bg-primary text-white shadow-sm hover:shadow-md hover:brightness-110 active:scale-[0.96] disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none transition-all shrink-0"
+                      disabled={!draftBatch.trim() || (manageBy === 'B' && draftQty == null)}
                       title="Añadir nuevo (Enter)"
+                      className="shrink-0"
                     >
                       <Plus size={14} />
-                    </button>
+                    </Button>
                   </div>
                   <p className="text-[9px] text-slate-400 dark:text-slate-500 italic px-1 leading-tight">
                     Pega con <kbd className="font-mono">,</kbd> <kbd className="font-mono">;</kbd> o
@@ -832,14 +850,15 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                             )}
                             <td className="px-2 py-1.5">
                               {!alreadyAssigned && (
-                                <button
+                                <Button
                                   type="button"
+                                  variant="ghost"
+                                  size="sm"
                                   onClick={() => assignFromAvailable(ab)}
-                                  className="p-1 rounded hover:bg-primary/20 text-primary transition-colors"
                                   title="Asignar"
                                 >
                                   <ChevronRight size={14} />
-                                </button>
+                                </Button>
                               )}
                             </td>
                           </tr>
@@ -858,18 +877,16 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                   Asignado
                 </p>
                 <div className="flex items-center gap-3">
-                  <label
-                    className="flex items-center gap-1 text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer select-none"
-                    title="Salta a la siguiente línea incompleta al cuadrar la actual"
-                  >
-                    <input
-                      type="checkbox"
+                  {/* Preferencia que surte efecto al instante (no se guarda con
+                      ningún botón), así que Switch en vez de Checkbox. */}
+                  <span title="Salta a la siguiente línea incompleta al cuadrar la actual">
+                    <Switch
+                      size="sm"
                       checked={autoAdvance}
-                      onChange={(e) => setAutoAdvance(e.target.checked)}
-                      className="w-3 h-3 accent-primary"
+                      onChange={setAutoAdvance}
+                      label="Auto-avance"
                     />
-                    Auto-avance
-                  </label>
+                  </span>
                   <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider">
                     <span className="text-slate-400 dark:text-slate-500 tabular-nums">
                       {manageBy === 'S'
@@ -889,33 +906,25 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                   <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
                     Zona todos:
                   </span>
-                  <select
+                  {/* Actúa como acción, no como campo: el valor vuelve siempre a
+                      vacío tras aplicar la zona a todas las filas. */}
+                  <SearchableSelect
+                    options={zoneOptions}
                     value=""
-                    onChange={(e) => {
-                      if (e.target.value) setZoneForAll(e.target.value);
+                    onChange={(v) => {
+                      if (v) setZoneForAll(v);
                     }}
-                    className="flex-1 h-7 px-2.5 text-[11px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-shadow"
-                  >
-                    <option value="">— aplicar a todas las filas —</option>
-                    {availableZones.map((z) => (
-                      <option key={z.id} value={z.id}>
-                        {z.name}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="— aplicar a todas las filas —"
+                    className="flex-1"
+                  />
                 </div>
               )}
               <div className="flex-1 overflow-y-auto max-h-[260px]">
                 {assigned.length === 0 ? (
-                  <div className="p-6 text-center">
-                    <Package
-                      size={24}
-                      className="mx-auto text-slate-300 dark:text-slate-600 mb-2"
-                    />
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
-                      Sin {manageBy === 'S' ? 'series' : 'lotes'} asignados
-                    </p>
-                  </div>
+                  <EmptyState
+                    icon={<Package size={24} />}
+                    title={`Sin ${manageBy === 'S' ? 'series' : 'lotes'} asignados`}
+                  />
                 ) : (
                   <table className="w-full text-[11px]">
                     <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-100 dark:border-slate-800">
@@ -937,27 +946,30 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                           className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
                         >
                           <td className="px-2 py-1.5">
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="sm"
                               onClick={() => unassign(a.batchNum)}
-                              className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-500/10 text-slate-400 dark:text-slate-500 hover:text-rose-500 transition-colors"
                               title="Quitar"
                             >
                               <ChevronLeft size={14} />
-                            </button>
+                            </Button>
                           </td>
                           <td className="px-2 py-1.5 font-mono font-bold text-slate-700 dark:text-slate-200">
                             {a.batchNum}
                           </td>
                           {manageBy === 'B' && (
                             <td className="px-2 py-1.5 text-right">
-                              <input
-                                type="number"
+                              <NumberInput
                                 value={a.quantity}
-                                onChange={(e) =>
-                                  updateAssignedQty(a.batchNum, Number(e.target.value))
-                                }
-                                className="w-16 h-7 text-right tabular-nums text-[11px] font-bold border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800 px-1.5"
+                                onChange={(v) => updateAssignedQty(a.batchNum, v ?? 0)}
+                                precision={2}
+                                min={0}
+                                emptyValue="zero"
+                                align="right"
+                                inputSize="sm"
+                                containerClassName="w-20"
                               />
                             </td>
                           )}
@@ -968,29 +980,26 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                           )}
                           {showZoneColumn && (
                             <td className="px-2 py-1.5">
-                              <select
+                              <SearchableSelect
+                                options={zoneOptions}
                                 value={a.zoneId || ''}
-                                onChange={(e) => updateAssignedZone(a.batchNum, e.target.value)}
-                                className="w-full max-w-[140px] h-7 px-1.5 text-[10px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded focus:outline-none focus:border-primary"
-                              >
-                                <option value="">—</option>
-                                {availableZones.map((z) => (
-                                  <option key={z.id} value={z.id}>
-                                    {z.name}
-                                  </option>
-                                ))}
-                              </select>
+                                onChange={(v) => updateAssignedZone(a.batchNum, v)}
+                                clearable
+                                placeholder="—"
+                                className="max-w-[140px]"
+                              />
                             </td>
                           )}
                           <td className="px-2 py-1.5 text-right">
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="sm"
                               onClick={() => unassign(a.batchNum)}
-                              className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-500/10 text-slate-300 dark:text-slate-600 hover:text-rose-500 transition-colors"
                               title="Eliminar"
                             >
                               <Trash2 size={12} />
-                            </button>
+                            </Button>
                           </td>
                         </tr>
                       ))}

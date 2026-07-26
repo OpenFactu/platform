@@ -15,14 +15,17 @@ export interface ItemFormValues {
   name: string;
   uomId: string;
   categoryId: string;
-  basePrice: string;
+  // Numéricos puros: antes eran string porque venían de `e.target.value` de un
+  // <input type="number">; con CurrencyInput/NumberInput el valor ya llega
+  // numérico y `null` representa el campo vacío.
+  basePrice: number;
   manageBy: string;
   kind: 'product' | 'box';
-  boxLengthMm: string;
-  boxWidthMm: string;
-  boxHeightMm: string;
-  boxMaxWeightKg: string;
-  boxTareWeightKg: string;
+  boxLengthMm: number | null;
+  boxWidthMm: number | null;
+  boxHeightMm: number | null;
+  boxMaxWeightKg: number | null;
+  boxTareWeightKg: number | null;
   defaultWarehouseId: string;
   defaultZoneId: string;
   webVisible: boolean;
@@ -39,14 +42,14 @@ export function emptyItemForm(): ItemFormValues {
     name: '',
     uomId: '',
     categoryId: '',
-    basePrice: '0',
+    basePrice: 0,
     manageBy: 'N',
     kind: 'product',
-    boxLengthMm: '',
-    boxWidthMm: '',
-    boxHeightMm: '',
-    boxMaxWeightKg: '',
-    boxTareWeightKg: '',
+    boxLengthMm: null,
+    boxWidthMm: null,
+    boxHeightMm: null,
+    boxMaxWeightKg: null,
+    boxTareWeightKg: null,
     defaultWarehouseId: '',
     defaultZoneId: '',
     webVisible: false,
@@ -55,6 +58,13 @@ export function emptyItemForm(): ItemFormValues {
     customValues: {},
   };
 }
+
+/** null/'' → null; el resto, número (los NumberInput trabajan con `number | null`). */
+const num = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
 
 /** Pre-rellena el formulario desde un item de la API (edición/duplicado). */
 export function itemToForm(item: any): ItemFormValues {
@@ -68,14 +78,14 @@ export function itemToForm(item: any): ItemFormValues {
     name: item.name || '',
     uomId: item.uomId || '',
     categoryId: item.categoryId || '',
-    basePrice: item.basePrice?.toString() || '0',
+    basePrice: Number(item.basePrice) || 0,
     manageBy: item.manageBy || 'N',
     kind: item.kind === 'box' ? 'box' : 'product',
-    boxLengthMm: item.boxLengthMm?.toString() || '',
-    boxWidthMm: item.boxWidthMm?.toString() || '',
-    boxHeightMm: item.boxHeightMm?.toString() || '',
-    boxMaxWeightKg: item.boxMaxWeightKg?.toString() || '',
-    boxTareWeightKg: item.boxTareWeightKg?.toString() || '',
+    boxLengthMm: num(item.boxLengthMm),
+    boxWidthMm: num(item.boxWidthMm),
+    boxHeightMm: num(item.boxHeightMm),
+    boxMaxWeightKg: num(item.boxMaxWeightKg),
+    boxTareWeightKg: num(item.boxTareWeightKg),
     defaultWarehouseId: item.defaultWarehouseId || '',
     defaultZoneId: item.defaultZoneId || '',
     webVisible: !!item.webVisible,
@@ -93,14 +103,14 @@ export function buildItemPayload(v: ItemFormValues): Record<string, unknown> {
     name: v.name,
     uomId: v.uomId,
     categoryId: v.categoryId || null,
-    basePrice: parseFloat(v.basePrice) || 0,
+    basePrice: v.basePrice || 0,
     manageBy: v.manageBy,
     kind: v.kind,
-    boxLengthMm: v.kind === 'box' && v.boxLengthMm ? Number(v.boxLengthMm) : null,
-    boxWidthMm: v.kind === 'box' && v.boxWidthMm ? Number(v.boxWidthMm) : null,
-    boxHeightMm: v.kind === 'box' && v.boxHeightMm ? Number(v.boxHeightMm) : null,
-    boxMaxWeightKg: v.kind === 'box' && v.boxMaxWeightKg ? Number(v.boxMaxWeightKg) : null,
-    boxTareWeightKg: v.kind === 'box' && v.boxTareWeightKg ? Number(v.boxTareWeightKg) : null,
+    boxLengthMm: v.kind === 'box' && v.boxLengthMm ? v.boxLengthMm : null,
+    boxWidthMm: v.kind === 'box' && v.boxWidthMm ? v.boxWidthMm : null,
+    boxHeightMm: v.kind === 'box' && v.boxHeightMm ? v.boxHeightMm : null,
+    boxMaxWeightKg: v.kind === 'box' && v.boxMaxWeightKg ? v.boxMaxWeightKg : null,
+    boxTareWeightKg: v.kind === 'box' && v.boxTareWeightKg ? v.boxTareWeightKg : null,
     defaultWarehouseId: v.defaultWarehouseId || null,
     defaultZoneId: v.defaultZoneId || null,
     webVisible: v.webVisible,

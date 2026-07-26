@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Badge, useContextMenu } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Loader,
+  useToast,
+  usePopup,
+  Badge,
+  useContextMenu,
+  SearchableSelect,
+} from '@openfactu/ui';
 import type { ContextMenuItem } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -19,6 +29,7 @@ export const Categories: React.FC = () => {
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
   const toast = useToast();
+  const popup = usePopup();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -72,7 +83,13 @@ export const Categories: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar esta categoría?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar categoría',
+      message: '¿Seguro que deseas eliminar esta categoría?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       await categoriesApi.remove(id);
       fetchCategories();
@@ -81,6 +98,13 @@ export const Categories: React.FC = () => {
       toast.error('Error al eliminar');
     }
   };
+
+  /** Opciones del selector de categoría padre — `excludeId` evita que una
+   *  categoría se elija como padre de sí misma. */
+  const parentOptions = (excludeId?: string) =>
+    categories
+      .filter((x) => !excludeId || x.id !== excludeId)
+      .map((x) => ({ value: x.id, label: x.name }));
 
   const { contextMenu, openContextMenu } = useContextMenu();
   const buildCtxItems = (c: any): ContextMenuItem[] => [
@@ -158,18 +182,13 @@ export const Categories: React.FC = () => {
                   />
                 </td>
                 <td className="px-4 py-3">
-                  <select
+                  <SearchableSelect
+                    options={parentOptions()}
                     value={newRow.parentId || ''}
-                    onChange={(e) => setNewRow({ ...newRow, parentId: e.target.value || null })}
-                    className="h-9 w-full bg-white dark:bg-slate-900 border rounded-lg px-2 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none"
-                  >
-                    <option value="">-- Sin Padre --</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setNewRow({ ...newRow, parentId: v || null })}
+                    clearable
+                    placeholder="-- Sin Padre --"
+                  />
                 </td>
                 <td className="px-4 py-3 text-right space-x-1">
                   <Button size="sm" onClick={handleCreate}>
@@ -247,26 +266,19 @@ export const Categories: React.FC = () => {
                 </td>
                 <td className="px-6 py-3">
                   {editingId === c.id ? (
-                    <select
+                    <SearchableSelect
+                      options={parentOptions(c.id)}
                       value={c.parentId || ''}
-                      onChange={(e) =>
+                      onChange={(v) =>
                         setCategories(
                           categories.map((x) =>
-                            x.id === c.id ? { ...x, parentId: e.target.value || null } : x,
+                            x.id === c.id ? { ...x, parentId: v || null } : x,
                           ),
                         )
                       }
-                      className="h-9 w-full bg-white dark:bg-slate-900 border rounded-lg px-2 text-xs focus:ring-2 focus:ring-blue-500/20 outline-none"
-                    >
-                      <option value="">-- Sin Padre --</option>
-                      {categories
-                        .filter((x) => x.id !== c.id)
-                        .map((x) => (
-                          <option key={x.id} value={x.id}>
-                            {x.name}
-                          </option>
-                        ))}
-                    </select>
+                      clearable
+                      placeholder="-- Sin Padre --"
+                    />
                   ) : (
                     <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-semibold">
                       <Network size={12} className="text-slate-300 dark:text-slate-600" />
@@ -288,20 +300,26 @@ export const Categories: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <button
-                        onClick={() => canWrite && setEditingId(c.id)}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingId(c.id)}
                         disabled={!canWrite}
-                        className={`p-2 transition-all rounded-xl ${canWrite ? 'text-slate-300 dark:text-slate-600 hover:text-blue-500 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10' : 'text-slate-100 cursor-not-allowed grayscale'}`}
+                        title="Editar"
                       >
-                        <Plus size={16} className="rotate-45" />
-                      </button>
-                      <button
-                        onClick={() => canDelete && handleDelete(c.id)}
+                        <Pencil size={16} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(c.id)}
                         disabled={!canDelete}
-                        className={`p-2 transition-all rounded-xl ${canDelete ? 'text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10' : 'text-slate-100 cursor-not-allowed grayscale'}`}
+                        title="Eliminar"
                       >
                         <Trash2 size={16} />
-                      </button>
+                      </Button>
                     </>
                   )}
                 </td>

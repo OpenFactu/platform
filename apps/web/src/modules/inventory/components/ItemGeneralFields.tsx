@@ -1,5 +1,5 @@
 import React from 'react';
-import { Input } from '@openfactu/ui';
+import { Button, CurrencyInput, Input, SearchableSelect } from '@openfactu/ui';
 import { validateBarcode, generateEan13 } from '@/utils/barcodeValidation';
 import type { ItemFormValues } from '../hooks/useItemForm';
 import type { Category } from '../domain/category';
@@ -60,8 +60,9 @@ export const ItemGeneralFields: React.FC<Props> = ({
               onChange={(e) => set('barcode', e.target.value)}
             />
           </div>
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => {
               // Completa un parcial numérico o genera uno determinista desde
               // el código/nombre — misma lógica que el modal antiguo.
@@ -69,10 +70,9 @@ export const ItemGeneralFields: React.FC<Props> = ({
               set('barcode', generateEan13(seed));
             }}
             title="Generar EAN-13 válido (a partir del código del artículo si está vacío)"
-            className="h-9 px-3 text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-900/50"
           >
             Generar
-          </button>
+          </Button>
         </div>
         {(() => {
           if (!values.barcode.trim()) {
@@ -98,13 +98,15 @@ export const ItemGeneralFields: React.FC<Props> = ({
                 {v.format} inválido — {v.reason}
               </span>
               {v.suggested && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => set('barcode', v.suggested!)}
-                  className="ml-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 font-mono"
+                  className="ml-1 font-mono"
                 >
                   Usar {v.suggested}
-                </button>
+                </Button>
               )}
             </div>
           );
@@ -114,45 +116,40 @@ export const ItemGeneralFields: React.FC<Props> = ({
         <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
           Categoría (Define Prefijo)
         </label>
-        <select
+        <SearchableSelect
+          options={categories.map((c) => ({
+            value: c.id,
+            label: c.name,
+            secondaryLabel: c.codePrefix ? `${c.codePrefix}-` : undefined,
+          }))}
           value={values.categoryId}
-          onChange={(e) => set('categoryId', e.target.value)}
-          className="flex h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1 text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500/20"
-        >
-          <option value="">-- Sin Categoría --</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name} {c.codePrefix ? `(${c.codePrefix}-)` : ''}
-            </option>
-          ))}
-        </select>
+          onChange={(v) => set('categoryId', v)}
+          clearable
+          placeholder="-- Sin Categoría --"
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
-          Unidad Base
+          Unidad Base <span className="text-rose-500">*</span>
         </label>
-        <select
+        {/* El `required` del <select> nativo no llegaba a validar nada (no hay
+            <form> alrededor): quien manda es `essentialsOk` del wizard, que
+            exige uomId, y el guardado de la ficha usa el mismo valor. */}
+        <SearchableSelect
+          options={uoms.map((u) => ({ value: u.id, label: u.name, secondaryLabel: u.code }))}
           value={values.uomId}
-          onChange={(e) => set('uomId', e.target.value)}
-          required
-          className="flex h-9 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1 text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500/20"
-        >
-          <option value="">-- Seleccionar --</option>
-          {uoms.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name} ({u.code})
-            </option>
-          ))}
-        </select>
+          onChange={(v) => set('uomId', v)}
+          placeholder="-- Seleccionar --"
+        />
       </div>
 
-      <Input
-        label="Precio Base (€)"
-        type="number"
-        step="0.01"
+      <CurrencyInput
+        label="Precio Base"
         value={values.basePrice}
-        onChange={(e) => set('basePrice', e.target.value)}
+        onChange={(v) => set('basePrice', v ?? 0)}
+        min={0}
+        emptyValue="zero"
       />
     </div>
   );

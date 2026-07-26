@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Loader, Modal, useToast } from '@openfactu/ui';
+import { Button, Loader, Modal, usePopup, useToast } from '@openfactu/ui';
 import { validateBarcode } from '@/utils/barcodeValidation';
 import { useItemForm } from '../hooks/useItemForm';
 import { ItemGeneralFields } from './ItemGeneralFields';
@@ -45,6 +45,7 @@ export const ItemCreateWizard: React.FC<Props> = ({
   onCreated,
 }) => {
   const toast = useToast();
+  const popup = usePopup();
   const form = useItemForm();
   const [step, setStep] = useState(1);
 
@@ -69,9 +70,12 @@ export const ItemCreateWizard: React.FC<Props> = ({
     if (values.barcode.trim()) {
       const v = validateBarcode(values.barcode);
       if (!v.valid) {
-        const ok = confirm(
-          `El código de barras parece inválido (${v.format}: ${v.reason}). ¿Guardar de todos modos?`,
-        );
+        const ok = await popup.confirm({
+          title: 'Código de barras inválido',
+          message: `El código de barras parece inválido (${v.format}: ${v.reason}). ¿Guardar de todos modos?`,
+          tone: 'warning',
+          confirmLabel: 'Guardar igualmente',
+        });
         if (!ok) return;
       }
     }
@@ -100,20 +104,19 @@ export const ItemCreateWizard: React.FC<Props> = ({
           {STEPS.map((s, i) => (
             <React.Fragment key={s.id}>
               {i > 0 && <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />}
-              <button
+              {/* Indicador+atajo de paso: sigue siendo un botón, pero el estado
+                  (actual / hecho / pendiente) va por variant en vez de clases. */}
+              <Button
                 type="button"
-                onClick={() => (s.id < step || essentialsOk ? setStep(s.id) : undefined)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider transition-all ${
-                  step === s.id
-                    ? 'bg-blue-600 text-white shadow'
-                    : step > s.id
-                      ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                }`}
+                size="sm"
+                variant={step === s.id ? 'primary' : step > s.id ? 'secondary' : 'ghost'}
+                disabled={s.id > step && !essentialsOk}
+                onClick={() => setStep(s.id)}
+                className="rounded-full gap-2"
               >
                 <span>{step > s.id ? '✓' : s.id}</span>
                 {s.label}
-              </button>
+              </Button>
             </React.Fragment>
           ))}
         </div>

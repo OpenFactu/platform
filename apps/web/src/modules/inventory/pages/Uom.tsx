@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Badge, useContextMenu } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Loader,
+  useToast,
+  usePopup,
+  Badge,
+  useContextMenu,
+  SearchableSelect,
+} from '@openfactu/ui';
 import type { ContextMenuItem } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -19,6 +29,7 @@ export const Uom: React.FC = () => {
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
   const toast = useToast();
+  const popup = usePopup();
   const [uoms, setUoms] = useState<UomEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -64,7 +75,13 @@ export const Uom: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Seguro que deseas eliminar esta unidad?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar unidad',
+      message: '¿Seguro que deseas eliminar esta unidad de medida?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       await uomApi.remove(id);
       fetchUoms();
@@ -73,6 +90,13 @@ export const Uom: React.FC = () => {
       toast.error('Error al eliminar');
     }
   };
+
+  /** Opciones del selector "de qué unidad convierte" — `excludeId` evita que
+   *  una unidad se elija como su propia base. */
+  const uomOptions = (excludeId?: string) =>
+    uoms
+      .filter((x) => !excludeId || x.id !== excludeId)
+      .map((x) => ({ value: x.id, label: x.name, secondaryLabel: x.code }));
 
   const { contextMenu, openContextMenu } = useContextMenu();
   const buildCtxItems = (u: any): ContextMenuItem[] => [
@@ -155,18 +179,13 @@ export const Uom: React.FC = () => {
                       className="h-9 w-24 text-center"
                     />
                     <span className="text-xs font-bold text-slate-400 dark:text-slate-500">de</span>
-                    <select
+                    <SearchableSelect
+                      options={uomOptions()}
                       value={newRow.baseUomId || ''}
-                      onChange={(e) => setNewRow({ ...newRow, baseUomId: e.target.value || null })}
-                      className="h-9 bg-white dark:bg-slate-900 border rounded-lg px-2 text-xs"
-                    >
-                      <option value="">(Unidad Primaria)</option>
-                      {uoms.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name} ({u.code})
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(v) => setNewRow({ ...newRow, baseUomId: v || null })}
+                      clearable
+                      placeholder="(Unidad Primaria)"
+                    />
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right space-x-2 align-top pt-8">
@@ -250,26 +269,17 @@ export const Uom: React.FC = () => {
                         className="h-9 w-24 text-center"
                       />
                       <ArrowRightLeft size={12} className="text-slate-300 dark:text-slate-600" />
-                      <select
+                      <SearchableSelect
+                        options={uomOptions(u.id)}
                         value={u.baseUomId || ''}
-                        onChange={(e) =>
+                        onChange={(v) =>
                           setUoms(
-                            uoms.map((x) =>
-                              x.id === u.id ? { ...x, baseUomId: e.target.value || null } : x,
-                            ),
+                            uoms.map((x) => (x.id === u.id ? { ...x, baseUomId: v || null } : x)),
                           )
                         }
-                        className="h-9 bg-white dark:bg-slate-900 border rounded-lg px-2 text-xs"
-                      >
-                        <option value="">(Unidad Primaria)</option>
-                        {uoms
-                          .filter((x) => x.id !== u.id)
-                          .map((x) => (
-                            <option key={x.id} value={x.id}>
-                              {x.name} ({x.code})
-                            </option>
-                          ))}
-                      </select>
+                        clearable
+                        placeholder="(Unidad Primaria)"
+                      />
                     </div>
                   ) : (
                     <div className="flex items-center gap-3">
@@ -307,20 +317,26 @@ export const Uom: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      <button
-                        onClick={() => canWrite && setEditingId(u.id)}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingId(u.id)}
                         disabled={!canWrite}
-                        className={`p-2 transition-all rounded-xl ${canWrite ? 'text-slate-300 dark:text-slate-600 hover:text-blue-500 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10' : 'text-slate-100 cursor-not-allowed grayscale'}`}
+                        title="Editar"
                       >
-                        <Plus size={16} className="rotate-45" />
-                      </button>
-                      <button
-                        onClick={() => canDelete && handleDelete(u.id)}
+                        <Pencil size={16} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(u.id)}
                         disabled={!canDelete}
-                        className={`p-2 transition-all rounded-xl ${canDelete ? 'text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10' : 'text-slate-100 cursor-not-allowed grayscale'}`}
+                        title="Eliminar"
                       >
                         <Trash2 size={16} />
-                      </button>
+                      </Button>
                     </>
                   )}
                 </td>

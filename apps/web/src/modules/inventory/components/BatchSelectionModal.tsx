@@ -2,7 +2,7 @@ import { stockApi } from '@/modules/inventory/api';
 import { Trash2, Plus, AlertCircle, CheckCircle2, ChevronRight, Barcode } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
-import { Button, cn, Input, Modal } from '@openfactu/ui';
+import { Button, cn, Input, Modal, SearchableSelect } from '@openfactu/ui';
 
 interface BatchDetail {
   batchNum: string;
@@ -130,25 +130,22 @@ export const BatchSelectionModal: React.FC<Props> = ({
                 <tr key={idx} className="group">
                   <td className="py-2 pr-2">
                     {isSale && !readOnly ? (
-                      <select
+                      <SearchableSelect
+                        options={availableBatches.map((ab) => ({
+                          value: ab.batchNum,
+                          label: ab.batchNum,
+                          secondaryLabel: `Disp: ${ab.quantity} · ${
+                            ab.warehouseName
+                              ? `${ab.warehouseName}${ab.zoneName ? ` - ${ab.zoneName}` : ''}`
+                              : 'Ubicación desconocida'
+                          }`,
+                        }))}
                         value={d.batchNum}
-                        onChange={(e) => updateLine(idx, 'batchNum', e.target.value)}
-                        className="w-full h-9 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-800/50 font-bold"
-                      >
-                        <option value="">
-                          Seleccionar {manageBy === 'B' ? 'lote' : 'serie'}...
-                        </option>
-                        {availableBatches.map((ab) => {
-                          const location = ab.warehouseName
-                            ? ` [${ab.warehouseName}${ab.zoneName ? ` - ${ab.zoneName}` : ''}]`
-                            : ' [Ubicación desconocida]';
-                          return (
-                            <option key={ab.batchNum} value={ab.batchNum}>
-                              {ab.batchNum} (Disp: {ab.quantity}){location}
-                            </option>
-                          );
-                        })}
-                      </select>
+                        onChange={(v) => updateLine(idx, 'batchNum', v)}
+                        clearable
+                        loading={loading}
+                        placeholder={`Seleccionar ${manageBy === 'B' ? 'lote' : 'serie'}...`}
+                      />
                     ) : (
                       <Input
                         placeholder={manageBy === 'B' ? 'Lote...' : 'Serie...'}
@@ -194,12 +191,15 @@ export const BatchSelectionModal: React.FC<Props> = ({
                   )}
                   <td className="py-2 text-right">
                     {!readOnly && (
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => removeLine(idx)}
-                        className="text-slate-300 dark:text-slate-600 hover:text-red-500 transition-colors"
+                        title="Quitar línea"
                       >
                         <Trash2 size={16} />
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>

@@ -15,7 +15,19 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Badge, Loader, useToast, SearchableSelect } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Badge,
+  Loader,
+  useToast,
+  usePopup,
+  SearchableSelect,
+  Select,
+  Tabs,
+  Textarea,
+} from '@openfactu/ui';
 import {
   Plus,
   Trash2,
@@ -58,6 +70,20 @@ const KIND_CFG = {
   },
 } as const;
 
+/** Motivos del documento por tipo — entradas y salidas tienen los suyos. */
+const TYPE_OPTS: Record<'receipt' | 'issue', Array<{ value: string; label: string }>> = {
+  receipt: [
+    { value: 'internal', label: 'Recepción interna' },
+    { value: 'return', label: 'Devolución' },
+    { value: 'adjustment', label: 'Ajuste positivo' },
+  ],
+  issue: [
+    { value: 'internal', label: 'Salida interna' },
+    { value: 'scrap', label: 'Scrap / merma' },
+    { value: 'adjustment', label: 'Ajuste negativo' },
+  ],
+};
+
 const STATUS_COPY: Record<string, { label: string; variant: any }> = {
   draft: { label: 'Borrador', variant: 'neutral' },
   sent: { label: 'Enviado', variant: 'info' },
@@ -93,6 +119,7 @@ const emptyLine = (): LineInput => ({
 export const StockMovements: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [kind, setKind] = useState<Kind>('transfer');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,9 +255,7 @@ export const StockMovements: React.FC = () => {
     const item = items.find((x) => x.id === itemId);
     try {
       const d =
-        item?.manageBy === 'S'
-          ? await stockApi.serials(itemId)
-          : await stockApi.batches(itemId);
+        item?.manageBy === 'S' ? await stockApi.serials(itemId) : await stockApi.batches(itemId);
       const normalized = Array.isArray(d)
         ? d.map((row: any) => ({
             batchNum: row.batchNum || row.serialNum,
@@ -485,7 +510,13 @@ export const StockMovements: React.FC = () => {
   }, [sourceWh, creating]);
 
   const remove = async (id: string) => {
-    if (!confirm('¿Eliminar documento?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar documento',
+      message: '¿Seguro que quieres eliminar el documento? Esta acción no se puede deshacer.',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       await stockDocsApi.remove(kind, id);
     } catch (e) {
@@ -518,13 +549,15 @@ export const StockMovements: React.FC = () => {
       <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
         <div className="flex items-center gap-3">
           {(creating || viewing) && (
-            <button
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={creating ? cancelCreate : closeView}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
               title="Volver al listado"
             >
               <ArrowLeft size={14} />
-            </button>
+            </Button>
           )}
           <ArrowRightLeft className="text-amber-600 dark:text-amber-300" size={22} />
           <div>
@@ -553,29 +586,19 @@ export const StockMovements: React.FC = () => {
 
       {!creating && !viewing && (
         <>
-          <div className="border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
-            <div className="flex gap-1 min-w-max">
-              {(Object.keys(KIND_CFG) as Kind[]).map((k) => {
-                const c = KIND_CFG[k];
-                const active = kind === k;
-                return (
-                  <button
-                    key={k}
-                    onClick={() => setKind(k)}
-                    className={
-                      'flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-colors shrink-0 ' +
-                      (active
-                        ? 'text-accent border-accent'
-                        : 'text-slate-500 border-transparent hover:text-accent')
-                    }
-                  >
-                    <c.Icon size={13} />
-                    {c.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {/* Las tres vistas del hub: Tabs 'underline' ya trae el subrayado de la
+              activa y el scroll horizontal que se hacía a mano. */}
+          <Tabs
+            variant="underline"
+            size="sm"
+            scrollable
+            value={kind}
+            onChange={(k) => setKind(k as Kind)}
+            items={(Object.keys(KIND_CFG) as Kind[]).map((k) => {
+              const { label, Icon } = KIND_CFG[k];
+              return { key: k, label, icon: <Icon size={13} /> };
+            })}
+          />
 
           {loading ? (
             <div className="py-10 flex justify-center">
@@ -617,48 +640,58 @@ export const StockMovements: React.FC = () => {
                       </span>
                       <div className="flex gap-1 shrink-0">
                         {kind === 'transfer' && r.status === 'draft' && (
-                          <button
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               send(r.id);
                             }}
-                            className="px-2 py-1 text-[11px] rounded bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300"
+                            className="gap-1"
                           >
-                            <Send size={11} className="inline" /> Enviar
-                          </button>
+                            <Send size={11} /> Enviar
+                          </Button>
                         )}
                         {kind === 'transfer' && r.status === 'sent' && (
-                          <button
+                          <Button
+                            type="button"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               receive(r.id);
                             }}
-                            className="px-2 py-1 text-[11px] rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
+                            className="gap-1"
                           >
-                            <CheckCircle2 size={11} className="inline" /> Recibir
-                          </button>
+                            <CheckCircle2 size={11} /> Recibir
+                          </Button>
                         )}
                         {kind !== 'transfer' && r.status === 'draft' && (
-                          <button
+                          <Button
+                            type="button"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               post(r.id);
                             }}
-                            className="px-2 py-1 text-[11px] rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
+                            className="gap-1"
                           >
-                            <CheckCircle2 size={11} className="inline" /> Postear
-                          </button>
+                            <CheckCircle2 size={11} /> Postear
+                          </Button>
                         )}
                         {r.status !== 'posted' && r.status !== 'received' && (
-                          <button
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               remove(r.id);
                             }}
-                            className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded"
+                            title="Eliminar"
                           >
                             <Trash2 size={12} />
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </li>
@@ -748,7 +781,14 @@ export const StockMovements: React.FC = () => {
                   <Button
                     variant="secondary"
                     onClick={async () => {
-                      if (!confirm('¿Eliminar documento?')) return;
+                      const ok = await popup.confirm({
+                        title: 'Eliminar documento',
+                        message:
+                          '¿Seguro que quieres eliminar el documento? Esta acción no se puede deshacer.',
+                        tone: 'danger',
+                        confirmLabel: 'Eliminar',
+                      });
+                      if (!ok) return;
                       try {
                         await stockDocsApi.remove(kind, viewing.id);
                       } catch (e) {
@@ -937,25 +977,14 @@ export const StockMovements: React.FC = () => {
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                     Motivo
                   </label>
-                  <select
+                  {/* La etiqueta se queda fuera (mismo estilo que los demás
+                      campos de la cabecera); el nombre accesible va en ariaLabel. */}
+                  <Select
+                    ariaLabel="Motivo"
+                    options={TYPE_OPTS[kind === 'receipt' ? 'receipt' : 'issue']}
                     value={form.type || 'internal'}
-                    onChange={(e) => setForm({ ...form, type: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                  >
-                    {kind === 'receipt' ? (
-                      <>
-                        <option value="internal">Recepción interna</option>
-                        <option value="return">Devolución</option>
-                        <option value="adjustment">Ajuste positivo</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="internal">Salida interna</option>
-                        <option value="scrap">Scrap / merma</option>
-                        <option value="adjustment">Ajuste negativo</option>
-                      </>
-                    )}
-                  </select>
+                    onChange={(v) => setForm({ ...form, type: v })}
+                  />
                 </div>
               </div>
             )}
@@ -967,16 +996,18 @@ export const StockMovements: React.FC = () => {
                   Líneas
                 </label>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
+                    type="button"
+                    size="sm"
                     onClick={() => setScanOpen(true)}
-                    className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded bg-primary text-white shadow-sm hover:opacity-90"
                     title="Escanear código de barras"
+                    className="gap-1"
                   >
                     <ScanLine size={12} /> Escanear
-                  </button>
-                  <button onClick={addLine} className="text-[11px] text-primary hover:underline">
-                    + Añadir línea
-                  </button>
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={addLine}>
+                    <Plus size={12} className="mr-1" /> Añadir línea
+                  </Button>
                 </div>
               </div>
 
@@ -1286,14 +1317,17 @@ export const StockMovements: React.FC = () => {
                             );
                           })()}
                         </div>
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => removeLine(i)}
                           disabled={lines.length === 1}
-                          className="p-1.5 text-slate-400 hover:text-rose-500 disabled:opacity-30 mt-1 shrink-0"
                           title="Quitar línea"
+                          className="mt-1 shrink-0"
                         >
                           <Trash2 size={13} />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   );
@@ -1306,11 +1340,10 @@ export const StockMovements: React.FC = () => {
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                 Notas
               </label>
-              <textarea
+              <Textarea
                 rows={2}
                 value={form.notes || ''}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2"
                 placeholder="Opcional — observaciones para el almacén."
               />
             </div>
