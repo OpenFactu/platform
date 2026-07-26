@@ -1,7 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React from 'react';
 import type { ReactNode } from 'react';
-import { Card, Button, useToast } from '@openfactu/ui';
+import { Card, Button, useToast, EmptyState } from '@openfactu/ui';
 import { ArrowLeft, Download, FileText, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -82,12 +82,9 @@ export function ReportPage<T extends Record<string, any>>({
     <div className="p-6 max-w-7xl mx-auto space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <button
-            onClick={() => navigate(-1)}
-            className="text-xs font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 flex items-center gap-1 mb-2"
-          >
-            <ArrowLeft size={12} /> Volver
-          </button>
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
+            <ArrowLeft size={12} className="mr-1" /> Volver
+          </Button>
           <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2 tracking-tight">
             <FileText size={22} className="text-blue-600 dark:text-blue-300" />
             {title}
@@ -144,11 +141,12 @@ export function ReportPage<T extends Record<string, any>>({
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="p-10 text-center text-slate-400 italic text-sm"
-                  >
-                    Sin datos para los filtros actuales
+                  <td colSpan={columns.length}>
+                    <EmptyState
+                      icon={<FileText size={28} />}
+                      title="Sin datos"
+                      hint="Ningún registro cumple los filtros actuales."
+                    />
                   </td>
                 </tr>
               ) : (

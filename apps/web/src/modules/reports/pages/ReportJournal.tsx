@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { SearchableSelect } from '@openfactu/ui';
 import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
 import { reportsApi } from '../api';
@@ -12,23 +13,22 @@ export const ReportJournal: React.FC = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-
   useEffect(() => {
-    reportsApi.get<any>('/api/periods')
-      .then((d) => {
-        if (Array.isArray(d)) {
-          setPeriods(d);
-          const open = d.find((p) => p.status === 'O');
-          setPeriodId(open?.id || d[0]?.id || '');
-        }
-      });
+    reportsApi.get<any>('/api/periods').then((d) => {
+      if (Array.isArray(d)) {
+        setPeriods(d);
+        const open = d.find((p) => p.status === 'O');
+        setPeriodId(open?.id || d[0]?.id || '');
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.tenantId]);
 
   const load = () => {
     if (!periodId) return;
     setLoading(true);
-    reportsApi.get<any>(`/api/reports/journal?periodId=${periodId}`)
+    reportsApi
+      .get<any>(`/api/reports/journal?periodId=${periodId}`)
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
@@ -63,19 +63,16 @@ export const ReportJournal: React.FC = () => {
       pdfEndpoint="/api/reports/journal/pdf"
       pdfQuery={{ periodId }}
       filters={
-        <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Período</label>
-          <select
+        <div className="max-w-sm">
+          <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
+            Período
+          </label>
+          <SearchableSelect
+            options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
             value={periodId}
-            onChange={(e) => setPeriodId(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-          >
-            {periods.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.code} — {p.name}
-              </option>
-            ))}
-          </select>
+            onChange={setPeriodId}
+            placeholder="— seleccionar período —"
+          />
         </div>
       }
     />

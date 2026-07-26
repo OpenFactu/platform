@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button } from '@openfactu/ui';
+import { Card, Button, SearchableSelect } from '@openfactu/ui';
 import {
   ArrowLeft,
   Download,
@@ -23,19 +23,19 @@ export const ReportExecutive: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    reportsApi.get<any>('/api/periods')
-      .then((d) => {
-        setPeriods(Array.isArray(d) ? d : []);
-        const open = d.find?.((p: any) => p.status === 'O');
-        setPeriodId(open?.id || d[0]?.id || '');
-      });
+    reportsApi.get<any>('/api/periods').then((d) => {
+      setPeriods(Array.isArray(d) ? d : []);
+      const open = d.find?.((p: any) => p.status === 'O');
+      setPeriodId(open?.id || d[0]?.id || '');
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.tenantId]);
 
   const load = () => {
     if (!periodId) return;
     setLoading(true);
-    reportsApi.get<any>(`/api/reports/executive?periodId=${periodId}`)
+    reportsApi
+      .get<any>(`/api/reports/executive?periodId=${periodId}`)
       .then(setData)
       .finally(() => setLoading(false));
   };
@@ -44,19 +44,19 @@ export const ReportExecutive: React.FC = () => {
   }, [periodId]);
 
   const downloadPdf = async () => {
-    await reportsApi.downloadPdf(`/api/reports/executive/pdf?periodId=${periodId}`, `ejecutivo.pdf`);
+    await reportsApi.downloadPdf(
+      `/api/reports/executive/pdf?periodId=${periodId}`,
+      `ejecutivo.pdf`,
+    );
   };
 
   return (
     <div className="p-6 w-full space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <button
-            onClick={() => navigate(-1)}
-            className="text-xs font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 mb-2"
-          >
-            <ArrowLeft size={12} /> Volver
-          </button>
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
+            <ArrowLeft size={12} className="mr-1" /> Volver
+          </Button>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <FileBarChart size={22} className="text-rose-600" />
             Informe ejecutivo
@@ -77,18 +77,17 @@ export const ReportExecutive: React.FC = () => {
         </div>
       </div>
       <Card className="p-4">
-        <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mr-2">Período</label>
-        <select
-          value={periodId}
-          onChange={(e) => setPeriodId(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-        >
-          {periods.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.code} — {p.name}
-            </option>
-          ))}
-        </select>
+        <div className="max-w-sm">
+          <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
+            Período
+          </label>
+          <SearchableSelect
+            options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+            value={periodId}
+            onChange={setPeriodId}
+            placeholder="— seleccionar período —"
+          />
+        </div>
       </Card>
       {loading || !data ? (
         <Card className="p-10 text-center text-slate-400 italic">Cargando…</Card>

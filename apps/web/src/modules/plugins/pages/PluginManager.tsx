@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Card, Badge, Button, useToast } from '@openfactu/ui';
+import { Card, Badge, Button, Tabs, EmptyState, useToast } from '@openfactu/ui';
+import type { TabItem } from '@openfactu/ui';
 import { Puzzle, Database, RefreshCw, Zap, Key, LayoutGrid } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { usePlugins, useModules } from '@/context/PluginContext';
@@ -111,6 +112,15 @@ export const appsPluginManager: React.FC = () => {
 
   const activeCount = plugins.filter((p) => p.isActive).length;
 
+  // La pestaña de desarrollo sigue siendo sólo para ADMIN/SUPERUSER: se omite
+  // del array en lugar de ocultarse con CSS.
+  const tabItems: TabItem[] = [
+    { key: 'plugins', label: 'Aplicaciones', icon: <LayoutGrid size={15} /> },
+    ...(user?.role === 'ADMIN' || user?.role === 'SUPERUSER'
+      ? [{ key: 'dev', label: 'Desarrollo', icon: <Key size={15} /> }]
+      : []),
+  ];
+
   return (
     <div className="p-4">
       {/* Header */}
@@ -137,35 +147,12 @@ export const appsPluginManager: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 mb-8 border-b border-line dark:border-ink-700">
-        <button
-          onClick={() => setTab('plugins')}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-            tab === 'plugins'
-              ? 'border-accent text-accent'
-              : 'border-transparent text-ink-500 dark:text-ink-400 hover:text-accent dark:hover:text-accent'
-          }`}
-        >
-          <span className="flex items-center gap-2">
-            <LayoutGrid size={15} /> Aplicaciones
-          </span>
-        </button>
-        {(user?.role === 'ADMIN' || user?.role === 'SUPERUSER') && (
-          <button
-            onClick={() => setTab('dev')}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'dev'
-                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <Key size={15} /> Desarrollo
-            </span>
-          </button>
-        )}
-      </div>
+      <Tabs
+        items={tabItems}
+        value={tab}
+        onChange={(k) => setTab(k as 'plugins' | 'dev')}
+        className="mb-8"
+      />
 
       {tab === 'dev' ? (
         <DevKeysPanel token={token} user={user} />
@@ -218,17 +205,12 @@ export const appsPluginManager: React.FC = () => {
           </div>
 
           {plugins.length === 0 && !loading && (
-            <div className="text-center py-20 text-slate-400 dark:text-slate-500">
-              <Puzzle size={48} className="mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No hay plugins instalados</p>
-              <p className="text-sm mt-1">
-                Coloca plugins en la carpeta{' '}
-                <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                  /plugins/
-                </code>{' '}
-                del servidor.
-              </p>
-            </div>
+            <EmptyState
+              icon={<Puzzle size={48} />}
+              title="No hay plugins instalados"
+              hint="Coloca plugins en la carpeta /plugins/ del servidor."
+              className="py-20"
+            />
           )}
 
           {/* DB Extensions */}

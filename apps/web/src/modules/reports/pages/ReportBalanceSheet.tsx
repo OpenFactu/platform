@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button } from '@openfactu/ui';
+import { Card, Button, SearchableSelect } from '@openfactu/ui';
 import { ArrowLeft, Download, RefreshCw, Landmark } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -15,23 +15,22 @@ export const ReportBalanceSheet: React.FC = () => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-
   useEffect(() => {
-    reportsApi.get<any>('/api/periods')
-      .then((d) => {
-        if (Array.isArray(d)) {
-          setPeriods(d);
-          const open = d.find((p) => p.status === 'O');
-          setPeriodId(open?.id || d[0]?.id || '');
-        }
-      });
+    reportsApi.get<any>('/api/periods').then((d) => {
+      if (Array.isArray(d)) {
+        setPeriods(d);
+        const open = d.find((p) => p.status === 'O');
+        setPeriodId(open?.id || d[0]?.id || '');
+      }
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.tenantId]);
 
   const load = () => {
     if (!periodId) return;
     setLoading(true);
-    reportsApi.get<any>(`/api/reports/balance-sheet?periodId=${periodId}`)
+    reportsApi
+      .get<any>(`/api/reports/balance-sheet?periodId=${periodId}`)
       .then(setData)
       .finally(() => setLoading(false));
   };
@@ -75,12 +74,9 @@ export const ReportBalanceSheet: React.FC = () => {
     <div className="p-6 w-full space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <button
-            onClick={() => navigate(-1)}
-            className="text-xs font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 mb-2"
-          >
-            <ArrowLeft size={12} /> Volver
-          </button>
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
+            <ArrowLeft size={12} className="mr-1" /> Volver
+          </Button>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <Landmark size={22} className="text-purple-600" />
             Balance de Situación
@@ -97,18 +93,19 @@ export const ReportBalanceSheet: React.FC = () => {
       </div>
 
       <Card className="p-4">
-        <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mr-2">Período</label>
-        <select
-          value={periodId}
-          onChange={(e) => setPeriodId(e.target.value)}
-          className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-        >
-          {periods.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.code} — {p.name}
-            </option>
-          ))}
-        </select>
+        <div className="max-w-sm">
+          <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
+            Período
+          </label>
+          {/* SearchableSelect: los períodos vienen del servidor y se acumulan
+              ejercicio tras ejercicio, así que conviene el buscador. */}
+          <SearchableSelect
+            options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+            value={periodId}
+            onChange={setPeriodId}
+            placeholder="— seleccionar período —"
+          />
+        </div>
       </Card>
 
       {loading || !data ? (

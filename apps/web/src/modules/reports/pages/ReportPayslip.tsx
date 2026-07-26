@@ -19,10 +19,7 @@ export const ReportPayslip: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      reportsApi.get<any>('/api/hr/payrolls'),
-      reportsApi.get<any>('/api/hr/employees'),
-    ])
+    Promise.all([reportsApi.get<any>('/api/hr/payrolls'), reportsApi.get<any>('/api/hr/employees')])
       .then(([p, e]) => {
         setPayrolls(Array.isArray(p) ? p : []);
         const map: Record<string, any> = {};
@@ -48,12 +45,9 @@ export const ReportPayslip: React.FC = () => {
   return (
     <div className="p-6 w-full space-y-5">
       <div>
-        <button
-          onClick={() => navigate(-1)}
-          className="text-xs font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 mb-2"
-        >
-          <ArrowLeft size={12} /> Volver
-        </button>
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
+          <ArrowLeft size={12} className="mr-1" /> Volver
+        </Button>
         <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
           <Banknote size={22} className="text-emerald-600" />
           Recibo de nómina

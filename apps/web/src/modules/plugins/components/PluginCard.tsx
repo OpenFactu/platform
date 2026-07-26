@@ -1,4 +1,5 @@
 import React from 'react';
+import { Switch } from '@openfactu/ui';
 import { Shield, Database, Power } from 'lucide-react';
 import { PluginIcon } from '@/components/PluginIcon';
 import type { PluginInfo } from '../domain/PluginInfo';
@@ -67,33 +68,11 @@ export const PluginCard: React.FC<PluginCardProps> = ({
             </div>
           </div>
 
-          {/* Toggle */}
-          <button
-            onClick={onToggle}
-            disabled={isToggling}
-            className={`
-              relative w-12 h-7 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
-              ${isToggling ? 'opacity-50 cursor-wait' : 'cursor-pointer'}
-              ${
-                plugin.isActive
-                  ? 'bg-emerald-500 focus:ring-emerald-400'
-                  : 'bg-slate-300 dark:bg-slate-600 focus:ring-slate-400'
-              }
-            `}
-            title={plugin.isActive ? 'Desactivar plugin' : 'Activar plugin'}
-          >
-            <span
-              className={`
-                absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-200
-                ${plugin.isActive ? 'translate-x-5.5 left-auto right-0.5' : 'left-0.5'}
-              `}
-              style={{
-                transform: plugin.isActive ? 'translateX(0)' : 'translateX(0)',
-                left: plugin.isActive ? 'auto' : '2px',
-                right: plugin.isActive ? '2px' : 'auto',
-              }}
-            />
-          </button>
+          {/* Toggle: Switch porque el cambio se persiste al instante (activa o
+              desactiva el plugin en el servidor). */}
+          <span title={plugin.isActive ? 'Desactivar plugin' : 'Activar plugin'}>
+            <Switch checked={plugin.isActive} onChange={onToggle} disabled={isToggling} />
+          </span>
         </div>
 
         {/* Description */}

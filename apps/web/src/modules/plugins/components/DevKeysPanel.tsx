@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Card, Badge, Button, useToast } from '@openfactu/ui';
+import { Card, Badge, Button, Input, EmptyState, useToast } from '@openfactu/ui';
 import { Shield, Key, Copy, Trash2, Eye, EyeOff, Plus } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 import { devKeysApi } from '../api';
@@ -96,15 +96,18 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                 <code className="flex-1 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-800 dark:text-slate-200 select-all">
                   {newKey.clientId}
                 </code>
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => copyToClipboard(newKey.clientId, 'clientId')}
-                  className="p-2 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors"
+                  title="Copiar Client ID"
                 >
                   <Copy
                     size={14}
-                    className={copiedField === 'clientId' ? 'text-emerald-500' : 'text-slate-400'}
+                    className={copiedField === 'clientId' ? 'text-emerald-500' : undefined}
                   />
-                </button>
+                </Button>
               </div>
             </div>
             <div>
@@ -115,17 +118,18 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                 <code className="flex-1 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-800 dark:text-slate-200 select-all">
                   {newKey.clientSecret}
                 </code>
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => copyToClipboard(newKey.clientSecret, 'clientSecret')}
-                  className="p-2 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-800 transition-colors"
+                  title="Copiar Client Secret"
                 >
                   <Copy
                     size={14}
-                    className={
-                      copiedField === 'clientSecret' ? 'text-emerald-500' : 'text-slate-400'
-                    }
+                    className={copiedField === 'clientSecret' ? 'text-emerald-500' : undefined}
                   />
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -135,12 +139,15 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
               --client-secret {newKey.clientSecret}
             </p>
           </div>
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setNewKey(null)}
-            className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 hover:underline"
+            className="mt-3"
           >
             Entendido, ya lo he guardado
-          </button>
+          </Button>
         </div>
       )}
 
@@ -150,16 +157,15 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
         subtitle="Genera API Keys para desarrollar y subir plugins desde otros equipos."
       >
         <div className="flex gap-3 mb-6">
-          <input
-            type="text"
+          <Input
             value={newKeyName}
             onChange={(e) => setNewKeyName(e.target.value)}
             placeholder="Nombre de la key (ej: Mi PC de desarrollo)"
-            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400"
+            containerClassName="flex-1"
             onKeyDown={(e) => e.key === 'Enter' && createKey()}
           />
-          <Button variant="primary" onClick={createKey} disabled={creating} className="gap-2">
-            <Plus size={14} />
+          <Button variant="primary" onClick={createKey} isLoading={creating}>
+            {!creating && <Plus size={14} />}
             {creating ? 'Generando...' : 'Generar Key'}
           </Button>
         </div>
@@ -175,11 +181,11 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
             ))}
           </div>
         ) : keys.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 dark:text-slate-500">
-            <Key size={32} className="mx-auto mb-3 opacity-40" />
-            <p className="text-sm">No hay API Keys generadas</p>
-            <p className="text-xs mt-1">Genera una para poder subir plugins desde otros equipos</p>
-          </div>
+          <EmptyState
+            icon={<Key size={32} />}
+            title="No hay API Keys generadas"
+            hint="Genera una para poder subir plugins desde otros equipos."
+          />
         ) : (
           <div className="space-y-3">
             {keys.map((k) => (
@@ -209,12 +215,15 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                       <code className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
                         {k.clientId}
                       </code>
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => copyToClipboard(k.clientId, k.id)}
-                        className="text-slate-300 hover:text-slate-500 transition-colors"
+                        title="Copiar Client ID"
                       >
                         <Copy size={10} />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -227,20 +236,24 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                   <Badge variant={k.isActive ? 'success' : 'neutral'}>
                     {k.isActive ? 'Activa' : 'Inactiva'}
                   </Badge>
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => toggleKey(k.id)}
-                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-slate-400 hover:text-slate-600"
                     title={k.isActive ? 'Desactivar' : 'Activar'}
                   >
                     {k.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => deleteKey(k.id)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-slate-400 hover:text-red-500"
                     title="Eliminar"
                   >
                     <Trash2 size={14} />
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}

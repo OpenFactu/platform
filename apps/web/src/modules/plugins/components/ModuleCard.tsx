@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge } from '@openfactu/ui';
+import { Badge, Switch } from '@openfactu/ui';
 import { PluginIcon } from '@/components/PluginIcon';
 import type { Module } from '@/modules';
 
@@ -62,28 +62,10 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onToggle}
-            disabled={isToggling}
-            className={`
-              relative w-12 h-7 rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
-              ${isToggling ? 'opacity-50 cursor-wait' : 'cursor-pointer'}
-              ${
-                enabled
-                  ? 'bg-emerald-500 focus:ring-emerald-400'
-                  : 'bg-slate-300 dark:bg-slate-600 focus:ring-slate-400'
-              }
-            `}
-            title={enabled ? 'Desactivar módulo' : 'Activar módulo'}
-          >
-            <span
-              className="absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-200"
-              style={{
-                left: enabled ? 'auto' : '2px',
-                right: enabled ? '2px' : 'auto',
-              }}
-            />
-          </button>
+          {/* Switch: el flag del módulo se guarda en la empresa al instante. */}
+          <span title={enabled ? 'Desactivar módulo' : 'Activar módulo'}>
+            <Switch checked={enabled} onChange={onToggle} disabled={isToggling} />
+          </span>
         </div>
 
         {module.description && (

@@ -15,13 +15,13 @@ export const ReportVAT: React.FC = () => {
   const [data, setData] = useState<{ output: any[]; input: any[] } | null>(null);
   const [loading, setLoading] = useState(false);
 
-
   const load = () => {
     const qs = new URLSearchParams();
     if (from) qs.append('from', from);
     if (to) qs.append('to', to);
     setLoading(true);
-    reportsApi.get<any>(`/api/reports/vat?${qs.toString()}`)
+    reportsApi
+      .get<any>(`/api/reports/vat?${qs.toString()}`)
       .then(setData)
       .finally(() => setLoading(false));
   };
@@ -95,12 +95,9 @@ export const ReportVAT: React.FC = () => {
     <div className="p-6 w-full space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <button
-            onClick={() => navigate(-1)}
-            className="text-xs font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 mb-2"
-          >
-            <ArrowLeft size={12} /> Volver
-          </button>
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
+            <ArrowLeft size={12} className="mr-1" /> Volver
+          </Button>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
             <Receipt size={22} className="text-amber-600" />
             Libro de IVA

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { NumberInput } from '@openfactu/ui';
 import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
 import { reportsApi } from '../api';
@@ -15,7 +16,8 @@ export const ReportLaborCost: React.FC = () => {
 
   const load = () => {
     setLoading(true);
-    reportsApi.get<any>(`/api/reports/labor-cost?year=${year}`)
+    reportsApi
+      .get<any>(`/api/reports/labor-cost?year=${year}`)
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
@@ -45,15 +47,16 @@ export const ReportLaborCost: React.FC = () => {
       onRefresh={load}
       filename={`costes-laborales-${year}`}
       filters={
-        <div className="flex items-center gap-3">
-          <label className="text-xs font-bold">Año</label>
-          <input
-            type="number"
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm w-28"
-          />
-        </div>
+        <NumberInput
+          label="Año"
+          value={year}
+          onChange={(v) => setYear(v ?? new Date().getFullYear())}
+          min={2000}
+          max={2100}
+          commitOn="blur"
+          thousandSeparator={false}
+          containerClassName="w-32"
+        />
       }
     />
   );
