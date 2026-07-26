@@ -19,14 +19,17 @@ export const MainLayout: React.FC = () => {
     return <DriverLayout />;
   }
 
+  // bg-bg-app y no bg-slate-*: es el fondo del shell y tiene que seguir al tema del
+  // tenant. Con la paleta fija de Tailwind se quedaba gris pizarra aunque la
+  // empresa usara Forest, Plum o Carbon.
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="flex h-screen bg-bg-app">
       <IconSidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <TopHeader />
         <ModuleTabBar />
         <TabBar />
-        <main className="flex-1 flex flex-col bg-slate-50 dark:bg-slate-950 min-h-0 pb-16 md:pb-0">
+        <main className="flex-1 flex flex-col bg-bg-app min-h-0 pb-16 md:pb-0">
           <TabsHost />
         </main>
       </div>

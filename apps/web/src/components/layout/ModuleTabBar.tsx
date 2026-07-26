@@ -63,7 +63,7 @@ export const ModuleTabBar: React.FC = () => {
   if (!active || subTabs.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-ink-900 border-b border-line dark:border-ink-700 overflow-x-auto overflow-y-visible">
+    <div className="flex items-center gap-1 px-3 py-1.5 bg-bg-card border-b border-border-default overflow-x-auto overflow-y-visible">
       <span className="text-xs font-bold uppercase tracking-wider text-ink-400 dark:text-ink-500 mr-3 px-2">
         {active.label}
       </span>
@@ -78,7 +78,7 @@ export const ModuleTabBar: React.FC = () => {
               'transition-colors duration-150',
               isActive
                 ? 'bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent'
-                : 'text-ink-700 dark:text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700 hover:text-accent dark:hover:text-accent',
+                : 'text-ink-700 dark:text-ink-400 hover:bg-bg-hover hover:text-accent dark:hover:text-accent',
             )}
           >
             {tab.icon && <PluginIcon iconName={tab.icon} size={14} />}
@@ -156,7 +156,7 @@ const GroupDropdown: React.FC<{
           'transition-colors duration-150',
           isActive
             ? 'bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent'
-            : 'text-ink-700 dark:text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700 hover:text-accent dark:hover:text-accent',
+            : 'text-ink-700 dark:text-ink-400 hover:bg-bg-hover hover:text-accent dark:hover:text-accent',
         )}
       >
         {group}
@@ -166,7 +166,7 @@ const GroupDropdown: React.FC<{
         <div
           ref={menuRef}
           style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 1000 }}
-          className="min-w-[200px] rounded-lg shadow-lg border border-line dark:border-ink-700 bg-white dark:bg-ink-900 py-1"
+          className="min-w-[200px] rounded-lg shadow-lg border border-border-default bg-bg-card py-1"
         >
           {items.map((tab) => {
             const tabActive = tab.path === activeTabPath;
@@ -181,7 +181,7 @@ const GroupDropdown: React.FC<{
                   'w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs font-medium whitespace-nowrap',
                   tabActive
                     ? 'bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent'
-                    : 'text-ink-700 dark:text-slate-100 hover:bg-line-2 dark:hover:bg-ink-700 hover:text-accent',
+                    : 'text-fg-body hover:bg-bg-hover hover:text-accent',
                 )}
               >
                 {tab.icon && <PluginIcon iconName={tab.icon} size={14} />}
