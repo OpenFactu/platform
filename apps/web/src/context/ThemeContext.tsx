@@ -1,3 +1,4 @@
+import { resolveTheme } from '@openfactu/ui';
 import { coreApi } from '@/shared/api';
 import React, {
   createContext,
@@ -245,20 +246,6 @@ function contrastingFgRgb(rgb: [number, number, number]): [number, number, numbe
   return luminance > 0.6 ? [15, 23, 42] : [255, 255, 255];
 }
 
-/** Devuelve el RGB aclarado un porcentaje (0..1) hacia blanco. */
-function lightenRgb(rgb: [number, number, number], amount: number): [number, number, number] {
-  return [
-    Math.min(255, Math.floor(rgb[0] + (255 - rgb[0]) * amount)),
-    Math.min(255, Math.floor(rgb[1] + (255 - rgb[1]) * amount)),
-    Math.min(255, Math.floor(rgb[2] + (255 - rgb[2]) * amount)),
-  ];
-}
-
-function rgbToHex(rgb: [number, number, number]): string {
-  const toHex = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${toHex(rgb[0])}${toHex(rgb[1])}${toHex(rgb[2])}`;
-}
-
 export interface FontOption {
   id: string;
   label: string;
@@ -503,23 +490,52 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     document.title = branding.appName;
     root.classList.toggle('dark', branding.themeMode === 'dark');
 
-    // En modo dark, derivamos el fondo de app/card del color primario del tema.
-    // Así cada preset oscuro (Midnight, Carbon, Deep Ocean, Forest, Plum,
-    // Nebula) tiene su propio color base en lugar de compartir #0A1628.
+    // Superficies, textos, bordes y escala del acento derivados del tema por
+    // `resolveTheme` de @openfactu/ui, que es quien conoce la fórmula. Antes se
+    // derivaban aquí a mano y sólo tres (--bg-app, --bg-card, --border-default),
+    // así que todo lo que usara --bg-muted, --bg-hover, --fg-body, --fg-subtle,
+    // --border-subtle/-strong o la escala --k-teal-* se quedaba con el azul y el
+    // verde de fábrica: en un preset morado o grafito se veía fuera de sitio.
+    const resolved = resolveTheme({
+      mode: branding.themeMode,
+      colors: { primary: branding.colorPrimary, accent: branding.colorAccent },
+    });
+    const c = resolved.colors;
+    const surfaceVars: Record<string, string> = {
+      '--bg-app': c.bgApp,
+      '--bg-card': c.bgCard,
+      '--bg-sidebar': c.bgSidebar,
+      '--bg-muted': c.bgMuted,
+      '--bg-hover': c.bgHover,
+      '--fg-default': c.fgDefault,
+      '--fg-body': c.fgBody,
+      '--fg-muted': c.fgMuted,
+      '--fg-subtle': c.fgSubtle,
+      '--border-default': c.borderDefault,
+      '--border-subtle': c.borderSubtle,
+      '--border-strong': c.borderStrong,
+      // La escala del acento: --k-accent-* es el nombre semántico y --k-teal-* el
+      // histórico. Los componentes usan ambos, así que se escriben los dos.
+      '--k-accent-50': c.accentScale[50],
+      '--k-accent-100': c.accentScale[100],
+      '--k-accent-500': c.accentScale[500],
+      '--k-accent-600': c.accentScale[600],
+      '--k-accent-900': c.accentScale[900],
+      '--k-teal-50': c.accentScale[50],
+      '--k-teal-100': c.accentScale[100],
+      '--k-teal-500': c.accentScale[500],
+      '--k-teal-600': c.accentScale[600],
+      '--k-teal-900': c.accentScale[900],
+    };
+    for (const [name, value] of Object.entries(surfaceVars)) {
+      root.style.setProperty(name, value);
+    }
+
     if (branding.themeMode === 'dark') {
-      const bgApp = rgbToHex(primaryRgb);
-      const bgCard = rgbToHex(lightenRgb(primaryRgb, 0.06));
-      const borderDefault = rgbToHex(lightenRgb(primaryRgb, 0.14));
-      root.style.setProperty('--bg-app', bgApp);
-      root.style.setProperty('--bg-card', bgCard);
-      root.style.setProperty('--border-default', borderDefault);
-      // Fuerza que el <html> y body vean el fondo correcto antes del siguiente
-      // pintado (evita flash de #0A1628 hardcoded en index.css).
-      root.style.background = bgApp;
+      // Que <html> vea el fondo correcto antes del siguiente pintado, para no
+      // enseñar el #0A1628 del anti-FOUC de index.css.
+      root.style.background = c.bgApp;
     } else {
-      root.style.removeProperty('--bg-app');
-      root.style.removeProperty('--bg-card');
-      root.style.removeProperty('--border-default');
       root.style.removeProperty('background');
     }
 
