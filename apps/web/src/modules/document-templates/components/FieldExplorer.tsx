@@ -104,7 +104,7 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {filteredGroups.map((group) => (
-          <div key={group.group} className="border-b border-slate-50">
+          <div key={group.group} className="border-b border-border-subtle">
             <div className="sticky top-0 px-3 py-2 bg-bg-muted border-b border-border-subtle flex items-center gap-2">
               <span className="text-fg-muted">{GROUP_ICON[group.icon]}</span>
               <span className="text-[10px] font-black text-fg-body uppercase tracking-wider">
@@ -122,7 +122,7 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
                   key={field.path}
                   type="button"
                   onClick={() => handleFieldClick(field)}
-                  className="w-full text-left px-3 py-2 hover:bg-bg-hover border-b border-slate-50 last:border-b-0 group transition-colors"
+                  className="w-full text-left px-3 py-2 hover:bg-bg-hover border-b border-border-subtle last:border-b-0 group transition-colors"
                 >
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
@@ -169,7 +169,10 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
             </span>
           </div>
           {HELPERS.map((helper) => (
-            <div key={helper.name} className="px-3 py-2 border-b border-slate-50 last:border-b-0">
+            <div
+              key={helper.name}
+              className="px-3 py-2 border-b border-border-subtle last:border-b-0"
+            >
               <code className="text-[11px] font-mono font-semibold text-indigo-700 block break-all">
                 {helper.usage}
               </code>

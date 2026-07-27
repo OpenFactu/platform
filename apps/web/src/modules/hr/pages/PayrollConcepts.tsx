@@ -196,7 +196,7 @@ export const PayrollConcepts: React.FC = () => {
       />
 
       {editing && (
-        <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+        <Card className="border-border-subtle shadow-lg" noPadding>
           <form onSubmit={save} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Input

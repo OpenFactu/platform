@@ -612,7 +612,7 @@ const InvoiceForm: React.FC<{
                 <span>− {Number(computations.withholdingAmount).toFixed(2)} €</span>
               </div>
             )}
-            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-slate-50">
+            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-border-subtle">
               <span className="text-[10px] uppercase font-black text-fg-subtle tracking-widest">
                 Total Factura:
               </span>

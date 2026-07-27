@@ -81,7 +81,7 @@ export const Ledger: React.FC = () => {
         size="lg"
       />
 
-      <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+      <Card className="border-border-subtle shadow-lg" noPadding>
         <div className="p-6 flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1">
             <label className="block text-sm font-medium text-fg-body mb-1">Cuenta</label>

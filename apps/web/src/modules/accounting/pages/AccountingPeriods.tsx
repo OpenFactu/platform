@@ -185,7 +185,7 @@ export const AccountingPeriods: React.FC = () => {
         size="lg"
       />
 
-      <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+      <Card className="border-border-subtle shadow-lg" noPadding>
         <form onSubmit={handleSubmit} className="p-6 flex flex-col md:flex-row gap-4 items-center">
           <div className="flex-[1]">
             <Input
