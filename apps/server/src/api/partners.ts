@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import crypto from 'crypto';
 import { logAudit } from '../utils/audit';
@@ -7,9 +7,88 @@ import { requireScope } from './middleware/apiToken';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import { validateTaxId } from '@openfactu/common';
 import { HookManager } from '../core/plugins/HookManager';
+import { PluginFieldManager } from '../core/plugins/PluginFieldManager';
+import { TenantPluginCache } from '../core/plugins/TenantPluginCache';
 import { validateIban, normalizeIban } from '../utils/ibanValidation';
 
 const router = Router();
+
+// ── Campos personalizados ────────────────────────────────────────────────────
+// Se crean vía ALTER TABLE con prefijo p_ y NO existen en el pgTable estático de
+// Drizzle, así que ni el `.select()` los devuelve ni el `.set()` los escribe:
+// hay que leerlos y escribirlos con SQL raw. Mismo patrón que internalOrders.
+// Solo se interpolan identificadores que pasen este filtro.
+const PLUGIN_COL_RE = /^p_[A-Za-z0-9_]+$/;
+
+function sqlLiteral(v: any): string {
+  if (v === null || v === undefined) return 'NULL';
+  if (typeof v === 'number') return String(v);
+  if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+  if (typeof v === 'object') return `'${JSON.stringify(v).replace(/'/g, "''")}'`;
+  return `'${String(v).replace(/'/g, "''")}'`;
+}
+
+/** Defs de campos personalizados activas para BusinessPartner en este tenant. */
+async function activeFieldDefs(tenantId?: string): Promise<any[]> {
+  const publicDb = ClientFactory.getClient('public');
+  const defs = await publicDb
+    .select()
+    .from(schema.pluginFields)
+    .where(eq(schema.pluginFields.tableName, 'BusinessPartner'));
+  if (!tenantId) return defs as any[];
+  return (defs as any[]).filter((def) => {
+    if (def.pluginId === '__user__') return def.tenantId === tenantId;
+    return TenantPluginCache.isActive(tenantId, def.pluginId);
+  });
+}
+
+/** Valida los campos p_* del body. Lanza si algo es inválido (llamar ANTES de escribir). */
+async function extractPluginFields(req: any): Promise<Record<string, any>> {
+  const values = await PluginFieldManager.validateAndExtract(
+    'BusinessPartner',
+    req.body || {},
+    req.tenantId,
+    req.user?.role,
+    req.tenantSchema,
+  );
+  return Object.fromEntries(Object.entries(values).filter(([k]) => PLUGIN_COL_RE.test(k)));
+}
+
+/** Persiste los campos p_* ya validados sobre una fila existente. */
+async function persistPluginFields(req: any, id: string, values: Record<string, any>) {
+  const entries = Object.entries(values);
+  if (entries.length === 0) return;
+  const sets = entries.map(([k, v]) => `"${k}" = ${sqlLiteral(v)}`).join(', ');
+  await req.tenantClient.execute(
+    sql.raw(
+      `UPDATE "${req.tenantSchema}"."BusinessPartner" SET ${sets} WHERE "id" = '${String(id).replace(/'/g, "''")}'`,
+    ),
+  );
+}
+
+/** Valores p_* legibles por el rol actual, indexados por id de interlocutor. */
+async function fetchPluginValues(req: any): Promise<Map<string, Record<string, any>> | null> {
+  const defs = await activeFieldDefs(req.tenantId);
+  const cols = defs
+    .filter((d) => {
+      const rr: string[] = Array.isArray(d.readRoles) ? d.readRoles : [];
+      return rr.length === 0 || !req.user?.role || rr.includes(req.user.role);
+    })
+    .map((d) => d.fieldName)
+    .filter((f: string) => PLUGIN_COL_RE.test(f));
+  if (cols.length === 0) return null;
+  const r: any = await req.tenantClient.execute(
+    sql.raw(
+      `SELECT "id", ${cols.map((c) => `"${c}"`).join(', ')} FROM "${req.tenantSchema}"."BusinessPartner"`,
+    ),
+  );
+  const map = new Map<string, Record<string, any>>();
+  for (const row of r.rows ?? []) {
+    const { id, ...rest } = row as any;
+    map.set(String(id), rest);
+  }
+  return map;
+}
 
 /**
  * Valida un NIF contra el regex del país. Si el país no está seed o no tiene
@@ -47,8 +126,10 @@ router.get('/', requireScope('read:maestros'), async (req: any, res) => {
       .from(schema.businessPartners)
       .orderBy(asc(schema.businessPartners.name));
 
+    const pluginValues = await fetchPluginValues(req);
     const rows = partners.map((p: any) => ({
       ...p,
+      ...(pluginValues?.get(String(p.id)) || {}),
       addresses: addresses.filter((a: any) => a.partnerId === p.id),
     }));
 
@@ -114,7 +195,11 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
     }
 
     const id = crypto.randomUUID();
+    // Validar los p_* ANTES de insertar: si alguno es inválido, mejor fallar
+    // sin haber creado el interlocutor.
+    const pluginValues = await extractPluginFields(req);
     const sanitizedBody = Object.keys(restBody).reduce((acc: any, key) => {
+      if (PLUGIN_COL_RE.test(key)) return acc; // van aparte, por SQL raw
       acc[key] = restBody[key] === '' ? null : restBody[key];
       return acc;
     }, {});
@@ -123,6 +208,9 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
       .insert(schema.businessPartners)
       .values({ ...sanitizedBody, code: finalCode, groupId: groupId === '' ? null : groupId, id })
       .returning();
+
+    await persistPluginFields(req, id, pluginValues);
+    Object.assign(partner, pluginValues);
 
     if (addresses && addresses.length > 0) {
       const inserts = addresses.map((a: any) => ({ ...a, id: crypto.randomUUID(), partnerId: id }));
@@ -186,7 +274,9 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
       restBody.iban = normalizeIban(restBody.iban);
     }
 
+    const pluginValues = await extractPluginFields(req);
     const sanitizedBody = Object.keys(restBody).reduce((acc: any, key) => {
+      if (PLUGIN_COL_RE.test(key)) return acc; // van aparte, por SQL raw
       acc[key] = restBody[key] === '' ? null : restBody[key];
       return acc;
     }, {});
@@ -198,6 +288,9 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
       .set(sanitizedBody)
       .where(eq(schema.businessPartners.id, id))
       .returning();
+
+    await persistPluginFields(req, id, pluginValues);
+    Object.assign(partner, pluginValues);
 
     if (addresses) {
       await req.tenantClient
