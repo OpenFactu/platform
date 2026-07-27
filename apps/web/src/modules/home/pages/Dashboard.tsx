@@ -7,12 +7,11 @@ import { UserDashboardWidgets } from '@/components/dashboard/UserDashboardWidget
 import {
   Card,
   Badge,
-  DashboardSkeleton,
+  SkeletonPage,
   SegmentedControl,
   EmptyState as UiEmptyState,
 } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
 import { useFormat } from '@/hooks/useFormat';
 import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
 import {
@@ -31,21 +30,7 @@ import {
   PackageCheck,
   Inbox,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+import { Chart } from '@openfactu/ui/charts';
 
 interface DashboardSummary {
   period: { id: string; code: string; name: string; startDate: string; endDate: string } | null;
@@ -118,16 +103,8 @@ const SCOPE_OPTIONS: { value: 'active' | 'all'; label: string }[] = [
   { value: 'all', label: 'Histórico' },
 ];
 
-const STATUS_COLORS: Record<string, string> = {
-  Abiertas: '#f59e0b', // amber
-  Cerradas: '#10b981', // emerald
-  Parcial: '#3b82f6', // blue
-  Anuladas: '#94a3b8', // slate
-};
-
 export const Dashboard: React.FC = () => {
   const { token, user } = useAuth();
-  const { branding } = useTheme();
   const fmt = useFormat();
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardSummary | null>(null);
@@ -141,10 +118,6 @@ export const Dashboard: React.FC = () => {
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
   const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevFeedRef = useRef<Set<string>>(new Set());
-
-  const isDark = branding.themeMode === 'dark';
-  const axisColor = isDark ? '#94a3b8' : '#64748b';
-  const gridColor = isDark ? '#1e293b' : '#e2e8f0';
 
   const load = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -253,7 +226,16 @@ export const Dashboard: React.FC = () => {
     });
   }, [data]);
 
-  if (loading) return <DashboardSkeleton />;
+  // DashboardSkeleton está deprecado (se va en la v0.5) y además traía su propio
+  // `p-8 max-w-7xl mx-auto`, que no es el contenedor de esta página. SkeletonPage
+  // se ajusta al layout real: cabecera, las 8 tarjetas KPI de las dos filas y los
+  // bloques de contenido.
+  if (loading)
+    return (
+      <div className="p-4 w-full space-y-6">
+        <SkeletonPage header kpis={8} columns={12} blocks={4} />
+      </div>
+    );
 
   if (error || !data) {
     return (
@@ -404,44 +386,15 @@ export const Dashboard: React.FC = () => {
                 hint="Aún no hay facturas para mostrar."
               />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke={gridColor} strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="month" stroke={axisColor} fontSize={11} />
-                  <YAxis
-                    stroke={axisColor}
-                    fontSize={11}
-                    tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: isDark ? '#0f172a' : '#fff',
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 8,
-                      color: isDark ? '#f1f5f9' : '#0f172a',
-                      fontSize: 12,
-                    }}
-                    formatter={(v: any) => fmt.money(Number(v))}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line
-                    type="monotone"
-                    dataKey="Ventas"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="Compras"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <Chart
+                type="line"
+                data={monthlyData}
+                xKey="month"
+                series={[{ key: 'Ventas' }, { key: 'Compras' }]}
+                height={288}
+                valueFormat={(v) => fmt.money(v)}
+                aria-label="Tendencia mensual de ventas y compras"
+              />
             )}
           </div>
         </Card>
@@ -455,34 +408,14 @@ export const Dashboard: React.FC = () => {
                 hint="Todavía no hay facturas registradas."
               />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={data.invoiceStatus}
-                    dataKey="count"
-                    nameKey="label"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={85}
-                    paddingAngle={2}
-                  >
-                    {data.invoiceStatus.map((entry, idx) => (
-                      <Cell key={`cell-${idx}`} fill={STATUS_COLORS[entry.label] || '#94a3b8'} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: isDark ? '#0f172a' : '#fff',
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 8,
-                      color: isDark ? '#f1f5f9' : '#0f172a',
-                      fontSize: 12,
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
-                </PieChart>
-              </ResponsiveContainer>
+              <Chart
+                type="donut"
+                data={data.invoiceStatus}
+                xKey="label"
+                series={[{ key: 'count' }]}
+                height={288}
+                aria-label="Distribución de facturas por estado"
+              />
             )}
           </div>
         </Card>
@@ -499,39 +432,16 @@ export const Dashboard: React.FC = () => {
                 hint="Aún no hay facturación de clientes."
               />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={topCustomersBars}
-                  layout="vertical"
-                  margin={{ left: 16, right: 16 }}
-                >
-                  <CartesianGrid stroke={gridColor} strokeDasharray="3 3" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    stroke={axisColor}
-                    fontSize={10}
-                    tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
-                  />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    stroke={axisColor}
-                    fontSize={11}
-                    width={120}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: isDark ? '#0f172a' : '#fff',
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 8,
-                      color: isDark ? '#f1f5f9' : '#0f172a',
-                      fontSize: 12,
-                    }}
-                    formatter={(v: any) => fmt.money(Number(v))}
-                  />
-                  <Bar dataKey="total" fill="#10b981" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <Chart
+                type="bar"
+                layout="vertical"
+                data={topCustomersBars}
+                xKey="name"
+                series={[{ key: 'total' }]}
+                height={288}
+                valueFormat={(v) => fmt.money(v)}
+                aria-label="Top clientes por facturación"
+              />
             )}
           </div>
         </Card>
@@ -545,39 +455,16 @@ export const Dashboard: React.FC = () => {
                 hint="Aún no hay facturación de proveedores."
               />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={topSuppliersBars}
-                  layout="vertical"
-                  margin={{ left: 16, right: 16 }}
-                >
-                  <CartesianGrid stroke={gridColor} strokeDasharray="3 3" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    stroke={axisColor}
-                    fontSize={10}
-                    tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
-                  />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    stroke={axisColor}
-                    fontSize={11}
-                    width={120}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: isDark ? '#0f172a' : '#fff',
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 8,
-                      color: isDark ? '#f1f5f9' : '#0f172a',
-                      fontSize: 12,
-                    }}
-                    formatter={(v: any) => fmt.money(Number(v))}
-                  />
-                  <Bar dataKey="total" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <Chart
+                type="bar"
+                layout="vertical"
+                data={topSuppliersBars}
+                xKey="name"
+                series={[{ key: 'total' }]}
+                height={288}
+                valueFormat={(v) => fmt.money(v)}
+                aria-label="Top proveedores por facturación"
+              />
             )}
           </div>
         </Card>

@@ -4,11 +4,16 @@
  * `SqlEditorModal` del diseñador de plantillas, pero para TSX: incluye un
  * botón "Probar" que compila el código en el server (esbuild) sin guardarlo,
  * para detectar errores de sintaxis antes de persistir.
+ *
+ * El armazón es el `Modal` del paquete: su `size="screen"` + `fullHeight` son
+ * justo las medidas que este diálogo tenía a mano (min(96vw,1100px) por
+ * min(92vh,760px)), y `noBodyPadding` deja que el editor ocupe todo el cuerpo.
  */
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { Modal, Button } from '@openfactu/ui';
 import Editor from '@monaco-editor/react';
+import { useTheme } from '../../context/ThemeContext';
 
 const DEFAULT_CODE = `// Solo lectura: usa @openfactu/widget-api para llamar endpoints GET.
 // No hay acceso a post/put/delete — es un cliente deliberadamente capado.
@@ -27,7 +32,9 @@ export default function MyWidget() {
 
   return (
     <div>
-      <p className="text-sm text-slate-600 dark:text-slate-300">
+      {/* Usa los tokens del tema (text-fg-muted, bg-bg-card…), no la paleta
+          fija de Tailwind: así el widget sigue al branding de la empresa. */}
+      <p className="text-sm text-fg-muted">
         {items.length} artículos en catálogo
       </p>
     </div>
@@ -43,13 +50,8 @@ interface Props {
   onClose: () => void;
 }
 
-export const WidgetCodeEditorModal: React.FC<Props> = ({
-  open,
-  initialCode,
-  token,
-  onSave,
-  onClose,
-}) => {
+export const WidgetCodeEditorModal: React.FC<Props> = ({ open, initialCode, onSave, onClose }) => {
+  const { branding } = useTheme();
   const [value, setValue] = useState(initialCode || DEFAULT_CODE);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
@@ -65,8 +67,7 @@ export const WidgetCodeEditorModal: React.FC<Props> = ({
     setTestResult(null);
     try {
       const res = await coreApi.raw('POST', '/api/dashboard-widgets/test-compile', { code: value });
-      const body = res.data;
-      setTestResult(body);
+      setTestResult(res.data);
     } catch (e: any) {
       setTestResult({ ok: false, error: e?.message || 'Error de red' });
     } finally {
@@ -74,91 +75,61 @@ export const WidgetCodeEditorModal: React.FC<Props> = ({
     }
   };
 
-  if (!open) return null;
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="w-[min(96vw,1100px)] h-[min(92vh,760px)] rounded-lg shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-          <div>
-            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Componente del widget
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-              Disponible: react, @openfactu/ui, lucide-react, @openfactu/widget-api (solo GET).
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-            title="Cerrar (Esc)"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex-1 min-h-0">
-          <Editor
-            height="100%"
-            language="typescript"
-            theme="vs-dark"
-            value={value}
-            onChange={(v) => setValue(v ?? '')}
-            options={{
-              fontSize: 13,
-              minimap: { enabled: false },
-              scrollBeyondLastLine: false,
-              automaticLayout: true,
-              wordWrap: 'on',
-              tabSize: 2,
-            }}
-          />
-        </div>
-
-        <div className="border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={runTest}
-            disabled={testing}
-            className="text-xs px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
-          >
+  return (
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      title="Componente del widget"
+      subtitle="Disponible: react, @openfactu/ui, lucide-react, @openfactu/widget-api (solo GET)."
+      size="screen"
+      fullHeight
+      noBodyPadding
+      closeOnOverlayClick
+      footer={
+        <div className="flex items-center gap-2 w-full">
+          <Button type="button" variant="accent" size="sm" onClick={runTest} isLoading={testing}>
             {testing ? 'Compilando…' : '▶ Probar'}
-          </button>
-          {testResult?.ok && (
-            <span className="text-xs text-emerald-600 dark:text-emerald-400">✓ Compila bien</span>
-          )}
+          </Button>
+          {testResult?.ok && <span className="text-xs text-success-fg">✓ Compila bien</span>}
           {testResult && !testResult.ok && (
-            <span className="text-xs text-red-500 truncate" title={testResult.error}>
+            <span className="text-xs text-danger-fg truncate" title={testResult.error}>
               ⚠ {testResult.error}
             </span>
           )}
           <div className="flex-1" />
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-xs px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="sm"
             onClick={() => {
               onSave(value);
               onClose();
             }}
-            className="text-xs px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white"
           >
             Guardar código
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>,
-    document.body,
+      }
+    >
+      {/* El tema de Monaco es su propio registro, no Tailwind: se elige según el
+          modo del tenant para que no salga un editor oscuro sobre tema claro. */}
+      <Editor
+        height="100%"
+        language="typescript"
+        theme={branding.themeMode === 'dark' ? 'vs-dark' : 'light'}
+        value={value}
+        onChange={(v) => setValue(v ?? '')}
+        options={{
+          fontSize: 13,
+          minimap: { enabled: false },
+          scrollBeyondLastLine: false,
+          automaticLayout: true,
+          wordWrap: 'on',
+          tabSize: 2,
+        }}
+      />
+    </Modal>
   );
 };

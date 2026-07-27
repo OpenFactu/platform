@@ -46,9 +46,7 @@ export const LocalitySelect: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      <label className="text-[12px] font-medium text-slate-700 dark:text-slate-300">
-        {label || 'Municipio'}
-      </label>
+      <label className="text-[12px] font-medium text-fg-body">{label || 'Municipio'}</label>
       <SearchableSelect
         options={options}
         value={value}

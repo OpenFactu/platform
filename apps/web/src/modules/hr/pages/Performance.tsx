@@ -3,7 +3,7 @@ import type { ProductivityRow as Row } from '../api/hrReportsApi';
 import type { Employee } from '../domain/employee';
 import type { Department } from '../domain/department';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, useToast, DatePicker, SearchableSelect } from '@openfactu/ui';
+import { Card, Button, KpiCard, useToast, DatePicker, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { TrendingUp, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
@@ -113,9 +113,9 @@ export const Performance: React.FC = () => {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-black flex items-center gap-3">
-            <TrendingUp className="text-emerald-600" size={32} /> Rendimiento
+            <TrendingUp className="text-success" size={32} /> Rendimiento
           </h1>
-          <p className="text-slate-500 text-sm">
+          <p className="text-fg-muted text-sm">
             Productividad por empleado: contratadas vs planificadas vs fichadas, % cumplimiento,
             horas extra, mapa de incidencias.
           </p>
@@ -142,7 +142,7 @@ export const Performance: React.FC = () => {
           <div>
             {/* SearchableSelect no tiene prop `label` → se conserva el <label>
                 suelto. El vacío es válido («Todos») → clearable. */}
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-fg-muted mb-1.5">
               Departamento
             </label>
             <SearchableSelect
@@ -154,7 +154,7 @@ export const Performance: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-fg-muted mb-1.5">
               Empleado
             </label>
             <SearchableSelect
@@ -168,24 +168,40 @@ export const Performance: React.FC = () => {
         </div>
       </Card>
 
+      {/* KpiCard del paquete en lugar del `Kpi` local que lo duplicaba. Los
+          tonos pasan de la paleta fija de Tailwind a los semanticos, que si
+          siguen al tema: info para lo planificado, success para lo fichado,
+          warning para las extras y danger para el absentismo. */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Kpi label="Contratadas" value={`${totals.contracted.toFixed(1)} h`} tone="slate" />
-        <Kpi label="Planificadas" value={`${totals.planned.toFixed(1)} h`} tone="indigo" />
-        <Kpi label="Fichadas" value={`${totals.clocked.toFixed(1)} h`} tone="emerald" />
-        <Kpi label="Extras" value={`${totals.overtime.toFixed(1)} h`} tone="amber" />
-        <Kpi label="Absentismo" value={`${totals.absence} días`} tone="rose" />
+        <KpiCard label="Contratadas" value={`${totals.contracted.toFixed(1)} h`} />
+        <KpiCard
+          label="Planificadas"
+          value={`${totals.planned.toFixed(1)} h`}
+          className="border-info"
+        />
+        <KpiCard
+          label="Fichadas"
+          value={`${totals.clocked.toFixed(1)} h`}
+          className="border-success"
+        />
+        <KpiCard
+          label="Extras"
+          value={`${totals.overtime.toFixed(1)} h`}
+          className="border-warning"
+        />
+        <KpiCard label="Absentismo" value={`${totals.absence} días`} className="border-danger" />
       </div>
 
       <Card noPadding>
-        <div className="p-3 text-xs text-slate-500 border-b">
+        <div className="p-3 text-xs text-fg-muted border-b">
           % cumplimiento medio:{' '}
-          <span className="font-black text-slate-800 dark:text-slate-100 tabular-nums">
+          <span className="font-black text-fg-default tabular-nums">
             {avgCompliance.toFixed(1)}%
           </span>
         </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs text-slate-500 border-b">
+            <tr className="text-left text-xs text-fg-muted border-b">
               <th className="p-3">Empleado</th>
               <th className="p-3 text-right">Contratadas</th>
               <th className="p-3 text-right">Planificadas</th>
@@ -199,7 +215,7 @@ export const Performance: React.FC = () => {
           <tbody>
             {loading && (
               <tr>
-                <td colSpan={8} className="p-6 text-center text-slate-400">
+                <td colSpan={8} className="p-6 text-center text-fg-subtle">
                   Calculando…
                 </td>
               </tr>
@@ -208,24 +224,24 @@ export const Performance: React.FC = () => {
               <tr key={r.employeeId} className="border-b">
                 <td className="p-3">
                   <div className="font-bold">{r.name}</div>
-                  <div className="text-[10px] text-slate-400">{r.code}</div>
+                  <div className="text-[10px] text-fg-subtle">{r.code}</div>
                 </td>
                 <td className="p-3 text-right tabular-nums">{r.hoursContracted.toFixed(1)}</td>
                 <td className="p-3 text-right tabular-nums">{r.hoursPlanned.toFixed(1)}</td>
                 <td className="p-3 text-right tabular-nums font-bold">
                   {r.hoursClocked.toFixed(1)}
                 </td>
-                <td className="p-3 text-right tabular-nums text-amber-600">
+                <td className="p-3 text-right tabular-nums text-warning-fg">
                   {r.hoursOvertime.toFixed(1)}
                 </td>
                 <td className="p-3 text-right tabular-nums">
                   <span
                     className={
                       r.compliancePct >= 95
-                        ? 'text-emerald-600 font-bold'
+                        ? 'text-success-fg font-bold'
                         : r.compliancePct >= 80
-                          ? 'text-amber-600 font-bold'
-                          : 'text-rose-600 font-bold'
+                          ? 'text-warning-fg font-bold'
+                          : 'text-danger-fg font-bold'
                     }
                   >
                     {r.compliancePct.toFixed(1)}%
@@ -236,13 +252,13 @@ export const Performance: React.FC = () => {
                   {Object.entries(r.incidentsByType).map(([k, v]) => (
                     <span
                       key={k}
-                      className="inline-block px-2 py-0.5 mr-1 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-bold"
+                      className="inline-block px-2 py-0.5 mr-1 rounded bg-bg-muted text-[10px] font-bold"
                     >
                       {k}: {v}
                     </span>
                   ))}
                   {Object.keys(r.incidentsByType).length === 0 && (
-                    <span className="text-slate-400 italic">sin incidencias</span>
+                    <span className="text-fg-subtle italic">sin incidencias</span>
                   )}
                 </td>
               </tr>
@@ -250,22 +266,6 @@ export const Performance: React.FC = () => {
           </tbody>
         </table>
       </Card>
-    </div>
-  );
-};
-
-const Kpi: React.FC<{ label: string; value: string; tone: string }> = ({ label, value, tone }) => {
-  const map: Record<string, string> = {
-    slate: 'border-slate-200 text-slate-700 dark:text-slate-200',
-    indigo: 'border-indigo-300 text-indigo-700 dark:text-indigo-300',
-    emerald: 'border-emerald-300 text-emerald-700 dark:text-emerald-300',
-    amber: 'border-amber-300 text-amber-700 dark:text-amber-300',
-    rose: 'border-rose-300 text-rose-700 dark:text-rose-300',
-  };
-  return (
-    <div className={`rounded-xl border-2 bg-white dark:bg-slate-900 p-4 ${map[tone]}`}>
-      <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">{label}</div>
-      <div className="text-2xl font-black tabular-nums mt-1">{value}</div>
     </div>
   );
 };
