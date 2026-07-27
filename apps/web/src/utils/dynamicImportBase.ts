@@ -8,6 +8,13 @@
  * mismo host que sirve la web.
  */
 export const getDynamicImportApiBase = (): string => {
+  // La instalación nativa de Windows sirve la web con un proxy propio que
+  // publica aquí el origen efectivo. Manda sobre el resto porque es lo único
+  // que conoce el puerto real: el del `.env` se decide al instalar, y la app
+  // de escritorio usa un puerto local que cambia en cada arranque.
+  const runtimeBase = (window as { __KEIROST_API_BASE__?: string }).__KEIROST_API_BASE__;
+  if (runtimeBase) return runtimeBase.replace(/\/$/, '');
+
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) return envUrl;
   // El server (apps/server) no tiene TLS configurado — siempre habla HTTP
