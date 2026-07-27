@@ -12,8 +12,9 @@
  */
 
 import { coreApi } from '@/shared/api';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Paperclip, Upload, Trash2, Download, FileText } from 'lucide-react';
+import { FileDropzone } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
 
 interface Attachment {
@@ -50,8 +51,6 @@ export const AttachmentsPanel: React.FC<Props> = ({
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const headers = {
     Authorization: `Bearer ${token ?? ''}`,
@@ -128,12 +127,6 @@ export const AttachmentsPanel: React.FC<Props> = ({
       .catch((e) => setError(e?.message || 'Error al descargar'));
   };
 
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    if (e.dataTransfer.files?.length) upload(e.dataTransfer.files);
-  };
-
   const inner = (
     <>
       {!compact && (
@@ -141,42 +134,31 @@ export const AttachmentsPanel: React.FC<Props> = ({
           <div className="flex items-center gap-2 text-fg-body">
             <Paperclip size={16} />
             <h3 className="text-sm font-bold uppercase tracking-wider">{title}</h3>
-            <span className="text-xs text-slate-400">({items.length})</span>
+            <span className="text-xs text-fg-subtle">({items.length})</span>
           </div>
         </div>
       )}
 
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
-        className={`mt-2 px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer transition-all text-center text-xs ${
-          dragOver
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
-            : 'border-border-strong bg-bg-muted text-fg-muted hover:border-blue-400 hover:text-blue-600'
-        }`}
-      >
-        <input
-          type="file"
-          multiple
-          ref={inputRef}
-          className="hidden"
-          onChange={(e) => e.target.files && upload(e.target.files)}
-        />
-        <Upload size={16} className="inline mr-1.5" />
-        {uploading ? 'Subiendo…' : 'Arrastra archivos aquí o haz click para seleccionar'}
-      </div>
-
-      {error && <div className="mt-2 text-xs text-rose-500 dark:text-rose-400">⚠ {error}</div>}
+      {/* El FileDropzone del paquete trae el arrastrar y soltar, el input
+          oculto, el estado "subiendo" y el resalte al arrastrar encima, que
+          aquí estaban a mano (y con el azul fijo de Tailwind). */}
+      <FileDropzone
+        className="mt-2"
+        variant="inline"
+        multiple
+        acceptPaste
+        isUploading={uploading}
+        uploadingLabel="Subiendo…"
+        label="Arrastra archivos aquí o haz clic para seleccionar"
+        icon={<Upload size={16} />}
+        onFiles={(files) => upload(files)}
+        error={error || undefined}
+      />
 
       {loading ? (
-        <div className="mt-3 text-xs text-slate-400 italic">Cargando adjuntos…</div>
+        <div className="mt-3 text-xs text-fg-subtle italic">Cargando adjuntos…</div>
       ) : items.length === 0 ? (
-        <div className="mt-3 text-xs text-slate-400 italic">Sin adjuntos.</div>
+        <div className="mt-3 text-xs text-fg-subtle italic">Sin adjuntos.</div>
       ) : (
         <ul className="mt-3 space-y-1">
           {items.map((a) => (
@@ -184,10 +166,10 @@ export const AttachmentsPanel: React.FC<Props> = ({
               key={a.id}
               className="flex items-center gap-2 px-2 py-1.5 rounded border border-border-default bg-bg-card hover:bg-bg-hover"
             >
-              <FileText size={14} className="text-slate-400 shrink-0" />
+              <FileText size={14} className="text-fg-subtle shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-semibold text-fg-body truncate">{a.fileName}</div>
-                <div className="text-[10px] text-slate-400 flex items-center gap-2">
+                <div className="text-[10px] text-fg-subtle flex items-center gap-2">
                   <span>{formatBytes(a.size)}</span>
                   <span>·</span>
                   <span className="font-mono">{a.provider}</span>
@@ -199,7 +181,7 @@ export const AttachmentsPanel: React.FC<Props> = ({
                 type="button"
                 onClick={() => onDownload(a)}
                 title="Descargar"
-                className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 text-slate-400 hover:text-blue-600"
+                className="p-1.5 rounded-xs hover:bg-bg-hover text-fg-subtle hover:text-accent"
               >
                 <Download size={13} />
               </button>
@@ -207,7 +189,7 @@ export const AttachmentsPanel: React.FC<Props> = ({
                 type="button"
                 onClick={() => onDelete(a.id)}
                 title="Eliminar"
-                className="p-1.5 rounded hover:bg-rose-50 dark:hover:bg-rose-900/30 text-slate-400 hover:text-rose-500"
+                className="p-1.5 rounded-xs hover:bg-danger-bg text-fg-subtle hover:text-danger-fg"
               >
                 <Trash2 size={13} />
               </button>

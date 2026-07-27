@@ -188,6 +188,9 @@ export const Partners: React.FC = () => {
   const [priceLists, setPriceLists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  // Valores de los campos que los plugins añaden a BusinessPartner. Viajan
+  // aparte del formulario fijo y se mezclan con él justo al guardar.
+  const [pluginValues, setPluginValues] = useState<Record<string, any>>({});
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'contact' | 'addresses' | 'fiscal'>(
@@ -298,6 +301,9 @@ export const Partners: React.FC = () => {
         bankSwift: partner.bankSwift || '',
       });
       setAddresses(partner.addresses?.map((a: any) => ({ ...a })) || []);
+      // La fila trae los campos de plugin como columnas sueltas, así que el
+      // propio registro sirve de origen de valores.
+      setPluginValues(partner);
     } else {
       setEditingId(null);
       setFormData({
@@ -320,6 +326,7 @@ export const Partners: React.FC = () => {
         bankSwift: '',
       });
       setAddresses([]);
+      setPluginValues({});
     }
     setActiveTab('general');
     setIsModalOpen(true);
@@ -374,7 +381,10 @@ export const Partners: React.FC = () => {
     e.preventDefault();
     if (!formData.name || !formData.groupId) return toast.error('Nombre y Grupo son obligatorios');
     try {
-      const payload = { ...formData, addresses };
+      // `pluginValues` va PRIMERO: arranca siendo el registro entero, así que
+      // si fuese después pisaría con los valores viejos los campos que se
+      // acaban de editar en el formulario.
+      const payload = { ...pluginValues, ...formData, addresses };
       if (editingId) await partnersApi.update(editingId, payload);
       else await partnersApi.create(payload);
       toast.success(editingId ? 'Interlocutor actualizado' : 'Interlocutor creado');
@@ -909,6 +919,17 @@ export const Partners: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Campos que los plugins añaden a BusinessPartner. El panel se
+              pintaba en el resto de fichas (plan contable, asientos, proyectos,
+              documentos) pero aquí solo estaba importado, así que los campos
+              personalizados salían en el listado y no había forma de rellenarlos. */}
+          <PluginFieldsPanel
+            tableName="BusinessPartner"
+            values={pluginValues}
+            onChange={(k, v) => setPluginValues((prev) => ({ ...prev, [k]: v }))}
+            layout="inline"
+          />
 
           {editingId && (
             <div className="mt-2">
