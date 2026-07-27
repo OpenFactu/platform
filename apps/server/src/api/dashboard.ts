@@ -456,17 +456,25 @@ router.get('/summary', async (req: any, res) => {
         const key = (r as any).status || 'unknown';
         merged[key] = (merged[key] || 0) + Number((r as any).count);
       }
+      // Las facturas sólo usan D/O/X. Mismas etiquetas que las pantallas de facturas
+      // (docTypeConfig.ts en la web), en plural por ser una distribución.
       const STATUS_LABELS: Record<string, string> = {
-        O: 'Abiertas',
-        C: 'Cerradas',
-        P: 'Parcial',
-        X: 'Anuladas',
+        D: 'Borradores',
+        O: 'Asentadas',
+        X: 'Canceladas',
       };
-      return Object.entries(merged).map(([status, count]) => ({
-        status,
-        label: STATUS_LABELS[status] || status,
-        count,
-      }));
+      const STATUS_ORDER = ['D', 'O', 'X'];
+      return Object.entries(merged)
+        .sort(([a], [b]) => {
+          const ia = STATUS_ORDER.indexOf(a);
+          const ib = STATUS_ORDER.indexOf(b);
+          return (ia === -1 ? STATUS_ORDER.length : ia) - (ib === -1 ? STATUS_ORDER.length : ib);
+        })
+        .map(([status, count]) => ({
+          status,
+          label: STATUS_LABELS[status] || status,
+          count,
+        }));
     })();
 
     const payload = {
