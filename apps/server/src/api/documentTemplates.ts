@@ -4,7 +4,13 @@ import fs from 'fs';
 import Handlebars from 'handlebars';
 import { eq, and, asc, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
-import { PdfRenderer, ALL_DOC_TYPES, extractMetaFromHtml, type DocType } from '@openfactu/pdf';
+import {
+  PdfRenderer,
+  ALL_DOC_TYPES,
+  buildVisualTemplate,
+  extractMetaFromHtml,
+  type DocType,
+} from '@openfactu/pdf';
 import { MigrationManager } from '../core/tenant/MigrationManager';
 import { PdfPayloadBuilder } from '../core/documents/PdfPayloadBuilder';
 import {
@@ -16,6 +22,11 @@ import { generateObject } from 'ai';
 import { z } from 'zod';
 import { getAiConfig, getLanguageModel } from '../core/ai';
 import { fetchSchemaInfo, schemaInfoToCompactText } from '../core/documents/schemaInfo';
+import {
+  visualOptionsInputSchema,
+  mergeVisualOptions,
+  VISUAL_OPTIONS_PROMPT_GUIDE,
+} from '../core/documents/visualTemplateOptions';
 import { logAudit } from '../utils/audit';
 
 /**
@@ -622,30 +633,97 @@ router.post('/test-query', async (req: any, res) => {
 });
 
 /**
+ * Genera una plantilla de un tipo de documento ESTÁNDAR sin que el modelo
+ * escriba una sola línea de HTML: elige `visualOptions` y el HTML lo construye
+ * `buildVisualTemplate`, exactamente la misma función que el modo Visual del
+ * diseñador y que las tools del chat (`preview_document_template`).
+ *
+ * El porqué está en core/ai/tools/documentTemplateTools.ts: una plantilla de
+ * HTML libre se guarda sin meta, y en cuanto alguien la abre en modo Visual
+ * para tocar un detalle el HTML se regenera desde cero y el diseño se pierde.
+ * Generando con `buildVisualTemplate`, el HTML lleva el meta incrustado
+ * (`serializeMeta`), el diseñador reconstruye las `VisualOptions` exactas y la
+ * plantilla queda editable sin riesgo.
+ */
+async function generateVisualTemplate(opts: {
+  model: any;
+  docType: DocType;
+  description: string;
+  currentVisualOptions?: unknown;
+  feedback?: string;
+}) {
+  const system = [
+    'Eres un experto en diseño de plantillas de documento del ERP Keirost (se renderizan a PDF con Puppeteer).',
+    'NO escribes HTML: describes el diseño eligiendo opciones, y el sistema construye el HTML a partir de ellas. Así la plantilla queda editable después en el modo Visual del diseñador.',
+    `Tipo de documento: ${opts.docType}.`,
+    '',
+    VISUAL_OPTIONS_PROMPT_GUIDE,
+    '',
+    // Ver la nota del generador FREE/LABEL más abajo: el literal "JSON" es
+    // obligatorio para los proveedores OpenAI-compatible con response_format.
+    'Responde SOLO con un objeto JSON con los campos pedidos: visualOptions y notes (explicación breve en español de las decisiones de diseño).',
+  ].join('\n');
+
+  const userParts: string[] = [`Descripción de la plantilla pedida:\n${opts.description.trim()}`];
+  if (opts.currentVisualOptions) {
+    userParts.push(
+      'Opciones actuales (ajústalas en lugar de partir de cero):\n' +
+        JSON.stringify(opts.currentVisualOptions, null, 1),
+    );
+    if (opts.feedback?.trim()) userParts.push(`Cambios solicitados:\n${opts.feedback.trim()}`);
+  }
+
+  const generation = await generateObject({
+    model: opts.model,
+    schema: z.object({
+      visualOptions: visualOptionsInputSchema,
+      notes: z.string().optional(),
+    }),
+    system,
+    prompt: userParts.join('\n\n'),
+    abortSignal: AbortSignal.timeout(180_000),
+  });
+
+  const visualOptions = mergeVisualOptions(generation.object.visualOptions);
+  return {
+    html: buildVisualTemplate(opts.docType, visualOptions),
+    visualOptions,
+    notes: generation.object.notes ?? '',
+  };
+}
+
+/**
  * POST /generate — admin-only: generador de plantillas con IA (Fase 1).
  *
  * El admin describe la plantilla en lenguaje natural y el modelo (configurado
- * en Ajustes → IA) devuelve `{ html, queries, notes }`:
- *  - Tipos estándar (SINV/PO/...): el HTML usa SOLO el payload del documento
- *    (se le pasa el fixture exacto como contexto). Sin queries — en producción
- *    `renderDocumentPdf` no las ejecuta para estos tipos.
- *  - FREE/LABEL: los datos salen exclusivamente de consultas SQL de lectura
- *    (mismo sandbox que el diseñador: validateQuery + transacción READ ONLY),
- *    con el esquema del tenant como contexto.
+ * en Ajustes → IA) devuelve una plantilla, por DOS caminos distintos según el
+ * tipo — el mismo criterio que usa el diseñador para decidir si ofrece modo
+ * Visual:
  *
- * Las queries propuestas se validan con `validateQuery`; si alguna falla se
- * hace UNA pasada de reparación con los errores y, si persisten, se devuelven
- * como `warnings` para que el admin las revise en el diseñador.
+ *  - Tipos estándar (SINV/PO/...): el modelo elige `visualOptions` y el HTML
+ *    lo genera `buildVisualTemplate` (ver `generateVisualTemplate` arriba). Sin
+ *    queries — en producción `renderDocumentPdf` no las ejecuta para estos
+ *    tipos. La respuesta incluye `visualOptions` para poder iterar sobre ellas.
+ *  - FREE/LABEL: no hay payload de documento ni modo Visual que valga, así que
+ *    el modelo sí escribe HTML libre y los datos salen exclusivamente de
+ *    consultas SQL de lectura (mismo sandbox que el diseñador: validateQuery +
+ *    transacción READ ONLY), con el esquema del tenant como contexto.
  *
- * Body: { docType, description, currentHtml?, currentQueries?, feedback? }
- * (currentHtml + feedback = modo "ajustar una generación anterior").
+ * En el camino FREE/LABEL las queries propuestas se validan con `validateQuery`;
+ * si alguna falla se hace UNA pasada de reparación con los errores y, si
+ * persisten, se devuelven como `warnings` para que el admin las revise.
+ *
+ * Body: { docType, description, feedback?, currentVisualOptions? (estándar),
+ * currentHtml? + currentQueries? (FREE/LABEL) } — los `current*` + feedback son
+ * el modo "ajustar una generación anterior".
  */
 router.post('/generate', async (req: any, res) => {
   try {
     if (!isAdminUser(req)) {
       return res.status(403).json({ error: 'Solo disponible para administradores' });
     }
-    const { docType, description, currentHtml, currentQueries, feedback } = req.body ?? {};
+    const { docType, description, currentHtml, currentQueries, currentVisualOptions, feedback } =
+      req.body ?? {};
     if (!isValidDocType(docType)) return res.status(400).json({ error: 'docType inválido' });
     if (typeof description !== 'string' || !description.trim()) {
       return res.status(400).json({ error: 'description es obligatoria' });
@@ -658,31 +736,52 @@ router.post('/generate', async (req: any, res) => {
       });
     }
     const model = getLanguageModel(aiConfig);
+    const start = Date.now();
 
-    const free = isFreeDocType(docType);
+    const auditGeneration = (extra: Record<string, unknown>) =>
+      logAudit({
+        tenantClient: req.tenantClient,
+        tenantId: req.tenantId || '',
+        userId: req.user?.id,
+        entityType: 'DocumentTemplate',
+        entityId: 'generate',
+        action: 'CREATE',
+        newValue: { docType, description: description.slice(0, 500), ...extra },
+      });
 
-    // ── Contexto: payload de ejemplo (tipos estándar) o esquema SQL (FREE/LABEL) ──
-    let dataContext: string;
-    if (free) {
-      const compact = schemaInfoToCompactText(await fetchSchemaInfo(req.tenantClient));
-      dataContext = [
-        'No hay payload de documento: los datos salen EXCLUSIVAMENTE de consultas SQL que tú defines.',
-        'Cada query { name, sql } se ejecuta al renderizar y sus filas quedan disponibles en el HTML como `{{queries.<name>}}` (array de objetos, itera con {{#each}}).',
-        'Reglas SQL obligatorias: PostgreSQL; UNA sola sentencia SELECT (o WITH ... SELECT); prohibidas palabras de escritura/DDL; nombres de tabla y columna SIEMPRE entre comillas dobles (son case-sensitive, p.ej. "Item", "docCode").',
-        'Placeholders: `:nombre` se sustituye por un literal escapado. Estándar: :docId, :partnerId, :companyId, :tenantId. Puedes usar params propios (p.ej. :itemId) — el usuario los rellena al generar el documento y también están en el HTML como {{params.<nombre>}}.',
-        '',
-        'Esquema del tenant (tabla(columna tipo, ...)):',
-        compact,
-      ].join('\n');
-    } else {
-      const fixture = PdfPayloadBuilder.fixture(docType);
-      dataContext = [
-        'Los datos del documento vienen de un payload fijo. Esta es su estructura EXACTA con valores de ejemplo (usa solo campos que existan aquí):',
-        JSON.stringify(fixture, null, 1),
-        '',
-        'NO definas consultas SQL para este tipo de documento (en producción no se ejecutan): devuelve queries = [].',
-      ].join('\n');
+    // ── Tipos estándar: opciones visuales, sin HTML escrito por el modelo ──
+    if (!isFreeDocType(docType)) {
+      const visual = await generateVisualTemplate({
+        model,
+        docType,
+        description,
+        currentVisualOptions,
+        feedback,
+      });
+      res.json({
+        html: visual.html,
+        visualOptions: visual.visualOptions,
+        queries: [],
+        notes: visual.notes,
+        warnings: [],
+        provider: aiConfig.provider,
+        ms: Date.now() - start,
+      });
+      auditGeneration({ mode: 'visual' });
+      return;
     }
+
+    // ── FREE/LABEL: HTML libre + consultas SQL ──
+    const compact = schemaInfoToCompactText(await fetchSchemaInfo(req.tenantClient));
+    const dataContext = [
+      'No hay payload de documento: los datos salen EXCLUSIVAMENTE de consultas SQL que tú defines.',
+      'Cada query { name, sql } se ejecuta al renderizar y sus filas quedan disponibles en el HTML como `{{queries.<name>}}` (array de objetos, itera con {{#each}}).',
+      'Reglas SQL obligatorias: PostgreSQL; UNA sola sentencia SELECT (o WITH ... SELECT); prohibidas palabras de escritura/DDL; nombres de tabla y columna SIEMPRE entre comillas dobles (son case-sensitive, p.ej. "Item", "docCode").',
+      'Placeholders: `:nombre` se sustituye por un literal escapado. Estándar: :docId, :partnerId, :companyId, :tenantId. Puedes usar params propios (p.ej. :itemId) — el usuario los rellena al generar el documento y también están en el HTML como {{params.<nombre>}}.',
+      '',
+      'Esquema del tenant (tabla(columna tipo, ...)):',
+      compact,
+    ].join('\n');
 
     const system = [
       'Eres un experto en plantillas de documentos del ERP Keirost. Generas plantillas HTML con Handlebars que se renderizan a PDF (A4, Puppeteer).',
@@ -724,7 +823,6 @@ router.post('/generate', async (req: any, res) => {
       notes: z.string().optional(),
     });
 
-    const start = Date.now();
     const generation = await generateObject({
       model,
       schema: resultSchema,
@@ -772,15 +870,7 @@ router.post('/generate', async (req: any, res) => {
       provider: aiConfig.provider,
       ms: Date.now() - start,
     });
-    logAudit({
-      tenantClient: req.tenantClient,
-      tenantId: req.tenantId || '',
-      userId: req.user?.id,
-      entityType: 'DocumentTemplate',
-      entityId: 'generate',
-      action: 'CREATE',
-      newValue: { docType, description: description.slice(0, 500), warnings: warnings.length },
-    });
+    auditGeneration({ mode: 'html', warnings: warnings.length });
   } catch (e: any) {
     console.error('[DocumentTemplates.generate]', e);
     res.status(502).json({ error: e?.message || 'Error al generar la plantilla con IA' });

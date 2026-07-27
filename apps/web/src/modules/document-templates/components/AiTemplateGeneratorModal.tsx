@@ -1,22 +1,36 @@
 /**
  * Modal "Generar plantilla con IA" (Fase 1 del asistente).
  *
- * El admin describe la plantilla en lenguaje natural; el backend
- * (`POST /api/document-templates/generate`) devuelve HTML Handlebars + queries
- * SQL validadas por el sandbox. Aquí se previsualiza el PDF real (reutilizando
- * `POST /preview`), se pueden pedir ajustes en iteraciones sucesivas y, cuando
- * convence, se guarda como plantilla normal (editable después en el diseñador).
+ * El admin describe la plantilla en lenguaje natural y el backend
+ * (`POST /api/document-templates/generate`) responde por uno de dos caminos,
+ * según el tipo de documento — el mismo criterio que usa el diseñador para
+ * decidir si ofrece modo Visual:
+ *
+ *  - **Tipos estándar** (factura, pedido, albarán…): devuelve `visualOptions` y
+ *    el HTML ya construido con `buildVisualTemplate`, igual que el modo Visual
+ *    del diseñador y que las tools del chat de Keiro. Se guarda tal cual: el
+ *    meta va incrustado en el HTML, así que la plantilla se abre en modo Visual
+ *    y es editable sin perder el diseño. Los ajustes iteran sobre las OPCIONES,
+ *    no sobre el HTML.
+ *  - **FREE/LABEL**: no hay payload de documento ni modo Visual, así que sigue
+ *    siendo HTML Handlebars libre + queries SQL validadas por el sandbox, y se
+ *    guarda con `legacyHtml: true` + las queries en `canvasLayout`.
+ *
+ * En ambos casos se previsualiza el PDF real (reutilizando `POST /preview`) y
+ * se pueden pedir ajustes en iteraciones sucesivas antes de guardar.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Button, Input, Textarea, Badge, SearchableSelect, useToast } from '@openfactu/ui';
-import { Sparkles, Save, AlertTriangle, Loader2 } from 'lucide-react';
+import { Sparkles, Save, AlertTriangle, Loader2, LayoutTemplate } from 'lucide-react';
 import { useDocTypeOptions, type DocType } from './constants';
-import { useAuth } from '@/context/AuthContext';
 import { templatesApi } from '../api';
 
 interface GeneratedResult {
   html: string;
+  /** Solo en tipos estándar: opciones con las que se construyó el HTML. Su
+   * presencia es lo que distingue los dos caminos (ver cabecera). */
+  visualOptions?: Record<string, unknown>;
   queries: Array<{ name: string; sql: string }>;
   notes: string;
   warnings: Array<{ name: string; error: string }>;
@@ -30,13 +44,7 @@ interface Props {
 
 export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) => {
   const DOC_TYPE_OPTIONS = useDocTypeOptions();
-  const { token, user } = useAuth();
   const toast = useToast();
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    'x-tenant-id': user?.tenantId || '',
-    'Content-Type': 'application/json',
-  };
 
   const [docType, setDocType] = useState<DocType>('SINV');
   const [name, setName] = useState('');
@@ -80,11 +88,18 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
     try {
       const body: Record<string, unknown> = { docType, description };
       if (refine && result) {
-        body.currentHtml = result.html;
-        body.currentQueries = result.queries;
         body.feedback = feedback;
+        if (result.visualOptions) {
+          // Tipo estándar: se ajustan las OPCIONES, no el HTML — mandarle el
+          // HTML al modelo le invitaría a reescribirlo a mano y perderíamos
+          // la propiedad de "editable en modo Visual".
+          body.currentVisualOptions = result.visualOptions;
+        } else {
+          body.currentHtml = result.html;
+          body.currentQueries = result.queries;
+        }
       }
-      const data: any = await templatesApi.generate(body);
+      const data = (await templatesApi.generate(body)) as GeneratedResult;
       setResult(data);
       setFeedback('');
       if (data.warnings?.length) {
@@ -109,9 +124,15 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
     setSaving(true);
     try {
       const data = await templatesApi.create({ docType, name: name.trim(), html: result.html });
-      // Las queries viven en canvasLayout.queries (mismo sitio que usa el
-      // diseñador y render-free); legacyHtml=true → se edita en modo avanzado.
-      if (result.queries.length > 0) {
+      // Tipo estándar: nada más que hacer. El HTML lleva el meta de
+      // `buildVisualTemplate` incrustado y `legacyHtml` se queda en su valor
+      // por defecto (true) — que es justo lo que abre el diseñador en modo
+      // Visual. Ponerlo a false lo marcaría como plantilla del diseñador
+      // canvas y forzaría el modo avanzado.
+      //
+      // FREE/LABEL: las queries viven en canvasLayout.queries (mismo sitio que
+      // usa el diseñador y render-free).
+      if (!result.visualOptions && result.queries.length > 0) {
         await templatesApi.update(data.id, {
           canvasLayout: { queries: result.queries },
           legacyHtml: true,
@@ -191,6 +212,16 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
               {result.notes && (
                 <div className="text-xs p-2 rounded-md bg-bg-muted text-fg-body">
                   {result.notes}
+                </div>
+              )}
+
+              {result.visualOptions && (
+                <div className="text-xs p-2 rounded-md border border-border-default text-fg-muted flex items-start gap-2">
+                  <LayoutTemplate size={14} className="shrink-0 mt-0.5 text-accent" />
+                  <span>
+                    Generada con las opciones del modo Visual: al guardarla podrás seguir editándola
+                    ahí, sin perder el diseño.
+                  </span>
                 </div>
               )}
 
