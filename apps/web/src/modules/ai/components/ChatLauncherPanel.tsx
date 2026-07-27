@@ -27,6 +27,8 @@ import { ASSISTANT_NAME } from '../domain/constants';
 import { MessageBubble } from './MessageBubble';
 import { Composer } from './Composer';
 import { useComposerState } from '../hooks/useComposerState';
+import { useFileDropZone } from '../hooks/useFileDropZone';
+import { DropOverlay } from './DropOverlay';
 import { PendingQuestionBar } from './PendingQuestionBar';
 import { findPendingQuestion } from '../domain/pendingQuestion';
 
@@ -75,7 +77,9 @@ export const ChatLauncherPanel: React.FC = () => {
 
   const [open, setOpen] = useState(false);
   const [corner, setCorner] = useState<Corner>(loadCorner);
-  const composer = useComposerState(sendToContext, headers);
+  const composer = useComposerState(sendToContext, headers, supportsImages);
+  // Igual que en la pestaña dedicada: se puede soltar sobre todo el panel.
+  const drop = useFileDropZone(composer.addDropped, busy || composer.extractingDocs);
   const bottomRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; dragging: boolean } | null>(null);
@@ -186,7 +190,11 @@ export const ChatLauncherPanel: React.FC = () => {
       )}
 
       {open && (
-        <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] h-full flex flex-col bg-bg-card sm:border-l border-border-default shadow-2xl animate-in fade-in slide-in-from-right duration-300 overflow-hidden">
+        <div
+          className="fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] h-full flex flex-col bg-bg-card sm:border-l border-border-default shadow-2xl animate-in fade-in slide-in-from-right duration-300 overflow-hidden"
+          {...drop.dropZoneProps}
+        >
+          <DropOverlay visible={drop.dragOver} acceptImages={supportsImages} />
           <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0 bg-gradient-to-r from-accent/10 via-transparent to-transparent">
             <div className="flex items-center gap-2 font-bold">
               <span className="relative shrink-0">
@@ -275,6 +283,7 @@ export const ChatLauncherPanel: React.FC = () => {
             )}
             <Composer
               {...composer}
+              dragOver={drop.dragOver}
               supportsImages={supportsImages}
               busy={busy}
               stop={() => void stop()}

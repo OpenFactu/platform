@@ -43,6 +43,8 @@ import { MessageBubble } from '../components/MessageBubble';
 import { Composer } from '../components/Composer';
 import { ConversationSidebar } from '../components/ConversationSidebar';
 import { useComposerState } from '../hooks/useComposerState';
+import { useFileDropZone } from '../hooks/useFileDropZone';
+import { DropOverlay } from '../components/DropOverlay';
 import { PendingQuestionBar } from '../components/PendingQuestionBar';
 import { findPendingQuestion } from '../domain/pendingQuestion';
 
@@ -98,7 +100,10 @@ export const AiChat: React.FC = () => {
 
   const [fullscreen, setFullscreen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const composer = useComposerState(sendToContext, headers);
+  const composer = useComposerState(sendToContext, headers, supportsImages);
+  // Toda la superficie del chat acepta archivos, no solo la caja de escribir:
+  // lo natural es soltar el Excel "sobre la conversación".
+  const drop = useFileDropZone(composer.addDropped, busy || composer.extractingDocs);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -134,6 +139,7 @@ export const AiChat: React.FC = () => {
 
   const composerProps = {
     ...composer,
+    dragOver: drop.dragOver,
     supportsImages,
     busy,
     stop: () => void stop(),
@@ -161,7 +167,8 @@ export const AiChat: React.FC = () => {
           onNew={handleNewConversation}
         />
       </div>
-      <div className="relative flex-1 min-w-0 flex flex-col min-h-0 p-4">
+      <div className="relative flex-1 min-w-0 flex flex-col min-h-0 p-4" {...drop.dropZoneProps}>
+        <DropOverlay visible={drop.dragOver} acceptImages={supportsImages} />
         {/* La pestaña de arriba ya muestra el icono + "Keiro" — repetirlo aquí
             sobraba. Solo queda el toggle de pantalla completa, pegado a la
             esquina en vez de en su propia fila (dejaba un hueco vacío raro

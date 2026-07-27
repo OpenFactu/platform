@@ -15,6 +15,7 @@ import {
 import { AttachmentThumb } from './AttachmentThumb';
 import { ContextUsageRing } from './ContextUsageRing';
 import { MAX_ATTACHMENTS } from '../domain/constants';
+import { DOCUMENT_ACCEPT } from '../domain/droppedFiles';
 import type { DocumentAttachment } from '../hooks/useComposerState';
 
 export const Composer: React.FC<{
@@ -29,10 +30,10 @@ export const Composer: React.FC<{
   extractingDocs: boolean;
   supportsImages: boolean;
   busy: boolean;
+  /** Lo gobierna el contenedor (`useFileDropZone`): toda la superficie del
+   * chat es zona de soltar, aquí solo se refleja resaltando la caja. */
   dragOver: boolean;
-  setDragOver: (v: boolean) => void;
-  addFiles: (files: FileList | null) => void;
-  addDocuments: (files: FileList | null) => void;
+  addDropped: (files: FileList | File[] | null) => void;
   send: (text: string) => void;
   stop: () => void;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
@@ -57,9 +58,7 @@ export const Composer: React.FC<{
   supportsImages,
   busy,
   dragOver,
-  setDragOver,
-  addFiles,
-  addDocuments,
+  addDropped,
   send,
   stop,
   textareaRef,
@@ -133,21 +132,10 @@ export const Composer: React.FC<{
         className={`rounded-lg border bg-bg-card shadow-sm transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 ${
           dragOver ? 'border-accent ring-2 ring-accent/30' : 'border-border-default'
         }`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragOver(false);
-          if (supportsImages) addFiles(e.dataTransfer.files);
-          else addDocuments(e.dataTransfer.files);
-        }}
       >
         <textarea
           ref={textareaRef}
-          className="w-full bg-transparent p-3 text-sm focus:outline-none resize-none"
+          className="w-full bg-transparent p-3 text-sm focus:outline-none resize-none custom-scrollbar"
           rows={1}
           style={{ maxHeight: 200 }}
           value={input}
@@ -159,14 +147,13 @@ export const Composer: React.FC<{
             }
           }}
           onPaste={(e) => {
-            if (!supportsImages) return;
-            if (e.clipboardData.files.length > 0) addFiles(e.clipboardData.files);
+            if (e.clipboardData.files.length > 0) addDropped(e.clipboardData.files);
           }}
-          placeholder={
-            supportsImages
-              ? 'Escribe tu pregunta o pega/arrastra una imagen…'
-              : 'Escribe tu pregunta…'
-          }
+          /* Corto a propósito: el panel flotante son 420px y un placeholder de
+             dos líneas asoma barra de scroll (el textarea es rows={1} y el
+             autoresize mide el contenido, no el placeholder). Los formatos
+             admitidos se listan en el velo de arrastre y en los tooltips. */
+          placeholder="Escribe tu pregunta o arrastra un archivo…"
           disabled={busy}
         />
         <div className="flex items-center justify-between px-3 pb-2 gap-2 flex-wrap">
@@ -190,7 +177,7 @@ export const Composer: React.FC<{
                   multiple
                   className="hidden"
                   onChange={(e) => {
-                    addFiles(e.target.files);
+                    addDropped(e.target.files);
                     e.target.value = '';
                   }}
                 />
@@ -210,11 +197,11 @@ export const Composer: React.FC<{
             <input
               ref={docInputRef}
               type="file"
-              accept=".xlsx,.xls,.xlsm,.pdf,.doc,.docx,.csv,.txt,.md,.tsv"
+              accept={DOCUMENT_ACCEPT}
               multiple
               className="hidden"
               onChange={(e) => {
-                addDocuments(e.target.files);
+                addDropped(e.target.files);
                 e.target.value = '';
               }}
             />

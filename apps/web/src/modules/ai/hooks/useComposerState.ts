@@ -1,7 +1,9 @@
 import { coreApi } from '@/shared/api';
 import { useEffect, useRef, useState } from 'react';
 import { convertFileListToFileUIParts, type FileUIPart } from 'ai';
+import { useToast } from '@openfactu/ui';
 import { MAX_ATTACHMENTS, MAX_ATTACHMENT_MB } from '../domain/constants';
+import { classifyFiles, rejectionMessage } from '../domain/droppedFiles';
 
 export interface DocumentAttachment {
   filename: string;
@@ -25,17 +27,22 @@ const MAX_DOCUMENT_MB = 15;
  * cualquier proveedor de IA (incluido un modelo local sin soporte nativo de
  * esos formatos), a diferencia de las imágenes (`attachments`, FileUIPart de
  * verdad) que sí requieren un modelo con visión.
+ *
+ * @param supportsImages  Si el modelo activo tiene visión. Solo decide si se
+ *   ACEPTAN imágenes; nunca a qué vía va un archivo — eso lo decide su tipo
+ *   (ver `classifyFiles`).
  */
 export function useComposerState(
   send: (text: string, files?: FileUIPart[]) => void,
   headers: Record<string, string>,
+  supportsImages = true,
 ) {
+  const toast = useToast();
   const [input, setInput] = useState('');
   const [quotedText, setQuotedText] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<FileUIPart[]>([]);
   const [documents, setDocuments] = useState<DocumentAttachment[]>([]);
   const [extractingDocs, setExtractingDocs] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
@@ -48,31 +55,42 @@ export function useComposerState(
     el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [input]);
 
-  const addFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+  const addFiles = async (files: FileList | File[] | null) => {
+    const list = Array.from(files ?? []);
+    if (list.length === 0) return;
     const room = MAX_ATTACHMENTS - attachments.length;
-    if (room <= 0) return;
-    const tooBig = Array.from(files).some((f) => f.size > MAX_ATTACHMENT_MB * 1024 * 1024);
-    if (tooBig) {
-      alert(`Cada imagen debe pesar menos de ${MAX_ATTACHMENT_MB} MB`);
+    if (room <= 0) {
+      toast.warning(`Máximo ${MAX_ATTACHMENTS} imágenes por mensaje`);
       return;
     }
-    const parts = await convertFileListToFileUIParts(files);
-    const images = parts.filter((p) => p.mediaType?.startsWith('image')).slice(0, room);
-    setAttachments((prev) => [...prev, ...images]);
+    const tooBig = list.filter((f) => f.size > MAX_ATTACHMENT_MB * 1024 * 1024);
+    if (tooBig.length > 0) {
+      toast.error(`Cada imagen debe pesar menos de ${MAX_ATTACHMENT_MB} MB`);
+      return;
+    }
+    // `convertFileListToFileUIParts` solo acepta un FileList, y al soltar o
+    // pegar trabajamos con File[] ya filtrado por tipo — se reconstruye uno
+    // vía DataTransfer para seguir usando la conversión del propio SDK en vez
+    // de duplicar aquí el formato de FileUIPart.
+    const transfer = new DataTransfer();
+    for (const file of list.slice(0, room)) transfer.items.add(file);
+    const parts = await convertFileListToFileUIParts(transfer.files);
+    setAttachments((prev) => [...prev, ...parts]);
+    if (list.length > room) toast.warning(`Solo caben ${MAX_ATTACHMENTS} imágenes por mensaje`);
   };
 
-  const addDocuments = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+  const addDocuments = async (files: FileList | File[] | null) => {
+    const all = Array.from(files ?? []);
+    if (all.length === 0) return;
     const room = MAX_DOCUMENTS - documents.length;
     if (room <= 0) {
-      alert(`Máximo ${MAX_DOCUMENTS} documentos por mensaje`);
+      toast.warning(`Máximo ${MAX_DOCUMENTS} documentos por mensaje`);
       return;
     }
-    const list = Array.from(files).slice(0, room);
-    const tooBig = list.some((f) => f.size > MAX_DOCUMENT_MB * 1024 * 1024);
-    if (tooBig) {
-      alert(`Cada documento debe pesar menos de ${MAX_DOCUMENT_MB} MB`);
+    const list = all.slice(0, room);
+    const tooBig = list.filter((f) => f.size > MAX_DOCUMENT_MB * 1024 * 1024);
+    if (tooBig.length > 0) {
+      toast.error(`Cada documento debe pesar menos de ${MAX_DOCUMENT_MB} MB`);
       return;
     }
     setExtractingDocs(true);
@@ -86,11 +104,32 @@ export function useComposerState(
           { filename: data.filename, text: data.text, truncated: Boolean(data.truncated) },
         ]);
       }
+      if (all.length > room) toast.warning(`Solo caben ${MAX_DOCUMENTS} documentos por mensaje`);
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error al leer el documento');
+      toast.error(e instanceof Error ? e.message : 'Error al leer el documento');
     } finally {
       setExtractingDocs(false);
     }
+  };
+
+  /**
+   * Entrada única para archivos que llegan en bloque y sin filtrar por el
+   * navegador — soltar y pegar. Reparte cada uno por su vía según lo que ES
+   * (ver `classifyFiles`) y avisa de lo que no se pueda aceptar, en vez de
+   * tragárselo en silencio.
+   */
+  const addDropped = async (files: FileList | File[] | null) => {
+    const {
+      images,
+      documents: docs,
+      rejected,
+    } = classifyFiles(files, {
+      acceptImages: supportsImages,
+    });
+    const message = rejectionMessage(rejected);
+    if (message) toast.warning(message);
+    if (images.length > 0) await addFiles(images);
+    if (docs.length > 0) await addDocuments(docs);
   };
 
   const resetDraft = () => {
@@ -134,13 +173,12 @@ export function useComposerState(
     documents,
     removeDocument: (i: number) => setDocuments((prev) => prev.filter((_, j) => j !== i)),
     extractingDocs,
-    dragOver,
-    setDragOver,
     textareaRef,
     fileInputRef,
     docInputRef,
-    addFiles: (files: FileList | null) => void addFiles(files),
-    addDocuments: (files: FileList | null) => void addDocuments(files),
+    addFiles: (files: FileList | File[] | null) => void addFiles(files),
+    addDocuments: (files: FileList | File[] | null) => void addDocuments(files),
+    addDropped: (files: FileList | File[] | null) => void addDropped(files),
     send: submit,
     resetDraft,
     quoteText,
