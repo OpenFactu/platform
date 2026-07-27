@@ -74,41 +74,37 @@ export const TenantSwitcher: React.FC = () => {
       <button
         onClick={handleToggle}
         disabled={busy}
-        className="w-full flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 transition-all group disabled:opacity-50"
+        className="w-full flex items-center gap-3 p-3 rounded-xl bg-bg-card border border-border-default hover:bg-bg-hover transition-all group disabled:opacity-50"
       >
-        <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400">
+        <div className="p-1.5 rounded-lg bg-accent/10 text-accent">
           <Building size={14} />
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <p className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest leading-none">
+          <p className="text-[9px] font-black uppercase text-fg-subtle tracking-widest leading-none">
             Empresa activa
           </p>
-          <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate mt-0.5">
+          <p className="text-xs font-bold text-fg-default truncate mt-0.5">
             {user?.tenantName || 'Sin empresa'}
           </p>
         </div>
         <ChevronsUpDown
           size={14}
-          className="text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors"
+          className="text-fg-subtle group-hover:text-fg-body transition-colors"
         />
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl overflow-hidden z-50">
-          <div className="px-3 py-2.5 border-b border-slate-200 dark:border-slate-800">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-bg-card border border-border-default rounded-xl shadow-k-lg overflow-hidden z-dropdown">
+          <div className="px-3 py-2.5 border-b border-border-default">
+            <p className="text-[9px] font-black uppercase tracking-widest text-fg-subtle">
               Tus empresas
             </p>
           </div>
-          <ul className="max-h-64 overflow-auto py-1 divide-y divide-slate-100 dark:divide-slate-800/60">
+          <ul className="max-h-64 overflow-auto py-1 divide-y divide-border-subtle">
             {tenants === null ? (
-              <li className="px-3 py-3 text-xs text-slate-500 dark:text-slate-400 italic">
-                Cargando…
-              </li>
+              <li className="px-3 py-3 text-xs text-fg-subtle italic">Cargando…</li>
             ) : tenants.length === 0 ? (
-              <li className="px-3 py-3 text-xs text-slate-500 dark:text-slate-400 italic">
-                Sin empresas accesibles
-              </li>
+              <li className="px-3 py-3 text-xs text-fg-subtle italic">Sin empresas accesibles</li>
             ) : (
               tenants.map((t) => {
                 const active = t.id === user?.tenantId;
@@ -119,30 +115,26 @@ export const TenantSwitcher: React.FC = () => {
                       onClick={() => handleSelect(t.id)}
                       className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
                         active
-                          ? 'bg-primary/10 border-l-2 border-primary'
-                          : 'border-l-2 border-transparent hover:bg-slate-100 dark:hover:bg-slate-800'
+                          ? 'bg-accent/10 border-l-2 border-accent'
+                          : 'border-l-2 border-transparent hover:bg-bg-hover'
                       }`}
                     >
                       <span
                         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-bold ${
-                          active
-                            ? 'bg-primary text-white'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                          active ? 'bg-accent text-accent-fg' : 'bg-bg-muted text-fg-subtle'
                         }`}
                       >
                         {initial}
                       </span>
                       <span
                         className={`flex-1 text-xs font-bold truncate ${
-                          active
-                            ? 'text-slate-900 dark:text-slate-100'
-                            : 'text-slate-700 dark:text-slate-200'
+                          active ? 'text-fg-default' : 'text-fg-body'
                         }`}
                       >
                         {t.name}
                       </span>
                       {active && (
-                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent text-accent-fg">
                           <Check size={11} strokeWidth={3} />
                         </span>
                       )}
@@ -153,10 +145,10 @@ export const TenantSwitcher: React.FC = () => {
             )}
           </ul>
           {canCreate && (
-            <div className="border-t border-slate-200 dark:border-slate-800">
+            <div className="border-t border-border-default">
               <button
                 onClick={handleCreate}
-                className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs font-bold text-success-fg hover:bg-success-bg transition-colors"
               >
                 <Plus size={14} />
                 <span>Nueva empresa</span>

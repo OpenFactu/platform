@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge, Switch } from '@openfactu/ui';
+import { Badge, Switch, Card } from '@openfactu/ui';
 import { PluginIcon } from '@/components/PluginIcon';
 import type { Module } from '@/modules';
 
@@ -10,6 +10,13 @@ interface ModuleCardProps {
   isToggling: boolean;
 }
 
+/**
+ * Tarjeta de un módulo core activable. El verde del estado "activo" sale de los
+ * tokens `success` (semántico: sigue significando "encendido" en cualquier
+ * tema), y la superficie del `Card` del paquete — antes era un `<div>` con
+ * `bg-white dark:bg-slate-900`, que pintaba el mosaico de azul marino aunque la
+ * empresa tuviera un tema grafito.
+ */
 export const ModuleCard: React.FC<ModuleCardProps> = ({
   module,
   enabled,
@@ -17,43 +24,28 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
   isToggling,
 }) => {
   return (
-    <div
-      className={`
-        relative bg-white dark:bg-slate-900 rounded-xl border transition-all duration-200
-        ${
-          enabled
-            ? 'border-emerald-300 dark:border-emerald-700 shadow-sm shadow-emerald-100 dark:shadow-none'
-            : 'border-slate-200 dark:border-slate-800 opacity-75'
-        }
-      `}
+    <Card
+      noPadding
+      className={
+        enabled ? 'border-success shadow-k-sm transition-all' : 'opacity-75 transition-all'
+      }
     >
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <div
-              className={`
-                w-11 h-11 rounded-xl flex items-center justify-center border shadow-sm overflow-hidden p-2
-                ${
-                  enabled
-                    ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-700'
-                    : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
-                }
-              `}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-k-sm overflow-hidden p-2 ${
+                enabled ? 'bg-success-bg border-success' : 'bg-bg-muted border-border-default'
+              }`}
             >
               <PluginIcon
                 iconName={module.icon}
                 size={24}
-                className={
-                  enabled
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-slate-400 dark:text-slate-500'
-                }
+                className={enabled ? 'text-success' : 'text-fg-subtle'}
               />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                {module.label}
-              </h3>
+              <h3 className="font-bold text-fg-default leading-tight">{module.label}</h3>
               {module.category && (
                 <Badge variant="info" className="mt-1">
                   {module.category}
@@ -69,22 +61,19 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
         </div>
 
         {module.description && (
-          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 line-clamp-2">
-            {module.description}
-          </p>
+          <p className="text-sm text-fg-muted mb-4 line-clamp-2">{module.description}</p>
         )}
 
         <div className="flex items-center text-xs">
           <span
-            className={`
-              ml-auto flex items-center gap-1 font-semibold
-              ${enabled ? 'text-emerald-500' : 'text-slate-400 dark:text-slate-500'}
-            `}
+            className={`ml-auto flex items-center gap-1 font-semibold ${
+              enabled ? 'text-success-fg' : 'text-fg-subtle'
+            }`}
           >
             {enabled ? 'Activo' : 'Inactivo'}
           </span>
         </div>
       </div>
-    </div>
+    </Card>
   );
 };

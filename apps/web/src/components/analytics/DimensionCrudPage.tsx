@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  SearchableSelect,
+  Checkbox,
+  PageHeader,
+  useToast,
+  Badge,
+  usePopup,
+} from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -148,9 +159,9 @@ export const DimensionCrudPage: React.FC<Props> = ({
       header: 'Padre',
       cell: (r: DimensionRow) =>
         r.parentId && parentMap[r.parentId] ? (
-          <span className="text-slate-500 text-xs">{parentMap[r.parentId].code}</span>
+          <span className="text-fg-muted text-xs">{parentMap[r.parentId].code}</span>
         ) : (
-          <span className="text-slate-300">—</span>
+          <span className="text-fg-subtle">—</span>
         ),
     },
     {
@@ -187,24 +198,23 @@ export const DimensionCrudPage: React.FC<Props> = ({
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-            {icon}
-            {title}
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">{subtitle}</p>
-        </div>
-        {canWrite && (
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={18} />
-            Nuevo
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title={title}
+        subtitle={subtitle}
+        icon={icon}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={18} />
+              Nuevo
+            </Button>
+          )
+        }
+      />
 
       {formOpen && (
-        <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+        <Card className="shadow-k-lg" noPadding>
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
@@ -223,24 +233,19 @@ export const DimensionCrudPage: React.FC<Props> = ({
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Padre (opcional)
-                </label>
-                <select
+              {/* SearchableSelect no tiene prop `label`, de ahí el <label> a mano. */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-medium text-fg-body">Padre (opcional)</label>
+                <SearchableSelect
                   value={form.parentId || ''}
-                  onChange={(e) => setForm({ ...form, parentId: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">— sin padre —</option>
-                  {rows
+                  onChange={(v) => setForm({ ...form, parentId: v || null })}
+                  options={rows
                     .filter((r) => r.id !== editing?.id)
-                    .map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.code} — {r.name}
-                      </option>
-                    ))}
-                </select>
+                    .map((r) => ({ value: r.id, label: r.code, secondaryLabel: r.name }))}
+                  placeholder="— sin padre —"
+                  emptyMessage="No hay dimensiones creadas"
+                  clearable
+                />
               </div>
               <Input
                 label="Notas"
@@ -248,11 +253,11 @@ export const DimensionCrudPage: React.FC<Props> = ({
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <input
-                type="checkbox"
+            {/* Checkbox tampoco expone `label`: se envuelve en el <label>. */}
+            <label className="flex items-center gap-2 text-sm font-medium text-fg-body w-fit cursor-pointer">
+              <Checkbox
                 checked={form.isActive !== false}
-                onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                onChange={(checked) => setForm({ ...form, isActive: checked })}
               />
               Activo
             </label>
@@ -276,7 +281,7 @@ export const DimensionCrudPage: React.FC<Props> = ({
         </Card>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden" noPadding>
         <Table
           columns={columns}
           data={rows}
