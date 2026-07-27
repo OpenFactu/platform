@@ -1,7 +1,8 @@
 import { coreApi } from '@/shared/api';
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { Card, Button, useToast, EmptyState } from '@openfactu/ui';
+import { Card, Button, Table, PageHeader, useToast } from '@openfactu/ui';
+import type { TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, FileText, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -78,91 +79,74 @@ export function ReportPage<T extends Record<string, any>>({
     }
   };
 
+  /**
+   * Las columnas del informe se declaran una sola vez (en formato `ExcelColumn`,
+   * porque el export a Excel las necesita) y aquí se traducen a las de la
+   * `Table` del paquete. Antes esta vista repintaba a mano un `<table>` con su
+   * cabecera, su fila de "Cargando…" y su estado vacío; la Table ya trae los
+   * tres, más ordenación por columna.
+   */
+  const tableColumns = useMemo<TableColumn<T>[]>(
+    () =>
+      columns.map((c) => ({
+        id: c.key,
+        header: c.label,
+        sortable: true,
+        sortAccessor: (r: T) => r[c.key],
+        cell: (r: T) => {
+          const raw = r[c.key];
+          const value = c.format ? c.format(raw, r) : raw;
+          return value == null || value === '' ? '—' : String(value);
+        },
+      })),
+    [columns],
+  );
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
+      <PageHeader
+        title={title}
+        subtitle={subtitle}
+        icon={<FileText size={22} />}
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
             <ArrowLeft size={12} className="mr-1" /> Volver
           </Button>
-          <h1 className="text-2xl font-black text-fg-default flex items-center gap-2 tracking-tight">
-            <FileText size={22} className="text-blue-600 dark:text-blue-300" />
-            {title}
-          </h1>
-          {subtitle && <p className="text-fg-muted font-medium text-sm mt-0.5">{subtitle}</p>}
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {onRefresh && (
-            <Button variant="secondary" onClick={onRefresh} className="flex items-center gap-2">
-              <RefreshCw size={16} />
-              Actualizar
-            </Button>
-          )}
-          <ExcelTools data={rows} columns={columns} filename={filename} exportOnly />
-          {pdfEndpoint && (
-            <Button onClick={downloadPdf} className="flex items-center gap-2">
-              <Download size={16} />
-              PDF
-            </Button>
-          )}
-        </div>
-      </div>
+        }
+        actions={
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {onRefresh && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onRefresh}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw size={16} />
+                Actualizar
+              </Button>
+            )}
+            <ExcelTools data={rows} columns={columns} filename={filename} exportOnly />
+            {pdfEndpoint && (
+              <Button type="button" onClick={downloadPdf} className="flex items-center gap-2">
+                <Download size={16} />
+                PDF
+              </Button>
+            )}
+          </div>
+        }
+      />
 
-      {filters && <Card className="p-4 border-border-subtle">{filters}</Card>}
+      {filters && <Card className="p-4">{filters}</Card>}
 
-      <Card className="overflow-hidden border-border-subtle" noPadding>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-bg-muted text-fg-muted">
-              <tr>
-                {columns.map((c) => (
-                  <th
-                    key={c.key}
-                    className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-wider"
-                  >
-                    {c.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="p-10 text-center text-slate-400 italic text-sm"
-                  >
-                    Cargando…
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={columns.length}>
-                    <EmptyState
-                      icon={<FileText size={28} />}
-                      title="Sin datos"
-                      hint="Ningún registro cumple los filtros actuales."
-                    />
-                  </td>
-                </tr>
-              ) : (
-                rows.map((r, i) => (
-                  <tr key={i} className="border-t border-border-subtle hover:bg-bg-hover">
-                    {columns.map((c) => {
-                      const raw = r[c.key];
-                      const value = c.format ? c.format(raw, r) : raw;
-                      return (
-                        <td key={c.key} className="px-3 py-2 text-xs text-fg-body tabular-nums">
-                          {value == null || value === '' ? '—' : String(value)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      <Card className="overflow-hidden" noPadding>
+        <Table
+          columns={tableColumns}
+          data={rows}
+          isLoading={loading}
+          rowKey={(_r, i) => i}
+          emptyMessage="Ningún registro cumple los filtros actuales."
+        />
       </Card>
 
       {footer && <div>{footer}</div>}
