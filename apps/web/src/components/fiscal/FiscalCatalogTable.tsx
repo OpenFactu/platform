@@ -1,8 +1,22 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Input, useToast, usePopup, Checkbox, Select, NumberInput } from '@openfactu/ui';
+import {
+  Button,
+  Input,
+  Table,
+  useToast,
+  usePopup,
+  Checkbox,
+  Select,
+  NumberInput,
+} from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+
+/** Id sintético de la fila de alta — se anexa a `data` para que comparta
+ *  columnas (y por tanto anchos) con el resto de la tabla. */
+const NEW_ROW_ID = '__new';
 
 export interface CatalogColumn {
   key: string;
@@ -118,7 +132,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
 
   const startNew = () => {
     setCreating(true);
-    setEditingId('__new');
+    setEditingId(NEW_ROW_ID);
     setDraft({ ...defaultRow });
   };
 
@@ -133,7 +147,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
       const val = draft[col.key];
       if (col.type === 'boolean') {
         return (
-          <label className="inline-flex items-center gap-1.5 text-xs text-ink-700 dark:text-slate-200 cursor-pointer">
+          <label className="inline-flex items-center gap-1.5 text-xs text-fg-body cursor-pointer">
             <Checkbox
               checked={!!val}
               onChange={(checked) => setDraft({ ...draft, [col.key]: checked })}
@@ -177,141 +191,78 @@ export const FiscalCatalogTable: React.FC<Props> = ({
     return String(val ?? '');
   };
 
+  /** Filas de la tabla: el catálogo más, si se está creando, la fila de alta. */
+  const data: any[] = creating ? [...rows, { id: NEW_ROW_ID }] : rows;
+
+  const tableColumns: TableColumn<any>[] = [
+    ...columns.map<TableColumn<any>>((c) => ({
+      id: c.key,
+      header: c.label,
+      width: c.width,
+      // En la fila de alta el valor sale de `draft`, no de la fila.
+      cell: (row) => renderCell(c, row, row.id === NEW_ROW_ID || editingId === row.id),
+    })),
+    {
+      // Guardar/cancelar tienen que estar siempre visibles mientras se edita,
+      // así que se quedan en su columna; editar y eliminar van a `rowActions`.
+      header: 'Acciones',
+      align: 'right',
+      width: '6rem',
+      cell: (row) =>
+        row.id === NEW_ROW_ID || editingId === row.id ? (
+          <div className="inline-flex gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => save(draft, row.id === NEW_ROW_ID)}
+              title="Guardar"
+            >
+              <Check size={14} />
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={cancel} title="Cancelar">
+              <X size={14} />
+            </Button>
+          </div>
+        ) : null,
+    },
+  ];
+
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho.
+  const rowActions = (row: any): RowAction[] =>
+    row.id === NEW_ROW_ID || editingId === row.id
+      ? []
+      : [
+          { label: 'Editar', icon: <Edit3 size={14} />, onClick: () => startEdit(row) },
+          {
+            label: 'Eliminar',
+            icon: <Trash2 size={14} />,
+            destructive: true,
+            onClick: () => remove(row.id),
+          },
+        ];
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-          {title}
-        </h3>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-fg-muted">{title}</h3>
         {!creating && !editingId && (
-          <Button size="sm" variant="outline" onClick={startNew} className="gap-1">
+          <Button type="button" size="sm" variant="outline" onClick={startNew} className="gap-1">
             <Plus size={14} /> Añadir
           </Button>
         )}
       </div>
-      <div className="border border-line dark:border-ink-700 rounded-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-line-2/60 dark:bg-ink-800">
-            <tr>
-              {columns.map((c) => (
-                <th
-                  key={c.key}
-                  className="text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400"
-                  style={c.width ? { width: c.width } : undefined}
-                >
-                  {c.label}
-                </th>
-              ))}
-              <th className="w-24" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={columns.length + 1} className="p-4 text-center text-ink-400">
-                  Cargando…
-                </td>
-              </tr>
-            ) : rows.length === 0 && !creating ? (
-              <tr>
-                <td
-                  colSpan={columns.length + 1}
-                  className="p-4 text-center text-ink-400 italic text-xs"
-                >
-                  Sin datos — pulsa "Añadir" para crear.
-                </td>
-              </tr>
-            ) : null}
-            {rows.map((row) => (
-              <tr
-                key={row.id}
-                className="border-t border-line dark:border-ink-700 hover:bg-line-2/40 dark:hover:bg-ink-800/50"
-              >
-                {columns.map((c) => (
-                  <td key={c.key} className="px-3 py-2 align-middle">
-                    {renderCell(c, row, editingId === row.id)}
-                  </td>
-                ))}
-                <td className="px-3 py-2 text-right">
-                  {editingId === row.id ? (
-                    <div className="inline-flex gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => save(draft, false)}
-                        title="Guardar"
-                      >
-                        <Check size={14} />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={cancel}
-                        title="Cancelar"
-                      >
-                        <X size={14} />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="inline-flex gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => startEdit(row)}
-                        title="Editar"
-                      >
-                        <Edit3 size={14} />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => remove(row.id)}
-                        title="Eliminar"
-                      >
-                        <Trash2 size={14} />
-                      </Button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {creating && (
-              <tr className="border-t border-line dark:border-ink-700 bg-accent/5">
-                {columns.map((c) => (
-                  <td key={c.key} className="px-3 py-2">
-                    {renderCell(c, draft, true)}
-                  </td>
-                ))}
-                <td className="px-3 py-2 text-right">
-                  <div className="inline-flex gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => save(draft, true)}
-                      title="Guardar"
-                    >
-                      <Check size={14} />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={cancel}
-                      title="Cancelar"
-                    >
-                      <X size={14} />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* La Table trae cabecera, esqueleto de carga y estado vacío: el <table>
+          a mano y sus filas especiales sobraban. */}
+      <div className="border border-border-default rounded-sm overflow-hidden">
+        <Table
+          columns={tableColumns}
+          data={data}
+          isLoading={loading}
+          rowActions={rowActions}
+          emptyMessage={'Sin datos — pulsa "Añadir" para crear.'}
+        />
       </div>
     </div>
   );

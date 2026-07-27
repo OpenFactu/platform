@@ -321,11 +321,17 @@ export const Items: React.FC = () => {
               </Button>
             }
           >
+            {/* El fichero de artículos es la tabla más ancha de la app y se
+                lee de un vistazo, no se escanea: va en densidad `comfy` (fila
+                y texto más grandes) y con la primera columna fija, para no
+                perder de vista el código al desplazarse en horizontal. */}
             <Table
               columns={allColumns}
               data={filteredItems}
               isLoading={loading}
               rowActions={rowActions}
+              density="comfy"
+              stickyFirstColumn
             />
           </Card>
         </div>

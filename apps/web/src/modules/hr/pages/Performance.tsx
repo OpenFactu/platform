@@ -3,7 +3,16 @@ import type { ProductivityRow as Row } from '../api/hrReportsApi';
 import type { Employee } from '../domain/employee';
 import type { Department } from '../domain/department';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, KpiCard, useToast, DatePicker, SearchableSelect } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  KpiCard,
+  useToast,
+  DatePicker,
+  SearchableSelect,
+  Table,
+} from '@openfactu/ui';
+import type { TableColumn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { TrendingUp, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
@@ -108,6 +117,96 @@ export const Performance: React.FC = () => {
       },
     });
 
+  const hours = (n: number) => <span className="tabular-nums">{n.toFixed(1)}</span>;
+
+  const columns: TableColumn<Row>[] = [
+    {
+      header: 'Empleado',
+      sortable: true,
+      sortAccessor: (r) => r.name,
+      cell: (r) => (
+        <div>
+          <div className="font-bold">{r.name}</div>
+          <div className="text-[10px] text-fg-subtle">{r.code}</div>
+        </div>
+      ),
+    },
+    {
+      header: 'Contratadas',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => r.hoursContracted,
+      cell: (r) => hours(r.hoursContracted),
+    },
+    {
+      header: 'Planificadas',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => r.hoursPlanned,
+      cell: (r) => hours(r.hoursPlanned),
+    },
+    {
+      header: 'Fichadas',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => r.hoursClocked,
+      cell: (r) => <span className="tabular-nums font-bold">{r.hoursClocked.toFixed(1)}</span>,
+    },
+    {
+      header: 'Extras',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => r.hoursOvertime,
+      cell: (r) => (
+        <span className="tabular-nums text-warning-fg">{r.hoursOvertime.toFixed(1)}</span>
+      ),
+    },
+    {
+      header: '% Cumplim.',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => r.compliancePct,
+      cell: (r) => (
+        <span
+          className={
+            r.compliancePct >= 95
+              ? 'tabular-nums text-success-fg font-bold'
+              : r.compliancePct >= 80
+                ? 'tabular-nums text-warning-fg font-bold'
+                : 'tabular-nums text-danger-fg font-bold'
+          }
+        >
+          {r.compliancePct.toFixed(1)}%
+        </span>
+      ),
+    },
+    {
+      header: 'Absentismo',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => r.absenceDays,
+      cell: (r) => <span className="tabular-nums">{r.absenceDays}</span>,
+    },
+    {
+      header: 'Incidencias',
+      cell: (r) => (
+        <div className="text-xs">
+          {Object.entries(r.incidentsByType).map(([k, v]) => (
+            <span
+              key={k}
+              className="inline-block px-2 py-0.5 mr-1 rounded bg-bg-muted text-[10px] font-bold"
+            >
+              {k}: {v}
+            </span>
+          ))}
+          {Object.keys(r.incidentsByType).length === 0 && (
+            <span className="text-fg-subtle italic">sin incidencias</span>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -192,79 +291,20 @@ export const Performance: React.FC = () => {
         <KpiCard label="Absentismo" value={`${totals.absence} días`} className="border-danger" />
       </div>
 
-      <Card noPadding>
-        <div className="p-3 text-xs text-fg-muted border-b">
+      <Card className="overflow-hidden" noPadding>
+        <div className="p-3 text-xs text-fg-muted border-b border-border-default">
           % cumplimiento medio:{' '}
           <span className="font-black text-fg-default tabular-nums">
             {avgCompliance.toFixed(1)}%
           </span>
         </div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-fg-muted border-b">
-              <th className="p-3">Empleado</th>
-              <th className="p-3 text-right">Contratadas</th>
-              <th className="p-3 text-right">Planificadas</th>
-              <th className="p-3 text-right">Fichadas</th>
-              <th className="p-3 text-right">Extras</th>
-              <th className="p-3 text-right">% Cumplim.</th>
-              <th className="p-3 text-right">Absentismo</th>
-              <th className="p-3">Incidencias</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={8} className="p-6 text-center text-fg-subtle">
-                  Calculando…
-                </td>
-              </tr>
-            )}
-            {rows.map((r) => (
-              <tr key={r.employeeId} className="border-b">
-                <td className="p-3">
-                  <div className="font-bold">{r.name}</div>
-                  <div className="text-[10px] text-fg-subtle">{r.code}</div>
-                </td>
-                <td className="p-3 text-right tabular-nums">{r.hoursContracted.toFixed(1)}</td>
-                <td className="p-3 text-right tabular-nums">{r.hoursPlanned.toFixed(1)}</td>
-                <td className="p-3 text-right tabular-nums font-bold">
-                  {r.hoursClocked.toFixed(1)}
-                </td>
-                <td className="p-3 text-right tabular-nums text-warning-fg">
-                  {r.hoursOvertime.toFixed(1)}
-                </td>
-                <td className="p-3 text-right tabular-nums">
-                  <span
-                    className={
-                      r.compliancePct >= 95
-                        ? 'text-success-fg font-bold'
-                        : r.compliancePct >= 80
-                          ? 'text-warning-fg font-bold'
-                          : 'text-danger-fg font-bold'
-                    }
-                  >
-                    {r.compliancePct.toFixed(1)}%
-                  </span>
-                </td>
-                <td className="p-3 text-right tabular-nums">{r.absenceDays}</td>
-                <td className="p-3 text-xs">
-                  {Object.entries(r.incidentsByType).map(([k, v]) => (
-                    <span
-                      key={k}
-                      className="inline-block px-2 py-0.5 mr-1 rounded bg-bg-muted text-[10px] font-bold"
-                    >
-                      {k}: {v}
-                    </span>
-                  ))}
-                  {Object.keys(r.incidentsByType).length === 0 && (
-                    <span className="text-fg-subtle italic">sin incidencias</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Table
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          rowKey={(r) => r.employeeId}
+          emptyMessage="No hay datos de productividad para los filtros actuales."
+        />
       </Card>
     </div>
   );

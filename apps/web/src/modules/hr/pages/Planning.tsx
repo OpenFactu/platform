@@ -11,6 +11,7 @@ import type { Incident, IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, useToast, Tabs, Checkbox } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import {
   CalendarDays,
   ChevronLeft,
@@ -100,6 +101,7 @@ const EMPTY_FORM: ShiftFormState = {
 
 export const Planning: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite, canDelete } = usePagePermissions();
   const [view, setView] = useState<'week' | 'month'>('week');
   const [cursor, setCursor] = useState(() => startOfWeek(new Date()));
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -468,6 +470,7 @@ export const Planning: React.FC = () => {
                         onClick={(ev) => {
                           if ((ev.target as HTMLElement).closest('[data-shift-card]')) return;
                           if ((ev.target as HTMLElement).closest('[data-add-split]')) return;
+                          if (!canWrite) return;
                           openCreate(
                             e.id,
                             dateStr,
@@ -555,27 +558,28 @@ export const Planning: React.FC = () => {
                           })}
                         </div>
                         {/* Acción contextual: vacío → "+ añadir" suave / con turno → "+ partido" en hover. */}
-                        {!list.length ? (
-                          <div className="mt-1 h-5 flex items-center justify-center text-fg-subtle opacity-0 group-hover:opacity-100 transition">
-                            <Plus size={14} />
-                          </div>
-                        ) : (
-                          // Excepción deliberada: no es un control, es la zona
-                          // de acción de la celda del calendario (ocupa el ancho
-                          // completo, se revela en hover y el `onClick` del <td>
-                          // la localiza con `closest('[data-add-split]')`).
-                          <button
-                            data-add-split
-                            onClick={(ev) => {
-                              ev.stopPropagation();
-                              openCreate(e.id, dateStr, suggestSplitStart(list, dateStr));
-                            }}
-                            className="mt-1 w-full h-5 rounded text-[10px] font-semibold flex items-center justify-center gap-1 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 opacity-0 group-hover:opacity-100 transition"
-                            title="Añadir 2º turno (partido)"
-                          >
-                            <CopyPlus size={11} /> partido
-                          </button>
-                        )}
+                        {canWrite &&
+                          (!list.length ? (
+                            <div className="mt-1 h-5 flex items-center justify-center text-fg-subtle opacity-0 group-hover:opacity-100 transition">
+                              <Plus size={14} />
+                            </div>
+                          ) : (
+                            // Excepción deliberada: no es un control, es la zona
+                            // de acción de la celda del calendario (ocupa el ancho
+                            // completo, se revela en hover y el `onClick` del <td>
+                            // la localiza con `closest('[data-add-split]')`).
+                            <button
+                              data-add-split
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                openCreate(e.id, dateStr, suggestSplitStart(list, dateStr));
+                              }}
+                              className="mt-1 w-full h-5 rounded text-[10px] font-semibold flex items-center justify-center gap-1 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 opacity-0 group-hover:opacity-100 transition"
+                              title="Añadir 2º turno (partido)"
+                            >
+                              <CopyPlus size={11} /> partido
+                            </button>
+                          ))}
                         {isSplit && (
                           <div className="absolute top-0.5 right-1 text-[8px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-black">
                             {dayHours.toFixed(1)}h
@@ -870,10 +874,20 @@ export const Planning: React.FC = () => {
                 <div className="flex items-center gap-2">
                   {modal.kind === 'edit' && (
                     <>
-                      <Button size="sm" variant="secondary" onClick={cancelAssign}>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={cancelAssign}
+                        disabled={!canWrite}
+                      >
                         <Ban size={14} /> Cancelar turno
                       </Button>
-                      <Button size="sm" variant="danger" onClick={removeAssign}>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={removeAssign}
+                        disabled={!canDelete}
+                      >
                         <Trash2 size={14} /> Borrar
                       </Button>
                     </>
@@ -883,7 +897,7 @@ export const Planning: React.FC = () => {
                   <Button size="sm" variant="secondary" onClick={() => setModal(null)}>
                     Cerrar
                   </Button>
-                  <Button size="sm" onClick={submitForm}>
+                  <Button size="sm" onClick={submitForm} disabled={!canWrite}>
                     <Save size={14} /> {modal.kind === 'edit' ? 'Guardar' : 'Crear'}
                   </Button>
                 </div>

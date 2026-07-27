@@ -13,6 +13,7 @@ import {
   Checkbox,
   Tabs,
   EmptyState,
+  SearchInput,
 } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import {
@@ -27,7 +28,7 @@ import {
   Search,
   Check,
 } from 'lucide-react';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useGeo, type GeoRow } from '@/hooks/useGeo';
 import { TaxIdInput } from '@/components/geo/TaxIdInput';
 import { PostalCodeInput } from '@/components/geo/PostalCodeInput';
@@ -186,6 +187,7 @@ export const Partners: React.FC = () => {
   const [groups, setGroups] = useState<PartnerGroup[]>([]);
   const [priceLists, setPriceLists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'contact' | 'addresses' | 'fiscal'>(
@@ -439,6 +441,23 @@ export const Partners: React.FC = () => {
     value: c.code,
   }));
 
+  /**
+   * Filtro en cliente: el listado viene entero del servidor, así que basta con
+   * cribarlo aquí. Busca por todas las columnas visibles a la vez — código,
+   * razón social (y su nombre extranjero), NIF, grupo y contacto — porque el
+   * usuario no tiene por qué saber en cuál de ellas está lo que recuerda.
+   */
+  const visiblePartners = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return partners;
+    const groupName = (p: any) => groups.find((g) => g.id === p.groupId)?.name || '';
+    return partners.filter((p: any) =>
+      [p.code, p.name, p.foreignName, p.nif, p.email, p.phone, groupName(p)]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(q)),
+    );
+  }, [partners, groups, search]);
+
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
@@ -461,7 +480,24 @@ export const Partners: React.FC = () => {
       </div>
 
       <Card className="overflow-hidden" noPadding>
-        <Table columns={allColumns} data={partners} isLoading={loading} rowActions={rowActions} />
+        <div className="p-3 border-b border-border-subtle">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar por código, razón social, NIF, grupo o contacto…"
+            clearable
+            className="max-w-md"
+          />
+        </div>
+        <Table
+          columns={allColumns}
+          data={visiblePartners}
+          isLoading={loading}
+          rowActions={rowActions}
+          emptyMessage={
+            search ? `Ningún interlocutor coincide con “${search}”.` : 'Aún no hay interlocutores.'
+          }
+        />
       </Card>
 
       <Modal

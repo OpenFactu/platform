@@ -7,11 +7,14 @@ import type {
 } from '../domain/shift';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast, NumberInput, SearchableSelect } from '@openfactu/ui';
+import { Card, Button, Input, useToast, NumberInput, SearchableSelect, Table } from '@openfactu/ui';
+import type { TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import {
   Repeat,
   Plus,
+  Pencil,
   Save,
   Trash2,
   Calendar,
@@ -26,6 +29,7 @@ const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 export const ShiftPatterns: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite, canDelete } = usePagePermissions();
   const [list, setList] = useState<Pattern[]>([]);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -171,6 +175,28 @@ export const ShiftPatterns: React.FC = () => {
     }
   };
 
+  // Listado de patrones. La matriz semana × día de más abajo NO usa la Table
+  // del paquete: es una rejilla editable con un <select> por celda.
+  const listColumns: TableColumn<Pattern>[] = [
+    { header: 'Nombre', accessor: 'name', sortable: true, primary: true },
+    { header: 'Semanas ciclo', accessor: 'cycleWeeks', sortable: true },
+    {
+      header: 'Activo',
+      sortable: true,
+      sortAccessor: (p) => (p.isActive ? 1 : 0),
+      cell: (p) => (p.isActive ? 'Sí' : 'No'),
+    },
+  ];
+
+  const listRowActions = (p: Pattern): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => openEdit(p),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-6">
       <div className="flex items-start justify-between">
@@ -183,37 +209,22 @@ export const ShiftPatterns: React.FC = () => {
             generan asignaciones reales por día.
           </p>
         </div>
-        <Button size="sm" onClick={newPattern}>
-          <Plus size={14} /> Nuevo patrón
-        </Button>
+        {canWrite && (
+          <Button size="sm" onClick={newPattern}>
+            <Plus size={14} /> Nuevo patrón
+          </Button>
+        )}
       </div>
 
       {!editing && (
-        <Card noPadding>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="p-3">Nombre</th>
-                <th className="p-3">Semanas ciclo</th>
-                <th className="p-3">Activo</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((p) => (
-                <tr key={p.id} className="border-b hover:bg-bg-hover">
-                  <td className="p-3 font-medium">{p.name}</td>
-                  <td className="p-3">{p.cycleWeeks}</td>
-                  <td className="p-3">{p.isActive ? 'Sí' : 'No'}</td>
-                  <td className="p-3 text-right">
-                    <Button size="sm" variant="secondary" onClick={() => openEdit(p)}>
-                      Editar
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Card className="overflow-hidden" noPadding>
+          <Table
+            columns={listColumns}
+            data={list}
+            rowActions={listRowActions}
+            onRowClick={(p) => openEdit(p)}
+            emptyMessage="Todavía no hay patrones de turno."
+          />
         </Card>
       )}
 
@@ -240,7 +251,7 @@ export const ShiftPatterns: React.FC = () => {
                     containerClassName="w-20"
                   />
                 </div>
-                <Button onClick={save}>
+                <Button onClick={save} disabled={!canWrite}>
                   <Save size={16} /> Guardar
                 </Button>
                 <Button variant="secondary" onClick={() => setEditing(null)}>
@@ -484,6 +495,7 @@ export const ShiftPatterns: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => removeAssignment(a)}
+                          disabled={!canDelete}
                           title="Quitar asignación"
                         >
                           <Trash2 size={14} />
@@ -496,6 +508,7 @@ export const ShiftPatterns: React.FC = () => {
                   onAdd={addAssignment}
                   employees={employees}
                   cycleWeeks={editing.cycleWeeks}
+                  canWrite={canWrite}
                 />
               </div>
             </Card>
@@ -521,7 +534,9 @@ export const ShiftPatterns: React.FC = () => {
                     onChange={(e) => setExpanding({ ...expanding, to: e.target.value })}
                   />
                   <div className="self-end">
-                    <Button onClick={expand}>Expandir</Button>
+                    <Button onClick={expand} disabled={!canWrite}>
+                      Expandir
+                    </Button>
                   </div>
                 </div>
                 <p className="text-xs text-slate-400 italic">
@@ -541,7 +556,8 @@ const AssignmentForm: React.FC<{
   onAdd: (employeeId: string, validFrom: string, weekOffset: number) => void;
   employees: any[];
   cycleWeeks: number;
-}> = ({ onAdd, employees, cycleWeeks }) => {
+  canWrite: boolean;
+}> = ({ onAdd, employees, cycleWeeks, canWrite }) => {
   const [employeeId, setEmployeeId] = useState('');
   const [validFrom, setValidFrom] = useState('');
   // `weekOffset` puede quedar vacío en el NumberInput → null; al añadir se
@@ -591,6 +607,7 @@ const AssignmentForm: React.FC<{
           />
         </div>
         <Button
+          disabled={!canWrite}
           onClick={() => {
             if (!employeeId || !validFrom) return;
             onAdd(employeeId, validFrom, weekOffset ?? 0);

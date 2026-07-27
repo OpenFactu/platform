@@ -9,7 +9,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Button, Input, Badge, SearchableSelect, useToast } from '@openfactu/ui';
+import { Modal, Button, Input, Textarea, Badge, SearchableSelect, useToast } from '@openfactu/ui';
 import { Sparkles, Save, AlertTriangle, Loader2 } from 'lucide-react';
 import { useDocTypeOptions, type DocType } from './constants';
 import { useAuth } from '@/context/AuthContext';
@@ -127,10 +127,6 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
     }
   };
 
-  const textareaCls =
-    'w-full rounded-md border border-border-default bg-transparent p-2 text-sm ' +
-    'focus:outline-none focus:ring-2 focus:ring-accent/40 min-h-[80px] resize-y';
-
   return (
     <Modal isOpen onClose={onClose} title="Generar plantilla con IA" maxWidth="6xl">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -138,7 +134,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
                 Tipo de documento
               </span>
               <SearchableSelect
@@ -149,7 +145,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
               />
             </div>
             <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
                 Nombre
               </span>
               <Input
@@ -161,11 +157,11 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
           </div>
 
           <div className="space-y-1">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
               Descripción
             </span>
-            <textarea
-              className={textareaCls}
+            <Textarea
+              className="min-h-[80px] resize-y"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={
@@ -200,7 +196,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
 
               {result.queries.length > 0 && (
                 <div className="space-y-1">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
                     Queries generadas
                   </span>
                   {result.queries.map((q) => {
@@ -232,11 +228,11 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
               )}
 
               <div className="space-y-1">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
                   Pedir ajustes
                 </span>
-                <textarea
-                  className={textareaCls}
+                <Textarea
+                  className="min-h-[80px] resize-y"
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   placeholder="p.ej. Haz la cabecera más compacta y añade el IBAN al pie"

@@ -2,18 +2,8 @@ import { priceListsApi, type PriceList, type PriceListEntry } from '../api';
 import { itemsApi } from '@/modules/inventory/api';
 import type { Item } from '@/modules/inventory/domain/item';
 import React, { useEffect, useState } from 'react';
-import {
-  Card,
-  Button,
-  Input,
-  Loader,
-  useToast,
-  Badge,
-  useContextMenu,
-  usePopup,
-  EmptyState,
-} from '@openfactu/ui';
-import type { ContextMenuItem } from '@openfactu/ui';
+import { Card, Button, Input, Table, useToast, usePopup, EmptyState } from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -24,7 +14,6 @@ import {
   DollarSign,
   Save,
   X,
-  ArrowRightLeft,
   TrendingUp,
   TrendingDown,
   Pencil,
@@ -160,8 +149,9 @@ export const PriceLists: React.FC = () => {
     }
   };
 
-  const { contextMenu, openContextMenu } = useContextMenu();
-  const buildCtxItems = (l: any): ContextMenuItem[] => [
+  // Editar/eliminar viven en el menú ⋯ y en el click derecho que ya trae la
+  // Table; el gating de permisos es el mismo que tenían los botones de la fila.
+  const listActions = (l: PriceList): RowAction[] => [
     {
       label: 'Editar',
       icon: <Pencil size={14} />,
@@ -177,6 +167,57 @@ export const PriceLists: React.FC = () => {
     },
   ];
 
+  const listColumns: TableColumn<PriceList>[] = [
+    {
+      header: 'Nombre de la Tarifa',
+      cell: (l) =>
+        editingListId === l.id ? (
+          // Edición en línea: el click no debe seleccionar la lista.
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <Input
+              value={l.name}
+              onChange={(e) =>
+                setLists(lists.map((x) => (x.id === l.id ? { ...x, name: e.target.value } : x)))
+              }
+              inputSize="sm"
+              containerClassName="flex-1"
+              autoFocus
+            />
+            <Button type="button" size="sm" onClick={() => handleUpdateList(l.id, l.name)}>
+              <Save size={14} />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setEditingListId(null)}
+            >
+              <X size={14} />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div
+              className={`p-1.5 rounded-lg transition-colors ${
+                selectedList?.id === l.id
+                  ? 'bg-accent text-accent-fg'
+                  : 'bg-bg-muted text-fg-subtle group-hover:text-accent'
+              }`}
+            >
+              <Tag size={14} />
+            </div>
+            <span
+              className={`text-sm font-bold ${
+                selectedList?.id === l.id ? 'text-accent' : 'text-fg-body'
+              }`}
+            >
+              {l.name}
+            </span>
+          </div>
+        ),
+    },
+  ];
+
   const filteredItems = items.filter(
     (i) =>
       i.name.toLowerCase().includes(searchItem.toLowerCase()) ||
@@ -188,10 +229,10 @@ export const PriceLists: React.FC = () => {
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
         <div className="space-y-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-blue-600 rounded-lg text-white">
+            <span className="p-1.5 bg-accent rounded-lg text-accent-fg">
               <DollarSign size={20} />
             </span>
-            <span className="text-[10px] font-black text-blue-600 dark:text-blue-300 uppercase tracking-[0.2em]">
+            <span className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">
               Comercial / Pricing
             </span>
           </div>
@@ -219,135 +260,45 @@ export const PriceLists: React.FC = () => {
               </Button>
             }
           >
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-bg-muted border-b border-border-subtle text-[10px] uppercase font-black text-fg-subtle">
-                  <th className="px-6 py-4">Nombre de la Tarifa</th>
-                  <th className="px-6 py-4 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border-subtle">
-                {newListRow && (
-                  <tr className="bg-primary/5 dark:bg-primary/10">
-                    <td className="px-4 py-3">
-                      <Input
-                        placeholder="Ej: Mayoristas"
-                        value={newListRow.name}
-                        onChange={(e) => setNewListRow({ name: e.target.value })}
-                        className="h-9 text-sm"
-                        autoFocus
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-1">
-                      <Button size="sm" onClick={handleCreateList}>
-                        <Save size={14} />
-                      </Button>
-                      <Button size="sm" variant="secondary" onClick={() => setNewListRow(null)}>
-                        <X size={14} />
-                      </Button>
-                    </td>
-                  </tr>
-                )}
-                {lists.map((l) => (
-                  <tr
-                    key={l.id}
-                    onClick={() => {
-                      setSelectedList(l);
-                      fetchPrices(l.id);
-                    }}
-                    onContextMenu={(e) => {
-                      // El hook del paquete solo hace preventDefault; el
-                      // stopPropagation lo mantenemos como antes.
-                      e.stopPropagation();
-                      openContextMenu(e, buildCtxItems(l));
-                    }}
-                    className={`cursor-pointer transition-all group border-l-2 ${selectedList?.id === l.id ? 'bg-bg-muted border-l-primary' : 'border-l-transparent hover:bg-bg-hover'}`}
-                  >
-                    <td className="px-6 py-3">
-                      {editingListId === l.id ? (
-                        <Input
-                          value={l.name}
-                          onChange={(e) =>
-                            setLists(
-                              lists.map((x) =>
-                                x.id === l.id ? { ...x, name: e.target.value } : x,
-                              ),
-                            )
-                          }
-                          className="h-9 text-sm"
-                          autoFocus
-                        />
-                      ) : (
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`p-1.5 rounded-lg transition-colors ${selectedList?.id === l.id ? 'bg-blue-600 text-white' : 'bg-bg-muted text-fg-subtle group-hover:bg-blue-100 dark:hover:bg-blue-500/20 group-hover:text-blue-600 dark:hover:text-blue-300'}`}
-                          >
-                            <Tag size={14} />
-                          </div>
-                          <span
-                            className={`text-sm font-bold ${selectedList?.id === l.id ? 'text-blue-700 dark:text-blue-200' : 'text-fg-body'}`}
-                          >
-                            {l.name}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-3 text-right space-x-1">
-                      {editingListId === l.id ? (
-                        <>
-                          <Button size="sm" onClick={() => handleUpdateList(l.id, l.name)}>
-                            <Save size={14} />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => setEditingListId(null)}
-                          >
-                            <X size={14} />
-                          </Button>
-                        </>
-                      ) : (
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              canWrite && setEditingListId(l.id);
-                            }}
-                            disabled={!canWrite}
-                            className="p-1.5 text-fg-subtle hover:text-blue-600 dark:hover:text-blue-300"
-                          >
-                            <Plus size={14} className="rotate-45" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              canDelete && handleDeleteList(l.id);
-                            }}
-                            disabled={!canDelete}
-                            className="p-1.5 text-fg-subtle hover:text-rose-500"
-                          >
-                            <Trash2 size={14} />
-                          </Button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {loading && (
-                  <tr>
-                    <td colSpan={2} className="p-10 text-center">
-                      <Loader size="sm" />
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            <Table
+              columns={listColumns}
+              data={lists}
+              isLoading={loading}
+              rowActions={listActions}
+              emptyMessage="Todavía no hay tarifas"
+              skeletonRowHeight={28}
+              onRowClick={(l) => {
+                // Mientras se renombra, el click se queda en el formulario.
+                if (editingListId === l.id) return;
+                setSelectedList(l);
+                fetchPrices(l.id);
+              }}
+              appendRow={
+                newListRow ? (
+                  <div className="flex items-center gap-1 px-4 py-3 bg-bg-muted">
+                    <Input
+                      placeholder="Ej: Mayoristas"
+                      value={newListRow.name}
+                      onChange={(e) => setNewListRow({ name: e.target.value })}
+                      inputSize="sm"
+                      containerClassName="flex-1"
+                      autoFocus
+                    />
+                    <Button type="button" size="sm" onClick={handleCreateList}>
+                      <Save size={14} />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setNewListRow(null)}
+                    >
+                      <X size={14} />
+                    </Button>
+                  </div>
+                ) : null
+              }
+            />
           </Card>
         </div>
 
@@ -374,7 +325,7 @@ export const PriceLists: React.FC = () => {
                 />
               </div>
 
-              <div className="overflow-x-auto max-h-[800px] scrollbar-thin scrollbar-thumb-slate-200">
+              <div className="overflow-x-auto max-h-[800px]">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-bg-card border-b border-border-subtle text-[9px] uppercase font-black text-fg-subtle sticky top-0 z-10 shadow-sm">
                     <tr>
@@ -384,7 +335,7 @@ export const PriceLists: React.FC = () => {
                       <th className="px-6 py-3 text-right">Precio Especial</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-50">
+                  <tbody className="divide-y divide-border-subtle">
                     {filteredItems.map((item) => {
                       const itemPrice = prices.find((p) => p.itemId === item.id);
                       const diff = itemPrice
@@ -413,7 +364,7 @@ export const PriceLists: React.FC = () => {
                           <td className="px-6 py-3 text-center">
                             {itemPrice ? (
                               <div
-                                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-tighter border ${diff >= 0 ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-100 dark:border-rose-500/20' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-100 dark:border-emerald-500/20'}`}
+                                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-tighter border ${diff >= 0 ? 'bg-danger-bg text-danger-fg border-danger/20' : 'bg-success-bg text-success-fg border-success/20'}`}
                               >
                                 {diff >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
                                 {Math.abs(diff).toFixed(1)}% {diff >= 0 ? 'Recargo' : 'Dcto'}
@@ -434,7 +385,7 @@ export const PriceLists: React.FC = () => {
                                   step="0.01"
                                   placeholder={String(item.basePrice ?? '')}
                                   defaultValue={itemPrice?.price || ''}
-                                  className="h-9 w-full pl-6 pr-2 rounded-lg border border-border-subtle text-xs font-black text-fg-default bg-bg-muted focus:bg-bg-card focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all outline-none text-right"
+                                  className="h-9 w-full pl-6 pr-2 rounded-lg border border-border-subtle text-xs font-black text-fg-default bg-bg-muted focus:bg-bg-card focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all outline-none text-right"
                                 />
                               </div>
                               <Button
@@ -449,7 +400,7 @@ export const PriceLists: React.FC = () => {
                                 }}
                                 disabled={savingItems.includes(item.id) || !canWrite}
                                 isLoading={savingItems.includes(item.id)}
-                                className="p-2 text-blue-600 dark:text-blue-300"
+                                className="p-2 text-accent"
                               >
                                 {!savingItems.includes(item.id) && <Save size={14} />}
                               </Button>
@@ -479,7 +430,6 @@ export const PriceLists: React.FC = () => {
           )}
         </div>
       </div>
-      {contextMenu}
     </div>
   );
 };

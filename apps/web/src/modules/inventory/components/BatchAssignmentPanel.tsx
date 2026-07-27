@@ -558,6 +558,10 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
               {traceableLines.length} línea{traceableLines.length === 1 ? '' : 's'} con trazabilidad
             </p>
           </div>
+          {/* Las tres tablas de este panel se quedan a mano: la de arriba pinta
+              la fila seleccionada con fondo propio, la de lotes disponibles tacha
+              las filas ya asignadas y la de la derecha es una rejilla editable.
+              La Table del paquete no deja dar clase por fila. */}
           <div className="max-h-[180px] overflow-auto">
             <table className="w-full text-[12px] min-w-[520px]">
               <thead className="sticky top-0 bg-bg-muted backdrop-blur-sm border-b border-border-default">

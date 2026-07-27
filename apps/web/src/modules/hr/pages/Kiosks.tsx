@@ -1,8 +1,10 @@
 import { kiosksApi } from '../api';
 import type { Kiosk } from '../domain/kiosk';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast, usePopup } from '@openfactu/ui';
+import { Card, Button, Input, Table, useToast, usePopup } from '@openfactu/ui';
+import type { TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import {
   Tablet,
   Plus,
@@ -16,6 +18,7 @@ import { ApiError } from '@/shared/http';
 
 export const Kiosks: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite, canDelete } = usePagePermissions();
   const [rows, setRows] = useState<Kiosk[]>([]);
   const [editing, setEditing] = useState<Partial<Kiosk> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -101,6 +104,57 @@ export const Kiosks: React.FC = () => {
     window.open(kioskUrl(k), '_blank', 'noopener');
   };
 
+  const columns: TableColumn<Kiosk>[] = [
+    { header: 'Nombre', accessor: 'name', sortable: true, primary: true },
+    {
+      header: 'Ubicación',
+      sortable: true,
+      sortAccessor: (k) => k.location || '',
+      cell: (k) => k.location || '—',
+    },
+    {
+      header: 'Token (recortado)',
+      cell: (k) => (
+        <div className="flex items-center gap-2 font-mono text-xs">
+          {k.token.slice(0, 8)}…
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => copy(k.token)}
+            title="Copiar token completo"
+          >
+            <Copy size={14} />
+          </Button>
+        </div>
+      ),
+    },
+    {
+      header: 'Activo',
+      sortable: true,
+      sortAccessor: (k) => (k.isActive ? 1 : 0),
+      cell: (k) => (k.isActive ? 'Sí' : 'No'),
+    },
+  ];
+
+  const rowActions = (k: Kiosk): RowAction[] => [
+    { label: 'Copiar enlace', icon: <LinkIcon size={14} />, onClick: () => copyLink(k) },
+    { label: 'Abrir kiosko', icon: <ExternalLink size={14} />, onClick: () => openKiosk(k) },
+    {
+      label: 'Regenerar token',
+      icon: <RefreshCw size={14} />,
+      disabled: !canWrite,
+      onClick: () => regenerate(k),
+    },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      disabled: !canDelete,
+      onClick: () => remove(k),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-6">
       <div className="flex items-start justify-between">
@@ -112,9 +166,11 @@ export const Kiosks: React.FC = () => {
             Terminales compartidos donde los empleados fichan introduciendo su PIN personal.
           </p>
         </div>
-        <Button size="sm" onClick={() => setEditing({ name: '', location: '' })}>
-          <Plus size={14} /> Nuevo kiosko
-        </Button>
+        {canWrite && (
+          <Button size="sm" onClick={() => setEditing({ name: '', location: '' })}>
+            <Plus size={14} /> Nuevo kiosko
+          </Button>
+        )}
       </div>
 
       {editing && (
@@ -132,7 +188,9 @@ export const Kiosks: React.FC = () => {
               onChange={(e) => setEditing({ ...editing, location: e.target.value })}
             />
             <div className="flex items-end gap-2">
-              <Button type="submit">Guardar</Button>
+              <Button type="submit" disabled={!canWrite}>
+                Guardar
+              </Button>
               <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
                 Cancelar
               </Button>
@@ -141,88 +199,14 @@ export const Kiosks: React.FC = () => {
         </Card>
       )}
 
-      <Card noPadding>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="p-3">Nombre</th>
-              <th className="p-3">Ubicación</th>
-              <th className="p-3">Token (recortado)</th>
-              <th className="p-3">Activo</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={5} className="p-6 text-center">
-                  Cargando…
-                </td>
-              </tr>
-            )}
-            {rows.map((k) => (
-              <tr key={k.id} className="border-b">
-                <td className="p-3 font-medium">{k.name}</td>
-                <td className="p-3">{k.location || '—'}</td>
-                <td className="p-3 font-mono text-xs">
-                  <div className="flex items-center gap-2">
-                    {k.token.slice(0, 8)}…
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copy(k.token)}
-                      title="Copiar token completo"
-                    >
-                      <Copy size={14} />
-                    </Button>
-                  </div>
-                </td>
-                <td className="p-3">{k.isActive ? 'Sí' : 'No'}</td>
-                <td className="p-3 text-right">
-                  <div className="flex items-center justify-end gap-3">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyLink(k)}
-                      title="Copiar enlace al portapapeles"
-                    >
-                      <LinkIcon size={14} /> Copiar enlace
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openKiosk(k)}
-                      title="Abrir kiosko en nueva pestaña"
-                    >
-                      <ExternalLink size={14} />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => regenerate(k)}
-                      title="Regenerar token"
-                    >
-                      <RefreshCw size={14} />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => remove(k)}
-                      title="Eliminar"
-                    >
-                      <Trash2 size={14} />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <Card className="overflow-hidden" noPadding>
+        <Table
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          rowActions={rowActions}
+          emptyMessage="Todavía no hay kioskos configurados."
+        />
       </Card>
 
       <p className="text-xs text-slate-400 italic">

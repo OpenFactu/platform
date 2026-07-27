@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, useToast } from '@openfactu/ui';
-import { ArrowLeft, Download, Banknote, FileText } from 'lucide-react';
+import { Card, Button, Badge, Table, useToast } from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
+import { ArrowLeft, Download, Banknote } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { reportsApi } from '../api';
@@ -42,6 +43,51 @@ export const ReportPayslip: React.FC = () => {
     }
   };
 
+  /** Nombre del empleado de la nómina (o su id si no se ha cargado la ficha). */
+  const nameOf = (p: any) => {
+    const emp = employees[p.employeeId];
+    return emp ? `${emp.firstName} ${emp.lastName}` : p.employeeId;
+  };
+
+  const download = (p: any) => downloadPdf(p.id, nameOf(p), p.periodYear, p.periodMonth);
+
+  const columns: TableColumn<any>[] = [
+    {
+      header: 'Empleado',
+      cell: (p) => nameOf(p),
+      sortable: true,
+      sortAccessor: (p) => nameOf(p),
+      primary: true,
+    },
+    {
+      header: 'Período',
+      cell: (p) => `${p.periodYear}-${String(p.periodMonth).padStart(2, '0')}`,
+      sortable: true,
+      sortAccessor: (p) => `${p.periodYear}-${String(p.periodMonth).padStart(2, '0')}`,
+      className: 'font-mono text-xs',
+    },
+    { header: 'Bruto', cell: (p) => fmt.money(p.gross), align: 'right' },
+    {
+      header: 'Neto',
+      cell: (p) => fmt.money(p.netPay),
+      align: 'right',
+      className: 'font-bold',
+    },
+    {
+      header: 'Estado',
+      align: 'center',
+      cell: (p) => (
+        <Badge variant={p.status === 'approved' ? 'success' : 'neutral'}>{p.status}</Badge>
+      ),
+    },
+  ];
+
+  // La descarga era un botón por fila; ahora vive en el menú ⋯ (y en el click
+  // derecho), además del click en la fila que ya prometía la cabecera.
+  const rowActions = (p: any): RowAction[] => [
+    { label: 'Descargar recibo', icon: <Download size={14} />, onClick: () => download(p) },
+  ];
+
   return (
     <div className="p-6 w-full space-y-5">
       <div>
@@ -49,73 +95,23 @@ export const ReportPayslip: React.FC = () => {
           <ArrowLeft size={12} className="mr-1" /> Volver
         </Button>
         <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-          <Banknote size={22} className="text-emerald-600" />
+          <Banknote size={22} className="text-success" />
           Recibo de nómina
         </h1>
-        <p className="text-slate-500 text-sm mt-0.5">
+        <p className="text-fg-muted text-sm mt-0.5">
           Selecciona una nómina aprobada para descargar el recibo.
         </p>
       </div>
 
       <Card className="overflow-hidden" noPadding>
-        <table className="w-full text-sm">
-          <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-wider text-slate-500">
-            <tr>
-              <th className="text-left p-3">Empleado</th>
-              <th className="text-left p-3">Período</th>
-              <th className="text-right p-3">Bruto</th>
-              <th className="text-right p-3">Neto</th>
-              <th className="text-center p-3">Estado</th>
-              <th className="text-right p-3">PDF</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={6} className="p-10 text-center text-slate-400 italic">
-                  Cargando…
-                </td>
-              </tr>
-            ) : payrolls.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-10 text-center text-slate-400 italic">
-                  Sin nóminas
-                </td>
-              </tr>
-            ) : (
-              payrolls.map((p) => {
-                const emp = employees[p.employeeId];
-                const name = emp ? `${emp.firstName} ${emp.lastName}` : p.employeeId;
-                return (
-                  <tr key={p.id} className="border-t border-border-subtle hover:bg-bg-hover">
-                    <td className="p-3">{name}</td>
-                    <td className="p-3 font-mono text-xs">
-                      {p.periodYear}-{String(p.periodMonth).padStart(2, '0')}
-                    </td>
-                    <td className="p-3 text-right tabular-nums">{fmt.money(p.gross)}</td>
-                    <td className="p-3 text-right tabular-nums font-bold">{fmt.money(p.netPay)}</td>
-                    <td className="p-3 text-center text-xs">
-                      <span
-                        className={`px-2 py-0.5 rounded ${p.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
-                      >
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => downloadPdf(p.id, name, p.periodYear, p.periodMonth)}
-                      >
-                        <Download size={14} />
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+        <Table
+          columns={columns}
+          data={payrolls}
+          isLoading={loading}
+          emptyMessage="Sin nóminas"
+          onRowClick={download}
+          rowActions={rowActions}
+        />
       </Card>
     </div>
   );

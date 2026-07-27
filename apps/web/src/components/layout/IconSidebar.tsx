@@ -142,16 +142,20 @@ export const IconSidebar: React.FC = () => {
     return out.slice(0, 30);
   }, [query, allModules, flags, isAdmin, user]);
 
-  // Cerrar popovers al click fuera (sólo desktop, en móvil son secciones inline)
+  // Cerrar los popovers del raíl al pulsar fuera. `tenantRef`/`userRef` cuelgan
+  // SOLO del raíl: dentro del drawer los mismos estados pintan un acordeón
+  // inline, así que cualquier clic ahí cae fuera de esas refs y cerraba la
+  // sección antes de que el desplegable de empresas llegase a abrirse. Por eso
+  // el listener se apaga mientras el drawer está abierto, no solo en móvil.
   useEffect(() => {
-    if (isMobile) return;
+    if (isMobile || mobileOpen) return;
     const onClick = (e: MouseEvent) => {
       if (tenantRef.current && !tenantRef.current.contains(e.target as Node)) setTenantOpen(false);
       if (userRef.current && !userRef.current.contains(e.target as Node)) setUserOpen(false);
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
-  }, [isMobile]);
+  }, [isMobile, mobileOpen]);
 
   const handleClick = (modId: string) => {
     const mod = modules.find((m) => m.id === modId);

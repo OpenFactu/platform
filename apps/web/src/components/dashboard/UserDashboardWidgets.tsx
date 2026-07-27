@@ -1,6 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card } from '@openfactu/ui';
+import { Card, Table } from '@openfactu/ui';
+import type { TableColumn } from '@openfactu/ui';
 import { Chart } from '@openfactu/ui/charts';
 import { LayoutGrid, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -136,31 +137,22 @@ const QueryWidgetRenderer: React.FC<{ result?: QueryResult }> = ({ result }) => 
     );
   }
 
-  // table
+  // table — las columnas salen de la propia consulta, así que se traducen en
+  // caliente a las de la Table del paquete.
+  const columns: TableColumn<Record<string, unknown>>[] = result.columns.map((c) => ({
+    id: c,
+    header: c,
+    cell: (row) => String(row[c] ?? ''),
+  }));
+
   return (
-    <div className="overflow-x-auto max-h-56">
-      <table className="text-xs w-full">
-        <thead>
-          <tr className="text-left text-fg-subtle border-b border-border-subtle">
-            {result.columns.map((c) => (
-              <th key={c} className="pr-3 py-1 font-bold uppercase tracking-wider text-[10px]">
-                {c}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {result.rows.map((row, i) => (
-            <tr key={i} className="border-b border-border-subtle last:border-0">
-              {result.columns.map((c) => (
-                <td key={c} className="pr-3 py-1 text-fg-body">
-                  {String(row[c] ?? '')}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="max-h-56 overflow-y-auto">
+      <Table
+        columns={columns}
+        data={result.rows}
+        rowKey={(_row, i) => i}
+        emptyMessage="La consulta no devolvió filas"
+      />
     </div>
   );
 };

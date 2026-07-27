@@ -6,6 +6,8 @@
  */
 
 import React from 'react';
+import { Table } from '@openfactu/ui';
+import type { TableColumn } from '@openfactu/ui';
 import { AlertCircle } from 'lucide-react';
 
 type Row = Record<string, unknown>;
@@ -23,14 +25,14 @@ function isStringArray(v: unknown): v is string[] {
 }
 
 const ErrorNotice: React.FC<{ message: string }> = ({ message }) => (
-  <div className="flex items-start gap-2 text-[11px] text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-md px-2 py-1.5">
+  <div className="flex items-start gap-2 text-[11px] text-danger-fg bg-danger-bg border border-danger/20 rounded-md px-2 py-1.5">
     <AlertCircle size={13} className="mt-0.5 shrink-0" />
     <span className="break-words">{message}</span>
   </div>
 );
 
 const EmptyNotice: React.FC = () => (
-  <p className="text-[11px] text-slate-400 italic">Sin resultados</p>
+  <p className="text-[11px] text-fg-subtle italic">Sin resultados</p>
 );
 
 function fmtCell(v: unknown): string {
@@ -40,36 +42,24 @@ function fmtCell(v: unknown): string {
   return String(v);
 }
 
-const tableCls =
-  'text-xs border-collapse w-full [&_th]:border [&_td]:border [&_th]:border-slate-200 [&_td]:border-slate-200 dark:[&_th]:border-slate-600 dark:[&_td]:border-slate-600 [&_th]:px-2 [&_th]:py-1 [&_td]:px-2 [&_td]:py-1 [&_th]:bg-slate-50 dark:[&_th]:bg-slate-800 [&_th]:font-bold [&_th]:text-left [&_th]:whitespace-nowrap';
-
+/**
+ * Las columnas salen de las claves que traiga el resultado, así que se
+ * construyen en caliente para la `Table` del paquete (antes era un <table> con
+ * bordes pintados a mano).
+ */
 const DataTable: React.FC<{ rows: Row[]; maxRows?: number }> = ({ rows, maxRows = 20 }) => {
-  const columns = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
+  const keys = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
   const shown = rows.slice(0, maxRows);
+  const columns: TableColumn<Row>[] = keys.map((k) => ({
+    id: k,
+    header: k,
+    cell: (row) => fmtCell(row[k]),
+  }));
   return (
-    <div className="overflow-x-auto custom-scrollbar max-h-72 rounded border border-border-default">
-      <table className={tableCls}>
-        <thead>
-          <tr>
-            {columns.map((c) => (
-              <th key={c}>{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {shown.map((row, i) => (
-            <tr key={i} className="bg-bg-card">
-              {columns.map((c) => (
-                <td key={c} className="text-fg-body">
-                  {fmtCell(row[c])}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="max-h-72 overflow-y-auto custom-scrollbar">
+      <Table columns={columns} data={shown} rowKey={(_r, i) => i} density="compact" />
       {rows.length > maxRows && (
-        <div className="text-[10px] text-slate-400 px-2 py-1 bg-bg-muted">
+        <div className="text-[10px] text-fg-subtle px-2 py-1 bg-bg-muted">
           Mostrando {maxRows} de {rows.length} filas
         </div>
       )}
@@ -88,7 +78,7 @@ const MiniBarChart: React.FC<{ rows: Array<{ x: unknown; y: unknown }> }> = ({ r
           <div key={i} className="flex items-center gap-2 text-[11px]">
             <span className="w-24 truncate text-fg-muted shrink-0">{String(r.x)}</span>
             <div className="flex-1 h-3 bg-bg-muted rounded overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded" style={{ width: `${pct}%` }} />
+              <div className="h-full bg-accent rounded" style={{ width: `${pct}%` }} />
             </div>
             <span className="w-10 text-right text-fg-body tabular-nums shrink-0">{val}</span>
           </div>
@@ -142,7 +132,7 @@ export const ToolResultView: React.FC<{ output: unknown }> = ({ output }) => {
         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11px]">
           {Object.entries(header).map(([k, v]) => (
             <React.Fragment key={k}>
-              <span className="text-slate-400">{k}</span>
+              <span className="text-fg-subtle">{k}</span>
               <span className="text-fg-body truncate">{fmtCell(v)}</span>
             </React.Fragment>
           ))}

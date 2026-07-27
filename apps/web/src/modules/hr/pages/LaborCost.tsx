@@ -1,7 +1,8 @@
 import { hrReportsApi } from '../api';
 import type { LaborCostRow as Row } from '../api/hrReportsApi';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, DatePicker, Select } from '@openfactu/ui';
+import { Card, Button, DatePicker, Select, Table } from '@openfactu/ui';
+import type { TableColumn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { PiggyBank, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
@@ -72,6 +73,54 @@ export const LaborCost: React.FC = () => {
   const fmt = (n: number) =>
     n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  const columns: TableColumn<Row>[] = [
+    {
+      header: 'Grupo',
+      accessor: 'label',
+      sortable: true,
+      primary: true,
+    },
+    {
+      header: 'Bruto',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => r.gross,
+      cell: (r) => <span className="tabular-nums">{fmt(r.gross)} €</span>,
+    },
+    {
+      header: 'SS Empresa',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => r.ssEr,
+      cell: (r) => <span className="tabular-nums">{fmt(r.ssEr)} €</span>,
+    },
+    {
+      header: 'Coste total',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => r.total,
+      cell: (r) => <span className="tabular-nums font-bold">{fmt(r.total)} €</span>,
+    },
+    {
+      header: 'Nº nóminas',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => r.count,
+      cell: (r) => <span className="tabular-nums">{r.count}</span>,
+    },
+    {
+      header: '% del total',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => (totals.total > 0 ? r.total / totals.total : 0),
+      cell: (r) => (
+        <span className="tabular-nums">
+          {totals.total > 0 ? ((r.total / totals.total) * 100).toFixed(1) : '0.0'}%
+        </span>
+      ),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -138,40 +187,14 @@ export const LaborCost: React.FC = () => {
         </div>
       </div>
 
-      <Card noPadding>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="p-3">Grupo</th>
-              <th className="p-3 text-right">Bruto</th>
-              <th className="p-3 text-right">SS Empresa</th>
-              <th className="p-3 text-right">Coste total</th>
-              <th className="p-3 text-right">Nº nóminas</th>
-              <th className="p-3 text-right">% del total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={6} className="p-6 text-center text-slate-400">
-                  Calculando…
-                </td>
-              </tr>
-            )}
-            {rows.map((r) => (
-              <tr key={r.key} className="border-b">
-                <td className="p-3 font-bold">{r.label}</td>
-                <td className="p-3 text-right tabular-nums">{fmt(r.gross)} €</td>
-                <td className="p-3 text-right tabular-nums">{fmt(r.ssEr)} €</td>
-                <td className="p-3 text-right tabular-nums font-bold">{fmt(r.total)} €</td>
-                <td className="p-3 text-right tabular-nums">{r.count}</td>
-                <td className="p-3 text-right tabular-nums">
-                  {totals.total > 0 ? ((r.total / totals.total) * 100).toFixed(1) : '0.0'}%
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <Card className="overflow-hidden" noPadding>
+        <Table
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          rowKey={(r) => r.key}
+          emptyMessage="No hay nóminas aprobadas en el rango seleccionado."
+        />
       </Card>
     </div>
   );

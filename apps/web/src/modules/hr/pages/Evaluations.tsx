@@ -13,9 +13,11 @@ import {
   NumberInput,
   DatePicker,
   Tabs,
+  Table,
 } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import type { BadgeProps, TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { ClipboardCheck, Plus, Pencil, Trash2, X, Save, CheckCircle } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
@@ -70,6 +72,7 @@ type CompetencyForm = {
 
 export const Evaluations: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite } = usePagePermissions();
   const toast = useToast();
   const headers = useMemo(
     () => ({ Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' }),
@@ -222,6 +225,120 @@ export const Evaluations: React.FC = () => {
     }
   };
 
+  // Índice de empleados para resolver el nombre por fila sin recorrer la lista.
+  const employeeById = useMemo(
+    () => Object.fromEntries(employees.map((e) => [e.id, e])),
+    [employees],
+  );
+
+  const openCycleDetail = (c: Cycle) => {
+    setOpenCycle(c);
+    fetchEvaluations(c.id);
+  };
+
+  const cycleColumns: TableColumn<Cycle>[] = [
+    { header: 'Nombre', accessor: 'name', sortable: true, primary: true },
+    {
+      header: 'Inicio',
+      sortable: true,
+      sortAccessor: (c) => c.startDate || '',
+      cell: (c) => c.startDate?.slice(0, 10),
+    },
+    {
+      header: 'Fin',
+      sortable: true,
+      sortAccessor: (c) => c.endDate || '',
+      cell: (c) => c.endDate?.slice(0, 10),
+    },
+    {
+      header: 'Estado',
+      sortable: true,
+      sortAccessor: (c) => c.status,
+      cell: (c) => <Badge variant={STATUS_VARIANT[c.status]}>{STATUS_LABEL[c.status]}</Badge>,
+    },
+  ];
+
+  const cycleRowActions = (c: Cycle): RowAction[] => [
+    { label: 'Abrir', icon: <ClipboardCheck size={14} />, onClick: () => openCycleDetail(c) },
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => setEditingCycle(c),
+    },
+  ];
+
+  const evaluationColumns: TableColumn<Evaluation>[] = [
+    {
+      header: 'Empleado',
+      sortable: true,
+      sortAccessor: (ev) => {
+        const emp = employeeById[ev.employeeId];
+        return emp ? `${emp.firstName} ${emp.lastName}` : ev.employeeId;
+      },
+      cell: (ev) => {
+        const emp = employeeById[ev.employeeId];
+        return (
+          <span className="font-medium">
+            {emp ? `${emp.firstName} ${emp.lastName}` : ev.employeeId}
+          </span>
+        );
+      },
+      primary: true,
+    },
+    {
+      header: 'Estado',
+      sortable: true,
+      sortAccessor: (ev) => ev.status,
+      cell: (ev) => <Badge variant={STATUS_VARIANT[ev.status]}>{STATUS_LABEL[ev.status]}</Badge>,
+    },
+    {
+      header: 'Score final',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (ev) => Number(ev.finalScore ?? 0),
+      cell: (ev) => (
+        <span className="tabular-nums font-bold">
+          {ev.finalScore ? Number(ev.finalScore).toFixed(2) : '—'}
+        </span>
+      ),
+    },
+  ];
+
+  const evaluationRowActions = (ev: Evaluation): RowAction[] => [
+    { label: 'Puntuar', icon: <ClipboardCheck size={14} />, onClick: () => openScores(ev) },
+  ];
+
+  const competencyColumns: TableColumn<Competency>[] = [
+    { header: 'Código', accessor: 'code', sortable: true, primary: true },
+    { header: 'Nombre', accessor: 'name', sortable: true },
+    {
+      header: 'Peso',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (c) => Number(c.weight ?? 0),
+      cell: (c) => <span className="tabular-nums">{Number(c.weight).toFixed(2)}</span>,
+    },
+    {
+      header: 'Escala',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (c) => c.scaleMax,
+      cell: (c) => <span className="tabular-nums">{c.scaleMax}</span>,
+    },
+  ];
+
+  // `weight` llega del servidor como decimal en texto; el formulario lo maneja
+  // numérico, de ahí la conversión al abrir la competencia.
+  const competencyRowActions = (c: Competency): RowAction[] => [
+    {
+      label: 'Editar competencia',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => setEditingComp({ ...c, weight: Number(c.weight ?? 1) }),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -245,11 +362,13 @@ export const Evaluations: React.FC = () => {
 
       {tab === 'cycles' && !openCycle && (
         <>
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => setEditingCycle({ status: 'draft' })}>
-              <Plus size={14} /> Nuevo ciclo
-            </Button>
-          </div>
+          {canWrite && (
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setEditingCycle({ status: 'draft' })}>
+                <Plus size={14} /> Nuevo ciclo
+              </Button>
+            </div>
+          )}
           {editingCycle && (
             <Card noPadding>
               <form onSubmit={saveCycle} className="p-6 grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -283,58 +402,21 @@ export const Evaluations: React.FC = () => {
                   <Button type="button" variant="secondary" onClick={() => setEditingCycle(null)}>
                     Cancelar
                   </Button>
-                  <Button type="submit">Guardar</Button>
+                  <Button type="submit" disabled={!canWrite}>
+                    Guardar
+                  </Button>
                 </div>
               </form>
             </Card>
           )}
-          <Card noPadding>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b">
-                  <th className="p-3">Nombre</th>
-                  <th className="p-3">Inicio</th>
-                  <th className="p-3">Fin</th>
-                  <th className="p-3">Estado</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {cycles.map((c) => (
-                  <tr key={c.id} className="border-b hover:bg-bg-hover">
-                    <td className="p-3 font-bold">{c.name}</td>
-                    <td className="p-3">{c.startDate?.slice(0, 10)}</td>
-                    <td className="p-3">{c.endDate?.slice(0, 10)}</td>
-                    <td className="p-3">
-                      <Badge variant={STATUS_VARIANT[c.status]}>{STATUS_LABEL[c.status]}</Badge>
-                    </td>
-                    <td className="p-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => {
-                            setOpenCycle(c);
-                            fetchEvaluations(c.id);
-                          }}
-                        >
-                          Abrir
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingCycle(c)}
-                          title="Editar"
-                        >
-                          <Pencil size={16} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <Card className="overflow-hidden" noPadding>
+            <Table
+              columns={cycleColumns}
+              data={cycles}
+              rowActions={cycleRowActions}
+              onRowClick={openCycleDetail}
+              emptyMessage="Todavía no hay ciclos de evaluación."
+            />
           </Card>
         </>
       )}
@@ -366,55 +448,32 @@ export const Evaluations: React.FC = () => {
                   if (v) addEvaluation(v);
                 }}
                 placeholder="— elegir empleado —"
+                disabled={!canWrite}
               />
             </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b">
-                  <th className="p-3">Empleado</th>
-                  <th className="p-3">Estado</th>
-                  <th className="p-3 text-right">Score final</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {evaluations.map((ev) => {
-                  const emp = employees.find((e) => e.id === ev.employeeId);
-                  return (
-                    <tr key={ev.id} className="border-b">
-                      <td className="p-3 font-medium">
-                        {emp ? `${emp.firstName} ${emp.lastName}` : ev.employeeId}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={STATUS_VARIANT[ev.status]}>{STATUS_LABEL[ev.status]}</Badge>
-                      </td>
-                      <td className="p-3 text-right tabular-nums font-bold">
-                        {ev.finalScore ? Number(ev.finalScore).toFixed(2) : '—'}
-                      </td>
-                      <td className="p-3 text-right">
-                        <Button size="sm" variant="secondary" onClick={() => openScores(ev)}>
-                          Puntuar
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <Table
+              columns={evaluationColumns}
+              data={evaluations}
+              rowActions={evaluationRowActions}
+              onRowClick={openScores}
+              emptyMessage="Aún no hay empleados en este ciclo."
+            />
           </div>
         </Card>
       )}
 
       {tab === 'competencies' && (
         <>
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={() => setEditingComp({ scaleMax: 5, isActive: true, weight: 1 })}
-            >
-              <Plus size={14} /> Nueva competencia
-            </Button>
-          </div>
+          {canWrite && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => setEditingComp({ scaleMax: 5, isActive: true, weight: 1 })}
+              >
+                <Plus size={14} /> Nueva competencia
+              </Button>
+            </div>
+          )}
           {editingComp && (
             <Card noPadding>
               <form onSubmit={saveComp} className="p-6 grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -449,44 +508,21 @@ export const Evaluations: React.FC = () => {
                   <Button type="button" variant="secondary" onClick={() => setEditingComp(null)}>
                     Cancelar
                   </Button>
-                  <Button type="submit">Guardar</Button>
+                  <Button type="submit" disabled={!canWrite}>
+                    Guardar
+                  </Button>
                 </div>
               </form>
             </Card>
           )}
-          <Card noPadding>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b">
-                  <th className="p-3">Código</th>
-                  <th className="p-3">Nombre</th>
-                  <th className="p-3 text-right">Peso</th>
-                  <th className="p-3 text-right">Escala</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {competencies.map((c) => (
-                  <tr key={c.id} className="border-b">
-                    <td className="p-3 font-mono text-xs">{c.code}</td>
-                    <td className="p-3 font-medium">{c.name}</td>
-                    <td className="p-3 text-right tabular-nums">{Number(c.weight).toFixed(2)}</td>
-                    <td className="p-3 text-right tabular-nums">{c.scaleMax}</td>
-                    <td className="p-3 text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingComp({ ...c, weight: Number(c.weight ?? 1) })}
-                        title="Editar competencia"
-                      >
-                        <Pencil size={16} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <Card className="overflow-hidden" noPadding>
+            <Table
+              columns={competencyColumns}
+              data={competencies}
+              rowActions={competencyRowActions}
+              onRowClick={(c) => setEditingComp({ ...c, weight: Number(c.weight ?? 1) })}
+              emptyMessage="Todavía no hay competencias definidas."
+            />
           </Card>
         </>
       )}
@@ -586,14 +622,14 @@ export const Evaluations: React.FC = () => {
                 </tbody>
               </table>
               <div className="flex justify-between gap-2 pt-3 border-t">
-                <Button size="sm" variant="danger" onClick={closeEvaluation}>
+                <Button size="sm" variant="danger" onClick={closeEvaluation} disabled={!canWrite}>
                   <CheckCircle size={14} /> Cerrar evaluación (calcula final)
                 </Button>
                 <div className="flex gap-2">
                   <Button size="sm" variant="secondary" onClick={() => setScoreEditing(null)}>
                     Cerrar
                   </Button>
-                  <Button size="sm" onClick={saveScores}>
+                  <Button size="sm" onClick={saveScores} disabled={!canWrite}>
                     <Save size={14} /> Guardar
                   </Button>
                 </div>

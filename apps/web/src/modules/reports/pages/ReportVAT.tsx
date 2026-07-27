@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input } from '@openfactu/ui';
+import { Card, Button, Input, Table } from '@openfactu/ui';
+import type { TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, RefreshCw, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -41,51 +42,49 @@ export const ReportVAT: React.FC = () => {
   const sum = (arr: any[], k: string) =>
     arr.reduce((s: number, r: any) => s + Number(r[k] || 0), 0);
 
-  const Table: React.FC<{ title: string; rows: any[]; color: string }> = ({
+  const columns: TableColumn<any>[] = [
+    { header: 'Fecha', cell: (r) => fmt.date(r.date), sortable: true, sortAccessor: (r) => r.date },
+    { header: 'Nº Factura', accessor: 'code', sortable: true, primary: true },
+    { header: 'NIF', accessor: 'partnerNif', className: 'font-mono', sortable: true },
+    {
+      header: 'Nombre',
+      accessor: 'partnerName',
+      sortable: true,
+      className: 'truncate max-w-[180px]',
+    },
+    { header: 'Base', cell: (r) => fmt.money(r.base), align: 'right', sortable: true },
+    { header: 'IVA', cell: (r) => fmt.money(r.tax), align: 'right', sortable: true },
+    { header: 'Total', cell: (r) => fmt.money(r.total), align: 'right', sortable: true },
+  ];
+
+  /**
+   * Libro (repercutido o soportado). La fila de totales ya no se pinta a mano
+   * dentro del <tbody>: la `Table` la coloca en el <tfoot> alineada con las
+   * columnas mediante `summaryRow`.
+   */
+  const VatBook: React.FC<{ title: string; rows: any[]; color: string }> = ({
     title,
     rows,
     color,
   }) => (
     <Card className="p-5 space-y-3">
       <h3 className={`text-xs font-black uppercase tracking-wider ${color}`}>{title}</h3>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs min-w-[640px]">
-          <thead className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-            <tr>
-              <th className="text-left py-1">Fecha</th>
-              <th className="text-left py-1">Nº Factura</th>
-              <th className="text-left py-1">NIF</th>
-              <th className="text-left py-1">Nombre</th>
-              <th className="text-right py-1">Base</th>
-              <th className="text-right py-1">IVA</th>
-              <th className="text-right py-1">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i} className="border-t border-border-subtle">
-                <td className="py-1">{fmt.date(r.date)}</td>
-                <td className="py-1 font-mono">{r.code}</td>
-                <td className="py-1 font-mono">{r.partnerNif}</td>
-                <td className="py-1 truncate max-w-[180px]">{r.partnerName}</td>
-                <td className="py-1 text-right tabular-nums">{fmt.money(r.base)}</td>
-                <td className="py-1 text-right tabular-nums">{fmt.money(r.tax)}</td>
-                <td className="py-1 text-right tabular-nums">{fmt.money(r.total)}</td>
-              </tr>
-            ))}
-            <tr className="font-black border-t-2 border-slate-300">
-              <td colSpan={4} className="py-2 text-right uppercase text-xs">
-                Total
-              </td>
-              <td className="py-2 text-right tabular-nums">{fmt.money(sum(rows, 'base'))}</td>
-              <td className={`py-2 text-right tabular-nums ${color}`}>
-                {fmt.money(sum(rows, 'tax'))}
-              </td>
-              <td className="py-2 text-right tabular-nums">{fmt.money(sum(rows, 'total'))}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <Table
+        columns={columns}
+        data={rows}
+        rowKey={(_r, i) => i}
+        emptyMessage="Sin facturas en el período"
+        density="compact"
+        summaryRow={(visible) => [
+          null,
+          null,
+          null,
+          null,
+          fmt.money(sum(visible, 'base')),
+          <span className={color}>{fmt.money(sum(visible, 'tax'))}</span>,
+          fmt.money(sum(visible, 'total')),
+        ]}
+      />
     </Card>
   );
 
@@ -99,10 +98,10 @@ export const ReportVAT: React.FC = () => {
             <ArrowLeft size={12} className="mr-1" /> Volver
           </Button>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-            <Receipt size={22} className="text-amber-600" />
+            <Receipt size={22} className="text-warning" />
             Libro de IVA
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5">IVA repercutido y soportado (modelo 303).</p>
+          <p className="text-fg-muted text-sm mt-0.5">IVA repercutido y soportado (modelo 303).</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={load} className="flex items-center gap-2">
@@ -120,28 +119,18 @@ export const ReportVAT: React.FC = () => {
       </Card>
 
       {loading || !data ? (
-        <Card className="p-10 text-center text-slate-400 italic">Cargando…</Card>
+        <Card className="p-10 text-center text-fg-subtle italic">Cargando…</Card>
       ) : (
         <>
-          <Table
-            title="IVA Repercutido (ventas)"
-            rows={data.output}
-            color="text-emerald-600 dark:text-emerald-400"
-          />
-          <Table
-            title="IVA Soportado (compras)"
-            rows={data.input}
-            color="text-blue-600 dark:text-blue-400"
-          />
-          <Card
-            className={`p-5 ${saldo >= 0 ? 'bg-rose-50 dark:bg-rose-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}
-          >
+          <VatBook title="IVA Repercutido (ventas)" rows={data.output} color="text-success-fg" />
+          <VatBook title="IVA Soportado (compras)" rows={data.input} color="text-info-fg" />
+          <Card className={`p-5 ${saldo >= 0 ? 'bg-danger-bg' : 'bg-success-bg'}`}>
             <div className="flex items-baseline justify-between">
               <span className="text-xs font-black uppercase tracking-widest">
                 {saldo >= 0 ? 'A ingresar a Hacienda' : 'A compensar / devolver'}
               </span>
               <span
-                className={`text-3xl font-black tabular-nums ${saldo >= 0 ? 'text-rose-700' : 'text-emerald-700'}`}
+                className={`text-3xl font-black tabular-nums ${saldo >= 0 ? 'text-danger-fg' : 'text-success-fg'}`}
               >
                 {fmt.money(Math.abs(saldo))}
               </span>

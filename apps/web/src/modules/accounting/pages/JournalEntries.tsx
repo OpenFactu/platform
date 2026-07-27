@@ -241,7 +241,7 @@ export const JournalEntries: React.FC = () => {
     {
       header: 'Nº',
       cell: (r: Entry) =>
-        r.status === 'draft' ? <span className="text-slate-400">—</span> : <b>{r.number}</b>,
+        r.status === 'draft' ? <span className="text-fg-subtle">—</span> : <b>{r.number}</b>,
     },
     { header: 'Fecha', cell: (r: Entry) => new Date(r.date).toLocaleDateString() },
     { header: 'Concepto', accessor: 'description' },
@@ -325,6 +325,9 @@ export const JournalEntries: React.FC = () => {
               />
             </div>
 
+            {/* Rejilla editable (selector de cuenta, importes y alta/baja de
+                líneas en caliente): se queda como <table> a mano — la Table del
+                paquete es de solo lectura. */}
             <div className="border border-border-default rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-bg-muted text-fg-body">
@@ -340,7 +343,7 @@ export const JournalEntries: React.FC = () => {
                 <tbody>
                   {lines.map((l, i) => (
                     <tr key={i} className="border-t border-border-subtle">
-                      <td className="p-2 text-slate-400">{i + 1}</td>
+                      <td className="p-2 text-fg-subtle">{i + 1}</td>
                       <td className="p-2">
                         <SearchableSelect
                           options={accountOptions}

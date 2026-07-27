@@ -17,9 +17,11 @@ import {
   PercentInput,
   DatePicker,
   Tabs,
+  Table,
 } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import type { BadgeProps, TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { Percent, Plus, Pencil, Trash2, RefreshCw, ArrowRightCircle } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
@@ -95,6 +97,7 @@ const emptyRule = (): RuleForm => ({
 
 export const Commissions: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite, canDelete } = usePagePermissions();
   const toast = useToast();
   const popup = usePopup();
   const [tab, setTab] = useState<'rules' | 'accruals'>('rules');
@@ -224,6 +227,137 @@ export const Commissions: React.FC = () => {
     }
   };
 
+  // Índices de maestros: evitan el `find` por fila que hacían las tablas.
+  const employeeById = useMemo(
+    () => Object.fromEntries(employees.map((e) => [e.id, e])),
+    [employees],
+  );
+  const departmentById = useMemo(
+    () => Object.fromEntries(departments.map((d) => [d.id, d])),
+    [departments],
+  );
+
+  const scopeLabel = (r: Rule) => {
+    if (r.scope === 'employee' && r.employeeId && employeeById[r.employeeId]) {
+      const e = employeeById[r.employeeId];
+      return `${e.firstName} ${e.lastName}`;
+    }
+    if (r.scope === 'department' && r.departmentId && departmentById[r.departmentId]) {
+      return `Dpto: ${departmentById[r.departmentId].name}`;
+    }
+    return 'Toda la empresa';
+  };
+
+  const money = (v: unknown) =>
+    `${Number(v || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €`;
+
+  const ruleColumns: TableColumn<Rule>[] = [
+    { header: 'Nombre', accessor: 'name', sortable: true, primary: true },
+    {
+      header: 'Alcance',
+      sortable: true,
+      sortAccessor: scopeLabel,
+      cell: (r) => <span className="text-xs">{scopeLabel(r)}</span>,
+    },
+    {
+      header: 'Base',
+      sortable: true,
+      sortAccessor: (r) => r.basis,
+      cell: (r) => <span className="text-xs">{r.basis}</span>,
+    },
+    {
+      header: '%',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => Number(r.pct ?? 0),
+      cell: (r) => <span className="tabular-nums">{Number(r.pct).toFixed(2)}%</span>,
+    },
+    {
+      header: 'Activa',
+      sortable: true,
+      sortAccessor: (r) => (r.isActive ? 1 : 0),
+      cell: (r) => (r.isActive ? 'Sí' : 'No'),
+    },
+  ];
+
+  // `pct` llega del servidor como string decimal; el formulario lo maneja en
+  // number, de ahí la conversión al abrir la regla.
+  const ruleRowActions = (r: Rule): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => setEditing({ ...r, pct: Number(r.pct ?? 0) }),
+    },
+    {
+      label: 'Borrar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      disabled: !canDelete,
+      onClick: () => removeRule(r),
+    },
+  ];
+
+  const accrualColumns: TableColumn<Accrual>[] = [
+    {
+      header: 'Empleado',
+      sortable: true,
+      sortAccessor: (a) => {
+        const emp = employeeById[a.employeeId];
+        return emp ? `${emp.firstName} ${emp.lastName}` : a.employeeId;
+      },
+      cell: (a) => {
+        const emp = employeeById[a.employeeId];
+        return (
+          <span className="font-medium">
+            {emp ? `${emp.firstName} ${emp.lastName}` : a.employeeId}
+          </span>
+        );
+      },
+      primary: true,
+    },
+    {
+      header: 'Periodo',
+      sortable: true,
+      sortAccessor: (a) => a.periodYear * 100 + a.periodMonth,
+      cell: (a) => (
+        <span className="text-xs tabular-nums">
+          {a.periodMonth}/{a.periodYear}
+        </span>
+      ),
+    },
+    {
+      header: 'Documento',
+      cell: (a) => (
+        <span className="text-xs font-mono">
+          {a.sourceDocType} · {a.sourceDocId.slice(0, 8)}
+        </span>
+      ),
+    },
+    {
+      header: 'Base',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (a) => Number(a.base || 0),
+      cell: (a) => <span className="tabular-nums">{money(a.base)}</span>,
+    },
+    {
+      header: 'Comisión',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (a) => Number(a.amount || 0),
+      cell: (a) => <span className="tabular-nums font-bold">{money(a.amount)}</span>,
+    },
+    {
+      header: 'Estado',
+      sortable: true,
+      sortAccessor: (a) => a.status,
+      cell: (a) => (
+        <Badge variant={STATUS_VARIANT[a.status]}>{STATUS_LABELS[a.status] ?? a.status}</Badge>
+      ),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -246,11 +380,13 @@ export const Commissions: React.FC = () => {
 
       {tab === 'rules' && (
         <>
-          <div className="flex justify-end">
-            <Button size="sm" onClick={() => setEditing(emptyRule())}>
-              <Plus size={14} /> Nueva regla
-            </Button>
-          </div>
+          {canWrite && (
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setEditing(emptyRule())}>
+                <Plus size={14} /> Nueva regla
+              </Button>
+            </div>
+          )}
           {editing && (
             <Card noPadding>
               <form onSubmit={saveRule} className="p-6 grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -345,71 +481,21 @@ export const Commissions: React.FC = () => {
                   <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
                     Cancelar
                   </Button>
-                  <Button type="submit">Guardar</Button>
+                  <Button type="submit" disabled={!canWrite}>
+                    Guardar
+                  </Button>
                 </div>
               </form>
             </Card>
           )}
-          <Card noPadding>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b">
-                  <th className="p-3">Nombre</th>
-                  <th className="p-3">Alcance</th>
-                  <th className="p-3">Base</th>
-                  <th className="p-3 text-right">%</th>
-                  <th className="p-3">Activa</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rules.map((r) => (
-                  <tr key={r.id} className="border-b">
-                    <td className="p-3 font-bold">{r.name}</td>
-                    <td className="p-3 text-xs">
-                      {r.scope === 'employee' && employees.find((e) => e.id === r.employeeId) ? (
-                        <span>
-                          {employees.find((e) => e.id === r.employeeId)?.firstName}{' '}
-                          {employees.find((e) => e.id === r.employeeId)?.lastName}
-                        </span>
-                      ) : r.scope === 'department' &&
-                        departments.find((d) => d.id === r.departmentId) ? (
-                        <span>Dpto: {departments.find((d) => d.id === r.departmentId)?.name}</span>
-                      ) : (
-                        'Toda la empresa'
-                      )}
-                    </td>
-                    <td className="p-3 text-xs">{r.basis}</td>
-                    <td className="p-3 text-right tabular-nums">{Number(r.pct).toFixed(2)}%</td>
-                    <td className="p-3">{r.isActive ? 'Sí' : 'No'}</td>
-                    <td className="p-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        {/* `pct` llega del servidor como string decimal; el
-                            formulario lo maneja en number. */}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditing({ ...r, pct: Number(r.pct ?? 0) })}
-                          title="Editar"
-                        >
-                          <Pencil size={16} />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeRule(r)}
-                          title="Borrar"
-                        >
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <Card className="overflow-hidden" noPadding>
+            <Table
+              columns={ruleColumns}
+              data={rules}
+              rowActions={ruleRowActions}
+              onRowClick={(r) => setEditing({ ...r, pct: Number(r.pct ?? 0) })}
+              emptyMessage="Todavía no hay reglas de comisión."
+            />
           </Card>
         </>
       )}
@@ -453,60 +539,17 @@ export const Commissions: React.FC = () => {
                 value={filter.status}
                 onChange={(v) => setFilter({ ...filter, status: v })}
               />
-              <Button size="sm" variant="secondary" onClick={recalculate}>
+              <Button size="sm" variant="secondary" onClick={recalculate} disabled={!canWrite}>
                 <RefreshCw size={14} /> Recalcular periodo
               </Button>
             </div>
           </Card>
-          <Card noPadding>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b">
-                  <th className="p-3">Empleado</th>
-                  <th className="p-3">Periodo</th>
-                  <th className="p-3">Documento</th>
-                  <th className="p-3 text-right">Base</th>
-                  <th className="p-3 text-right">Comisión</th>
-                  <th className="p-3">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {accruals.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="p-6 text-center text-slate-400 italic">
-                      Sin acumulados. Pulsa "Recalcular periodo".
-                    </td>
-                  </tr>
-                )}
-                {accruals.map((a) => {
-                  const emp = employees.find((e) => e.id === a.employeeId);
-                  return (
-                    <tr key={a.id} className="border-b">
-                      <td className="p-3 font-medium">
-                        {emp ? `${emp.firstName} ${emp.lastName}` : a.employeeId}
-                      </td>
-                      <td className="p-3 text-xs tabular-nums">
-                        {a.periodMonth}/{a.periodYear}
-                      </td>
-                      <td className="p-3 text-xs font-mono">
-                        {a.sourceDocType} · {a.sourceDocId.slice(0, 8)}
-                      </td>
-                      <td className="p-3 text-right tabular-nums">
-                        {Number(a.base).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
-                      </td>
-                      <td className="p-3 text-right tabular-nums font-bold">
-                        {Number(a.amount).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={STATUS_VARIANT[a.status]}>
-                          {STATUS_LABELS[a.status] ?? a.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <Card className="overflow-hidden" noPadding>
+            <Table
+              columns={accrualColumns}
+              data={accruals}
+              emptyMessage={'Sin acumulados. Pulsa "Recalcular periodo".'}
+            />
           </Card>
           <p className="text-xs text-slate-400 italic flex items-center gap-2">
             <ArrowRightCircle size={12} /> Los acumulados pendientes se vuelcan a la nómina del

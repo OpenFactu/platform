@@ -65,7 +65,10 @@ export function useMediaLibrary(open: boolean) {
     }
   };
 
-  const updateMeta = async (asset: WebsiteAsset, patch: { folder?: string | null; tags?: string[] }) => {
+  const updateMeta = async (
+    asset: WebsiteAsset,
+    patch: { folder?: string | null; tags?: string[] },
+  ) => {
     try {
       const updated = await websiteApi.updateAssetMeta(asset.id, patch);
       setAssets((a) => a.map((x) => (x.id === asset.id ? updated : x)));

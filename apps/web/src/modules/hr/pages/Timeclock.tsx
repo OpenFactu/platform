@@ -2,8 +2,17 @@ import { timeclockApi, employeesApi } from '../api';
 import type { TimeclockEntry as Entry } from '../domain/timeclock';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Badge, useToast, Tabs, DatePicker, SearchableSelect } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Badge,
+  useToast,
+  Tabs,
+  DatePicker,
+  SearchableSelect,
+  Table,
+} from '@openfactu/ui';
+import type { BadgeProps, TableColumn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Timer, LogIn, LogOut, Coffee, RotateCcw, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
@@ -30,7 +39,11 @@ const TABS = [
 
 export const Timeclock: React.FC = () => {
   const { token, user } = useAuth();
-  const isAdmin = (user?.role || '').toLowerCase() === 'admin' || (user as any)?.isAdmin;
+  // La pestaña "todos" enseña los fichajes del resto de la plantilla, así que
+  // va por rol y no por permiso de ruta. Antes comparaba contra 'admin' en
+  // minúsculas, lo que dejaba fuera a SUPERUSER, y caía en un `user.isAdmin`
+  // que no existe en el tipo `User`.
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
   const [tab, setTab] = useState<'me' | 'all'>('me');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [employee, setEmployee] = useState<any>(null);
@@ -154,6 +167,66 @@ export const Timeclock: React.FC = () => {
 
   const last = entries[0];
 
+  // Índice de empleados para resolver el nombre en la vista de administración
+  // sin recorrer la lista por fila.
+  const employeeById = useMemo(
+    () => Object.fromEntries(allEmployees.map((e) => [e.id, e])),
+    [allEmployees],
+  );
+
+  const whenColumn: TableColumn<Entry> = {
+    header: 'Fecha y hora',
+    sortable: true,
+    sortAccessor: (e) => e.at,
+    cell: (e) => <span className="font-mono">{new Date(e.at).toLocaleString('es-ES')}</span>,
+    primary: true,
+  };
+  const kindColumn: TableColumn<Entry> = {
+    header: 'Tipo',
+    sortable: true,
+    sortAccessor: (e) => e.kind,
+    cell: (e) => <Badge variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Badge>,
+  };
+  const sourceColumn: TableColumn<Entry> = {
+    header: 'Origen',
+    sortable: true,
+    sortAccessor: (e) => e.source || '',
+    cell: (e) => <span className="text-xs text-fg-muted">{e.source}</span>,
+  };
+
+  const myColumns: TableColumn<Entry>[] = [whenColumn, kindColumn, sourceColumn];
+
+  const allColumns: TableColumn<Entry>[] = [
+    whenColumn,
+    {
+      header: 'Empleado',
+      sortable: true,
+      sortAccessor: (e) => {
+        const emp = employeeById[e.employeeId ?? ''];
+        return emp ? `${emp.firstName} ${emp.lastName}` : (e.employeeId ?? '');
+      },
+      cell: (e) => {
+        const emp = employeeById[e.employeeId ?? ''];
+        return emp ? (
+          <span>
+            <span className="font-bold">
+              {emp.firstName} {emp.lastName}
+            </span>{' '}
+            <span className="text-xs text-fg-subtle">{emp.code}</span>
+          </span>
+        ) : (
+          e.employeeId
+        );
+      },
+    },
+    kindColumn,
+    sourceColumn,
+    {
+      header: 'Notas',
+      cell: (e) => <span className="text-xs text-fg-muted truncate max-w-xs block">{e.notes}</span>,
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -250,42 +323,13 @@ export const Timeclock: React.FC = () => {
             </div>
           </Card>
 
-          <Card noPadding>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b">
-                  <th className="p-3">Fecha y hora</th>
-                  <th className="p-3">Tipo</th>
-                  <th className="p-3">Origen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && (
-                  <tr>
-                    <td colSpan={3} className="p-6 text-center text-slate-400">
-                      Cargando…
-                    </td>
-                  </tr>
-                )}
-                {!loading &&
-                  entries.map((e) => (
-                    <tr key={e.id} className="border-b">
-                      <td className="p-3 font-mono">{new Date(e.at).toLocaleString('es-ES')}</td>
-                      <td className="p-3">
-                        <Badge variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Badge>
-                      </td>
-                      <td className="p-3 text-xs text-slate-500">{e.source}</td>
-                    </tr>
-                  ))}
-                {!loading && entries.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="p-6 text-center text-slate-400 italic">
-                      Sin fichajes
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <Card className="overflow-hidden" noPadding>
+            <Table
+              columns={myColumns}
+              data={entries}
+              isLoading={loading}
+              emptyMessage="Sin fichajes"
+            />
           </Card>
         </>
       )}
@@ -327,52 +371,8 @@ export const Timeclock: React.FC = () => {
             </div>
           </Card>
 
-          <Card noPadding>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b">
-                  <th className="p-3">Fecha y hora</th>
-                  <th className="p-3">Empleado</th>
-                  <th className="p-3">Tipo</th>
-                  <th className="p-3">Origen</th>
-                  <th className="p-3">Notas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allEntries.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-400 italic">
-                      Sin fichajes en el rango
-                    </td>
-                  </tr>
-                )}
-                {allEntries.map((e: any) => {
-                  const emp = allEmployees.find((x) => x.id === e.employeeId);
-                  return (
-                    <tr key={e.id} className="border-b">
-                      <td className="p-3 font-mono">{new Date(e.at).toLocaleString('es-ES')}</td>
-                      <td className="p-3">
-                        {emp ? (
-                          <span>
-                            <span className="font-bold">
-                              {emp.firstName} {emp.lastName}
-                            </span>{' '}
-                            <span className="text-xs text-slate-400">{emp.code}</span>
-                          </span>
-                        ) : (
-                          e.employeeId
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Badge>
-                      </td>
-                      <td className="p-3 text-xs text-slate-500">{e.source}</td>
-                      <td className="p-3 text-xs text-slate-500 truncate max-w-xs">{e.notes}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <Card className="overflow-hidden" noPadding>
+            <Table columns={allColumns} data={allEntries} emptyMessage="Sin fichajes en el rango" />
           </Card>
         </>
       )}

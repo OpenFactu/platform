@@ -113,6 +113,9 @@ export const BatchSelectionModal: React.FC<Props> = ({
           </div>
         </div>
 
+        {/* Rejilla editable (lote/serie, cantidad y caducidad por fila, con
+            alta/baja de líneas en caliente): se queda como <table> a mano — la
+            Table del paquete es de solo lectura. */}
         <div className="max-h-[400px] overflow-y-auto">
           <table className="w-full text-left border-collapse">
             <thead>

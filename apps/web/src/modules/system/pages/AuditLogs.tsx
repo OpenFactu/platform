@@ -3,14 +3,15 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Card,
   Button,
-  Loader,
   Modal,
   Select,
   SearchableSelect,
   DatePicker,
   EmptyState,
-  Pagination,
+  Badge,
+  Table,
 } from '@openfactu/ui';
+import type { BadgeProps, RowAction, TableColumn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ClipboardList, Search, RotateCcw, Eye } from 'lucide-react';
 
@@ -26,21 +27,14 @@ interface AuditLog {
   createdAt: string;
 }
 
-const ACTION_CONFIG = {
-  CREATE: {
-    label: 'Creación',
-    className:
-      'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-200 border-emerald-200',
-  },
-  UPDATE: {
-    label: 'Edición',
-    className: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-200 border-blue-200',
-  },
-  DELETE: {
-    label: 'Borrado',
-    className: 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-200 border-rose-200',
-  },
-};
+// El color de cada acción sale ahora del Badge del paquete (variantes
+// semánticas) en vez de una paleta fija que no seguía al tema del tenant.
+const ACTION_CONFIG: Record<AuditLog['action'], { label: string; variant: BadgeProps['variant'] }> =
+  {
+    CREATE: { label: 'Creación', variant: 'success' },
+    UPDATE: { label: 'Edición', variant: 'info' },
+    DELETE: { label: 'Borrado', variant: 'error' },
+  };
 
 // Las opciones del filtro salen de ACTION_CONFIG para no repetir los valores;
 // la primera es el «sin filtro» que antes era <option value="">.
@@ -84,6 +78,46 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
     (k) => k !== 'id',
   );
 
+  // Una fila por campo, con marca de si cambió: así el diff es una `Table`
+  // normal en vez de un <table> a mano.
+  const diffRows = keys.map((k) => ({
+    field: k,
+    old: old?.[k],
+    next: next?.[k],
+    changed: JSON.stringify(old?.[k]) !== JSON.stringify(next?.[k]),
+  }));
+
+  const renderValue = (v: any) =>
+    v === null || v === undefined ? (
+      <span className="opacity-30 italic">null</span>
+    ) : (
+      String(v).slice(0, 80)
+    );
+
+  const diffColumns: TableColumn<(typeof diffRows)[number]>[] = [
+    { header: 'Campo', accessor: 'field', width: '33%', className: 'font-medium' },
+    {
+      header: 'Anterior',
+      width: '33%',
+      cell: (r) => (
+        <span className={`font-mono text-xs ${r.changed ? 'text-danger-fg' : 'text-fg-muted'}`}>
+          {renderValue(r.old)}
+        </span>
+      ),
+    },
+    {
+      header: 'Nuevo',
+      width: '33%',
+      cell: (r) => (
+        <span
+          className={`font-mono text-xs ${r.changed ? 'text-success-fg font-semibold' : 'text-fg-muted'}`}
+        >
+          {renderValue(r.next)}
+        </span>
+      ),
+    },
+  ];
+
   return (
     // El overlay, la cabecera con antetítulo y la X de cerrar los aporta Modal;
     // se conserva el cierre al pulsar fuera que tenía el diálogo a mano.
@@ -96,43 +130,13 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
       closeOnOverlayClick
     >
       {log.action === 'UPDATE' && old && next ? (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-[10px] font-black text-fg-subtle uppercase tracking-widest border-b border-border-subtle">
-              <th className="pb-3 text-left w-1/3">Campo</th>
-              <th className="pb-3 text-left w-1/3">Anterior</th>
-              <th className="pb-3 text-left w-1/3">Nuevo</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {keys.map((k) => {
-              const changed = JSON.stringify(old[k]) !== JSON.stringify(next[k]);
-              return (
-                <tr key={k} className={changed ? 'bg-amber-50/50' : ''}>
-                  <td className="py-2 font-medium text-fg-body">{k}</td>
-                  <td
-                    className={`py-2 font-mono text-xs ${changed ? 'text-rose-600 dark:text-rose-300' : 'text-fg-muted'}`}
-                  >
-                    {old[k] === null || old[k] === undefined ? (
-                      <span className="opacity-30 italic">null</span>
-                    ) : (
-                      String(old[k]).slice(0, 80)
-                    )}
-                  </td>
-                  <td
-                    className={`py-2 font-mono text-xs ${changed ? 'text-emerald-700 dark:text-emerald-200 font-semibold' : 'text-fg-muted'}`}
-                  >
-                    {next[k] === null || next[k] === undefined ? (
-                      <span className="opacity-30 italic">null</span>
-                    ) : (
-                      String(next[k]).slice(0, 80)
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <Table
+          columns={diffColumns}
+          data={diffRows}
+          rowKey={(r) => r.field}
+          density="compact"
+          emptyMessage="Sin campos comparables"
+        />
       ) : (
         <pre className="bg-bg-muted rounded-xl p-4 text-xs font-mono text-fg-body overflow-auto whitespace-pre-wrap">
           {JSON.stringify(log.action === 'DELETE' ? old : next, null, 2)}
@@ -189,6 +193,72 @@ export const AuditLogs: React.FC = () => {
   };
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  const columns: TableColumn<AuditLog>[] = [
+    {
+      header: 'Fecha / Hora',
+      cell: (log) => {
+        const date = new Date(log.createdAt);
+        return (
+          <div>
+            <p className="font-bold text-fg-default text-sm tabular-nums">
+              {date.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+              })}
+            </p>
+            <p className="text-[10px] text-fg-subtle font-mono tabular-nums">
+              {date.toLocaleTimeString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+              })}
+            </p>
+          </div>
+        );
+      },
+    },
+    {
+      header: 'Acción',
+      cell: (log) => {
+        const cfg = ACTION_CONFIG[log.action] || ACTION_CONFIG.CREATE;
+        return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+      },
+    },
+    {
+      header: 'Entidad',
+      cell: (log) => <span className="font-bold text-fg-body text-sm">{log.entityType}</span>,
+    },
+    {
+      header: 'ID Entidad',
+      cell: (log) => (
+        <span className="font-mono text-xs text-fg-muted bg-bg-muted px-2 py-1 rounded-lg">
+          {log.entityId.slice(0, 12)}…
+        </span>
+      ),
+    },
+    {
+      header: 'Usuario',
+      cell: (log) =>
+        log.userId ? (
+          <span className="text-xs text-fg-muted font-medium">{log.userId.slice(0, 12)}…</span>
+        ) : (
+          <span className="text-xs text-fg-muted font-medium opacity-40 italic">sistema</span>
+        ),
+    },
+  ];
+
+  // El ojo de "ver detalle" pasa al menú ⋯ de la fila; se deshabilita cuando el
+  // registro no guarda ni valor anterior ni nuevo, igual que antes se ocultaba.
+  const rowActions = (log: AuditLog): RowAction[] => [
+    {
+      label: 'Ver detalle',
+      icon: <Eye size={14} />,
+      disabled: !(log.oldValue || log.newValue),
+      onClick: () => setSelectedLog(log),
+    },
+  ];
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
@@ -282,119 +352,36 @@ export const AuditLogs: React.FC = () => {
       </Card>
 
       {/* Tabla */}
-      <Card className="overflow-hidden border-0" noPadding>
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-bg-muted border-b border-border-subtle text-[10px] uppercase font-black text-fg-subtle">
-              <th className="p-4 pl-6">Fecha / Hora</th>
-              <th className="p-4">Acción</th>
-              <th className="p-4">Entidad</th>
-              <th className="p-4">ID Entidad</th>
-              <th className="p-4">Usuario</th>
-              <th className="p-4 text-right pr-6">Detalle</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {loading && (
-              <tr>
-                <td colSpan={6} className="p-20 text-center">
-                  <Loader size="lg" />
-                  <p className="text-fg-subtle mt-4 font-medium italic">Cargando registros...</p>
-                </td>
-              </tr>
-            )}
-            {!loading && logs.length === 0 && (
-              <tr>
-                <td colSpan={6}>
-                  <EmptyState
-                    icon={<ClipboardList size={32} />}
-                    title="No se encontraron registros de auditoría"
-                    hint="Prueba a ampliar el rango de fechas o a quitar filtros."
-                  />
-                </td>
-              </tr>
-            )}
-            {!loading &&
-              logs.map((log) => {
-                const actionCfg = ACTION_CONFIG[log.action] || ACTION_CONFIG.CREATE;
-                const date = new Date(log.createdAt);
-                const hasDetail = log.oldValue || log.newValue;
-                return (
-                  <tr key={log.id} className="hover:bg-bg-hover transition-colors group">
-                    <td className="p-4 pl-6">
-                      <p className="font-bold text-fg-default text-sm tabular-nums">
-                        {date.toLocaleDateString('es-ES', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                        })}
-                      </p>
-                      <p className="text-[10px] text-fg-subtle font-mono tabular-nums">
-                        {date.toLocaleTimeString('es-ES', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                        })}
-                      </p>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${actionCfg.className}`}
-                      >
-                        {actionCfg.label}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="font-bold text-fg-body text-sm">{log.entityType}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className="font-mono text-xs text-fg-muted bg-bg-muted px-2 py-1 rounded-lg">
-                        {log.entityId.slice(0, 12)}…
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-xs text-fg-muted font-medium">
-                        {log.userId ? (
-                          log.userId.slice(0, 12) + '…'
-                        ) : (
-                          <span className="opacity-40 italic">sistema</span>
-                        )}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right pr-6">
-                      {hasDetail && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedLog(log)}
-                          title="Ver detalle"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <Eye size={16} />
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-          </tbody>
-        </table>
-
-        {/* Paginación */}
-        {!loading && total > limit && (
-          // Pagination ya trae el «desde–hasta de total», el indicador de página y
-          // los botones de anterior/siguiente con su estado deshabilitado.
-          <Pagination
-            page={page}
-            pageSize={limit}
-            total={total}
-            onPageChange={(p) => setPage(Math.min(totalPages, Math.max(1, p)))}
-            pageSizeOptions={[]}
-            className="p-4 pl-6 border-t border-border-subtle bg-bg-muted"
+      {!loading && logs.length === 0 ? (
+        <Card className="border-0">
+          <EmptyState
+            icon={<ClipboardList size={32} />}
+            title="No se encontraron registros de auditoría"
+            hint="Prueba a ampliar el rango de fechas o a quitar filtros."
           />
-        )}
-      </Card>
+        </Card>
+      ) : (
+        <Card className="overflow-hidden border-0" noPadding>
+          {/* La Table trae cabecera, esqueleto de carga y paginación; la de
+              servidor se le pasa con `total` porque `logs` es solo la página. */}
+          <Table
+            columns={columns}
+            data={logs}
+            isLoading={loading}
+            rowActions={rowActions}
+            onRowClick={(log) => (log.oldValue || log.newValue) && setSelectedLog(log)}
+            skeletonRows={8}
+            skeletonRowHeight={28}
+            pagination={{
+              page,
+              pageSize: limit,
+              total,
+              onPageChange: (p) => setPage(Math.min(totalPages, Math.max(1, p))),
+              pageSizeOptions: [],
+            }}
+          />
+        </Card>
+      )}
     </div>
   );
 };

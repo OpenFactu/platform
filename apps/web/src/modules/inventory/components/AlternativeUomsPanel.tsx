@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Input, Loader, SearchableSelect, useToast } from '@openfactu/ui';
+import { Button, Input, SearchableSelect, Table, useToast } from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
+import { Trash2 } from 'lucide-react';
 import { itemsApi } from '../api';
 import type { ItemUomAlternative, Uom } from '../domain/uom';
 
@@ -66,88 +68,79 @@ export const AlternativeUomsPanel: React.FC<{
 
   if (!itemId) {
     return (
-      <div className="p-4 text-center text-sm text-slate-400">
+      <div className="p-4 text-center text-sm text-fg-subtle">
         Guarda el artículo primero para poder añadir unidades alternativas.
       </div>
     );
   }
 
+  const columns: TableColumn<any>[] = [
+    { header: 'Unidad', cell: (a) => a.code || a.name || a.uomId },
+    { header: 'Factor', accessor: 'factor' },
+  ];
+
+  // La unidad base no se puede quitar: para esas filas no hay acciones.
+  const rowActions = (a: any): RowAction[] =>
+    a.isBase
+      ? []
+      : [
+          {
+            label: 'Eliminar',
+            icon: <Trash2 size={14} />,
+            destructive: true,
+            onClick: () => handleRemove(a.id),
+          },
+        ];
+
   return (
     <div className="p-4">
-      {loading ? (
-        <div className="p-4 text-center">
-          <Loader />
-        </div>
-      ) : (
-        <>
-          {alternatives.length > 0 ? (
-            <table className="w-full table-auto text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 uppercase">
-                  <th className="py-2">Unidad</th>
-                  <th className="py-2">Factor</th>
-                  <th className="py-2">&nbsp;</th>
-                </tr>
-              </thead>
-              <tbody>
-                {alternatives.map((a: any) => (
-                  <tr key={a.id || a.uomId} className="border-t border-slate-100">
-                    <td className="py-2">{a.code || a.name || a.uomId}</td>
-                    <td className="py-2">{a.factor}</td>
-                    <td className="py-2 w-20">
-                      {!a.isBase && (
-                        <Button size="sm" variant="secondary" onClick={() => handleRemove(a.id)}>
-                          Eliminar
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-4 text-center text-sm text-slate-400">
-              Sin unidades alternativas configuradas.
-            </div>
-          )}
+      {/* La Table trae cabecera, esqueleto de carga y estado vacío: el <table>
+          a mano, el Loader y el div de "sin unidades" sobraban. */}
+      <Table
+        columns={columns}
+        data={alternatives}
+        isLoading={loading}
+        rowKey={(a: any, i) => a.id || a.uomId || i}
+        rowActions={rowActions}
+        emptyMessage="Sin unidades alternativas configuradas."
+      />
 
-          <div className="pt-4 border-t mt-4">
-            <div className="grid grid-cols-3 gap-2 items-end">
-              <div>
-                <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1 block">
-                  Unidad
-                </label>
-                <SearchableSelect
-                  value={newUomId}
-                  onChange={setNewUomId}
-                  options={uoms.map((u) => ({ label: `${u.code} — ${u.name}`, value: u.id }))}
-                  placeholder="Seleccionar UoM..."
-                />
-              </div>
-              <div>
-                <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1 block">
-                  Factor
-                </label>
-                <Input
-                  value={newFactor}
-                  onChange={(e) => setNewFactor(e.target.value)}
-                  placeholder="1.00"
-                />
-              </div>
-              <div>
-                <Button
-                  onClick={handleAdd}
-                  disabled={!newUomId || !newFactor}
-                  isLoading={saving}
-                  className="w-full"
-                >
-                  Añadir
-                </Button>
-              </div>
-            </div>
+      <div className="pt-4 border-t border-border-subtle mt-4">
+        <div className="grid grid-cols-3 gap-2 items-end">
+          <div>
+            <label className="text-[9px] font-black uppercase tracking-wider text-fg-subtle mb-1 block">
+              Unidad
+            </label>
+            <SearchableSelect
+              value={newUomId}
+              onChange={setNewUomId}
+              options={uoms.map((u) => ({ label: `${u.code} — ${u.name}`, value: u.id }))}
+              placeholder="Seleccionar UoM..."
+            />
           </div>
-        </>
-      )}
+          <div>
+            <label className="text-[9px] font-black uppercase tracking-wider text-fg-subtle mb-1 block">
+              Factor
+            </label>
+            <Input
+              value={newFactor}
+              onChange={(e) => setNewFactor(e.target.value)}
+              placeholder="1.00"
+            />
+          </div>
+          <div>
+            <Button
+              type="button"
+              onClick={handleAdd}
+              disabled={!newUomId || !newFactor}
+              isLoading={saving}
+              className="w-full"
+            >
+              Añadir
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

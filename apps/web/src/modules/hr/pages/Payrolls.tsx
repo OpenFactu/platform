@@ -22,6 +22,7 @@ import {
 } from '@openfactu/ui';
 import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import {
   Banknote,
   Plus,
@@ -49,6 +50,7 @@ const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', '
 
 export const Payrolls: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite, canDelete } = usePagePermissions();
   const [rows, setRows] = useState<Payroll[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -350,6 +352,7 @@ export const Payrolls: React.FC = () => {
           {
             label: 'Aprobar y asentar',
             icon: <CheckCircle size={14} />,
+            disabled: !canWrite,
             onClick: () => handleApprove(r.id),
             separatorBefore: true,
           },
@@ -357,6 +360,7 @@ export const Payrolls: React.FC = () => {
             label: 'Eliminar',
             icon: <Trash2 size={14} />,
             destructive: true,
+            disabled: !canDelete,
             onClick: () => handleDelete(r.id),
           },
         ]
@@ -377,74 +381,76 @@ export const Payrolls: React.FC = () => {
             se genera el asiento contable (gasto de personal, SS e IRPF).
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={async () => {
-              const y = new Date().getFullYear();
-              const m = new Date().getMonth() + 1;
-              const ok = await popup.confirm({
-                title: `Generar nóminas de ${MONTHS[m - 1]} ${y}`,
-                message:
-                  'Crea un borrador de nómina para cada empleado activo, con salario base de su contrato y IRPF/SS automáticos. ¿Continuar?',
-                confirmLabel: 'Generar',
-              });
-              if (!ok) return;
-              const active = employees.filter((e: any) => e.status === 'active');
-              let n = 0;
-              let skipped = 0;
-              for (const e of active) {
-                try {
-                  const r = await payrollsApi.createSafe({
-                    employeeId: e.id,
-                    periodYear: y,
-                    periodMonth: m,
-                  });
-                  const d = r.data;
-                  if (r.status === 409) {
-                    skipped++;
-                    continue;
-                  }
-                  if (!r.ok) continue;
-                  // Salario base del contrato
-                  const cs = await contractsApi.listByEmployee(e.id).catch(() => []);
-                  const c =
-                    (Array.isArray(cs) ? cs : []).find((x: any) => x.isActive) ||
-                    (Array.isArray(cs) ? cs[0] : null);
-                  if (c) {
-                    const monthly = Number(c.grossSalary || 0) / Number(c.paymentsPerYear || 12);
-                    if (monthly > 0) {
-                      await payrollsApi.addLine(d.id!, {
-                        concept: 'Salario base',
-                        type: 'earning',
-                        amount: monthly.toFixed(2),
-                      });
+        {canWrite && (
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                const y = new Date().getFullYear();
+                const m = new Date().getMonth() + 1;
+                const ok = await popup.confirm({
+                  title: `Generar nóminas de ${MONTHS[m - 1]} ${y}`,
+                  message:
+                    'Crea un borrador de nómina para cada empleado activo, con salario base de su contrato y IRPF/SS automáticos. ¿Continuar?',
+                  confirmLabel: 'Generar',
+                });
+                if (!ok) return;
+                const active = employees.filter((e: any) => e.status === 'active');
+                let n = 0;
+                let skipped = 0;
+                for (const e of active) {
+                  try {
+                    const r = await payrollsApi.createSafe({
+                      employeeId: e.id,
+                      periodYear: y,
+                      periodMonth: m,
+                    });
+                    const d = r.data;
+                    if (r.status === 409) {
+                      skipped++;
+                      continue;
                     }
+                    if (!r.ok) continue;
+                    // Salario base del contrato
+                    const cs = await contractsApi.listByEmployee(e.id).catch(() => []);
+                    const c =
+                      (Array.isArray(cs) ? cs : []).find((x: any) => x.isActive) ||
+                      (Array.isArray(cs) ? cs[0] : null);
+                    if (c) {
+                      const monthly = Number(c.grossSalary || 0) / Number(c.paymentsPerYear || 12);
+                      if (monthly > 0) {
+                        await payrollsApi.addLine(d.id!, {
+                          concept: 'Salario base',
+                          type: 'earning',
+                          amount: monthly.toFixed(2),
+                        });
+                      }
+                    }
+                    await payrollsApi.autoDeductions(d.id!);
+                    n++;
+                  } catch {
+                    /* sigue con el siguiente empleado */
                   }
-                  await payrollsApi.autoDeductions(d.id!);
-                  n++;
-                } catch {
-                  /* sigue con el siguiente empleado */
                 }
-              }
-              if (n === 0 && skipped > 0) {
-                toast.success(`Sin novedades · ${skipped} ya existían`);
-              } else if (skipped > 0) {
-                toast.success(`Generadas ${n} · ${skipped} ya existían`);
-              } else {
-                toast.success(`Generadas ${n} nóminas`);
-              }
-              fetchAll();
-            }}
-            title="Crea un borrador de nómina por cada empleado activo con salario y deducciones automáticas"
-          >
-            <CheckCircle size={14} /> Generar mes en curso
-          </Button>
-          <Button size="sm" onClick={() => setCreating(true)}>
-            <Plus size={14} /> Nueva nómina
-          </Button>
-        </div>
+                if (n === 0 && skipped > 0) {
+                  toast.success(`Sin novedades · ${skipped} ya existían`);
+                } else if (skipped > 0) {
+                  toast.success(`Generadas ${n} · ${skipped} ya existían`);
+                } else {
+                  toast.success(`Generadas ${n} nóminas`);
+                }
+                fetchAll();
+              }}
+              title="Crea un borrador de nómina por cada empleado activo con salario y deducciones automáticas"
+            >
+              <CheckCircle size={14} /> Generar mes en curso
+            </Button>
+            <Button size="sm" onClick={() => setCreating(true)}>
+              <Plus size={14} /> Nueva nómina
+            </Button>
+          </div>
+        )}
       </div>
 
       {creating && (
@@ -578,7 +584,7 @@ export const Payrolls: React.FC = () => {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" size="sm">
+                <Button type="submit" size="sm" disabled={!canWrite}>
                   Crear y abrir líneas
                 </Button>
               </div>
@@ -625,12 +631,14 @@ export const Payrolls: React.FC = () => {
                   }}
                   placeholder="— añadir concepto del catálogo —"
                   className="flex-1"
+                  disabled={!canWrite}
                 />
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="whitespace-nowrap"
+                  disabled={!canWrite}
                   onClick={async () => {
                     if (!editLines) return;
                     try {
@@ -658,6 +666,7 @@ export const Payrolls: React.FC = () => {
                   variant="accent"
                   size="sm"
                   className="whitespace-nowrap"
+                  disabled={!canWrite}
                   onClick={async () => {
                     if (!editLines) return;
                     try {
@@ -790,6 +799,8 @@ export const Payrolls: React.FC = () => {
                                 line={l}
                                 onUpdate={updateLine}
                                 onDelete={deleteLine}
+                                canWrite={canWrite}
+                                canDelete={canDelete}
                               />
                             ))}
                           </tbody>
@@ -852,7 +863,9 @@ const PayrollLineRow: React.FC<{
   line: any;
   onUpdate: (id: string, patch: any) => Promise<void> | void;
   onDelete: (id: string) => void;
-}> = ({ line, onUpdate, onDelete }) => {
+  canWrite: boolean;
+  canDelete: boolean;
+}> = ({ line, onUpdate, onDelete, canWrite, canDelete }) => {
   // number | null puro: antes eran strings porque venían de e.target.value de
   // los <input type="number">; con NumberInput/CurrencyInput el valor ya llega
   // numérico y `null` representa el campo vacío.
@@ -891,6 +904,7 @@ const PayrollLineRow: React.FC<{
           onKeyDown={blurOnEnter}
           inputSize="sm"
           containerClassName="w-20"
+          disabled={!canWrite}
         />
       </td>
       <td className="py-2 pr-2 text-right">
@@ -907,6 +921,7 @@ const PayrollLineRow: React.FC<{
           onKeyDown={blurOnEnter}
           inputSize="sm"
           containerClassName="w-24"
+          disabled={!canWrite}
         />
       </td>
       <td className="py-2 pr-2 text-right">
@@ -923,6 +938,7 @@ const PayrollLineRow: React.FC<{
           onKeyDown={blurOnEnter}
           inputSize="sm"
           containerClassName="w-24"
+          disabled={!canWrite}
         />
       </td>
       <td className="py-2 pr-2 text-right">
@@ -939,6 +955,7 @@ const PayrollLineRow: React.FC<{
           inputSize="sm"
           containerClassName="w-28"
           className="font-bold"
+          disabled={!canWrite}
         />
       </td>
       <td className="py-2 pr-2 text-right">
@@ -947,6 +964,7 @@ const PayrollLineRow: React.FC<{
           variant="ghost"
           size="sm"
           onClick={() => onDelete(line.id)}
+          disabled={!canDelete}
           title="Eliminar línea"
         >
           <Trash2 size={14} />

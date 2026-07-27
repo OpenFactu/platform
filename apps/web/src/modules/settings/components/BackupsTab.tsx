@@ -22,9 +22,11 @@ import {
   Select,
   SearchableSelect,
   EmptyState,
+  Table,
   useToast,
   usePopup,
 } from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import {
   DatabaseBackup,
   Download,
@@ -278,7 +280,7 @@ export const BackupsTab: React.FC = () => {
   if (loading || !config) {
     return (
       <Card>
-        <div className="p-6 text-sm text-slate-400 italic">Cargando…</div>
+        <div className="p-6 text-sm text-fg-subtle italic">Cargando…</div>
       </Card>
     );
   }
@@ -286,6 +288,87 @@ export const BackupsTab: React.FC = () => {
   const cloudConnected = (d: Destination) => d === 'local' || Boolean(cloudStatus?.[d]?.connected);
   const set = <K extends keyof BackupConfig>(k: K, v: BackupConfig[K]) =>
     setConfig((c) => (c ? { ...c, [k]: v } : c));
+
+  const historyColumns: TableColumn<BackupRun>[] = [
+    {
+      header: 'Fecha',
+      cell: (run) => new Date(run.startedAt).toLocaleString(),
+      sortable: true,
+      sortAccessor: (run) => run.startedAt,
+      primary: true,
+      className: 'whitespace-nowrap',
+    },
+    { header: 'Tipo', cell: (run) => (run.kind === 'scheduled' ? 'Programado' : 'Manual') },
+    { header: 'Destino', cell: (run) => DEST_LABELS[run.destination] || run.destination },
+    {
+      header: 'Tamaño',
+      cell: (run) => formatSize(run.sizeBytes),
+      align: 'right',
+      sortable: true,
+      sortAccessor: (run) => run.sizeBytes ?? 0,
+    },
+    {
+      header: 'Estado',
+      cell: (run) => (
+        <>
+          {run.status === 'ok' && (
+            <span className="inline-flex items-center gap-1 text-success-fg text-xs font-bold">
+              <CheckCircle2 size={13} /> OK
+            </span>
+          )}
+          {run.status === 'running' && (
+            <span className="inline-flex items-center gap-1 text-info-fg text-xs font-bold">
+              <Loader2 size={13} className="animate-spin" /> En curso
+            </span>
+          )}
+          {run.status === 'error' && (
+            <span
+              className="inline-flex items-center gap-1 text-danger-fg text-xs font-bold"
+              title={run.error || ''}
+            >
+              <XCircle size={13} /> Error
+            </span>
+          )}
+        </>
+      ),
+    },
+  ];
+
+  /**
+   * Descargar/restaurar/eliminar se mueven al menú ⋯ de la fila. Se conservan
+   * las mismas condiciones que tenían los botones: solo se descarga y restaura
+   * un backup terminado, restaurar sigue siendo exclusivo de SUPERUSER y no se
+   * borra uno en curso.
+   */
+  const historyActions = (run: BackupRun): RowAction[] => {
+    const actions: RowAction[] = [];
+    if (run.status === 'ok') {
+      actions.push({
+        label: 'Descargar',
+        icon: <Download size={14} />,
+        onClick: () => download(run),
+      });
+      if (isSuperuser) {
+        actions.push({
+          label: 'Restaurar como empresa nueva',
+          icon: <RotateCcw size={14} />,
+          onClick: () => {
+            setRestoreRun(run);
+            setRestoreName('');
+          },
+        });
+      }
+    }
+    if (run.status !== 'running') {
+      actions.push({
+        label: 'Eliminar',
+        icon: <Trash2 size={14} />,
+        destructive: true,
+        onClick: () => remove(run),
+      });
+    }
+    return actions;
+  };
 
   return (
     <div className="space-y-4">
@@ -384,7 +467,7 @@ export const BackupsTab: React.FC = () => {
 
       <Card>
         <div className="p-6 space-y-3">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Historial</h3>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-fg-muted">Historial</h3>
           {runs.length === 0 ? (
             <EmptyState
               icon={<DatabaseBackup size={28} />}
@@ -392,97 +475,7 @@ export const BackupsTab: React.FC = () => {
               hint="Activa la programación o lanza uno con «Backup ahora»."
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-border-default">
-                    <th className="py-2 pr-3">Fecha</th>
-                    <th className="py-2 pr-3">Tipo</th>
-                    <th className="py-2 pr-3">Destino</th>
-                    <th className="py-2 pr-3">Tamaño</th>
-                    <th className="py-2 pr-3">Estado</th>
-                    <th className="py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {runs.map((run) => (
-                    <tr key={run.id} className="border-b border-border-subtle text-fg-body">
-                      <td className="py-2 pr-3 whitespace-nowrap">
-                        {new Date(run.startedAt).toLocaleString()}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {run.kind === 'scheduled' ? 'Programado' : 'Manual'}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {DEST_LABELS[run.destination] || run.destination}
-                      </td>
-                      <td className="py-2 pr-3 whitespace-nowrap">{formatSize(run.sizeBytes)}</td>
-                      <td className="py-2 pr-3">
-                        {run.status === 'ok' && (
-                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-                            <CheckCircle2 size={13} /> OK
-                          </span>
-                        )}
-                        {run.status === 'running' && (
-                          <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 text-xs font-bold">
-                            <Loader2 size={13} className="animate-spin" /> En curso
-                          </span>
-                        )}
-                        {run.status === 'error' && (
-                          <span
-                            className="inline-flex items-center gap-1 text-rose-500 text-xs font-bold"
-                            title={run.error || ''}
-                          >
-                            <XCircle size={13} /> Error
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 text-right whitespace-nowrap">
-                        {run.status === 'ok' && (
-                          <>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => download(run)}
-                              title="Descargar"
-                            >
-                              <Download size={15} />
-                            </Button>
-                            {/* Restaurar sigue siendo solo SUPERUSER, como antes. */}
-                            {isSuperuser && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setRestoreRun(run);
-                                  setRestoreName('');
-                                }}
-                                title="Restaurar como empresa nueva"
-                              >
-                                <RotateCcw size={15} />
-                              </Button>
-                            )}
-                          </>
-                        )}
-                        {run.status !== 'running' && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => remove(run)}
-                            title="Eliminar"
-                          >
-                            <Trash2 size={15} />
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table columns={historyColumns} data={runs} rowActions={historyActions} />
           )}
         </div>
       </Card>

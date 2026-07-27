@@ -54,7 +54,7 @@ export const ReportBalanceSheet: React.FC = () => {
         <tbody>
           {rows.map((r) => (
             <tr key={r.code} className="border-b border-border-subtle">
-              <td className="py-1 font-mono text-xs text-slate-500">{r.code}</td>
+              <td className="py-1 font-mono text-xs text-fg-muted">{r.code}</td>
               <td className="py-1">{r.name}</td>
               <td className="py-1 text-right tabular-nums">{fmt.money(r.amount)}</td>
             </tr>
@@ -78,7 +78,7 @@ export const ReportBalanceSheet: React.FC = () => {
             <ArrowLeft size={12} className="mr-1" /> Volver
           </Button>
           <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-            <Landmark size={22} className="text-purple-600" />
+            <Landmark size={22} className="text-accent" />
             Balance de Situación
           </h1>
         </div>
@@ -107,22 +107,12 @@ export const ReportBalanceSheet: React.FC = () => {
       </Card>
 
       {loading || !data ? (
-        <Card className="p-10 text-center text-slate-400 italic">Cargando…</Card>
+        <Card className="p-10 text-center text-fg-subtle italic">Cargando…</Card>
       ) : (
         <>
-          {section('Activo', data.asset, data.totalAsset, 'text-emerald-600 dark:text-emerald-400')}
-          {section(
-            'Pasivo',
-            data.liability,
-            data.totalLiability,
-            'text-amber-600 dark:text-amber-400',
-          )}
-          {section(
-            'Patrimonio Neto',
-            data.equity,
-            data.totalEquity,
-            'text-blue-600 dark:text-blue-400',
-          )}
+          {section('Activo', data.asset, data.totalAsset, 'text-success-fg')}
+          {section('Pasivo', data.liability, data.totalLiability, 'text-warning-fg')}
+          {section('Patrimonio Neto', data.equity, data.totalEquity, 'text-info-fg')}
         </>
       )}
     </div>

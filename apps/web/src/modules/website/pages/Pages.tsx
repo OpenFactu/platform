@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Button, Card, Input, Loader, usePopup, useToast } from '@openfactu/ui';
+import { Badge, Button, Card, Input, Loader, Table, usePopup, useToast } from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import {
   ArrowDown,
   ArrowUp,
@@ -167,6 +168,98 @@ export const Pages: React.FC = () => {
 
   const publicUrl = site ? `/site/${site.slug}` : '#';
 
+  const columns: TableColumn<WebsitePage>[] = [
+    {
+      header: 'Página',
+      primary: true,
+      cell: (page) => (
+        <span className="font-bold text-fg-default text-sm">
+          {page.title}
+          {page.isHome && (
+            <Badge variant="neutral" className="ml-2 text-[10px]">
+              Inicio
+            </Badge>
+          )}
+          {page.path === PRODUCT_TEMPLATE_PATH && (
+            <Badge variant="info" className="ml-2 text-[10px]">
+              Plantilla de producto
+            </Badge>
+          )}
+        </span>
+      ),
+    },
+    { header: 'Ruta', accessor: 'path', className: 'font-mono text-xs text-fg-muted' },
+    {
+      header: 'Estado',
+      cell: (page) =>
+        page.status === 'published' ? (
+          <Badge variant="success">Publicada</Badge>
+        ) : (
+          <Badge variant="neutral">Borrador</Badge>
+        ),
+    },
+    {
+      header: 'Menú',
+      cell: (page) =>
+        page.path === PRODUCT_TEMPLATE_PATH ? null : (
+          // La fila entera navega al editor: los controles del menú paran la
+          // propagación para que subir/bajar/ocultar no abran la página.
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleMove(page, -1)}
+              disabled={pages.findIndex((p) => p.id === page.id) === 0}
+              title="Subir en el menú"
+            >
+              <ArrowUp size={14} />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleMove(page, 1)}
+              disabled={pages.findIndex((p) => p.id === page.id) === pages.length - 1}
+              title="Bajar en el menú"
+            >
+              <ArrowDown size={14} />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleToggleNav(page)}
+              title={
+                page.showInNav === false
+                  ? 'Oculta del menú (visible por URL) — pulsar para mostrar'
+                  : 'Visible en el menú — pulsar para ocultar'
+              }
+              className={page.showInNav === false ? 'text-fg-subtle' : 'text-accent'}
+            >
+              {page.showInNav === false ? <EyeOff size={14} /> : <Eye size={14} />}
+            </Button>
+          </div>
+        ),
+    },
+  ];
+
+  const rowActions = (page: WebsitePage): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      onClick: () => navigate(`/website/editor/${page.id}`),
+    },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      // La home no se puede borrar: antes era un botón deshabilitado.
+      disabled: page.isHome,
+      onClick: () => handleDelete(page),
+    },
+  ];
+
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
@@ -216,133 +309,44 @@ export const Pages: React.FC = () => {
       </header>
 
       <Card className="overflow-hidden border-0" noPadding>
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-bg-muted border-b border-border-subtle text-[10px] uppercase font-black text-fg-subtle">
-              <th className="px-6 py-4">Página</th>
-              <th className="px-6 py-4">Ruta</th>
-              <th className="px-6 py-4">Estado</th>
-              <th className="px-6 py-4">Menú</th>
-              <th className="px-6 py-4 text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border-subtle">
-            {newRow && (
-              <tr className="bg-teal-50/30 animate-in zoom-in-95 duration-200">
-                <td className="px-4 py-3">
-                  <Input
-                    placeholder="Título (Ej: Servicios)"
-                    value={newRow.title}
-                    onChange={(e) => setNewRow({ ...newRow, title: e.target.value })}
-                    className="h-9 text-sm"
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <Input
-                    placeholder="/servicios"
-                    value={newRow.path}
-                    onChange={(e) => setNewRow({ ...newRow, path: e.target.value.toLowerCase() })}
-                    className="h-9 font-mono text-sm"
-                  />
-                </td>
-                <td className="px-4 py-3" />
-                <td className="px-4 py-3" />
-                <td className="px-4 py-3 text-right space-x-1">
-                  <Button size="sm" onClick={handleCreate}>
-                    <Save size={14} className="mr-2" /> Crear
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => setNewRow(null)}>
-                    <X size={14} />
-                  </Button>
-                </td>
-              </tr>
-            )}
-
-            {pages.map((page) => (
-              <tr key={page.id} className="hover:bg-bg-hover transition-colors">
-                <td className="px-6 py-3">
-                  <p className="font-bold text-fg-default text-sm">
-                    {page.title}
-                    {page.isHome && (
-                      <Badge variant="neutral" className="ml-2 text-[10px]">
-                        Inicio
-                      </Badge>
-                    )}
-                    {page.path === PRODUCT_TEMPLATE_PATH && (
-                      <Badge variant="info" className="ml-2 text-[10px]">
-                        Plantilla de producto
-                      </Badge>
-                    )}
-                  </p>
-                </td>
-                <td className="px-6 py-3 font-mono text-xs text-fg-muted">{page.path}</td>
-                <td className="px-6 py-3">
-                  {page.status === 'published' ? (
-                    <Badge variant="success">Publicada</Badge>
-                  ) : (
-                    <Badge variant="neutral">Borrador</Badge>
-                  )}
-                </td>
-                <td className="px-6 py-3">
-                  {page.path !== PRODUCT_TEMPLATE_PATH && (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMove(page, -1)}
-                        disabled={pages.findIndex((p) => p.id === page.id) === 0}
-                        title="Subir en el menú"
-                      >
-                        <ArrowUp size={14} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMove(page, 1)}
-                        disabled={pages.findIndex((p) => p.id === page.id) === pages.length - 1}
-                        title="Bajar en el menú"
-                      >
-                        <ArrowDown size={14} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleToggleNav(page)}
-                        title={
-                          page.showInNav === false
-                            ? 'Oculta del menú (visible por URL) — pulsar para mostrar'
-                            : 'Visible en el menú — pulsar para ocultar'
-                        }
-                        className={
-                          page.showInNav === false
-                            ? 'text-fg-subtle'
-                            : 'text-teal-600 dark:text-teal-300'
-                        }
-                      >
-                        {page.showInNav === false ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </Button>
-                    </div>
-                  )}
-                </td>
-                <td className="px-6 py-3 text-right space-x-1">
-                  <Button size="sm" onClick={() => navigate(`/website/editor/${page.id}`)}>
-                    <Pencil size={14} className="mr-2" /> Editar
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(page)}
-                    disabled={page.isHome}
-                    title={page.isHome ? 'La página de inicio no se puede eliminar' : 'Eliminar'}
-                    className="text-fg-subtle hover:text-rose-500"
-                  >
-                    <Trash2 size={16} />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Table
+          columns={columns}
+          data={pages}
+          rowActions={rowActions}
+          onRowClick={(page) => navigate(`/website/editor/${page.id}`)}
+          emptyMessage="Todavía no hay páginas"
+          skeletonRowHeight={24}
+          appendRow={
+            // El alta rápida ya no es un <tr> con celdas: la Table la pinta
+            // como una fila a lo ancho al final del cuerpo.
+            newRow ? (
+              <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-bg-muted">
+                <Input
+                  placeholder="Título (Ej: Servicios)"
+                  value={newRow.title}
+                  onChange={(e) => setNewRow({ ...newRow, title: e.target.value })}
+                  containerClassName="flex-1 min-w-[180px]"
+                  inputSize="sm"
+                  autoFocus
+                />
+                <Input
+                  placeholder="/servicios"
+                  value={newRow.path}
+                  onChange={(e) => setNewRow({ ...newRow, path: e.target.value.toLowerCase() })}
+                  containerClassName="flex-1 min-w-[160px]"
+                  inputSize="sm"
+                  className="font-mono"
+                />
+                <Button type="button" size="sm" onClick={handleCreate}>
+                  <Save size={14} className="mr-2" /> Crear
+                </Button>
+                <Button type="button" size="sm" variant="secondary" onClick={() => setNewRow(null)}>
+                  <X size={14} />
+                </Button>
+              </div>
+            ) : null
+          }
+        />
       </Card>
     </div>
   );

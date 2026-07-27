@@ -11,6 +11,8 @@
 
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState, useRef } from 'react';
+import { Table } from '@openfactu/ui';
+import type { TableColumn } from '@openfactu/ui';
 import {
   Cpu,
   MemoryStick,
@@ -81,6 +83,18 @@ interface ServiceCheck {
 }
 
 const HISTORY_LEN = 60; // 60 samples × 3s ≈ 3 minutos visibles.
+
+/** Columnas del listado de esquemas de empresa. */
+const TENANT_COLUMNS: TableColumn<{ name: string; sizeMB: number }>[] = [
+  { header: 'Empresa', accessor: 'name', className: 'font-mono', sortable: true, primary: true },
+  {
+    header: 'Tamaño',
+    cell: (t) => `${t.sizeMB.toFixed(1)} MB`,
+    align: 'right',
+    sortable: true,
+    sortAccessor: (t) => t.sizeMB,
+  },
+];
 
 export const ServerCockpit: React.FC = () => {
   const { token } = useAuth();
@@ -333,26 +347,13 @@ export const ServerCockpit: React.FC = () => {
               Empresas ({m.tenants.total})
             </h2>
           </div>
-          {m.tenants.schemas.length === 0 ? (
-            <p className="text-xs text-slate-400 italic">No hay empresas registradas.</p>
-          ) : (
-            <table className="w-full text-xs">
-              <thead className="text-fg-muted">
-                <tr>
-                  <th className="text-left py-1">Empresa</th>
-                  <th className="text-right py-1">Tamaño</th>
-                </tr>
-              </thead>
-              <tbody>
-                {m.tenants.schemas.map((t) => (
-                  <tr key={t.name} className="border-t border-border-subtle">
-                    <td className="py-1.5 font-mono">{t.name}</td>
-                    <td className="py-1.5 text-right tabular-nums">{t.sizeMB.toFixed(1)} MB</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <Table
+            columns={TENANT_COLUMNS}
+            data={m.tenants.schemas}
+            rowKey={(t) => t.name}
+            density="compact"
+            emptyMessage="No hay empresas registradas."
+          />
         </div>
       )}
 
@@ -547,25 +548,20 @@ const TrafficPanel: React.FC<{
           </p>
         </div>
       )}
+      {/* Reparto por método: no es una tabla de datos sino un desglose con
+          barra, así que se pinta como lista en lugar de un <table> a mano. */}
       {methods.length > 0 && (
-        <table className="w-full text-[11px] mt-2">
-          <tbody>
-            {methods.map(([method, count]) => (
-              <tr key={method} className="border-t border-border-subtle">
-                <td className="py-1 font-mono font-bold text-fg-body">{method}</td>
-                <td className="py-1 text-right tabular-nums text-slate-500">{count}</td>
-                <td className="py-1 w-1/2 pl-2">
-                  <div className="h-1 rounded-full bg-bg-muted overflow-hidden">
-                    <div
-                      className="h-full bg-sky-500"
-                      style={{ width: `${(count * 100) / total}%` }}
-                    />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ul className="text-[11px] mt-2">
+          {methods.map(([method, count]) => (
+            <li key={method} className="flex items-center gap-2 py-1 border-t border-border-subtle">
+              <span className="font-mono font-bold text-fg-body w-16">{method}</span>
+              <span className="tabular-nums text-fg-muted w-14 text-right">{count}</span>
+              <div className="flex-1 h-1 rounded-full bg-bg-muted overflow-hidden">
+                <div className="h-full bg-info" style={{ width: `${(count * 100) / total}%` }} />
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

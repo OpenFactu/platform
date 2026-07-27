@@ -74,9 +74,9 @@ export const TenantSwitcher: React.FC = () => {
       <button
         onClick={handleToggle}
         disabled={busy}
-        className="w-full flex items-center gap-3 p-3 rounded-xl bg-bg-card border border-border-default hover:bg-bg-hover transition-all group disabled:opacity-50"
+        className="w-full flex items-center gap-3 p-3 rounded-xs bg-bg-card border border-border-default hover:bg-bg-hover transition-all group disabled:opacity-50"
       >
-        <div className="p-1.5 rounded-lg bg-accent/10 text-accent">
+        <div className="p-1.5 rounded-xs bg-accent/10 text-accent">
           <Building size={14} />
         </div>
         <div className="flex-1 min-w-0 text-left">
@@ -94,7 +94,7 @@ export const TenantSwitcher: React.FC = () => {
       </button>
 
       {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 bg-bg-card border border-border-default rounded-xl shadow-k-lg overflow-hidden z-dropdown">
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-bg-card border border-border-default rounded-xs shadow-k-lg overflow-hidden z-dropdown">
           <div className="px-3 py-2.5 border-b border-border-default">
             <p className="text-[9px] font-black uppercase tracking-widest text-fg-subtle">
               Tus empresas
@@ -120,7 +120,7 @@ export const TenantSwitcher: React.FC = () => {
                       }`}
                     >
                       <span
-                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-bold ${
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xs text-[11px] font-bold ${
                           active ? 'bg-accent text-accent-fg' : 'bg-bg-muted text-fg-subtle'
                         }`}
                       >

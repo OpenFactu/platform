@@ -21,6 +21,7 @@ import {
   Input,
   Badge,
   Loader,
+  Table,
   useToast,
   usePopup,
   SearchableSelect,
@@ -28,6 +29,7 @@ import {
   Tabs,
   Textarea,
 } from '@openfactu/ui';
+import type { TableColumn } from '@openfactu/ui';
 import {
   Plus,
   Trash2,
@@ -544,6 +546,66 @@ export const StockMovements: React.FC = () => {
       .filter((z) => !warehouseId || z.warehouseId === warehouseId)
       .map((z) => ({ value: z.id, label: z.name }));
 
+  /**
+   * Columnas de las líneas en la vista detalle. Cambian con el tipo: el
+   * traspaso lleva zona origen y destino; entradas y salidas, una sola.
+   */
+  const lineColumns = useMemo<TableColumn<any>[]>(() => {
+    const zoneName = (zid: string | null) =>
+      zid ? zones.find((z) => z.id === zid)?.name || '—' : '—';
+    const zoneCols: TableColumn<any>[] =
+      kind === 'transfer'
+        ? [
+            { header: 'Zona origen', cell: (l) => zoneName(l.fromZoneId) },
+            { header: 'Zona destino', cell: (l) => zoneName(l.toZoneId) },
+          ]
+        : [{ header: 'Zona', cell: (l) => zoneName(l.zoneId) }];
+    return [
+      {
+        header: '#',
+        width: '3rem',
+        cell: (l) => <span className="text-fg-subtle">{l.lineNum}</span>,
+      },
+      {
+        header: 'Artículo',
+        cell: (l) => {
+          const it = itemsById.get(l.itemId);
+          return (
+            <div>
+              <div className="font-semibold text-fg-default">{it?.name || l.itemId}</div>
+              {it?.code && <div className="text-[11px] text-fg-subtle font-mono">{it.code}</div>}
+            </div>
+          );
+        },
+      },
+      {
+        header: 'Cantidad',
+        align: 'right',
+        cell: (l) => <span className="font-mono">{l.quantity}</span>,
+      },
+      {
+        header: 'UoM',
+        cell: (l) => {
+          const it = itemsById.get(l.itemId);
+          const uom = l.uomId ? uomsById.get(l.uomId) : it?.uomId ? uomsById.get(it.uomId) : null;
+          return <span className="text-fg-muted">{uom?.code || '—'}</span>;
+        },
+      },
+      {
+        header: 'Lote / Serie',
+        cell: (l) =>
+          l.batchNum ? (
+            <code className="text-[11px] font-mono bg-bg-muted px-1.5 py-0.5 rounded">
+              {l.batchNum}
+            </code>
+          ) : (
+            <span className="text-fg-subtle">—</span>
+          ),
+      },
+      ...zoneCols,
+    ];
+  }, [kind, itemsById, uomsById, zones]);
+
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
       <header className="flex items-center justify-between border-b border-border-subtle pb-3">
@@ -850,76 +912,12 @@ export const StockMovements: React.FC = () => {
 
           {/* Líneas */}
           <Card bodyClassName="p-0">
-            <div className="px-4 py-2 border-b border-border-subtle text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <div className="px-4 py-2 border-b border-border-subtle text-[10px] font-black uppercase tracking-wider text-fg-subtle">
               Líneas ({viewing.lines?.length || 0})
             </div>
-            {!viewing.lines || viewing.lines.length === 0 ? (
-              <div className="py-8 text-center text-sm text-slate-500">Sin líneas.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[700px]">
-                  <thead className="bg-bg-muted text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="px-3 py-2 text-left w-8">#</th>
-                      <th className="px-3 py-2 text-left">Artículo</th>
-                      <th className="px-3 py-2 text-right">Cantidad</th>
-                      <th className="px-3 py-2 text-left">UoM</th>
-                      <th className="px-3 py-2 text-left">Lote / Serie</th>
-                      {kind === 'transfer' ? (
-                        <>
-                          <th className="px-3 py-2 text-left">Zona origen</th>
-                          <th className="px-3 py-2 text-left">Zona destino</th>
-                        </>
-                      ) : (
-                        <th className="px-3 py-2 text-left">Zona</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {viewing.lines.map((l: any) => {
-                      const it = itemsById.get(l.itemId);
-                      const uom = l.uomId
-                        ? uomsById.get(l.uomId)
-                        : it?.uomId
-                          ? uomsById.get(it.uomId)
-                          : null;
-                      const zone = (zid: string | null) =>
-                        zid ? zones.find((z) => z.id === zid)?.name || '—' : '—';
-                      return (
-                        <tr key={l.id} className="border-t border-border-subtle">
-                          <td className="px-3 py-2 text-slate-500">{l.lineNum}</td>
-                          <td className="px-3 py-2 text-fg-default">
-                            <div className="font-semibold">{it?.name || l.itemId}</div>
-                            {it?.code && (
-                              <div className="text-[11px] text-slate-500 font-mono">{it.code}</div>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono">{l.quantity}</td>
-                          <td className="px-3 py-2 text-slate-500">{uom?.code || '—'}</td>
-                          <td className="px-3 py-2">
-                            {l.batchNum ? (
-                              <code className="text-[11px] font-mono bg-bg-muted px-1.5 py-0.5 rounded">
-                                {l.batchNum}
-                              </code>
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </td>
-                          {kind === 'transfer' ? (
-                            <>
-                              <td className="px-3 py-2 text-fg-body">{zone(l.fromZoneId)}</td>
-                              <td className="px-3 py-2 text-fg-body">{zone(l.toZoneId)}</td>
-                            </>
-                          ) : (
-                            <td className="px-3 py-2 text-fg-body">{zone(l.zoneId)}</td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {/* La Table trae cabecera, scroll horizontal y estado vacío: el
+                <table> a mano y la rama de "Sin líneas." sobraban. */}
+            <Table columns={lineColumns} data={viewing.lines || []} emptyMessage="Sin líneas." />
           </Card>
         </div>
       )}

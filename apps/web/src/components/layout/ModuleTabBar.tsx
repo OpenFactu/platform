@@ -166,7 +166,7 @@ const GroupDropdown: React.FC<{
         <div
           ref={menuRef}
           style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 1000 }}
-          className="min-w-[200px] rounded-lg shadow-lg border border-border-default bg-bg-card py-1"
+          className="min-w-[200px] rounded-xs shadow-k-lg border border-border-default bg-bg-card py-1"
         >
           {items.map((tab) => {
             const tabActive = tab.path === activeTabPath;

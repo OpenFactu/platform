@@ -11,9 +11,12 @@ import {
   usePopup,
   Select,
   SearchableSelect,
+  Progress,
+  Table,
 } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import type { BadgeProps, TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { Target, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
@@ -51,6 +54,7 @@ const empty = (): Partial<Objective> => ({
 
 export const Objectives: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite, canDelete } = usePagePermissions();
   const toast = useToast();
   const popup = usePopup();
   const [rows, setRows] = useState<Objective[]>([]);
@@ -120,6 +124,91 @@ export const Objectives: React.FC = () => {
     fetchAll();
   };
 
+  // Índice de empleados para pintar el nombre en la tabla sin recorrer la
+  // lista en cada fila.
+  const employeeById = useMemo(
+    () => Object.fromEntries(employees.map((e) => [e.id, e])),
+    [employees],
+  );
+
+  const columns: TableColumn<Objective>[] = [
+    {
+      header: 'Empleado',
+      sortable: true,
+      sortAccessor: (r) => {
+        const emp = employeeById[r.employeeId];
+        return emp ? `${emp.firstName} ${emp.lastName}` : r.employeeId;
+      },
+      cell: (r) => {
+        const emp = employeeById[r.employeeId];
+        return emp ? (
+          <span className="font-medium">
+            {emp.firstName} {emp.lastName}
+          </span>
+        ) : (
+          r.employeeId
+        );
+      },
+    },
+    { header: 'Título', accessor: 'title', sortable: true, primary: true },
+    {
+      header: 'Métrica',
+      sortable: true,
+      sortAccessor: (r) => r.targetMetric || '',
+      cell: (r) => <span className="text-fg-muted">{r.targetMetric || '—'}</span>,
+    },
+    {
+      header: 'Progreso',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => {
+        const target = Number(r.targetValue || 0);
+        return target > 0 ? Number(r.achievedValue || 0) / target : 0;
+      },
+      cell: (r) => {
+        const target = Number(r.targetValue || 0);
+        const achieved = Number(r.achievedValue || 0);
+        const pct = target > 0 ? Math.min(100, (achieved / target) * 100) : 0;
+        return (
+          <div className="min-w-[100px]">
+            <div className="font-bold tabular-nums">
+              {achieved} / {target}
+            </div>
+            <Progress value={pct} variant="success" size="sm" className="mt-1" />
+          </div>
+        );
+      },
+    },
+    {
+      header: 'Estado',
+      sortable: true,
+      sortAccessor: (r) => r.status,
+      cell: (r) => <Badge variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</Badge>,
+    },
+    {
+      header: 'Vence',
+      sortable: true,
+      sortAccessor: (r) => r.dueDate || '',
+      cell: (r) => <span className="text-xs text-fg-muted">{r.dueDate?.slice(0, 10) || '—'}</span>,
+    },
+  ];
+
+  const rowActions = (r: Objective): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => setEditing(r),
+    },
+    {
+      label: 'Borrar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      disabled: !canDelete,
+      onClick: () => remove(r),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -131,9 +220,11 @@ export const Objectives: React.FC = () => {
             Objetivos por empleado con métrica medible y progreso.
           </p>
         </div>
-        <Button size="sm" onClick={() => setEditing(empty())}>
-          <Plus size={14} /> Nuevo objetivo
-        </Button>
+        {canWrite && (
+          <Button size="sm" onClick={() => setEditing(empty())}>
+            <Plus size={14} /> Nuevo objetivo
+          </Button>
+        )}
       </div>
 
       <Card noPadding>
@@ -239,83 +330,22 @@ export const Objectives: React.FC = () => {
               <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
                 Cancelar
               </Button>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit" disabled={!canWrite}>
+                Guardar
+              </Button>
             </div>
           </form>
         </Card>
       )}
 
-      <Card noPadding>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="p-3">Empleado</th>
-              <th className="p-3">Título</th>
-              <th className="p-3">Métrica</th>
-              <th className="p-3 text-right">Progreso</th>
-              <th className="p-3">Estado</th>
-              <th className="p-3">Vence</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const emp = employees.find((e) => e.id === r.employeeId);
-              const target = Number(r.targetValue || 0);
-              const achieved = Number(r.achievedValue || 0);
-              const pct = target > 0 ? Math.min(100, (achieved / target) * 100) : 0;
-              return (
-                <tr key={r.id} className="border-b">
-                  <td className="p-3">
-                    {emp ? (
-                      <span className="font-medium">
-                        {emp.firstName} {emp.lastName}
-                      </span>
-                    ) : (
-                      r.employeeId
-                    )}
-                  </td>
-                  <td className="p-3 font-bold">{r.title}</td>
-                  <td className="p-3 text-slate-500">{r.targetMetric || '—'}</td>
-                  <td className="p-3 text-right">
-                    <div className="font-bold tabular-nums">
-                      {achieved} / {target}
-                    </div>
-                    <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded mt-1">
-                      <div className="h-1 bg-emerald-500 rounded" style={{ width: `${pct}%` }} />
-                    </div>
-                  </td>
-                  <td className="p-3">
-                    <Badge variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</Badge>
-                  </td>
-                  <td className="p-3 text-xs text-slate-500">{r.dueDate?.slice(0, 10) || '—'}</td>
-                  <td className="p-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditing(r)}
-                        title="Editar"
-                      >
-                        <Pencil size={16} />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => remove(r)}
-                        title="Borrar"
-                      >
-                        <Trash2 size={16} />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <Card className="overflow-hidden" noPadding>
+        <Table
+          columns={columns}
+          data={rows}
+          rowActions={rowActions}
+          onRowClick={(r) => setEditing(r)}
+          emptyMessage="No hay objetivos que cumplan los filtros actuales."
+        />
       </Card>
     </div>
   );

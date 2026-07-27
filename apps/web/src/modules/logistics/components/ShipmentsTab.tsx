@@ -8,16 +8,15 @@ import {
   Input,
   Modal,
   Badge,
-  Loader,
   useToast,
   usePopup,
   DatePicker,
   SearchableSelect,
   Textarea,
   EmptyState,
-  Pagination,
+  Table,
 } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import type { BadgeProps, RowAction, TableColumn } from '@openfactu/ui';
 import { Plus, Trash2, MapPin, Search, Mail, Truck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
@@ -300,6 +299,84 @@ export const ShipmentsTab: React.FC = () => {
     [warehouses],
   );
 
+  const columns: TableColumn<Shipment>[] = [
+    {
+      header: 'Estado',
+      cell: (s) => (
+        <div className="flex items-center gap-1.5">
+          <Badge variant={STATUS_BADGE[s.status] || 'neutral'}>
+            {STATUS_LABEL[s.status] || s.status}
+          </Badge>
+          {isLive(s.lastLocationAt) && (
+            <span
+              className="inline-block w-2 h-2 rounded-full bg-success animate-pulse"
+              title="Reportando posición ahora"
+            />
+          )}
+        </div>
+      ),
+    },
+    {
+      header: 'Transportista',
+      cell: (s) => (
+        <>
+          {s.carrier}
+          {s.trackingNumber && (
+            <span className="ml-2 font-mono text-[10px] text-fg-muted">{s.trackingNumber}</span>
+          )}
+        </>
+      ),
+      sortable: true,
+      sortAccessor: (s) => s.carrier,
+    },
+    {
+      header: 'Conductor',
+      cell: (s) => (
+        <>
+          {s.driverName || '—'}
+          {s.vehiclePlate && (
+            <span className="ml-2 text-[10px] font-mono bg-bg-muted px-1.5 py-0.5 rounded">
+              {s.vehiclePlate}
+            </span>
+          )}
+        </>
+      ),
+      sortable: true,
+      sortAccessor: (s) => s.driverName || '',
+    },
+    {
+      header: 'Destino',
+      cell: (s) => s.destinationAddress || '—',
+      className: 'truncate max-w-[280px]',
+    },
+    {
+      header: 'Última posición',
+      cell: (s) => (s.lastLat != null && s.lastLng != null ? timeAgo(s.lastLocationAt) : '—'),
+      className: 'text-[11px] text-fg-muted',
+    },
+  ];
+
+  // Los tres botones de la antigua columna «Acciones» pasan al menú ⋯ (y al
+  // click derecho) que ofrece la Table.
+  const rowActions = (s: Shipment): RowAction[] => [
+    {
+      label: 'Ver detalle',
+      icon: <MapPin size={14} />,
+      onClick: () => openTab(`/logistics/shipments/${s.id}`),
+    },
+    {
+      label: 'Reenviar notificación',
+      icon: <Mail size={14} />,
+      onClick: () => resendNotification(s.id, s.status),
+    },
+    {
+      label: 'Eliminar envío',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      onClick: () => remove(s.id),
+    },
+  ];
+
   return (
     <div className="space-y-3">
       {/* Barra de filtros */}
@@ -376,11 +453,7 @@ export const ShipmentsTab: React.FC = () => {
       </Card>
 
       {/* Tabla / mensaje vacío */}
-      {loading ? (
-        <div className="py-10 flex justify-center">
-          <Loader />
-        </div>
-      ) : rows.length === 0 ? (
+      {!loading && rows.length === 0 ? (
         <Card bodyClassName="py-10">
           <EmptyState
             icon={<Truck size={28} />}
@@ -404,115 +477,23 @@ export const ShipmentsTab: React.FC = () => {
           />
         </Card>
       ) : (
-        <Card bodyClassName="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[780px]">
-              <thead className="bg-bg-muted text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                <tr>
-                  <th className="px-4 py-2 text-left">Estado</th>
-                  <th className="px-4 py-2 text-left">Transportista</th>
-                  <th className="px-4 py-2 text-left">Conductor</th>
-                  <th className="px-4 py-2 text-left">Destino</th>
-                  <th className="px-4 py-2 text-left">Última posición</th>
-                  <th className="px-4 py-2 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((s) => {
-                  const live = isLive(s.lastLocationAt);
-                  return (
-                    <tr
-                      key={s.id}
-                      className="border-t border-border-subtle hover:bg-bg-hover cursor-pointer"
-                      onClick={() => openTab(`/logistics/shipments/${s.id}`)}
-                    >
-                      <td className="px-4 py-2">
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant={STATUS_BADGE[s.status] || 'neutral'}>
-                            {STATUS_LABEL[s.status] || s.status}
-                          </Badge>
-                          {live && (
-                            <span
-                              className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
-                              title="Reportando posición ahora"
-                            />
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2 text-fg-body">
-                        {s.carrier}
-                        {s.trackingNumber && (
-                          <span className="ml-2 font-mono text-[10px] text-slate-500">
-                            {s.trackingNumber}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-fg-body">
-                        {s.driverName || '—'}
-                        {s.vehiclePlate && (
-                          <span className="ml-2 text-[10px] font-mono bg-bg-muted px-1.5 py-0.5 rounded">
-                            {s.vehiclePlate}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-fg-body truncate max-w-[280px]">
-                        {s.destinationAddress || '—'}
-                      </td>
-                      <td className="px-4 py-2 text-[11px] text-fg-muted">
-                        {s.lastLat != null && s.lastLng != null ? timeAgo(s.lastLocationAt) : '—'}
-                      </td>
-                      <td className="px-4 py-2 text-right whitespace-nowrap">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openTab(`/logistics/shipments/${s.id}`);
-                          }}
-                          title="Ver detalle"
-                        >
-                          <MapPin size={13} />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            resendNotification(s.id, s.status);
-                          }}
-                          title="Reenviar notificación al destinatario"
-                        >
-                          <Mail size={13} />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            remove(s.id);
-                          }}
-                          title="Eliminar envío"
-                        >
-                          <Trash2 size={13} />
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {/* Paginación (sin selector de tamaño: PAGE_SIZE es fijo) */}
-          <Pagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={total}
-            onPageChange={setPage}
-            pageSizeOptions={[]}
-            className="px-4 py-2 border-t border-border-subtle"
+        <Card className="overflow-hidden" noPadding>
+          {/* Paginación de servidor: `rows` es solo la página actual, así que
+              se le pasa el `total` real para que calcule las páginas. */}
+          <Table
+            columns={columns}
+            data={rows}
+            isLoading={loading}
+            rowActions={rowActions}
+            onRowClick={(s) => openTab(`/logistics/shipments/${s.id}`)}
+            skeletonRowHeight={24}
+            pagination={{
+              page,
+              pageSize: PAGE_SIZE,
+              total,
+              onPageChange: setPage,
+              pageSizeOptions: [],
+            }}
           />
         </Card>
       )}
