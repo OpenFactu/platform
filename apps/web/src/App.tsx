@@ -81,7 +81,7 @@ function App() {
 
   if (!setupChecked || authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 relative">
+      <div className="min-h-screen bg-bg-app relative">
         <GlobalLoader isLoading={true} message="Keirost ERP | Cargando Sistema…" />
       </div>
     );

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { cn } from '@openfactu/ui';
+import { cn, Accordion, Badge } from '@openfactu/ui';
 import { ChevronRight, Puzzle, ChevronDown } from 'lucide-react';
 import { usePluginFields, PluginFieldsSection, type FieldSurface } from './plugin-fields';
 
@@ -34,25 +34,25 @@ export const PluginFieldsPanel: React.FC<Props> = ({
 
   if (layout === 'sidebar') {
     return (
-      <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+      <div className="rounded-lg border border-border-default bg-bg-card overflow-hidden">
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 bg-bg-muted border-b border-border-subtle hover:bg-bg-hover transition-colors"
         >
           <div className="flex items-center gap-2">
-            <Puzzle size={14} className="text-primary" />
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+            <Puzzle size={14} className="text-accent" />
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
               {title}
             </span>
-            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
+            <span className="text-[9px] font-bold text-fg-subtle bg-bg-muted px-1.5 py-0.5 rounded-full">
               {fields.length}
             </span>
           </div>
           {collapsed ? (
-            <ChevronRight size={14} className="text-slate-400" />
+            <ChevronRight size={14} className="text-fg-subtle" />
           ) : (
-            <ChevronDown size={14} className="text-slate-400" />
+            <ChevronDown size={14} className="text-fg-subtle" />
           )}
         </button>
         {!collapsed && (
@@ -71,15 +71,42 @@ export const PluginFieldsPanel: React.FC<Props> = ({
     );
   }
 
+  /**
+   * En línea el bloque va dentro de un `Accordion`: en fichas largas (un
+   * interlocutor, un artículo) los campos personalizados son lo último y
+   * estorban al resto del formulario si no se pueden plegar. Arranca abierto
+   * para que no pasen desapercibidos, y el contador deja ver cuántos hay sin
+   * necesidad de desplegarlo.
+   */
   return (
-    <div className={cn('pt-4 border-t border-slate-100 dark:border-slate-800')}>
-      <PluginFieldsSection
-        tableName={tableName}
-        values={values}
-        onChange={onChange}
-        disabled={disabled}
-        title={title}
-        surface={surface}
+    <div className={cn('pt-4 border-t border-border-subtle')}>
+      <Accordion
+        type="multiple"
+        defaultOpenKeys={['plugin-fields']}
+        items={[
+          {
+            key: 'plugin-fields',
+            title: (
+              <span className="flex items-center gap-2">
+                <Puzzle size={14} className="text-accent" />
+                <span className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
+                  {title}
+                </span>
+                <Badge variant="neutral">{fields.length}</Badge>
+              </span>
+            ),
+            content: (
+              <PluginFieldsSection
+                tableName={tableName}
+                values={values}
+                onChange={onChange}
+                disabled={disabled}
+                surface={surface}
+                header={false}
+              />
+            ),
+          },
+        ]}
       />
     </div>
   );

@@ -1,10 +1,22 @@
 import { paymentMethodsApi, paymentsApi } from '@/modules/accounting/api';
 import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, useToast, usePopup } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  SearchableSelect,
+  EmptyState,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
 import { CreditCard, Trash2, Inbox, Pencil } from 'lucide-react';
 import { useFormat } from '@/hooks/useFormat';
-import type { Payment as PaymentRow, PaymentMethod as MethodRow } from '@/modules/accounting/domain/accounting';
+import type {
+  Payment as PaymentRow,
+  PaymentMethod as MethodRow,
+} from '@/modules/accounting/domain/accounting';
 
 interface Props {
   kind: 'sales' | 'purchase';
@@ -77,7 +89,9 @@ export const InvoicePaymentsList: React.FC<Props> = ({
       await load();
       onChanged?.();
     } catch (e) {
-      toast.error(e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al actualizar');
+      toast.error(
+        e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al actualizar',
+      );
     }
   };
 
@@ -95,7 +109,9 @@ export const InvoicePaymentsList: React.FC<Props> = ({
       await load();
       onChanged?.();
     } catch (e) {
-      toast.error(e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al eliminar');
+      toast.error(
+        e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al eliminar',
+      );
     }
   };
 
@@ -119,12 +135,11 @@ export const InvoicePaymentsList: React.FC<Props> = ({
         {loading ? (
           <div className="text-xs text-ink-400 text-center py-6 font-mono">Cargando…</div>
         ) : payments.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-6 text-ink-400">
-            <Inbox size={24} />
-            <p className="text-[11px] font-mono uppercase tracking-wider">
-              Sin {kind === 'sales' ? 'cobros' : 'pagos'} aún
-            </p>
-          </div>
+          <EmptyState
+            icon={<Inbox size={24} />}
+            title={`Sin ${kind === 'sales' ? 'cobros' : 'pagos'} aún`}
+            className="py-6"
+          />
         ) : (
           <ul className="divide-y divide-line dark:divide-ink-700">
             {payments.map((p) => (
@@ -225,13 +240,7 @@ const EditPaymentForm: React.FC<EditPaymentFormProps> = ({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Input
-          type="date"
-          label="Fecha"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          required
-        />
+        <DatePicker label="Fecha" value={date} onChange={(v) => setDate(v ?? '')} required />
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
             Nº de referencia <span className="text-rose-600 font-black">*</span>
@@ -257,18 +266,13 @@ const EditPaymentForm: React.FC<EditPaymentFormProps> = ({
         <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
           Método
         </label>
-        <select
+        <SearchableSelect
           value={methodId}
-          onChange={(e) => setMethodId(e.target.value)}
-          className="w-full px-3 py-2 border border-line dark:border-ink-700 rounded-xs bg-white dark:bg-ink-900 text-ink-900 dark:text-slate-100 text-sm"
-        >
-          <option value="">—</option>
-          {methods.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
+          onChange={setMethodId}
+          options={methods.map((m) => ({ value: m.id, label: m.name }))}
+          placeholder="—"
+          clearable
+        />
       </div>
       <Input label="Notas" value={notes} onChange={(e) => setNotes(e.target.value)} />
       <div className="flex justify-end gap-2 pt-2">

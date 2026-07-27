@@ -5,13 +5,17 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Loader,
+  usePopup,
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
   SearchableSelect,
   cn,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
@@ -38,9 +42,6 @@ import { MobileLineCards } from '../components/MobileLineCards';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
@@ -133,10 +134,8 @@ const InvoiceList: React.FC<{
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {formatDocCode(item)}
-          </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1 uppercase tracking-tighter">
+          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="text-[10px] text-fg-subtle font-mono mt-1 uppercase tracking-tighter">
             ID: {item.id.substring(0, 8)}
           </span>
         </div>
@@ -152,10 +151,8 @@ const InvoiceList: React.FC<{
       header: 'Proveedor',
       accessor: (item: any) => (
         <div>
-          <p className="font-bold text-slate-700 dark:text-slate-200 leading-tight">
-            {item.partnerName}
-          </p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mt-1">
+          <p className="font-bold text-fg-body leading-tight">{item.partnerName}</p>
+          <p className="text-[10px] text-fg-subtle uppercase tracking-widest leading-none mt-1">
             CIE: {item.partnerId.substring(0, 6)}
           </p>
         </div>
@@ -169,9 +166,7 @@ const InvoiceList: React.FC<{
             <FileText size={11} /> {item.baseDocCode}
           </span>
         ) : (
-          <span className="text-[10px] text-slate-300 dark:text-slate-600 font-bold italic">
-            Directa
-          </span>
+          <span className="text-[10px] text-fg-subtle font-bold italic">Directa</span>
         ),
     },
     {
@@ -188,7 +183,7 @@ const InvoiceList: React.FC<{
             )}
           </span>
         ) : (
-          <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
+          <span className="text-fg-subtle text-xs">—</span>
         ),
     },
     {
@@ -197,9 +192,7 @@ const InvoiceList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
       accessor: (item: any) => (
-        <span className="font-black text-slate-900 dark:text-slate-100">
-          {fmt.money(item.total)}
-        </span>
+        <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
       ),
     },
     {
@@ -223,30 +216,12 @@ const InvoiceList: React.FC<{
         <PaymentStatusBadge status={item.paymentStatus} isLocked={item.isLocked} compact />
       ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (item: any) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleQuickPdf(item.id);
-          }}
-          isLoading={downloadingId === item.id}
-          className="h-8 w-8 p-0 text-ink-500 dark:text-ink-400 hover:text-accent hover:bg-accent/10 dark:hover:bg-accent/15"
-          title="Descargar PDF"
-        >
-          <Download size={14} />
-        </Button>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (item: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que no hay que duplicarlas
+  // entre una columna de botones y el menú contextual.
+  const rowActions = (item: any): RowAction[] => [
     { label: 'Ver Factura', icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: 'Descargar PDF',
@@ -257,37 +232,36 @@ const InvoiceList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-4 tracking-tighter">
-            <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-600 dark:text-amber-300 shadow-sm border border-amber-100 dark:border-amber-500/20">
-              <FileStack size={32} />
-            </div>
-            Facturas de Compra
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium ml-1">
-            Registro para el libro de IVA y pagos a proveedores.
-          </p>
-          {mastersError && (
-            <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-700 dark:text-amber-200 text-xs font-bold animate-in slide-in-from-top">
+      <PageHeader
+        title="Facturas de Compra"
+        subtitle="Registro para el libro de IVA y pagos a proveedores."
+        icon={<FileStack size={18} />}
+        size="lg"
+        divider
+        toolbar={
+          mastersError ? (
+            <div className="flex items-center gap-2 p-3 bg-warning-bg border border-warning rounded-lg text-warning-fg text-xs font-bold animate-in slide-in-from-top">
               <AlertCircle size={16} />
               {mastersError}
             </div>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {doc.state.canWrite && onCreateFromClone && (
-            <CloneDocumentActions docType="PINV" onPaste={onCreateFromClone} show="paste" />
-          )}
-          <Button
-            onClick={onCreate}
-            disabled={!doc.state.canWrite}
-            className="flex items-center gap-2 h-12 px-6 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:grayscale"
-          >
-            <Plus size={20} /> Nueva Factura Directa
-          </Button>
-        </div>
-      </div>
+          ) : undefined
+        }
+        actions={
+          <div className="flex items-center gap-3">
+            {doc.state.canWrite && onCreateFromClone && (
+              <CloneDocumentActions docType="PINV" onPaste={onCreateFromClone} show="paste" />
+            )}
+            <Button
+              type="button"
+              onClick={onCreate}
+              disabled={!doc.state.canWrite}
+              className="flex items-center gap-2 disabled:opacity-50"
+            >
+              <Plus size={20} /> Nueva Factura Directa
+            </Button>
+          </div>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
@@ -343,9 +317,7 @@ const InvoiceList: React.FC<{
               {
                 label: 'Total',
                 value: (item: any) => (
-                  <span className="font-black text-slate-900 dark:text-slate-100">
-                    {fmt.money(item.total)}
-                  </span>
+                  <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
                 ),
               },
               {
@@ -378,9 +350,10 @@ const InvoiceList: React.FC<{
           />
         ) : (
           <Table
-            columns={ctxColumns}
+            columns={columns}
             data={filteredData || []}
             isLoading={loading}
+            rowActions={rowActions}
             onRowClick={onDetail}
             selectable
             selectedKeys={selectedKeys}
@@ -388,14 +361,6 @@ const InvoiceList: React.FC<{
           />
         )}
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };
@@ -477,42 +442,42 @@ const InvoiceForm: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 dark:hover:text-slate-600 transition-all shadow-sm"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tighter flex items-center gap-3">
-              {state.lines.some((l: any) => l.baseId)
-                ? 'Facturación de Albarán'
-                : 'Nueva Factura Directa'}
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium ml-1 flex items-center gap-2">
-              <FileText size={14} className="text-amber-500" />
-              Ingreso de gasto y contabilización de impuestos.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        title={
+          state.lines.some((l: any) => l.baseId)
+            ? 'Facturación de Albarán'
+            : 'Nueva Factura Directa'
+        }
+        subtitle={
+          <span className="flex items-center gap-2">
+            <FileText size={14} />
+            Ingreso de gasto y contabilización de impuestos.
+          </span>
+        }
+        size="lg"
+        divider
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={onBack} title="Volver">
+            <ArrowLeft size={14} className="mr-1" /> Volver
+          </Button>
+        }
+        actions={
           <Button
+            type="button"
             onClick={() => onSubmit()}
             isLoading={state.isSubmitting}
             disabled={!!state.seriesError || !state.canWrite}
-            className="flex items-center gap-2 h-12 px-8 focus:ring-4 ring-blue-500/10 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 disabled:opacity-50"
           >
             <Save size={20} /> Asentar Factura
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 md:col-span-2 space-y-6 border-slate-100 dark:border-slate-800">
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-baseline gap-4">
-            <h3 className="font-black text-slate-700 dark:text-slate-200 uppercase text-[11px] tracking-[0.15em] leading-none">
+        <Card className="p-6 md:col-span-2 space-y-6 border-border-subtle">
+          <div className="border-b border-border-subtle pb-3 flex justify-between items-baseline gap-4">
+            <h3 className="font-black text-fg-body uppercase text-[11px] tracking-[0.15em] leading-none">
               Cabecera de Factura
             </h3>
             <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider leading-none">
@@ -521,7 +486,7 @@ const InvoiceForm: React.FC<{
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Proveedor / Acreedor *
               </label>
               <SearchableSelect
@@ -532,15 +497,10 @@ const InvoiceForm: React.FC<{
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Fecha Factura *
               </label>
-              <Input
-                type="date"
-                value={state.date}
-                onChange={(e) => setState.setDate(e.target.value)}
-                className="font-bold text-slate-700 dark:text-slate-200 h-10 border-slate-200 dark:border-slate-700"
-              />
+              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
             </div>
             <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
           </div>
@@ -549,15 +509,13 @@ const InvoiceForm: React.FC<{
         <DocumentFiscalPanel kind="purchase" state={state} setState={setState} />
 
         <div className="space-y-6">
-          <Card className="p-6 space-y-6 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest border-b pb-2">
+          <Card className="p-6 space-y-6 border-border-subtle bg-bg-muted">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest border-b pb-2">
               Series y Periodo
             </h4>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Serie de Numeración *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Serie de Numeración *</label>
                 <SearchableSelect
                   value={state.seriesId}
                   onChange={setState.setSeriesId}
@@ -565,17 +523,16 @@ const InvoiceForm: React.FC<{
                 />
                 {state.isManualSeries && (
                   <div className="mt-2 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                    <label className="text-[10px] font-bold text-fg-muted">
                       Número de documento (manual) *
                     </label>
-                    <input
+                    <Input
                       type="number"
                       min={1}
                       step={1}
                       value={state.manualNumber}
                       onChange={(e) => setState.setManualNumber(e.target.value)}
                       placeholder="Ej: 1050"
-                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     />
                   </div>
                 )}
@@ -586,9 +543,7 @@ const InvoiceForm: React.FC<{
                 )}
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Periodo Contable *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Periodo Contable *</label>
                 <SearchableSelect
                   value={state.periodId}
                   onChange={setState.setPeriodId}
@@ -607,7 +562,7 @@ const InvoiceForm: React.FC<{
         </div>
       </div>
 
-      <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-lg overflow-hidden border-border-subtle" noPadding>
         {isMobileForm ? (
           <MobileLineCards
             columns={columns}
@@ -621,53 +576,46 @@ const InvoiceForm: React.FC<{
             emptyMessage="No hay líneas en la factura."
           />
         )}
-        <div className="p-6 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col md:flex-row justify-between items-start md:items-center border-t border-slate-100 dark:border-slate-800 gap-6">
+        <div className="p-6 bg-bg-muted flex flex-col md:flex-row justify-between items-start md:items-center border-t border-border-subtle gap-6">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm">
-              <button
-                onClick={() => Array(1).fill(0).forEach(actions.addLine)}
-                className="h-8 min-w-[36px] px-2 rounded-lg text-[10px] font-black bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all"
-              >
-                +1
-              </button>
-              <button
-                onClick={() => Array(5).fill(0).forEach(actions.addLine)}
-                className="h-8 min-w-[36px] px-2 rounded-lg text-[10px] font-black bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all"
-              >
-                +5
-              </button>
-              <button
-                onClick={() => Array(10).fill(0).forEach(actions.addLine)}
-                className="h-8 min-w-[36px] px-2 rounded-lg text-[10px] font-black bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all"
-              >
-                +10
-              </button>
+            <div className="flex items-center bg-bg-card border border-border-default rounded-lg p-1 shadow-sm">
+              {[1, 5, 10].map((n) => (
+                <Button
+                  key={n}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => Array(n).fill(0).forEach(actions.addLine)}
+                  title={`Añadir ${n} línea${n === 1 ? '' : 's'}`}
+                  className="h-8 min-w-[36px] px-2 text-[10px] font-black"
+                >
+                  +{n}
+                </Button>
+              ))}
             </div>
             <Button
               variant="secondary"
               size="sm"
               onClick={() => actions.addLine()}
-              className="text-amber-600 dark:text-amber-300 font-bold flex items-center gap-2 h-10 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              className="text-amber-600 dark:text-amber-300 font-bold flex items-center gap-2 h-10 border-border-default bg-bg-card"
             >
               <PlusSquare size={16} /> Línea de Gasto
             </Button>
           </div>
-          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <div className="flex justify-between w-full text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-lg border border-border-subtle shadow-sm">
+            <div className="flex justify-between w-full text-[10px] font-black text-fg-subtle uppercase tracking-widest px-1">
               <span>Base Imponible:</span>
-              <span className="text-slate-600 dark:text-slate-300">
-                {computations.subtotal.toFixed(2)} €
-              </span>
+              <span className="text-fg-body">{computations.subtotal.toFixed(2)} €</span>
             </div>
             <div className="flex justify-between w-full text-[10px] font-black text-amber-500 uppercase tracking-widest px-1">
               <span>Cuota IVA:</span>
               <span>{computations.taxTotal.toFixed(2)} €</span>
             </div>
-            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-slate-50">
-              <span className="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-widest">
+            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-border-subtle">
+              <span className="text-[10px] uppercase font-black text-fg-subtle tracking-widest">
                 Total Factura:
               </span>
-              <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter ml-4">
+              <span className="text-2xl font-black text-fg-default tracking-tighter ml-4">
                 {computations.total.toFixed(2)} €
               </span>
             </div>
@@ -797,7 +745,10 @@ const InvoiceDetail: React.FC<{
         invoiceId={invoice.id}
         invoiceCode={docCode}
         remaining={remaining}
-        onSuccess={() => setPaymentsRefreshKey((v) => v + 1)}
+        onSuccess={() => {
+          setPaymentsRefreshKey((v) => v + 1);
+          notifyDocChange(DocType.PurchaseInvoice);
+        }}
       />
       <SendInvoiceModal
         open={emailModalOpen}
@@ -814,37 +765,37 @@ const InvoiceDetail: React.FC<{
             kind="purchase"
             invoiceId={invoice.id}
             refreshKey={paymentsRefreshKey}
-            onChanged={() => setPaymentsRefreshKey((v) => v + 1)}
+            onChanged={() => {
+              setPaymentsRefreshKey((v) => v + 1);
+              notifyDocChange(DocType.PurchaseInvoice);
+            }}
           />
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card
-          className="md:col-span-2 border-slate-100 dark:border-slate-800"
-          bodyClassName="p-6 space-y-5"
-        >
+        <Card className="md:col-span-2 border-border-subtle" bodyClassName="p-6 space-y-5">
           <div>
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] mb-2">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] mb-2">
               Proveedor
             </h4>
-            <p className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <p className="text-xl font-black text-fg-default tracking-tight">
               {partner?.name || '—'}
             </p>
             {partner?.nif && (
-              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5 font-mono">
+              <p className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider mt-0.5 font-mono">
                 NIF: {partner.nif}
               </p>
             )}
           </div>
           {fromDelivery && (
-            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-lg">
               <Copy size={14} className="text-blue-600 dark:text-blue-300 shrink-0" />
               <p className="text-xs text-blue-800 dark:text-blue-200 font-medium leading-tight">
                 Factura generada desde uno o varios albaranes de compra.
               </p>
             </div>
           )}
-          <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/30 rounded-xl">
+          <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/30 rounded-lg">
             <FileText size={16} className="text-amber-600 dark:text-amber-300 shrink-0" />
             <p className="text-xs text-amber-800 dark:text-amber-200 font-medium leading-tight">
               Documento contable firme — genera obligación de pago.
@@ -852,45 +803,41 @@ const InvoiceDetail: React.FC<{
           </div>
         </Card>
 
-        <Card className="border-slate-100 dark:border-slate-800" bodyClassName="p-6 space-y-4">
-          <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] border-b border-slate-100 dark:border-slate-800 pb-2">
+        <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
+          <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] border-b border-border-subtle pb-2">
             Información
           </h4>
           <dl className="space-y-2.5">
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Fecha
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {fmt.date(invoice.date)}
               </dd>
             </div>
             {series && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Serie
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {series.name}
-                </dd>
+                <dd className="text-sm font-bold text-fg-default truncate">{series.name}</dd>
               </div>
             )}
             {period && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Periodo
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {period.name}
-                </dd>
+                <dd className="text-sm font-bold text-fg-default truncate">{period.name}</dd>
               </div>
             )}
             {docType && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Tipo de factura
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-2">
+                <dd className="text-sm font-bold text-fg-default truncate flex items-center gap-2">
                   {docType.name}
                   {docType.isRectify && (
                     <span className="px-1.5 py-0.5 rounded-xs text-[9px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
@@ -902,30 +849,26 @@ const InvoiceDetail: React.FC<{
             )}
             {payMethod && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Método de pago
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {payMethod.name}
-                </dd>
+                <dd className="text-sm font-bold text-fg-default truncate">{payMethod.name}</dd>
               </div>
             )}
             {payTerm && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Plazo de pago
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {payTerm.name}
-                </dd>
+                <dd className="text-sm font-bold text-fg-default truncate">{payTerm.name}</dd>
               </div>
             )}
             {invoice.dueDate && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Vencimiento
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+                <dd className="text-sm font-bold text-fg-default tabular-nums">
                   {fmt.date(invoice.dueDate)}
                 </dd>
               </div>
@@ -944,7 +887,7 @@ const InvoiceDetail: React.FC<{
         </Card>
       </div>
 
-      <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-sm overflow-hidden border-border-subtle" noPadding>
         {isMobile ? (
           <MobileLineCards columns={columns} lines={invoice.lines || []} />
         ) : (
@@ -977,6 +920,7 @@ export const PurchaseInvoices: React.FC = () => {
   const { token, user } = useAuth();
   const { flags } = useTheme();
   const toast = useToast();
+  const popup = usePopup();
   const params = useParams();
   const location = useLocation();
   const { openTab } = useTabs();
@@ -1138,11 +1082,17 @@ export const PurchaseInvoices: React.FC = () => {
   };
 
   const handleCancel = async (id: string) => {
-    if (
-      flags.confirmBeforeCancel &&
-      !confirm('¿Estás seguro de cancelar esta factura? Los albaranes se reabrirán.')
-    )
-      return;
+    // El flag de la empresa decide si se pide confirmación — no se toca.
+    if (flags.confirmBeforeCancel) {
+      const ok = await popup.confirm({
+        title: 'Cancelar factura',
+        message: '¿Estás seguro de cancelar esta factura? Los albaranes se reabrirán.',
+        tone: 'danger',
+        confirmLabel: 'Cancelar factura',
+        cancelLabel: 'Volver',
+      });
+      if (!ok) return;
+    }
     try {
       await docsApi.cancel('/api/purchases/invoices', id);
       toast.success('Factura cancelada y stock/albaranes revertidos');

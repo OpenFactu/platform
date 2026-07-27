@@ -1,6 +1,22 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { Card, Button, Input, Loader, useToast, Modal, Badge } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Textarea,
+  Checkbox,
+  NumberInput,
+  Select,
+  SearchableSelect,
+  EmptyState,
+  Loader,
+  PageHeader,
+  useToast,
+  usePopup,
+  Modal,
+  Badge,
+} from '@openfactu/ui';
 import {
   Plus,
   Trash2,
@@ -74,6 +90,37 @@ const TYPE_OPTIONS: { value: string; label: string; hint: string }[] = [
 
 const ROLE_OPTIONS = ['SUPERUSER', 'ADMIN', 'USER'];
 
+const WIDTH_OPTIONS = [
+  { value: 'third', label: '1/3' },
+  { value: 'half', label: '1/2' },
+  { value: 'full', label: 'Completo' },
+];
+
+const TABLE_KIND_OPTIONS = [
+  { value: 'master', label: 'Maestro' },
+  { value: 'document', label: 'Documento' },
+];
+
+const MENU_MODULE_OPTIONS = [
+  { value: '', label: '(Personalizado — módulo nuevo al final)' },
+  { value: 'home', label: 'Inicio' },
+  { value: 'inventory', label: 'Inventario' },
+  { value: 'sales', label: 'Ventas' },
+  { value: 'purchases', label: 'Compras' },
+  { value: 'accounting', label: 'Contabilidad' },
+  { value: 'hr', label: 'Recursos humanos' },
+  { value: 'reports', label: 'Informes' },
+  { value: 'configuration', label: 'Configuración' },
+];
+
+/** Etiquetas de las superficies donde puede aparecer un campo. */
+const VISIBLE_IN_LABELS: Record<string, string> = {
+  form: 'Formulario',
+  detail: 'Detalle',
+  list: 'Listado',
+  pdf: 'PDF',
+};
+
 const defaultForm = () => ({
   tableName: '',
   fieldName: '',
@@ -92,10 +139,12 @@ const defaultForm = () => ({
   visibleIn: ['form', 'detail', 'list', 'pdf'] as string[],
   readRolesRaw: '',
   writeRolesRaw: '',
-  min: '' as string,
-  max: '' as string,
-  minLength: '' as string,
-  maxLength: '' as string,
+  // number | null (antes string '') — los cuatro los edita un NumberInput y
+  // `null` es «sin límite».
+  min: null as number | null,
+  max: null as number | null,
+  minLength: null as number | null,
+  maxLength: null as number | null,
   pattern: '',
   unique: false,
   refTable: '',
@@ -105,6 +154,7 @@ const defaultForm = () => ({
 export const CustomFields: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<FieldRow[]>([]);
@@ -215,10 +265,10 @@ export const CustomFields: React.FC = () => {
       visibleIn: r.visibleIn || ['form', 'detail', 'pdf'],
       readRolesRaw: (r.readRoles || []).join(','),
       writeRolesRaw: (r.writeRoles || []).join(','),
-      min: r.validation?.min?.toString() || '',
-      max: r.validation?.max?.toString() || '',
-      minLength: r.validation?.minLength?.toString() || '',
-      maxLength: r.validation?.maxLength?.toString() || '',
+      min: r.validation?.min ?? null,
+      max: r.validation?.max ?? null,
+      minLength: r.validation?.minLength ?? null,
+      maxLength: r.validation?.maxLength ?? null,
       pattern: r.validation?.pattern || '',
       unique: !!r.validation?.unique,
       refTable: r.refTable || '',
@@ -260,10 +310,10 @@ export const CustomFields: React.FC = () => {
       .map((s) => s.trim())
       .filter(Boolean);
     const validation: any = {};
-    if (form.min !== '') validation.min = Number(form.min);
-    if (form.max !== '') validation.max = Number(form.max);
-    if (form.minLength !== '') validation.minLength = Number(form.minLength);
-    if (form.maxLength !== '') validation.maxLength = Number(form.maxLength);
+    if (form.min !== null) validation.min = form.min;
+    if (form.max !== null) validation.max = form.max;
+    if (form.minLength !== null) validation.minLength = form.minLength;
+    if (form.maxLength !== null) validation.maxLength = form.maxLength;
     if (form.pattern) validation.pattern = form.pattern;
     if (form.unique) validation.unique = true;
 
@@ -308,13 +358,16 @@ export const CustomFields: React.FC = () => {
   };
 
   const remove = async (row: FieldRow) => {
-    if (
-      !confirm(`¿Eliminar "${row.fieldName}" de ${row.tableName}? Se perderán los datos asociados.`)
-    )
-      return;
+    const ok = await popup.confirm({
+      title: 'Eliminar campo',
+      message: `Se eliminará "${row.fieldName}" de ${row.tableName} y se perderán los datos ya guardados en esa columna.`,
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/custom-fields/${row.id}`);
     if (!res.ok) {
-      const err = (res.data ?? {});
+      const err = res.data ?? {};
       toast.error(err.error || 'Error al eliminar');
       return;
     }
@@ -324,14 +377,26 @@ export const CustomFields: React.FC = () => {
   };
 
   const clone = async (row: FieldRow) => {
-    const target = window.prompt(
-      `Clonar "${row.fieldName}" a otra tabla.\nTabla destino:`,
-      allowedTables[0] || '',
-    );
+    // Antes era un window.prompt pidiendo el nombre de la tabla a mano; ahora
+    // se elige de la lista real de tablas permitidas.
+    const target = await popup.show<string>({
+      title: `Clonar "${row.fieldName}"`,
+      subtitle: 'Elige la tabla destino. El campo se creará allí con la misma definición.',
+      maxWidth: 'sm',
+      render: (close) => (
+        <CloneTargetForm
+          tables={allowedTables.filter((t) => t !== row.tableName)}
+          onCancel={() => close()}
+          onConfirm={(t) => close(t)}
+        />
+      ),
+    });
     if (!target) return;
-    const res = await coreApi.raw('POST', `/api/custom-fields/${row.id}/clone`, { targetTable: target });
+    const res = await coreApi.raw('POST', `/api/custom-fields/${row.id}/clone`, {
+      targetTable: target,
+    });
     if (!res.ok) {
-      const err = (res.data ?? {});
+      const err = res.data ?? {};
       toast.error(err.error || 'Error al clonar');
       return;
     }
@@ -430,15 +495,16 @@ export const CustomFields: React.FC = () => {
   };
 
   const removeTable = async (ut: (typeof userTables)[number]) => {
-    if (
-      !confirm(
-        `¿Eliminar la tabla "${ut.label || ut.tableName}"?\nSe perderán todos sus registros y campos.`,
-      )
-    )
-      return;
+    const ok = await popup.confirm({
+      title: 'Eliminar tabla',
+      message: `Se eliminará "${ut.label || ut.tableName}" con todos sus registros y campos. No hay marcha atrás.`,
+      tone: 'danger',
+      confirmLabel: 'Eliminar tabla',
+    });
+    if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/user-tables/${ut.tableName}`);
     if (!res.ok) {
-      const err = (res.data ?? {});
+      const err = res.data ?? {};
       toast.error(err.error || 'Error al eliminar');
       return;
     }
@@ -467,69 +533,79 @@ export const CustomFields: React.FC = () => {
     load();
   };
 
+  // Decimales admitidos por los límites min/max según el tipo del campo.
+  const boundPrecision = form.fieldType === 'INTEGER' ? 0 : form.fieldType === 'PERCENT' ? 2 : 4;
+
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <Wrench className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-              Campos personalizados
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Añade campos propios a cualquier tabla sin escribir código. Aparecen en form, detalle
-              y PDF.
-            </p>
+      <PageHeader
+        title="Campos personalizados"
+        subtitle="Añade campos propios a cualquier tabla sin escribir código. Aparecen en form, detalle y PDF."
+        icon={<Wrench size={18} />}
+        size="sm"
+        divider
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={openCreateTable}
+              className="flex items-center gap-2"
+            >
+              <TableIcon size={14} /> Nueva tabla
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowPacksModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Package size={14} /> Packs
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={exportAll}
+              className="flex items-center gap-2"
+            >
+              <Download size={14} /> Exportar
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2"
+            >
+              <Upload size={14} /> Importar
+            </Button>
+            {/* SE UTILIZA PARA EL INPUT DE ARCHIVO */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) importFile(f);
+                e.currentTarget.value = '';
+              }}
+            />
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={14} /> Nuevo campo
+            </Button>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={openCreateTable} className="flex items-center gap-2">
-            <TableIcon size={14} /> Nueva tabla
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setShowPacksModal(true)}
-            className="flex items-center gap-2"
-          >
-            <Package size={14} /> Packs
-          </Button>
-          <Button variant="secondary"  onClick={exportAll} className="flex items-center gap-2">
-            <Download size={14} /> Exportar
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2"
-          >
-            <Upload size={14} /> Importar
-          </Button>
-          {/* SE UTILIZA PARA EL INPUT DE ARCHIVO */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) importFile(f);
-              e.currentTarget.value = '';
-            }}
-          />
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={14} /> Nuevo campo
-          </Button>
-        </div>
-      </header>
+        }
+      />
 
       {/* ── Tablas de usuario ─────────────────────────────────────────── */}
       <Card bodyClassName="p-0">
-        <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="px-4 py-2 border-b border-border-subtle flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TableIcon size={14} className="text-primary" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
+            <span className="text-[10px] font-black uppercase tracking-widest text-fg-body">
               Tablas de usuario
             </span>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
+            <span className="text-[10px] text-fg-subtle font-semibold">
               {userTables.length} {userTables.length === 1 ? 'tabla' : 'tablas'}
             </span>
           </div>
@@ -538,10 +614,16 @@ export const CustomFields: React.FC = () => {
           </Button>
         </div>
         {userTables.length === 0 ? (
-          <div className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500">
-            Aún no has creado tablas propias. Crea una para tener una entidad nueva con listado,
-            form y menú.
-          </div>
+          <EmptyState
+            icon={<TableIcon size={18} />}
+            title="Aún no has creado tablas propias"
+            hint="Crea una para tener una entidad nueva con listado, formulario y menú."
+            action={
+              <Button size="sm" onClick={openCreateTable} className="flex items-center gap-1">
+                <Plus size={12} /> Nueva tabla
+              </Button>
+            }
+          />
         ) : (
           <ul>
             {userTables.map((ut) => {
@@ -550,7 +632,7 @@ export const CustomFields: React.FC = () => {
               return (
                 <li
                   key={ut.id}
-                  className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
+                  className="flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-0 hover:bg-bg-hover"
                 >
                   <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 flex items-center justify-center">
                     <PluginIcon iconName={ut.iconName || 'Table'} size={14} />
@@ -559,59 +641,63 @@ export const CustomFields: React.FC = () => {
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
                         onClick={() => openTab(`/u/${pathName}`)}
-                        className="font-semibold text-sm text-slate-800 dark:text-slate-100 hover:text-blue-600 text-left"
+                        className="font-semibold text-sm text-fg-default hover:text-blue-600 text-left"
                       >
                         {ut.label || pathName}
                       </button>
-                      <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono text-[10px] text-slate-500 dark:text-slate-400 rounded">
+                      <code className="px-1.5 py-0.5 bg-bg-muted font-mono text-[10px] text-fg-muted rounded">
                         {ut.tableName}
                       </code>
                       <Badge variant={ut.kind === 'document' ? 'info' : 'neutral'}>
                         {ut.kind === 'document' ? 'Documento' : 'Maestro'}
                       </Badge>
                       {ut.menuModule && (
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                          menú: {ut.menuModule}
-                        </span>
+                        <span className="text-[10px] text-fg-subtle">menú: {ut.menuModule}</span>
                       )}
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                      <span className="text-[10px] text-fg-subtle">
                         {count} {count === 1 ? 'campo' : 'campos'}
                       </span>
                     </div>
                     {ut.description && (
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {ut.description}
-                      </div>
+                      <div className="text-[11px] text-fg-muted truncate">{ut.description}</div>
                     )}
                   </div>
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => addFieldTo(ut)}
                     title="Añadir campo"
-                    className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-primary hover:bg-primary/10 rounded"
                   >
                     <Plus size={13} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => openTab(`/u/${pathName}`)}
                     title="Abrir"
-                    className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-primary hover:bg-primary/10 rounded"
                   >
                     <ExternalLink size={13} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => openEditTable(ut)}
                     title="Editar"
-                    className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-primary hover:bg-primary/10 rounded"
                   >
                     <Edit2 size={13} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => removeTable(ut)}
                     title="Eliminar tabla"
-                    className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                   >
                     <Trash2 size={13} />
-                  </button>
+                  </Button>
                 </li>
               );
             })}
@@ -632,21 +718,34 @@ export const CustomFields: React.FC = () => {
           <Loader />
         </div>
       ) : grouped.length === 0 ? (
-        <Card bodyClassName="py-16 text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Aún no has creado ningún campo personalizado.
-          </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-            Pulsa "Nuevo campo" o instala un pack.
-          </p>
+        <Card bodyClassName="p-0">
+          <EmptyState
+            icon={<Wrench size={18} />}
+            title="Aún no has creado ningún campo personalizado"
+            hint="Crea uno a medida o instala un pack de campos ya preparados."
+            action={
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowPacksModal(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Package size={14} /> Packs
+                </Button>
+                <Button onClick={openCreate} className="flex items-center gap-2">
+                  <Plus size={14} /> Nuevo campo
+                </Button>
+              </div>
+            }
+          />
         </Card>
       ) : (
         <div className="space-y-3">
           {grouped.map(([tbl, list]) => (
             <Card key={tbl} bodyClassName="p-0">
-              <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 flex items-center gap-2">
+              <div className="px-4 py-2 border-b border-border-subtle text-[11px] font-black uppercase tracking-widest text-fg-body flex items-center gap-2">
                 {tbl}
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
+                <span className="text-[10px] text-fg-subtle font-semibold">
                   {list.length} campos
                 </span>
               </div>
@@ -654,18 +753,18 @@ export const CustomFields: React.FC = () => {
                 {list.map((r) => (
                   <li
                     key={r.id}
-                    className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                    className="flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-0"
                   >
                     <code className="px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded">
                       {r.fieldName}
                     </code>
                     <button
                       onClick={() => openEdit(r)}
-                      className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex-1 truncate text-left hover:text-blue-600"
+                      className="text-sm font-semibold text-fg-body flex-1 truncate text-left hover:text-blue-600"
                     >
                       {r.label}
                       {r.section && (
-                        <span className="ml-2 text-[10px] text-slate-400 dark:text-slate-500 font-medium uppercase tracking-wider">
+                        <span className="ml-2 text-[10px] text-fg-subtle font-medium uppercase tracking-wider">
                           · {r.section}
                         </span>
                       )}
@@ -674,20 +773,24 @@ export const CustomFields: React.FC = () => {
                     {r.required && <Badge variant="warning">Obligatorio</Badge>}
                     {r.readOnly && <Badge variant="info">Solo lectura</Badge>}
                     {r.showInList && <Badge variant="success">En listado</Badge>}
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => clone(r)}
                       title="Clonar a otra tabla"
-                      className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-primary hover:bg-primary/10 rounded"
                     >
                       <Copy size={13} />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => remove(r)}
                       title="Eliminar"
-                      className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                     >
                       <Trash2 size={13} />
-                    </button>
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -708,19 +811,14 @@ export const CustomFields: React.FC = () => {
           <Section title="Identidad">
             <Row>
               <Field label="Tabla">
-                <select
+                {/* Lista de servidor y potencialmente larga → SearchableSelect. */}
+                <SearchableSelect
+                  options={allowedTables.map((t) => ({ value: t, label: t }))}
                   value={form.tableName}
+                  onChange={(v) => setForm({ ...form, tableName: v })}
                   disabled={!!editingId}
-                  onChange={(e) => setForm({ ...form, tableName: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                >
-                  <option value="">(elige una)</option>
-                  {allowedTables.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="(elige una)"
+                />
               </Field>
               <Field label="Nombre técnico">
                 <Input
@@ -739,19 +837,19 @@ export const CustomFields: React.FC = () => {
                 />
               </Field>
               <Field label="Tipo">
-                <select
+                {/* 16 tipos → SearchableSelect; el `hint` de cada uno se usa
+                    como etiqueta secundaria en el listado. */}
+                <SearchableSelect
+                  options={TYPE_OPTIONS.map((t) => ({
+                    value: t.value,
+                    label: t.label,
+                    secondaryLabel: t.hint,
+                  }))}
                   value={form.fieldType}
+                  onChange={(v) => setForm({ ...form, fieldType: v })}
                   disabled={!!editingId}
-                  onChange={(e) => setForm({ ...form, fieldType: e.target.value })}
-                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                >
-                  {TYPE_OPTIONS.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                />
+                <div className="text-[11px] text-fg-muted mt-1">
                   {TYPE_OPTIONS.find((t) => t.value === form.fieldType)?.hint}
                 </div>
               </Field>
@@ -764,12 +862,12 @@ export const CustomFields: React.FC = () => {
               <div className="text-[11px] text-slate-500 mb-1">
                 Una línea por opción — formato <code>value|label</code>.
               </div>
-              <textarea
+              <Textarea
                 value={form.optionsRaw}
                 onChange={(e) => setForm({ ...form, optionsRaw: e.target.value })}
                 rows={5}
                 placeholder={'low|Baja\nnormal|Normal\nhigh|Alta'}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 font-mono"
+                className="font-mono"
               />
             </Section>
           )}
@@ -778,18 +876,13 @@ export const CustomFields: React.FC = () => {
             <Section title="Referencia">
               <Row>
                 <Field label="Tabla destino">
-                  <select
+                  <SearchableSelect
+                    options={allowedTables.map((t) => ({ value: t, label: t }))}
                     value={form.refTable}
-                    onChange={(e) => setForm({ ...form, refTable: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                  >
-                    <option value="">(elige una)</option>
-                    {allowedTables.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setForm({ ...form, refTable: v })}
+                    placeholder="(elige una)"
+                    clearable
+                  />
                 </Field>
                 <Field label="Campo a mostrar">
                   <Input
@@ -813,21 +906,19 @@ export const CustomFields: React.FC = () => {
                 />
               </Field>
               <Field label="Anchura">
-                <select
+                <Select
+                  ariaLabel="Anchura"
+                  options={WIDTH_OPTIONS}
                   value={form.width}
-                  onChange={(e) => setForm({ ...form, width: e.target.value as any })}
-                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                >
-                  <option value="third">1/3</option>
-                  <option value="half">1/2</option>
-                  <option value="full">Completo</option>
-                </select>
+                  onChange={(v) => setForm({ ...form, width: v as any })}
+                />
               </Field>
               <Field label="Orden">
-                <Input
-                  type="number"
+                <NumberInput
                   value={form.displayOrder}
-                  onChange={(e) => setForm({ ...form, displayOrder: Number(e.target.value) || 0 })}
+                  onChange={(v) => setForm({ ...form, displayOrder: v ?? 0 })}
+                  emptyValue="zero"
+                  thousandSeparator={false}
                 />
               </Field>
             </Row>
@@ -858,27 +949,20 @@ export const CustomFields: React.FC = () => {
                 Visible en
               </label>
               <div className="flex gap-3 flex-wrap">
-                {['form', 'detail', 'list', 'pdf'].map((v) => (
-                  <label key={v} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
+                {Object.entries(VISIBLE_IN_LABELS).map(([v, label]) => (
+                  <label key={v} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
                       checked={form.visibleIn.includes(v)}
-                      onChange={(e) => {
+                      onChange={(checked) =>
                         setForm({
                           ...form,
-                          visibleIn: e.target.checked
+                          visibleIn: checked
                             ? [...form.visibleIn, v]
                             : form.visibleIn.filter((x) => x !== v),
-                        });
-                      }}
+                        })
+                      }
                     />
-                    {v === 'form'
-                      ? 'Formulario'
-                      : v === 'detail'
-                        ? 'Detalle'
-                        : v === 'list'
-                          ? 'Listado'
-                          : 'PDF'}
+                    {label}
                   </label>
                 ))}
               </div>
@@ -906,18 +990,22 @@ export const CustomFields: React.FC = () => {
           <Section title="Validación">
             {['INTEGER', 'DECIMAL', 'CURRENCY', 'PERCENT'].includes(form.fieldType) && (
               <Row>
+                {/* Los límites se guardan con los decimales que admite el tipo:
+                    entero 0, porcentaje 2, decimal/moneda 4 (como DECIMAL(15,4)). */}
                 <Field label="Mínimo">
-                  <Input
-                    type="number"
+                  <NumberInput
                     value={form.min}
-                    onChange={(e) => setForm({ ...form, min: e.target.value })}
+                    onChange={(v) => setForm({ ...form, min: v })}
+                    precision={boundPrecision}
+                    placeholder="sin límite"
                   />
                 </Field>
                 <Field label="Máximo">
-                  <Input
-                    type="number"
+                  <NumberInput
                     value={form.max}
-                    onChange={(e) => setForm({ ...form, max: e.target.value })}
+                    onChange={(v) => setForm({ ...form, max: v })}
+                    precision={boundPrecision}
+                    placeholder="sin límite"
                   />
                 </Field>
               </Row>
@@ -926,17 +1014,21 @@ export const CustomFields: React.FC = () => {
               <>
                 <Row>
                   <Field label="Longitud mín.">
-                    <Input
-                      type="number"
+                    <NumberInput
                       value={form.minLength}
-                      onChange={(e) => setForm({ ...form, minLength: e.target.value })}
+                      onChange={(v) => setForm({ ...form, minLength: v })}
+                      min={0}
+                      allowNegative={false}
+                      placeholder="sin límite"
                     />
                   </Field>
                   <Field label="Longitud máx.">
-                    <Input
-                      type="number"
+                    <NumberInput
                       value={form.maxLength}
-                      onChange={(e) => setForm({ ...form, maxLength: e.target.value })}
+                      onChange={(v) => setForm({ ...form, maxLength: v })}
+                      min={0}
+                      allowNegative={false}
+                      placeholder="sin límite"
                     />
                   </Field>
                 </Row>
@@ -980,7 +1072,7 @@ export const CustomFields: React.FC = () => {
             </div>
           </Section>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>
@@ -1009,8 +1101,8 @@ export const CustomFields: React.FC = () => {
             <Card key={p.id} bodyClassName="p-4 flex items-start gap-4">
               <Package className="text-blue-500 mt-0.5" size={18} />
               <div className="flex-1">
-                <div className="font-bold text-slate-800 dark:text-slate-100">{p.label}</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <div className="font-bold text-fg-default">{p.label}</div>
+                <div className="text-xs text-fg-muted mt-0.5">
                   {p.count} campos:{' '}
                   {p.fields.map((f: any) => `${f.tableName}.${f.fieldName}`).join(', ')}
                 </div>
@@ -1055,16 +1147,12 @@ export const CustomFields: React.FC = () => {
           </Row>
           <Row>
             <Field label="Tipo">
-              <select
+              <Select
+                ariaLabel="Tipo de tabla"
+                options={TABLE_KIND_OPTIONS}
                 value={tableForm.kind}
-                onChange={(e) =>
-                  setTableForm({ ...tableForm, kind: e.target.value as 'master' | 'document' })
-                }
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-              >
-                <option value="master">Maestro</option>
-                <option value="document">Documento</option>
-              </select>
+                onChange={(v) => setTableForm({ ...tableForm, kind: v as 'master' | 'document' })}
+              />
             </Field>
             <Field label="Icono (lucide-react)">
               <Input
@@ -1075,21 +1163,12 @@ export const CustomFields: React.FC = () => {
             </Field>
           </Row>
           <Field label="Módulo del menú">
-            <select
+            <Select
+              ariaLabel="Módulo del menú"
+              options={MENU_MODULE_OPTIONS}
               value={tableForm.menuModule}
-              onChange={(e) => setTableForm({ ...tableForm, menuModule: e.target.value })}
-              className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-            >
-              <option value="">(Personalizado — módulo nuevo al final)</option>
-              <option value="home">Inicio</option>
-              <option value="inventory">Inventario</option>
-              <option value="sales">Ventas</option>
-              <option value="purchases">Compras</option>
-              <option value="accounting">Contabilidad</option>
-              <option value="hr">Recursos humanos</option>
-              <option value="reports">Informes</option>
-              <option value="configuration">Configuración</option>
-            </select>
+              onChange={(v) => setTableForm({ ...tableForm, menuModule: v })}
+            />
           </Field>
           <Field label="Descripción">
             <Input
@@ -1098,7 +1177,7 @@ export const CustomFields: React.FC = () => {
               placeholder="Opcional"
             />
           </Field>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowTableModal(false)}>
               Cancelar
             </Button>
@@ -1112,7 +1191,7 @@ export const CustomFields: React.FC = () => {
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="space-y-3">
-    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-1">
+    <div className="text-[10px] font-black uppercase tracking-widest text-fg-subtle border-b border-border-subtle pb-1">
       {title}
     </div>
     <div className="space-y-3">{children}</div>
@@ -1137,15 +1216,44 @@ const Toggle: React.FC<{ label: string; checked: boolean; onChange: (v: boolean)
   checked,
   onChange,
 }) => (
+  // Checkbox y no Switch: forma parte del formulario del campo, se persiste al
+  // pulsar «Crear campo» / «Guardar cambios».
   <label className="flex items-center gap-2 cursor-pointer select-none">
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-      className="h-4 w-4"
-    />
-    <span className="text-sm text-slate-700 dark:text-slate-200">{label}</span>
+    <Checkbox checked={checked} onChange={onChange} />
+    <span className="text-sm text-fg-body">{label}</span>
   </label>
 );
+
+/**
+ * Cuerpo del popup «clonar campo a otra tabla». Sustituye al window.prompt que
+ * pedía el nombre de la tabla a mano.
+ */
+const CloneTargetForm: React.FC<{
+  tables: string[];
+  onCancel: () => void;
+  onConfirm: (table: string) => void;
+}> = ({ tables, onCancel, onConfirm }) => {
+  const [target, setTarget] = useState(tables[0] || '');
+  return (
+    <div className="space-y-4">
+      <Field label="Tabla destino">
+        <SearchableSelect
+          options={tables.map((t) => ({ value: t, label: t }))}
+          value={target}
+          onChange={setTarget}
+          placeholder="(elige una)"
+        />
+      </Field>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="secondary" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="button" onClick={() => onConfirm(target)} disabled={!target}>
+          Clonar
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 export default CustomFields;

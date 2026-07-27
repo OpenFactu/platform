@@ -1,8 +1,7 @@
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
-import { cn } from '@openfactu/ui';
-import { ContextMenu } from '../common/ContextMenu';
-import { useContextMenu } from '../../hooks/useContextMenu';
+import { cn, useContextMenu } from '@openfactu/ui';
+import type { ContextMenuItem } from '@openfactu/ui';
 import { Tab, useTabs } from '../../context/TabsContext';
 
 const resolveIcon = (name?: string): React.ComponentType<any> => {
@@ -12,7 +11,7 @@ const resolveIcon = (name?: string): React.ComponentType<any> => {
 
 export const TabBar: React.FC = () => {
   const { tabs, activeTabId, setActiveTab, closeTab, resetTabs } = useTabs();
-  const ctxMenu = useContextMenu<Tab>();
+  const { contextMenu, openContextMenu } = useContextMenu();
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
     if (e.button === 1) {
@@ -22,12 +21,13 @@ export const TabBar: React.FC = () => {
   };
 
   const handleContextMenu = (e: React.MouseEvent, tab: Tab) => {
-    e.preventDefault();
+    // openContextMenu ya hace preventDefault, pero no stopPropagation: hay que
+    // mantenerlo para que el menú de la pestaña no burbujee al contenedor.
     e.stopPropagation();
-    ctxMenu.open(e, tab);
+    openContextMenu(e, buildCtxItems(tab));
   };
 
-  const buildCtxItems = (tab: Tab) => {
+  const buildCtxItems = (tab: Tab): ContextMenuItem[] => {
     const idx = tabs.findIndex((t) => t.id === tab.id);
     const rightTabs = idx === -1 ? [] : tabs.slice(idx + 1);
 
@@ -65,7 +65,10 @@ export const TabBar: React.FC = () => {
     <>
       <div
         role="tablist"
-        className="flex items-stretch h-10 bg-[#F1F5F9] dark:bg-[#0A1628] border-b border-[#E2E8F0] dark:border-[#2D3A4A] overflow-x-auto scrollbar-hide shrink-0 z-0"
+        // Tokens y no los hex de fábrica: eran literalmente los valores de
+        // --k-line-2 / --bg-app / --border-default, así que la barra no seguía
+        // al tema del tenant.
+        className="flex items-stretch h-10 bg-bg-muted border-b border-border-default overflow-x-auto scrollbar-hide shrink-0 z-0"
       >
         {tabs.map((tab) => {
           const Icon = resolveIcon(tab.iconName);
@@ -79,10 +82,10 @@ export const TabBar: React.FC = () => {
               onContextMenu={(e) => handleContextMenu(e, tab)}
               onMouseDown={(e) => handleMouseDown(e, tab.id)}
               className={cn(
-                'group relative flex items-center gap-2 pl-3 pr-2 h-full min-w-[140px] max-w-[240px] cursor-pointer border-r border-[#E2E8F0] dark:border-[#2D3A4A] transition-colors shrink-0 select-none',
+                'group relative flex items-center gap-2 pl-3 pr-2 h-full min-w-[140px] max-w-[240px] cursor-pointer border-r border-border-default transition-colors shrink-0 select-none',
                 isActive
-                  ? 'bg-white dark:bg-[#1A2535] text-accent'
-                  : 'text-[#64748B] dark:text-[#94A3B8] hover:bg-white/60 dark:hover:bg-[#2D3A4A]/50 hover:text-accent dark:hover:text-accent',
+                  ? 'bg-bg-card text-accent'
+                  : 'text-fg-muted hover:bg-bg-hover hover:text-accent',
               )}
             >
               {isActive && <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent" />}
@@ -95,7 +98,7 @@ export const TabBar: React.FC = () => {
                   e.stopPropagation();
                   closeTab(tab.id);
                 }}
-                className="shrink-0 w-5 h-5 rounded-xs flex items-center justify-center text-ink-400 hover:bg-line dark:hover:bg-ink-700 hover:text-ink-900 dark:hover:text-slate-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="shrink-0 w-5 h-5 rounded-xs flex items-center justify-center text-ink-400 hover:bg-bg-hover hover:text-fg-default opacity-0 group-hover:opacity-100 transition-opacity"
                 aria-label="Cerrar pestaña"
                 tabIndex={-1}
               >
@@ -105,14 +108,7 @@ export const TabBar: React.FC = () => {
           );
         })}
       </div>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
+      {contextMenu}
     </>
   );
 };

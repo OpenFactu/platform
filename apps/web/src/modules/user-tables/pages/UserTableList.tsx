@@ -1,15 +1,13 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Table, Button, Loader, useToast, Badge } from '@openfactu/ui';
+import { Card, Table, Button, Loader, PageHeader, useToast, usePopup, Badge } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { Plus, Trash2, Eye, Table as TableIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { useFormat } from '@/hooks/useFormat';
 import { usePluginFields, PluginFieldValue } from '@/components/plugin-fields';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 
 interface TableMeta {
   tableName: string;
@@ -26,6 +24,7 @@ export const UserTableList: React.FC = () => {
   const { openTab } = useTabs();
   const fmt = useFormat();
   const toast = useToast();
+  const popup = usePopup();
 
   const [meta, setMeta] = useState<TableMeta | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -97,7 +96,7 @@ export const UserTableList: React.FC = () => {
       cols.push({
         header: meta.label || 'Registro',
         accessor: (r: any) => (
-          <span className="font-semibold text-slate-800 dark:text-slate-100">
+          <span className="font-semibold text-fg-default">
             {r[meta.displayField as string] ?? '—'}
           </span>
         ),
@@ -119,7 +118,13 @@ export const UserTableList: React.FC = () => {
   }, [meta, fmt]);
 
   const removeRow = async (r: any) => {
-    if (!confirm('¿Eliminar este registro?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar registro',
+      message: '¿Eliminar este registro? Esta acción no se puede deshacer.',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/user-tables/${tblName}/rows/${r.id}`);
     if (res.ok) {
       toast.success('Eliminado');
@@ -127,29 +132,17 @@ export const UserTableList: React.FC = () => {
     } else toast.error('Error al eliminar');
   };
 
-  const actionCol = {
-    header: '',
-    align: 'right' as const,
-    width: '60px',
-    cell: (r: any) => (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          removeRow(r);
-        }}
-        className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
-        title="Eliminar"
-      >
-        <Trash2 size={13} />
-      </button>
-    ),
-  };
+  const allColumns = [...baseCols, ...pluginCols];
 
-  const allColumns = [...baseCols, ...pluginCols, actionCol];
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(allColumns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: any) => [
-    { label: 'Ver / Editar', icon: <Eye size={14} />, onClick: () => openTab(`/u/${name}/${r.id}`) },
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que ya no hace falta una
+  // columna extra con el botón de borrar.
+  const rowActions = (r: any): RowAction[] => [
+    {
+      label: 'Ver / Editar',
+      icon: <Eye size={14} />,
+      onClick: () => openTab(`/u/${name}/${r.id}`),
+    },
     {
       label: 'Eliminar',
       icon: <Trash2 size={14} />,
@@ -161,25 +154,33 @@ export const UserTableList: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <TableIcon className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-              {meta?.label || name}
-            </h1>
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <Badge variant={meta?.kind === 'document' ? 'info' : 'neutral'}>
-                {meta?.kind === 'document' ? 'Documento' : 'Maestro'}
-              </Badge>
-              {meta?.description && <span>{meta.description}</span>}
-            </div>
-          </div>
-        </div>
-        <Button onClick={() => openTab(`/u/${name}/new`)} className="flex items-center gap-2">
-          <Plus size={14} /> Nuevo
-        </Button>
-      </header>
+      <PageHeader
+        title={
+          <>
+            {meta?.label || name}
+            {/* El Badge va con el título y no en `subtitle`: PageHeader pinta el
+                subtítulo dentro de un <p> y Badge es un <div>, que el navegador
+                cerraría en falso rompiendo la línea. */}
+            <Badge variant={meta?.kind === 'document' ? 'info' : 'neutral'}>
+              {meta?.kind === 'document' ? 'Documento' : 'Maestro'}
+            </Badge>
+          </>
+        }
+        subtitle={meta?.description || undefined}
+        icon={<TableIcon size={18} />}
+        size="sm"
+        divider
+        className="pb-4"
+        actions={
+          <Button
+            type="button"
+            onClick={() => openTab(`/u/${name}/new`)}
+            className="flex items-center gap-2"
+          >
+            <Plus size={14} /> Nuevo
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="py-20 flex justify-center">
@@ -188,19 +189,12 @@ export const UserTableList: React.FC = () => {
       ) : (
         <Card noPadding>
           <Table
-            columns={ctxColumns}
+            columns={allColumns}
             data={rows}
+            rowActions={rowActions}
             onRowClick={(r: any) => openTab(`/u/${name}/${r.id}`)}
           />
         </Card>
-      )}
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
       )}
     </div>
   );

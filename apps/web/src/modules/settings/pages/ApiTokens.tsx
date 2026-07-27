@@ -5,7 +5,19 @@
  */
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Modal,
+  Badge,
+  Loader,
+  Checkbox,
+  EmptyState,
+  PageHeader,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
 import { Plus, Trash2, Copy, Key, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -29,12 +41,14 @@ const ALL_SCOPES = [
   {
     id: 'write:ventas',
     label: 'Escribir ventas',
-    description: 'FactuAPI: crear/asentar/cancelar facturas, pedidos y albaranes de venta (SINV/SO/SDN)',
+    description:
+      'FactuAPI: crear/asentar/cancelar facturas, pedidos y albaranes de venta (SINV/SO/SDN)',
   },
   {
     id: 'write:compras',
     label: 'Escribir compras',
-    description: 'FactuAPI: crear/asentar/cancelar facturas, pedidos y albaranes de compra (PINV/PO/PDN)',
+    description:
+      'FactuAPI: crear/asentar/cancelar facturas, pedidos y albaranes de compra (PINV/PO/PDN)',
   },
   {
     id: 'read:maestros',
@@ -61,6 +75,7 @@ const ALL_SCOPES = [
 export const ApiTokens: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<ApiToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -99,7 +114,10 @@ export const ApiTokens: React.FC = () => {
       toast.error('Selecciona al menos un scope.');
       return;
     }
-    const res = await coreApi.raw('POST', '/api/admin/api-tokens', { name: form.name.trim(), scopes: form.scopes });
+    const res = await coreApi.raw('POST', '/api/admin/api-tokens', {
+      name: form.name.trim(),
+      scopes: form.scopes,
+    });
     const d = res.data;
     if (!res.ok) {
       toast.error(d.error || 'Error creando token');
@@ -112,11 +130,16 @@ export const ApiTokens: React.FC = () => {
   };
 
   const revoke = async (t: ApiToken) => {
-    if (!confirm(`¿Revocar token "${t.name}"? Las integraciones que lo usen dejarán de funcionar.`))
-      return;
+    const ok = await popup.confirm({
+      title: 'Revocar token',
+      message: `¿Revocar el token "${t.name}"? Las integraciones que lo usen dejarán de funcionar de inmediato.`,
+      tone: 'danger',
+      confirmLabel: 'Revocar',
+    });
+    if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/admin/api-tokens/${t.id}`);
     if (!res.ok) {
-      const d = (res.data ?? {});
+      const d = res.data ?? {};
       toast.error(d.error || 'Error al revocar');
       return;
     }
@@ -142,36 +165,47 @@ export const ApiTokens: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-        <div className="flex items-center gap-3">
-          <Key className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-              Tokens de API
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Credenciales para integraciones server-to-server (plugins, sistemas externos).
-            </p>
-          </div>
-        </div>
-        <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2">
-          <Plus size={14} /> Nuevo token
-        </Button>
-      </header>
+      <PageHeader
+        title="Tokens de API"
+        subtitle="Credenciales para integraciones server-to-server (plugins, sistemas externos)."
+        icon={<Key size={18} />}
+        size="sm"
+        divider
+        actions={
+          <Button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus size={14} /> Nuevo token
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="py-10 flex justify-center">
           <Loader />
         </div>
       ) : rows.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">Sin tokens creados.</Card>
+        <Card bodyClassName="p-0">
+          <EmptyState
+            icon={<Key size={18} />}
+            title="Sin tokens creados"
+            hint="Crea una credencial para que un sistema externo consuma la API sin usar tu usuario."
+            action={
+              <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2">
+                <Plus size={14} /> Nuevo token
+              </Button>
+            }
+          />
+        </Card>
       ) : (
         <Card bodyClassName="p-0">
           <ul>
             {rows.map((t) => (
               <li
                 key={t.id}
-                className={`flex items-center gap-3 px-4 py-3 border-b border-slate-50 dark:border-slate-800/50 last:border-0 ${
+                className={`flex items-center gap-3 px-4 py-3 border-b border-border-subtle last:border-0 ${
                   t.revokedAt ? 'opacity-50' : ''
                 }`}
               >
@@ -180,14 +214,12 @@ export const ApiTokens: React.FC = () => {
                 </Badge>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-                      {t.name}
-                    </span>
-                    <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                    <span className="font-semibold text-sm text-fg-default">{t.name}</span>
+                    <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                       {t.prefix}…
                     </code>
                   </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex gap-3 flex-wrap">
+                  <div className="text-[11px] text-fg-muted mt-0.5 flex gap-3 flex-wrap">
                     <span>Scopes: {t.scopes}</span>
                     <span>Creado: {new Date(t.createdAt).toLocaleDateString('es-ES')}</span>
                     {t.lastUsedAt && (
@@ -196,13 +228,15 @@ export const ApiTokens: React.FC = () => {
                   </div>
                 </div>
                 {!t.revokedAt && (
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => revoke(t)}
-                    className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                     title="Revocar"
                   >
                     <Trash2 size={14} />
-                  </button>
+                  </Button>
                 )}
               </li>
             ))}
@@ -218,16 +252,12 @@ export const ApiTokens: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Nombre descriptivo
-            </label>
-            <Input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Ej: webhook SEUR producción"
-            />
-          </div>
+          <Input
+            label="Nombre descriptivo"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Ej: webhook SEUR producción"
+          />
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
               Scopes
@@ -235,18 +265,16 @@ export const ApiTokens: React.FC = () => {
             <div className="space-y-2">
               {ALL_SCOPES.map((s) => (
                 <label key={s.id} className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.scopes.includes(s.id)}
-                    onChange={() => toggleScope(s.id)}
-                    className="mt-0.5"
-                  />
+                  <span className="mt-0.5">
+                    <Checkbox
+                      checked={form.scopes.includes(s.id)}
+                      onChange={() => toggleScope(s.id)}
+                    />
+                  </span>
                   <div>
-                    <div className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                    <div className="text-sm font-medium text-fg-default">
                       {s.label}{' '}
-                      <code className="px-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-mono rounded">
-                        {s.id}
-                      </code>
+                      <code className="px-1 bg-bg-muted text-[10px] font-mono rounded">{s.id}</code>
                     </div>
                     <div className="text-[11px] text-slate-500">{s.description}</div>
                   </div>
@@ -254,7 +282,7 @@ export const ApiTokens: React.FC = () => {
               ))}
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowCreate(false)}>
               Cancelar
             </Button>
@@ -278,7 +306,7 @@ export const ApiTokens: React.FC = () => {
                 Token ({created.name})
               </label>
               <div className="flex items-center gap-2">
-                <code className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded break-all">
+                <code className="flex-1 px-3 py-2 bg-bg-muted text-[11px] font-mono rounded break-all">
                   {created.token}
                 </code>
                 <Button
@@ -291,14 +319,14 @@ export const ApiTokens: React.FC = () => {
             </div>
             <div className="text-[11px] text-slate-500">
               Úsalo como cabecera HTTP:
-              <pre className="mt-1 p-2 bg-slate-50 dark:bg-slate-900 rounded text-[11px] font-mono">
+              <pre className="mt-1 p-2 bg-bg-muted rounded text-[11px] font-mono">
                 Authorization: Bearer {created.token.slice(0, 15)}…
               </pre>
             </div>
             {created.scopes.some((s) => s.startsWith('mcp:')) && (
               <div className="text-[11px] text-slate-500">
                 Config de Claude Desktop / Claude Code (servidor MCP remoto vía HTTP):
-                <pre className="mt-1 p-2 bg-slate-50 dark:bg-slate-900 rounded text-[11px] font-mono whitespace-pre-wrap break-all">
+                <pre className="mt-1 p-2 bg-bg-muted rounded text-[11px] font-mono whitespace-pre-wrap break-all">
                   {JSON.stringify(
                     {
                       mcpServers: {
@@ -314,7 +342,7 @@ export const ApiTokens: React.FC = () => {
                 </pre>
               </div>
             )}
-            <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-end pt-4 border-t border-border-subtle">
               <Button onClick={() => setCreated(null)}>Cerrar</Button>
             </div>
           </div>

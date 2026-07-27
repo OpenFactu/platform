@@ -1,5 +1,5 @@
 import React from 'react';
-import { Input, cn } from '@openfactu/ui';
+import { DatePicker, Input, cn } from '@openfactu/ui';
 import type { PluginFieldDef } from './types';
 import { ReferenceSelect } from './ReferenceSelect';
 
@@ -37,18 +37,15 @@ export const PluginFieldInput: React.FC<Props> = ({
             disabled={isDisabled}
             className="w-4 h-4 accent-primary rounded"
           />
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-            {value ? 'Sí' : 'No'}
-          </span>
+          <span className="text-xs font-semibold text-fg-body">{value ? 'Sí' : 'No'}</span>
         </label>
       );
 
     case 'DATE':
       return (
-        <Input
-          type="date"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
+        <DatePicker
+          value={value || null}
+          onChange={(v) => onChange(v ?? '')}
           disabled={isDisabled}
           className={className}
         />
@@ -88,7 +85,7 @@ export const PluginFieldInput: React.FC<Props> = ({
           onChange={(e) => onChange(e.target.value || null)}
           disabled={isDisabled}
           className={cn(
-            'w-full h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 disabled:opacity-50',
+            'w-full h-9 rounded-lg border border-border-default bg-bg-card text-sm px-3 disabled:opacity-50',
             className,
           )}
         >
@@ -106,7 +103,7 @@ export const PluginFieldInput: React.FC<Props> = ({
       return (
         <div
           className={cn(
-            'flex flex-wrap gap-1 p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 min-h-[2.25rem]',
+            'flex flex-wrap gap-1 p-2 rounded-lg border border-border-default bg-bg-card min-h-[2.25rem]',
             className,
           )}
         >
@@ -124,7 +121,7 @@ export const PluginFieldInput: React.FC<Props> = ({
                   'text-xs px-2 py-1 rounded-full border transition-colors',
                   on
                     ? 'bg-primary text-white border-primary'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-primary',
+                    : 'bg-bg-card border-border-default text-fg-body hover:border-primary',
                 )}
               >
                 {opt.label}
@@ -157,7 +154,7 @@ export const PluginFieldInput: React.FC<Props> = ({
             value={value || '#000000'}
             onChange={(e) => onChange(e.target.value)}
             disabled={isDisabled}
-            className="h-9 w-12 rounded-lg border border-slate-200 dark:border-slate-700 bg-white cursor-pointer disabled:opacity-50"
+            className="h-9 w-12 rounded-lg border border-border-default bg-white cursor-pointer disabled:opacity-50"
           />
           <Input
             type="text"
@@ -208,7 +205,7 @@ export const PluginFieldInput: React.FC<Props> = ({
           disabled={isDisabled}
           rows={3}
           className={cn(
-            'w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2 font-mono disabled:opacity-50',
+            'w-full rounded-lg border border-border-default bg-bg-card text-sm px-3 py-2 font-mono disabled:opacity-50',
             className,
           )}
         />

@@ -41,7 +41,7 @@ export function useInternalOrderLineColumn(
         <select
           value={line.internalOrderId || ''}
           onChange={(e) => updateLine(idx, 'internalOrderId', e.target.value || null)}
-          className="min-w-[200px] text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-medium"
+          className="min-w-[200px] text-sm px-3 py-2 border border-border-default bg-bg-card font-medium"
           title="Vacío = hereda el proyecto de cabecera"
         >
           <option value="">— Hereda cabecera —</option>

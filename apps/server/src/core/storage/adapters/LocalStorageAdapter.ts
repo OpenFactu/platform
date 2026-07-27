@@ -43,7 +43,12 @@ export class LocalStorageAdapter implements StorageAdapter {
     // basename y prefijamos con un UUID para evitar colisiones entre uploads.
     const safeName = path.basename(input.fileName).replace(/[^\w.\-]/g, '_');
     const uuid = crypto.randomUUID();
-    const relativeDir = path.join(input.tenantSchema, input.entityType, input.entityId);
+    const relativeDir = path.join(
+      input.tenantSchema,
+      input.entityType,
+      input.entityId,
+      ...(input.subPath ?? []),
+    );
     const fileKey = path.join(relativeDir, `${uuid}_${safeName}`);
     const absDir = path.join(this.basePath, relativeDir);
     const absPath = path.join(this.basePath, fileKey);

@@ -143,9 +143,9 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!conversationId) setConversationId(id);
     try {
       await coreApi.raw('PUT', `/api/ai/conversations/${id}`, {
-          messages,
-          model: selectedModel || availableModels.current || undefined,
-        });
+        messages,
+        model: selectedModel || availableModels.current || undefined,
+      });
     } catch {
       /* sin conexión o error del server — no interrumpe el chat */
     }
@@ -194,7 +194,10 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Solo aplicamos el modelo guardado si sigue siendo válido para el
       // proveedor ACTIVO ahora mismo — una conversación vieja pudo guardarse
       // con un modelo de un proveedor que ya no está configurado.
-      if (data.model && (availableModels.options.length === 0 || availableModels.options.includes(data.model))) {
+      if (
+        data.model &&
+        (availableModels.options.length === 0 || availableModels.options.includes(data.model))
+      ) {
         setSelectedModel(data.model);
       }
     } catch {

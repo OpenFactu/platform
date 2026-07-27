@@ -9,6 +9,7 @@ import { documentsModule } from './documents/module';
 import { documentTemplatesModule } from './document-templates/module';
 import { hrModule } from './hr/module';
 import { logisticsModule } from './logistics/module';
+import { websiteModule } from './website/module';
 import { homeModule } from './home/module';
 import { aiModule } from './ai/module';
 import { appsModule } from './plugins/module';
@@ -33,6 +34,7 @@ export const moduleManifests: ModuleManifest[] = [
   documentTemplatesModule,
   hrModule,
   logisticsModule,
+  websiteModule,
   homeModule,
   aiModule,
   appsModule,
@@ -53,6 +55,7 @@ const NAV_ORDER = [
   'reports',
   'hr',
   'logistics',
+  'website',
   'assistant',
   'apps',
   'configuration',

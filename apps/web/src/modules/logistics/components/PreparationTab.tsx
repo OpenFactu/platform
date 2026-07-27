@@ -4,7 +4,7 @@
  */
 import { routesApi, shipmentsApi, stagingAreasApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Badge, Loader, Modal, useToast } from '@openfactu/ui';
+import { Card, Button, Badge, Loader, Modal, SearchableSelect, useToast } from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import {
   Box,
@@ -160,7 +160,7 @@ export const PreparationTab: React.FC = () => {
             {activeShipments.map((sh) => (
               <li
                 key={sh.id}
-                className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0"
               >
                 <div className="flex items-start gap-2 md:flex-1 md:min-w-0">
                   <Badge variant={PREP_BADGE[sh.preparationStatus] || 'neutral'}>
@@ -168,14 +168,14 @@ export const PreparationTab: React.FC = () => {
                   </Badge>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
+                      <span className="font-semibold text-sm text-fg-default">
                         {sh.sourceDocType === 'SDN'
                           ? 'Venta'
                           : sh.sourceDocType === 'PDN'
                             ? 'Compra'
                             : 'Envío'}
                       </span>
-                      <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                      <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                         {sh.id.slice(0, 8)}
                       </code>
                       {sh.destinationAddress && (
@@ -277,25 +277,26 @@ export const PreparationTab: React.FC = () => {
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
               Acopio destino
             </label>
-            <select
+            {/* Acopios vienen del servidor → SearchableSelect (no tiene prop
+                `label`, se conserva el <label> suelto). */}
+            <SearchableSelect
+              options={stagingAreas.map((a) => ({
+                value: a.id,
+                label: a.name,
+                secondaryLabel: a.code,
+              }))}
               value={stagingAreaId}
-              onChange={(e) => setStagingAreaId(e.target.value)}
-              className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-            >
-              <option value="">— seleccionar —</option>
-              {stagingAreas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.code} · {a.name}
-                </option>
-              ))}
-            </select>
+              onChange={setStagingAreaId}
+              placeholder="— seleccionar —"
+              clearable
+            />
             {stagingAreas.length === 0 && (
               <p className="text-[11px] text-amber-600 mt-1">
                 No hay acopios. Crea uno primero en Logística → Acopios.
               </p>
             )}
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowStaging(null)}>
               Cancelar
             </Button>
@@ -327,7 +328,7 @@ export const PreparationTab: React.FC = () => {
               placeholder="— sin asignar (solo marcar despachado) —"
             />
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowDispatch(null)}>
               Cancelar
             </Button>

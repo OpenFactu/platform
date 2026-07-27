@@ -86,7 +86,11 @@ export const SqlEditorModal: React.FC<Props> = ({
         schemaRef.current = tables;
         setSchema(tables);
       } catch (e) {
-        if (!cancelled) setSchemaError((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'No se pudo cargar el esquema');
+        if (!cancelled)
+          setSchemaError(
+            (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+              'No se pudo cargar el esquema',
+          );
       }
     })();
     return () => {
@@ -237,7 +241,12 @@ export const SqlEditorModal: React.FC<Props> = ({
         });
       }
     } catch (e) {
-      setTestResult({ ok: false, error: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error de red' });
+      setTestResult({
+        ok: false,
+        error:
+          (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error de red',
+      });
     } finally {
       setTesting(false);
     }
@@ -252,11 +261,11 @@ export const SqlEditorModal: React.FC<Props> = ({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-[min(96vw,1200px)] h-[min(92vh,800px)] rounded-lg shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+      <div className="w-[min(96vw,1200px)] h-[min(92vh,800px)] rounded-lg shadow-2xl bg-bg-card border border-border-default flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
           <div>
-            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+            <div className="text-sm font-semibold text-fg-body">{title}</div>
+            <div className="text-[11px] text-fg-muted">
               {schema
                 ? `${schema.length} tablas cargadas · autocompletado activo · Ctrl+Espacio`
                 : schemaError
@@ -267,7 +276,7 @@ export const SqlEditorModal: React.FC<Props> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="p-1 text-slate-400 hover:text-fg-body"
             title="Cerrar (Esc)"
           >
             ✕
@@ -275,7 +284,7 @@ export const SqlEditorModal: React.FC<Props> = ({
         </div>
 
         <div className="flex-1 min-h-0 grid grid-cols-[1fr_260px]">
-          <div className="min-h-0 border-r border-slate-200 dark:border-slate-800">
+          <div className="min-h-0 border-r border-border-default">
             <Editor
               height="100%"
               language="sql"
@@ -297,7 +306,7 @@ export const SqlEditorModal: React.FC<Props> = ({
               }}
             />
           </div>
-          <aside className="min-h-0 overflow-y-auto bg-slate-50 dark:bg-slate-950 text-xs">
+          <aside className="min-h-0 overflow-y-auto bg-bg-muted text-xs">
             <SchemaPanel
               schema={schema}
               error={schemaError}
@@ -308,7 +317,7 @@ export const SqlEditorModal: React.FC<Props> = ({
           </aside>
         </div>
 
-        <div className="border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2 flex items-center gap-2">
+        <div className="border-t border-border-default bg-bg-muted px-4 py-2 flex items-center gap-2">
           <button
             type="button"
             onClick={runTest}
@@ -332,7 +341,7 @@ export const SqlEditorModal: React.FC<Props> = ({
           <button
             type="button"
             onClick={onClose}
-            className="text-xs px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="text-xs px-3 py-1.5 rounded border border-border-strong text-fg-body hover:bg-bg-hover"
           >
             Cancelar
           </button>
@@ -349,9 +358,9 @@ export const SqlEditorModal: React.FC<Props> = ({
         </div>
 
         {testResult && testResult.ok && testResult.rows && testResult.rows.length > 0 && (
-          <div className="max-h-52 overflow-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <div className="max-h-52 overflow-auto border-t border-border-default bg-bg-card">
             <table className="w-full text-[11px] font-mono">
-              <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0">
+              <thead className="bg-bg-muted sticky top-0">
                 <tr>
                   {Object.keys(testResult.rows[0]).map((k) => (
                     <th key={k} className="px-2 py-1 text-left font-semibold">
@@ -362,7 +371,7 @@ export const SqlEditorModal: React.FC<Props> = ({
               </thead>
               <tbody>
                 {testResult.rows.slice(0, 50).map((row, i) => (
-                  <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
+                  <tr key={i} className="border-t border-border-subtle">
                     {Object.values(row).map((v, j) => (
                       <td key={j} className="px-2 py-1 truncate max-w-[220px]">
                         {v == null ? (
@@ -412,16 +421,16 @@ const SchemaPanel: React.FC<{
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         placeholder="Filtrar tablas / columnas…"
-        className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+        className="w-full px-2 py-1 rounded border border-border-default bg-bg-card text-xs"
       />
       <div className="text-[10px] uppercase tracking-wide text-slate-400">Esquema del tenant</div>
       {filtered.map((t) => (
         <details
           key={`${t.schema}.${t.name}`}
           open={!!filter}
-          className="rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
+          className="rounded bg-bg-card border border-border-default"
         >
-          <summary className="cursor-pointer px-2 py-1 font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-between">
+          <summary className="cursor-pointer px-2 py-1 font-semibold text-fg-body flex items-center justify-between">
             <span className="truncate" title={`${t.schema}.${t.name}`}>
               {t.name}
             </span>
@@ -443,12 +452,10 @@ const SchemaPanel: React.FC<{
               <li
                 key={c.name}
                 onClick={() => onInsert(c.name)}
-                className="px-1 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between gap-2"
+                className="px-1 py-0.5 rounded hover:bg-bg-hover cursor-pointer flex items-center justify-between gap-2"
                 title={c.type}
               >
-                <span className="truncate font-mono text-slate-700 dark:text-slate-200">
-                  {c.name}
-                </span>
+                <span className="truncate font-mono text-fg-body">{c.name}</span>
                 <span className="text-[10px] text-slate-400 whitespace-nowrap">{c.type}</span>
               </li>
             ))}

@@ -3,13 +3,20 @@ import type { Incident } from '../domain/incident';
 import type { Employee } from '../domain/employee';
 import type { IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  useToast,
+  Badge,
+  SearchableSelect,
+  EmptyState,
+  PageHeader,
+} from '@openfactu/ui';
+import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { AlertTriangle, Plus, UserCheck, X, Check, Ban } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { ApiError } from '@/shared/http';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -69,6 +76,26 @@ export const Incidents: React.FC = () => {
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
   const typeMap = useMemo(() => Object.fromEntries(types.map((t) => [t.id, t])), [types]);
 
+  // Opciones de los desplegables del formulario (maestros del servidor).
+  const employeeOptions = useMemo(
+    () =>
+      employees
+        .filter((e) => e.status === 'active')
+        .map((e) => ({
+          value: e.id,
+          label: `${e.firstName} ${e.lastName}`,
+          secondaryLabel: e.code,
+        })),
+    [employees],
+  );
+  const typeOptions = useMemo(
+    () =>
+      types
+        .filter((t) => t.isActive)
+        .map((t) => ({ value: t.id, label: t.name, secondaryLabel: t.code })),
+    [types],
+  );
+
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.employeeId || !form.incidentTypeId || !form.startAt) {
@@ -125,52 +152,12 @@ export const Incidents: React.FC = () => {
         <Badge variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</Badge>
       ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: Incident) => {
-        const t = typeMap[r.incidentTypeId];
-        return (
-          <div className="flex items-center justify-end gap-2">
-            {r.status === 'pending' && (
-              <>
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => setStatus(r, 'approved')}
-                  title="Aprobar"
-                >
-                  <Check size={14} /> Aprobar
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => setStatus(r, 'rejected')}
-                  title="Rechazar"
-                >
-                  <Ban size={14} /> Rechazar
-                </Button>
-              </>
-            )}
-            {r.status === 'approved' && t?.requiresSubstitution && (
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => openSubstitute(r)}
-                title="Asignar sustituto"
-              >
-                <UserCheck size={14} /> Sustituto
-              </Button>
-            )}
-          </div>
-        );
-      },
-    },
   ];
 
-  const ctxMenu = useContextMenu<Incident>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: Incident) => {
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // (pendiente / aprobada) se declaran una vez en lugar de duplicarse.
+  const rowActions = (r: Incident): RowAction[] => {
     const t = typeMap[r.incidentTypeId];
     return [
       ...(r.status === 'pending'
@@ -202,57 +189,42 @@ export const Incidents: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <AlertTriangle className="text-amber-500" size={32} /> Incidencias
-          </h1>
-          <p className="text-slate-500">Ausencias, retrasos, bajas, sustituciones.</p>
-        </div>
-        <Button size="sm" onClick={() => setCreating(true)}>
-          <Plus size={14} /> Nueva incidencia
-        </Button>
-      </div>
+      <PageHeader
+        title="Incidencias"
+        subtitle="Ausencias, retrasos, bajas, sustituciones."
+        icon={<AlertTriangle size={18} />}
+        size="lg"
+        actions={
+          <Button type="button" size="sm" onClick={() => setCreating(true)}>
+            <Plus size={14} /> Nueva incidencia
+          </Button>
+        }
+      />
 
       {creating && (
         <Card noPadding>
           <form onSubmit={create} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                {/* SearchableSelect no tiene prop `label` → se conserva el
+                    <label> suelto. El `required` del <select> nativo se pierde,
+                    pero `create` ya avisa si falta empleado o tipo. */}
                 <label className="block text-sm mb-1">Empleado</label>
-                <select
+                <SearchableSelect
+                  options={employeeOptions}
                   value={form.employeeId}
-                  onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-900"
-                  required
-                >
-                  <option value="">— seleccionar —</option>
-                  {employees
-                    .filter((e: any) => e.status === 'active')
-                    .map((e: any) => (
-                      <option key={e.id} value={e.id}>
-                        {e.code} — {e.firstName} {e.lastName}
-                      </option>
-                    ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, employeeId: v })}
+                  placeholder="— seleccionar —"
+                />
               </div>
               <div>
                 <label className="block text-sm mb-1">Tipo</label>
-                <select
+                <SearchableSelect
+                  options={typeOptions}
                   value={form.incidentTypeId}
-                  onChange={(e) => setForm({ ...form, incidentTypeId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-slate-900"
-                  required
-                >
-                  <option value="">— seleccionar —</option>
-                  {types
-                    .filter((t: any) => t.isActive)
-                    .map((t: any) => (
-                      <option key={t.id} value={t.id}>
-                        {t.code} — {t.name}
-                      </option>
-                    ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, incidentTypeId: v })}
+                  placeholder="— seleccionar —"
+                />
               </div>
               <Input
                 label="Desde"
@@ -286,16 +258,8 @@ export const Incidents: React.FC = () => {
       )}
 
       <Card noPadding>
-        <Table columns={ctxColumns} data={rows} isLoading={loading} />
+        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
 
       {substituting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -303,15 +267,22 @@ export const Incidents: React.FC = () => {
             <div className="p-6 space-y-3">
               <div className="flex items-start justify-between">
                 <h2 className="text-xl font-bold">Sugerir sustituto</h2>
-                <button onClick={() => setSubstituting(null)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSubstituting(null)}
+                  title="Cerrar"
+                >
                   <X size={20} />
-                </button>
+                </Button>
               </div>
               {substituteOptions.length === 0 ? (
-                <p className="text-sm text-slate-500 italic py-4">
-                  No hay candidatos elegibles. Filtros: mismo departamento, sin turno solapado, sin
-                  incidencia propia activa.
-                </p>
+                <EmptyState
+                  icon={<UserCheck size={18} />}
+                  title="No hay candidatos elegibles"
+                  hint="Filtros: mismo departamento, sin turno solapado, sin incidencia propia activa."
+                />
               ) : (
                 <ul className="divide-y">
                   {substituteOptions.map((c) => (

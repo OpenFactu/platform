@@ -15,7 +15,22 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Badge, Loader, useToast, SearchableSelect } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Badge,
+  Loader,
+  Table,
+  useToast,
+  usePopup,
+  SearchableSelect,
+  Select,
+  Tabs,
+  Textarea,
+  PageHeader,
+} from '@openfactu/ui';
+import type { TableColumn } from '@openfactu/ui';
 import {
   Plus,
   Trash2,
@@ -58,6 +73,20 @@ const KIND_CFG = {
   },
 } as const;
 
+/** Motivos del documento por tipo — entradas y salidas tienen los suyos. */
+const TYPE_OPTS: Record<'receipt' | 'issue', Array<{ value: string; label: string }>> = {
+  receipt: [
+    { value: 'internal', label: 'Recepción interna' },
+    { value: 'return', label: 'Devolución' },
+    { value: 'adjustment', label: 'Ajuste positivo' },
+  ],
+  issue: [
+    { value: 'internal', label: 'Salida interna' },
+    { value: 'scrap', label: 'Scrap / merma' },
+    { value: 'adjustment', label: 'Ajuste negativo' },
+  ],
+};
+
 const STATUS_COPY: Record<string, { label: string; variant: any }> = {
   draft: { label: 'Borrador', variant: 'neutral' },
   sent: { label: 'Enviado', variant: 'info' },
@@ -93,6 +122,7 @@ const emptyLine = (): LineInput => ({
 export const StockMovements: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [kind, setKind] = useState<Kind>('transfer');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,9 +258,7 @@ export const StockMovements: React.FC = () => {
     const item = items.find((x) => x.id === itemId);
     try {
       const d =
-        item?.manageBy === 'S'
-          ? await stockApi.serials(itemId)
-          : await stockApi.batches(itemId);
+        item?.manageBy === 'S' ? await stockApi.serials(itemId) : await stockApi.batches(itemId);
       const normalized = Array.isArray(d)
         ? d.map((row: any) => ({
             batchNum: row.batchNum || row.serialNum,
@@ -485,7 +513,13 @@ export const StockMovements: React.FC = () => {
   }, [sourceWh, creating]);
 
   const remove = async (id: string) => {
-    if (!confirm('¿Eliminar documento?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar documento',
+      message: '¿Seguro que quieres eliminar el documento? Esta acción no se puede deshacer.',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       await stockDocsApi.remove(kind, id);
     } catch (e) {
@@ -513,70 +547,130 @@ export const StockMovements: React.FC = () => {
       .filter((z) => !warehouseId || z.warehouseId === warehouseId)
       .map((z) => ({ value: z.id, label: z.name }));
 
+  /**
+   * Columnas de las líneas en la vista detalle. Cambian con el tipo: el
+   * traspaso lleva zona origen y destino; entradas y salidas, una sola.
+   */
+  const lineColumns = useMemo<TableColumn<any>[]>(() => {
+    const zoneName = (zid: string | null) =>
+      zid ? zones.find((z) => z.id === zid)?.name || '—' : '—';
+    const zoneCols: TableColumn<any>[] =
+      kind === 'transfer'
+        ? [
+            { header: 'Zona origen', cell: (l) => zoneName(l.fromZoneId) },
+            { header: 'Zona destino', cell: (l) => zoneName(l.toZoneId) },
+          ]
+        : [{ header: 'Zona', cell: (l) => zoneName(l.zoneId) }];
+    return [
+      {
+        header: '#',
+        width: '3rem',
+        cell: (l) => <span className="text-fg-subtle">{l.lineNum}</span>,
+      },
+      {
+        header: 'Artículo',
+        cell: (l) => {
+          const it = itemsById.get(l.itemId);
+          return (
+            <div>
+              <div className="font-semibold text-fg-default">{it?.name || l.itemId}</div>
+              {it?.code && <div className="text-[11px] text-fg-subtle font-mono">{it.code}</div>}
+            </div>
+          );
+        },
+      },
+      {
+        header: 'Cantidad',
+        align: 'right',
+        cell: (l) => <span className="font-mono">{l.quantity}</span>,
+      },
+      {
+        header: 'UoM',
+        cell: (l) => {
+          const it = itemsById.get(l.itemId);
+          const uom = l.uomId ? uomsById.get(l.uomId) : it?.uomId ? uomsById.get(it.uomId) : null;
+          return <span className="text-fg-muted">{uom?.code || '—'}</span>;
+        },
+      },
+      {
+        header: 'Lote / Serie',
+        cell: (l) =>
+          l.batchNum ? (
+            <code className="text-[11px] font-mono bg-bg-muted px-1.5 py-0.5 rounded">
+              {l.batchNum}
+            </code>
+          ) : (
+            <span className="text-fg-subtle">—</span>
+          ),
+      },
+      ...zoneCols,
+    ];
+  }, [kind, itemsById, uomsById, zones]);
+
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-        <div className="flex items-center gap-3">
-          {(creating || viewing) && (
-            <button
+      <PageHeader
+        title={
+          creating
+            ? cfg.newTitle
+            : viewing
+              ? `${cfg.label.slice(0, -1)} ${viewing.code}`
+              : 'Movimientos de stock'
+        }
+        subtitle={
+          creating
+            ? 'Rellena la cabecera y las líneas. Los artículos gestionados por lote/serie exigen el número.'
+            : viewing
+              ? `Detalle del documento — estado: ${STATUS_COPY[viewing.status]?.label || viewing.status}`
+              : 'Traspasos, entradas y salidas internas — con trazabilidad por zona, lote y unidad de medida.'
+        }
+        icon={<ArrowRightLeft size={18} />}
+        size="sm"
+        divider
+        className="pb-3"
+        breadcrumbs={
+          (creating || viewing) && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={creating ? cancelCreate : closeView}
-              className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
               title="Volver al listado"
+              className="w-fit"
             >
               <ArrowLeft size={14} />
-            </button>
-          )}
-          <ArrowRightLeft className="text-amber-600 dark:text-amber-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-              {creating
-                ? cfg.newTitle
-                : viewing
-                  ? `${cfg.label.slice(0, -1)} ${viewing.code}`
-                  : 'Movimientos de stock'}
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              {creating
-                ? 'Rellena la cabecera y las líneas. Los artículos gestionados por lote/serie exigen el número.'
-                : viewing
-                  ? `Detalle del documento — estado: ${STATUS_COPY[viewing.status]?.label || viewing.status}`
-                  : 'Traspasos, entradas y salidas internas — con trazabilidad por zona, lote y unidad de medida.'}
-            </p>
-          </div>
-        </div>
-        {!creating && !viewing && (
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={14} /> {cfg.newTitle}
-          </Button>
-        )}
-      </header>
+            </Button>
+          )
+        }
+        actions={
+          !creating &&
+          !viewing && (
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={14} /> {cfg.newTitle}
+            </Button>
+          )
+        }
+        tabs={
+          // Las tres vistas del hub: Tabs 'underline' ya trae el subrayado de la
+          // activa y el scroll horizontal que se hacía a mano.
+          !creating && !viewing ? (
+            <Tabs
+              variant="underline"
+              size="sm"
+              scrollable
+              value={kind}
+              onChange={(k) => setKind(k as Kind)}
+              items={(Object.keys(KIND_CFG) as Kind[]).map((k) => {
+                const { label, Icon } = KIND_CFG[k];
+                return { key: k, label, icon: <Icon size={13} /> };
+              })}
+            />
+          ) : undefined
+        }
+      />
 
       {!creating && !viewing && (
         <>
-          <div className="border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
-            <div className="flex gap-1 min-w-max">
-              {(Object.keys(KIND_CFG) as Kind[]).map((k) => {
-                const c = KIND_CFG[k];
-                const active = kind === k;
-                return (
-                  <button
-                    key={k}
-                    onClick={() => setKind(k)}
-                    className={
-                      'flex items-center gap-1.5 px-3 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-colors shrink-0 ' +
-                      (active
-                        ? 'text-accent border-accent'
-                        : 'text-slate-500 border-transparent hover:text-accent')
-                    }
-                  >
-                    <c.Icon size={13} />
-                    {c.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {loading ? (
             <div className="py-10 flex justify-center">
               <Loader />
@@ -592,13 +686,13 @@ export const StockMovements: React.FC = () => {
                     <li
                       key={r.id}
                       onClick={() => openView(r)}
-                      className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0 cursor-pointer hover:bg-bg-hover transition-colors"
                     >
-                      <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded shrink-0">
+                      <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded shrink-0">
                         {r.code}
                       </code>
                       <Badge variant={sc.variant}>{sc.label}</Badge>
-                      <div className="flex-1 min-w-0 text-xs text-slate-600 dark:text-slate-300">
+                      <div className="flex-1 min-w-0 text-xs text-fg-body">
                         {kind === 'transfer' ? (
                           <span className="flex items-center gap-1">
                             {whName(r.fromWarehouseId)}
@@ -617,48 +711,58 @@ export const StockMovements: React.FC = () => {
                       </span>
                       <div className="flex gap-1 shrink-0">
                         {kind === 'transfer' && r.status === 'draft' && (
-                          <button
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               send(r.id);
                             }}
-                            className="px-2 py-1 text-[11px] rounded bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-300"
+                            className="gap-1"
                           >
-                            <Send size={11} className="inline" /> Enviar
-                          </button>
+                            <Send size={11} /> Enviar
+                          </Button>
                         )}
                         {kind === 'transfer' && r.status === 'sent' && (
-                          <button
+                          <Button
+                            type="button"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               receive(r.id);
                             }}
-                            className="px-2 py-1 text-[11px] rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
+                            className="gap-1"
                           >
-                            <CheckCircle2 size={11} className="inline" /> Recibir
-                          </button>
+                            <CheckCircle2 size={11} /> Recibir
+                          </Button>
                         )}
                         {kind !== 'transfer' && r.status === 'draft' && (
-                          <button
+                          <Button
+                            type="button"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               post(r.id);
                             }}
-                            className="px-2 py-1 text-[11px] rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300"
+                            className="gap-1"
                           >
-                            <CheckCircle2 size={11} className="inline" /> Postear
-                          </button>
+                            <CheckCircle2 size={11} /> Postear
+                          </Button>
                         )}
                         {r.status !== 'posted' && r.status !== 'received' && (
-                          <button
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               remove(r.id);
                             }}
-                            className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded"
+                            title="Eliminar"
                           >
                             <Trash2 size={12} />
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </li>
@@ -681,7 +785,7 @@ export const StockMovements: React.FC = () => {
                   <Badge variant={STATUS_COPY[viewing.status]?.variant || 'neutral'}>
                     {STATUS_COPY[viewing.status]?.label || viewing.status}
                   </Badge>
-                  <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-xs font-mono rounded">
+                  <code className="px-1.5 py-0.5 bg-bg-muted text-xs font-mono rounded">
                     {viewing.code}
                   </code>
                   <span className="text-xs text-slate-500">
@@ -689,13 +793,13 @@ export const StockMovements: React.FC = () => {
                   </span>
                 </div>
                 {kind === 'transfer' ? (
-                  <div className="text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                  <div className="text-sm flex items-center gap-2 text-fg-body">
                     <span>{whName(viewing.fromWarehouseId)}</span>
                     <ArrowRight size={12} className="text-slate-400" />
                     <span>{whName(viewing.toWarehouseId)}</span>
                   </div>
                 ) : (
-                  <div className="text-sm text-slate-700 dark:text-slate-200">
+                  <div className="text-sm text-fg-body">
                     Almacén: <b>{whName(viewing.warehouseId)}</b>
                     {viewing.type && (
                       <span className="ml-2 text-slate-400 text-xs">· {viewing.type}</span>
@@ -748,7 +852,14 @@ export const StockMovements: React.FC = () => {
                   <Button
                     variant="secondary"
                     onClick={async () => {
-                      if (!confirm('¿Eliminar documento?')) return;
+                      const ok = await popup.confirm({
+                        title: 'Eliminar documento',
+                        message:
+                          '¿Seguro que quieres eliminar el documento? Esta acción no se puede deshacer.',
+                        tone: 'danger',
+                        confirmLabel: 'Eliminar',
+                      });
+                      if (!ok) return;
                       try {
                         await stockDocsApi.remove(kind, viewing.id);
                       } catch (e) {
@@ -766,12 +877,12 @@ export const StockMovements: React.FC = () => {
             </div>
 
             {/* Timeline de fechas */}
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="mt-4 pt-4 border-t border-border-subtle grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Creado
                 </div>
-                <div className="text-slate-700 dark:text-slate-200">
+                <div className="text-fg-body">
                   {new Date(viewing.createdAt).toLocaleString('es-ES')}
                 </div>
               </div>
@@ -780,7 +891,7 @@ export const StockMovements: React.FC = () => {
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Enviado
                   </div>
-                  <div className="text-slate-700 dark:text-slate-200">
+                  <div className="text-fg-body">
                     {new Date(viewing.sentAt).toLocaleString('es-ES')}
                   </div>
                 </div>
@@ -790,7 +901,7 @@ export const StockMovements: React.FC = () => {
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Recibido
                   </div>
-                  <div className="text-slate-700 dark:text-slate-200">
+                  <div className="text-fg-body">
                     {new Date(viewing.receivedAt).toLocaleString('es-ES')}
                   </div>
                 </div>
@@ -800,7 +911,7 @@ export const StockMovements: React.FC = () => {
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Posteado
                   </div>
-                  <div className="text-slate-700 dark:text-slate-200">
+                  <div className="text-fg-body">
                     {new Date(viewing.postedAt).toLocaleString('es-ES')}
                   </div>
                 </div>
@@ -810,82 +921,12 @@ export const StockMovements: React.FC = () => {
 
           {/* Líneas */}
           <Card bodyClassName="p-0">
-            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <div className="px-4 py-2 border-b border-border-subtle text-[10px] font-black uppercase tracking-wider text-fg-subtle">
               Líneas ({viewing.lines?.length || 0})
             </div>
-            {!viewing.lines || viewing.lines.length === 0 ? (
-              <div className="py-8 text-center text-sm text-slate-500">Sin líneas.</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[700px]">
-                  <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    <tr>
-                      <th className="px-3 py-2 text-left w-8">#</th>
-                      <th className="px-3 py-2 text-left">Artículo</th>
-                      <th className="px-3 py-2 text-right">Cantidad</th>
-                      <th className="px-3 py-2 text-left">UoM</th>
-                      <th className="px-3 py-2 text-left">Lote / Serie</th>
-                      {kind === 'transfer' ? (
-                        <>
-                          <th className="px-3 py-2 text-left">Zona origen</th>
-                          <th className="px-3 py-2 text-left">Zona destino</th>
-                        </>
-                      ) : (
-                        <th className="px-3 py-2 text-left">Zona</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {viewing.lines.map((l: any) => {
-                      const it = itemsById.get(l.itemId);
-                      const uom = l.uomId
-                        ? uomsById.get(l.uomId)
-                        : it?.uomId
-                          ? uomsById.get(it.uomId)
-                          : null;
-                      const zone = (zid: string | null) =>
-                        zid ? zones.find((z) => z.id === zid)?.name || '—' : '—';
-                      return (
-                        <tr key={l.id} className="border-t border-slate-100 dark:border-slate-800">
-                          <td className="px-3 py-2 text-slate-500">{l.lineNum}</td>
-                          <td className="px-3 py-2 text-slate-800 dark:text-slate-100">
-                            <div className="font-semibold">{it?.name || l.itemId}</div>
-                            {it?.code && (
-                              <div className="text-[11px] text-slate-500 font-mono">{it.code}</div>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono">{l.quantity}</td>
-                          <td className="px-3 py-2 text-slate-500">{uom?.code || '—'}</td>
-                          <td className="px-3 py-2">
-                            {l.batchNum ? (
-                              <code className="text-[11px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
-                                {l.batchNum}
-                              </code>
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </td>
-                          {kind === 'transfer' ? (
-                            <>
-                              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                                {zone(l.fromZoneId)}
-                              </td>
-                              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                                {zone(l.toZoneId)}
-                              </td>
-                            </>
-                          ) : (
-                            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                              {zone(l.zoneId)}
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {/* La Table trae cabecera, scroll horizontal y estado vacío: el
+                <table> a mano y la rama de "Sin líneas." sobraban. */}
+            <Table columns={lineColumns} data={viewing.lines || []} emptyMessage="Sin líneas." />
           </Card>
         </div>
       )}
@@ -937,25 +978,14 @@ export const StockMovements: React.FC = () => {
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                     Motivo
                   </label>
-                  <select
+                  {/* La etiqueta se queda fuera (mismo estilo que los demás
+                      campos de la cabecera); el nombre accesible va en ariaLabel. */}
+                  <Select
+                    ariaLabel="Motivo"
+                    options={TYPE_OPTS[kind === 'receipt' ? 'receipt' : 'issue']}
                     value={form.type || 'internal'}
-                    onChange={(e) => setForm({ ...form, type: e.target.value })}
-                    className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                  >
-                    {kind === 'receipt' ? (
-                      <>
-                        <option value="internal">Recepción interna</option>
-                        <option value="return">Devolución</option>
-                        <option value="adjustment">Ajuste positivo</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="internal">Salida interna</option>
-                        <option value="scrap">Scrap / merma</option>
-                        <option value="adjustment">Ajuste negativo</option>
-                      </>
-                    )}
-                  </select>
+                    onChange={(v) => setForm({ ...form, type: v })}
+                  />
                 </div>
               </div>
             )}
@@ -967,16 +997,18 @@ export const StockMovements: React.FC = () => {
                   Líneas
                 </label>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
+                    type="button"
+                    size="sm"
                     onClick={() => setScanOpen(true)}
-                    className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1.5 rounded bg-primary text-white shadow-sm hover:opacity-90"
                     title="Escanear código de barras"
+                    className="gap-1"
                   >
                     <ScanLine size={12} /> Escanear
-                  </button>
-                  <button onClick={addLine} className="text-[11px] text-primary hover:underline">
-                    + Añadir línea
-                  </button>
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={addLine}>
+                    <Plus size={12} className="mr-1" /> Añadir línea
+                  </Button>
                 </div>
               </div>
 
@@ -1032,10 +1064,10 @@ export const StockMovements: React.FC = () => {
                   return (
                     <div
                       key={i}
-                      className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 p-2.5"
+                      className="rounded-lg border border-border-default bg-bg-muted p-2.5"
                     >
                       <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[11px] font-bold text-slate-500 shrink-0 mt-1">
+                        <div className="w-6 h-6 rounded-full bg-bg-card border border-border-default flex items-center justify-center text-[11px] font-bold text-slate-500 shrink-0 mt-1">
                           {i + 1}
                         </div>
                         <div className="flex-1 grid grid-cols-12 gap-2">
@@ -1081,7 +1113,7 @@ export const StockMovements: React.FC = () => {
                               UoM
                             </label>
                             <div
-                              className="h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-800/60 text-sm px-3 flex items-center text-slate-600 dark:text-slate-300"
+                              className="h-10 rounded-lg border border-border-default bg-bg-muted text-sm px-3 flex items-center text-fg-body"
                               title="Unidad del artículo"
                             >
                               {uom ? uom.code : '—'}
@@ -1286,14 +1318,17 @@ export const StockMovements: React.FC = () => {
                             );
                           })()}
                         </div>
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => removeLine(i)}
                           disabled={lines.length === 1}
-                          className="p-1.5 text-slate-400 hover:text-rose-500 disabled:opacity-30 mt-1 shrink-0"
                           title="Quitar línea"
+                          className="mt-1 shrink-0"
                         >
                           <Trash2 size={13} />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   );
@@ -1306,16 +1341,15 @@ export const StockMovements: React.FC = () => {
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                 Notas
               </label>
-              <textarea
+              <Textarea
                 rows={2}
                 value={form.notes || ''}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2"
                 placeholder="Opcional — observaciones para el almacén."
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 mt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 mt-2 border-t border-border-subtle">
               <Button variant="secondary" onClick={cancelCreate}>
                 Cancelar
               </Button>

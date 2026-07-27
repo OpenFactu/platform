@@ -25,95 +25,22 @@
 
 import { tool } from 'ai';
 import { z } from 'zod';
-import { PdfRenderer, buildVisualTemplate, DEFAULT_VISUAL_OPTIONS, type DocType, type VisualOptions } from '@openfactu/pdf';
+import { PdfRenderer, buildVisualTemplate, type DocType } from '@openfactu/pdf';
 import { PdfPayloadBuilder } from '../../documents/PdfPayloadBuilder';
+import {
+  visualOptionsInputSchema,
+  mergeVisualOptions,
+  type VisualOptionsInput,
+} from '../../documents/visualTemplateOptions';
 import type { ChatToolContext } from './util';
 
 export const TEMPLATE_DOC_TYPE_IDS = ['SINV', 'PINV', 'SO', 'PO', 'SDN', 'PDN'] as const;
 
-const watermarkSchema = z
-  .object({
-    enabled: z.boolean().optional(),
-    text: z.string().optional(),
-    color: z.string().optional(),
-    opacity: z.number().optional(),
-    rotation: z.number().optional(),
-    fontSize: z.number().optional(),
-  })
-  .optional();
-
-const footerSchema = z
-  .object({
-    text: z.string().optional(),
-    alignment: z.enum(['left', 'center', 'right']).optional(),
-    showPageNumbers: z.boolean().optional(),
-    showGeneratedAt: z.boolean().optional(),
-  })
-  .optional();
-
-const columnsSchema = z
-  .object({
-    code: z.boolean().optional(),
-    description: z.boolean().optional(),
-    quantity: z.boolean().optional(),
-    uom: z.boolean().optional(),
-    price: z.boolean().optional(),
-    iva: z.boolean().optional(),
-    lineTotal: z.boolean().optional(),
-  })
-  .optional();
-
-/** Espeja `VisualOptions` (@openfactu/pdf) — ver visualOptionsSchema.d.ts. Todo
- * opcional: lo no indicado se completa con DEFAULT_VISUAL_OPTIONS. */
-export const visualOptionsInputSchema = z.object({
-  accentColor: z.string().optional().describe('Color de acento (hex), ej. "#2563eb"'),
-  headerBgColor: z.string().optional(),
-  textColor: z.string().optional(),
-  mutedColor: z.string().optional(),
-  fontFamily: z.enum(['sans', 'serif', 'mono']).optional(),
-  baseFontSize: z.number().optional(),
-  pageSize: z.enum(['A4', 'Letter', 'A5']).optional(),
-  orientation: z.enum(['portrait', 'landscape']).optional(),
-  margins: z.enum(['narrow', 'normal', 'wide']).optional(),
-  logoUrl: z.string().optional(),
-  logoPosition: z.enum(['left', 'center', 'right']).optional(),
-  logoMaxHeight: z.number().optional(),
-  customTitle: z.string().optional().describe('Título del documento, ej. "FACTURA"'),
-  showCompanyTaxId: z.boolean().optional(),
-  showCompanyAddress: z.boolean().optional(),
-  showCompanyContact: z.boolean().optional(),
-  showPartnerTaxId: z.boolean().optional(),
-  showPartnerAddress: z.boolean().optional(),
-  showPartnerContact: z.boolean().optional(),
-  showShipTo: z.boolean().optional(),
-  showBillTo: z.boolean().optional(),
-  showBaseDoc: z.boolean().optional(),
-  showTaxBreakdown: z.boolean().optional(),
-  showTotalInWords: z.boolean().optional(),
-  showBatches: z.boolean().optional(),
-  showDocBarcode: z.boolean().optional(),
-  showDocQr: z.boolean().optional(),
-  columns: columnsSchema,
-  watermark: watermarkSchema,
-  footer: footerSchema,
-  showCustomFields: z.boolean().optional(),
-  customFieldsLabel: z.string().optional(),
-  customCss: z.string().optional().describe('CSS adicional libre para ajustes finos'),
-});
-
-export type VisualOptionsInput = z.infer<typeof visualOptionsInputSchema>;
-
-/** Deep-merge de un input parcial sobre DEFAULT_VISUAL_OPTIONS — mismo criterio
- * de retrocompatibilidad que usa `parseMeta` para las plantillas guardadas. */
-export function mergeVisualOptions(input?: VisualOptionsInput): VisualOptions {
-  return {
-    ...DEFAULT_VISUAL_OPTIONS,
-    ...input,
-    columns: { ...DEFAULT_VISUAL_OPTIONS.columns, ...input?.columns },
-    watermark: { ...DEFAULT_VISUAL_OPTIONS.watermark, ...input?.watermark },
-    footer: { ...DEFAULT_VISUAL_OPTIONS.footer, ...input?.footer },
-  } as VisualOptions;
-}
+// El esquema de opciones vive en core/documents/visualTemplateOptions.ts — lo
+// comparten estas tools y el generador de la página de plantillas
+// (POST /api/document-templates/generate). Se re-exporta para no romper los
+// imports existentes (actionTools.ts).
+export { visualOptionsInputSchema, mergeVisualOptions, type VisualOptionsInput };
 
 export function buildDocumentTemplateTools(_ctx: ChatToolContext) {
   return {

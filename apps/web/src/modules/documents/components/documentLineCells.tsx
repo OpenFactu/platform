@@ -116,19 +116,11 @@ interface BuilderOpts {
 const cellBase = 'tabular-nums';
 
 export function moneyCell(value: number | string, fmt: BuilderOpts['fmt']): React.ReactNode {
-  return (
-    <span className={`font-medium text-slate-600 dark:text-slate-300 ${cellBase}`}>
-      {fmt.money(value)}
-    </span>
-  );
+  return <span className={`font-medium text-fg-body ${cellBase}`}>{fmt.money(value)}</span>;
 }
 
 export function strongMoneyCell(value: number | string, fmt: BuilderOpts['fmt']): React.ReactNode {
-  return (
-    <span className={`font-black text-slate-900 dark:text-slate-100 ${cellBase}`}>
-      {fmt.money(value)}
-    </span>
-  );
+  return <span className={`font-black text-fg-default ${cellBase}`}>{fmt.money(value)}</span>;
 }
 
 export function numberCell(
@@ -137,9 +129,7 @@ export function numberCell(
   precision = 2,
 ): React.ReactNode {
   return (
-    <span className={`font-bold text-slate-700 dark:text-slate-200 ${cellBase}`}>
-      {fmt.number(value, precision)}
-    </span>
+    <span className={`font-bold text-fg-body ${cellBase}`}>{fmt.number(value, precision)}</span>
   );
 }
 
@@ -198,11 +188,9 @@ export function renderArticleCell(
   const code = item?.code ?? '—';
   return (
     <div className="min-w-0">
-      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate">
-        {name}
-      </p>
+      <p className="text-sm font-semibold text-fg-default leading-tight truncate">{name}</p>
       <div className="flex items-center gap-2 mt-0.5">
-        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-mono truncate">
+        <span className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider font-mono truncate">
           {code}
         </span>
         <BatchBadge line={line} item={item} onViewBatch={onViewBatch} />
@@ -213,11 +201,7 @@ export function renderArticleCell(
 
 function locationCell(line: any, zones?: any[]): React.ReactNode {
   const zoneName = zones?.find((z: any) => z.id === line.zoneId)?.name;
-  return (
-    <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-      {zoneName || 'Por defecto'}
-    </span>
-  );
+  return <span className="text-[11px] font-medium text-fg-muted">{zoneName || 'Por defecto'}</span>;
 }
 
 function progressCell(
@@ -229,7 +213,7 @@ function progressCell(
   const tgtN = Number(target) || 0;
   const color =
     curN <= 0
-      ? 'text-slate-400 dark:text-slate-500'
+      ? 'text-fg-subtle'
       : curN + 0.0001 >= tgtN
         ? 'text-emerald-600 dark:text-emerald-300'
         : 'text-amber-600 dark:text-amber-300';
@@ -284,11 +268,9 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
         const uomCode = item?.uomCode || item?.uom?.code;
         return (
           <span className="inline-flex items-baseline gap-1 justify-center tabular-nums">
-            <span className="font-bold text-slate-700 dark:text-slate-200">
-              {fmt.number(l.quantity, 2)}
-            </span>
+            <span className="font-bold text-fg-body">{fmt.number(l.quantity, 2)}</span>
             {uomCode && (
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              <span className="text-[9px] font-black uppercase tracking-wider text-fg-subtle">
                 {uomCode}
               </span>
             )}
@@ -324,17 +306,14 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
       width: '12%',
       align: 'left',
       cell: (l: any) => {
-        if (!l.internalOrderId)
-          return <span className="text-slate-300 dark:text-slate-600">—</span>;
+        if (!l.internalOrderId) return <span className="text-fg-subtle">—</span>;
         const p = masters.internalOrders?.find((x: any) => x.id === l.internalOrderId);
         if (!p)
           return <span className="font-mono text-[11px]">{l.internalOrderId.slice(0, 8)}…</span>;
         return (
           <div className="flex flex-col leading-tight">
-            <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400">
-              {p.code}
-            </span>
-            <span className="text-xs text-slate-700 dark:text-slate-200 truncate">{p.name}</span>
+            <span className="text-[10px] font-black uppercase text-fg-muted">{p.code}</span>
+            <span className="text-xs text-fg-body truncate">{p.name}</span>
           </div>
         );
       },
@@ -363,7 +342,7 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
         <LabelPrintButton
           params={{ itemId: l.itemId }}
           title="Imprimir etiqueta del artículo"
-          className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-purple-600 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all inline-flex"
+          className="p-1.5 text-fg-subtle hover:text-purple-600 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all inline-flex"
           triggerLabel={<Tag size={13} />}
         />
       ) : null,
@@ -438,8 +417,7 @@ interface FormBuilderOpts {
   }>;
 }
 
-const disabledInputCls =
-  'bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800 cursor-not-allowed';
+const disabledInputCls = 'bg-bg-muted text-fg-subtle border-border-subtle cursor-not-allowed';
 
 function FormArticleCell({
   line,
@@ -529,7 +507,7 @@ function FormArticleCell({
           );
         })()}
       {locked && hasTrace && (
-        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase italic leading-none tracking-wider">
+        <p className="text-[9px] font-bold text-fg-subtle uppercase italic leading-none tracking-wider">
           Vinculado al albarán origen
         </p>
       )}
@@ -636,19 +614,15 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
       cell: (line: any, idx: number) => {
         const locked = !!line.baseId;
         return (
-          <select
+          <SearchableSelect
+            options={(masters.warehouses ?? []).map((w: any) => ({ value: w.id, label: w.name }))}
             value={line.warehouseId || ''}
+            onChange={(v) => actions.updateLine(idx, 'warehouseId', v)}
             disabled={locked}
-            onChange={(e) => actions.updateLine(idx, 'warehouseId', e.target.value)}
-            className={`h-9 w-full max-w-[160px] border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-left px-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 ${locked ? disabledInputCls : ''}`}
-          >
-            <option value="">(Sin almacén)</option>
-            {(masters.warehouses ?? []).map((w: any) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </select>
+            placeholder="(Sin almacén)"
+            clearable
+            className="max-w-[160px]"
+          />
         );
       },
     });
@@ -721,7 +695,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
               value={currentUomId}
               disabled={locked}
               onChange={(e) => handleUomChange(e.target.value)}
-              className={`h-9 w-[70px] shrink-0 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 px-1 ${locked ? disabledInputCls : ''}`}
+              className={`h-9 w-[70px] shrink-0 border border-border-default rounded-lg text-[10px] font-black uppercase tracking-wider text-fg-body bg-bg-card px-1 ${locked ? disabledInputCls : ''}`}
               title="Unidad de medida"
             >
               {availUoms.map((u) => (
@@ -731,7 +705,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
               ))}
             </select>
           ) : uomCode ? (
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0 w-[46px] text-left">
+            <span className="text-[10px] font-black uppercase tracking-wider text-fg-subtle shrink-0 w-[46px] text-left">
               {uomCode}
             </span>
           ) : null}
@@ -805,7 +779,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
       const total = base * (1 + rate / 100);
       return (
         <span
-          className={`font-black tabular-nums ${line.baseId ? 'text-slate-400 dark:text-slate-500' : 'text-slate-900 dark:text-slate-100'}`}
+          className={`font-black tabular-nums ${line.baseId ? 'text-fg-subtle' : 'text-fg-default'}`}
         >
           {fmt.money(total)}
         </span>
@@ -823,21 +797,17 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
       cell: (line: any, idx: number) => {
         const locked = !!line.baseId;
         return (
-          <select
-            value={line.internalOrderId || ''}
-            disabled={locked}
-            onChange={(e) => actions.updateLine(idx, 'internalOrderId', e.target.value || null)}
-            className={`h-9 w-full border border-slate-200 dark:border-slate-700 rounded-lg text-xs px-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 ${locked ? disabledInputCls : ''}`}
-          >
-            <option value="">—</option>
-            {(masters.internalOrders ?? [])
+          <SearchableSelect
+            options={(masters.internalOrders ?? [])
+              // Sólo las abiertas, salvo la que ya tenga asignada esta línea.
               .filter((p: any) => p.status === 'open' || p.id === line.internalOrderId)
-              .map((p: any) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} · {p.name}
-                </option>
-              ))}
-          </select>
+              .map((p: any) => ({ value: p.id, label: `${p.code} · ${p.name}` }))}
+            value={line.internalOrderId || ''}
+            onChange={(v) => actions.updateLine(idx, 'internalOrderId', v || null)}
+            disabled={locked}
+            placeholder="—"
+            clearable
+          />
         );
       },
     });
@@ -877,7 +847,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
               variant="ghost"
               size="sm"
               onClick={() => onDuplicateLine(idx)}
-              className="h-7 w-7 p-0 text-slate-400 dark:text-slate-500 hover:text-primary"
+              className="h-7 w-7 p-0 text-fg-subtle hover:text-primary"
               title="Duplicar línea"
             >
               <CopyIcon size={14} />
@@ -887,7 +857,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
             variant="ghost"
             size="sm"
             onClick={() => actions.removeLine(idx)}
-            className="h-7 w-7 p-0 text-slate-300 dark:text-slate-600 hover:text-rose-500"
+            className="h-7 w-7 p-0 text-fg-subtle hover:text-rose-500"
             title="Eliminar línea"
           >
             <Trash2 size={14} />

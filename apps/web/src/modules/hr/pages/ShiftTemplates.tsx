@@ -1,12 +1,10 @@
 import { shiftTemplatesApi } from '../api';
 import type { ShiftTemplate } from '../domain/shift';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast } from '@openfactu/ui';
+import { Table, Card, Button, Input, useToast, PageHeader, ColorInput } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Clock, Plus, Pencil, Trash2 } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { ApiError } from '@/shared/http';
 
 const empty = (): Partial<ShiftTemplate> => ({
@@ -94,25 +92,12 @@ export const ShiftTemplates: React.FC = () => {
         ),
     },
     { header: 'Pausa (min)', cell: (r: ShiftTemplate) => r.breakMinutes },
-    {
-      header: '',
-      align: 'right' as const,
-      cell: (r: ShiftTemplate) => (
-        <div className="flex items-center justify-end gap-2">
-          <button onClick={() => setEditing(r)} className="text-slate-500 hover:text-indigo-600">
-            <Pencil size={16} />
-          </button>
-          <button onClick={() => remove(r)} className="text-slate-400 hover:text-red-500">
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<ShiftTemplate>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: ShiftTemplate) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que no hace falta duplicarlas
+  // en una columna de botones.
+  const rowActions = (r: ShiftTemplate): RowAction[] => [
     { label: 'Editar', icon: <Pencil size={14} />, onClick: () => setEditing(r) },
     {
       label: 'Eliminar',
@@ -124,20 +109,17 @@ export const ShiftTemplates: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <Clock className="text-indigo-600" size={32} /> Plantillas de turno
-          </h1>
-          <p className="text-slate-500">
-            Cada plantilla define un turno por horas reales (no fijo). Se usan en patrones y
-            asignaciones.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setEditing(empty())}>
-          <Plus size={14} /> Nueva plantilla
-        </Button>
-      </div>
+      <PageHeader
+        title="Plantillas de turno"
+        subtitle="Cada plantilla define un turno por horas reales (no fijo). Se usan en patrones y asignaciones."
+        icon={<Clock size={18} />}
+        size="lg"
+        actions={
+          <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+            <Plus size={14} /> Nueva plantilla
+          </Button>
+        }
+      />
 
       {editing && (
         <Card noPadding>
@@ -179,15 +161,12 @@ export const ShiftTemplates: React.FC = () => {
                   setEditing({ ...editing, breakMinutes: Number(e.target.value) || 0 })
                 }
               />
-              <div>
-                <label className="block text-sm mb-1">Color</label>
-                <input
-                  type="color"
-                  value={editing.color || '#6366F1'}
-                  onChange={(e) => setEditing({ ...editing, color: e.target.value })}
-                  className="w-full h-9 rounded border"
-                />
-              </div>
+              {/* ColorInput sí tiene prop `label` → el <label> suelto desaparece. */}
+              <ColorInput
+                label="Color"
+                value={editing.color || '#6366F1'}
+                onChange={(v) => setEditing({ ...editing, color: v })}
+              />
             </div>
 
             {/* Turno partido opcional */}
@@ -258,16 +237,8 @@ export const ShiftTemplates: React.FC = () => {
       )}
 
       <Card noPadding>
-        <Table columns={ctxColumns} data={rows} isLoading={loading} />
+        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

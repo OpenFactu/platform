@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Badge, Loader, useToast } from '@openfactu/ui';
+import { Table, Card, Button, Badge, Loader, PageHeader, useToast } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import {
   FileCode,
   Plus,
@@ -21,9 +22,6 @@ import {
   type TemplateRow,
 } from './constants';
 import { useAuth } from '@/context/AuthContext';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { templatesApi } from '../api';
 
 interface Props {
@@ -106,7 +104,7 @@ export const TemplatesList: React.FC<Props> = ({
       header: 'Nombre',
       accessor: (item: TemplateRow) => (
         <div className="flex items-center gap-2">
-          <span className="font-bold text-slate-800 dark:text-slate-100">{item.name}</span>
+          <span className="font-bold text-fg-default">{item.name}</span>
           {item.isDefault && (
             <Badge variant="success" className="text-[9px] font-black uppercase">
               Default
@@ -120,69 +118,13 @@ export const TemplatesList: React.FC<Props> = ({
       accessor: (item: TemplateRow) =>
         item.updatedAt ? new Date(item.updatedAt).toLocaleString('es-ES') : '—',
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (item: TemplateRow) => (
-        <div className="flex items-center justify-end gap-1">
-          {(item.docType === 'FREE' || item.docType === 'LABEL') && onGenerate && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e: any) => {
-                e.stopPropagation();
-                onGenerate(item);
-              }}
-              title="Generar documento"
-              className="text-blue-600 hover:text-blue-700"
-            >
-              <FileDown size={14} />
-            </Button>
-          )}
-          {!item.isDefault && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e: any) => {
-                e.stopPropagation();
-                onSetDefault(item);
-              }}
-              title="Marcar como default"
-            >
-              <Star size={14} />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e: any) => {
-              e.stopPropagation();
-              onDuplicate(item);
-            }}
-            title="Duplicar"
-          >
-            <Copy size={14} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e: any) => {
-              e.stopPropagation();
-              onDelete(item);
-            }}
-            title="Borrar"
-            className="text-rose-500 hover:text-rose-700"
-          >
-            <Trash2 size={14} />
-          </Button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<TemplateRow>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (item: TemplateRow) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que los condicionales de cada
+  // acción se declaran una vez en lugar de duplicarse entre una columna de
+  // botones y el menú.
+  const rowActions = (item: TemplateRow): RowAction[] => [
     { label: 'Editar', icon: <Pencil size={14} />, onClick: () => onEdit(item) },
     ...(onGenerate && (item.docType === 'FREE' || item.docType === 'LABEL')
       ? [
@@ -214,53 +156,50 @@ export const TemplatesList: React.FC<Props> = ({
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-line dark:border-ink-700 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-ink-900 dark:text-slate-100 flex items-center gap-4 tracking-tight font-display">
-            <div className="p-3 bg-accent/10 rounded-sm text-accent border border-accent/20">
-              <FileCode size={28} />
-            </div>
-            Plantillas de Documento
-          </h1>
-          <p className="text-ink-500 dark:text-ink-400 mt-2 font-medium ml-1">
-            Formatos PDF personalizables para facturas, albaranes, pedidos, etiquetas y documentos
-            libres.
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            onClick={handleResyncDefaults}
-            disabled={resyncing}
-            variant="outline"
-            className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
-            title="Regenera las plantillas por defecto con la paleta Keirost + trazabilidad. No toca plantillas custom."
-          >
-            <RefreshCw size={16} className={resyncing ? 'animate-spin' : ''} />
-            {resyncing ? 'Regenerando…' : 'Regenerar estándares'}
-          </Button>
-          {onAiGenerate && (
+      <PageHeader
+        title="Plantillas de Documento"
+        subtitle="Formatos PDF personalizables para facturas, albaranes, pedidos, etiquetas y documentos libres."
+        icon={<FileCode size={18} />}
+        size="lg"
+        divider
+        actions={
+          <div className="flex gap-2 flex-wrap">
             <Button
-              onClick={onAiGenerate}
+              type="button"
+              onClick={handleResyncDefaults}
+              disabled={resyncing}
               variant="outline"
               className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
-              title="Describe la plantilla en lenguaje natural y la IA la genera"
+              title="Regenera las plantillas por defecto con la paleta Keirost + trazabilidad. No toca plantillas custom."
             >
-              <Sparkles size={16} /> Generar con IA
+              <RefreshCw size={16} className={resyncing ? 'animate-spin' : ''} />
+              {resyncing ? 'Regenerando…' : 'Regenerar estándares'}
             </Button>
-          )}
-          <Button onClick={onCreate} className="flex items-center gap-2 h-12 px-6">
-            <Plus size={18} /> Nueva Plantilla
-          </Button>
-        </div>
-      </div>
+            {onAiGenerate && (
+              <Button
+                type="button"
+                onClick={onAiGenerate}
+                variant="outline"
+                className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
+                title="Describe la plantilla en lenguaje natural y la IA la genera"
+              >
+                <Sparkles size={16} /> Generar con IA
+              </Button>
+            )}
+            <Button type="button" onClick={onCreate} className="flex items-center gap-2 h-12 px-6">
+              <Plus size={18} /> Nueva Plantilla
+            </Button>
+          </div>
+        }
+      />
 
       {loading && <Loader />}
 
       {!loading && (
         <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 items-start">
           {/* Panel izquierdo: tipos */}
-          <Card noPadding className="overflow-hidden border-slate-100 dark:border-slate-800">
-            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800">
+          <Card noPadding className="overflow-hidden border-border-subtle">
+            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-border-subtle">
               Tipo de documento
             </div>
             <ul>
@@ -275,7 +214,7 @@ export const TemplatesList: React.FC<Props> = ({
                       className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left border-l-2 transition-colors ${
                         active
                           ? 'border-accent bg-accent/5'
-                          : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                          : 'border-transparent hover:bg-bg-hover'
                       }`}
                     >
                       <span className="flex items-center gap-2 min-w-0">
@@ -285,13 +224,13 @@ export const TemplatesList: React.FC<Props> = ({
                           {docType}
                         </span>
                         <span
-                          className={`text-sm truncate ${active ? 'font-bold text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}
+                          className={`text-sm truncate ${active ? 'font-bold text-fg-default' : 'text-fg-body'}`}
                         >
                           {getDocTypeLabel(docType)}
                         </span>
                       </span>
                       <span
-                        className={`text-[10px] font-bold shrink-0 ${count > 0 ? 'text-slate-500' : 'text-slate-300 dark:text-slate-600'}`}
+                        className={`text-[10px] font-bold shrink-0 ${count > 0 ? 'text-slate-500' : 'text-fg-subtle'}`}
                       >
                         {count}
                       </span>
@@ -305,7 +244,7 @@ export const TemplatesList: React.FC<Props> = ({
           {/* Panel derecho: plantillas del tipo seleccionado */}
           <Card
             noPadding
-            className="overflow-hidden shadow-lg dark:bg-transparent border-slate-100 dark:border-slate-800"
+            className="overflow-hidden shadow-lg dark:bg-transparent border-border-subtle"
           >
             {selectedType && (
               <div
@@ -321,22 +260,14 @@ export const TemplatesList: React.FC<Props> = ({
               </div>
             )}
             {rows.length === 0 ? (
-              <div className="p-10 text-center text-slate-400 dark:text-slate-500 text-sm italic flex items-center justify-center gap-2">
+              <div className="p-10 text-center text-fg-subtle text-sm italic flex items-center justify-center gap-2">
                 <AlertCircle size={14} /> Sin plantillas para este tipo
               </div>
             ) : (
-              <Table columns={ctxColumns} data={rows} onRowClick={onEdit} />
+              <Table columns={columns} data={rows} rowActions={rowActions} onRowClick={onEdit} />
             )}
           </Card>
         </div>
-      )}
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
       )}
     </div>
   );

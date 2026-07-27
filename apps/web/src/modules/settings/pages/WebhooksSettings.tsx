@@ -11,7 +11,20 @@
 
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  PasswordInput,
+  Checkbox,
+  EmptyState,
+  Modal,
+  Badge,
+  Loader,
+  PageHeader,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
 import { Plus, Trash2, Edit2, Webhook, Send } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -38,6 +51,7 @@ const AVAILABLE_EVENTS = [
 export const WebhooksSettings: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [subs, setSubs] = useState<Sub[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -96,7 +110,13 @@ export const WebhooksSettings: React.FC = () => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('¿Eliminar webhook?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar webhook',
+      message: 'Dejarás de recibir eventos en esa URL. La suscripción no se puede recuperar.',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     await coreApi.raw('DELETE', `/api/webhooks/${id}`);
     load();
   };
@@ -116,31 +136,35 @@ export const WebhooksSettings: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-        <div className="flex items-center gap-3">
-          <Webhook className="text-indigo-600 dark:text-indigo-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-              Webhooks salientes
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Suscríbete a eventos del sistema y recíbelos en tu propia URL con firma HMAC-SHA256
-              opcional.
-            </p>
-          </div>
-        </div>
-        <Button onClick={openNew} className="flex items-center gap-2">
-          <Plus size={14} /> Nuevo
-        </Button>
-      </header>
+      <PageHeader
+        title="Webhooks salientes"
+        subtitle="Suscríbete a eventos del sistema y recíbelos en tu propia URL con firma HMAC-SHA256 opcional."
+        icon={<Webhook size={18} />}
+        size="sm"
+        divider
+        actions={
+          <Button type="button" onClick={openNew} className="flex items-center gap-2">
+            <Plus size={14} /> Nuevo
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="py-10 flex justify-center">
           <Loader />
         </div>
       ) : subs.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-          Sin suscripciones. Crea la primera para recibir eventos en tu sistema.
+        <Card bodyClassName="p-0">
+          <EmptyState
+            icon={<Webhook size={18} />}
+            title="Sin suscripciones"
+            hint="Crea la primera para recibir eventos del sistema en tu propia URL."
+            action={
+              <Button onClick={openNew} className="flex items-center gap-2">
+                <Plus size={14} /> Nuevo
+              </Button>
+            }
+          />
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -148,13 +172,11 @@ export const WebhooksSettings: React.FC = () => {
             {subs.map((s) => (
               <li
                 key={s.id}
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-                      {s.name}
-                    </span>
+                    <span className="font-semibold text-sm text-fg-default">{s.name}</span>
                     {!s.isActive && <Badge variant="neutral">Inactivo</Badge>}
                     {s.secret && <Badge variant="info">Firmado HMAC</Badge>}
                   </div>
@@ -163,25 +185,34 @@ export const WebhooksSettings: React.FC = () => {
                     {s.events.length === 0 ? 'Todos los eventos' : s.events.join(', ')}
                   </div>
                 </div>
-                <button
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => test(s.id)}
-                  className="px-2 py-1 text-[11px] rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800"
                   title="Enviar ping de prueba"
+                  className="flex items-center gap-1"
                 >
-                  <Send size={11} className="inline" /> Probar
-                </button>
-                <button
+                  <Send size={11} /> Probar
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => openEdit(s)}
-                  className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
+                  title="Editar"
                 >
                   <Edit2 size={13} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => remove(s.id)}
-                  className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded"
+                  title="Eliminar"
                 >
                   <Trash2 size={13} />
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -195,37 +226,28 @@ export const WebhooksSettings: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3 pt-2">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Nombre
-            </label>
-            <Input
-              value={form.name || ''}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Integración con ERP interno"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              URL
-            </label>
-            <Input
-              value={form.url || ''}
-              onChange={(e) => setForm({ ...form, url: e.target.value })}
-              placeholder="https://miempresa.com/hooks/keirost"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Secreto (opcional) — para firma HMAC-SHA256
-            </label>
-            <Input
-              type="password"
-              value={form.secret || ''}
-              onChange={(e) => setForm({ ...form, secret: e.target.value })}
-              placeholder="Genera una cadena aleatoria"
-            />
-          </div>
+          <Input
+            label="Nombre"
+            value={form.name || ''}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Integración con ERP interno"
+          />
+          <Input
+            label="URL"
+            value={form.url || ''}
+            onChange={(e) => setForm({ ...form, url: e.target.value })}
+            placeholder="https://miempresa.com/hooks/keirost"
+          />
+          {/* `generator`: el secreto HMAC es una cadena aleatoria, así que el
+              botón de generar sustituye al «Genera una cadena aleatoria» que
+              antes solo era un placeholder. */}
+          <PasswordInput
+            label="Secreto (opcional) — para firma HMAC-SHA256"
+            value={form.secret || ''}
+            onChange={(e) => setForm({ ...form, secret: e.target.value })}
+            generator={{ length: 40 }}
+            placeholder="Genera una cadena aleatoria"
+          />
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
               Eventos a recibir (vacío = todos)
@@ -234,10 +256,9 @@ export const WebhooksSettings: React.FC = () => {
               {AVAILABLE_EVENTS.map((e) => (
                 <label
                   key={e.value}
-                  className="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-slate-50 dark:bg-slate-800/40 cursor-pointer"
+                  className="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-bg-muted cursor-pointer"
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={(form.events || []).includes(e.value)}
                     onChange={() => toggleEvent(e.value)}
                   />
@@ -247,15 +268,14 @@ export const WebhooksSettings: React.FC = () => {
               ))}
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox
               checked={form.isActive !== false}
-              onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+              onChange={(v) => setForm({ ...form, isActive: v })}
             />
             Activo
           </label>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>

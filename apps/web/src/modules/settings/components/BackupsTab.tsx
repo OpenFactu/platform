@@ -13,7 +13,20 @@
 
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Checkbox,
+  NumberInput,
+  Select,
+  SearchableSelect,
+  EmptyState,
+  Table,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import {
   DatabaseBackup,
   Download,
@@ -60,8 +73,18 @@ const DEST_LABELS: Record<Destination, string> = {
 
 const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-const selectCls =
-  'px-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100';
+const FREQUENCY_OPTIONS = [
+  { value: 'daily', label: 'Diaria' },
+  { value: 'weekly', label: 'Semanal' },
+];
+
+/** Opciones derivadas de WEEKDAYS: el índice ES el valor que espera el cron. */
+const WEEKDAY_OPTIONS = WEEKDAYS.map((label, i) => ({ value: String(i), label }));
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => ({
+  value: String(h),
+  label: `${String(h).padStart(2, '0')}:00`,
+}));
 
 function formatSize(bytes: number | null): string {
   if (!bytes) return '—';
@@ -72,6 +95,7 @@ function formatSize(bytes: number | null): string {
 export const BackupsTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const role = user?.role;
   const canUse = role === 'ADMIN' || role === 'SUPERUSER';
   const isSuperuser = role === 'SUPERUSER';
@@ -193,13 +217,13 @@ export const BackupsTab: React.FC = () => {
   };
 
   const remove = async (run: BackupRun) => {
-    if (
-      !window.confirm(
-        `¿Eliminar el backup "${run.fileName || run.id}"? Se borrará también del destino.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await popup.confirm({
+      title: 'Eliminar backup',
+      message: `Se borrará "${run.fileName || run.id}" también del destino (${DEST_LABELS[run.destination] || run.destination}). No hay marcha atrás.`,
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       const res = await coreApi.raw('DELETE', `/api/backups/${run.id}`);
       if (!res.ok) throw new Error(res.data?.error || `HTTP ${res.status}`);
@@ -256,7 +280,7 @@ export const BackupsTab: React.FC = () => {
   if (loading || !config) {
     return (
       <Card>
-        <div className="p-6 text-sm text-slate-400 italic">Cargando…</div>
+        <div className="p-6 text-sm text-fg-subtle italic">Cargando…</div>
       </Card>
     );
   }
@@ -265,107 +289,155 @@ export const BackupsTab: React.FC = () => {
   const set = <K extends keyof BackupConfig>(k: K, v: BackupConfig[K]) =>
     setConfig((c) => (c ? { ...c, [k]: v } : c));
 
+  const historyColumns: TableColumn<BackupRun>[] = [
+    {
+      header: 'Fecha',
+      cell: (run) => new Date(run.startedAt).toLocaleString(),
+      sortable: true,
+      sortAccessor: (run) => run.startedAt,
+      primary: true,
+      className: 'whitespace-nowrap',
+    },
+    { header: 'Tipo', cell: (run) => (run.kind === 'scheduled' ? 'Programado' : 'Manual') },
+    { header: 'Destino', cell: (run) => DEST_LABELS[run.destination] || run.destination },
+    {
+      header: 'Tamaño',
+      cell: (run) => formatSize(run.sizeBytes),
+      align: 'right',
+      sortable: true,
+      sortAccessor: (run) => run.sizeBytes ?? 0,
+    },
+    {
+      header: 'Estado',
+      cell: (run) => (
+        <>
+          {run.status === 'ok' && (
+            <span className="inline-flex items-center gap-1 text-success-fg text-xs font-bold">
+              <CheckCircle2 size={13} /> OK
+            </span>
+          )}
+          {run.status === 'running' && (
+            <span className="inline-flex items-center gap-1 text-info-fg text-xs font-bold">
+              <Loader2 size={13} className="animate-spin" /> En curso
+            </span>
+          )}
+          {run.status === 'error' && (
+            <span
+              className="inline-flex items-center gap-1 text-danger-fg text-xs font-bold"
+              title={run.error || ''}
+            >
+              <XCircle size={13} /> Error
+            </span>
+          )}
+        </>
+      ),
+    },
+  ];
+
+  /**
+   * Descargar/restaurar/eliminar se mueven al menú ⋯ de la fila. Se conservan
+   * las mismas condiciones que tenían los botones: solo se descarga y restaura
+   * un backup terminado, restaurar sigue siendo exclusivo de SUPERUSER y no se
+   * borra uno en curso.
+   */
+  const historyActions = (run: BackupRun): RowAction[] => {
+    const actions: RowAction[] = [];
+    if (run.status === 'ok') {
+      actions.push({
+        label: 'Descargar',
+        icon: <Download size={14} />,
+        onClick: () => download(run),
+      });
+      if (isSuperuser) {
+        actions.push({
+          label: 'Restaurar como empresa nueva',
+          icon: <RotateCcw size={14} />,
+          onClick: () => {
+            setRestoreRun(run);
+            setRestoreName('');
+          },
+        });
+      }
+    }
+    if (run.status !== 'running') {
+      actions.push({
+        label: 'Eliminar',
+        icon: <Trash2 size={14} />,
+        destructive: true,
+        onClick: () => remove(run),
+      });
+    }
+    return actions;
+  };
+
   return (
     <div className="space-y-4">
       <Card>
         <div className="p-6 space-y-4">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <DatabaseBackup size={18} />
             <h2 className="text-lg font-bold">Backups automáticos</h2>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
+          <p className="text-sm text-fg-muted leading-snug">
             El servidor genera un <code>.zip</code> completo de la empresa (esquema + datos
             {config.includeUploads ? ' + adjuntos' : ''}) según esta programación y lo guarda en el
             destino elegido, conservando solo los últimos {config.retentionCount || '—'}.
           </p>
 
-          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 cursor-pointer font-bold">
-            <input
-              type="checkbox"
-              checked={config.enabled}
-              onChange={(e) => set('enabled', e.target.checked)}
-              className="w-4 h-4"
-            />
+          {/* Checkbox y no Switch: la programación se persiste con «Guardar
+              programación», no al marcar la casilla. */}
+          <label className="flex items-center gap-2 text-sm text-fg-body cursor-pointer font-bold">
+            <Checkbox checked={config.enabled} onChange={(v) => set('enabled', v)} />
             Activar backups automáticos
           </label>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <label className="flex flex-col gap-1 text-xs font-bold text-slate-500">
-              Frecuencia
-              <select
-                className={selectCls}
-                value={config.frequency}
-                onChange={(e) => set('frequency', e.target.value as BackupConfig['frequency'])}
-              >
-                <option value="daily">Diaria</option>
-                <option value="weekly">Semanal</option>
-              </select>
-            </label>
+            <Select
+              label="Frecuencia"
+              options={FREQUENCY_OPTIONS}
+              value={config.frequency}
+              onChange={(v) => set('frequency', v as BackupConfig['frequency'])}
+            />
             {config.frequency === 'weekly' && (
-              <label className="flex flex-col gap-1 text-xs font-bold text-slate-500">
-                Día
-                <select
-                  className={selectCls}
-                  value={config.weekday}
-                  onChange={(e) => set('weekday', Number(e.target.value))}
-                >
-                  {WEEKDAYS.map((d, i) => (
-                    <option key={i} value={i}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <label className="flex flex-col gap-1 text-xs font-bold text-slate-500">
-              Hora
-              <select
-                className={selectCls}
-                value={config.hour}
-                onChange={(e) => set('hour', Number(e.target.value))}
-              >
-                {Array.from({ length: 24 }, (_, h) => (
-                  <option key={h} value={h}>
-                    {String(h).padStart(2, '0')}:00
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-xs font-bold text-slate-500">
-              Destino
-              <select
-                className={selectCls}
-                value={config.destination}
-                onChange={(e) => set('destination', e.target.value as Destination)}
-              >
-                {(Object.keys(DEST_LABELS) as Destination[]).map((d) => (
-                  <option key={d} value={d} disabled={!cloudConnected(d)}>
-                    {DEST_LABELS[d]}
-                    {!cloudConnected(d) ? ' (sin conectar)' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-xs font-bold text-slate-500">
-              Copias a conservar
-              <input
-                type="number"
-                min={1}
-                max={365}
-                className={selectCls}
-                value={config.retentionCount}
-                onChange={(e) => set('retentionCount', Math.max(1, Number(e.target.value) || 1))}
+              <Select
+                label="Día"
+                options={WEEKDAY_OPTIONS}
+                value={String(config.weekday)}
+                onChange={(v) => set('weekday', Number(v))}
               />
-            </label>
+            )}
+            {/* 24 opciones → SearchableSelect (se puede teclear «03»). Sin prop
+                `label`, así que la etiqueta va aparte. */}
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-bold text-slate-500">Hora</span>
+              <SearchableSelect
+                options={HOUR_OPTIONS}
+                value={String(config.hour)}
+                onChange={(v) => set('hour', Number(v))}
+              />
+            </div>
+            <Select
+              label="Destino"
+              options={(Object.keys(DEST_LABELS) as Destination[]).map((d) => ({
+                value: d,
+                label: `${DEST_LABELS[d]}${cloudConnected(d) ? '' : ' (sin conectar)'}`,
+                disabled: !cloudConnected(d),
+              }))}
+              value={config.destination}
+              onChange={(v) => set('destination', v as Destination)}
+            />
+            <NumberInput
+              label="Copias a conservar"
+              value={config.retentionCount}
+              onChange={(v) => set('retentionCount', Math.max(1, v ?? 1))}
+              min={1}
+              max={365}
+              thousandSeparator={false}
+            />
           </div>
 
-          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={config.includeUploads}
-              onChange={(e) => set('includeUploads', e.target.checked)}
-              className="w-4 h-4"
-            />
+          <label className="flex items-center gap-2 text-xs text-fg-body cursor-pointer">
+            <Checkbox checked={config.includeUploads} onChange={(v) => set('includeUploads', v)} />
             <span>Incluir archivos adjuntos locales (storage/uploads) en el zip.</span>
           </label>
 
@@ -395,100 +467,15 @@ export const BackupsTab: React.FC = () => {
 
       <Card>
         <div className="p-6 space-y-3">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">Historial</h3>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-fg-muted">Historial</h3>
           {runs.length === 0 ? (
-            <p className="text-sm text-slate-400 italic">Todavía no hay backups.</p>
+            <EmptyState
+              icon={<DatabaseBackup size={28} />}
+              title="Todavía no hay backups"
+              hint="Activa la programación o lanza uno con «Backup ahora»."
+            />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                    <th className="py-2 pr-3">Fecha</th>
-                    <th className="py-2 pr-3">Tipo</th>
-                    <th className="py-2 pr-3">Destino</th>
-                    <th className="py-2 pr-3">Tamaño</th>
-                    <th className="py-2 pr-3">Estado</th>
-                    <th className="py-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {runs.map((run) => (
-                    <tr
-                      key={run.id}
-                      className="border-b border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200"
-                    >
-                      <td className="py-2 pr-3 whitespace-nowrap">
-                        {new Date(run.startedAt).toLocaleString()}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {run.kind === 'scheduled' ? 'Programado' : 'Manual'}
-                      </td>
-                      <td className="py-2 pr-3">
-                        {DEST_LABELS[run.destination] || run.destination}
-                      </td>
-                      <td className="py-2 pr-3 whitespace-nowrap">{formatSize(run.sizeBytes)}</td>
-                      <td className="py-2 pr-3">
-                        {run.status === 'ok' && (
-                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-                            <CheckCircle2 size={13} /> OK
-                          </span>
-                        )}
-                        {run.status === 'running' && (
-                          <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 text-xs font-bold">
-                            <Loader2 size={13} className="animate-spin" /> En curso
-                          </span>
-                        )}
-                        {run.status === 'error' && (
-                          <span
-                            className="inline-flex items-center gap-1 text-rose-500 text-xs font-bold"
-                            title={run.error || ''}
-                          >
-                            <XCircle size={13} /> Error
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2 text-right whitespace-nowrap">
-                        {run.status === 'ok' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => download(run)}
-                              title="Descargar"
-                              className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400"
-                            >
-                              <Download size={15} />
-                            </button>
-                            {isSuperuser && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRestoreRun(run);
-                                  setRestoreName('');
-                                }}
-                                title="Restaurar como empresa nueva"
-                                className="p-1.5 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400"
-                              >
-                                <RotateCcw size={15} />
-                              </button>
-                            )}
-                          </>
-                        )}
-                        {run.status !== 'running' && (
-                          <button
-                            type="button"
-                            onClick={() => remove(run)}
-                            title="Eliminar"
-                            className="p-1.5 text-slate-400 hover:text-rose-500"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table columns={historyColumns} data={runs} rowActions={historyActions} />
           )}
         </div>
       </Card>
@@ -496,7 +483,7 @@ export const BackupsTab: React.FC = () => {
       {restoreRun && (
         <Card>
           <div className="p-6 space-y-3">
-            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+            <div className="flex items-center gap-2 text-fg-body">
               <RotateCcw size={18} />
               <h3 className="text-lg font-bold">Restaurar backup</h3>
             </div>

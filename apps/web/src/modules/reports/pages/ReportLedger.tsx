@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { SearchableSelect } from '@openfactu/ui';
 import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
 import { reportsApi } from '../api';
@@ -12,9 +13,9 @@ export const ReportLedger: React.FC = () => {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-
   useEffect(() => {
-    reportsApi.get<any>('/api/chart-of-accounts')
+    reportsApi
+      .get<any>('/api/chart-of-accounts')
       .then((d) => setAccounts(Array.isArray(d) ? d : []));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.tenantId]);
@@ -22,7 +23,8 @@ export const ReportLedger: React.FC = () => {
   const load = () => {
     if (!accountId) return;
     setLoading(true);
-    reportsApi.get<any>(`/api/reports/ledger?accountId=${accountId}`)
+    reportsApi
+      .get<any>(`/api/reports/ledger?accountId=${accountId}`)
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
@@ -58,20 +60,17 @@ export const ReportLedger: React.FC = () => {
       pdfEndpoint={accountId ? '/api/reports/ledger/pdf' : undefined}
       pdfQuery={{ accountId }}
       filters={
-        <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-xs font-bold text-slate-600 dark:text-slate-300">Cuenta</label>
-          <select
+        <div className="max-w-md">
+          <label className="block text-xs font-bold text-fg-body mb-1">Cuenta</label>
+          {/* SearchableSelect y no Select: el plan contable puede tener cientos
+              de cuentas y sin buscador es inmanejable. */}
+          <SearchableSelect
+            options={accounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` }))}
             value={accountId}
-            onChange={(e) => setAccountId(e.target.value)}
-            className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm min-w-[300px]"
-          >
-            <option value="">— seleccionar —</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.code} — {a.name}
-              </option>
-            ))}
-          </select>
+            onChange={setAccountId}
+            placeholder="— seleccionar —"
+            clearable
+          />
         </div>
       }
     />

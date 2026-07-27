@@ -6,6 +6,11 @@
  *
  * Se coloca absolutamente en la esquina superior izquierda del contenedor
  * del mapa. El contenedor padre debe tener `position: relative`.
+ *
+ * Excepción deliberada al barrido de @openfactu/ui: el <input> y el botón de
+ * limpiar son parte de un overlay posicionado sobre el mapa (y comparten
+ * estilos con el modo `inline`). Sustituirlos por `Input`/`Button` rompe el
+ * posicionamiento absoluto y el hit-testing contra los gestos de MapLibre.
  */
 
 import { geocodeApi } from '@/modules/logistics/api';
@@ -128,12 +133,12 @@ export const MapSearchBox: React.FC<Props> = ({
   // En inline el dropdown se posiciona absolute respecto al wrapper para
   // no estirar el formulario; en floating queda justo bajo la caja.
   const dropdownClass = inline
-    ? 'absolute left-0 right-0 mt-1 z-20 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden max-h-80 overflow-y-auto'
-    : 'mt-1 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden max-h-80 overflow-y-auto';
+    ? 'absolute left-0 right-0 mt-1 z-20 bg-bg-card rounded-lg shadow-lg border border-border-default overflow-hidden max-h-80 overflow-y-auto'
+    : 'mt-1 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden max-h-80 overflow-y-auto';
 
   const inputBoxClass = inline
-    ? 'flex items-center gap-2 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 h-10 px-3'
-    : 'flex items-center gap-2 bg-white rounded-xl shadow-lg border border-slate-200 px-3 py-2';
+    ? 'flex items-center gap-2 bg-bg-card rounded-lg border border-border-default h-10 px-3'
+    : 'flex items-center gap-2 bg-white rounded-lg shadow-lg border border-slate-200 px-3 py-2';
 
   return (
     <div ref={wrapperRef} style={wrapperStyle} className={className}>
@@ -149,7 +154,7 @@ export const MapSearchBox: React.FC<Props> = ({
           }}
           onFocus={() => q.length >= 3 && setOpen(true)}
           placeholder={placeholder}
-          className="flex-1 outline-none text-sm bg-transparent text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+          className="flex-1 outline-none text-sm bg-transparent text-fg-default placeholder:text-slate-400"
         />
         {loading && <Loader2 size={14} className="animate-spin text-slate-400" />}
         {q && !loading && (
@@ -177,11 +182,9 @@ export const MapSearchBox: React.FC<Props> = ({
                 e.preventDefault();
                 pick(r);
               }}
-              className="px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer border-b border-slate-100 dark:border-slate-800 last:border-0"
+              className="px-3 py-2 hover:bg-bg-hover cursor-pointer border-b border-border-subtle last:border-0"
             >
-              <div className="text-sm text-slate-800 dark:text-slate-100 leading-tight truncate">
-                {r.label}
-              </div>
+              <div className="text-sm text-fg-default leading-tight truncate">{r.label}</div>
               {(r.type || r.housenumber) && (
                 <div className="text-[10px] text-slate-400 mt-0.5">
                   {[r.type, r.housenumber ? `nº ${r.housenumber}` : null]

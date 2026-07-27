@@ -95,6 +95,11 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // Webs públicas del módulo Website (assets del editor, "Ver web" en dev)
+      '/site': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
   // Paquetes @openfactu/* se publican como CommonJS. Cuando están linkados
@@ -102,11 +107,20 @@ export default defineConfig({
   // al resolver named exports. Forzamos pre-bundling para que esbuild los
   // convierta a ESM igual que cuando vienen del registry.
   optimizeDeps: {
+    // Con paquetes junction-linkados, la caché de prebundle (.vite/deps) NO se
+    // invalida al recompilar su dist — el navegador se queda con código viejo.
+    // force re-optimiza en cada arranque (coste: ~1s). Quitar cuando todos los
+    // @openfactu/* vengan de npm en lugar de junctions.
+    force: true,
     include: [
       '@openfactu/common',
       '@openfactu/pdf',
       '@openfactu/pdf/browser',
+      '@openfactu/site-builder',
       '@openfactu/ui',
+      // Subruta propia: los gráficos viven aparte porque arrastran recharts
+      // (peerDependency opcional), y Vite la prebundlea como entrada distinta.
+      '@openfactu/ui/charts',
       '@openfactu/plugin-sdk',
       '@zxing/browser',
       '@zxing/library',

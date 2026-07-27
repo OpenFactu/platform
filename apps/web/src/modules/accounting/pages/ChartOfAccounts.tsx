@@ -1,13 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  PageHeader,
+  useToast,
+  Badge,
+  usePopup,
+  Select,
+  SearchableSelect,
+  Checkbox,
+} from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { BookOpen, Plus, Trash2, Pencil, Wand2 } from 'lucide-react';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 import { ExcelTools } from '@/components/common/ExcelTools';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { chartOfAccountsApi } from '../api';
 
 interface Account {
@@ -29,6 +39,8 @@ const TYPE_LABELS: Record<string, string> = {
   income: 'Ingreso',
   expense: 'Gasto',
 };
+// Las opciones del desplegable salen de TYPE_LABELS para no repetir la lista.
+const TYPE_OPTIONS = Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }));
 const TYPE_VARIANTS: Record<string, any> = {
   asset: 'success',
   liability: 'warning',
@@ -57,7 +69,6 @@ export const ChartOfAccounts: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
   const popup = usePopup();
-
 
   const fetchRows = async () => {
     setLoading(true);
@@ -158,34 +169,18 @@ export const ChartOfAccounts: React.FC = () => {
           <Badge variant="neutral">Inactiva</Badge>
         ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: Account) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => openEdit(r)}
-            disabled={!canWrite}
-            className={`transition-colors ${canWrite ? 'text-slate-500 hover:text-blue-600' : 'text-slate-300 cursor-not-allowed'}`}
-          >
-            <Pencil size={16} />
-          </button>
-          <button
-            onClick={() => canDelete && handleDelete(r.id)}
-            disabled={!canDelete}
-            className={`transition-colors ${canDelete ? 'text-slate-400 hover:text-red-500' : 'text-slate-200 cursor-not-allowed'}`}
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<Account>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: Account) => [
-    { label: 'Editar', icon: <Pencil size={14} />, disabled: !canWrite, onClick: () => openEdit(r) },
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que los permisos se declaran
+  // una vez en lugar de duplicarse.
+  const rowActions = (r: Account): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => openEdit(r),
+    },
     {
       label: 'Eliminar',
       icon: <Trash2 size={14} />,
@@ -199,75 +194,76 @@ export const ChartOfAccounts: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-            <BookOpen className="text-blue-600 dark:text-blue-300" size={32} />
-            Plan contable
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Estructura jerárquica de cuentas. Una cuenta analítica obliga a informar centro de
-            coste, beneficio o proyecto en los asientos.
-          </p>
-        </div>
-        {canWrite && (
-          <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
-            {rows.length === 0 && (
-              <Button
-                variant="secondary"
-                onClick={async () => {
-                  const ok = await popup.confirm({
-                    title: 'Configurar contabilidad',
-                    message:
-                      'Creará un plan contable mínimo (PGC abreviado) y los mapeos de cuenta por defecto.',
-                    confirmLabel: 'Continuar',
-                  });
-                  if (!ok) return;
-                  let d;
-                  try {
-                    d = await chartOfAccountsApi.seed();
-                  } catch (err) {
-                    toast.error(
-                      (err instanceof Error && err.message) || 'Error al sembrar contabilidad',
+      <PageHeader
+        title="Plan contable"
+        subtitle="Estructura jerárquica de cuentas. Una cuenta analítica obliga a informar centro de coste, beneficio o proyecto en los asientos."
+        icon={<BookOpen size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
+              {rows.length === 0 && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={async () => {
+                    const ok = await popup.confirm({
+                      title: 'Configurar contabilidad',
+                      message:
+                        'Creará un plan contable mínimo (PGC abreviado) y los mapeos de cuenta por defecto.',
+                      confirmLabel: 'Continuar',
+                    });
+                    if (!ok) return;
+                    let d;
+                    try {
+                      d = await chartOfAccountsApi.seed();
+                    } catch (err) {
+                      toast.error(
+                        (err instanceof Error && err.message) || 'Error al sembrar contabilidad',
+                      );
+                      return;
+                    }
+                    toast.success(
+                      `${d.accountsCreated} cuentas y ${d.mappingsCreated} mapeos creados`,
                     );
-                    return;
-                  }
-                  toast.success(
-                    `${d.accountsCreated} cuentas y ${d.mappingsCreated} mapeos creados`,
-                  );
+                    fetchRows();
+                  }}
+                  className="flex items-center gap-2 whitespace-nowrap"
+                  title="Crea el PGC abreviado y los mapeos por defecto"
+                >
+                  <Wand2 size={16} />
+                  Configurar en 1 clic
+                </Button>
+              )}
+              <ExcelTools
+                data={rows}
+                filename="plan-contable"
+                columns={[
+                  { key: 'code', label: 'Código', required: true },
+                  { key: 'name', label: 'Nombre', required: true },
+                  { key: 'type', label: 'Tipo' },
+                  { key: 'notes', label: 'Notas' },
+                ]}
+                onImport={async (parsed) => {
+                  await chartOfAccountsApi.bulkImport(parsed);
                   fetchRows();
                 }}
+              />
+              <Button
+                type="button"
+                onClick={openCreate}
                 className="flex items-center gap-2 whitespace-nowrap"
-                title="Crea el PGC abreviado y los mapeos por defecto"
               >
-                <Wand2 size={16} />
-                Configurar en 1 clic
+                <Plus size={16} />
+                Nueva cuenta
               </Button>
-            )}
-            <ExcelTools
-              data={rows}
-              filename="plan-contable"
-              columns={[
-                { key: 'code', label: 'Código', required: true },
-                { key: 'name', label: 'Nombre', required: true },
-                { key: 'type', label: 'Tipo' },
-                { key: 'notes', label: 'Notas' },
-              ]}
-              onImport={async (parsed) => {
-                await chartOfAccountsApi.bulkImport(parsed);
-                fetchRows();
-              }}
-            />
-            <Button onClick={openCreate} className="flex items-center gap-2 whitespace-nowrap">
-              <Plus size={16} />
-              Nueva cuenta
-            </Button>
-          </div>
-        )}
-      </div>
+            </div>
+          )
+        }
+      />
 
       {formOpen && (
-        <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+        <Card className="border-border-subtle shadow-lg" noPadding>
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
@@ -284,42 +280,29 @@ export const ChartOfAccounts: React.FC = () => {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
               />
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Tipo
-                </label>
-                <select
-                  value={form.type || 'asset'}
-                  onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="asset">Activo</option>
-                  <option value="liability">Pasivo</option>
-                  <option value="equity">Patrimonio</option>
-                  <option value="income">Ingreso</option>
-                  <option value="expense">Gasto</option>
-                </select>
-              </div>
+              <Select
+                label="Tipo"
+                options={TYPE_OPTIONS}
+                value={form.type || 'asset'}
+                onChange={(v) => setForm({ ...form, type: v as Account['type'] })}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-fg-body mb-1">
                   Cuenta padre (opcional)
                 </label>
-                <select
-                  value={form.parentId || ''}
-                  onChange={(e) => setForm({ ...form, parentId: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">— sin padre —</option>
-                  {rows
+                {/* SearchableSelect y no Select: el plan contable puede tener
+                    cientos de cuentas y sin buscador es inmanejable. */}
+                <SearchableSelect
+                  options={rows
                     .filter((r) => r.id !== editing?.id)
-                    .map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.code} — {r.name}
-                      </option>
-                    ))}
-                </select>
+                    .map((r) => ({ value: r.id, label: `${r.code} — ${r.name}` }))}
+                  value={form.parentId || ''}
+                  onChange={(v) => setForm({ ...form, parentId: v || null })}
+                  placeholder="— sin padre —"
+                  clearable
+                />
               </div>
               <Input
                 label="Notas"
@@ -328,20 +311,21 @@ export const ChartOfAccounts: React.FC = () => {
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
               />
             </div>
+            {/* Checkbox y no Switch: son campos del formulario, no se persisten
+                hasta pulsar Guardar. El <label> se queda porque Checkbox no
+                tiene prop `label` — renderiza solo el input. */}
             <div className="flex items-center gap-6">
               <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={!!form.isAnalytical}
-                  onChange={(e) => setForm({ ...form, isAnalytical: e.target.checked })}
+                  onChange={(checked) => setForm({ ...form, isAnalytical: checked })}
                 />
                 Cuenta analítica (exige dimensión)
               </label>
               <label className="flex items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={form.isActive !== false}
-                  onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
+                  onChange={(checked) => setForm({ ...form, isActive: checked })}
                 />
                 Activa
               </label>
@@ -366,22 +350,15 @@ export const ChartOfAccounts: React.FC = () => {
         </Card>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table
-          columns={ctxColumns}
+          columns={columns}
           data={rows}
           isLoading={loading}
+          rowActions={rowActions}
           onRowClick={(r: any) => openEdit(r)}
         />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

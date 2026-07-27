@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Input, Button, useToast } from '@openfactu/ui';
+import { Modal, Input, Button, Textarea, useToast } from '@openfactu/ui';
 import { Mail, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { documentEmailApi } from '../../api';
@@ -112,11 +112,10 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
           </Field>
 
           <Field label="Mensaje (usa {{code}}, {{label}}, {{date}}, {{company}})">
-            <textarea
+            <Textarea
               value={bodyTemplate}
               onChange={(e) => setBodyTemplate(e.target.value)}
               rows={5}
-              className="flex w-full rounded-[2px] border border-[var(--k-line)] dark:border-slate-700 bg-white dark:bg-slate-900 text-[13px] text-[var(--k-ink-900)] dark:text-slate-100 px-3 py-2 focus-visible:outline-none focus-visible:border-accent"
             />
           </Field>
         </div>

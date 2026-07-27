@@ -27,7 +27,7 @@ export function usePreview(
       urlRef.current = url;
       setPreviewUrl(url);
     } catch (e) {
-      onError((e instanceof Error ? e.message : undefined));
+      onError(e instanceof Error ? e.message : undefined);
     } finally {
       setPreviewing(false);
     }

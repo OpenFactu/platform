@@ -1,12 +1,20 @@
 import { incidentTypesApi } from '../api';
 import type { IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  useToast,
+  Badge,
+  usePopup,
+  Checkbox,
+  PageHeader,
+} from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { AlertOctagon, Plus, Pencil, Trash2 } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { ApiError } from '@/shared/http';
 
 const empty = (): Partial<IncidentType> => ({
@@ -63,7 +71,11 @@ export const IncidentTypes: React.FC = () => {
   };
 
   const remove = async (t: IncidentType) => {
-    const ok = await popup.confirm({ title: `Desactivar ${t.code}?`, message: '¿Desactivar este tipo de incidencia?', tone: 'danger' });
+    const ok = await popup.confirm({
+      title: `Desactivar ${t.code}?`,
+      message: '¿Desactivar este tipo de incidencia?',
+      tone: 'danger',
+    });
     if (!ok) return;
     await incidentTypesApi.remove(t.id);
     fetchAll();
@@ -83,25 +95,12 @@ export const IncidentTypes: React.FC = () => {
     },
     { header: 'Pagado', cell: (r: IncidentType) => (r.paid ? 'Sí' : 'No') },
     { header: 'Activo', cell: (r: IncidentType) => (r.isActive ? 'Sí' : 'No') },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: IncidentType) => (
-        <div className="flex items-center justify-end gap-2">
-          <button onClick={() => setEditing(r)} className="text-slate-500 hover:text-indigo-600">
-            <Pencil size={16} />
-          </button>
-          <button onClick={() => remove(r)} className="text-slate-400 hover:text-red-500">
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<IncidentType>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: IncidentType) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que no hace falta duplicarlas
+  // en una columna de botones.
+  const rowActions = (r: IncidentType): RowAction[] => [
     { label: 'Editar', icon: <Pencil size={14} />, onClick: () => setEditing(r) },
     {
       label: 'Eliminar',
@@ -113,19 +112,17 @@ export const IncidentTypes: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <AlertOctagon className="text-amber-600" size={32} /> Tipos de incidencia
-          </h1>
-          <p className="text-slate-500">
-            Configura los tipos de ausencia/incidencia y su política.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setEditing(empty())}>
-          <Plus size={14} /> Nuevo tipo
-        </Button>
-      </div>
+      <PageHeader
+        title="Tipos de incidencia"
+        subtitle="Configura los tipos de ausencia/incidencia y su política."
+        icon={<AlertOctagon size={18} />}
+        size="lg"
+        actions={
+          <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+            <Plus size={14} /> Nuevo tipo
+          </Button>
+        }
+      />
 
       {editing && (
         <Card className="p-6" noPadding>
@@ -155,11 +152,11 @@ export const IncidentTypes: React.FC = () => {
                 ['paid', 'Retribuido'],
                 ['isActive', 'Activo'],
               ].map(([k, lbl]) => (
+                // Checkbox no tiene prop `label` → se conserva el <label> envolvente.
                 <label key={k} className="flex items-center gap-2 select-none">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={Boolean((editing as any)[k])}
-                    onChange={(e) => setEditing({ ...editing, [k]: e.target.checked })}
+                    onChange={(checked) => setEditing({ ...editing, [k]: checked })}
                   />
                   {lbl}
                 </label>
@@ -176,16 +173,8 @@ export const IncidentTypes: React.FC = () => {
       )}
 
       <Card noPadding>
-        <Table columns={ctxColumns} data={rows} isLoading={loading} />
+        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

@@ -2,19 +2,32 @@ import { packagesApi, platformsApi, stagingAreasApi } from '../api';
 import { itemsApi, warehousesApi } from '@/modules/inventory/api';
 import { partnersApi } from '@/modules/partners/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Modal, Loader, Badge, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  NumberInput,
+  Modal,
+  Loader,
+  Badge,
+  useToast,
+  usePopup,
+  DropdownMenu,
+  SearchableSelect,
+  EmptyState,
+} from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import {
   Plus,
   Trash2,
   QrCode,
   Edit2,
+  MoreVertical,
   Package as PackageIcon,
   Boxes,
   Printer,
   Tag,
 } from 'lucide-react';
-import { RowActionsMenu } from '../components/RowActionsMenu';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
 import type { Platform } from '../domain/platform';
@@ -27,6 +40,7 @@ import type { Partner } from '@/modules/partners/domain/partner';
 export const StagingAreasTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<StagingArea[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -47,7 +61,10 @@ export const StagingAreasTab: React.FC = () => {
   const [pkgsFor, setPkgsFor] = useState<StagingArea | null>(null);
   const [areaPackages, setAreaPackages] = useState<Package[]>([]);
   const [newItemId, setNewItemId] = useState('');
-  const [newItemQty, setNewItemQty] = useState<string>('');
+  // number puro: antes era string porque venía de `e.target.value` de un
+  // <input type="number">; con NumberInput el valor ya llega numérico y `null`
+  // es el campo vacío (la qty esperada es opcional).
+  const [newItemQty, setNewItemQty] = useState<number | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -100,7 +117,13 @@ export const StagingAreasTab: React.FC = () => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('¿Eliminar acopio?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar acopio',
+      message: '¿Eliminar el acopio?',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     await stagingAreasApi.remove(id);
     load();
   };
@@ -385,7 +408,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
       setAreaItems([]);
     }
     setNewItemId('');
-    setNewItemQty('');
+    setNewItemQty(null);
   };
 
   const openPackages = async (area: StagingArea) => {
@@ -407,13 +430,15 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
   const addItem = async () => {
     if (!itemsFor || !newItemId) return;
     try {
+      // `expectedQty` es doublePrecision en el servidor: se envía el number tal
+      // cual (o null si el campo quedó vacío).
       await stagingAreasApi.addItem(itemsFor.id, {
         itemId: newItemId,
-        expectedQty: newItemQty === '' ? null : Number(newItemQty),
+        expectedQty: newItemQty,
       });
       toast.success('Artículo añadido');
       setNewItemId('');
-      setNewItemQty('');
+      setNewItemQty(null);
       const list = await stagingAreasApi.listItems(itemsFor.id);
       setAreaItems(Array.isArray(list) ? list : []);
     } catch (err) {
@@ -445,7 +470,13 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
           <Loader />
         </div>
       ) : rows.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">Sin acopios.</Card>
+        <Card>
+          <EmptyState
+            icon={<Boxes size={24} />}
+            title="Sin acopios"
+            hint="Crea el primero para agrupar paquetes antes de que salgan a ruta."
+          />
+        </Card>
       ) : (
         <Card bodyClassName="p-0">
           <ul>
@@ -455,14 +486,14 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
               return (
                 <li
                   key={a.id}
-                  className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                  className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0"
                 >
-                  <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded shrink-0">
+                  <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded shrink-0">
                     {a.code}
                   </code>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">
+                      <span className="font-semibold text-sm text-fg-default truncate">
                         {a.name}
                       </span>
                       {partner && (
@@ -471,31 +502,38 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex gap-3 flex-wrap">
+                    <div className="text-[11px] text-fg-muted mt-0.5 flex gap-3 flex-wrap">
                       {wh && <span>Almacén: {wh.name}</span>}
                       {a.address && <span className="truncate max-w-sm">{a.address}</span>}
                     </div>
                   </div>
 
                   {/* Acciones críticas — siempre visibles. */}
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => openPackages(a)}
-                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded shrink-0"
                     title="Paquetes actualmente en el acopio"
+                    className="shrink-0"
                   >
                     <Boxes size={13} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => openQr(a)}
-                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded shrink-0"
                     title="QR del acopio"
+                    className="shrink-0"
                   >
                     <QrCode size={13} />
-                  </button>
+                  </Button>
 
                   {/* Resto — kebab, no rompe en móvil. */}
-                  <RowActionsMenu
-                    actions={[
+                  <DropdownMenu
+                    align="end"
+                    items={[
                       {
                         label: 'Artículos esperados',
                         icon: <PackageIcon size={14} />,
@@ -524,7 +562,17 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                         destructive: true,
                       },
                     ]}
-                  />
+                  >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      title="Más acciones"
+                      className="shrink-0"
+                    >
+                      <MoreVertical size={13} />
+                    </Button>
+                  </DropdownMenu>
                 </li>
               );
             })}
@@ -540,21 +588,22 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
       >
         <div className="space-y-3 pt-4">
           <div>
+            {/* Clientes vienen del servidor y son muchos → SearchableSelect (no
+                tiene prop `label`, se conserva el <label> suelto). */}
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
               Cliente propietario (opcional)
             </label>
-            <select
+            <SearchableSelect
+              options={partners.map((p) => ({
+                value: p.id,
+                label: p.name,
+                secondaryLabel: p.code || undefined,
+              }))}
               value={form.partnerId || ''}
-              onChange={(e) => setForm({ ...form, partnerId: e.target.value || null })}
-              className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-            >
-              <option value="">— acopio compartido (sin cliente) —</option>
-              {partners.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} {p.code ? `(${p.code})` : ''}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setForm({ ...form, partnerId: v || null })}
+              placeholder="— acopio compartido (sin cliente) —"
+              clearable
+            />
             <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
               Déjalo en <b>sin cliente</b> si es un muelle/zona tuya donde agrupas paquetes de{' '}
               <b>varios clientes</b> (lo más habitual). Solo marca un cliente si es un{' '}
@@ -563,10 +612,8 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             </p>
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Nombre (opcional)
-            </label>
             <Input
+              label="Nombre (opcional)"
               value={form.name || ''}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder={
@@ -581,30 +628,32 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
+              {/* Almacenes y plataformas vienen del servidor →
+                  SearchableSelect (sin prop `label`). */}
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                 Almacén propio
               </label>
-              <select
+              <SearchableSelect
+                options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
                 value={form.warehouseId || ''}
-                onChange={(e) => setForm({ ...form, warehouseId: e.target.value || null })}
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-              >
-                <option value="">—</option>
-                {warehouses.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, warehouseId: v || null })}
+                placeholder="—"
+                clearable
+              />
             </div>
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                 Plataforma ajena
               </label>
-              <select
+              <SearchableSelect
+                options={platforms.map((p) => ({
+                  value: p.id,
+                  label: p.name,
+                  secondaryLabel: p.code,
+                }))}
                 value={form.platformId || ''}
-                onChange={(e) => {
-                  const id = e.target.value || null;
+                onChange={(val) => {
+                  const id = val || null;
                   const pl = id ? platforms.find((p) => p.id === id) : null;
                   setForm((prev: any) => {
                     const next: any = { ...prev, platformId: id };
@@ -617,75 +666,49 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                     return next;
                   });
                 }}
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-              >
-                <option value="">—</option>
-                {platforms.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.code} · {p.name}
-                  </option>
-                ))}
-              </select>
+                placeholder="—"
+                clearable
+              />
             </div>
           </div>
           <p className="text-[11px] text-slate-500 -mt-1 leading-relaxed">
             Elige <b>Almacén propio</b> si es tu muelle/zona, o <b>Plataforma ajena</b> si el acopio
             vive en un cross-dock o nave alquilada. Puedes dejar ambos vacíos para un acopio neutro.
           </p>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Dirección
-            </label>
-            <Input
-              value={form.address || ''}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="Calle Ejemplo 1, 28013 Madrid"
-            />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Se geolocaliza automáticamente al guardar para mostrarla en el mapa de repartos.
-            </p>
-          </div>
+          <Input
+            label="Dirección"
+            value={form.address || ''}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            placeholder="Calle Ejemplo 1, 28013 Madrid"
+            helperText="Se geolocaliza automáticamente al guardar para mostrarla en el mapa de repartos."
+          />
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Latitud (opcional)
-              </label>
-              <Input
-                type="number"
-                step="0.000001"
-                value={form.lat ?? ''}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    lat: e.target.value === '' ? null : Number(e.target.value),
-                  })
-                }
-                placeholder="40.4168"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Longitud (opcional)
-              </label>
-              <Input
-                type="number"
-                step="0.000001"
-                value={form.lng ?? ''}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    lng: e.target.value === '' ? null : Number(e.target.value),
-                  })
-                }
-                placeholder="-3.7038"
-              />
-            </div>
+            {/* `lat`/`lng` son doublePrecision en el servidor: llegan y se
+                envían numéricas, y el campo vacío queda en null. */}
+            <NumberInput
+              label="Latitud (opcional)"
+              value={form.lat ?? null}
+              onChange={(v) => setForm({ ...form, lat: v })}
+              precision={6}
+              thousandSeparator={false}
+              allowNegative
+              placeholder="40.4168"
+            />
+            <NumberInput
+              label="Longitud (opcional)"
+              value={form.lng ?? null}
+              onChange={(v) => setForm({ ...form, lng: v })}
+              precision={6}
+              thousandSeparator={false}
+              allowNegative
+              placeholder="-3.7038"
+            />
           </div>
           <p className="text-[11px] text-slate-500 -mt-2">
             Pega lat/lng de Google Maps si conoces el punto exacto. Si no, se geolocalizará por
             dirección.
           </p>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>
@@ -705,44 +728,37 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
           <div className="space-y-3 pt-4">
             <div className="flex items-end gap-2">
               <div className="flex-1">
+                {/* Artículos del servidor → SearchableSelect (sin `label`). */}
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Artículo
                 </label>
-                <select
-                  value={newItemId}
-                  onChange={(e) => setNewItemId(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-                >
-                  <option value="">— seleccionar —</option>
-                  {items
+                <SearchableSelect
+                  options={items
                     .filter((i) => !areaItems.some((ai) => ai.itemId === i.id))
-                    .map((i) => (
-                      <option key={i.id} value={i.id}>
-                        {i.code} · {i.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div className="w-32">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                  Qty esperada
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={newItemQty}
-                  onChange={(e) => setNewItemQty(e.target.value)}
-                  placeholder="—"
+                    .map((i) => ({ value: i.id, label: i.name, secondaryLabel: i.code }))}
+                  value={newItemId}
+                  onChange={setNewItemId}
+                  placeholder="— seleccionar —"
+                  clearable
                 />
               </div>
-              <Button onClick={addItem} disabled={!newItemId}>
+              <NumberInput
+                label="Qty esperada"
+                value={newItemQty}
+                onChange={setNewItemQty}
+                precision={2}
+                min={0}
+                placeholder="—"
+                containerClassName="w-32"
+              />
+              <Button type="button" onClick={addItem} disabled={!newItemId}>
                 Añadir
               </Button>
             </div>
 
             {areaItems.length === 0 ? (
-              <Card bodyClassName="py-8 text-center text-sm text-slate-500">
-                Sin artículos en este acopio.
+              <Card>
+                <EmptyState icon={<PackageIcon size={24} />} title="Sin artículos en este acopio" />
               </Card>
             ) : (
               <Card bodyClassName="p-0">
@@ -752,12 +768,12 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                     return (
                       <li
                         key={ai.id}
-                        className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                        className="flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-0"
                       >
-                        <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                        <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                           {it?.code || '—'}
                         </code>
-                        <span className="flex-1 text-sm text-slate-800 dark:text-slate-100">
+                        <span className="flex-1 text-sm text-fg-default">
                           {it?.name || ai.itemId}
                         </span>
                         {ai.expectedQty != null && (
@@ -765,12 +781,15 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                             objetivo: {ai.expectedQty}
                           </span>
                         )}
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => removeItem(ai.id)}
-                          className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
+                          title="Quitar"
                         >
                           <Trash2 size={13} />
-                        </button>
+                        </Button>
                       </li>
                     );
                   })}
@@ -791,8 +810,12 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
         {pkgsFor && (
           <div className="space-y-3 pt-4">
             {areaPackages.length === 0 ? (
-              <Card bodyClassName="py-8 text-center text-sm text-slate-500">
-                Acopio vacío — no hay paquetes aquí.
+              <Card>
+                <EmptyState
+                  icon={<Boxes size={24} />}
+                  title="Acopio vacío"
+                  hint="No hay paquetes aquí ahora mismo."
+                />
               </Card>
             ) : (
               <Card bodyClassName="p-0">
@@ -800,14 +823,14 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                   {areaPackages.map((pk) => (
                     <li
                       key={pk.id}
-                      className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                      className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0"
                     >
                       <Badge variant={PKG_BADGE[pk.status] || 'neutral'}>{pk.status}</Badge>
-                      <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                      <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                         {pk.code}
                       </code>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex gap-3 flex-wrap">
+                        <div className="text-[11px] text-fg-muted flex gap-3 flex-wrap">
                           {pk.shipmentId && (
                             <span>
                               Envío:{' '}
@@ -827,7 +850,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                 </ul>
               </Card>
             )}
-            <div className="text-[11px] text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="text-[11px] text-slate-500 pt-2 border-t border-border-subtle flex items-center justify-between">
               <span>
                 Total paquetes: <b>{areaPackages.length}</b>
               </span>
@@ -849,7 +872,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
       >
         {qrFor && (
           <div className="space-y-3 pt-4">
-            <div className="flex items-center justify-center p-4 bg-white rounded-lg border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-center p-4 bg-white rounded-lg border border-border-subtle">
               {qrFor.imgUrl ? (
                 <img src={qrFor.imgUrl} alt="QR" className="w-80 h-80" />
               ) : (
@@ -868,12 +891,12 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                     {qrFor.payload.routes.map((r: any) => (
                       <li
                         key={r.id}
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700"
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-bg-muted border border-border-default"
                       >
-                        <code className="px-1.5 py-0.5 bg-white dark:bg-slate-900 text-[10px] font-mono rounded shadow-sm">
+                        <code className="px-1.5 py-0.5 bg-bg-card text-[10px] font-mono rounded shadow-sm">
                           {r.code}
                         </code>
-                        <span className="flex-1 text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                        <span className="flex-1 text-xs font-semibold text-fg-default truncate">
                           {r.name || '—'}
                         </span>
                         <span className="text-[11px] text-slate-500 shrink-0">
@@ -899,21 +922,19 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-center">
               {qrFor.imgUrl && (
-                <button
-                  onClick={downloadQr}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded-lg text-sm hover:opacity-90"
-                >
+                <Button type="button" onClick={downloadQr}>
                   <QrCode size={14} /> Descargar QR
-                </button>
+                </Button>
               )}
-              <button
+              <Button
+                type="button"
+                variant="secondary"
                 onClick={() =>
                   qrFor && openPackingList({ id: qrFor.id, name: qrFor.name } as StagingArea)
                 }
-                className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 text-white rounded-lg text-sm hover:opacity-90"
               >
                 <Printer size={14} /> Imprimir packing list
-              </button>
+              </Button>
             </div>
           </div>
         )}

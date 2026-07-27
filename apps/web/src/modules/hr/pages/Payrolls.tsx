@@ -8,13 +8,33 @@ import {
 import type { Payroll } from '../domain/payroll';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  useToast,
+  Badge,
+  usePopup,
+  PageHeader,
+  Checkbox,
+  SearchableSelect,
+  NumberInput,
+  CurrencyInput,
+} from '@openfactu/ui';
+import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
-import { Banknote, Plus, CheckCircle, Trash2, ListPlus, X, FileText } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
+import {
+  Banknote,
+  Plus,
+  CheckCircle,
+  Trash2,
+  ListPlus,
+  X,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
 const STATUS_VARIANTS: Record<string, BadgeProps['variant']> = {
@@ -31,6 +51,7 @@ const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', '
 
 export const Payrolls: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite, canDelete } = usePagePermissions();
   const [rows, setRows] = useState<Payroll[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +88,28 @@ export const Payrolls: React.FC = () => {
   }, [user?.tenantId]);
 
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
+
+  // Opciones de los desplegables: una vez por render en lugar de una por opción.
+  const employeeOptions = useMemo(
+    () =>
+      employees
+        .filter((e) => e.status === 'active')
+        .map((e) => ({
+          value: e.id,
+          label: `${e.firstName} ${e.lastName}`,
+          secondaryLabel: e.code,
+        })),
+    [employees],
+  );
+  const conceptOptions = useMemo(
+    () =>
+      concepts.map((c: any) => ({
+        value: c.id,
+        label: `${c.code} · ${c.name}`,
+        secondaryLabel: c.kind,
+      })),
+    [concepts],
+  );
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -278,54 +321,6 @@ export const Payrolls: React.FC = () => {
         <Badge variant={STATUS_VARIANTS[r.status]}>{STATUS_LABELS[r.status]}</Badge>
       ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: Payroll) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => openLines(r)}
-            className="text-indigo-600 hover:text-indigo-700"
-            title={r.status === 'draft' ? 'Editar líneas / pluses' : 'Ver líneas'}
-          >
-            <ListPlus size={16} />
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                const { blob } = await payrollsApi.payslipPdf(r.id);
-                const url = URL.createObjectURL(blob);
-                window.open(url, '_blank', 'noopener');
-              } catch {
-                toast.error('No se pudo generar el PDF');
-              }
-            }}
-            className="text-slate-500 hover:text-indigo-600"
-            title="Imprimir / descargar recibo de nómina (PDF)"
-          >
-            <FileText size={16} />
-          </button>
-          {r.status === 'draft' && (
-            <>
-              <button
-                onClick={() => handleApprove(r.id)}
-                className="text-emerald-600 hover:text-emerald-700"
-                title="Aprobar y asentar"
-              >
-                <CheckCircle size={16} />
-              </button>
-              <button
-                onClick={() => handleDelete(r.id)}
-                className="text-slate-400 hover:text-red-500"
-                title="Eliminar"
-              >
-                <Trash2 size={16} />
-              </button>
-            </>
-          )}
-        </div>
-      ),
-    },
   ];
 
   const printPayslip = async (r: Payroll) => {
@@ -338,9 +333,11 @@ export const Payrolls: React.FC = () => {
     }
   };
 
-  const ctxMenu = useContextMenu<Payroll>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: Payroll) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // (solo un borrador se aprueba o se elimina) se declaran una vez en lugar de
+  // duplicarse entre una columna de botones y el menú.
+  const rowActions = (r: Payroll): RowAction[] => [
     {
       label: r.status === 'draft' ? 'Editar líneas / pluses' : 'Ver líneas',
       icon: <ListPlus size={14} />,
@@ -356,6 +353,7 @@ export const Payrolls: React.FC = () => {
           {
             label: 'Aprobar y asentar',
             icon: <CheckCircle size={14} />,
+            disabled: !canWrite,
             onClick: () => handleApprove(r.id),
             separatorBefore: true,
           },
@@ -363,6 +361,7 @@ export const Payrolls: React.FC = () => {
             label: 'Eliminar',
             icon: <Trash2 size={14} />,
             destructive: true,
+            disabled: !canDelete,
             onClick: () => handleDelete(r.id),
           },
         ]
@@ -371,87 +370,92 @@ export const Payrolls: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-            <Banknote className="text-emerald-600 dark:text-emerald-300" size={32} />
-            Nóminas
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium text-sm max-w-2xl">
+      <PageHeader
+        title="Nóminas"
+        subtitle={
+          <span className="block max-w-2xl">
             Cómo funciona: 1) <b>"Generar mes en curso"</b> crea un borrador para cada empleado con
             salario base + IRPF + SS automáticos. 2) Edita líneas/pluses si hace falta. 3) Aprueba →
             se genera el asiento contable (gasto de personal, SS e IRPF).
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={async () => {
-              const y = new Date().getFullYear();
-              const m = new Date().getMonth() + 1;
-              const ok = await popup.confirm({
-                title: `Generar nóminas de ${MONTHS[m - 1]} ${y}`,
-                message:
-                  'Crea un borrador de nómina para cada empleado activo, con salario base de su contrato y IRPF/SS automáticos. ¿Continuar?',
-                confirmLabel: 'Generar',
-              });
-              if (!ok) return;
-              const active = employees.filter((e: any) => e.status === 'active');
-              let n = 0;
-              let skipped = 0;
-              for (const e of active) {
-                try {
-                  const r = await payrollsApi.createSafe({
-                    employeeId: e.id,
-                    periodYear: y,
-                    periodMonth: m,
+          </span>
+        }
+        icon={<Banknote size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={async () => {
+                  const y = new Date().getFullYear();
+                  const m = new Date().getMonth() + 1;
+                  const ok = await popup.confirm({
+                    title: `Generar nóminas de ${MONTHS[m - 1]} ${y}`,
+                    message:
+                      'Crea un borrador de nómina para cada empleado activo, con salario base de su contrato y IRPF/SS automáticos. ¿Continuar?',
+                    confirmLabel: 'Generar',
                   });
-                  const d = r.data;
-                  if (r.status === 409) {
-                    skipped++;
-                    continue;
-                  }
-                  if (!r.ok) continue;
-                  // Salario base del contrato
-                  const cs = await contractsApi.listByEmployee(e.id).catch(() => []);
-                  const c =
-                    (Array.isArray(cs) ? cs : []).find((x: any) => x.isActive) ||
-                    (Array.isArray(cs) ? cs[0] : null);
-                  if (c) {
-                    const monthly = Number(c.grossSalary || 0) / Number(c.paymentsPerYear || 12);
-                    if (monthly > 0) {
-                      await payrollsApi.addLine(d.id!, {
-                        concept: 'Salario base',
-                        type: 'earning',
-                        amount: monthly.toFixed(2),
+                  if (!ok) return;
+                  const active = employees.filter((e: any) => e.status === 'active');
+                  let n = 0;
+                  let skipped = 0;
+                  for (const e of active) {
+                    try {
+                      const r = await payrollsApi.createSafe({
+                        employeeId: e.id,
+                        periodYear: y,
+                        periodMonth: m,
                       });
+                      const d = r.data;
+                      if (r.status === 409) {
+                        skipped++;
+                        continue;
+                      }
+                      if (!r.ok) continue;
+                      // Salario base del contrato
+                      const cs = await contractsApi.listByEmployee(e.id).catch(() => []);
+                      const c =
+                        (Array.isArray(cs) ? cs : []).find((x: any) => x.isActive) ||
+                        (Array.isArray(cs) ? cs[0] : null);
+                      if (c) {
+                        const monthly =
+                          Number(c.grossSalary || 0) / Number(c.paymentsPerYear || 12);
+                        if (monthly > 0) {
+                          await payrollsApi.addLine(d.id!, {
+                            concept: 'Salario base',
+                            type: 'earning',
+                            amount: monthly.toFixed(2),
+                          });
+                        }
+                      }
+                      await payrollsApi.autoDeductions(d.id!);
+                      n++;
+                    } catch {
+                      /* sigue con el siguiente empleado */
                     }
                   }
-                  await payrollsApi.autoDeductions(d.id!);
-                  n++;
-                } catch {
-                  /* sigue con el siguiente empleado */
-                }
-              }
-              if (n === 0 && skipped > 0) {
-                toast.success(`Sin novedades · ${skipped} ya existían`);
-              } else if (skipped > 0) {
-                toast.success(`Generadas ${n} · ${skipped} ya existían`);
-              } else {
-                toast.success(`Generadas ${n} nóminas`);
-              }
-              fetchAll();
-            }}
-            title="Crea un borrador de nómina por cada empleado activo con salario y deducciones automáticas"
-          >
-            <CheckCircle size={14} /> Generar mes en curso
-          </Button>
-          <Button size="sm" onClick={() => setCreating(true)}>
-            <Plus size={14} /> Nueva nómina
-          </Button>
-        </div>
-      </div>
+                  if (n === 0 && skipped > 0) {
+                    toast.success(`Sin novedades · ${skipped} ya existían`);
+                  } else if (skipped > 0) {
+                    toast.success(`Generadas ${n} · ${skipped} ya existían`);
+                  } else {
+                    toast.success(`Generadas ${n} nóminas`);
+                  }
+                  fetchAll();
+                }}
+                title="Crea un borrador de nómina por cada empleado activo con salario y deducciones automáticas"
+              >
+                <CheckCircle size={14} /> Generar mes en curso
+              </Button>
+              <Button type="button" size="sm" onClick={() => setCreating(true)}>
+                <Plus size={14} /> Nueva nómina
+              </Button>
+            </div>
+          )
+        }
+      />
 
       {creating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -467,34 +471,24 @@ export const Payrolls: React.FC = () => {
                     rellenan automáticamente y luego puedes ajustarlas.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setCreating(false)}
-                  className="text-slate-400 hover:text-slate-700"
-                >
+                <Button type="button" variant="ghost" size="sm" onClick={() => setCreating(false)}>
                   <X size={20} />
-                </button>
+                </Button>
               </div>
 
               <div>
+                {/* SearchableSelect no tiene prop `label`, así que se conserva
+                    el <label> suelto. El `required` del <select> nativo era
+                    redundante: handleCreate ya avisa si no hay empleado. */}
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                   Empleado
                 </label>
-                <select
+                <SearchableSelect
+                  options={employeeOptions}
                   value={form.employeeId}
-                  onChange={(e) => setForm({ ...form, employeeId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                  required
-                >
-                  <option value="">— seleccionar —</option>
-                  {employees
-                    .filter((e) => e.status === 'active')
-                    .map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.code} — {e.firstName} {e.lastName}
-                      </option>
-                    ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, employeeId: v })}
+                  placeholder="— seleccionar —"
+                />
               </div>
 
               <div>
@@ -502,8 +496,11 @@ export const Payrolls: React.FC = () => {
                   Periodo
                 </label>
                 <div className="flex items-center gap-2 mb-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="sm"
+                    title="Mes anterior"
                     onClick={() => {
                       const d = new Date(form.periodYear, form.periodMonth - 2, 1);
                       setForm({
@@ -512,15 +509,17 @@ export const Payrolls: React.FC = () => {
                         periodMonth: d.getMonth() + 1,
                       });
                     }}
-                    className="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold"
                   >
-                    ←
-                  </button>
+                    <ChevronLeft size={14} />
+                  </Button>
                   <div className="flex-1 text-center text-sm font-bold tabular-nums">
                     {MONTHS[form.periodMonth - 1]} {form.periodYear}
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
+                    size="sm"
+                    title="Mes siguiente"
                     onClick={() => {
                       const d = new Date(form.periodYear, form.periodMonth, 1);
                       setForm({
@@ -529,36 +528,32 @@ export const Payrolls: React.FC = () => {
                         periodMonth: d.getMonth() + 1,
                       });
                     }}
-                    className="px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-bold"
                   >
-                    →
-                  </button>
+                    <ChevronRight size={14} />
+                  </Button>
                 </div>
                 <div className="grid grid-cols-6 gap-1">
                   {MONTHS.map((m, i) => (
-                    <button
+                    <Button
                       key={i}
                       type="button"
+                      size="sm"
+                      variant={form.periodMonth === i + 1 ? 'primary' : 'secondary'}
                       onClick={() => setForm({ ...form, periodMonth: i + 1 })}
-                      className={
-                        'px-2 py-1.5 rounded-md text-xs font-bold transition ' +
-                        (form.periodMonth === i + 1
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700')
-                      }
                     >
                       {m}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+              <div className="rounded-lg border border-border-default p-3 space-y-2">
+                {/* Campos del formulario (se aplican al crear, no al instante):
+                    Checkbox, que no tiene prop `label` — se conserva el <label>. */}
                 <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={form.autoSalary}
-                    onChange={(e) => setForm({ ...form, autoSalary: e.target.checked })}
+                    onChange={(checked) => setForm({ ...form, autoSalary: checked })}
                     className="mt-0.5"
                   />
                   <div>
@@ -570,10 +565,9 @@ export const Payrolls: React.FC = () => {
                   </div>
                 </label>
                 <label className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={form.autoTaxes}
-                    onChange={(e) => setForm({ ...form, autoTaxes: e.target.checked })}
+                    onChange={(checked) => setForm({ ...form, autoTaxes: checked })}
                     className="mt-0.5"
                   />
                   <div>
@@ -594,7 +588,7 @@ export const Payrolls: React.FC = () => {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" size="sm">
+                <Button type="submit" size="sm" disabled={!canWrite}>
                   Crear y abrir líneas
                 </Button>
               </div>
@@ -603,17 +597,9 @@ export const Payrolls: React.FC = () => {
         </div>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={ctxColumns} data={rows} isLoading={loading} />
+      <Card className="overflow-hidden border-border-subtle" noPadding>
+        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
 
       {editLines && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -625,7 +611,7 @@ export const Payrolls: React.FC = () => {
                     <ListPlus size={20} />
                     Editar líneas / pluses
                   </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-fg-muted">
                     {empMap[editLines.employeeId]
                       ? `${empMap[editLines.employeeId].firstName} ${empMap[editLines.employeeId].lastName}`
                       : editLines.employeeId}
@@ -633,33 +619,30 @@ export const Payrolls: React.FC = () => {
                     {MONTHS[editLines.periodMonth - 1]} {editLines.periodYear}
                   </p>
                 </div>
-                <button
-                  onClick={() => setEditLines(null)}
-                  className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-100"
-                >
+                <Button type="button" variant="ghost" size="sm" onClick={() => setEditLines(null)}>
                   <X size={20} />
-                </button>
+                </Button>
               </div>
 
               <div className="flex items-center gap-2">
-                <select
-                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                  defaultValue=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      addLine(e.target.value);
-                      e.target.value = '';
-                    }
+                {/* Actúa como acción, no como campo: el valor vuelve siempre a
+                    vacío tras añadir la línea. */}
+                <SearchableSelect
+                  options={conceptOptions}
+                  value=""
+                  onChange={(v) => {
+                    if (v) addLine(v);
                   }}
-                >
-                  <option value="">— añadir concepto del catálogo —</option>
-                  {concepts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} · {c.name} ({c.kind})
-                    </option>
-                  ))}
-                </select>
-                <button
+                  placeholder="— añadir concepto del catálogo —"
+                  className="flex-1"
+                  disabled={!canWrite}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="whitespace-nowrap"
+                  disabled={!canWrite}
                   onClick={async () => {
                     if (!editLines) return;
                     try {
@@ -678,12 +661,16 @@ export const Payrolls: React.FC = () => {
                       );
                     }
                   }}
-                  className="px-3 py-2 rounded-lg text-xs font-bold border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20 whitespace-nowrap"
                   title="Añade IRPF y SS Empleado/Empresa automáticamente del catálogo"
                 >
                   Auto IRPF/SS
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="accent"
+                  size="sm"
+                  className="whitespace-nowrap"
+                  disabled={!canWrite}
                   onClick={async () => {
                     if (!editLines) return;
                     try {
@@ -704,11 +691,10 @@ export const Payrolls: React.FC = () => {
                       );
                     }
                   }}
-                  className="px-3 py-2 rounded-lg text-xs font-bold border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 whitespace-nowrap"
                   title="Vuelca las comisiones del periodo del empleado a esta nómina como línea de devengo"
                 >
                   Importar comisiones
-                </button>
+                </Button>
               </div>
 
               {/* Aviso si hay devengos pero faltan deducciones de impuestos */}
@@ -770,7 +756,7 @@ export const Payrolls: React.FC = () => {
                     return (
                       <div
                         key={grp.key}
-                        className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden"
+                        className="rounded-lg border border-border-default overflow-hidden"
                       >
                         <div
                           className={
@@ -817,6 +803,8 @@ export const Payrolls: React.FC = () => {
                                 line={l}
                                 onUpdate={updateLine}
                                 onDelete={deleteLine}
+                                canWrite={canWrite}
+                                canDelete={canDelete}
                               />
                             ))}
                           </tbody>
@@ -863,95 +851,128 @@ export const Payrolls: React.FC = () => {
   );
 };
 
+/** Enter fuerza el blur, que es lo que dispara el guardado. */
+const blurOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
+};
+
 /**
  * Fila controlada del editor de líneas. Mantiene su propio estado de los
  * campos (cantidad, rate, base, importe) sincronizado con la línea del
  * servidor: cada vez que la prop `line` cambia (recalc / fetch), los inputs
- * reflejan el nuevo valor. El cambio se persiste con onBlur (al salir del
- * input) o con Enter, así no spameamos el servidor en cada tecla.
+ * reflejan el nuevo valor. El cambio se persiste con `commitOn="blur"` (al
+ * salir del campo) o con Enter, así no spameamos el servidor en cada tecla.
  */
 const PayrollLineRow: React.FC<{
   line: any;
   onUpdate: (id: string, patch: any) => Promise<void> | void;
   onDelete: (id: string) => void;
-}> = ({ line, onUpdate, onDelete }) => {
-  const fmt = (v: any) => (v == null || v === '' ? '' : String(v));
-  const [qty, setQty] = useState(fmt(line.quantity));
-  const [rate, setRate] = useState(fmt(line.rate));
-  const [base, setBase] = useState(fmt(line.baseAmount));
-  const [amount, setAmount] = useState(fmt(line.amount ?? '0'));
+  canWrite: boolean;
+  canDelete: boolean;
+}> = ({ line, onUpdate, onDelete, canWrite, canDelete }) => {
+  // number | null puro: antes eran strings porque venían de e.target.value de
+  // los <input type="number">; con NumberInput/CurrencyInput el valor ya llega
+  // numérico y `null` representa el campo vacío.
+  const num = (v: any) => (v == null || v === '' ? null : Number(v));
+  const [qty, setQty] = useState<number | null>(num(line.quantity));
+  const [rate, setRate] = useState<number | null>(num(line.rate));
+  const [base, setBase] = useState<number | null>(num(line.baseAmount));
+  const [amount, setAmount] = useState<number | null>(num(line.amount ?? 0));
 
   // Sincroniza con la prop cuando el servidor recalcula (p.ej. añadir IRPF).
   useEffect(() => {
-    setQty(fmt(line.quantity));
-    setRate(fmt(line.rate));
-    setBase(fmt(line.baseAmount));
-    setAmount(fmt(line.amount ?? '0'));
+    setQty(num(line.quantity));
+    setRate(num(line.rate));
+    setBase(num(line.baseAmount));
+    setAmount(num(line.amount ?? 0));
   }, [line.quantity, line.rate, line.baseAmount, line.amount]);
 
   const commit = async (patch: any) => {
     await onUpdate(line.id, patch);
   };
 
-  const numberOrNull = (s: string) => (s === '' ? null : Number(s));
-
   return (
-    <tr className="border-b border-slate-50 dark:border-slate-800">
+    <tr className="border-b border-border-subtle">
       <td className="py-2 px-3">
         <div className="font-medium">{line.concept}</div>
       </td>
       <td className="py-2 pr-2 text-right">
-        <input
-          type="number"
-          step="0.01"
+        <NumberInput
           value={qty}
-          onChange={(e) => setQty(e.target.value)}
-          onBlur={() => commit({ quantity: numberOrNull(qty) })}
-          onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
-          className="w-20 text-right px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent"
+          precision={2}
+          commitOn="blur"
+          onChange={(v) => {
+            setQty(v);
+            commit({ quantity: v });
+          }}
+          onKeyDown={blurOnEnter}
+          inputSize="sm"
+          containerClassName="w-20"
+          disabled={!canWrite}
         />
       </td>
       <td className="py-2 pr-2 text-right">
-        <input
-          type="number"
-          step="0.001"
+        {/* €/unidad o % según el concepto: NumberInput genérico con 3
+            decimales, la resolución que tenía el step="0.001" original. */}
+        <NumberInput
           value={rate}
-          onChange={(e) => setRate(e.target.value)}
-          onBlur={() => commit({ rate: numberOrNull(rate) })}
-          onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
-          className="w-24 text-right px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent"
+          precision={3}
+          commitOn="blur"
+          onChange={(v) => {
+            setRate(v);
+            commit({ rate: v });
+          }}
+          onKeyDown={blurOnEnter}
+          inputSize="sm"
+          containerClassName="w-24"
+          disabled={!canWrite}
         />
       </td>
       <td className="py-2 pr-2 text-right">
-        <input
-          type="number"
-          step="0.01"
+        {/* `allowNegative` explícito: CurrencyInput lo desactiva por defecto y
+            una regularización de nómina sí puede ir en negativo. */}
+        <CurrencyInput
           value={base}
-          onChange={(e) => setBase(e.target.value)}
-          onBlur={() => commit({ baseAmount: numberOrNull(base) })}
-          onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
-          className="w-24 text-right px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent"
+          allowNegative
+          commitOn="blur"
+          onChange={(v) => {
+            setBase(v);
+            commit({ baseAmount: v });
+          }}
+          onKeyDown={blurOnEnter}
+          inputSize="sm"
+          containerClassName="w-24"
+          disabled={!canWrite}
         />
       </td>
       <td className="py-2 pr-2 text-right">
-        <input
-          type="number"
-          step="0.01"
+        <CurrencyInput
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          onBlur={() => commit({ amount: Number(amount || 0) })}
-          onKeyDown={(e) => e.key === 'Enter' && (e.currentTarget as HTMLInputElement).blur()}
-          className="w-28 text-right px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent font-bold"
+          allowNegative
+          emptyValue="zero"
+          commitOn="blur"
+          onChange={(v) => {
+            setAmount(v ?? 0);
+            commit({ amount: v ?? 0 });
+          }}
+          onKeyDown={blurOnEnter}
+          inputSize="sm"
+          containerClassName="w-28"
+          className="font-bold"
+          disabled={!canWrite}
         />
       </td>
       <td className="py-2 pr-2 text-right">
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => onDelete(line.id)}
-          className="text-slate-400 hover:text-red-500"
+          disabled={!canDelete}
           title="Eliminar línea"
         >
           <Trash2 size={14} />
-        </button>
+        </Button>
       </td>
     </tr>
   );

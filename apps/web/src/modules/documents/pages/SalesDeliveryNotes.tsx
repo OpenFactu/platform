@@ -4,12 +4,16 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Loader,
+  usePopup,
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
   SearchableSelect,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
@@ -41,9 +45,6 @@ import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { PreparationButton } from '@/components/common/PreparationButton';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
@@ -135,10 +136,8 @@ const SDNList: React.FC<{
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {formatDocCode(item)}
-          </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-400 font-mono mt-1">
+          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="text-[10px] text-fg-subtle font-mono mt-1">
             ID: {item.id.substring(0, 8)}
           </span>
         </div>
@@ -165,9 +164,7 @@ const SDNList: React.FC<{
             {item.orderPrefix}-{item.periodCode}-{String(item.orderDocNum).padStart(6, '0')}
           </Badge>
         ) : (
-          <span className="text-[10px] text-slate-300 dark:text-slate-300 font-bold italic">
-            Directo
-          </span>
+          <span className="text-[10px] text-fg-subtle font-bold italic">Directo</span>
         ),
     },
     {
@@ -176,9 +173,7 @@ const SDNList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
       accessor: (item: any) => (
-        <span className="font-black text-slate-900 dark:text-slate-100">
-          {fmt.money(item.total)}
-        </span>
+        <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
       ),
     },
     {
@@ -201,77 +196,25 @@ const SDNList: React.FC<{
       ),
     },
     {
+      // `PreparationButton` es un componente con estado propio (loading, toast,
+      // llamada a /api/logistics/prep) y no cabe en un `RowAction`, así que se
+      // queda como columna. El resto de acciones pasan a `rowActions`.
       header: 'Acciones',
       align: 'right' as const,
-      cell: (item: any) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickPdf(item.id);
-            }}
-            isLoading={downloadingId === item.id}
-            className="h-8 w-8 p-0 text-ink-500 dark:text-ink-400 hover:text-accent hover:bg-accent/10 dark:hover:bg-accent/15"
-            title="Descargar PDF"
-          >
-            <Download size={14} />
-          </Button>
-          {item.status === 'O' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCopyToInvoice(item);
-              }}
-              className="text-blue-600 dark:text-blue-300 font-bold hover:bg-blue-50 dark:hover:bg-blue-500/10 gap-1 uppercase text-[10px]"
-            >
-              <Copy size={12} /> Facturar
-            </Button>
-          )}
-          {item.status === 'O' && !item.hasActiveShipment && flags.logisticsEnabled && (
-            <div onClick={(e) => e.stopPropagation()} className="inline-flex">
-              <PreparationButton docType="SDN" docId={item.id} compact />
-            </div>
-          )}
-          {item.hasActiveShipment && item.activeShipmentId && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                const path = `/logistics/shipments/${item.activeShipmentId}`;
-                if (tabs && (tabs as any).openTab) {
-                  (tabs as any).openTab(path, { title: 'Envío en preparación' });
-                } else {
-                  window.location.href = path;
-                }
-              }}
-              className="text-accent font-bold hover:bg-accent/10 gap-1 uppercase text-[10px]"
-            >
-              Ver preparación
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDetail(item);
-            }}
-          >
-            Ver
-          </Button>
-        </div>
-      ),
+      cell: (item: any) =>
+        item.status === 'O' && !item.hasActiveShipment && flags.logisticsEnabled ? (
+          <div onClick={(e) => e.stopPropagation()} className="inline-flex">
+            <PreparationButton docType="SDN" docId={item.id} compact />
+          </div>
+        ) : null,
     },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (item: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // se declaran una vez en lugar de duplicarse entre una columna de botones y
+  // el menú contextual.
+  const rowActions = (item: any): RowAction[] => [
     { label: 'Ver Albarán', icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: 'Descargar PDF',
@@ -308,37 +251,36 @@ const SDNList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-4 tracking-tighter">
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl text-emerald-600 dark:text-emerald-300 shadow-sm border border-emerald-100 dark:border-emerald-500/20">
-              <Truck size={32} />
-            </div>
-            Salidas (Albaranes)
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium ml-1">
-            Registro físico de salida de productos y control de expedición.
-          </p>
-          {doc.state.mastersError && (
-            <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-700 dark:text-amber-200 text-xs font-bold animate-in slide-in-from-top">
+      <PageHeader
+        title="Salidas (Albaranes)"
+        subtitle="Registro físico de salida de productos y control de expedición."
+        icon={<Truck size={18} />}
+        size="lg"
+        divider
+        toolbar={
+          doc.state.mastersError ? (
+            <div className="flex items-center gap-2 p-3 bg-warning-bg border border-warning rounded-lg text-warning-fg text-xs font-bold animate-in slide-in-from-top">
               <AlertCircle size={16} />
               {doc.state.mastersError}
             </div>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {doc.state.canWrite && onCreateFromClone && (
-            <CloneDocumentActions docType="SDN" onPaste={onCreateFromClone} show="paste" />
-          )}
-          <Button
-            onClick={onCreate}
-            disabled={!doc.state.canWrite}
-            className="flex items-center gap-2 h-12 px-6 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:grayscale"
-          >
-            <Plus size={20} /> Registrar Nueva Salida
-          </Button>
-        </div>
-      </div>
+          ) : undefined
+        }
+        actions={
+          <div className="flex items-center gap-3">
+            {doc.state.canWrite && onCreateFromClone && (
+              <CloneDocumentActions docType="SDN" onPaste={onCreateFromClone} show="paste" />
+            )}
+            <Button
+              type="button"
+              onClick={onCreate}
+              disabled={!doc.state.canWrite}
+              className="flex items-center gap-2 disabled:opacity-50"
+            >
+              <Plus size={20} /> Registrar Nueva Salida
+            </Button>
+          </div>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
@@ -404,9 +346,7 @@ const SDNList: React.FC<{
               {
                 label: 'Total',
                 value: (item: any) => (
-                  <span className="font-black text-slate-900 dark:text-slate-100">
-                    {fmt.money(item.total)}
-                  </span>
+                  <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
                 ),
               },
               {
@@ -430,9 +370,10 @@ const SDNList: React.FC<{
           />
         ) : (
           <Table
-            columns={ctxColumns}
+            columns={columns}
             data={filteredData || []}
             isLoading={loading}
+            rowActions={rowActions}
             onRowClick={onDetail}
             selectable
             selectedKeys={selectedKeys}
@@ -440,14 +381,6 @@ const SDNList: React.FC<{
           />
         )}
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };
@@ -527,49 +460,51 @@ const SDNForm: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 dark:hover:text-slate-600 dark:hover:text-slate-300 dark:hover:text-slate-600 transition-all shadow-sm"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tighter flex items-center gap-3">
-              Registro de Salida
-              {orderId && (
-                <Badge
-                  variant="info"
-                  className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-100 dark:border-blue-500/20 italic"
-                >
-                  De Pedido
-                </Badge>
-              )}
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium ml-1 flex items-center gap-2">
-              <PlusSquare size={14} className="text-emerald-500" />
-              Documento de expedición y control de stock de salida.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        title={
+          <span className="flex items-center gap-3">
+            Registro de Salida
+            {orderId && (
+              <Badge
+                variant="info"
+                className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 italic"
+              >
+                De Pedido
+              </Badge>
+            )}
+          </span>
+        }
+        subtitle={
+          <span className="flex items-center gap-2">
+            <PlusSquare size={14} />
+            Documento de expedición y control de stock de salida.
+          </span>
+        }
+        size="lg"
+        divider
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={onBack} title="Volver">
+            <ArrowLeft size={14} className="mr-1" /> Volver
+          </Button>
+        }
+        actions={
           <Button
+            type="button"
             onClick={onSubmit}
             isLoading={state.isSubmitting}
             disabled={!!state.seriesError}
-            className="flex items-center gap-2 h-12 px-8"
+            className="flex items-center gap-2"
           >
             <Save size={20} /> Registrar Albarán
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 md:col-span-2 space-y-6 border-t-4 border-t-emerald-500">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Cliente *
               </label>
               <SearchableSelect
@@ -581,7 +516,7 @@ const SDNForm: React.FC<{
             </div>
             {warehouseLocation !== 'line' && (
               <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest">
+                <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                   Almacén de Salida *
                 </label>
                 <SearchableSelect
@@ -594,30 +529,23 @@ const SDNForm: React.FC<{
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Fecha Albarán *
               </label>
-              <Input
-                type="date"
-                value={state.date}
-                onChange={(e) => setState.setDate(e.target.value)}
-                className="font-bold h-10"
-              />
+              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
             </div>
             <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
           </div>
         </Card>
 
         <div className="space-y-6">
-          <Card className="p-6 space-y-6 bg-slate-50/50 dark:bg-slate-800/50">
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 tracking-widest border-b pb-2">
+          <Card className="p-6 space-y-6 bg-bg-muted">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest border-b pb-2">
               Logística y Series
             </h4>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Serie de Albarán *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Serie de Albarán *</label>
                 <SearchableSelect
                   value={state.seriesId}
                   onChange={setState.setSeriesId}
@@ -625,17 +553,16 @@ const SDNForm: React.FC<{
                 />
                 {state.isManualSeries && (
                   <div className="mt-2 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                    <label className="text-[10px] font-bold text-fg-muted">
                       Número de documento (manual) *
                     </label>
-                    <input
+                    <Input
                       type="number"
                       min={1}
                       step={1}
                       value={state.manualNumber}
                       onChange={(e) => setState.setManualNumber(e.target.value)}
                       placeholder="Ej: 1050"
-                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     />
                   </div>
                 )}
@@ -644,9 +571,7 @@ const SDNForm: React.FC<{
                 )}
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Periodo Contable *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Periodo Contable *</label>
                 <SearchableSelect
                   value={state.periodId}
                   onChange={setState.setPeriodId}
@@ -671,7 +596,7 @@ const SDNForm: React.FC<{
         const docRate = Number(state.withholdingRate || 0);
         if (partnerRate > 0 && docRate === 0) {
           return (
-            <div className="flex items-center justify-between gap-4 p-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+            <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
               <div className="flex items-start gap-3 min-w-0">
                 <AlertCircle
                   size={18}
@@ -703,39 +628,37 @@ const SDNForm: React.FC<{
 
       <DocumentFiscalPanel kind="sales" state={state} setState={setState} collapsible />
 
-      <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-lg overflow-hidden border-border-subtle" noPadding>
         {isMobile ? (
           <MobileLineCards columns={columns} lines={state.lines || []} />
         ) : (
           <Table columns={columns} data={state.lines || []} />
         )}
-        <div className="p-6 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col md:flex-row justify-between items-start md:items-center border-t border-slate-200 dark:border-slate-700 gap-6">
+        <div className="p-6 bg-bg-muted flex flex-col md:flex-row justify-between items-start md:items-center border-t border-border-default gap-6">
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="secondary"
               size="sm"
               onClick={() => actions.addLine()}
-              className="text-emerald-600 dark:text-emerald-300 font-bold flex items-center gap-2 h-10 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              className="text-emerald-600 dark:text-emerald-300 font-bold flex items-center gap-2 h-10 border-border-default bg-bg-card"
             >
               <PlusSquare size={16} /> Añadir Línea Libre
             </Button>
           </div>
-          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <div className="flex justify-between w-full text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-lg border border-border-subtle shadow-sm">
+            <div className="flex justify-between w-full text-[10px] font-black text-fg-subtle uppercase tracking-widest px-1">
               <span>Base Imponible:</span>
-              <span className="text-slate-600 dark:text-slate-300">
-                {computations.subtotal.toFixed(2)} €
-              </span>
+              <span className="text-fg-body">{computations.subtotal.toFixed(2)} €</span>
             </div>
             <div className="flex justify-between w-full text-[10px] font-black text-blue-500 dark:text-blue-300 uppercase tracking-widest px-1">
               <span>Cuota IVA:</span>
               <span>{computations.taxTotal.toFixed(2)} €</span>
             </div>
-            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-slate-50">
-              <span className="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-widest">
+            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-border-subtle">
+              <span className="text-[10px] uppercase font-black text-fg-subtle tracking-widest">
                 Total Albarán:
               </span>
-              <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter ml-4">
+              <span className="text-2xl font-black text-fg-default tracking-tighter ml-4">
                 {computations.total.toFixed(2)} €
               </span>
             </div>
@@ -880,25 +803,22 @@ const SDNDetail: React.FC<{
         )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card
-          className="md:col-span-2 border-slate-100 dark:border-slate-800"
-          bodyClassName="p-6 space-y-5"
-        >
+        <Card className="md:col-span-2 border-border-subtle" bodyClassName="p-6 space-y-5">
           <div>
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] mb-2">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] mb-2">
               Cliente
             </h4>
-            <p className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <p className="text-xl font-black text-fg-default tracking-tight">
               {partner?.name || '—'}
             </p>
             {partner?.nif && (
-              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5 font-mono">
+              <p className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider mt-0.5 font-mono">
                 NIF: {partner.nif}
               </p>
             )}
           </div>
           {sdn.orderId && (
-            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-lg">
               <ShoppingCart size={14} className="text-blue-600 dark:text-blue-300 shrink-0" />
               <p className="text-xs font-bold text-blue-800 dark:text-blue-200 leading-tight">
                 Desde pedido {sdn.orderPrefix}-{sdn.periodCode}-
@@ -908,24 +828,24 @@ const SDNDetail: React.FC<{
           )}
         </Card>
 
-        <Card className="border-slate-100 dark:border-slate-800" bodyClassName="p-6 space-y-4">
-          <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] border-b border-slate-100 dark:border-slate-800 pb-2">
+        <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
+          <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] border-b border-border-subtle pb-2">
             Información
           </h4>
           <dl className="space-y-2.5">
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Fecha
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {fmt.date(sdn.date)}
               </dd>
             </div>
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Líneas
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {sdn.lines?.length ?? 0}
               </dd>
             </div>
@@ -933,7 +853,7 @@ const SDNDetail: React.FC<{
         </Card>
       </div>
 
-      <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-sm overflow-hidden border-border-subtle" noPadding>
         {isMobile ? (
           <MobileLineCards columns={columns} lines={sdn.lines || []} />
         ) : (
@@ -965,6 +885,7 @@ export const SalesDeliveryNotes: React.FC = () => {
   const location = useLocation();
   const params = useParams();
   const toast = useToast();
+  const popup = usePopup();
   const { openTab } = useTabs();
   const currentTab = useCurrentTab();
 
@@ -1137,12 +1058,15 @@ export const SalesDeliveryNotes: React.FC = () => {
       '',
     );
     if (reason === null) return;
-    if (
-      !confirm(
+    const ok = await popup.confirm({
+      title: 'Cancelar albarán',
+      message:
         '¿Cancelar el albarán? Se devolverá el stock, se reabrirá el pedido origen y, si hay envío en curso, también se cancelará.',
-      )
-    )
-      return;
+      tone: 'danger',
+      confirmLabel: 'Cancelar albarán',
+      cancelLabel: 'Volver',
+    });
+    if (!ok) return;
     const doCall = (force: boolean) =>
       apiClient.post<any>(`/api/sales/delivery-notes/${id}/cancel`, {
         reason: reason || null,
@@ -1155,12 +1079,14 @@ export const SalesDeliveryNotes: React.FC = () => {
       } catch (err) {
         // 409 con requiresForce = envío ya en ruta — pedir confirmación explícita.
         if (err instanceof ApiError && err.status === 409 && (err.body as any)?.requiresForce) {
-          if (
-            !confirm(
-              'El envío está en ruta. El conductor tendrá que volver sin entregar.\n\n¿Cancelar de todos modos?',
-            )
-          )
-            return;
+          const forceOk = await popup.confirm({
+            title: 'El envío está en ruta',
+            message: 'El conductor tendrá que volver sin entregar. ¿Cancelar de todos modos?',
+            tone: 'danger',
+            confirmLabel: 'Cancelar de todos modos',
+            cancelLabel: 'Volver',
+          });
+          if (!forceOk) return;
           d = await doCall(true);
         } else {
           throw err;

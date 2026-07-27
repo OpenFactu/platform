@@ -8,15 +8,14 @@ import {
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
   SearchableSelect,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useDataTable } from '@openfactu/common';
 import { useLocation } from 'react-router-dom';
 import { FileDigit, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { seriesApi } from '../api';
 import { crudApi } from '@/shared/api';
 import { useDocTypes } from '../domain/docTypeRegistry';
@@ -204,24 +203,12 @@ export const DocumentSeries: React.FC = () => {
           </Badge>
         ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (c: any) => (
-        <button
-          onClick={() => canDelete && handleDelete(c.id)}
-          disabled={!canDelete}
-          className={`transition-colors ${canDelete ? 'text-slate-400 dark:text-slate-500 hover:text-red-500' : 'text-slate-100 cursor-not-allowed grayscale'}`}
-        >
-          <Trash2 size={16} />
-        </button>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (c: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que el permiso se declara una
+  // vez en lugar de duplicarse entre una columna de botones y el menú.
+  const rowActions = (c: any): RowAction[] => [
     {
       label: 'Eliminar',
       icon: <Trash2 size={14} />,
@@ -233,25 +220,20 @@ export const DocumentSeries: React.FC = () => {
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-          <FileDigit className="text-blue-600 dark:text-blue-300" size={32} />
-          Series Documentales
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-          Configura los rangos de numeración para cada tipo de documento del sistema.
-        </p>
-      </div>
+      <PageHeader
+        size="lg"
+        title="Series Documentales"
+        subtitle="Configura los rangos de numeración para cada tipo de documento del sistema."
+        icon={<FileDigit size={18} />}
+      />
 
-      <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+      <Card className="border-border-subtle shadow-lg" noPadding>
         <form
           onSubmit={handleSubmit}
           className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end"
         >
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Nombre Serie
-            </label>
+            <label className="text-xs font-bold text-fg-muted uppercase">Nombre Serie</label>
             <Input
               placeholder="Ej: Principal PO"
               value={name}
@@ -260,9 +242,7 @@ export const DocumentSeries: React.FC = () => {
             />
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Tipo Documento
-            </label>
+            <label className="text-xs font-bold text-fg-muted uppercase">Tipo Documento</label>
             <div className="mt-1">
               <SearchableSelect
                 value={docType}
@@ -276,9 +256,7 @@ export const DocumentSeries: React.FC = () => {
             </div>
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Numeración
-            </label>
+            <label className="text-xs font-bold text-fg-muted uppercase">Numeración</label>
             <div className="mt-1">
               <SearchableSelect
                 value={numberingMode}
@@ -291,9 +269,7 @@ export const DocumentSeries: React.FC = () => {
             </div>
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Aplica al Periodo
-            </label>
+            <label className="text-xs font-bold text-fg-muted uppercase">Aplica al Periodo</label>
             <div className="mt-1">
               <SearchableSelect
                 value={periodId}
@@ -304,9 +280,7 @@ export const DocumentSeries: React.FC = () => {
             </div>
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Prefijo Visual
-            </label>
+            <label className="text-xs font-bold text-fg-muted uppercase">Prefijo Visual</label>
             <Input
               placeholder="Ej: F24"
               value={prefix}
@@ -315,16 +289,14 @@ export const DocumentSeries: React.FC = () => {
           </div>
           {numberingMode === 'MANUAL' ? (
             <div className="md:col-span-2 flex items-end">
-              <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+              <p className="text-xs text-fg-muted italic">
                 Serie manual: el número de cada documento se teclea al crearlo.
               </p>
             </div>
           ) : (
             <>
               <div className="md:col-span-1">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-                  Inicio de Rango
-                </label>
+                <label className="text-xs font-bold text-fg-muted uppercase">Inicio de Rango</label>
                 <Input
                   type="number"
                   value={firstNumber}
@@ -333,9 +305,7 @@ export const DocumentSeries: React.FC = () => {
                 />
               </div>
               <div className="md:col-span-1">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-                  Límite Final
-                </label>
+                <label className="text-xs font-bold text-fg-muted uppercase">Límite Final</label>
                 <Input
                   type="number"
                   value={lastNumber}
@@ -358,7 +328,7 @@ export const DocumentSeries: React.FC = () => {
         </form>
       </Card>
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <FilterBar
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -390,16 +360,8 @@ export const DocumentSeries: React.FC = () => {
             },
           ]}
         />
-        <Table columns={ctxColumns} data={filteredData} isLoading={loading} />
+        <Table columns={columns} data={filteredData} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

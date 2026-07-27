@@ -22,7 +22,7 @@ export const NavIconChip: React.FC<NavIconChipProps> = ({ iconName, size = 18, a
         'flex items-center justify-center rounded-lg border shrink-0',
         active
           ? 'bg-accent/15 border-accent/30 text-accent'
-          : 'bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60 text-ink-700 dark:text-slate-300',
+          : 'bg-bg-muted border-border-default text-fg-body',
       )}
       style={{ width: chipSize, height: chipSize }}
     >

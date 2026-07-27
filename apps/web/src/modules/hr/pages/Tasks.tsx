@@ -3,17 +3,40 @@ import type { Task } from '../domain/task';
 import type { Employee } from '../domain/employee';
 import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api/internalOrdersApi';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Badge, useToast, cn } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  Badge,
+  useToast,
+  usePopup,
+  cn,
+  PageHeader,
+  Select,
+  SearchableSelect,
+} from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ListTodo, Plus, Trash2, X, User, Calendar, Clock } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
+// Etiquetas de estado en un solo sitio: de aquí salen las columnas del kanban y
+// las `options` de los dos desplegables de estado.
+const STATUS_LABEL: Record<Task['status'], string> = {
+  backlog: 'Backlog',
+  todo: 'Por hacer',
+  in_progress: 'En curso',
+  blocked: 'Bloqueada',
+  done: 'Hecha',
+  cancelled: 'Cancelada',
+};
+
 const COLUMNS: Array<{ key: Task['status']; label: string; accent: string }> = [
-  { key: 'todo', label: 'Por hacer', accent: 'bg-slate-400' },
-  { key: 'in_progress', label: 'En curso', accent: 'bg-indigo-500' },
-  { key: 'blocked', label: 'Bloqueada', accent: 'bg-rose-500' },
-  { key: 'done', label: 'Hecha', accent: 'bg-emerald-500' },
+  { key: 'todo', label: STATUS_LABEL.todo, accent: 'bg-slate-400' },
+  { key: 'in_progress', label: STATUS_LABEL.in_progress, accent: 'bg-indigo-500' },
+  { key: 'blocked', label: STATUS_LABEL.blocked, accent: 'bg-rose-500' },
+  { key: 'done', label: STATUS_LABEL.done, accent: 'bg-emerald-500' },
 ];
 
 const PRIORITY_VARIANT: Record<string, BadgeProps['variant']> = {
@@ -29,8 +52,14 @@ const PRIORITY_LABEL: Record<string, string> = {
   urgent: 'Urgente',
 };
 
-const SELECT_CLS =
-  'w-full px-3 py-2 rounded-xs border border-line dark:border-ink-700 bg-white dark:bg-ink-800 text-sm text-ink-900 dark:text-slate-100 focus:outline-none focus:border-accent';
+const STATUS_OPTIONS = (Object.keys(STATUS_LABEL) as Array<Task['status']>).map((value) => ({
+  value,
+  label: STATUS_LABEL[value],
+}));
+// El selector rápido de la tarjeta nunca ofrece «Backlog»: una tarea en backlog
+// no aparece en ninguna columna del kanban.
+const CARD_STATUS_OPTIONS = STATUS_OPTIONS.filter((o) => o.value !== 'backlog');
+const PRIORITY_OPTIONS = Object.entries(PRIORITY_LABEL).map(([value, label]) => ({ value, label }));
 
 const empty = (): Partial<Task> => ({
   title: '',
@@ -42,6 +71,7 @@ const empty = (): Partial<Task> => ({
 export const Tasks: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<Task[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<InternalOrder[]>([]);
@@ -71,6 +101,21 @@ export const Tasks: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.tenantId, filter.projectId, filter.assigneeId]);
 
+  // Opciones de los desplegables de maestros (vienen del servidor).
+  const employeeOptions = useMemo(
+    () =>
+      employees.map((e) => ({
+        value: e.id,
+        label: `${e.firstName} ${e.lastName}`,
+        secondaryLabel: e.code,
+      })),
+    [employees],
+  );
+  const projectOptions = useMemo(
+    () => projects.map((p) => ({ value: p.id, label: p.name, secondaryLabel: p.code })),
+    [projects],
+  );
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing?.title) {
@@ -92,7 +137,13 @@ export const Tasks: React.FC = () => {
   };
 
   const remove = async (t: Task) => {
-    if (!confirm(`¿Borrar tarea ${t.code}?`)) return;
+    const ok = await popup.confirm({
+      title: 'Borrar tarea',
+      message: `¿Borrar la tarea ${t.code}?`,
+      tone: 'danger',
+      confirmLabel: 'Borrar',
+    });
+    if (!ok) return;
     await tasksApi.remove(t.id);
     fetchAll();
   };
@@ -116,59 +167,46 @@ export const Tasks: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-4">
       {/* Cabecera compacta */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <ListTodo className="text-accent" size={22} />
-          <div>
-            <h1 className="text-xl font-bold text-ink-900 dark:text-slate-100 leading-tight">
-              Tareas
-            </h1>
-            <p className="text-xs text-ink-500 dark:text-ink-400">
-              Planificador ligero · arrastra una tarea a otra columna para cambiar de estado
-            </p>
-          </div>
-        </div>
-        <Button size="sm" onClick={() => setEditing(empty())}>
-          <Plus size={14} /> Nueva tarea
-        </Button>
-      </div>
+      <PageHeader
+        title="Tareas"
+        subtitle="Planificador ligero · arrastra una tarea a otra columna para cambiar de estado"
+        icon={<ListTodo size={18} />}
+        size="sm"
+        actions={
+          <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+            <Plus size={14} /> Nueva tarea
+          </Button>
+        }
+      />
 
       {/* Filtros */}
       <Card noPadding>
         <div className="p-3 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
           <div>
+            {/* SearchableSelect no tiene prop `label` → se conserva el <label>
+                suelto. El vacío es válido («Todos») → clearable. */}
             <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
               Proyecto
             </label>
-            <select
+            <SearchableSelect
+              options={projectOptions}
               value={filter.projectId}
-              onChange={(e) => setFilter({ ...filter, projectId: e.target.value })}
-              className={SELECT_CLS}
-            >
-              <option value="">Todos</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.code} — {p.name}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setFilter({ ...filter, projectId: v })}
+              placeholder="Todos"
+              clearable
+            />
           </div>
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
               Asignada a
             </label>
-            <select
+            <SearchableSelect
+              options={employeeOptions}
               value={filter.assigneeId}
-              onChange={(e) => setFilter({ ...filter, assigneeId: e.target.value })}
-              className={SELECT_CLS}
-            >
-              <option value="">Todos</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.firstName} {e.lastName}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setFilter({ ...filter, assigneeId: v })}
+              placeholder="Todos"
+              clearable
+            />
           </div>
           <div className="text-xs text-ink-500 dark:text-ink-400 whitespace-nowrap pb-2">
             <span className="font-bold text-ink-900 dark:text-slate-100">{rows.length}</span> tarea
@@ -269,29 +307,29 @@ export const Tasks: React.FC = () => {
                           </div>
                         )}
                         <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <select
-                            onClick={(e) => e.stopPropagation()}
-                            value={t.status}
-                            onChange={(e) => moveTo(t, e.target.value as Task['status'])}
-                            className="flex-1 text-[10px] px-1.5 py-1 rounded-xs border border-line dark:border-ink-700 bg-transparent text-ink-700 dark:text-ink-300"
-                          >
-                            <option value="todo">Por hacer</option>
-                            <option value="in_progress">En curso</option>
-                            <option value="blocked">Bloqueada</option>
-                            <option value="done">Hecha</option>
-                            <option value="cancelled">Cancelada</option>
-                          </select>
-                          <button
+                          {/* El stopPropagation vive en el envoltorio: Select no
+                              expone onClick y la tarjeta abre el editor al
+                              hacer click. */}
+                          <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                            <Select
+                              ariaLabel="Estado de la tarea"
+                              options={CARD_STATUS_OPTIONS}
+                              value={t.status}
+                              onChange={(v) => moveTo(t, v as Task['status'])}
+                            />
+                          </div>
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               remove(t);
                             }}
-                            className="p-1 rounded-xs text-ink-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
                             title="Borrar"
                           >
                             <Trash2 size={12} />
-                          </button>
+                          </Button>
                         </div>
                       </div>
                     );
@@ -311,13 +349,15 @@ export const Tasks: React.FC = () => {
                 <h2 className="text-base font-bold text-ink-900 dark:text-slate-100">
                   {editing.id ? `Editar ${editing.code || 'tarea'}` : 'Nueva tarea'}
                 </h2>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setEditing(null)}
-                  className="p-1 rounded-xs text-ink-400 hover:text-ink-700 dark:hover:text-slate-200"
+                  title="Cerrar"
                 >
                   <X size={18} />
-                </button>
+                </Button>
               </div>
               <Input
                 label="Título"
@@ -331,85 +371,57 @@ export const Tasks: React.FC = () => {
                 onChange={(e) => setEditing({ ...editing, description: e.target.value })}
               />
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* Listas estáticas y cortas → Select, que sí tiene prop `label`. */}
+                <Select
+                  label="Estado"
+                  options={STATUS_OPTIONS}
+                  value={editing.status || 'todo'}
+                  onChange={(v) => setEditing({ ...editing, status: v as Task['status'] })}
+                />
+                <Select
+                  label="Prioridad"
+                  options={PRIORITY_OPTIONS}
+                  value={editing.priority || 'normal'}
+                  onChange={(v) => setEditing({ ...editing, priority: v as Task['priority'] })}
+                />
                 <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
-                    Estado
-                  </label>
-                  <select
-                    value={editing.status || 'todo'}
-                    onChange={(e) => setEditing({ ...editing, status: e.target.value as any })}
-                    className={SELECT_CLS}
-                  >
-                    <option value="backlog">Backlog</option>
-                    <option value="todo">Por hacer</option>
-                    <option value="in_progress">En curso</option>
-                    <option value="blocked">Bloqueada</option>
-                    <option value="done">Hecha</option>
-                    <option value="cancelled">Cancelada</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
-                    Prioridad
-                  </label>
-                  <select
-                    value={editing.priority || 'normal'}
-                    onChange={(e) => setEditing({ ...editing, priority: e.target.value as any })}
-                    className={SELECT_CLS}
-                  >
-                    <option value="low">Baja</option>
-                    <option value="normal">Normal</option>
-                    <option value="high">Alta</option>
-                    <option value="urgent">Urgente</option>
-                  </select>
-                </div>
-                <div>
+                  {/* Maestros del servidor → SearchableSelect, que no tiene prop
+                      `label`: se conserva el <label> suelto. El vacío es válido
+                      → clearable. */}
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
                     Asignada a
                   </label>
-                  <select
+                  <SearchableSelect
+                    options={employeeOptions}
                     value={editing.assigneeId || ''}
-                    onChange={(e) => setEditing({ ...editing, assigneeId: e.target.value })}
-                    className={SELECT_CLS}
-                  >
-                    <option value="">— sin asignar —</option>
-                    {employees.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.firstName} {e.lastName}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setEditing({ ...editing, assigneeId: v })}
+                    placeholder="— sin asignar —"
+                    clearable
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
                     Proyecto
                   </label>
-                  <select
+                  <SearchableSelect
+                    options={projectOptions}
                     value={editing.internalOrderId || ''}
-                    onChange={(e) => setEditing({ ...editing, internalOrderId: e.target.value })}
-                    className={SELECT_CLS}
-                  >
-                    <option value="">— ninguno —</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.code} — {p.name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => setEditing({ ...editing, internalOrderId: v })}
+                    placeholder="— ninguno —"
+                    clearable
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Input
+                <DatePicker
                   label="Inicio"
-                  type="date"
-                  value={(editing.startDate || '').slice(0, 10)}
-                  onChange={(e) => setEditing({ ...editing, startDate: e.target.value })}
+                  value={(editing.startDate || '').slice(0, 10) || null}
+                  onChange={(v) => setEditing({ ...editing, startDate: v ?? '' })}
                 />
-                <Input
+                <DatePicker
                   label="Fin"
-                  type="date"
-                  value={(editing.dueDate || '').slice(0, 10)}
-                  onChange={(e) => setEditing({ ...editing, dueDate: e.target.value })}
+                  value={(editing.dueDate || '').slice(0, 10) || null}
+                  onChange={(v) => setEditing({ ...editing, dueDate: v ?? '' })}
                 />
                 <Input
                   label="Estimadas (h)"

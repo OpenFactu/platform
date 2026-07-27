@@ -30,23 +30,17 @@ export const DocumentTotalsBlock: React.FC<Props> = ({
   const hasWithholding = toNum(withholdingAmount) > 0;
   const rate = toNum(withholdingRate);
   return (
-    <div className="flex justify-end px-6 py-5 bg-slate-50/70 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-800">
+    <div className="flex justify-end px-6 py-5 bg-bg-muted border-t border-border-subtle">
       <div className="min-w-[280px] space-y-2">
         <div className="flex justify-between items-baseline text-xs gap-8">
-          <span className="font-bold uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400">
+          <span className="font-bold uppercase tracking-wider text-[10px] text-fg-muted">
             Subtotal
           </span>
-          <span className="font-bold text-slate-700 dark:text-slate-200 tabular-nums">
-            {fmt.money(subtotal)}
-          </span>
+          <span className="font-bold text-fg-body tabular-nums">{fmt.money(subtotal)}</span>
         </div>
         <div className="flex justify-between items-baseline text-xs gap-8">
-          <span className="font-bold uppercase tracking-wider text-[10px] text-slate-500 dark:text-slate-400">
-            IVA
-          </span>
-          <span className="font-bold text-slate-700 dark:text-slate-200 tabular-nums">
-            {fmt.money(tax)}
-          </span>
+          <span className="font-bold uppercase tracking-wider text-[10px] text-fg-muted">IVA</span>
+          <span className="font-bold text-fg-body tabular-nums">{fmt.money(tax)}</span>
         </div>
         {hasWithholding && (
           <div className="flex justify-between items-baseline text-xs gap-8">
@@ -58,11 +52,11 @@ export const DocumentTotalsBlock: React.FC<Props> = ({
             </span>
           </div>
         )}
-        <div className="pt-3 mt-1 border-t border-slate-200 dark:border-slate-700 flex justify-between items-baseline gap-8">
-          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+        <div className="pt-3 mt-1 border-t border-border-default flex justify-between items-baseline gap-8">
+          <span className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
             {totalLabel}
           </span>
-          <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight tabular-nums">
+          <span className="text-2xl font-black text-fg-default tracking-tight tabular-nums">
             {fmt.money(total)}
           </span>
         </div>

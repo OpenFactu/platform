@@ -8,7 +8,7 @@ export const ReasoningText: React.FC<{ text: string; streaming: boolean }> = ({
 }) => {
   if (!text.trim() && !streaming) return null;
   return (
-    <div className="flex items-start gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+    <div className="flex items-start gap-1.5 text-[11px] text-fg-muted">
       <Brain size={11} className="mt-0.5 shrink-0 text-violet-400" />
       <span className="whitespace-pre-wrap break-words">{text || '…'}</span>
     </div>

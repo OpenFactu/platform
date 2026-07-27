@@ -1,7 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { Table, Card, Button, Input, Loader, useToast, Badge, FilterBar } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  DatePicker,
+  Loader,
+  usePopup,
+  useToast,
+  Badge,
+  FilterBar,
+  PageHeader,
+} from '@openfactu/ui';
 import { SearchableSelect } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
 import {
@@ -25,9 +37,6 @@ import { MobileLineCards } from '../components/MobileLineCards';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import { buildDetailLineColumns, buildFormLineColumns } from '../components/documentLineCells';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
@@ -106,10 +115,8 @@ const QuoteList: React.FC<{
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {formatDocCode(item)}
-          </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
+          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="text-[10px] text-fg-subtle font-mono mt-1">
             ID: {item.id.substring(0, 8)}
           </span>
         </div>
@@ -134,9 +141,7 @@ const QuoteList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
       accessor: (item: any) => (
-        <span className="font-black text-slate-900 dark:text-slate-100">
-          {fmt.money(item.total)}
-        </span>
+        <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
       ),
     },
     {
@@ -149,42 +154,12 @@ const QuoteList: React.FC<{
         return <Badge variant={b.variant}>{b.label}</Badge>;
       },
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (item: any) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickPdf(item.id);
-            }}
-            isLoading={downloadingId === item.id}
-            className="h-8 w-8 p-0 text-ink-500 dark:text-ink-400 hover:text-accent hover:bg-accent/10 dark:hover:bg-accent/15"
-            title="Descargar PDF"
-          >
-            <Download size={14} />
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDetail(item);
-            }}
-          >
-            Ver
-          </Button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (item: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que no hay que duplicarlas
+  // entre una columna de botones y el menú contextual.
+  const rowActions = (item: any): RowAction[] => [
     { label: 'Ver Presupuesto', icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: 'Descargar PDF',
@@ -195,28 +170,24 @@ const QuoteList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-4 tracking-tighter">
-            <div className="p-3 bg-sky-50 dark:bg-sky-500/10 rounded-2xl text-sky-600 dark:text-sky-300 shadow-sm border border-sky-100 dark:border-sky-500/20">
-              <FileSignature size={32} />
-            </div>
-            Presupuestos
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium ml-1">
-            Ofertas a clientes, convertibles en pedido o factura al aceptarse.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        size="lg"
+        divider
+        className="pb-8"
+        icon={<FileSignature size={18} />}
+        title="Presupuestos"
+        subtitle="Ofertas a clientes, convertibles en pedido o factura al aceptarse."
+        actions={
           <Button
+            type="button"
             onClick={onCreate}
             disabled={!canWrite}
             className="flex items-center gap-2 h-12 px-6 disabled:opacity-50"
           >
             <Plus size={20} /> Nuevo Presupuesto
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
@@ -271,9 +242,7 @@ const QuoteList: React.FC<{
               {
                 label: 'Total',
                 value: (item: any) => (
-                  <span className="font-black text-slate-900 dark:text-slate-100">
-                    {fmt.money(item.total)}
-                  </span>
+                  <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
                 ),
               },
             ]}
@@ -291,21 +260,14 @@ const QuoteList: React.FC<{
           />
         ) : (
           <Table
-            columns={ctxColumns}
+            columns={columns}
             data={filteredData}
             isLoading={loading}
+            rowActions={rowActions}
             onRowClick={onDetail}
           />
         )}
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };
@@ -362,26 +324,31 @@ const QuoteForm: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-        <div className="flex items-center gap-4">
-          <button
+      <PageHeader
+        size="lg"
+        divider
+        className="pb-8"
+        breadcrumbs={
+          <Button
+            type="button"
+            variant="secondary"
             onClick={onBack}
-            className="p-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-all shadow-sm"
+            title="Volver"
+            className="rounded-lg self-start"
           >
             <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tighter">
-              Nuevo Presupuesto
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium ml-1 flex items-center gap-2">
-              <FileText size={14} className="text-sky-500" />
-              Oferta sin efecto en stock ni contabilidad.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
+          </Button>
+        }
+        title="Nuevo Presupuesto"
+        subtitle={
+          <span className="flex items-center gap-2">
+            <FileText size={14} className="text-accent" />
+            Oferta sin efecto en stock ni contabilidad.
+          </span>
+        }
+        actions={
           <Button
+            type="button"
             onClick={onSubmit}
             isLoading={state.isSubmitting}
             disabled={!!state.seriesError || !state.canWrite}
@@ -389,13 +356,13 @@ const QuoteForm: React.FC<{
           >
             <Save size={20} /> Guardar Presupuesto
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 md:col-span-2 space-y-6 border-slate-100 dark:border-slate-800">
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-baseline gap-4">
-            <h3 className="font-black text-slate-700 dark:text-slate-200 uppercase text-[11px] tracking-[0.15em] leading-none">
+        <Card className="p-6 md:col-span-2 space-y-6 border-border-subtle">
+          <div className="border-b border-border-subtle pb-3 flex justify-between items-baseline gap-4">
+            <h3 className="font-black text-fg-body uppercase text-[11px] tracking-[0.15em] leading-none">
               Cabecera del Presupuesto
             </h3>
             <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider leading-none">
@@ -404,7 +371,7 @@ const QuoteForm: React.FC<{
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Cliente *
               </label>
               <SearchableSelect
@@ -415,41 +382,29 @@ const QuoteForm: React.FC<{
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Fecha *
               </label>
-              <Input
-                type="date"
-                value={state.date}
-                onChange={(e) => setState.setDate(e.target.value)}
-                className="font-bold text-slate-700 dark:text-slate-200 h-10 border-slate-200 dark:border-slate-700"
-              />
+              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Válido hasta
               </label>
-              <Input
-                type="date"
-                value={validUntil}
-                onChange={(e) => setValidUntil(e.target.value)}
-                className="font-bold text-slate-700 dark:text-slate-200 h-10 border-slate-200 dark:border-slate-700"
-              />
+              <DatePicker value={validUntil} onChange={(v) => setValidUntil(v ?? '')} />
             </div>
             <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
           </div>
         </Card>
 
         <div className="space-y-6">
-          <Card className="p-6 space-y-6 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest border-b pb-2">
+          <Card className="p-6 space-y-6 border-border-subtle bg-bg-muted">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest border-b pb-2">
               Series y Periodo
             </h4>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Serie de Numeración *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Serie de Numeración *</label>
                 <SearchableSelect
                   value={state.seriesId}
                   onChange={setState.setSeriesId}
@@ -462,9 +417,7 @@ const QuoteForm: React.FC<{
                 )}
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Periodo Contable *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Periodo Contable *</label>
                 <SearchableSelect
                   value={state.periodId}
                   onChange={setState.setPeriodId}
@@ -483,7 +436,7 @@ const QuoteForm: React.FC<{
         </div>
       </div>
 
-      <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-lg overflow-hidden border-border-subtle" noPadding>
         {isMobile ? (
           <MobileLineCards
             columns={columns}
@@ -497,31 +450,29 @@ const QuoteForm: React.FC<{
             emptyMessage="No hay líneas en el presupuesto."
           />
         )}
-        <div className="p-6 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col md:flex-row justify-between items-start md:items-center border-t border-slate-100 dark:border-slate-800 gap-6">
+        <div className="p-6 bg-bg-muted flex flex-col md:flex-row justify-between items-start md:items-center border-t border-border-subtle gap-6">
           <Button
             variant="secondary"
             size="sm"
             onClick={() => actions.addLine()}
-            className="text-sky-600 dark:text-sky-300 font-bold flex items-center gap-2 h-10 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            className="text-sky-600 dark:text-sky-300 font-bold flex items-center gap-2 h-10 border-border-default bg-bg-card"
           >
             <PlusSquare size={16} /> Añadir Línea
           </Button>
-          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <div className="flex justify-between w-full text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-lg border border-border-subtle shadow-sm">
+            <div className="flex justify-between w-full text-[10px] font-black text-fg-subtle uppercase tracking-widest px-1">
               <span>Base Imponible:</span>
-              <span className="text-slate-600 dark:text-slate-300">
-                {computations.subtotal.toFixed(2)} €
-              </span>
+              <span className="text-fg-body">{computations.subtotal.toFixed(2)} €</span>
             </div>
             <div className="flex justify-between w-full text-[10px] font-black text-sky-500 uppercase tracking-widest px-1">
               <span>Cuota IVA:</span>
               <span>{computations.taxTotal.toFixed(2)} €</span>
             </div>
-            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-slate-50">
-              <span className="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-widest">
+            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-border-subtle">
+              <span className="text-[10px] uppercase font-black text-fg-subtle tracking-widest">
                 Total Presupuesto:
               </span>
-              <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter ml-4">
+              <span className="text-2xl font-black text-fg-default tracking-tighter ml-4">
                 {computations.total.toFixed(2)} €
               </span>
             </div>
@@ -644,24 +595,21 @@ const QuoteDetail: React.FC<{
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card
-          className="md:col-span-2 border-slate-100 dark:border-slate-800"
-          bodyClassName="p-6 space-y-5"
-        >
+        <Card className="md:col-span-2 border-border-subtle" bodyClassName="p-6 space-y-5">
           <div>
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] mb-2">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] mb-2">
               Cliente
             </h4>
-            <p className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <p className="text-xl font-black text-fg-default tracking-tight">
               {partner?.name || '—'}
             </p>
             {partner?.nif && (
-              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5 font-mono">
+              <p className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider mt-0.5 font-mono">
                 NIF: {partner.nif}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-3 p-3 bg-sky-50 dark:bg-sky-500/5 border border-sky-100 dark:border-sky-500/30 rounded-xl">
+          <div className="flex items-center gap-3 p-3 bg-sky-50 dark:bg-sky-500/5 border border-sky-100 dark:border-sky-500/30 rounded-lg">
             <FileText size={16} className="text-sky-600 dark:text-sky-300 shrink-0" />
             <p className="text-xs text-sky-800 dark:text-sky-200 font-medium leading-tight">
               Documento de oferta — no mueve stock ni genera apuntes contables.
@@ -669,54 +617,50 @@ const QuoteDetail: React.FC<{
           </div>
         </Card>
 
-        <Card className="border-slate-100 dark:border-slate-800" bodyClassName="p-6 space-y-4">
-          <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] border-b border-slate-100 dark:border-slate-800 pb-2">
+        <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
+          <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] border-b border-border-subtle pb-2">
             Información
           </h4>
           <dl className="space-y-2.5">
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Fecha
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {fmt.date(quote.date)}
               </dd>
             </div>
             {quote.validUntil && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Válido hasta
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+                <dd className="text-sm font-bold text-fg-default tabular-nums">
                   {fmt.date(quote.validUntil)}
                 </dd>
               </div>
             )}
             {series && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Serie
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {series.name}
-                </dd>
+                <dd className="text-sm font-bold text-fg-default truncate">{series.name}</dd>
               </div>
             )}
             {period && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Periodo
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {period.name}
-                </dd>
+                <dd className="text-sm font-bold text-fg-default truncate">{period.name}</dd>
               </div>
             )}
           </dl>
         </Card>
       </div>
 
-      <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-sm overflow-hidden border-border-subtle" noPadding>
         {isMobile ? (
           <MobileLineCards columns={columns} lines={quote.lines || []} />
         ) : (
@@ -748,6 +692,7 @@ const QuoteDetail: React.FC<{
 export const SalesQuotes: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const params = useParams();
   const location = useLocation();
   const { openTab } = useTabs();
@@ -852,7 +797,14 @@ export const SalesQuotes: React.FC = () => {
 
   const handleCancel = async () => {
     if (!selectedQuote) return;
-    if (!confirm('¿Seguro que deseas cancelar este presupuesto?')) return;
+    const ok = await popup.confirm({
+      title: 'Cancelar presupuesto',
+      message: '¿Seguro que deseas cancelar este presupuesto?',
+      tone: 'danger',
+      confirmLabel: 'Cancelar presupuesto',
+      cancelLabel: 'Volver',
+    });
+    if (!ok) return;
     setIsCancelling(true);
     try {
       await docsApi.cancel(API, selectedQuote.id);

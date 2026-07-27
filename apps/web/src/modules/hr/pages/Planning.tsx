@@ -1,10 +1,17 @@
-import { shiftAssignmentsApi, employeesApi, shiftTemplatesApi, incidentsApi, incidentTypesApi } from '../api';
+import {
+  shiftAssignmentsApi,
+  employeesApi,
+  shiftTemplatesApi,
+  incidentsApi,
+  incidentTypesApi,
+} from '../api';
 import type { ShiftAssignment, ShiftTemplate } from '../domain/shift';
 import type { Employee } from '../domain/employee';
 import type { Incident, IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import { Card, Button, Input, useToast, PageHeader, Tabs, Checkbox } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import {
   CalendarDays,
   ChevronLeft,
@@ -23,6 +30,12 @@ import {
 import { ApiError } from '@/shared/http';
 
 const DAY_LABEL = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+// Amplitud del calendario. Lo que cambia es la vista completa, no un filtro.
+const VIEW_TABS = [
+  { key: 'week', label: 'Semana' },
+  { key: 'month', label: 'Mes (5 sem)' },
+];
 
 function startOfWeek(d: Date): Date {
   const out = new Date(d);
@@ -88,6 +101,7 @@ const EMPTY_FORM: ShiftFormState = {
 
 export const Planning: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite, canDelete } = usePagePermissions();
   const [view, setView] = useState<'week' | 'month'>('week');
   const [cursor, setCursor] = useState(() => startOfWeek(new Date()));
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -347,59 +361,46 @@ export const Planning: React.FC = () => {
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <CalendarDays className="text-emerald-600" size={32} /> Planificación
-          </h1>
-          <p className="text-slate-500 text-sm">
+      <PageHeader
+        title="Planificación"
+        subtitle={
+          <>
             {rangeLabel(rangeStart, days)} ·{' '}
             {assigns.filter((a) => a.status !== 'cancelled').length} turnos ·{' '}
             {grandTotal.toFixed(1)} h planificadas
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-            <button
-              onClick={() => setView('week')}
-              className={
-                'px-3 py-1.5 text-sm font-medium transition ' +
-                (view === 'week'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800')
-              }
-            >
-              Semana
-            </button>
-            <button
-              onClick={() => setView('month')}
-              className={
-                'px-3 py-1.5 text-sm font-medium transition ' +
-                (view === 'month'
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800')
-              }
-            >
-              Mes (5 sem)
-            </button>
+          </>
+        }
+        icon={<CalendarDays size={18} />}
+        size="lg"
+        actions={
+          // El selector de vista y la navegación del rango van juntos a la
+          // derecha: no son pestañas de la página, sino controles del calendario.
+          <div className="flex items-center gap-2 flex-wrap">
+            <Tabs
+              items={VIEW_TABS}
+              value={view}
+              onChange={(k) => setView(k as 'week' | 'month')}
+              variant="segmented"
+              size="sm"
+            />
+            <Button type="button" variant="secondary" size="sm" onClick={() => navigate(-1)}>
+              <ChevronLeft size={16} />
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={goToday}>
+              <CalendarCheck size={14} /> Hoy
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => navigate(1)}>
+              <ChevronRight size={16} />
+            </Button>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
-            <ChevronLeft size={16} />
-          </Button>
-          <Button variant="secondary" size="sm" onClick={goToday}>
-            <CalendarCheck size={14} /> Hoy
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => navigate(1)}>
-            <ChevronRight size={16} />
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <Card className="overflow-x-auto" noPadding>
         <table className="w-full text-sm border-separate border-spacing-0">
           <thead>
             <tr>
-              <th className="sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 border-b border-r border-slate-200 dark:border-slate-700 p-3 text-left min-w-[200px]">
+              <th className="sticky left-0 z-20 bg-bg-muted border-b border-r border-border-default p-3 text-left min-w-[200px]">
                 Empleado
               </th>
               {Array.from({ length: days }).map((_, i) => {
@@ -412,12 +413,12 @@ export const Planning: React.FC = () => {
                   <th
                     key={i}
                     className={
-                      'border-b border-slate-200 dark:border-slate-700 p-2 text-center font-medium ' +
+                      'border-b border-border-default p-2 text-center font-medium ' +
                       (isToday
                         ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 '
                         : isWeekend
-                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 '
-                          : 'bg-slate-50 dark:bg-slate-900 ')
+                          ? 'bg-bg-muted text-slate-500 '
+                          : 'bg-bg-muted ')
                     }
                     style={{ minWidth: view === 'week' ? 180 : 120 }}
                   >
@@ -426,7 +427,7 @@ export const Planning: React.FC = () => {
                   </th>
                 );
               })}
-              <th className="sticky right-0 z-20 border-b border-l border-slate-200 dark:border-slate-700 p-3 text-right bg-slate-50 dark:bg-slate-900 min-w-[120px]">
+              <th className="sticky right-0 z-20 border-b border-l border-border-default p-3 text-right bg-bg-muted min-w-[120px]">
                 Total
               </th>
             </tr>
@@ -443,9 +444,9 @@ export const Planning: React.FC = () => {
               const tot = totalsByEmp[e.id] || { hours: 0, shifts: 0 };
               const contracted = Number(e.contractHours || 0);
               return (
-                <tr key={e.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                  <td className="sticky left-0 z-10 bg-white dark:bg-slate-900 border-b border-r border-slate-100 dark:border-slate-800 p-3">
-                    <div className="font-bold text-slate-800 dark:text-slate-100">
+                <tr key={e.id} className="hover:bg-bg-hover">
+                  <td className="sticky left-0 z-10 bg-bg-card border-b border-r border-border-subtle p-3">
+                    <div className="font-bold text-fg-default">
                       {e.firstName} {e.lastName}
                     </div>
                     <div className="text-[10px] text-slate-400">{e.code}</div>
@@ -473,6 +474,7 @@ export const Planning: React.FC = () => {
                         onClick={(ev) => {
                           if ((ev.target as HTMLElement).closest('[data-shift-card]')) return;
                           if ((ev.target as HTMLElement).closest('[data-add-split]')) return;
+                          if (!canWrite) return;
                           openCreate(
                             e.id,
                             dateStr,
@@ -480,7 +482,7 @@ export const Planning: React.FC = () => {
                           );
                         }}
                         className={
-                          'border-b border-slate-100 dark:border-slate-800 p-1.5 align-top relative group cursor-pointer transition ' +
+                          'border-b border-border-subtle p-1.5 align-top relative group cursor-pointer transition ' +
                           (blockingIncident
                             ? 'bg-amber-50/40 dark:bg-amber-500/5 '
                             : isToday
@@ -560,23 +562,28 @@ export const Planning: React.FC = () => {
                           })}
                         </div>
                         {/* Acción contextual: vacío → "+ añadir" suave / con turno → "+ partido" en hover. */}
-                        {!list.length ? (
-                          <div className="mt-1 h-5 flex items-center justify-center text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition">
-                            <Plus size={14} />
-                          </div>
-                        ) : (
-                          <button
-                            data-add-split
-                            onClick={(ev) => {
-                              ev.stopPropagation();
-                              openCreate(e.id, dateStr, suggestSplitStart(list, dateStr));
-                            }}
-                            className="mt-1 w-full h-5 rounded text-[10px] font-semibold flex items-center justify-center gap-1 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 opacity-0 group-hover:opacity-100 transition"
-                            title="Añadir 2º turno (partido)"
-                          >
-                            <CopyPlus size={11} /> partido
-                          </button>
-                        )}
+                        {canWrite &&
+                          (!list.length ? (
+                            <div className="mt-1 h-5 flex items-center justify-center text-fg-subtle opacity-0 group-hover:opacity-100 transition">
+                              <Plus size={14} />
+                            </div>
+                          ) : (
+                            // Excepción deliberada: no es un control, es la zona
+                            // de acción de la celda del calendario (ocupa el ancho
+                            // completo, se revela en hover y el `onClick` del <td>
+                            // la localiza con `closest('[data-add-split]')`).
+                            <button
+                              data-add-split
+                              onClick={(ev) => {
+                                ev.stopPropagation();
+                                openCreate(e.id, dateStr, suggestSplitStart(list, dateStr));
+                              }}
+                              className="mt-1 w-full h-5 rounded text-[10px] font-semibold flex items-center justify-center gap-1 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 opacity-0 group-hover:opacity-100 transition"
+                              title="Añadir 2º turno (partido)"
+                            >
+                              <CopyPlus size={11} /> partido
+                            </button>
+                          ))}
                         {isSplit && (
                           <div className="absolute top-0.5 right-1 text-[8px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-black">
                             {dayHours.toFixed(1)}h
@@ -585,8 +592,8 @@ export const Planning: React.FC = () => {
                       </td>
                     );
                   })}
-                  <td className="sticky right-0 z-10 bg-white dark:bg-slate-900 border-b border-l border-slate-100 dark:border-slate-800 p-3 text-right">
-                    <div className="font-black text-slate-800 dark:text-slate-100 tabular-nums text-lg">
+                  <td className="sticky right-0 z-10 bg-bg-card border-b border-l border-border-subtle p-3 text-right">
+                    <div className="font-black text-fg-default tabular-nums text-lg">
                       {tot.hours.toFixed(1)}
                       <span className="text-xs text-slate-400 ml-1">h</span>
                     </div>
@@ -616,12 +623,12 @@ export const Planning: React.FC = () => {
         </table>
       </Card>
 
-      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 p-3 text-xs text-slate-500 space-y-1.5">
+      <div className="rounded-lg border border-border-default bg-bg-muted p-3 text-xs text-slate-500 space-y-1.5">
         {loading && <div>Cargando…</div>}
         <div>
-          <b className="text-slate-700 dark:text-slate-300">Cómo funciona:</b> click en celda vacía
-          → crear turno. Click en un turno → editar / cancelar / borrar. Hover una celda con turno →
-          "+ partido" para añadir 2º tramo (turno partido).
+          <b className="text-fg-body">Cómo funciona:</b> click en celda vacía → crear turno. Click
+          en un turno → editar / cancelar / borrar. Hover una celda con turno → "+ partido" para
+          añadir 2º tramo (turno partido).
         </div>
         <div className="flex flex-wrap gap-3 items-center pt-1">
           <span className="inline-flex items-center gap-1.5">
@@ -662,9 +669,15 @@ export const Planning: React.FC = () => {
                     })}
                   </p>
                 </div>
-                <button onClick={() => setModal(null)} className="text-slate-400">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setModal(null)}
+                  title="Cerrar"
+                >
                   <X size={20} />
-                </button>
+                </Button>
               </div>
 
               <div>
@@ -672,17 +685,23 @@ export const Planning: React.FC = () => {
                   Plantilla
                 </label>
                 <div className="flex flex-wrap gap-2">
+                  {/* Muestras de color: el relleno lo manda el color de la
+                      plantilla, así que el `style` inline se conserva sobre el
+                      Button. */}
                   {templates
                     .filter((t: any) => t.isActive)
                     .map((t: any) => (
-                      <button
+                      <Button
                         key={t.id}
+                        type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => onPickTemplate(t.id)}
                         className={
-                          'px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ' +
+                          'px-3 py-1.5 rounded-lg text-xs font-bold border-2 ' +
                           (form.shiftTemplateId === t.id
                             ? 'border-indigo-500 ring-2 ring-indigo-300/50'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300')
+                            : 'border-border-default hover:border-slate-300')
                         }
                         style={{
                           background:
@@ -691,19 +710,22 @@ export const Planning: React.FC = () => {
                         }}
                       >
                         {t.code} · {t.startTime}–{t.endTime}
-                      </button>
+                      </Button>
                     ))}
-                  <button
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setForm((f) => ({ ...f, shiftTemplateId: '' }))}
                     className={
-                      'px-3 py-1.5 rounded-lg text-xs font-bold border-2 transition ' +
+                      'px-3 py-1.5 rounded-lg text-xs font-bold border-2 ' +
                       (!form.shiftTemplateId
-                        ? 'border-slate-500 bg-slate-100 dark:bg-slate-700'
-                        : 'border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400')
+                        ? 'border-slate-500 bg-bg-muted'
+                        : 'border-dashed border-border-strong hover:border-slate-400')
                     }
                   >
                     Personalizado
-                  </button>
+                  </Button>
                   {templates.length === 0 && (
                     <p className="text-xs text-slate-400 italic">
                       No hay plantillas. Crea una en Plantillas de turno.
@@ -750,12 +772,12 @@ export const Planning: React.FC = () => {
               {/* Tramo 2 (sólo en creación) */}
               {modal.kind === 'create' && (
                 <div className="rounded-lg border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/40 dark:bg-amber-500/5 p-3">
+                  {/* Campo del formulario (se persiste al crear) → Checkbox, que
+                      no tiene prop `label`: se conserva el <label> envolvente. */}
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={form.secondEnabled}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
+                      onChange={(checked) => {
                         const date = modal.date;
                         const tpl: any = form.shiftTemplateId ? tplMap[form.shiftTemplateId] : null;
                         const defS = tpl?.secondStartTime || form.endAt.slice(11, 16) || '16:00';
@@ -832,7 +854,7 @@ export const Planning: React.FC = () => {
                     }
                     const total = h1 + h2;
                     return (
-                      <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800">
+                      <div className="px-3 py-2 rounded-lg bg-bg-muted">
                         <div className="text-lg font-black tabular-nums">{total.toFixed(2)} h</div>
                         {split && (
                           <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold tabular-nums mt-0.5">
@@ -852,14 +874,24 @@ export const Planning: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-border-default">
                 <div className="flex items-center gap-2">
                   {modal.kind === 'edit' && (
                     <>
-                      <Button size="sm" variant="secondary" onClick={cancelAssign}>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={cancelAssign}
+                        disabled={!canWrite}
+                      >
                         <Ban size={14} /> Cancelar turno
                       </Button>
-                      <Button size="sm" variant="danger" onClick={removeAssign}>
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={removeAssign}
+                        disabled={!canDelete}
+                      >
                         <Trash2 size={14} /> Borrar
                       </Button>
                     </>
@@ -869,7 +901,7 @@ export const Planning: React.FC = () => {
                   <Button size="sm" variant="secondary" onClick={() => setModal(null)}>
                     Cerrar
                   </Button>
-                  <Button size="sm" onClick={submitForm}>
+                  <Button size="sm" onClick={submitForm} disabled={!canWrite}>
                     <Save size={14} /> {modal.kind === 'edit' ? 'Guardar' : 'Crear'}
                   </Button>
                 </div>

@@ -35,16 +35,13 @@ export const Markdown: React.FC<{ children: string }> = ({ children }) => (
         const isBlock = /language-/.test(className || '');
         return isBlock ? (
           <code
-            className={`block text-[11px] font-mono bg-slate-100 dark:bg-slate-900/60 rounded p-2 overflow-x-auto custom-scrollbar ${className || ''}`}
+            className={`block text-[11px] font-mono bg-bg-muted rounded p-2 overflow-x-auto custom-scrollbar ${className || ''}`}
             {...props}
           >
             {codeChildren}
           </code>
         ) : (
-          <code
-            className="text-[0.85em] font-mono bg-slate-100 dark:bg-slate-900/60 rounded px-1 py-0.5"
-            {...props}
-          >
+          <code className="text-[0.85em] font-mono bg-bg-muted rounded px-1 py-0.5" {...props}>
             {codeChildren}
           </code>
         );
@@ -54,7 +51,7 @@ export const Markdown: React.FC<{ children: string }> = ({ children }) => (
       ),
       blockquote: (props) => (
         <blockquote
-          className="border-l-2 border-slate-300 dark:border-slate-600 pl-3 text-slate-500 dark:text-slate-400 mb-2"
+          className="border-l-2 border-border-strong pl-3 text-fg-muted mb-2"
           {...props}
         />
       ),
@@ -66,7 +63,7 @@ export const Markdown: React.FC<{ children: string }> = ({ children }) => (
           />
         </div>
       ),
-      hr: () => <hr className="my-3 border-slate-200 dark:border-slate-700" />,
+      hr: () => <hr className="my-3 border-border-default" />,
     }}
   >
     {children}

@@ -14,10 +14,10 @@ export const AttachmentThumb: React.FC<{ file: FileUIPart; onRemove?: () => void
         <img
           src={file.url}
           alt={file.filename || 'imagen adjunta'}
-          className="h-16 w-16 object-cover rounded-md border border-slate-200 dark:border-slate-700"
+          className="h-16 w-16 object-cover rounded-md border border-border-default"
         />
       ) : (
-        <div className="h-16 w-16 flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 text-slate-400">
+        <div className="h-16 w-16 flex items-center justify-center rounded-md border border-border-default text-slate-400">
           <Paperclip size={18} />
         </div>
       )}

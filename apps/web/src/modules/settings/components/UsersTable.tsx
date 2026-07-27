@@ -1,9 +1,6 @@
 import React from 'react';
-import { Table, Badge, type TableColumn } from '@openfactu/ui';
+import { Table, Badge, type TableColumn, type RowAction } from '@openfactu/ui';
 import { Building2, Edit2, Trash2 } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -50,20 +47,20 @@ export const UsersTable: React.FC<UsersTableProps> = ({
             <img
               src={u.avatarImageUrl}
               alt={u.username}
-              className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-slate-700"
+              className="w-9 h-9 rounded-lg object-cover border border-border-default"
             />
           ) : (
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xs font-black text-slate-600 dark:text-slate-200">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xs font-black text-fg-body">
               {u.username?.charAt(0).toUpperCase()}
             </div>
           )}
-          <span className="font-black text-slate-800 dark:text-slate-100">{u.username}</span>
+          <span className="font-black text-fg-default">{u.username}</span>
         </div>
       ),
     },
     {
       header: 'Email',
-      cell: (u) => <span className="text-sm text-slate-500 dark:text-slate-400">{u.email}</span>,
+      cell: (u) => <span className="text-sm text-fg-muted">{u.email}</span>,
     },
     {
       header: 'Rol Global',
@@ -88,52 +85,25 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         if (u.membershipCount > 0) {
           return (
             <div className="flex items-center gap-1.5">
-              <Building2 size={13} className="text-slate-400 dark:text-slate-500" />
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+              <Building2 size={13} className="text-fg-subtle" />
+              <span className="text-sm font-bold text-fg-body">
                 {u.membershipCount} empresa{u.membershipCount !== 1 ? 's' : ''}
               </span>
             </div>
           );
         }
         if (u.tenantName) {
-          return (
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              {u.tenantName}
-            </span>
-          );
+          return <span className="text-xs text-fg-muted font-medium">{u.tenantName}</span>;
         }
         return <span className="text-xs text-rose-400 font-bold">Sin asignar</span>;
       },
     },
-    {
-      header: 'Acciones',
-      align: 'right',
-      cell: (u) => (
-        <div className="flex gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={() => onEdit(u)}
-            disabled={!canWrite}
-            className="p-2 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all disabled:opacity-30"
-          >
-            <Edit2 size={15} />
-          </button>
-          {u.role !== 'SUPERUSER' && (
-            <button
-              onClick={() => canDelete && onDelete(u.id)}
-              disabled={!canDelete}
-              className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-all disabled:opacity-30"
-            >
-              <Trash2 size={15} />
-            </button>
-          )}
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<UserRow>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (u: UserRow) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que los permisos se declaran
+  // una vez en lugar de duplicarse entre una columna de botones y el menú.
+  const rowActions = (u: UserRow): RowAction[] => [
     { label: 'Editar', icon: <Edit2 size={14} />, disabled: !canWrite, onClick: () => onEdit(u) },
     ...(u.role !== 'SUPERUSER'
       ? [
@@ -149,22 +119,13 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   ];
 
   return (
-    <>
-      <Table
-        columns={ctxColumns}
-        data={users}
-        isLoading={loading}
-        emptyMessage="No hay usuarios registrados."
-        rowKey={(u: UserRow) => u.id}
-      />
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
-    </>
+    <Table
+      columns={columns}
+      data={users}
+      isLoading={loading}
+      emptyMessage="No hay usuarios registrados."
+      rowKey={(u: UserRow) => u.id}
+      rowActions={rowActions}
+    />
   );
 };

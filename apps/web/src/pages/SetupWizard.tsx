@@ -58,7 +58,7 @@ interface SetupFormData {
 // ── Shared Components ───────────────────────────────────────────────────────
 
 const INPUT_CLS =
-  'w-full p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none';
+  'w-full p-3 rounded-lg border border-border-default bg-bg-card text-fg-default placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500 outline-none';
 
 const BTN_PRIMARY_CLS =
   'flex-1 bg-[#0D9488] text-white p-3 rounded-sm font-bold hover:bg-[#0A6E63] transition flex items-center justify-center gap-2 group disabled:opacity-50';
@@ -228,7 +228,7 @@ function Step1Database({
                         close();
                         resolve(false);
                       }}
-                      className="px-4 py-2 rounded-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition text-sm font-medium"
+                      className="px-4 py-2 rounded-sm border border-border-default text-fg-body hover:bg-bg-hover transition text-sm font-medium"
                     >
                       Continuar setup
                     </button>
@@ -570,7 +570,7 @@ function Step5Modules({
       <div className="max-h-96 overflow-y-auto space-y-4 pr-1">
         {Object.entries(byCategory).map(([category, mods]) => (
           <div key={category}>
-            <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-fg-muted mb-2">
               {category}
             </h3>
             <div className="grid grid-cols-2 gap-2">
@@ -579,9 +579,7 @@ function Step5Modules({
                   key={m.id}
                   module={m}
                   enabled={data[m.featureFlag as string]}
-                  onToggle={() =>
-                    onChange(m.featureFlag as string, !data[m.featureFlag as string])
-                  }
+                  onToggle={() => onChange(m.featureFlag as string, !data[m.featureFlag as string])}
                   isToggling={false}
                 />
               ))}

@@ -41,8 +41,8 @@ export const PluginFieldsSection: React.FC<Props> = ({
     <div className="space-y-5">
       {header && (
         <div className="flex items-center gap-2">
-          <Puzzle size={14} className="text-primary" />
-          <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500">
+          <Puzzle size={14} className="text-accent" />
+          <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-subtle">
             {title}
           </h4>
         </div>
@@ -50,7 +50,7 @@ export const PluginFieldsSection: React.FC<Props> = ({
       {Array.from(bySection.entries()).map(([sec, list]) => (
         <div key={sec || '__default__'} className="space-y-3">
           {sec && (
-            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 pb-1">
+            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted border-b border-border-subtle pb-1">
               {sec}
             </div>
           )}
@@ -67,7 +67,7 @@ export const PluginFieldsSection: React.FC<Props> = ({
                       : 'md:col-span-3',
                 )}
               >
-                <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <label className="text-[10px] font-black uppercase tracking-wider text-fg-subtle">
                   {f.label}
                   {f.required && <span className="text-rose-500 ml-0.5">*</span>}
                 </label>
@@ -77,9 +77,7 @@ export const PluginFieldsSection: React.FC<Props> = ({
                   onChange={(v) => onChange(f.fieldName, v)}
                   disabled={disabled}
                 />
-                {f.helpText && (
-                  <div className="text-[11px] text-slate-400 dark:text-slate-500">{f.helpText}</div>
-                )}
+                {f.helpText && <div className="text-[11px] text-fg-subtle">{f.helpText}</div>}
               </div>
             ))}
           </div>

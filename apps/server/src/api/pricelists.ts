@@ -3,6 +3,7 @@ import * as schema from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import crypto from 'crypto';
 import { logAudit } from '../utils/audit';
+import { invalidateSiteCache } from '../core/website/renderSite';
 
 const router = Router();
 
@@ -141,6 +142,8 @@ router.post('/:id/prices', async (req: any, res) => {
         .set({ price: price.toString() })
         .where(eq(schema.itemPrices.id, existing.id))
         .returning();
+      // La tienda web cachea HTML con los precios dentro (tarifa del site)
+      invalidateSiteCache(req.tenantId);
       return res.json(updated);
     }
 
@@ -153,6 +156,7 @@ router.post('/:id/prices', async (req: any, res) => {
         price: price.toString(),
       })
       .returning();
+    invalidateSiteCache(req.tenantId);
     res.json(created);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

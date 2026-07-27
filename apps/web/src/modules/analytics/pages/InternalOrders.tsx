@@ -1,12 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  Select,
+  SearchableSelect,
+  PageHeader,
+  useToast,
+  Badge,
+  usePopup,
+} from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Briefcase, Plus, Trash2, Pencil } from 'lucide-react';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { internalOrdersApi, costCentersApi } from '../api';
 
 interface InternalOrder {
@@ -29,6 +39,13 @@ const TYPE_LABELS: Record<string, string> = {
   wbs: 'WBS',
 };
 
+const TYPE_OPTIONS = Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }));
+
+const STATUS_OPTIONS = [
+  { value: 'open', label: 'Abierto' },
+  { value: 'closed', label: 'Cerrado' },
+];
+
 export const InternalOrders: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
@@ -50,7 +67,6 @@ export const InternalOrders: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
   const popup = usePopup();
-
 
   const fetchAll = async () => {
     setLoading(true);
@@ -94,6 +110,11 @@ export const InternalOrders: React.FC = () => {
     setForm({});
     setPluginValues({});
   };
+
+  const costCenterOptions = useMemo(
+    () => costCenters.map((c) => ({ value: c.id, label: `${c.code} — ${c.name}` })),
+    [costCenters],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,40 +182,18 @@ export const InternalOrders: React.FC = () => {
           <Badge variant="neutral">Cerrado</Badge>
         ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: InternalOrder) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              openEdit(r);
-            }}
-            disabled={!canWrite}
-            className={`transition-colors ${canWrite ? 'text-slate-500 hover:text-blue-600' : 'text-slate-300 cursor-not-allowed'}`}
-          >
-            <Pencil size={16} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (canDelete) handleDelete(r.id);
-            }}
-            disabled={!canDelete}
-            className={`transition-colors ${canDelete ? 'text-slate-400 hover:text-red-500' : 'text-slate-200 cursor-not-allowed'}`}
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<InternalOrder>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: InternalOrder) => [
-    { label: 'Editar', icon: <Pencil size={14} />, disabled: !canWrite, onClick: () => openEdit(r) },
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que los permisos se declaran
+  // una vez en lugar de duplicarse entre una columna de botones y el menú.
+  const rowActions = (r: InternalOrder): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => openEdit(r),
+    },
     {
       label: 'Eliminar',
       icon: <Trash2 size={14} />,
@@ -208,26 +207,23 @@ export const InternalOrders: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-            <Briefcase className="text-amber-600 dark:text-amber-300" size={32} />
-            Proyectos y órdenes internas
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Tercera dimensión analítica. Agrupa costes e ingresos por iniciativa, proyecto o WBS.
-          </p>
-        </div>
-        {canWrite && (
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={18} />
-            Nuevo
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Proyectos y órdenes internas"
+        subtitle="Tercera dimensión analítica. Agrupa costes e ingresos por iniciativa, proyecto o WBS."
+        icon={<Briefcase size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={18} />
+              Nuevo
+            </Button>
+          )
+        }
+      />
 
       {formOpen && (
-        <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+        <Card className="border-border-subtle shadow-lg" noPadding>
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
@@ -242,33 +238,24 @@ export const InternalOrders: React.FC = () => {
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
               />
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Tipo
-                </label>
-                <select
-                  value={form.type || 'project'}
-                  onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="project">Proyecto</option>
-                  <option value="internal_order">Orden interna</option>
-                  <option value="wbs">WBS</option>
-                </select>
-              </div>
+              {/* Las opciones salen de TYPE_LABELS para no repetir los valores. */}
+              <Select
+                label="Tipo"
+                options={TYPE_OPTIONS}
+                value={form.type || 'project'}
+                onChange={(v) => setForm({ ...form, type: v as InternalOrder['type'] })}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                type="date"
+              <DatePicker
                 label="Inicio"
-                value={form.startDate ? form.startDate.substring(0, 10) : ''}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value || null })}
+                value={form.startDate ? form.startDate.substring(0, 10) : null}
+                onChange={(v) => setForm({ ...form, startDate: v || null })}
               />
-              <Input
-                type="date"
+              <DatePicker
                 label="Fin"
-                value={form.endDate ? form.endDate.substring(0, 10) : ''}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value || null })}
+                value={form.endDate ? form.endDate.substring(0, 10) : null}
+                onChange={(v) => setForm({ ...form, endDate: v || null })}
               />
               <Input
                 type="number"
@@ -280,35 +267,25 @@ export const InternalOrders: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {/* SearchableSelect no tiene prop `label`: se conserva el <label>,
+                    con el mismo estilo que el que pinta el Select de al lado. */}
+                <label className="block text-[12px] font-medium text-fg-body mb-1.5">
                   Centro de coste
                 </label>
-                <select
+                <SearchableSelect
+                  options={costCenterOptions}
                   value={form.costCenterId || ''}
-                  onChange={(e) => setForm({ ...form, costCenterId: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">— sin asignar —</option>
-                  {costCenters.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} — {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, costCenterId: v || null })}
+                  placeholder="— sin asignar —"
+                  clearable
+                />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Estado
-                </label>
-                <select
-                  value={form.status || 'open'}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="open">Abierto</option>
-                  <option value="closed">Cerrado</option>
-                </select>
-              </div>
+              <Select
+                label="Estado"
+                options={STATUS_OPTIONS}
+                value={form.status || 'open'}
+                onChange={(v) => setForm({ ...form, status: v as InternalOrder['status'] })}
+              />
             </div>
             <Input
               label="Notas"
@@ -335,22 +312,15 @@ export const InternalOrders: React.FC = () => {
         </Card>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table
-          columns={ctxColumns}
+          columns={columns}
           data={rows}
           isLoading={loading}
+          rowActions={rowActions}
           onRowClick={(r: any) => openEdit(r)}
         />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

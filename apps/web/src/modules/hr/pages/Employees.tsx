@@ -1,16 +1,25 @@
 import { employeesApi, departmentsApi } from '../api';
 import type { Employee } from '../domain/employee';
-import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  useToast,
+  Badge,
+  usePopup,
+  Select,
+  SearchableSelect,
+  PageHeader,
+} from '@openfactu/ui';
+import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { UserRound, Plus, Trash2, Pencil } from 'lucide-react';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 import { validateIban, formatIban, normalizeIban } from '@/utils/bankValidation';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { ApiError } from '@/shared/http';
 import { crudApi } from '@/shared/api';
 import { costCentersApi } from '@/modules/analytics/api/internalOrdersApi';
@@ -25,6 +34,13 @@ const STATUS_LABELS: Record<string, string> = {
   leave: 'Baja',
   terminated: 'Baja definitiva',
 };
+
+// Estados del formulario: etiquetas propias (más explícitas que las del listado).
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Activo' },
+  { value: 'leave', label: 'Baja temporal' },
+  { value: 'terminated', label: 'Baja definitiva' },
+];
 
 export const Employees: React.FC = () => {
   const { token, user } = useAuth();
@@ -75,6 +91,20 @@ export const Employees: React.FC = () => {
   useEffect(() => {
     if (user?.tenantId) fetchAll();
   }, [user?.tenantId]);
+
+  // Opciones de los desplegables de maestros (vienen del servidor).
+  const departmentOptions = useMemo(
+    () => departments.map((d) => ({ value: d.id, label: d.name, secondaryLabel: d.code })),
+    [departments],
+  );
+  const costCenterOptions = useMemo(
+    () => costCenters.map((c) => ({ value: c.id, label: c.name, secondaryLabel: c.code })),
+    [costCenters],
+  );
+  const userOptions = useMemo(
+    () => usersAvailable.map((u) => ({ value: u.id, label: u.username, secondaryLabel: u.email })),
+    [usersAvailable],
+  );
 
   const openCreate = () => {
     setEditing(null);
@@ -175,39 +205,12 @@ export const Employees: React.FC = () => {
         <Badge variant={STATUS_VARIANTS[r.status]}>{STATUS_LABELS[r.status]}</Badge>
       ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: Employee) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              openEdit(r);
-            }}
-            disabled={!canWrite}
-            className={`transition-colors ${canWrite ? 'text-slate-500 hover:text-blue-600' : 'text-slate-300 cursor-not-allowed'}`}
-          >
-            <Pencil size={16} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (canDelete) handleDelete(r.id);
-            }}
-            disabled={!canDelete}
-            className={`transition-colors ${canDelete ? 'text-slate-400 hover:text-red-500' : 'text-slate-200 cursor-not-allowed'}`}
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<Employee>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: Employee) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que los permisos se declaran
+  // una vez en lugar de duplicarse.
+  const rowActions = (r: Employee): RowAction[] => [
     {
       label: 'Editar',
       icon: <Pencil size={14} />,
@@ -227,26 +230,23 @@ export const Employees: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-            <UserRound className="text-blue-600 dark:text-blue-300" size={32} />
-            Empleados
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Maestro de personal. La nómina se imputa al centro de coste del empleado.
-          </p>
-        </div>
-        {canWrite && (
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={18} />
-            Nuevo empleado
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Empleados"
+        subtitle="Maestro de personal. La nómina se imputa al centro de coste del empleado."
+        icon={<UserRound size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={18} />
+              Nuevo empleado
+            </Button>
+          )
+        }
+      />
 
       {formOpen && (
-        <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+        <Card className="border-border-subtle shadow-lg" noPadding>
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
@@ -287,92 +287,68 @@ export const Employees: React.FC = () => {
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                type="date"
+              <DatePicker
                 label="Fecha nacimiento"
-                value={form.birthDate ? form.birthDate.substring(0, 10) : ''}
-                onChange={(e) => setForm({ ...form, birthDate: e.target.value || null })}
+                value={form.birthDate ? form.birthDate.substring(0, 10) : null}
+                onChange={(v) => setForm({ ...form, birthDate: v || null })}
               />
-              <Input
-                type="date"
+              <DatePicker
                 label="Fecha alta"
-                value={form.hireDate ? form.hireDate.substring(0, 10) : ''}
-                onChange={(e) => setForm({ ...form, hireDate: e.target.value || null })}
+                value={form.hireDate ? form.hireDate.substring(0, 10) : null}
+                onChange={(v) => setForm({ ...form, hireDate: v || null })}
               />
-              <Input
-                type="date"
+              <DatePicker
                 label="Fecha baja"
-                value={form.terminationDate ? form.terminationDate.substring(0, 10) : ''}
-                onChange={(e) => setForm({ ...form, terminationDate: e.target.value || null })}
+                value={form.terminationDate ? form.terminationDate.substring(0, 10) : null}
+                onChange={(v) => setForm({ ...form, terminationDate: v || null })}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Departamento
-                </label>
-                <select
+                {/* SearchableSelect no tiene prop `label` → se conserva el
+                    <label> suelto. El vacío es válido («sin asignar») →
+                    clearable. */}
+                <label className="block text-sm font-medium text-fg-body mb-1">Departamento</label>
+                <SearchableSelect
+                  options={departmentOptions}
                   value={form.departmentId || ''}
-                  onChange={(e) => setForm({ ...form, departmentId: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">— sin asignar —</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.code} — {d.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, departmentId: v || null })}
+                  placeholder="— sin asignar —"
+                  clearable
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-fg-body mb-1">
                   Centro de coste
                 </label>
-                <select
+                <SearchableSelect
+                  options={costCenterOptions}
                   value={form.costCenterId || ''}
-                  onChange={(e) => setForm({ ...form, costCenterId: e.target.value || null })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">— sin asignar —</option>
-                  {costCenters.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} — {c.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(v) => setForm({ ...form, costCenterId: v || null })}
+                  placeholder="— sin asignar —"
+                  clearable
+                />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Estado
-                </label>
-                <select
-                  value={form.status || 'active'}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="active">Activo</option>
-                  <option value="leave">Baja temporal</option>
-                  <option value="terminated">Baja definitiva</option>
-                </select>
-              </div>
+              {/* Tres opciones estáticas → Select, que sí tiene prop `label`. */}
+              <Select
+                label="Estado"
+                options={STATUS_OPTIONS}
+                value={form.status || 'active'}
+                onChange={(v) => setForm({ ...form, status: v as Employee['status'] })}
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-fg-body mb-1">
                 Usuario asociado
               </label>
-              <select
+              <SearchableSelect
+                options={userOptions}
                 value={(form as any).userId || ''}
-                onChange={(e) => setForm({ ...form, userId: e.target.value || null } as any)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-              >
-                <option value="">— sin vincular (no podrá iniciar sesión) —</option>
-                {usersAvailable.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.username} · {u.email}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                onChange={(v) => setForm({ ...form, userId: v || null } as any)}
+                placeholder="— sin vincular (no podrá iniciar sesión) —"
+                clearable
+              />
+              <p className="text-xs text-fg-muted mt-1">
                 Vincula este empleado a un usuario del sistema. Si el empleado es repartidor, crea
                 primero el usuario con rol <b>DRIVER</b> en Usuarios y selecciónalo aquí.
               </p>
@@ -439,22 +415,15 @@ export const Employees: React.FC = () => {
         </Card>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table
-          columns={ctxColumns}
+          columns={columns}
           data={rows}
           isLoading={loading}
+          rowActions={rowActions}
           onRowClick={(r: any) => openEdit(r)}
         />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

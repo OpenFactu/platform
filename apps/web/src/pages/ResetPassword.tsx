@@ -39,9 +39,13 @@ export const ResetPassword: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await apiClient.post('/api/auth/reset-password', { token, newPassword: password }, {
-        auth: false,
-      });
+      await apiClient.post(
+        '/api/auth/reset-password',
+        { token, newPassword: password },
+        {
+          auth: false,
+        },
+      );
       setDone(true);
       setTimeout(() => navigate('/login'), 2500);
     } catch (err) {
@@ -74,10 +78,10 @@ export const ResetPassword: React.FC = () => {
               <CheckCircle2 size={28} />
             </div>
             <div className="space-y-2">
-              <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              <h3 className="text-2xl font-black text-fg-default tracking-tight">
                 Contraseña actualizada
               </h3>
-              <p className="text-slate-500 dark:text-slate-300 font-medium text-sm">
+              <p className="text-fg-muted font-medium text-sm">
                 Ya puedes iniciar sesión con tu nueva contraseña. Te redirigimos…
               </p>
             </div>
@@ -88,11 +92,12 @@ export const ResetPassword: React.FC = () => {
               <ShieldAlert size={28} />
             </div>
             <div className="space-y-2">
-              <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              <h3 className="text-2xl font-black text-fg-default tracking-tight">
                 Enlace no válido
               </h3>
-              <p className="text-slate-500 dark:text-slate-300 font-medium text-sm">
-                Falta el token de recuperación. Solicita un nuevo enlace desde la pantalla de acceso.
+              <p className="text-fg-muted font-medium text-sm">
+                Falta el token de recuperación. Solicita un nuevo enlace desde la pantalla de
+                acceso.
               </p>
             </div>
             <button
@@ -106,10 +111,10 @@ export const ResetPassword: React.FC = () => {
         ) : (
           <>
             <div className="space-y-2">
-              <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              <h3 className="text-2xl font-black text-fg-default tracking-tight">
                 Nueva contraseña
               </h3>
-              <p className="text-slate-500 dark:text-slate-300 font-medium text-sm">
+              <p className="text-fg-muted font-medium text-sm">
                 Elige una contraseña segura para tu cuenta.
               </p>
             </div>
@@ -123,11 +128,11 @@ export const ResetPassword: React.FC = () => {
               )}
 
               <div className="space-y-1.5">
-                <label className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest ml-1">
+                <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
                   Nueva contraseña
                 </label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-4 flex items-center text-slate-400 dark:text-slate-500 group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
+                  <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
                     <Lock size={18} />
                   </div>
                   <input
@@ -137,12 +142,12 @@ export const ResetPassword: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-12 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
+                    className="w-full bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-12 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-4 flex items-center text-slate-400 dark:text-slate-500 hover:text-[#0D9488] transition-colors"
+                    className="absolute inset-y-0 right-4 flex items-center text-fg-subtle hover:text-[#0D9488] transition-colors"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -150,11 +155,11 @@ export const ResetPassword: React.FC = () => {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest ml-1">
+                <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
                   Repetir contraseña
                 </label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-4 flex items-center text-slate-400 dark:text-slate-500 group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
+                  <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
                     <Lock size={18} />
                   </div>
                   <input
@@ -163,7 +168,7 @@ export const ResetPassword: React.FC = () => {
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
+                    className="w-full bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
                   />
                 </div>
               </div>
@@ -183,7 +188,7 @@ export const ResetPassword: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="w-full flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400 hover:text-[#0D9488] font-bold text-sm"
+                className="w-full flex items-center justify-center gap-2 text-fg-muted hover:text-[#0D9488] font-bold text-sm"
               >
                 <ArrowLeft size={16} /> Volver a iniciar sesión
               </button>

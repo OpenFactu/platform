@@ -43,7 +43,8 @@ export const PreparationButton: React.FC<Props> = ({
   const onClick = async () => {
     setLoading(true);
     try {
-      const d = docType === 'SDN' ? await prepTasksApi.fromSdn(docId) : await prepTasksApi.fromPdn(docId);
+      const d =
+        docType === 'SDN' ? await prepTasksApi.fromSdn(docId) : await prepTasksApi.fromPdn(docId);
       toast.success(d.reused ? 'Preparación ya iniciada — abriendo' : 'Preparación iniciada');
       // Navegar DIRECTAMENTE al detalle del shipment creado, en lugar de
       // caer en la lista genérica de /logistics. Así el usuario ve el
@@ -70,10 +71,7 @@ export const PreparationButton: React.FC<Props> = ({
       size={compact ? 'sm' : undefined}
       onClick={onClick}
       isLoading={loading}
-      className={cn(
-        compact ? 'gap-1' : 'flex items-center gap-2 whitespace-nowrap',
-        className,
-      )}
+      className={cn(compact ? 'gap-1' : 'flex items-center gap-2 whitespace-nowrap', className)}
     >
       <ClipboardCheck size={iconSize} />
       {docType === 'SDN' ? 'Preparar envío' : 'Recepcionar'}

@@ -7,11 +7,24 @@ import type {
 } from '../domain/shift';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  useToast,
+  PageHeader,
+  NumberInput,
+  SearchableSelect,
+  Table,
+} from '@openfactu/ui';
+import type { TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import {
   Repeat,
   Plus,
+  Pencil,
   Save,
   Trash2,
   Calendar,
@@ -26,6 +39,7 @@ const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
 export const ShiftPatterns: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite, canDelete } = usePagePermissions();
   const [list, setList] = useState<Pattern[]>([]);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -171,49 +185,55 @@ export const ShiftPatterns: React.FC = () => {
     }
   };
 
+  // Listado de patrones. La matriz semana × día de más abajo NO usa la Table
+  // del paquete: es una rejilla editable con un <select> por celda.
+  const listColumns: TableColumn<Pattern>[] = [
+    { header: 'Nombre', accessor: 'name', sortable: true, primary: true },
+    { header: 'Semanas ciclo', accessor: 'cycleWeeks', sortable: true },
+    {
+      header: 'Activo',
+      sortable: true,
+      sortAccessor: (p) => (p.isActive ? 1 : 0),
+      cell: (p) => (p.isActive ? 'Sí' : 'No'),
+    },
+  ];
+
+  const listRowActions = (p: Pattern): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => openEdit(p),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <Repeat className="text-indigo-600" size={32} /> Patrones de turno
-          </h1>
-          <p className="text-slate-500">
-            Rotaciones cíclicas que se aplican a empleados con offsets distintos. Al "expandir" se
-            generan asignaciones reales por día.
-          </p>
-        </div>
-        <Button size="sm" onClick={newPattern}>
-          <Plus size={14} /> Nuevo patrón
-        </Button>
-      </div>
+      <PageHeader
+        title="Patrones de turno"
+        subtitle={
+          'Rotaciones cíclicas que se aplican a empleados con offsets distintos. Al "expandir" se generan asignaciones reales por día.'
+        }
+        icon={<Repeat size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" size="sm" onClick={newPattern}>
+              <Plus size={14} /> Nuevo patrón
+            </Button>
+          )
+        }
+      />
 
       {!editing && (
-        <Card noPadding>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left">
-                <th className="p-3">Nombre</th>
-                <th className="p-3">Semanas ciclo</th>
-                <th className="p-3">Activo</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map((p) => (
-                <tr key={p.id} className="border-b hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                  <td className="p-3 font-medium">{p.name}</td>
-                  <td className="p-3">{p.cycleWeeks}</td>
-                  <td className="p-3">{p.isActive ? 'Sí' : 'No'}</td>
-                  <td className="p-3 text-right">
-                    <Button size="sm" variant="secondary" onClick={() => openEdit(p)}>
-                      Editar
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <Card className="overflow-hidden" noPadding>
+          <Table
+            columns={listColumns}
+            data={list}
+            rowActions={listRowActions}
+            onRowClick={(p) => openEdit(p)}
+            emptyMessage="Todavía no hay patrones de turno."
+          />
         </Card>
       )}
 
@@ -228,19 +248,19 @@ export const ShiftPatterns: React.FC = () => {
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                 />
                 <div className="flex items-center gap-2">
+                  {/* La etiqueta va en línea, no encima, así que se mantiene el
+                      <label> suelto en lugar de la prop `label`. */}
                   <label className="text-sm">Semanas:</label>
-                  <input
-                    type="number"
+                  <NumberInput
+                    value={editing.cycleWeeks}
+                    onChange={(v) => setEditing({ ...editing, cycleWeeks: v ?? 1 })}
                     min={1}
                     max={12}
-                    value={editing.cycleWeeks}
-                    onChange={(e) =>
-                      setEditing({ ...editing, cycleWeeks: Number(e.target.value) || 1 })
-                    }
-                    className="w-16 px-2 py-1 rounded border"
+                    inputSize="sm"
+                    containerClassName="w-20"
                   />
                 </div>
-                <Button onClick={save}>
+                <Button onClick={save} disabled={!canWrite}>
                   <Save size={16} /> Guardar
                 </Button>
                 <Button variant="secondary" onClick={() => setEditing(null)}>
@@ -262,18 +282,23 @@ export const ShiftPatterns: React.FC = () => {
                   <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
                     Pincel:
                   </span>
+                  {/* Muestras de color: el relleno lo manda el color de la
+                      plantilla, así que el `style` inline se conserva sobre el
+                      Button. */}
                   {templates
                     .filter((t: any) => t.isActive)
                     .map((t: any) => (
-                      <button
+                      <Button
                         key={t.id}
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => setBrush(t.id)}
                         className={
-                          'px-2.5 py-1 rounded-md text-xs font-bold border-2 transition ' +
+                          'px-2.5 py-1 rounded-md text-xs font-bold border-2 ' +
                           (brush === t.id
                             ? 'ring-2 ring-indigo-300/50 border-indigo-500'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300')
+                            : 'border-border-default hover:border-indigo-300')
                         }
                         style={{
                           background: brush === t.id ? t.color || '#6366F1' : 'transparent',
@@ -282,20 +307,22 @@ export const ShiftPatterns: React.FC = () => {
                         title={`${t.name} · ${t.startTime}–${t.endTime}`}
                       >
                         {t.code}
-                      </button>
+                      </Button>
                     ))}
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setBrush('')}
                     className={
-                      'px-2.5 py-1 rounded-md text-xs font-bold border-2 transition ' +
+                      'px-2.5 py-1 rounded-md text-xs font-bold border-2 ' +
                       (!brush
                         ? 'border-slate-500 bg-slate-200 dark:bg-slate-700'
                         : 'border-dashed border-slate-300 hover:border-slate-400')
                     }
                   >
                     Borrar
-                  </button>
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <Button
@@ -325,18 +352,18 @@ export const ShiftPatterns: React.FC = () => {
                 </div>
               </div>
 
-              <div className="overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="overflow-auto rounded-lg border border-border-default">
                 <table className="w-full text-xs border-separate border-spacing-0">
                   <thead>
                     <tr>
-                      <th className="bg-slate-100 dark:bg-slate-800 border-b border-r border-slate-200 dark:border-slate-700 px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-20">
+                      <th className="bg-bg-muted border-b border-r border-border-default px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-20">
                         Semana
                       </th>
                       {DAYS.map((d, i) => (
                         <th
                           key={d}
                           className={
-                            'bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-slate-500 ' +
+                            'bg-bg-muted border-b border-border-default px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-slate-500 ' +
                             (i < 6 ? 'border-r' : '') +
                             (i >= 5 ? ' bg-slate-200/60 dark:bg-slate-800/80' : '')
                           }
@@ -348,39 +375,48 @@ export const ShiftPatterns: React.FC = () => {
                   </thead>
                   <tbody>
                     {Array.from({ length: editing.cycleWeeks }).map((_, w) => (
-                      <tr key={w} className={w % 2 ? 'bg-slate-50/50 dark:bg-slate-900/30' : ''}>
-                        <td className="border-b border-r border-slate-200 dark:border-slate-700 px-2 py-2 text-center text-slate-700 dark:text-slate-200">
+                      <tr key={w} className={w % 2 ? 'bg-bg-muted' : ''}>
+                        <td className="border-b border-r border-border-default px-2 py-2 text-center text-fg-body">
                           <div className="font-black mb-1">{w + 1}</div>
                           <div className="flex items-center justify-center gap-1">
-                            <button
+                            {/* Micro-acciones dentro de la matriz: se mantiene el
+                                relleno reducido con className para no romper la
+                                densidad de la cuadrícula. */}
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="sm"
                               onClick={() =>
                                 brush
                                   ? fillRow(w, [1, 2, 3, 4, 5], brush)
                                   : toast.error('Elige pincel')
                               }
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 font-bold"
+                              className="text-[10px] px-1.5 py-0.5 font-bold"
                               title="Aplicar pincel a Lun-Vie de esta semana"
                             >
                               L-V
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="sm"
                               onClick={() => fillRow(w, [1, 2, 3, 4, 5, 6, 7], '')}
-                              className="text-[10px] p-1 rounded text-slate-400 hover:text-rose-500"
+                              className="text-[10px] p-1"
                               title="Vaciar esta semana"
                             >
                               <Eraser size={11} />
-                            </button>
+                            </Button>
                             {w > 0 && (
-                              <button
+                              <Button
                                 type="button"
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => copyWeek(w - 1, w)}
-                                className="text-[10px] p-1 rounded text-slate-400 hover:text-indigo-500"
+                                className="text-[10px] p-1"
                                 title={`Copiar semana ${w} aquí`}
                               >
                                 <Copy size={11} />
-                              </button>
+                              </Button>
                             )}
                           </div>
                         </td>
@@ -398,18 +434,24 @@ export const ShiftPatterns: React.FC = () => {
                                 if (!tplId && brush) setSlot(w, d + 1, brush);
                               }}
                               className={
-                                'border-b border-slate-200 dark:border-slate-700 p-1.5 cursor-pointer ' +
+                                'border-b border-border-default p-1.5 cursor-pointer ' +
                                 (d < 6 ? 'border-r ' : '') +
-                                (isWeekend ? 'bg-slate-100/60 dark:bg-slate-800/40' : '') +
+                                (isWeekend ? 'bg-bg-muted' : '') +
                                 (!tplId && brush
                                   ? ' hover:bg-indigo-50 dark:hover:bg-indigo-500/10'
                                   : '')
                               }
                             >
+                              {/* Excepción deliberada: <select> nativo. La celda
+                                  es una superficie de pintado y su `onClick`
+                                  distingue el control por `tagName === 'SELECT'`;
+                                  además el relleno del control y de cada opción
+                                  es el color arbitrario de la plantilla, que
+                                  `Select` no puede expresar (no acepta `style`). */}
                               <select
                                 value={tplId}
                                 onChange={(e) => setSlot(w, d + 1, e.target.value)}
-                                className="w-full text-xs px-2 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+                                className="w-full text-xs px-2 py-1.5 rounded-md border border-border-default bg-bg-card font-bold focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
                                 style={{
                                   background: tpl?.color ? tpl.color : undefined,
                                   color: tpl?.color ? 'white' : undefined,
@@ -457,12 +499,16 @@ export const ShiftPatterns: React.FC = () => {
                             (offset {a.weekOffset} · desde {a.validFrom})
                           </span>
                         </span>
-                        <button
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => removeAssignment(a)}
-                          className="text-slate-400 hover:text-red-500"
+                          disabled={!canDelete}
+                          title="Quitar asignación"
                         >
                           <Trash2 size={14} />
-                        </button>
+                        </Button>
                       </li>
                     );
                   })}
@@ -471,6 +517,7 @@ export const ShiftPatterns: React.FC = () => {
                   onAdd={addAssignment}
                   employees={employees}
                   cycleWeeks={editing.cycleWeeks}
+                  canWrite={canWrite}
                 />
               </div>
             </Card>
@@ -483,20 +530,20 @@ export const ShiftPatterns: React.FC = () => {
                   <Calendar size={16} /> Expandir patrón a fechas
                 </h3>
                 <div className="flex items-center gap-3">
-                  <Input
+                  <DatePicker
                     label="Desde"
-                    type="date"
                     value={expanding.from}
-                    onChange={(e) => setExpanding({ ...expanding, from: e.target.value })}
+                    onChange={(v) => setExpanding({ ...expanding, from: v ?? '' })}
                   />
-                  <Input
+                  <DatePicker
                     label="Hasta"
-                    type="date"
                     value={expanding.to}
-                    onChange={(e) => setExpanding({ ...expanding, to: e.target.value })}
+                    onChange={(v) => setExpanding({ ...expanding, to: v ?? '' })}
                   />
                   <div className="self-end">
-                    <Button onClick={expand}>Expandir</Button>
+                    <Button onClick={expand} disabled={!canWrite}>
+                      Expandir
+                    </Button>
                   </div>
                 </div>
                 <p className="text-xs text-slate-400 italic">
@@ -516,52 +563,56 @@ const AssignmentForm: React.FC<{
   onAdd: (employeeId: string, validFrom: string, weekOffset: number) => void;
   employees: any[];
   cycleWeeks: number;
-}> = ({ onAdd, employees, cycleWeeks }) => {
+  canWrite: boolean;
+}> = ({ onAdd, employees, cycleWeeks, canWrite }) => {
   const [employeeId, setEmployeeId] = useState('');
   const [validFrom, setValidFrom] = useState('');
-  const [weekOffset, setWeekOffset] = useState(0);
+  // `weekOffset` puede quedar vacío en el NumberInput → null; al añadir se
+  // normaliza a 0.
+  const [weekOffset, setWeekOffset] = useState<number | null>(0);
+  const employeeOptions = useMemo(
+    () =>
+      employees
+        .filter((e) => e.status === 'active')
+        .map((e) => ({
+          value: e.id,
+          label: `${e.firstName} ${e.lastName}`,
+          secondaryLabel: e.code,
+        })),
+    [employees],
+  );
   return (
-    <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+    <div className="pt-3 border-t border-border-default">
       <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto_auto] gap-3 items-end">
         <div className="min-w-0">
+          {/* SearchableSelect no tiene prop `label` → se conserva el <label>
+              suelto. */}
           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
             Empleado
           </label>
-          <select
+          <SearchableSelect
+            options={employeeOptions}
             value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-          >
-            <option value="">— seleccionar —</option>
-            {employees
-              .filter((e) => e.status === 'active')
-              .map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.code} — {e.firstName} {e.lastName}
-                </option>
-              ))}
-          </select>
+            onChange={(v) => setEmployeeId(v)}
+            placeholder="— seleccionar —"
+          />
         </div>
-        <Input
-          label="Desde"
-          type="date"
-          value={validFrom}
-          onChange={(e) => setValidFrom(e.target.value)}
-        />
+        <DatePicker label="Desde" value={validFrom} onChange={(v) => setValidFrom(v ?? '')} />
         <div className="w-24">
-          <Input
+          <NumberInput
             label="Offset"
-            type="number"
+            value={weekOffset}
+            onChange={(v) => setWeekOffset(v)}
             min={0}
             max={cycleWeeks - 1}
-            value={weekOffset}
-            onChange={(e) => setWeekOffset(Number(e.target.value))}
+            emptyValue="zero"
           />
         </div>
         <Button
+          disabled={!canWrite}
           onClick={() => {
             if (!employeeId || !validFrom) return;
-            onAdd(employeeId, validFrom, weekOffset);
+            onAdd(employeeId, validFrom, weekOffset ?? 0);
             setEmployeeId('');
             setValidFrom('');
             setWeekOffset(0);

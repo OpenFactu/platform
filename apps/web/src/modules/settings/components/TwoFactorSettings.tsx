@@ -33,7 +33,7 @@ export const TwoFactorSettings: React.FC = () => {
   const loadStatus = async () => {
     try {
       const res = await coreApi.raw('GET', '/api/2fa/status');
-      if (res.ok) setEnabled((res.data).enabled);
+      if (res.ok) setEnabled(res.data.enabled);
     } catch {
       /* ignore */
     }
@@ -112,27 +112,27 @@ export const TwoFactorSettings: React.FC = () => {
   };
 
   return (
-    <Card className="p-6 space-y-4 border-slate-100 dark:border-slate-800">
-      <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+    <Card className="p-6 space-y-4 border-border-subtle">
+      <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
         <ShieldCheck size={14} /> Autenticación en dos pasos (2FA)
       </h2>
 
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
               enabled
                 ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
+                : 'bg-bg-muted text-fg-subtle'
             }`}
           >
             {enabled ? <ShieldCheck size={20} /> : <ShieldOff size={20} />}
           </div>
           <div>
-            <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+            <p className="text-sm font-black text-fg-default">
               {enabled === null ? 'Comprobando…' : enabled ? 'Activado' : 'Desactivado'}
             </p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium max-w-sm">
+            <p className="text-[11px] text-fg-subtle font-medium max-w-sm">
               Añade una capa extra de seguridad pidiendo un código de tu app de autenticación al
               iniciar sesión.
             </p>
@@ -168,11 +168,11 @@ export const TwoFactorSettings: React.FC = () => {
             <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-300 font-bold text-sm">
               <ShieldCheck size={18} /> 2FA activado correctamente
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-fg-muted">
               Guarda estos <strong>códigos de respaldo</strong> en un lugar seguro. Cada uno sirve
               una sola vez para iniciar sesión si pierdes acceso a tu app. No volverán a mostrarse.
             </p>
-            <div className="grid grid-cols-2 gap-2 p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-sm text-slate-800 dark:text-slate-100">
+            <div className="grid grid-cols-2 gap-2 p-4 bg-bg-muted border border-border-default rounded-lg font-mono text-sm text-fg-default">
               {backupCodes.map((c) => (
                 <span key={c} className="tracking-widest">
                   {c}
@@ -180,14 +180,16 @@ export const TwoFactorSettings: React.FC = () => {
               ))}
             </div>
             <div className="flex justify-between items-center">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={copyBackupCodes}
-                className="inline-flex items-center gap-1.5 text-sm font-bold text-accent hover:text-accent/80"
+                className="flex items-center gap-1.5"
               >
                 {copied ? <Check size={15} /> : <Copy size={15} />}
                 {copied ? 'Copiado' : 'Copiar códigos'}
-              </button>
+              </Button>
               <Button onClick={closeSetup}>Hecho</Button>
             </div>
           </div>
@@ -198,17 +200,15 @@ export const TwoFactorSettings: React.FC = () => {
                 <img
                   src={qr}
                   alt="Código QR para 2FA"
-                  className="w-48 h-48 border border-slate-200 dark:border-slate-700 rounded-lg bg-white p-2"
+                  className="w-48 h-48 border border-border-default rounded-lg bg-white p-2"
                 />
               </div>
             )}
             <div className="text-center">
-              <p className="text-[11px] text-slate-400 dark:text-slate-500">
+              <p className="text-[11px] text-fg-subtle">
                 ¿No puedes escanear? Introduce esta clave manualmente:
               </p>
-              <code className="text-xs font-mono text-slate-700 dark:text-slate-200 break-all">
-                {secret}
-              </code>
+              <code className="text-xs font-mono text-fg-body break-all">{secret}</code>
             </div>
             <Input
               label="Código de 6 dígitos"
@@ -244,7 +244,7 @@ export const TwoFactorSettings: React.FC = () => {
         maxWidth="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-sm text-fg-muted">
             Introduce un código de tu app (o un código de respaldo) para desactivar la autenticación
             en dos pasos.
           </p>

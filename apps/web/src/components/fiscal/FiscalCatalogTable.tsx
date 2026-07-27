@@ -1,8 +1,22 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Input, useToast } from '@openfactu/ui';
+import {
+  Button,
+  Input,
+  Table,
+  useToast,
+  usePopup,
+  Checkbox,
+  Select,
+  NumberInput,
+} from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+
+/** Id sintético de la fila de alta — se anexa a `data` para que comparta
+ *  columnas (y por tanto anchos) con el resto de la tabla. */
+const NEW_ROW_ID = '__new';
 
 export interface CatalogColumn {
   key: string;
@@ -40,6 +54,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
 }) => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -92,10 +107,16 @@ export const FiscalCatalogTable: React.FC<Props> = ({
   };
 
   const remove = async (id: string) => {
-    if (!confirm('¿Eliminar este registro?')) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar registro',
+      message: 'Esta acción no se puede deshacer.',
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     try {
       const res = await coreApi.raw('DELETE', `${endpoint}/${id}`);
-      if (!res.ok) throw new Error((res.data)?.error || 'Error');
+      if (!res.ok) throw new Error(res.data?.error || 'Error');
       toast.success('Eliminado');
       await load();
     } catch (e: any) {
@@ -111,7 +132,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
 
   const startNew = () => {
     setCreating(true);
-    setEditingId('__new');
+    setEditingId(NEW_ROW_ID);
     setDraft({ ...defaultRow });
   };
 
@@ -126,44 +147,41 @@ export const FiscalCatalogTable: React.FC<Props> = ({
       const val = draft[col.key];
       if (col.type === 'boolean') {
         return (
-          <label className="inline-flex items-center gap-1.5 text-xs text-ink-700 dark:text-slate-200 cursor-pointer">
-            <input
-              type="checkbox"
+          <label className="inline-flex items-center gap-1.5 text-xs text-fg-body cursor-pointer">
+            <Checkbox
               checked={!!val}
-              onChange={(e) => setDraft({ ...draft, [col.key]: e.target.checked })}
-              className="h-4 w-4 accent-accent cursor-pointer"
+              onChange={(checked) => setDraft({ ...draft, [col.key]: checked })}
             />
           </label>
         );
       }
       if (col.type === 'select' && col.options) {
         return (
-          <select
-            value={val ?? ''}
-            onChange={(e) => setDraft({ ...draft, [col.key]: e.target.value })}
-            className="h-8 w-full px-2 border border-line dark:border-ink-700 rounded-xs bg-white dark:bg-ink-900 text-ink-900 dark:text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-          >
-            <option value="" disabled>
-              —
-            </option>
-            {col.options.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+          <Select
+            options={col.options}
+            value={(val as string) ?? ''}
+            onChange={(v) => setDraft({ ...draft, [col.key]: v })}
+            placeholder="—"
+            ariaLabel={col.label}
+          />
+        );
+      }
+      if (col.type === 'number') {
+        return (
+          <NumberInput
+            value={(val as number) ?? null}
+            onChange={(v) => setDraft({ ...draft, [col.key]: v })}
+            placeholder={col.placeholder}
+            inputSize="sm"
+          />
         );
       }
       return (
         <Input
-          type={col.type === 'number' ? 'number' : 'text'}
-          value={val ?? ''}
-          onChange={(e) => {
-            const v = col.type === 'number' ? Number(e.target.value) : e.target.value;
-            setDraft({ ...draft, [col.key]: v });
-          }}
+          value={(val as string) ?? ''}
+          onChange={(e) => setDraft({ ...draft, [col.key]: e.target.value })}
           placeholder={col.placeholder}
-          className="h-8 text-xs"
+          inputSize="sm"
         />
       );
     }
@@ -173,123 +191,78 @@ export const FiscalCatalogTable: React.FC<Props> = ({
     return String(val ?? '');
   };
 
+  /** Filas de la tabla: el catálogo más, si se está creando, la fila de alta. */
+  const data: any[] = creating ? [...rows, { id: NEW_ROW_ID }] : rows;
+
+  const tableColumns: TableColumn<any>[] = [
+    ...columns.map<TableColumn<any>>((c) => ({
+      id: c.key,
+      header: c.label,
+      width: c.width,
+      // En la fila de alta el valor sale de `draft`, no de la fila.
+      cell: (row) => renderCell(c, row, row.id === NEW_ROW_ID || editingId === row.id),
+    })),
+    {
+      // Guardar/cancelar tienen que estar siempre visibles mientras se edita,
+      // así que se quedan en su columna; editar y eliminar van a `rowActions`.
+      header: 'Acciones',
+      align: 'right',
+      width: '6rem',
+      cell: (row) =>
+        row.id === NEW_ROW_ID || editingId === row.id ? (
+          <div className="inline-flex gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => save(draft, row.id === NEW_ROW_ID)}
+              title="Guardar"
+            >
+              <Check size={14} />
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={cancel} title="Cancelar">
+              <X size={14} />
+            </Button>
+          </div>
+        ) : null,
+    },
+  ];
+
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho.
+  const rowActions = (row: any): RowAction[] =>
+    row.id === NEW_ROW_ID || editingId === row.id
+      ? []
+      : [
+          { label: 'Editar', icon: <Edit3 size={14} />, onClick: () => startEdit(row) },
+          {
+            label: 'Eliminar',
+            icon: <Trash2 size={14} />,
+            destructive: true,
+            onClick: () => remove(row.id),
+          },
+        ];
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-          {title}
-        </h3>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-fg-muted">{title}</h3>
         {!creating && !editingId && (
-          <Button size="sm" variant="outline" onClick={startNew} className="gap-1">
+          <Button type="button" size="sm" variant="outline" onClick={startNew} className="gap-1">
             <Plus size={14} /> Añadir
           </Button>
         )}
       </div>
-      <div className="border border-line dark:border-ink-700 rounded-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-line-2/60 dark:bg-ink-800">
-            <tr>
-              {columns.map((c) => (
-                <th
-                  key={c.key}
-                  className="text-left px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400"
-                  style={c.width ? { width: c.width } : undefined}
-                >
-                  {c.label}
-                </th>
-              ))}
-              <th className="w-24" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={columns.length + 1} className="p-4 text-center text-ink-400">
-                  Cargando…
-                </td>
-              </tr>
-            ) : rows.length === 0 && !creating ? (
-              <tr>
-                <td
-                  colSpan={columns.length + 1}
-                  className="p-4 text-center text-ink-400 italic text-xs"
-                >
-                  Sin datos — pulsa "Añadir" para crear.
-                </td>
-              </tr>
-            ) : null}
-            {rows.map((row) => (
-              <tr
-                key={row.id}
-                className="border-t border-line dark:border-ink-700 hover:bg-line-2/40 dark:hover:bg-ink-800/50"
-              >
-                {columns.map((c) => (
-                  <td key={c.key} className="px-3 py-2 align-middle">
-                    {renderCell(c, row, editingId === row.id)}
-                  </td>
-                ))}
-                <td className="px-3 py-2 text-right">
-                  {editingId === row.id ? (
-                    <div className="inline-flex gap-1">
-                      <button
-                        onClick={() => save(draft, false)}
-                        className="p-1 rounded-xs text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
-                      >
-                        <Check size={14} />
-                      </button>
-                      <button
-                        onClick={cancel}
-                        className="p-1 rounded-xs text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="inline-flex gap-1">
-                      <button
-                        onClick={() => startEdit(row)}
-                        className="p-1 rounded-xs text-ink-500 hover:text-accent hover:bg-line-2 dark:hover:bg-ink-700"
-                      >
-                        <Edit3 size={14} />
-                      </button>
-                      <button
-                        onClick={() => remove(row.id)}
-                        className="p-1 rounded-xs text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {creating && (
-              <tr className="border-t border-line dark:border-ink-700 bg-accent/5">
-                {columns.map((c) => (
-                  <td key={c.key} className="px-3 py-2">
-                    {renderCell(c, draft, true)}
-                  </td>
-                ))}
-                <td className="px-3 py-2 text-right">
-                  <div className="inline-flex gap-1">
-                    <button
-                      onClick={() => save(draft, true)}
-                      className="p-1 rounded-xs text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
-                    >
-                      <Check size={14} />
-                    </button>
-                    <button
-                      onClick={cancel}
-                      className="p-1 rounded-xs text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* La Table trae cabecera, esqueleto de carga y estado vacío: el <table>
+          a mano y sus filas especiales sobraban. */}
+      <div className="border border-border-default rounded-sm overflow-hidden">
+        <Table
+          columns={tableColumns}
+          data={data}
+          isLoading={loading}
+          rowActions={rowActions}
+          emptyMessage={'Sin datos — pulsa "Añadir" para crear.'}
+        />
       </div>
     </div>
   );

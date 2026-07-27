@@ -7,7 +7,7 @@
  * en pestaña nueva (fallback descarga).
  */
 import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { Modal, Button, Input, Select, NumberInput, DatePicker, Checkbox } from '@openfactu/ui';
 import { FileDown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { CanvasLayout, ParamDef } from './canvas/types';
@@ -105,7 +105,11 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
         );
         if (!cancelled) setOptionsMap(optMap);
       } catch (e) {
-        if (!cancelled) setLoadError((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'No se pudo cargar la plantilla');
+        if (!cancelled)
+          setLoadError(
+            (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+              'No se pudo cargar la plantilla',
+          );
       }
     })();
     return () => {
@@ -181,152 +185,151 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
         onClose();
       }
     } catch (e) {
-      setError((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al generar el documento');
+      setError(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al generar el documento',
+      );
     } finally {
       setGenerating(false);
     }
   };
 
-  const inputCls =
-    'mt-1 w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm';
+  /* Etiqueta en versales de los parámetros. Ni Checkbox ni SearchableSelect
+     exponen `label`, y el multiselect es una lista propia, así que se mantiene
+     a mano para que los tres tipos de campo se vean igual. */
+  const ParamLabel: React.FC<{ p: ParamDef }> = ({ p }) => (
+    <label className="text-[11px] font-bold text-fg-muted uppercase tracking-wider">
+      {p.label ?? p.name}
+      {p.required && <span className="text-danger"> *</span>}
+    </label>
+  );
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
-          <FileDown size={16} className="text-slate-500" />
-          <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Generar: {templateName}
-          </div>
-        </div>
-        <div className="p-4 space-y-3 text-sm overflow-y-auto">
-          {!paramDefs && !loadError && <div className="text-slate-400 italic">Cargando…</div>}
-          {loadError && <div className="text-red-500 text-xs">⚠ {loadError}</div>}
-          {paramDefs && paramDefs.length === 0 && (
-            <div className="text-slate-500 dark:text-slate-400 text-xs">
-              Esta plantilla no tiene parámetros de entrada. Pulsa “Generar PDF”.
-            </div>
-          )}
-          {paramDefs?.map((p) => (
-            <div key={p.name}>
-              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                {p.label ?? p.name}
-                {p.required && <span className="text-rose-500"> *</span>}
-              </label>
-              {p.type === 'select' ? (
-                <select
-                  value={(values[p.name] as string) ?? ''}
-                  onChange={(e) => setVal(p.name, e.target.value)}
-                  className={inputCls}
-                >
-                  <option value="">—</option>
-                  {(optionsMap[p.name] ?? []).map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              ) : p.type === 'multiselect' ? (
-                (optionsMap[p.name] ?? []).length > 0 ? (
-                  <div className="mt-1 max-h-40 overflow-y-auto rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
-                    {(optionsMap[p.name] ?? []).map((o) => {
-                      const arr = (values[p.name] as string[]) ?? [];
-                      return (
-                        <label
-                          key={o.value}
-                          className="flex items-center gap-2 px-2 py-1 text-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={arr.includes(o.value)}
-                            onChange={() => toggleMulti(p.name, o.value)}
-                          />
-                          <span className="truncate">{o.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <input
-                    value={
-                      Array.isArray(values[p.name]) ? (values[p.name] as string[]).join(', ') : ''
-                    }
-                    onChange={(e) =>
-                      setValues((prev) => ({
-                        ...prev,
-                        [p.name]: e.target.value
-                          .split(',')
-                          .map((s) => s.trim())
-                          .filter(Boolean),
-                      }))
-                    }
-                    placeholder="varios valores separados por comas"
-                    className={inputCls}
-                  />
-                )
-              ) : (
-                <input
-                  type={p.type === 'number' ? 'number' : p.type === 'date' ? 'date' : 'text'}
-                  value={(values[p.name] as string) ?? ''}
-                  onChange={(e) => setVal(p.name, e.target.value)}
-                  placeholder={p.name}
-                  className={inputCls}
-                />
-              )}
-            </div>
-          ))}
-          {paramDefs && (
-            <div>
-              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Copias
-              </label>
-              <input
-                type="number"
-                min={1}
-                max={200}
-                value={copies}
-                onChange={(e) => setCopies(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
-                className="mt-1 w-24 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-              />
-            </div>
-          )}
-          {error && <div className="text-red-500 text-xs whitespace-pre-wrap">⚠ {error}</div>}
-          {warnings.length > 0 && (
-            <div className="text-amber-600 dark:text-amber-400 text-xs space-y-1">
-              <div className="font-semibold">PDF generado, pero algunas consultas fallaron:</div>
-              {warnings.map((w, i) => (
-                <div key={i} className="font-mono">
-                  • {w.name}: {w.error}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-xs px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
+  return (
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={`Generar: ${templateName}`}
+      size="sm"
+      closeOnOverlayClick
+      footer={
+        <div className="flex justify-end gap-2 w-full">
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
             {warnings.length > 0 ? 'Cerrar' : 'Cancelar'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="sm"
             onClick={generate}
-            disabled={!paramDefs || generating}
-            className="text-xs px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 inline-flex items-center gap-1"
+            disabled={!paramDefs}
+            isLoading={generating}
           >
             <FileDown size={13} />
             {generating ? 'Generando…' : 'Generar PDF'}
-          </button>
+          </Button>
         </div>
+      }
+    >
+      <div className="space-y-3 text-sm">
+        {!paramDefs && !loadError && <div className="text-fg-subtle italic">Cargando…</div>}
+        {loadError && <div className="text-danger-fg text-xs">⚠ {loadError}</div>}
+        {paramDefs && paramDefs.length === 0 && (
+          <div className="text-fg-muted text-xs">
+            Esta plantilla no tiene parámetros de entrada. Pulsa “Generar PDF”.
+          </div>
+        )}
+        {paramDefs?.map((p) => (
+          <div key={p.name} className="space-y-1">
+            <ParamLabel p={p} />
+            {p.type === 'select' ? (
+              <Select
+                value={(values[p.name] as string) ?? ''}
+                onChange={(v) => setVal(p.name, v)}
+                options={[
+                  { value: '', label: '—' },
+                  ...(optionsMap[p.name] ?? []).map((o) => ({ value: o.value, label: o.label })),
+                ]}
+              />
+            ) : p.type === 'multiselect' ? (
+              (optionsMap[p.name] ?? []).length > 0 ? (
+                <div className="max-h-40 overflow-y-auto rounded border border-border-default bg-bg-card divide-y divide-border-subtle">
+                  {(optionsMap[p.name] ?? []).map((o) => {
+                    const arr = (values[p.name] as string[]) ?? [];
+                    return (
+                      <label
+                        key={o.value}
+                        className="flex items-center gap-2 px-2 py-1 text-xs cursor-pointer hover:bg-bg-hover"
+                      >
+                        <Checkbox
+                          size="sm"
+                          checked={arr.includes(o.value)}
+                          onChange={() => toggleMulti(p.name, o.value)}
+                        />
+                        <span className="truncate">{o.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : (
+                // Sin catálogo de opciones el parámetro se teclea a mano,
+                // separando los valores por comas.
+                <Input
+                  value={
+                    Array.isArray(values[p.name]) ? (values[p.name] as string[]).join(', ') : ''
+                  }
+                  onChange={(e) =>
+                    setValues((prev) => ({
+                      ...prev,
+                      [p.name]: e.target.value
+                        .split(',')
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    }))
+                  }
+                  placeholder="varios valores separados por comas"
+                />
+              )
+            ) : p.type === 'number' ? (
+              <NumberInput
+                value={values[p.name] == null ? null : Number(values[p.name])}
+                onChange={(v) => setVal(p.name, v == null ? '' : String(v))}
+                placeholder={p.name}
+              />
+            ) : p.type === 'date' ? (
+              <DatePicker
+                value={(values[p.name] as string) ?? ''}
+                onChange={(iso) => setVal(p.name, iso ?? '')}
+              />
+            ) : (
+              <Input
+                value={(values[p.name] as string) ?? ''}
+                onChange={(e) => setVal(p.name, e.target.value)}
+                placeholder={p.name}
+              />
+            )}
+          </div>
+        ))}
+        {paramDefs && (
+          <NumberInput
+            label="Copias"
+            min={1}
+            max={200}
+            value={copies}
+            onChange={(v) => setCopies(v ?? 1)}
+            containerClassName="w-24"
+          />
+        )}
+        {error && <div className="text-danger-fg text-xs whitespace-pre-wrap">⚠ {error}</div>}
+        {warnings.length > 0 && (
+          <div className="text-warning-fg text-xs space-y-1">
+            <div className="font-semibold">PDF generado, pero algunas consultas fallaron:</div>
+            {warnings.map((w, i) => (
+              <div key={i} className="font-mono">
+                • {w.name}: {w.error}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 };

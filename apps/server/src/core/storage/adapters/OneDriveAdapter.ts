@@ -63,6 +63,7 @@ export class OneDriveAdapter implements StorageAdapter {
       input.tenantSchema,
       input.entityType,
       input.entityId,
+      ...(input.subPath ?? []),
     ]);
     const uploaded = await this.client.upload(
       `${crypto.randomUUID()}_${safeName}`,

@@ -12,7 +12,18 @@
 import { apiClient } from '@/shared/http';
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, Button, Input, Badge, SearchableSelect, Modal, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  PasswordInput,
+  Checkbox,
+  Badge,
+  Select,
+  SearchableSelect,
+  Modal,
+  useToast,
+} from '@openfactu/ui';
 import {
   Bot,
   Plug,
@@ -114,7 +125,13 @@ const FAMILY_COLORS: Record<string, string> = {
   mixtral: 'bg-fuchsia-500',
   command: 'bg-lime-600',
 };
-const FALLBACK_PALETTE = ['bg-slate-500', 'bg-teal-500', 'bg-rose-500', 'bg-amber-500', 'bg-sky-500'];
+const FALLBACK_PALETTE = [
+  'bg-slate-500',
+  'bg-teal-500',
+  'bg-rose-500',
+  'bg-amber-500',
+  'bg-sky-500',
+];
 const familyOf = (name: string) => {
   const base = (name.split('/').pop() || name).toLowerCase();
   return base.match(/^[a-z]+/)?.[0] || base;
@@ -180,7 +197,7 @@ export const AiSettingsTab: React.FC = () => {
         ]);
         if (!provRes.ok || !cfgRes.ok) throw new Error('No se pudo cargar la configuración de IA');
         setProviders(provRes.data);
-        setCfg({ ...EMPTY, ...(cfgRes.data) });
+        setCfg({ ...EMPTY, ...cfgRes.data });
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Error');
       } finally {
@@ -227,8 +244,8 @@ export const AiSettingsTab: React.FC = () => {
       };
       if (newApiKey) payload.apiKey = newApiKey;
       const res = await coreApi.raw('PUT', '/api/ai/config', payload);
-      if (!res.ok) throw new Error((res.data).error || 'Error');
-      setCfg({ ...EMPTY, ...(res.data) });
+      if (!res.ok) throw new Error(res.data.error || 'Error');
+      setCfg({ ...EMPTY, ...res.data });
       setNewApiKey('');
       toast.success('Configuración guardada');
     } catch (e) {
@@ -263,7 +280,10 @@ export const AiSettingsTab: React.FC = () => {
     if (!hfQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await coreApi.raw('GET', `/api/ai/local/models/search?q=${encodeURIComponent(hfQuery)}`);
+      const res = await coreApi.raw(
+        'GET',
+        `/api/ai/local/models/search?q=${encodeURIComponent(hfQuery)}`,
+      );
       const data = res.data;
       if (!res.ok) throw new Error(data.error || 'Error al buscar');
       setHfResults(data.results || []);
@@ -284,9 +304,13 @@ export const AiSettingsTab: React.FC = () => {
       [name]: { status: 'iniciando…', pct: -1, completedMb: 0, totalMb: 0 },
     }));
     try {
-      const res = await apiClient.postStream('/api/ai/local/models/pull', { name }, {
-        signal: controller.signal,
-      });
+      const res = await apiClient.postStream(
+        '/api/ai/local/models/pull',
+        { name },
+        {
+          signal: controller.signal,
+        },
+      );
       if (!res.body) throw new Error('Sin cuerpo de respuesta');
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -366,20 +390,23 @@ export const AiSettingsTab: React.FC = () => {
     }
     setApplyingContext(true);
     try {
-      const res = await coreApi.raw('POST', '/api/ai/local/models/apply-context', { baseModel: cfg.model, contextWindow: cfg.contextWindow });
+      const res = await coreApi.raw('POST', '/api/ai/local/models/apply-context', {
+        baseModel: cfg.model,
+        contextWindow: cfg.contextWindow,
+      });
       const data = res.data;
       if (!res.ok) throw new Error(data.error || 'Error al aplicar la ventana de contexto');
 
       const putRes = await coreApi.raw('PUT', '/api/ai/config', {
-          enabled: cfg.enabled,
-          provider: cfg.provider,
-          model: data.modelName,
-          baseUrl: cfg.baseUrl,
-          localBackend: cfg.localBackend,
-          contextWindow: cfg.contextWindow,
-          supportsImages: cfg.supportsImages,
-        });
-      if (putRes.ok) setCfg({ ...EMPTY, ...(putRes.data) });
+        enabled: cfg.enabled,
+        provider: cfg.provider,
+        model: data.modelName,
+        baseUrl: cfg.baseUrl,
+        localBackend: cfg.localBackend,
+        contextWindow: cfg.contextWindow,
+        supportsImages: cfg.supportsImages,
+      });
+      if (putRes.ok) setCfg({ ...EMPTY, ...putRes.data });
       toast.success(`Modelo creado y seleccionado: ${data.modelName}`);
       void loadLocalModels();
     } catch (e) {
@@ -391,7 +418,10 @@ export const AiSettingsTab: React.FC = () => {
 
   const removeModel = async (name: string) => {
     try {
-      const res = await coreApi.raw('DELETE', `/api/ai/local/models?name=${encodeURIComponent(name)}`);
+      const res = await coreApi.raw(
+        'DELETE',
+        `/api/ai/local/models?name=${encodeURIComponent(name)}`,
+      );
       const data = res.data;
       if (!res.ok) throw new Error(data.error || 'Error al borrar');
       toast.success(`Modelo ${name} eliminado`);
@@ -410,17 +440,14 @@ export const AiSettingsTab: React.FC = () => {
     <div className="space-y-6">
       <Card>
         <div className="p-5 space-y-4">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <Bot size={18} />
             <h2 className="text-lg font-bold">Proveedor de IA</h2>
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={cfg.enabled}
-              onChange={(e) => setCfg({ ...cfg, enabled: e.target.checked })}
-            />
+          {/* Checkbox y no Switch: el flag se persiste con «Guardar», no al marcarlo. */}
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox checked={cfg.enabled} onChange={(v) => setCfg({ ...cfg, enabled: v })} />
             <span>Activar el asistente de IA en este tenant</span>
           </label>
 
@@ -447,8 +474,8 @@ export const AiSettingsTab: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             {activeProvider?.needsApiKey !== false && (
               <Field label="API key" hint={cfg.apiKeySet ? 'guardada' : undefined}>
-                <Input
-                  type="password"
+                {/* Sin showStrength ni generator: la key la emite el proveedor. */}
+                <PasswordInput
                   value={newApiKey}
                   onChange={(e) => setNewApiKey(e.target.value)}
                   placeholder={cfg.apiKeySet ? '•••••••• (dejar vacío = no cambiar)' : 'API key'}
@@ -466,7 +493,9 @@ export const AiSettingsTab: React.FC = () => {
             )}
             {isLocal && (
               <Field label="Backend local">
-                <SearchableSelect
+                {/* Dos opciones fijas: Select, no SearchableSelect. */}
+                <Select
+                  ariaLabel="Backend local"
                   options={[
                     { value: 'ollama', label: 'Ollama' },
                     { value: 'vllm', label: 'vLLM' },
@@ -480,11 +509,10 @@ export const AiSettingsTab: React.FC = () => {
             )}
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Checkbox
               checked={cfg.supportsImages}
-              onChange={(e) => setCfg({ ...cfg, supportsImages: e.target.checked })}
+              onChange={(v) => setCfg({ ...cfg, supportsImages: v })}
             />
             <span>El modelo elegido acepta imágenes (visión)</span>
           </label>
@@ -526,7 +554,7 @@ export const AiSettingsTab: React.FC = () => {
       {isLocal && cfg.localBackend === 'vllm' && (
         <Card>
           <div className="p-5 space-y-2">
-            <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200">Modelos (vLLM)</h2>
+            <h2 className="text-lg font-bold text-fg-body">Modelos (vLLM)</h2>
             <p className="text-xs text-slate-500">
               vLLM carga su modelo desde Hugging Face al arrancar el contenedor (repo id +
               HF_TOKEN); no se descargan modelos en caliente. Usa el buscador para localizar el repo
@@ -540,9 +568,7 @@ export const AiSettingsTab: React.FC = () => {
         <Card>
           <div className="p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200">
-                Modelos locales (Ollama)
-              </h2>
+              <h2 className="text-lg font-bold text-fg-body">Modelos locales (Ollama)</h2>
               <Button variant="secondary" onClick={loadLocalModels} disabled={loadingLocal}>
                 <span className="inline-flex items-center gap-2">
                   <RefreshCw size={14} className={loadingLocal ? 'animate-spin' : ''} />
@@ -559,7 +585,7 @@ export const AiSettingsTab: React.FC = () => {
             )}
 
             {local && local.reachable && (
-              <div className="text-xs p-2 rounded-md bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 space-y-1">
+              <div className="text-xs p-2 rounded-md bg-bg-muted text-fg-body space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold uppercase tracking-wider text-[10px] text-slate-500">
                     Motor de ejecución
@@ -585,9 +611,9 @@ export const AiSettingsTab: React.FC = () => {
             )}
 
             {local && local.reachable && (
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 p-4 space-y-3">
+              <div className="rounded-lg border border-border-default bg-bg-muted p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold text-sm">
+                  <div className="flex items-center gap-2 text-fg-body font-bold text-sm">
                     <span className="p-1.5 rounded-md bg-accent/10 text-accent">
                       <Gauge size={14} />
                     </span>
@@ -657,7 +683,7 @@ export const AiSettingsTab: React.FC = () => {
                     className={`flex items-center gap-3 text-sm rounded-lg px-3 py-2.5 transition-colors ${
                       cfg.model === m.name
                         ? 'border border-accent/40 bg-accent/5'
-                        : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                        : 'border border-border-default hover:bg-bg-hover'
                     }`}
                   >
                     <ModelAvatar name={m.name} />
@@ -675,13 +701,15 @@ export const AiSettingsTab: React.FC = () => {
                     >
                       {cfg.model === m.name ? 'En uso' : 'Usar'}
                     </Button>
-                    <button
-                      className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       title="Eliminar modelo"
                       onClick={() => removeModel(m.name)}
                     >
                       <Trash2 size={14} />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -713,7 +741,7 @@ export const AiSettingsTab: React.FC = () => {
               </div>
             )}
 
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+            <div className="pt-2 border-t border-border-default">
               <Button
                 variant="secondary"
                 onClick={() => setHfModalOpen(true)}
@@ -803,7 +831,7 @@ const ModelRow: React.FC<{
   onDownload,
   onCancel,
 }) => (
-  <div className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-accent/30 hover:bg-accent/[0.03] transition-colors px-3 py-2.5 space-y-2">
+  <div className="rounded-lg border border-border-default hover:border-accent/30 hover:bg-accent/[0.03] transition-colors px-3 py-2.5 space-y-2">
     <div className="flex items-center gap-3 text-sm">
       <ModelAvatar name={id} />
       <div className="flex-1 min-w-0">
@@ -811,7 +839,7 @@ const ModelRow: React.FC<{
         {description && <div className="text-[11px] text-slate-400 break-all">{description}</div>}
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
           {sizeGb !== undefined && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-bg-muted text-fg-muted">
               ~{sizeGb} GB
             </span>
           )}
@@ -821,11 +849,7 @@ const ModelRow: React.FC<{
             </span>
           )}
         </div>
-        {pullName && (
-          <code className="text-[10px] text-slate-400 dark:text-slate-500 break-all">
-            {pullName}
-          </code>
-        )}
+        {pullName && <code className="text-[10px] text-fg-subtle break-all">{pullName}</code>}
       </div>
       {download && !download.failed ? (
         <Button variant="secondary" onClick={onCancel}>

@@ -5,16 +5,16 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Loader,
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
   SearchableSelect,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { Plus, ArrowLeft, Save, Download, Eye } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import {
   useDocument,
   useDataTable,
@@ -99,10 +99,8 @@ const DocumentList: React.FC<{
       sortAccessor: (item: any) => item.docCode || '',
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {formatDocCode(item)}
-          </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
+          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="text-[10px] text-fg-subtle font-mono mt-1">
             ID: {item.id.substring(0, 8)}
           </span>
         </div>
@@ -120,7 +118,7 @@ const DocumentList: React.FC<{
       sortAccessor: (item: any) => item.partnerName || '',
       accessor: (item: any) => (
         <div>
-          <p className="font-bold text-slate-700 dark:text-slate-200">{item.partnerName}</p>
+          <p className="font-bold text-fg-body">{item.partnerName}</p>
           <p className="text-[10px] text-slate-400 uppercase mt-1">
             CIE: {item.partnerId?.substring(0, 6)}
           </p>
@@ -133,9 +131,7 @@ const DocumentList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
       accessor: (item: any) => (
-        <span className="font-black text-slate-900 dark:text-slate-100">
-          {fmt.money(item.total)}
-        </span>
+        <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
       ),
     },
     {
@@ -151,42 +147,12 @@ const DocumentList: React.FC<{
         return <Badge variant={props.variant}>{props.label}</Badge>;
       },
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (item: any) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickPdf(item.id);
-            }}
-            isLoading={downloadingId === item.id}
-            className="h-8 w-8 p-0"
-            title="PDF"
-          >
-            <Download size={14} />
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDetail(item);
-            }}
-          >
-            Ver
-          </Button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (item: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que no hay que duplicarlas
+  // entre una columna de botones y el menú contextual.
+  const rowActions = (item: any): RowAction[] => [
     { label: 'Ver', icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: 'Descargar PDF',
@@ -197,23 +163,20 @@ const DocumentList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100">
-            {config.labelPlural}
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Gestiona todos los {config.labelPlural.toLowerCase()}
-          </p>
-        </div>
-        {canWrite && (
-          <div className="flex items-center gap-3">
-            <Button onClick={onCreate} className="gap-2">
+      <PageHeader
+        size="lg"
+        divider
+        className="pb-8"
+        title={config.labelPlural}
+        subtitle={`Gestiona todos los ${config.labelPlural.toLowerCase()}`}
+        actions={
+          canWrite && (
+            <Button type="button" onClick={onCreate} className="gap-2">
               <Plus size={16} /> Nuevo {config.label}
             </Button>
-          </div>
-        )}
-      </div>
+          )
+        }
+      />
 
       <div className="flex gap-2 mb-4">
         <Input
@@ -247,9 +210,7 @@ const DocumentList: React.FC<{
             {
               label: 'Total',
               value: (item: any) => (
-                <span className="font-black text-slate-900 dark:text-slate-100">
-                  {fmt.money(item.total)}
-                </span>
+                <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
               ),
             },
           ]}
@@ -267,21 +228,14 @@ const DocumentList: React.FC<{
         />
       ) : (
         <Table
-          columns={ctxColumns}
+          columns={columns}
           data={filteredData || []}
           isLoading={loading}
+          rowActions={rowActions}
           onRowClick={onDetail}
           selectable
           selectedKeys={selectedKeys}
           onSelectionChange={setSelectedKeys}
-        />
-      )}
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
         />
       )}
     </div>
@@ -315,9 +269,9 @@ const DocumentForm: React.FC<{
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
-        <button onClick={onCancel} className="flex items-center gap-2 text-sm text-slate-500">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="gap-2">
           <ArrowLeft size={16} /> Volver
-        </button>
+        </Button>
         <div className="flex gap-3">
           <Button variant="ghost" onClick={onCancel}>
             Cancelar
@@ -379,11 +333,7 @@ const DocumentForm: React.FC<{
           </div>
           <div>
             <label className="block text-xs font-mono uppercase text-slate-500 mb-1">Fecha</label>
-            <Input
-              type="date"
-              value={state.date}
-              onChange={(e) => setState.setDate(e.target.value)}
-            />
+            <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
           </div>
           {masters.warehouses.length > 0 && (
             <div>
@@ -456,9 +406,9 @@ const DocumentDetail: React.FC<{
 
   return (
     <div className="p-4 space-y-6">
-      <button onClick={onBack} className="flex items-center gap-2 text-sm text-slate-500">
+      <Button type="button" variant="ghost" size="sm" onClick={onBack} className="gap-2">
         <ArrowLeft size={16} /> Volver
-      </button>
+      </Button>
       <Card className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div>

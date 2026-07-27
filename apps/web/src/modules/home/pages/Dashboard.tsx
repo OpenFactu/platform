@@ -4,9 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { Slot } from '@/components/Slot';
 import { DashboardPluginWidgets } from '@/components/plugins/DashboardPluginWidgets';
 import { UserDashboardWidgets } from '@/components/dashboard/UserDashboardWidgets';
-import { Card, Badge, DashboardSkeleton } from '@openfactu/ui';
+import {
+  Card,
+  Badge,
+  PageHeader,
+  SkeletonPage,
+  SegmentedControl,
+  EmptyState as UiEmptyState,
+} from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
 import { useFormat } from '@/hooks/useFormat';
 import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
 import {
@@ -25,21 +31,7 @@ import {
   PackageCheck,
   Inbox,
 } from 'lucide-react';
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
+import { Chart } from '@openfactu/ui/charts';
 
 interface DashboardSummary {
   period: { id: string; code: string; name: string; startDate: string; endDate: string } | null;
@@ -107,16 +99,13 @@ const DOC_TYPE_ICONS: Record<string, any> = {
   purchaseDeliveryNote: Truck,
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  Abiertas: '#f59e0b', // amber
-  Cerradas: '#10b981', // emerald
-  Parcial: '#3b82f6', // blue
-  Anuladas: '#94a3b8', // slate
-};
+const SCOPE_OPTIONS: { value: 'active' | 'all'; label: string }[] = [
+  { value: 'active', label: 'Periodo activo' },
+  { value: 'all', label: 'Histórico' },
+];
 
 export const Dashboard: React.FC = () => {
   const { token, user } = useAuth();
-  const { branding } = useTheme();
   const fmt = useFormat();
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardSummary | null>(null);
@@ -130,10 +119,6 @@ export const Dashboard: React.FC = () => {
   const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
   const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevFeedRef = useRef<Set<string>>(new Set());
-
-  const isDark = branding.themeMode === 'dark';
-  const axisColor = isDark ? '#94a3b8' : '#64748b';
-  const gridColor = isDark ? '#1e293b' : '#e2e8f0';
 
   const load = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -242,14 +227,19 @@ export const Dashboard: React.FC = () => {
     });
   }, [data]);
 
-  if (loading) return <DashboardSkeleton />;
-
-  if (error || !data) {
+  // DashboardSkeleton está deprecado (se va en la v0.5) y además traía su propio
+  // `p-8 max-w-7xl mx-auto`, que no es el contenedor de esta página. SkeletonPage
+  // se ajusta al layout real: cabecera, las 8 tarjetas KPI de las dos filas y los
+  // bloques de contenido.
+  if (loading)
     return (
-      <div className="p-12 text-center text-slate-500 dark:text-slate-400">
-        {error || 'Sin datos disponibles'}
+      <div className="p-4 w-full space-y-6">
+        <SkeletonPage header kpis={8} columns={12} blocks={4} />
       </div>
     );
+
+  if (error || !data) {
+    return <div className="p-12 text-center text-fg-muted">{error || 'Sin datos disponibles'}</div>;
   }
 
   const salesDelta = computeDelta(data.sales.total, data.sales.prevTotal);
@@ -270,51 +260,40 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-6 duration-500">
-      <header className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter font-display">
-            Business Overview
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium text-sm flex items-center gap-2">
-            <CalendarDays size={14} className="text-slate-400 dark:text-slate-400" />
+      <PageHeader
+        title="Business Overview"
+        subtitle={
+          <span className="flex items-center gap-2">
+            <CalendarDays size={14} className="text-fg-subtle" />
             {periodLabel}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Toggle filtro de período */}
-          <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
-            <button
-              onClick={() => setScope('active')}
-              className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                scope === 'active'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
+          </span>
+        }
+        size="md"
+        actions={
+          <div className="flex items-center gap-2">
+            {/* Toggle filtro de período: es un filtro de lo que se está viendo, no
+                un cambio de vista, así que va con SegmentedControl (grupo de radio). */}
+            <SegmentedControl
+              options={SCOPE_OPTIONS}
+              value={scope}
+              // SegmentedControl emite string; el estado es la unión 'all' | 'active'.
+              onChange={(v) => setScope(v as 'all' | 'active')}
+              size="sm"
+              uppercase
+              aria-label="Ámbito del periodo"
+            />
+            <Badge
+              variant="success"
+              className="px-2.5 py-1 text-[10px] font-black uppercase flex items-center gap-1.5"
+              title={liveEvents > 0 ? `${liveEvents} eventos recibidos` : 'Canal en vivo activo'}
             >
-              Periodo activo
-            </button>
-            <button
-              onClick={() => setScope('all')}
-              className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors ${
-                scope === 'all'
-                  ? 'bg-blue-500 text-white'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              Histórico
-            </button>
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline">En vivo</span>
+              {liveEvents > 0 && <span className="opacity-70">{liveEvents}</span>}
+            </Badge>
           </div>
-          <Badge
-            variant="success"
-            className="px-2.5 py-1 text-[10px] font-black uppercase flex items-center gap-1.5"
-            title={liveEvents > 0 ? `${liveEvents} eventos recibidos` : 'Canal en vivo activo'}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="hidden sm:inline">En vivo</span>
-            {liveEvents > 0 && <span className="opacity-70">{liveEvents}</span>}
-          </Badge>
-        </div>
-      </header>
+        }
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -405,44 +384,15 @@ export const Dashboard: React.FC = () => {
                 hint="Aún no hay facturas para mostrar."
               />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyData} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke={gridColor} strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="month" stroke={axisColor} fontSize={11} />
-                  <YAxis
-                    stroke={axisColor}
-                    fontSize={11}
-                    tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: isDark ? '#0f172a' : '#fff',
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 8,
-                      color: isDark ? '#f1f5f9' : '#0f172a',
-                      fontSize: 12,
-                    }}
-                    formatter={(v: any) => fmt.money(Number(v))}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line
-                    type="monotone"
-                    dataKey="Ventas"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="Compras"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              <Chart
+                type="line"
+                data={monthlyData}
+                xKey="month"
+                series={[{ key: 'Ventas' }, { key: 'Compras' }]}
+                height={288}
+                valueFormat={(v) => fmt.money(v)}
+                aria-label="Tendencia mensual de ventas y compras"
+              />
             )}
           </div>
         </Card>
@@ -456,34 +406,14 @@ export const Dashboard: React.FC = () => {
                 hint="Todavía no hay facturas registradas."
               />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={data.invoiceStatus}
-                    dataKey="count"
-                    nameKey="label"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={85}
-                    paddingAngle={2}
-                  >
-                    {data.invoiceStatus.map((entry, idx) => (
-                      <Cell key={`cell-${idx}`} fill={STATUS_COLORS[entry.label] || '#94a3b8'} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: isDark ? '#0f172a' : '#fff',
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 8,
-                      color: isDark ? '#f1f5f9' : '#0f172a',
-                      fontSize: 12,
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11 }} verticalAlign="bottom" />
-                </PieChart>
-              </ResponsiveContainer>
+              <Chart
+                type="donut"
+                data={data.invoiceStatus}
+                xKey="label"
+                series={[{ key: 'count' }]}
+                height={288}
+                aria-label="Distribución de facturas por estado"
+              />
             )}
           </div>
         </Card>
@@ -500,39 +430,16 @@ export const Dashboard: React.FC = () => {
                 hint="Aún no hay facturación de clientes."
               />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={topCustomersBars}
-                  layout="vertical"
-                  margin={{ left: 16, right: 16 }}
-                >
-                  <CartesianGrid stroke={gridColor} strokeDasharray="3 3" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    stroke={axisColor}
-                    fontSize={10}
-                    tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
-                  />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    stroke={axisColor}
-                    fontSize={11}
-                    width={120}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: isDark ? '#0f172a' : '#fff',
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 8,
-                      color: isDark ? '#f1f5f9' : '#0f172a',
-                      fontSize: 12,
-                    }}
-                    formatter={(v: any) => fmt.money(Number(v))}
-                  />
-                  <Bar dataKey="total" fill="#10b981" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <Chart
+                type="bar"
+                layout="vertical"
+                data={topCustomersBars}
+                xKey="name"
+                series={[{ key: 'total' }]}
+                height={288}
+                valueFormat={(v) => fmt.money(v)}
+                aria-label="Top clientes por facturación"
+              />
             )}
           </div>
         </Card>
@@ -546,39 +453,16 @@ export const Dashboard: React.FC = () => {
                 hint="Aún no hay facturación de proveedores."
               />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={topSuppliersBars}
-                  layout="vertical"
-                  margin={{ left: 16, right: 16 }}
-                >
-                  <CartesianGrid stroke={gridColor} strokeDasharray="3 3" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    stroke={axisColor}
-                    fontSize={10}
-                    tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
-                  />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    stroke={axisColor}
-                    fontSize={11}
-                    width={120}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: isDark ? '#0f172a' : '#fff',
-                      border: `1px solid ${gridColor}`,
-                      borderRadius: 8,
-                      color: isDark ? '#f1f5f9' : '#0f172a',
-                      fontSize: 12,
-                    }}
-                    formatter={(v: any) => fmt.money(Number(v))}
-                  />
-                  <Bar dataKey="total" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <Chart
+                type="bar"
+                layout="vertical"
+                data={topSuppliersBars}
+                xKey="name"
+                series={[{ key: 'total' }]}
+                height={288}
+                valueFormat={(v) => fmt.money(v)}
+                aria-label="Top proveedores por facturación"
+              />
             )}
           </div>
         </Card>
@@ -598,7 +482,7 @@ export const Dashboard: React.FC = () => {
               hint="Crea una factura o un albarán para verlo aquí."
             />
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            <ul className="divide-y divide-border-subtle">
               {data.recentDocs.map((d) => {
                 const Icon = DOC_TYPE_ICONS[d.type] || FileText;
                 return (
@@ -611,25 +495,17 @@ export const Dashboard: React.FC = () => {
                         <Icon size={16} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-400 dark:text-slate-400 font-bold uppercase tracking-wide">
+                        <p className="text-xs text-fg-subtle font-bold uppercase tracking-wide">
                           {DOC_TYPE_LABELS[d.type] || d.type}
                         </p>
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                          {d.code}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                          {d.partnerName || '—'}
-                        </p>
+                        <p className="text-sm font-bold text-fg-default truncate">{d.code}</p>
+                        <p className="text-xs text-fg-muted truncate">{d.partnerName || '—'}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                          {fmt.money(d.total)}
-                        </p>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-400">
-                          {fmt.date(d.date)}
-                        </p>
+                        <p className="text-sm font-bold text-fg-default">{fmt.money(d.total)}</p>
+                        <p className="text-[11px] text-fg-subtle">{fmt.date(d.date)}</p>
                       </div>
-                      <ChevronRight size={14} className="text-slate-300 dark:text-slate-300" />
+                      <ChevronRight size={14} className="text-fg-subtle" />
                     </button>
                   </li>
                 );
@@ -651,16 +527,14 @@ export const Dashboard: React.FC = () => {
                 {data.stockAlerts.lowStock.map((it) => (
                   <li key={it.id} className="flex items-center justify-between text-sm">
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                        {it.name}
-                      </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-400">{it.code}</p>
+                      <p className="font-bold text-fg-default truncate">{it.name}</p>
+                      <p className="text-[11px] text-fg-subtle">{it.code}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-rose-600 dark:text-rose-300">
                         {Number(it.stock).toFixed(2)}
                       </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-400">
+                      <p className="text-[11px] text-fg-subtle">
                         min {Number(it.minStock).toFixed(2)}
                       </p>
                     </div>
@@ -682,18 +556,14 @@ export const Dashboard: React.FC = () => {
                 {data.stockAlerts.expiringBatches.map((b) => (
                   <li key={b.id} className="flex items-center justify-between text-sm">
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                        {b.itemName}
-                      </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-400">
-                        Lote {b.batchNum}
-                      </p>
+                      <p className="font-bold text-fg-default truncate">{b.itemName}</p>
+                      <p className="text-[11px] text-fg-subtle">Lote {b.batchNum}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-amber-600 dark:text-amber-300">
                         {fmt.date(b.expiryDate)}
                       </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-400">
+                      <p className="text-[11px] text-fg-subtle">
                         {Number(b.quantity).toFixed(2)} ud
                       </p>
                     </div>
@@ -711,14 +581,12 @@ export const Dashboard: React.FC = () => {
           {!data.topItems || data.topItems.length === 0 ? (
             <EmptyState icon={Package} title="Sin ventas" hint="Aún no hay líneas facturadas." />
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            <ul className="divide-y divide-border-subtle">
               {data.topItems.map((it) => (
                 <li key={it.id} className="py-2.5 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate">
-                      {it.name}
-                    </p>
-                    <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                    <p className="font-bold text-fg-default text-sm truncate">{it.name}</p>
+                    <p className="text-[11px] font-mono text-fg-subtle">
                       {it.code} · {it.qty} uds
                     </p>
                   </div>
@@ -743,14 +611,14 @@ export const Dashboard: React.FC = () => {
               hint="Los movimientos aparecerán aquí."
             />
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800 max-h-96 overflow-y-auto overflow-x-hidden scrollbar-hide">
+            <ul className="divide-y divide-border-subtle max-h-96 overflow-y-auto overflow-x-hidden scrollbar-hide">
               {data.activityFeed.map((ev, i) => {
                 const id = `${ev.type}|${ev.createdAt}`;
                 const isFresh = freshIds.has(id);
                 return (
                   <li
                     key={`${id}-${i}`}
-                    className={`relative py-2 flex items-center gap-3 min-w-0 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 px-2 -mx-2 rounded-md cursor-pointer transition-colors ${
+                    className={`relative py-2 flex items-center gap-3 min-w-0 hover:bg-bg-hover px-2 -mx-2 rounded-md cursor-pointer transition-colors ${
                       isFresh
                         ? 'bg-blue-50 dark:bg-blue-500/10 animate-in slide-in-from-top-2 fade-in duration-500'
                         : ''
@@ -763,7 +631,7 @@ export const Dashboard: React.FC = () => {
                       }`}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-700 dark:text-slate-200 truncate">
+                      <p className="text-sm text-fg-body truncate">
                         {ev.label}
                         {isFresh && (
                           <span className="ml-2 text-[9px] font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded">
@@ -771,7 +639,7 @@ export const Dashboard: React.FC = () => {
                           </span>
                         )}
                       </p>
-                      <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                      <p className="text-[10px] font-mono text-fg-subtle">
                         {new Date(ev.createdAt).toLocaleString('es-ES', {
                           day: '2-digit',
                           month: 'short',
@@ -781,7 +649,7 @@ export const Dashboard: React.FC = () => {
                       </p>
                     </div>
                     {ev.amount != null && (
-                      <span className="flex-shrink-0 font-bold tabular-nums text-xs text-slate-700 dark:text-slate-300">
+                      <span className="flex-shrink-0 font-bold tabular-nums text-xs text-fg-body">
                         {fmt.money(ev.amount)}
                       </span>
                     )}
@@ -823,7 +691,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
 }) => {
   const deltaColor =
     delta == null
-      ? 'text-slate-400 dark:text-slate-400'
+      ? 'text-fg-subtle'
       : delta >= 0
         ? 'text-emerald-600 dark:text-emerald-400'
         : 'text-rose-600 dark:text-rose-400';
@@ -832,15 +700,13 @@ const KpiCard: React.FC<KpiCardProps> = ({
     <Card className="relative group transition-all">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 tracking-wider leading-tight mb-1.5 line-clamp-1">
+          <p className="text-[9px] sm:text-[10px] font-black uppercase text-fg-subtle tracking-wider leading-tight mb-1.5 line-clamp-1">
             {label}
           </p>
-          <p className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight truncate tabular-nums">
+          <p className="text-lg sm:text-2xl font-black text-fg-default tracking-tight truncate tabular-nums">
             {value}
           </p>
-          <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-            {subtitle}
-          </p>
+          <p className="text-[10px] sm:text-[11px] text-fg-muted mt-0.5 truncate">{subtitle}</p>
           <p
             className={`text-[10px] sm:text-[11px] font-bold mt-1.5 flex items-center gap-1 truncate ${deltaColor}`}
             title={
@@ -863,16 +729,12 @@ const KpiCard: React.FC<KpiCardProps> = ({
   );
 };
 
+// Adaptador sobre el EmptyState de @openfactu/ui: los ~10 llamantes de este
+// archivo pasan el icono como componente (icon={Package}) y la librería lo
+// espera ya como elemento. Así se quita el estado vacío pintado a mano sin
+// tocar cada uso.
 const EmptyState: React.FC<{ icon: any; title: string; hint: string }> = ({
   icon: Icon,
   title,
   hint,
-}) => (
-  <div className="h-full flex flex-col items-center justify-center text-center space-y-2">
-    <div className="mx-auto w-12 h-12 bg-surface dark:bg-ink-800 border-2 border-dashed border-line dark:border-ink-700 rounded-sm flex items-center justify-center text-ink-400 dark:text-slate-300">
-      <Icon size={20} />
-    </div>
-    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{title}</p>
-    <p className="text-xs text-slate-400 dark:text-slate-400">{hint}</p>
-  </div>
-);
+}) => <UiEmptyState icon={<Icon size={18} />} title={title} hint={hint} className="h-full" />;

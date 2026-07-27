@@ -1,7 +1,18 @@
 import { paymentTermsApi } from '../api';
 import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
-import { Button, Input, useToast, usePopup, Badge } from '@openfactu/ui';
+import {
+  Button,
+  Input,
+  Table,
+  useToast,
+  usePopup,
+  Badge,
+  Checkbox,
+  NumberInput,
+  PercentInput,
+} from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X, CalendarClock, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { PaymentTerm, PaymentTermLine as SplitLine } from '../domain/accounting';
@@ -72,7 +83,7 @@ export const PaymentTermsEditor: React.FC = () => {
 
   const renderSummary = (t: PaymentTerm) => {
     if (!t.lines || t.lines.length === 0)
-      return <span className="text-slate-400 italic">sin splits</span>;
+      return <span className="text-fg-subtle italic">sin splits</span>;
     if (t.lines.length === 1) {
       const l = t.lines[0];
       return (
@@ -88,13 +99,37 @@ export const PaymentTermsEditor: React.FC = () => {
     );
   };
 
+  const columns: TableColumn<PaymentTerm>[] = [
+    { header: 'Nombre', accessor: 'name', sortable: true },
+    { header: 'Detalle', cell: (t) => renderSummary(t) },
+    {
+      header: 'Activo',
+      align: 'center',
+      cell: (t) =>
+        t.isActive ? <Badge variant="success">✓</Badge> : <Badge variant="neutral">—</Badge>,
+    },
+  ];
+
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho.
+  const rowActions = (t: PaymentTerm): RowAction[] => [
+    { label: 'Editar', icon: <Edit3 size={14} />, onClick: () => openEditor(t) },
+    {
+      label: 'Eliminar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      onClick: () => handleDelete(t.id, t.name),
+    },
+  ];
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider">
+        <p className="text-[11px] text-fg-subtle uppercase font-black tracking-wider">
           Contado, 30 días, 30/60…
         </p>
         <Button
+          type="button"
           variant="secondary"
           size="sm"
           onClick={() => openEditor(null)}
@@ -104,65 +139,15 @@ export const PaymentTermsEditor: React.FC = () => {
         </Button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            <tr>
-              <th className="text-left py-2">Nombre</th>
-              <th className="text-left py-2">Detalle</th>
-              <th className="text-center py-2 w-20">Activo</th>
-              <th className="text-right py-2 w-24">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={4} className="py-6 text-center text-slate-400 italic">
-                  Cargando…
-                </td>
-              </tr>
-            ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-6 text-center text-slate-400 italic">
-                  Sin plazos definidos
-                </td>
-              </tr>
-            ) : (
-              rows.map((t) => (
-                <tr key={t.id} className="border-t border-slate-100 dark:border-slate-800">
-                  <td className="py-2 font-bold">{t.name}</td>
-                  <td className="py-2">{renderSummary(t)}</td>
-                  <td className="py-2 text-center">
-                    {t.isActive ? (
-                      <Badge variant="success">✓</Badge>
-                    ) : (
-                      <Badge variant="neutral">—</Badge>
-                    )}
-                  </td>
-                  <td className="py-2 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openEditor(t)}
-                        className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded"
-                        title="Editar"
-                      >
-                        <Edit3 size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(t.id, t.name)}
-                        className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
-                        title="Eliminar"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* La Table trae cabecera, "cargando" y estado vacío: las tres ramas del
+          antiguo <tbody> sobraban. */}
+      <Table
+        columns={columns}
+        data={rows}
+        isLoading={loading}
+        rowActions={rowActions}
+        emptyMessage="Sin plazos definidos"
+      />
     </div>
   );
 };
@@ -261,11 +246,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
         </div>
         <div className="flex items-end">
           <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-            />
+            <Checkbox checked={isActive} onChange={setIsActive} />
             Activo
           </label>
         </div>
@@ -273,7 +254,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+          <label className="text-xs font-black uppercase tracking-wider text-fg-muted flex items-center gap-2">
             <CalendarClock size={14} /> Splits
           </label>
           <div className="flex items-center gap-2">
@@ -286,9 +267,12 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
           </div>
         </div>
 
-        <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        {/* Rejilla editable (días y porcentaje por split, con alta/baja de
+            líneas en caliente): se queda como <table> a mano — la Table del
+            paquete es de solo lectura. */}
+        <div className="border border-border-default rounded-lg overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900/60 text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="text-left py-2 px-3 w-12">#</th>
                 <th className="text-left py-2 px-3">Días desde la factura</th>
@@ -298,47 +282,47 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
             </thead>
             <tbody>
               {lines.map((l, i) => (
-                <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
+                <tr key={i} className="border-t border-border-subtle">
                   <td className="py-2 px-3 text-slate-400 font-mono">{i + 1}</td>
                   <td className="py-2 px-3">
-                    <input
-                      type="number"
-                      min={0}
+                    <NumberInput
                       value={l.days}
-                      onChange={(e) => updateLine(i, { days: Number(e.target.value) })}
-                      className="w-28 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono"
+                      onChange={(v) => updateLine(i, { days: v ?? 0 })}
+                      min={0}
+                      emptyValue="zero"
+                      inputSize="sm"
+                      containerClassName="w-28"
                     />
                   </td>
                   <td className="py-2 px-3">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={0.01}
-                        value={l.percentage}
-                        onChange={(e) => updateLine(i, { percentage: Number(e.target.value) })}
-                        className="w-24 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-mono"
-                      />
-                      <span className="text-slate-400 text-xs">%</span>
-                    </div>
+                    {/* PercentInput ya pone el sufijo %, los 2 decimales y el
+                        límite 0–100; el <span>%</span> de al lado sobraba. */}
+                    <PercentInput
+                      value={l.percentage}
+                      onChange={(v) => updateLine(i, { percentage: v ?? 0 })}
+                      emptyValue="zero"
+                      inputSize="sm"
+                      containerClassName="w-28"
+                    />
                   </td>
                   <td className="py-2 px-3 text-right">
                     {lines.length > 1 && (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => removeLine(i)}
-                        className="p-1 text-slate-400 hover:text-rose-600"
+                        title="Quitar plazo"
                       >
                         <Trash2 size={13} />
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-slate-50 dark:bg-slate-900/60 font-black">
+              <tr className="bg-bg-muted font-black">
                 <td colSpan={2} className="py-2 px-3 text-right text-xs uppercase">
                   Total porcentajes:
                 </td>
@@ -367,7 +351,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
         )}
       </div>
 
-      <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+      <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
           <X size={14} className="mr-1" /> Cancelar
         </Button>

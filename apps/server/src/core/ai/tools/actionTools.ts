@@ -32,7 +32,12 @@ import { DocumentRegistry } from '../../documents/DocumentRegistry';
 import * as schema from '../../../db/schema';
 import { CHART_TYPES, resolveQueryWidget, validateWidgetQuery } from '../declarativeWidget';
 import { buildVisualTemplate, type DocType } from '@openfactu/pdf';
-import { sandboxQuery, hasModuleAccess, DOC_TYPE_PERMISSION_PATH, type ChatToolContext } from './util';
+import {
+  sandboxQuery,
+  hasModuleAccess,
+  DOC_TYPE_PERMISSION_PATH,
+  type ChatToolContext,
+} from './util';
 import {
   TEMPLATE_DOC_TYPE_IDS,
   visualOptionsInputSchema,
@@ -104,7 +109,10 @@ export function buildActionTools(ctx: ChatToolContext) {
         if (!partner) {
           return {
             ok: false,
-            error: config.side === 'sales' ? 'El cliente indicado no existe' : 'El proveedor indicado no existe',
+            error:
+              config.side === 'sales'
+                ? 'El cliente indicado no existe'
+                : 'El proveedor indicado no existe',
           };
         }
 
@@ -288,7 +296,14 @@ export function buildActionTools(ctx: ChatToolContext) {
           name: input.name,
           html,
           isDefault: false,
-          legacyHtml: false,
+          // `legacyHtml: false` NO significa "moderna": el diseñador lo lee
+          // como "hecha con el diseñador canvas" (TemplateEditor.tsx:54) y
+          // fuerza el modo avanzado con un aviso de "si editas aquí perderás
+          // los cambios" — justo lo contrario de lo que promete el `note` de
+          // abajo. Lo que hace editable esta plantilla es el meta que
+          // `buildVisualTemplate` incrusta en el HTML: con él, el diseñador
+          // reconstruye las VisualOptions exactas y abre en modo Visual.
+          legacyHtml: true,
         });
         return {
           ok: true,

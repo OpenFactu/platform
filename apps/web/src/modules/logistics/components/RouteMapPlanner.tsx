@@ -2,6 +2,7 @@ import { shipmentsApi } from '../api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Marker, Source, Layer } from 'react-map-gl/maplibre';
 import { BaseMap } from './maps/BaseMap';
+import { Button } from '@openfactu/ui';
 import { ArrowUp, ArrowDown, X, Zap } from 'lucide-react';
 import type { UnroutedShipment } from '../domain/route';
 
@@ -142,7 +143,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-      <div className="md:col-span-3 h-[420px] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+      <div className="md:col-span-3 h-[420px] rounded-lg overflow-hidden border border-border-default">
         {loading ? (
           <div className="h-full flex items-center justify-center text-sm text-slate-400">
             Cargando envíos…
@@ -201,17 +202,19 @@ export const RouteMapPlanner: React.FC<Props> = ({
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
             Paradas ({selectedIds.length})
           </div>
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={optimize}
             disabled={selectedIds.length < 2}
-            className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:cursor-not-allowed border border-amber-200"
             title="Reordena por proximidad (vecino más cercano)"
           >
             <Zap size={11} /> Optimizar
-          </button>
+          </Button>
         </div>
         {selectedIds.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-center text-[11px] text-slate-400 px-2 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700">
+          <div className="flex-1 flex items-center justify-center text-center text-[11px] text-slate-400 px-2 rounded-lg border-2 border-dashed border-border-default">
             Haz click en los pines del mapa para añadirlos a la ruta en el orden que quieras.
           </div>
         ) : (
@@ -221,7 +224,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
               return (
                 <li
                   key={id}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-bg-muted border border-border-default text-xs"
                 >
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">
                     {i + 1}
@@ -234,26 +237,35 @@ export const RouteMapPlanner: React.FC<Props> = ({
                       {s?.destinationAddress || '—'}
                     </div>
                   </div>
-                  <button
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => move(i, -1)}
                     disabled={i === 0}
-                    className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                    title="Subir"
                   >
                     <ArrowUp size={12} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => move(i, 1)}
                     disabled={i === selectedIds.length - 1}
-                    className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
+                    title="Bajar"
                   >
                     <ArrowDown size={12} />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => toggle(id)}
-                    className="p-1 text-slate-400 hover:text-rose-500"
+                    title="Quitar de la ruta"
                   >
                     <X size={12} />
-                  </button>
+                  </Button>
                 </li>
               );
             })}

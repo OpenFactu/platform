@@ -11,7 +11,12 @@ import {
   Badge,
   SearchableSelect,
   Checkbox,
+  Tabs,
+  EmptyState,
+  SearchInput,
+  PageHeader,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import {
   Users,
   Plus,
@@ -24,13 +29,10 @@ import {
   Search,
   Check,
 } from 'lucide-react';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useGeo, type GeoRow } from '@/hooks/useGeo';
 import { TaxIdInput } from '@/components/geo/TaxIdInput';
 import { PostalCodeInput } from '@/components/geo/PostalCodeInput';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { PhoneInput } from '@/components/geo/PhoneInput';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 import { usePluginListColumns } from '@/components/plugin-fields';
@@ -49,18 +51,12 @@ const FLAGS: Record<string, string> = {
   US: '🇺🇸',
 };
 
-const labelCls = 'text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block';
-const descCls = 'text-xs text-slate-400 dark:text-slate-500 mt-1';
-const sectionTitleCls =
-  'text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3';
-const sectionDescCls = 'text-xs text-slate-400 dark:text-slate-500 mb-3';
-const tabBaseCls =
-  'px-5 py-2.5 border-b-2 flex items-center gap-2 text-sm font-medium transition-colors';
-const tabActiveCls = 'border-accent text-accent';
-const tabInactiveCls =
-  'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300';
-const dividerCls = 'border-t border-slate-200 dark:border-slate-700';
-const footerCls = 'flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700';
+const labelCls = 'text-xs font-semibold text-fg-muted mb-1 block';
+const descCls = 'text-xs text-fg-subtle mt-1';
+const sectionTitleCls = 'text-xs font-bold uppercase tracking-wider text-fg-muted mb-3';
+const sectionDescCls = 'text-xs text-fg-subtle mb-3';
+const dividerCls = 'border-t border-border-default';
+const footerCls = 'flex justify-end gap-3 pt-4 border-t border-border-default';
 
 const TABS = [
   { key: 'general', label: 'General', icon: FileText },
@@ -130,24 +126,23 @@ const MunicipalitySearch: React.FC<MunicipalitySearchProps> = ({
 
   return (
     <div ref={wrapperRef} className="relative">
-      {label && <label className={labelCls}>{label}</label>}
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          value={query}
-          disabled={disabled || !subRegionId}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          placeholder={subRegionId ? 'Buscar municipio...' : 'Selecciona antes la provincia'}
-          className="w-full outline-none pl-9 pr-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 text-sm disabled:opacity-50 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
-        />
-      </div>
+      {/* El icono de lupa lo pinta `leftIcon`; el <label> pasa a la prop `label`,
+          igual que en el PostalCodeInput de al lado. */}
+      <Input
+        label={label}
+        type="text"
+        value={query}
+        disabled={disabled || !subRegionId}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder={subRegionId ? 'Buscar municipio...' : 'Selecciona antes la provincia'}
+        leftIcon={<Search size={14} />}
+      />
       {open && subRegionId && query.trim().length >= 1 && (
-        <div className="absolute left-0 right-0 top-full z-[100999] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg max-h-52 overflow-auto">
+        <div className="absolute left-0 right-0 top-full z-[100999] bg-bg-card border border-border-default shadow-lg max-h-52 overflow-auto">
           {loading ? (
             <div className="px-3 py-2 text-sm text-slate-400 italic">Buscando…</div>
           ) : results.length === 0 ? (
@@ -163,7 +158,7 @@ const MunicipalitySearch: React.FC<MunicipalitySearchProps> = ({
                       setQuery(r.name);
                       setOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between text-slate-700 dark:text-slate-200"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-bg-hover flex items-center justify-between text-fg-body"
                   >
                     <span>{r.name}</span>
                     {r.id === value && <Check size={14} className="text-accent" />}
@@ -193,6 +188,10 @@ export const Partners: React.FC = () => {
   const [groups, setGroups] = useState<PartnerGroup[]>([]);
   const [priceLists, setPriceLists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  // Valores de los campos que los plugins añaden a BusinessPartner. Viajan
+  // aparte del formulario fijo y se mezclan con él justo al guardar.
+  const [pluginValues, setPluginValues] = useState<Record<string, any>>({});
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'contact' | 'addresses' | 'fiscal'>(
@@ -303,6 +302,9 @@ export const Partners: React.FC = () => {
         bankSwift: partner.bankSwift || '',
       });
       setAddresses(partner.addresses?.map((a: any) => ({ ...a })) || []);
+      // La fila trae los campos de plugin como columnas sueltas, así que el
+      // propio registro sirve de origen de valores.
+      setPluginValues(partner);
     } else {
       setEditingId(null);
       setFormData({
@@ -325,6 +327,7 @@ export const Partners: React.FC = () => {
         bankSwift: '',
       });
       setAddresses([]);
+      setPluginValues({});
     }
     setActiveTab('general');
     setIsModalOpen(true);
@@ -379,16 +382,17 @@ export const Partners: React.FC = () => {
     e.preventDefault();
     if (!formData.name || !formData.groupId) return toast.error('Nombre y Grupo son obligatorios');
     try {
-      const payload = { ...formData, addresses };
+      // `pluginValues` va PRIMERO: arranca siendo el registro entero, así que
+      // si fuese después pisaría con los valores viejos los campos que se
+      // acaban de editar en el formulario.
+      const payload = { ...pluginValues, ...formData, addresses };
       if (editingId) await partnersApi.update(editingId, payload);
       else await partnersApi.create(payload);
       toast.success(editingId ? 'Interlocutor actualizado' : 'Interlocutor creado');
       setIsModalOpen(false);
       fetchPartners();
     } catch (err) {
-      toast.error(
-        err instanceof Error ? `Error: ${err.message}` : 'Error de red al guardar socio',
-      );
+      toast.error(err instanceof Error ? `Error: ${err.message}` : 'Error de red al guardar socio');
     }
   };
 
@@ -409,9 +413,7 @@ export const Partners: React.FC = () => {
         <span className="font-bold">
           {p.name}
           {p.foreignName && (
-            <span className="text-slate-400 dark:text-slate-500 font-normal text-xs ml-1">
-              ({p.foreignName})
-            </span>
+            <span className="text-fg-subtle font-normal text-xs ml-1">({p.foreignName})</span>
           )}
         </span>
       ),
@@ -428,23 +430,21 @@ export const Partners: React.FC = () => {
       header: 'Direcciones',
       cell: (p: any) => <Badge variant="info">{p.addresses?.length || 0}</Badge>,
     },
-    {
-      header: '',
-      cell: (p: any) => (
-        <Button variant="secondary" size="sm" onClick={() => openModal(p)} disabled={!canWrite}>
-          <Edit2 size={14} />
-        </Button>
-      ),
-    },
   ];
 
   const pluginCols = usePluginListColumns('BusinessPartner');
-  const actionsCol = columns[columns.length - 1];
-  const allColumns = [...columns.slice(0, -1), ...pluginCols, actionsCol];
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(allColumns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (p: any) => [
-    { label: 'Editar', icon: <Edit2 size={14} />, disabled: !canWrite, onClick: () => openModal(p) },
+  const allColumns = [...columns, ...pluginCols];
+
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que el permiso de escritura se
+  // declara una vez en lugar de duplicarse entre una columna de botones y el menú.
+  const rowActions = (p: any): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Edit2 size={14} />,
+      disabled: !canWrite,
+      onClick: () => openModal(p),
+    },
   ];
 
   const countryOptions = countries.map((c) => ({
@@ -452,38 +452,63 @@ export const Partners: React.FC = () => {
     value: c.code,
   }));
 
+  /**
+   * Filtro en cliente: el listado viene entero del servidor, así que basta con
+   * cribarlo aquí. Busca por todas las columnas visibles a la vez — código,
+   * razón social (y su nombre extranjero), NIF, grupo y contacto — porque el
+   * usuario no tiene por qué saber en cuál de ellas está lo que recuerda.
+   */
+  const visiblePartners = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return partners;
+    const groupName = (p: any) => groups.find((g) => g.id === p.groupId)?.name || '';
+    return partners.filter((p: any) =>
+      [p.code, p.name, p.foreignName, p.nif, p.email, p.phone, groupName(p)]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(q)),
+    );
+  }, [partners, groups, search]);
+
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-            <Users className="text-blue-600 dark:text-blue-300" size={32} />
-            Interlocutores
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Gestión centralizada de Clientes y Proveedores.
-          </p>
-        </div>
-        <Button
-          onClick={() => openModal()}
-          disabled={!canWrite}
-          className="flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:grayscale transition-all"
-        >
-          <Plus size={18} /> Nuevo Interlocutor
-        </Button>
-      </div>
+      <PageHeader
+        title="Interlocutores"
+        subtitle="Gestión centralizada de Clientes y Proveedores."
+        icon={<Users size={18} />}
+        size="lg"
+        actions={
+          <Button
+            type="button"
+            onClick={() => openModal()}
+            disabled={!canWrite}
+            className="flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:grayscale transition-all"
+          >
+            <Plus size={18} /> Nuevo Interlocutor
+          </Button>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
-        <Table columns={ctxColumns} data={partners} isLoading={loading} />
-      </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
+        <div className="p-3 border-b border-border-subtle">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar por código, razón social, NIF, grupo o contacto…"
+            clearable
+            containerClassName="max-w-md"
+          />
+        </div>
+        <Table
+          columns={allColumns}
+          data={visiblePartners}
+          isLoading={loading}
+          rowActions={rowActions}
+          onRowClick={(p: any) => openModal(p)}
+          emptyMessage={
+            search ? `Ningún interlocutor coincide con “${search}”.` : 'Aún no hay interlocutores.'
+          }
         />
-      )}
+      </Card>
 
       <Modal
         isOpen={isModalOpen}
@@ -492,24 +517,23 @@ export const Partners: React.FC = () => {
         maxWidth="5xl"
       >
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="flex border-b border-slate-200 dark:border-slate-700">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setActiveTab(t.key as typeof activeTab)}
-                className={`${tabBaseCls} ${activeTab === t.key ? tabActiveCls : tabInactiveCls}`}
-              >
-                <t.icon size={15} />
-                {t.label}
-                {t.key === 'addresses' && addresses.length > 0 && (
+          {/* Tabs variant="underline" reproduce el subrayado que se pintaba a mano
+              y añade la navegación con flechas del patrón WAI-ARIA tablist. */}
+          <Tabs
+            items={TABS.map((t) => ({
+              key: t.key,
+              label: t.label,
+              icon: <t.icon size={15} />,
+              badge:
+                t.key === 'addresses' && addresses.length > 0 ? (
                   <Badge variant="neutral" className="ml-1 scale-75">
                     {addresses.length}
                   </Badge>
-                )}
-              </button>
-            ))}
-          </div>
+                ) : undefined,
+            }))}
+            value={activeTab}
+            onChange={(key) => setActiveTab(key as typeof activeTab)}
+          />
 
           <div className="min-h-[300px]">
             {activeTab === 'general' && (
@@ -533,7 +557,7 @@ export const Partners: React.FC = () => {
                       placeholder="Se asignará automáticamente..."
                       value={formData.code}
                       readOnly
-                      className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-mono"
+                      className="bg-bg-muted text-fg-muted font-mono"
                     />
                   </div>
                 </div>
@@ -755,9 +779,16 @@ export const Partners: React.FC = () => {
                   </Button>
                 </div>
                 {addresses.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-sm border-2 border-dashed rounded-lg">
-                    No hay direcciones definidas. Añade una dirección de facturación o envío.
-                  </div>
+                  <EmptyState
+                    icon={<MapPin size={18} />}
+                    title="No hay direcciones definidas"
+                    hint="Añade una dirección de facturación o envío."
+                    action={
+                      <Button type="button" variant="secondary" size="sm" onClick={addAddress}>
+                        + Nueva Dirección
+                      </Button>
+                    }
+                  />
                 ) : (
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
                     {addresses.map((addr, idx) => {
@@ -767,15 +798,18 @@ export const Partners: React.FC = () => {
                       return (
                         <div
                           key={idx}
-                          className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50/50 dark:bg-slate-800/50 relative group"
+                          className="border border-border-default rounded-lg p-4 bg-bg-muted relative group"
                         >
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => removeAddress(idx)}
-                            className="absolute top-3 right-3 text-slate-400 dark:text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Quitar dirección"
+                            className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <Trash2 size={15} />
-                          </button>
+                          </Button>
 
                           <div className="grid grid-cols-3 gap-3 mb-3">
                             <div>
@@ -885,6 +919,17 @@ export const Partners: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Campos que los plugins añaden a BusinessPartner. El panel se
+              pintaba en el resto de fichas (plan contable, asientos, proyectos,
+              documentos) pero aquí solo estaba importado, así que los campos
+              personalizados salían en el listado y no había forma de rellenarlos. */}
+          <PluginFieldsPanel
+            tableName="BusinessPartner"
+            values={pluginValues}
+            onChange={(k, v) => setPluginValues((prev) => ({ ...prev, [k]: v }))}
+            layout="inline"
+          />
 
           {editingId && (
             <div className="mt-2">

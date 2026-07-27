@@ -57,13 +57,16 @@ export const BulkSendToolbar: React.FC<Props> = ({
     <>
       <div className="flex items-center justify-between gap-3 px-4 py-2 bg-accent/10 border-b border-accent/30 text-sm">
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
             onClick={onClear}
-            className="p-1 rounded-xs text-ink-500 hover:text-ink-900 dark:hover:text-slate-100"
+            className="p-1"
             title="Deseleccionar"
           >
             <X size={14} />
-          </button>
+          </Button>
           <span className="font-bold text-accent">
             {selectedKeys.size} seleccionado{selectedKeys.size === 1 ? '' : 's'}
           </span>

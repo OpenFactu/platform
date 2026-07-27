@@ -120,7 +120,7 @@ export function renderMessagePart(
             <ShieldQuestion size={14} />
             Confirmación requerida: {ACTION_LABELS[toolName] || toolName}
           </div>
-          <pre className="text-[11px] text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-all max-h-48 overflow-y-auto custom-scrollbar bg-white/60 dark:bg-slate-900/40 rounded p-2">
+          <pre className="text-[11px] text-fg-body whitespace-pre-wrap break-all max-h-48 overflow-y-auto custom-scrollbar bg-bg-card rounded p-2">
             {JSON.stringify(p.input, null, 2)}
           </pre>
           <div className="flex gap-2">
@@ -288,10 +288,7 @@ export function renderMessagePart(
       if (p.state === 'output-available' && questionOutput?.question) {
         if (isLastMessage) return null; // pendiente → la muestra PendingQuestionBar
         return (
-          <div
-            key={i}
-            className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400"
-          >
+          <div key={i} className="inline-flex items-center gap-1.5 text-[11px] text-fg-muted">
             <ShieldQuestion size={12} className="text-accent/70 shrink-0" />
             {questionOutput.step && (
               <span className="font-mono text-accent/70">
@@ -350,7 +347,7 @@ export function renderMessagePart(
               ? 'border-rose-200 text-rose-600 bg-rose-50 dark:bg-rose-900/20'
               : okAction
                 ? 'border-emerald-200 text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-300'
-                : 'border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60'
+                : 'border-border-default text-fg-muted bg-bg-muted'
           }`}
         >
           {done ? (

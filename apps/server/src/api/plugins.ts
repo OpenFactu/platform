@@ -273,11 +273,11 @@ router.post(
       // Limpiar archivo temporal
       fs.unlinkSync(req.file.path);
 
-      // Recargar el plugin si ya estaba cargado
-      if (activePlugins.includes(pluginName)) {
-        const { reloadPlugin } = await import('../plugins/loader');
-        await reloadPlugin(pluginName);
-
+      // Recargar en caliente también si es nuevo o falló en el boot:
+      // reloadPlugin lo incorpora a activePlugins tras un init() exitoso.
+      const { reloadPlugin } = await import('../plugins/loader');
+      const reloadResult = await reloadPlugin(pluginName);
+      if (reloadResult.success) {
         const { broadcastPluginReload } = await import('../plugins/devSocket');
         broadcastPluginReload(pluginName);
       }
@@ -295,7 +295,7 @@ router.post(
         hasManifest,
         message: activePlugins.includes(pluginName)
           ? 'Plugin actualizado y recargado'
-          : 'Plugin instalado. Reinicia el servidor para cargarlo.',
+          : `Plugin instalado pero no cargado: ${reloadResult.error || "su index no exporta init()"}`,
       });
     } catch (err: any) {
       // Limpiar archivo temporal
@@ -346,11 +346,11 @@ router.post('/:pluginId/push', devKeyOrAdmin('plugin:push'), async (req: any, re
       fs.writeFileSync(filePath, content);
     }
 
-    // Recargar si ya estaba cargado
-    if (activePlugins.includes(pluginId)) {
-      const { reloadPlugin } = await import('../plugins/loader');
-      await reloadPlugin(pluginId);
-
+    // Recargar en caliente también si no estaba cargado (plugin nuevo o que
+    // falló en el boot): reloadPlugin lo incorpora a activePlugins si init() va bien.
+    const { reloadPlugin } = await import('../plugins/loader');
+    const reloadResult = await reloadPlugin(pluginId);
+    if (reloadResult.success) {
       const { broadcastPluginReload } = await import('../plugins/devSocket');
       broadcastPluginReload(pluginId);
     }
@@ -360,6 +360,7 @@ router.post('/:pluginId/push', devKeyOrAdmin('plugin:push'), async (req: any, re
       pluginId,
       filesWritten: files.length,
       reloaded: activePlugins.includes(pluginId),
+      ...(reloadResult.success ? {} : { reloadError: reloadResult.error }),
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -373,7 +374,9 @@ router.post('/:pluginId/push', devKeyOrAdmin('plugin:push'), async (req: any, re
 router.post('/:pluginId/reload', devKeyOrAdmin('plugin:reload'), async (req: any, res) => {
   const { pluginId } = req.params;
 
-  if (!activePlugins.includes(pluginId)) {
+  // Comprobamos existencia en disco, no activePlugins: un plugin que falló en el
+  // boot debe poder recargarse en caliente (el reload lo añade a la lista).
+  if (!fs.existsSync(path.join(pluginsDir, pluginId))) {
     return res.status(404).json({ error: `Plugin "${pluginId}" no esta instalado` });
   }
 

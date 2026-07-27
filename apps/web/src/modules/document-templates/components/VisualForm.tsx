@@ -1,5 +1,12 @@
 import React from 'react';
-import { Input, SearchableSelect, cn } from '@openfactu/ui';
+import {
+  Input,
+  Textarea,
+  NumberInput,
+  ColorInput,
+  Checkbox,
+  SearchableSelect,
+} from '@openfactu/ui';
 import {
   Palette,
   Layout,
@@ -22,11 +29,11 @@ interface Props {
 // -------------------- Field helpers --------------------
 
 const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-    {children}
-  </label>
+  <label className="text-[10px] font-bold text-fg-body uppercase tracking-wider">{children}</label>
 );
 
+/** El ColorInput del paquete ya trae muestra + campo hex en una pieza, así que
+ *  aquí solo queda ponerle la etiqueta en versales del resto del panel. */
 const ColorField: React.FC<{ label: string; value: string; onChange: (v: string) => void }> = ({
   label,
   value,
@@ -34,19 +41,7 @@ const ColorField: React.FC<{ label: string; value: string; onChange: (v: string)
 }) => (
   <div className="space-y-1">
     <FieldLabel>{label}</FieldLabel>
-    <div className="flex items-center gap-2">
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer flex-shrink-0"
-      />
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="flex-1 font-mono text-xs h-9"
-      />
-    </div>
+    <ColorInput value={value} onChange={onChange} size="sm" />
   </div>
 );
 
@@ -62,15 +57,16 @@ const NumberField: React.FC<{
   <div className="space-y-1">
     <FieldLabel>
       {label}
-      {unit && <span className="text-slate-400 dark:text-slate-500 normal-case"> ({unit})</span>}
+      {unit && <span className="text-fg-subtle normal-case"> ({unit})</span>}
     </FieldLabel>
-    <Input
-      type="number"
+    {/* NumberInput emite `number | null`; aquí el campo nunca puede quedar
+        vacío (son medidas del PDF), así que un null se lee como 0. */}
+    <NumberInput
       value={value}
       min={min}
       max={max}
       step={step ?? 1}
-      onChange={(e) => onChange(Number(e.target.value) || 0)}
+      onChange={(v) => onChange(v ?? 0)}
       className="h-9 text-xs"
     />
   </div>
@@ -87,10 +83,10 @@ const RangeField: React.FC<{
   <div className="space-y-1">
     <div className="flex items-center justify-between">
       <FieldLabel>{label}</FieldLabel>
-      <span className="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300">
-        {value}
-      </span>
+      <span className="text-[10px] font-mono font-bold text-fg-body">{value}</span>
     </div>
+    {/* Excepción deliberada: el paquete no exporta slider. Lo único que se
+        cambia es que el pulgar siga al acento del tenant. */}
     <input
       type="range"
       min={min}
@@ -98,7 +94,7 @@ const RangeField: React.FC<{
       step={step ?? 1}
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="w-full accent-indigo-600"
+      className="w-full accent-accent"
     />
   </div>
 );
@@ -121,18 +117,12 @@ const CheckboxRow: React.FC<{
   title: string;
   description?: string;
 }> = ({ checked, onChange, title, description }) => (
-  <label className="flex items-center gap-3 p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-      className="w-4 h-4 flex-shrink-0"
-    />
+  <label className="flex items-center gap-3 p-2.5 border border-border-default rounded-lg hover:bg-bg-hover cursor-pointer">
+    {/* Checkbox no expone `label`: la fila entera hace de etiqueta. */}
+    <Checkbox checked={checked} onChange={onChange} />
     <div>
-      <div className="text-xs font-bold text-slate-700 dark:text-slate-200">{title}</div>
-      {description && (
-        <div className="text-[10px] text-slate-400 dark:text-slate-500">{description}</div>
-      )}
+      <div className="text-xs font-bold text-fg-body">{title}</div>
+      {description && <div className="text-[10px] text-fg-subtle">{description}</div>}
     </div>
   </label>
 );
@@ -305,7 +295,7 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
             onChange={(v) => updateOpt('showCompanyContact', v)}
             title="Mostrar contacto (teléfono, email, web)"
           />
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 italic pt-1">
+          <p className="text-[10px] text-fg-subtle italic pt-1">
             Los datos se leen de <code>SystemConfig</code> (company_name, company_phone...).
             Configurables en los ajustes del tenant.
           </p>
@@ -421,7 +411,9 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
         <div className="space-y-2">
           <CheckboxRow
             checked={!!(opts as any).showCustomFields}
-            onChange={(v) => (updateOpt as unknown as (k: string, val: boolean) => void)('showCustomFields', v)}
+            onChange={(v) =>
+              (updateOpt as unknown as (k: string, val: boolean) => void)('showCustomFields', v)
+            }
             title="Mostrar campos personalizados"
             description="Vuelca automáticamente los campos custom definidos para este documento (`visibleIn=pdf`) al final del PDF."
           />
@@ -430,7 +422,12 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
               <FieldLabel>Título del bloque</FieldLabel>
               <Input
                 value={(opts as any).customFieldsLabel ?? 'Datos adicionales'}
-                onChange={(e) => (updateOpt as unknown as (k: string, val: string) => void)('customFieldsLabel', e.target.value)}
+                onChange={(e) =>
+                  (updateOpt as unknown as (k: string, val: string) => void)(
+                    'customFieldsLabel',
+                    e.target.value,
+                  )
+                }
                 placeholder="Datos adicionales"
               />
             </div>
@@ -501,7 +498,7 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
               onChange={(e) => updateFooter('text', e.target.value)}
               placeholder="Documento generado electrónicamente..."
             />
-            <p className="text-[9px] text-slate-400 dark:text-slate-500 italic">
+            <p className="text-[9px] text-fg-subtle italic">
               Admite variables: <code>{'{{company.name}}'}</code>, <code>{'{{doc.docCode}}'}</code>,{' '}
               <code>{'{{generatedAt}}'}</code>
             </p>
@@ -533,18 +530,14 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
       <Section title="CSS personalizado (avanzado)" icon={<Code2 size={14} />}>
         <div className="space-y-2">
           <FieldLabel>CSS extra</FieldLabel>
-          <textarea
+          <Textarea
             value={opts.customCss}
             onChange={(e) => updateOpt('customCss', e.target.value)}
             placeholder="/* Ej: .party { background: #fef3c7; } */"
             rows={8}
-            className={cn(
-              'w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2',
-              'text-[11px] font-mono text-slate-800 dark:text-slate-100 resize-y',
-              'focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300',
-            )}
+            className="text-[11px] font-mono resize-y"
           />
-          <p className="text-[9px] text-slate-400 dark:text-slate-500 italic">
+          <p className="text-[9px] text-fg-subtle italic">
             Se añade al final del bloque <code>&lt;style&gt;</code>, por lo que puede sobrescribir
             cualquier estilo de la plantilla base.
           </p>

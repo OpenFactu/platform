@@ -29,7 +29,10 @@ export const ReferenceSelect: React.FC<Props> = ({
   useEffect(() => {
     if (!refTable || !token || !user?.tenantId) return;
     const t = setTimeout(() => {
-      coreApi.get(`/api/custom-fields/ref/${refTable}?display=${encodeURIComponent(refDisplayField)}&q=${encodeURIComponent(q)}`)
+      coreApi
+        .get(
+          `/api/custom-fields/ref/${refTable}?display=${encodeURIComponent(refDisplayField)}&q=${encodeURIComponent(q)}`,
+        )
         .then((d) => {
           const list = Array.isArray(d) ? d : [];
           setRows(list);
@@ -57,10 +60,10 @@ export const ReferenceSelect: React.FC<Props> = ({
           setQ(e.target.value);
           setOpen(true);
         }}
-        className="w-full h-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 disabled:opacity-50"
+        className="w-full h-9 rounded-lg border border-border-default bg-bg-card text-sm px-3 disabled:opacity-50"
       />
       {open && rows.length > 0 && (
-        <ul className="absolute z-10 left-0 right-0 mt-1 max-h-60 overflow-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg">
+        <ul className="absolute z-10 left-0 right-0 mt-1 max-h-60 overflow-auto bg-bg-card border border-border-default rounded-lg shadow-lg">
           {rows.map((r) => (
             <li
               key={r.id}

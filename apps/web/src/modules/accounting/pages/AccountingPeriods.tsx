@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, Loader, useToast, Badge, usePopup } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  Loader,
+  PageHeader,
+  useToast,
+  Badge,
+  usePopup,
+} from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Calendar, Plus, Trash2, Lock, AlertTriangle } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { periodsApi } from '../api';
 import type { AccountingPeriod } from '../domain/accounting';
 
@@ -64,9 +73,7 @@ export const AccountingPeriods: React.FC = () => {
       fetchPeriods();
       toast.success('Periodo creado correctamente');
     } catch (err) {
-      toast.error(
-        err instanceof Error ? `Error: ${err.message}` : 'Error al crear Periodo',
-      );
+      toast.error(err instanceof Error ? `Error: ${err.message}` : 'Error al crear Periodo');
     } finally {
       setIsSubmitting(false);
     }
@@ -145,37 +152,20 @@ export const AccountingPeriods: React.FC = () => {
         );
       },
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (c: any) => (
-        <div className="flex items-center justify-end gap-2">
-          {c.status === 'O' && canWrite && (
-            <button
-              onClick={() => openClosePreview(c.id)}
-              className="text-amber-600 hover:text-amber-700 transition-colors"
-              title="Cerrar período"
-            >
-              <Lock size={16} />
-            </button>
-          )}
-          <button
-            onClick={() => canDelete && handleDelete(c.id)}
-            disabled={!canDelete}
-            className={`transition-colors ${canDelete ? 'text-slate-400 dark:text-slate-500 hover:text-red-500' : 'text-slate-100 cursor-not-allowed grayscale'}`}
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (c: any) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // y permiso se declaran una vez en lugar de duplicarse.
+  const rowActions = (c: any): RowAction[] => [
     ...(c.status === 'O' && canWrite
-      ? [{ label: 'Cerrar período', icon: <Lock size={14} />, onClick: () => openClosePreview(c.id) }]
+      ? [
+          {
+            label: 'Cerrar período',
+            icon: <Lock size={14} />,
+            onClick: () => openClosePreview(c.id),
+          },
+        ]
       : []),
     {
       label: 'Eliminar',
@@ -188,17 +178,14 @@ export const AccountingPeriods: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-          <Calendar className="text-blue-600 dark:text-blue-300" size={32} />
-          Periodos Contables
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-          Define los ejercicios o años fiscales para acotar la contabilidad y series.
-        </p>
-      </div>
+      <PageHeader
+        title="Periodos Contables"
+        subtitle="Define los ejercicios o años fiscales para acotar la contabilidad y series."
+        icon={<Calendar size={18} />}
+        size="lg"
+      />
 
-      <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+      <Card className="border-border-subtle shadow-lg" noPadding>
         <form onSubmit={handleSubmit} className="p-6 flex flex-col md:flex-row gap-4 items-center">
           <div className="flex-[1]">
             <Input
@@ -217,20 +204,10 @@ export const AccountingPeriods: React.FC = () => {
             />
           </div>
           <div className="flex-1">
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-            />
+            <DatePicker value={startDate} onChange={(v) => setStartDate(v ?? '')} required />
           </div>
           <div className="flex-1">
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              required
-            />
+            <DatePicker value={endDate} onChange={(v) => setEndDate(v ?? '')} required />
           </div>
           <Button
             type="submit"
@@ -243,17 +220,9 @@ export const AccountingPeriods: React.FC = () => {
         </form>
       </Card>
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={ctxColumns} data={periods} isLoading={loading} />
+      <Card className="overflow-hidden border-border-subtle" noPadding>
+        <Table columns={columns} data={periods} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };
@@ -264,16 +233,35 @@ interface ClosePreviewBodyProps {
   onConfirm: () => void;
 }
 
+/** Líneas del asiento de regularización que se propone al cerrar el período. */
+const previewColumns: TableColumn<any>[] = [
+  {
+    header: 'Cuenta',
+    cell: (l) => <span className="font-mono text-xs">{l.accountId}</span>,
+  },
+  { header: 'Descripción', accessor: 'description' },
+  {
+    header: 'Debe',
+    align: 'right',
+    cell: (l) => (Number(l.debit) > 0 ? Number(l.debit).toFixed(2) : ''),
+  },
+  {
+    header: 'Haber',
+    align: 'right',
+    cell: (l) => (Number(l.credit) > 0 ? Number(l.credit).toFixed(2) : ''),
+  },
+];
+
 const ClosePreviewBody: React.FC<ClosePreviewBodyProps> = ({ preview, onCancel, onConfirm }) => {
   return (
     <div className="space-y-6">
       {preview.blockers?.length > 0 && (
-        <div className="border border-red-200 bg-red-50 dark:bg-red-900/20 rounded-lg p-4 space-y-1">
-          <div className="flex items-center gap-2 font-semibold text-red-700 dark:text-red-300">
+        <div className="border border-danger/30 bg-danger-bg rounded-lg p-4 space-y-1">
+          <div className="flex items-center gap-2 font-semibold text-danger-fg">
             <AlertTriangle size={16} />
             Bloqueadores:
           </div>
-          <ul className="list-disc ml-6 text-sm text-red-700 dark:text-red-300">
+          <ul className="list-disc ml-6 text-sm text-danger-fg">
             {preview.blockers.map((b: string, i: number) => (
               <li key={i}>{b}</li>
             ))}
@@ -284,38 +272,20 @@ const ClosePreviewBody: React.FC<ClosePreviewBodyProps> = ({ preview, onCancel, 
       <div>
         <h3 className="font-bold mb-2">
           Regularización — Resultado:{' '}
-          <span className={preview.resultAmount >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+          <span className={preview.resultAmount >= 0 ? 'text-success-fg' : 'text-danger-fg'}>
             {Number(preview.resultAmount).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
           </span>
         </h3>
-        {preview.regularizationLines?.length > 0 ? (
-          <table className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded overflow-hidden">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600">
-              <tr>
-                <th className="p-2 text-left">Cuenta</th>
-                <th className="p-2 text-left">Descripción</th>
-                <th className="p-2 text-right">Debe</th>
-                <th className="p-2 text-right">Haber</th>
-              </tr>
-            </thead>
-            <tbody>
-              {preview.regularizationLines.map((l: any, i: number) => (
-                <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
-                  <td className="p-2 font-mono text-xs">{l.accountId}</td>
-                  <td className="p-2">{l.description}</td>
-                  <td className="p-2 text-right">
-                    {Number(l.debit) > 0 ? Number(l.debit).toFixed(2) : ''}
-                  </td>
-                  <td className="p-2 text-right">
-                    {Number(l.credit) > 0 ? Number(l.credit).toFixed(2) : ''}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="text-sm text-slate-500">Sin resultados a regularizar.</p>
-        )}
+        {/* La Table ya trae cabecera y estado vacío: el <table> a mano y el
+            párrafo de "sin resultados" sobraban. */}
+        <Card className="overflow-hidden" noPadding>
+          <Table
+            columns={previewColumns}
+            data={preview.regularizationLines || []}
+            rowKey={(_l, i) => i}
+            emptyMessage="Sin resultados a regularizar."
+          />
+        </Card>
       </div>
 
       <div>
@@ -323,17 +293,17 @@ const ClosePreviewBody: React.FC<ClosePreviewBodyProps> = ({ preview, onCancel, 
           Siguiente período: <code>{preview.nextPeriodCode}</code> ({preview.nextPeriodStart} →{' '}
           {preview.nextPeriodEnd})
         </h3>
-        <p className="text-sm text-slate-500 mb-2">
+        <p className="text-sm text-fg-muted mb-2">
           Se generará asiento de apertura con {preview.openingLines?.length || 0} línea(s) de
           saldos.
         </p>
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
-        <Button variant="secondary" onClick={onCancel}>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button onClick={onConfirm} disabled={preview.blockers?.length > 0}>
+        <Button type="button" onClick={onConfirm} disabled={preview.blockers?.length > 0}>
           Confirmar cierre
         </Button>
       </div>

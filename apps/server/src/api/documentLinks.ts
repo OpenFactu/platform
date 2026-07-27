@@ -192,6 +192,52 @@ async function childrenOf(tenantClient: any, type: DocType, id: string): Promise
   return children;
 }
 
+/** Documento del grafo, con a qué distancia está del que se consultó. */
+interface ChainRef extends DocRef {
+  /** Saltos hasta el documento consultado: negativo hacia atrás, positivo hacia delante. */
+  depth: number;
+}
+
+/**
+ * Recorre la cadena entera en un sentido, no solo el salto inmediato.
+ *
+ * Un presupuesto → pedido → albarán → factura son cuatro documentos, y desde la
+ * factura solo se veía el albarán. Se camina por niveles (BFS) llevando un
+ * conjunto de visitados: el grafo puede converger (dos albaranes facturados
+ * juntos) y sin esa marca se recorrería lo mismo varias veces. `MAX_DEPTH`
+ * corta cadenas patológicas; en la práctica la más larga del ERP son 4 saltos.
+ */
+const MAX_DEPTH = 10;
+
+async function walkChain(
+  tenantClient: any,
+  type: DocType,
+  id: string,
+  direction: 'back' | 'forward',
+): Promise<ChainRef[]> {
+  const step = direction === 'back' ? parentsOf : childrenOf;
+  const sign = direction === 'back' ? -1 : 1;
+  const seen = new Set<string>([`${type}:${id}`]);
+  const out: ChainRef[] = [];
+
+  let frontier: Array<{ type: DocType; id: string }> = [{ type, id }];
+  for (let depth = 1; depth <= MAX_DEPTH && frontier.length > 0; depth++) {
+    const next: Array<{ type: DocType; id: string }> = [];
+    for (const node of frontier) {
+      const found = await step(tenantClient, node.type, node.id);
+      for (const doc of found) {
+        const key = `${doc.type}:${doc.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ ...doc, depth: depth * sign });
+        next.push({ type: doc.type, id: doc.id });
+      }
+    }
+    frontier = next;
+  }
+  return out;
+}
+
 /**
  * GET /api/document-links?type=SINV&id=<uuid>
  */
@@ -202,8 +248,8 @@ router.get('/', async (req: any, res) => {
     if (!id) return res.status(400).json({ error: 'id obligatorio' });
 
     const [parents, children] = await Promise.all([
-      parentsOf(req.tenantClient, type, id),
-      childrenOf(req.tenantClient, type, id),
+      walkChain(req.tenantClient, type, id, 'back'),
+      walkChain(req.tenantClient, type, id, 'forward'),
     ]);
 
     const config = DocumentRegistry.has(type) ? DocumentRegistry.get(type) : null;

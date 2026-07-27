@@ -5,12 +5,16 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Loader,
+  Textarea,
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
   SearchableSelect,
 } from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
@@ -43,9 +47,6 @@ import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import {
   buildDetailLineColumns,
@@ -136,10 +137,8 @@ const POList: React.FC<{
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {formatDocCode(item)}
-          </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
+          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="text-[10px] text-fg-subtle font-mono mt-1">
             ID: {item.id.substring(0, 8)}
           </span>
         </div>
@@ -164,9 +163,7 @@ const POList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
       accessor: (item: any) => (
-        <span className="font-black text-slate-900 dark:text-slate-100">
-          {fmt.money(item.total)}
-        </span>
+        <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
       ),
     },
     {
@@ -183,42 +180,13 @@ const POList: React.FC<{
         </>
       ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (item: any) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleQuickPdf(item.id);
-            }}
-            isLoading={downloadingId === item.id}
-            className="h-8 w-8 p-0 text-ink-500 dark:text-ink-400 hover:text-accent hover:bg-accent/10 dark:hover:bg-accent/15"
-            title="Descargar PDF"
-          >
-            <Download size={14} />
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDetail(item);
-            }}
-          >
-            Ver Pedido
-          </Button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<any>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (item: any) => {
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // (abierto / parcial / cerrado) se declaran una vez en lugar de duplicarse
+  // entre una columna de botones y el menú contextual.
+  const rowActions = (item: any): RowAction[] => {
     const canBeCancelled = item.status === 'O' || item.status === 'P';
     const canBeReceived = item.status !== 'C' && item.status !== 'X';
     return [
@@ -254,37 +222,36 @@ const POList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-4 tracking-tighter">
-            <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl text-blue-600 dark:text-blue-300 shadow-sm border border-blue-100 dark:border-blue-500/20">
-              <FileDigit size={32} />
-            </div>
-            Pedidos de Compra
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium ml-1">
-            Gestión de aprovisionamiento y órdenes a proveedores.
-          </p>
-          {doc.state.mastersError && (
-            <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-700 dark:text-amber-200 text-xs font-bold animate-in slide-in-from-top">
+      <PageHeader
+        title="Pedidos de Compra"
+        subtitle="Gestión de aprovisionamiento y órdenes a proveedores."
+        icon={<FileDigit size={18} />}
+        size="lg"
+        divider
+        toolbar={
+          doc.state.mastersError ? (
+            <div className="flex items-center gap-2 p-3 bg-warning-bg border border-warning rounded-lg text-warning-fg text-xs font-bold animate-in slide-in-from-top">
               <AlertCircle size={16} />
               {doc.state.mastersError}
             </div>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {canWrite && onCreateFromClone && (
-            <CloneDocumentActions docType="PO" onPaste={onCreateFromClone} show="paste" />
-          )}
-          <Button
-            onClick={onCreate}
-            disabled={!canWrite}
-            className="flex items-center gap-2 h-12 px-6 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:grayscale"
-          >
-            <Plus size={20} /> Nuevo Pedido
-          </Button>
-        </div>
-      </div>
+          ) : undefined
+        }
+        actions={
+          <div className="flex items-center gap-3">
+            {canWrite && onCreateFromClone && (
+              <CloneDocumentActions docType="PO" onPaste={onCreateFromClone} show="paste" />
+            )}
+            <Button
+              type="button"
+              onClick={onCreate}
+              disabled={!canWrite}
+              className="flex items-center gap-2 disabled:opacity-50"
+            >
+              <Plus size={20} /> Nuevo Pedido
+            </Button>
+          </div>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
@@ -345,9 +312,7 @@ const POList: React.FC<{
               {
                 label: 'Total',
                 value: (item: any) => (
-                  <span className="font-black text-slate-900 dark:text-slate-100">
-                    {fmt.money(item.total)}
-                  </span>
+                  <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
                 ),
               },
             ]}
@@ -365,9 +330,10 @@ const POList: React.FC<{
           />
         ) : (
           <Table
-            columns={ctxColumns}
+            columns={columns}
             data={filteredData || []}
             isLoading={loading}
+            rowActions={rowActions}
             onRowClick={onDetail}
             selectable
             selectedKeys={selectedKeys}
@@ -375,14 +341,6 @@ const POList: React.FC<{
           />
         )}
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };
@@ -475,33 +433,32 @@ const POForm: React.FC<{
 
   return (
     <div className="p-4 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-white dark:hover:bg-slate-900 rounded-lg transition shadow-sm border"
+      <PageHeader
+        title="Nuevo Pedido de Compra"
+        size="lg"
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={onBack} title="Volver">
+            <ArrowLeft size={14} className="mr-1" /> Volver
+          </Button>
+        }
+        actions={
+          <Button
+            type="button"
+            onClick={onSubmit}
+            isLoading={state.isSubmitting}
+            disabled={!!state.seriesError || !state.canWrite}
+            className="flex items-center gap-2 disabled:opacity-50"
           >
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            Nuevo Pedido de Compra
-          </h1>
-        </div>
-        <Button
-          onClick={onSubmit}
-          isLoading={state.isSubmitting}
-          disabled={!!state.seriesError || !state.canWrite}
-          className="px-8 flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50"
-        >
-          <Save size={18} /> Confirmar Pedido
-        </Button>
-      </div>
+            <Save size={18} /> Confirmar Pedido
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 md:col-span-2 space-y-6 border-t-4 border-t-blue-500">
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Proveedor / Acreedor *
               </label>
               <SearchableSelect
@@ -513,7 +470,7 @@ const POForm: React.FC<{
             </div>
             {warehouseLocation !== 'line' && (
               <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                   Almacén Destino *
                 </label>
                 <SearchableSelect
@@ -526,47 +483,42 @@ const POForm: React.FC<{
           </div>
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Dirección Facturación
               </label>
-              <textarea
+              <Textarea
                 value={extraState.billToAddress}
                 onChange={(e) => extraState.setBillToAddress(e.target.value)}
-                className="w-full h-20 border rounded-lg p-2 text-xs bg-slate-50 dark:bg-slate-800/50"
+                rows={3}
+                className="text-xs"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Dirección de Envío
               </label>
-              <textarea
+              <Textarea
                 value={extraState.shipToAddress}
                 onChange={(e) => extraState.setShipToAddress(e.target.value)}
-                className="w-full h-20 border rounded-lg p-2 text-xs bg-slate-50 dark:bg-slate-800/50"
+                rows={3}
+                className="text-xs"
               />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-6 pt-2">
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">
+              <label className="text-[10px] font-black text-fg-subtle uppercase">
                 Fec. Contabilización
               </label>
-              <Input
-                type="date"
-                value={state.date}
-                onChange={(e) => setState.setDate(e.target.value)}
-                className="h-10"
-              />
+              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">
+              <label className="text-[10px] font-black text-fg-subtle uppercase">
                 Fec. Entrega Prevista
               </label>
-              <Input
-                type="date"
+              <DatePicker
                 value={extraState.deliveryDate}
-                onChange={(e) => extraState.setDeliveryDate(e.target.value)}
-                className="h-10 border-blue-100 dark:border-blue-500/20 bg-blue-50/20"
+                onChange={(v) => extraState.setDeliveryDate(v ?? '')}
               />
             </div>
             <InternalOrderHeaderField
@@ -577,15 +529,13 @@ const POForm: React.FC<{
         </Card>
 
         <div className="space-y-6">
-          <Card className="p-6 space-y-6 bg-slate-50/50 dark:bg-slate-800/50">
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest border-b pb-2">
+          <Card className="p-6 space-y-6 bg-bg-muted">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest border-b pb-2">
               Control de Series
             </h4>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Serie de Pedido *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Serie de Pedido *</label>
                 <SearchableSelect
                   value={state.seriesId}
                   onChange={setState.setSeriesId}
@@ -593,17 +543,16 @@ const POForm: React.FC<{
                 />
                 {state.isManualSeries && (
                   <div className="mt-2 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                    <label className="text-[10px] font-bold text-fg-muted">
                       Número de documento (manual) *
                     </label>
-                    <input
+                    <Input
                       type="number"
                       min={1}
                       step={1}
                       value={state.manualNumber}
                       onChange={(e) => setState.setManualNumber(e.target.value)}
                       placeholder="Ej: 1050"
-                      className="w-full h-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     />
                   </div>
                 )}
@@ -612,9 +561,7 @@ const POForm: React.FC<{
                 )}
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Periodo Contable *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Periodo Contable *</label>
                 <SearchableSelect
                   value={state.periodId}
                   onChange={setState.setPeriodId}
@@ -639,7 +586,7 @@ const POForm: React.FC<{
         const docRate = Number(state.withholdingRate || 0);
         if (partnerRate > 0 && docRate === 0) {
           return (
-            <div className="flex items-center justify-between gap-4 p-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+            <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
               <div className="flex items-start gap-3 min-w-0">
                 <AlertCircle
                   size={18}
@@ -671,13 +618,13 @@ const POForm: React.FC<{
 
       <DocumentFiscalPanel kind="purchase" state={state} setState={setState} collapsible />
 
-      <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-lg overflow-hidden border-border-subtle" noPadding>
         {isMobile ? (
           <MobileLineCards columns={columns} lines={state.lines || []} />
         ) : (
           <Table columns={columns} data={state.lines} />
         )}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center border-t border-slate-200 dark:border-slate-700">
+        <div className="p-4 bg-bg-muted flex justify-between items-center border-t border-border-default">
           <Button
             variant="ghost"
             size="sm"
@@ -688,10 +635,8 @@ const POForm: React.FC<{
           </Button>
           <div className="space-y-1 text-right min-w-[200px]">
             <div className="flex justify-between px-2">
-              <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">
-                Subtotal:
-              </span>
-              <span className="font-bold text-slate-800 dark:text-slate-100">
+              <span className="text-[10px] font-black uppercase text-fg-subtle">Subtotal:</span>
+              <span className="font-bold text-fg-default">
                 {computations.subtotal.toFixed(2)} €
               </span>
             </div>
@@ -707,7 +652,7 @@ const POForm: React.FC<{
                 </span>
               </div>
             )}
-            <div className="flex justify-between px-2 pt-2 mt-1 border-t text-xl font-black text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700">
+            <div className="flex justify-between px-2 pt-2 mt-1 border-t text-xl font-black text-fg-default border-border-default">
               <span className="text-[10px] uppercase">Total Pedido:</span>
               <span>{computations.total.toFixed(2)} €</span>
             </div>
@@ -773,38 +718,35 @@ const PODetail: React.FC<{
         <InternalOrderChip internalOrderId={order.internalOrderId} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card
-          className="md:col-span-2 border-slate-100 dark:border-slate-800"
-          bodyClassName="p-6 space-y-5"
-        >
+        <Card className="md:col-span-2 border-border-subtle" bodyClassName="p-6 space-y-5">
           <div>
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] mb-2">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] mb-2">
               Proveedor
             </h4>
-            <p className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <p className="text-xl font-black text-fg-default tracking-tight">
               {partner?.name || '—'}
             </p>
             {partner?.nif && (
-              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5 font-mono">
+              <p className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider mt-0.5 font-mono">
                 NIF: {partner.nif}
               </p>
             )}
           </div>
           {(order.billToAddress || order.shipToAddress) && (
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-subtle">
               <div>
-                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <span className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
                   Facturar a
                 </span>
-                <pre className="text-[11px] font-sans text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-snug mt-1">
+                <pre className="text-[11px] font-sans text-fg-body whitespace-pre-wrap leading-snug mt-1">
                   {order.billToAddress || '—'}
                 </pre>
               </div>
               <div>
-                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <span className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
                   Enviar a
                 </span>
-                <pre className="text-[11px] font-sans text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-snug mt-1">
+                <pre className="text-[11px] font-sans text-fg-body whitespace-pre-wrap leading-snug mt-1">
                   {order.shipToAddress || '—'}
                 </pre>
               </div>
@@ -812,32 +754,32 @@ const PODetail: React.FC<{
           )}
         </Card>
 
-        <Card className="border-slate-100 dark:border-slate-800" bodyClassName="p-6 space-y-4">
-          <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] border-b border-slate-100 dark:border-slate-800 pb-2">
+        <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
+          <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] border-b border-border-subtle pb-2">
             Información
           </h4>
           <dl className="space-y-2.5">
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Fecha
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {fmt.date(order.date)}
               </dd>
             </div>
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Entrega
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {order.deliveryDate ? fmt.date(order.deliveryDate) : '—'}
               </dd>
             </div>
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Líneas
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {order.lines?.length ?? 0}
               </dd>
             </div>
@@ -845,7 +787,7 @@ const PODetail: React.FC<{
         </Card>
       </div>
 
-      <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-sm overflow-hidden border-border-subtle" noPadding>
         {isMobile ? (
           <MobileLineCards columns={columns} lines={order.lines || []} />
         ) : (
@@ -1055,11 +997,7 @@ export const PurchaseOrders: React.FC = () => {
     );
   if (isDetail) {
     if (detailLoading || !selectedOrder) {
-      return (
-        <div className="p-8 text-center text-slate-400 dark:text-slate-500 text-sm">
-          Cargando pedido…
-        </div>
-      );
+      return <div className="p-8 text-center text-fg-subtle text-sm">Cargando pedido…</div>;
     }
     return (
       <PODetail

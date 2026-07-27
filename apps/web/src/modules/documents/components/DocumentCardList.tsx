@@ -51,18 +51,14 @@ export function DocumentCardList<T>({
     return (
       <div className="space-y-3 p-4">
         {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-28 w-full rounded-xl" />
+          <Skeleton key={i} className="h-28 w-full rounded-lg" />
         ))}
       </div>
     );
   }
 
   if (!data.length) {
-    return (
-      <p className="p-8 text-center text-sm font-medium text-slate-400 dark:text-slate-500">
-        {emptyMessage}
-      </p>
-    );
+    return <p className="p-8 text-center text-sm font-medium text-fg-subtle">{emptyMessage}</p>;
   }
 
   return (
@@ -80,13 +76,11 @@ export function DocumentCardList<T>({
             <Card>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
+                  <div className="font-bold text-fg-default leading-tight truncate">
                     {title(item)}
                   </div>
                   {subtitle && (
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                      {subtitle(item)}
-                    </div>
+                    <div className="text-xs text-fg-muted mt-0.5 truncate">{subtitle(item)}</div>
                   )}
                 </div>
                 {status && <div className="shrink-0">{status(item)}</div>}
@@ -97,19 +91,17 @@ export function DocumentCardList<T>({
                     .filter((f) => !f.hidden?.(item))
                     .map((f) => (
                       <div key={f.label} className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-fg-subtle leading-none">
                           {f.label}
                         </p>
-                        <div className="text-sm text-slate-700 dark:text-slate-200 mt-1 truncate">
-                          {f.value(item)}
-                        </div>
+                        <div className="text-sm text-fg-body mt-1 truncate">{f.value(item)}</div>
                       </div>
                     ))}
                 </div>
               )}
               {actions && (
                 <div
-                  className="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800"
+                  className="flex justify-end gap-2 mt-3 pt-3 border-t border-border-subtle"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {actions(item)}

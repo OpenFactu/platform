@@ -1,20 +1,32 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
-import type { TableColumn } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  PageHeader,
+  useToast,
+  Badge,
+  usePopup,
+  Select,
+  SearchableSelect,
+  CurrencyInput,
+} from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { ScrollText, Plus, Trash2, Pencil, CheckCircle, Undo2 } from 'lucide-react';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { journalEntriesApi, chartOfAccountsApi, periodsApi } from '../api';
 
 interface Line {
   id?: string;
   accountId: string;
-  debit: number | string;
-  credit: number | string;
+  // number puro: antes admitían string porque venían de e.target.value de un
+  // <input type="number">; con CurrencyInput el valor ya llega numérico.
+  debit: number;
+  credit: number;
   description?: string;
   partnerId?: string | null;
   costCenterId?: string | null;
@@ -75,7 +87,6 @@ export const JournalEntries: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
   const popup = usePopup();
-
 
   const fetchAll = async () => {
     setLoading(true);
@@ -148,6 +159,12 @@ export const JournalEntries: React.FC = () => {
   const updateLine = (i: number, patch: Partial<Line>) =>
     setLines(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
+  // Una vez por render en lugar de una vez por línea del asiento.
+  const accountOptions = useMemo(
+    () => accounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` })),
+    [accounts],
+  );
+
   const totalDebit = useMemo(() => lines.reduce((s, l) => s + Number(l.debit || 0), 0), [lines]);
   const totalCredit = useMemo(() => lines.reduce((s, l) => s + Number(l.credit || 0), 0), [lines]);
   const balanced = Math.abs(totalDebit - totalCredit) < 0.01;
@@ -160,6 +177,14 @@ export const JournalEntries: React.FC = () => {
     }
     if (lines.length < 2) {
       toast.error('Un asiento necesita al menos 2 líneas');
+      return;
+    }
+    // Antes lo cubría el `required` del <select> nativo de la línea. SearchableSelect
+    // no tiene equivalente, así que el aviso se da aquí: sin esto el asiento se
+    // enviaría con líneas sin cuenta.
+    const sinCuenta = lines.findIndex((l) => !l.accountId);
+    if (sinCuenta !== -1) {
+      toast.error(`La línea ${sinCuenta + 1} no tiene cuenta`);
       return;
     }
     if (!balanced) {
@@ -218,7 +243,7 @@ export const JournalEntries: React.FC = () => {
     {
       header: 'Nº',
       cell: (r: Entry) =>
-        r.status === 'draft' ? <span className="text-slate-400">—</span> : <b>{r.number}</b>,
+        r.status === 'draft' ? <span className="text-fg-subtle">—</span> : <b>{r.number}</b>,
     },
     { header: 'Fecha', cell: (r: Entry) => new Date(r.date).toLocaleDateString() },
     { header: 'Concepto', accessor: 'description' },
@@ -232,53 +257,12 @@ export const JournalEntries: React.FC = () => {
         <Badge variant={STATUS_VARIANT[r.status] || 'neutral'}>{STATUS_LABEL[r.status]}</Badge>
       ),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: Entry) => (
-        <div className="flex items-center justify-end gap-2">
-          {r.status === 'draft' && canWrite && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handlePost(r.id);
-              }}
-              className="text-emerald-600 hover:text-emerald-700"
-              title="Postear"
-            >
-              <CheckCircle size={16} />
-            </button>
-          )}
-          {r.status === 'posted' && canWrite && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleReverse(r.id);
-              }}
-              className="text-amber-600 hover:text-amber-700"
-              title="Reversar"
-            >
-              <Undo2 size={16} />
-            </button>
-          )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              openEdit(r);
-            }}
-            className="text-slate-500 hover:text-blue-600"
-            title="Ver"
-          >
-            <Pencil size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<Entry>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: Entry) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que las condiciones de estado
+  // (draft / posted) y de permiso se declaran una vez en lugar de duplicarse.
+  const rowActions = (r: Entry): RowAction[] => [
     ...(r.status === 'draft' && canWrite
       ? [{ label: 'Postear', icon: <CheckCircle size={14} />, onClick: () => handlePost(r.id) }]
       : []),
@@ -293,55 +277,44 @@ export const JournalEntries: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-            <ScrollText className="text-blue-600 dark:text-blue-300" size={32} />
-            Asientos contables
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Doble partida. Los asientos posteados son inmutables — para corregir se reversan.
-          </p>
-        </div>
-        {canWrite && (
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={18} />
-            Nuevo asiento
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Asientos contables"
+        subtitle="Doble partida. Los asientos posteados son inmutables — para corregir se reversan."
+        icon={<ScrollText size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={18} />
+              Nuevo asiento
+            </Button>
+          )
+        }
+      />
 
       {formOpen && (
-        <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+        <Card className="border-border-subtle shadow-lg" noPadding>
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                type="date"
+              <DatePicker
                 label="Fecha"
-                value={(header.date as string) || ''}
-                onChange={(e) => setHeader({ ...header, date: e.target.value })}
+                value={(header.date as string) || null}
+                onChange={(v) => setHeader({ ...header, date: v ?? '' })}
                 disabled={isReadOnly}
                 required
               />
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Período
-                </label>
-                <select
-                  value={header.periodId || ''}
-                  onChange={(e) => setHeader({ ...header, periodId: e.target.value })}
-                  disabled={isReadOnly}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm disabled:opacity-60"
-                  required
-                >
-                  <option value="">— seleccionar —</option>
-                  {periods.map((p) => (
-                    <option key={p.id} value={p.id} disabled={p.status !== 'O'}>
-                      {p.code} — {p.name} {p.status !== 'O' ? '(cerrado)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Período"
+                options={periods.map((p) => ({
+                  value: p.id,
+                  label: `${p.code} — ${p.name}${p.status !== 'O' ? ' (cerrado)' : ''}`,
+                  disabled: p.status !== 'O',
+                }))}
+                value={header.periodId || ''}
+                onChange={(v) => setHeader({ ...header, periodId: v })}
+                disabled={isReadOnly}
+                placeholder="— seleccionar —"
+              />
               <Input
                 label="Concepto"
                 value={(header.description as string) || ''}
@@ -350,9 +323,12 @@ export const JournalEntries: React.FC = () => {
               />
             </div>
 
-            <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            {/* Rejilla editable (selector de cuenta, importes y alta/baja de
+                líneas en caliente): se queda como <table> a mano — la Table del
+                paquete es de solo lectura. */}
+            <div className="border border-border-default rounded-lg overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400">
+                <thead className="bg-bg-muted text-fg-body">
                   <tr>
                     <th className="p-2 text-left">#</th>
                     <th className="p-2 text-left">Cuenta</th>
@@ -364,69 +340,64 @@ export const JournalEntries: React.FC = () => {
                 </thead>
                 <tbody>
                   {lines.map((l, i) => (
-                    <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
-                      <td className="p-2 text-slate-400">{i + 1}</td>
+                    <tr key={i} className="border-t border-border-subtle">
+                      <td className="p-2 text-fg-subtle">{i + 1}</td>
                       <td className="p-2">
-                        <select
+                        <SearchableSelect
+                          options={accountOptions}
                           value={l.accountId}
-                          onChange={(e) => updateLine(i, { accountId: e.target.value })}
+                          onChange={(v) => updateLine(i, { accountId: v })}
                           disabled={isReadOnly}
-                          className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs disabled:opacity-60"
-                          required
-                        >
-                          <option value="">—</option>
-                          {accounts.map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.code} — {a.name}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="—"
+                        />
                       </td>
                       <td className="p-2">
-                        <input
+                        <Input
                           value={l.description || ''}
                           onChange={(e) => updateLine(i, { description: e.target.value })}
                           disabled={isReadOnly}
-                          className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs disabled:opacity-60"
+                          inputSize="sm"
                         />
                       </td>
                       <td className="p-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={l.debit || ''}
-                          onChange={(e) => updateLine(i, { debit: e.target.value, credit: 0 })}
+                        <CurrencyInput
+                          value={l.debit}
+                          onChange={(v) => updateLine(i, { debit: v ?? 0, credit: 0 })}
+                          min={0}
+                          emptyValue="zero"
                           disabled={isReadOnly}
-                          className="w-28 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-right disabled:opacity-60"
+                          inputSize="sm"
+                          containerClassName="w-28"
                         />
                       </td>
                       <td className="p-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={l.credit || ''}
-                          onChange={(e) => updateLine(i, { credit: e.target.value, debit: 0 })}
+                        <CurrencyInput
+                          value={l.credit}
+                          onChange={(v) => updateLine(i, { credit: v ?? 0, debit: 0 })}
+                          min={0}
+                          emptyValue="zero"
                           disabled={isReadOnly}
-                          className="w-28 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-right disabled:opacity-60"
+                          inputSize="sm"
+                          containerClassName="w-28"
                         />
                       </td>
                       <td className="p-2">
                         {!isReadOnly && lines.length > 2 && (
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => removeLine(i)}
-                            className="text-slate-400 hover:text-red-500"
+                            title="Quitar línea"
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </Button>
                         )}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-slate-50 dark:bg-slate-900/40 font-semibold">
+                <tfoot className="bg-bg-muted font-semibold">
                   <tr>
                     <td colSpan={3} className="p-2 text-right">
                       Totales:
@@ -444,15 +415,11 @@ export const JournalEntries: React.FC = () => {
                 </tfoot>
               </table>
               {!isReadOnly && (
-                <div className="p-2 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700">
-                  <button
-                    type="button"
-                    onClick={addLine}
-                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                  >
-                    <Plus size={14} />
+                <div className="p-2 bg-bg-muted border-t border-border-default">
+                  <Button type="button" variant="ghost" size="sm" onClick={addLine}>
+                    <Plus size={14} className="mr-1" />
                     Añadir línea
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -478,17 +445,9 @@ export const JournalEntries: React.FC = () => {
         </Card>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={ctxColumns} data={rows} isLoading={loading} />
+      <Card className="overflow-hidden border-border-subtle" noPadding>
+        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

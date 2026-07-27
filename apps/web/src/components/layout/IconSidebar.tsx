@@ -1,7 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { LogOut, Building2, X, ChevronDown, Search } from 'lucide-react';
-import { cn } from '@openfactu/ui';
+import { LogOut, Building2, X, ChevronDown } from 'lucide-react';
+import { cn, Tooltip, Badge, SearchInput } from '@openfactu/ui';
 import { useModules, useActiveModule } from '../../context/PluginContext';
 import { useTabs } from '../../context/TabsContext';
 import { useAuth } from '../../context/AuthContext';
@@ -13,34 +13,19 @@ import { NavIconChip } from './NavIconChip';
 import { TenantSwitcher } from '../TenantSwitcher';
 import type { Module } from '../../modules/registry';
 
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  alpha: {
-    label: 'Alpha',
-    className: 'text-purple-700 dark:text-purple-300 bg-purple-500/10 border border-purple-500/30',
-  },
-  beta: {
-    label: 'Beta',
-    className: 'text-sky-700 dark:text-sky-300 bg-sky-500/10 border border-sky-500/30',
-  },
-  dev: {
-    label: 'Dev',
-    className: 'text-rose-700 dark:text-rose-300 bg-rose-500/10 border border-rose-500/30',
-  },
+/** Madurez de una pantalla. El tono es semántico, no decorativo: `dev` avisa
+ *  de que la pantalla puede romperse, `alpha`/`beta` de que aún se mueve. */
+// Ojo: el Badge del paquete llama `error` a lo que Button llama `danger`.
+const STATUS_BADGE: Record<string, { label: string; variant: 'info' | 'warning' | 'error' }> = {
+  alpha: { label: 'Alpha', variant: 'warning' },
+  beta: { label: 'Beta', variant: 'info' },
+  dev: { label: 'Dev', variant: 'error' },
 };
 
 const StatusBadge: React.FC<{ status?: string }> = ({ status }) => {
   if (!status || !STATUS_BADGE[status]) return null;
   const b = STATUS_BADGE[status];
-  return (
-    <span
-      className={cn(
-        'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-xs whitespace-nowrap',
-        b.className,
-      )}
-    >
-      {b.label}
-    </span>
-  );
+  return <Badge variant={b.variant}>{b.label}</Badge>;
 };
 
 /**
@@ -157,16 +142,20 @@ export const IconSidebar: React.FC = () => {
     return out.slice(0, 30);
   }, [query, allModules, flags, isAdmin, user]);
 
-  // Cerrar popovers al click fuera (sólo desktop, en móvil son secciones inline)
+  // Cerrar los popovers del raíl al pulsar fuera. `tenantRef`/`userRef` cuelgan
+  // SOLO del raíl: dentro del drawer los mismos estados pintan un acordeón
+  // inline, así que cualquier clic ahí cae fuera de esas refs y cerraba la
+  // sección antes de que el desplegable de empresas llegase a abrirse. Por eso
+  // el listener se apaga mientras el drawer está abierto, no solo en móvil.
   useEffect(() => {
-    if (isMobile) return;
+    if (isMobile || mobileOpen) return;
     const onClick = (e: MouseEvent) => {
       if (tenantRef.current && !tenantRef.current.contains(e.target as Node)) setTenantOpen(false);
       if (userRef.current && !userRef.current.contains(e.target as Node)) setUserOpen(false);
     };
     document.addEventListener('mousedown', onClick);
     return () => document.removeEventListener('mousedown', onClick);
-  }, [isMobile]);
+  }, [isMobile, mobileOpen]);
 
   const handleClick = (modId: string) => {
     const mod = modules.find((m) => m.id === modId);
@@ -190,8 +179,8 @@ export const IconSidebar: React.FC = () => {
       {/* Panel: full-width en móvil, 360px en desktop */}
       <aside
         className={cn(
-          'fixed top-0 left-0 bottom-0 z-40 flex flex-col bg-white dark:bg-ink-900',
-          'w-full md:w-[360px] md:border-r md:border-line md:dark:border-ink-700 md:shadow-2xl',
+          'fixed top-0 left-0 bottom-0 z-40 flex flex-col bg-bg-card',
+          'w-full md:w-[360px] md:border-r md:border-border-default md:shadow-k-overlay',
           'transition-transform duration-250 ease-out',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
@@ -202,53 +191,45 @@ export const IconSidebar: React.FC = () => {
         aria-hidden={!mobileOpen}
       >
         {/* Header del drawer */}
-        <div className="flex items-center justify-between px-4 h-14 border-b border-line dark:border-ink-700">
-          <span className="font-display text-lg font-bold text-ink-900 dark:text-slate-100">
-            Menú
-          </span>
+        <div className="flex items-center justify-between px-4 h-14 border-b border-border-default">
+          <span className="font-display text-lg font-bold text-fg-default">Menú</span>
           <button
             onClick={() => setMobileOpen(false)}
-            className="p-2 rounded-xs text-ink-500 dark:text-ink-400 hover:text-accent hover:bg-line-2 dark:hover:bg-ink-700 transition-colors"
+            className="p-2 rounded-xs text-fg-muted hover:text-accent hover:bg-bg-hover transition-colors"
             aria-label="Cerrar menú"
           >
             <X size={22} />
           </button>
         </div>
 
-        {/* Buscador */}
-        <div className="px-3 py-2 border-b border-line dark:border-ink-700">
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 dark:text-ink-500 pointer-events-none"
-            />
-            <input
-              ref={searchRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  if (query) setQuery('');
-                  else setMobileOpen(false);
-                }
-                if (e.key === 'Enter' && searchResults.length > 0) {
-                  setMobileOpen(false);
-                  openTab(searchResults[0].sub.path);
-                }
-              }}
-              placeholder="Buscar en el menú…"
-              className="w-full pl-9 pr-3 py-2 text-sm rounded-xs bg-line-2/60 dark:bg-ink-800 border border-line dark:border-ink-700 text-ink-900 dark:text-slate-100 placeholder:text-ink-400 dark:placeholder:text-ink-500 focus:outline-none focus:border-accent"
-            />
-          </div>
+        {/* Buscador. El SearchInput del paquete ya trae lupa, botón de borrar y
+            el Intro; aquí solo queda el Escape, que hace dos cosas distintas
+            (vaciar el campo si hay texto, cerrar el menú si no). */}
+        <div className="px-3 py-2 border-b border-border-default">
+          <SearchInput
+            inputRef={searchRef}
+            value={query}
+            onChange={setQuery}
+            onSubmit={() => {
+              if (searchResults.length === 0) return;
+              setMobileOpen(false);
+              openTab(searchResults[0].sub.path);
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== 'Escape') return;
+              if (query) setQuery('');
+              else setMobileOpen(false);
+            }}
+            placeholder="Buscar en el menú…"
+            clearable
+          />
         </div>
 
         {/* Resultados de búsqueda o lista de módulos */}
         <nav className="flex-1 overflow-y-auto py-2">
           {query.trim() ? (
             searchResults.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-ink-500 dark:text-ink-400">
-                Sin resultados para “{query}”.
-              </p>
+              <p className="px-5 py-6 text-sm text-fg-muted">Sin resultados para “{query}”.</p>
             ) : (
               searchResults.map(({ modLabel, modIcon, sub }) => {
                 const subActive = sub.path === pathname;
@@ -261,15 +242,13 @@ export const IconSidebar: React.FC = () => {
                     }}
                     className={cn(
                       'w-full flex items-center gap-3 px-5 py-2.5 text-left transition-colors',
-                      subActive
-                        ? 'bg-accent/10 text-accent'
-                        : 'text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700',
+                      subActive ? 'bg-accent/10 text-accent' : 'text-fg-body hover:bg-bg-hover',
                     )}
                   >
                     <PluginIcon iconName={modIcon} size={16} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{sub.label}</p>
-                      <p className="text-[11px] text-ink-500 dark:text-ink-400 truncate">
+                      <p className="text-[11px] text-fg-muted truncate">
                         {modLabel}
                         {sub.group ? ` · ${sub.group}` : ''}
                       </p>
@@ -296,7 +275,7 @@ export const IconSidebar: React.FC = () => {
         </nav>
 
         {/* Tenant + usuario al pie */}
-        <div className="border-t border-line dark:border-ink-700 p-3 space-y-2">
+        <div className="border-t border-border-default p-3 space-y-2">
           {/* Tenant */}
           <div>
             <button
@@ -304,7 +283,7 @@ export const IconSidebar: React.FC = () => {
                 setTenantOpen((v) => !v);
                 setUserOpen(false);
               }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xs text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700 transition-colors"
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-xs text-fg-body hover:bg-bg-hover transition-colors"
             >
               <Building2 size={20} />
               <span className="flex-1 text-left text-sm font-semibold">Cambiar empresa</span>
@@ -314,7 +293,7 @@ export const IconSidebar: React.FC = () => {
               />
             </button>
             {tenantOpen && (
-              <div className="mt-2 p-3 bg-line-2/60 dark:bg-ink-800 border border-line dark:border-ink-700 rounded-sm">
+              <div className="mt-2 p-3 bg-bg-muted border border-border-default rounded-sm">
                 <TenantSwitcher />
               </div>
             )}
@@ -329,7 +308,7 @@ export const IconSidebar: React.FC = () => {
                 className="w-10 h-10 rounded-full object-cover border-2 border-transparent"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-ink-700 to-ink-900 text-white flex items-center justify-center font-bold text-sm border-2 border-transparent">
+              <div className="w-10 h-10 rounded-full bg-primary text-primary-fg flex items-center justify-center font-bold text-sm border-2 border-transparent">
                 {user?.username?.charAt(0)?.toUpperCase() || 'A'}
               </div>
             )}
@@ -351,14 +330,14 @@ export const IconSidebar: React.FC = () => {
               setMobileOpen(false);
               logout();
             }}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xs text-sm font-semibold text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xs text-sm font-semibold text-danger-fg hover:bg-danger-bg transition-colors"
           >
             <LogOut size={16} />
             Cerrar sesión
           </button>
 
           <div
-            className="flex items-center justify-between pt-2 border-t border-line-2 dark:border-ink-700 text-[10px] font-mono px-1"
+            className="flex items-center justify-between pt-2 border-t border-border-subtle text-[10px] font-mono px-1"
             style={{ color: 'var(--fg-muted)' }}
           >
             <span>Keirost</span>
@@ -382,45 +361,64 @@ export const IconSidebar: React.FC = () => {
       <aside
         className={cn(
           'w-[60px] flex-shrink-0 flex flex-col items-center py-3 z-20',
-          'bg-white dark:bg-ink-900',
-          'border-r border-line dark:border-ink-700',
+          'bg-bg-card',
+          'border-r border-border-default',
         )}
       >
-        {/* Módulos */}
-        <div className="flex-1 flex flex-col items-center gap-1.5 w-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {modules.map((mod) => {
+        {/*
+          Módulos. Tres decisiones del rediseño:
+
+          1. En reposo el icono va desnudo. Antes cada módulo iba metido en un
+             chip con borde, así que catorce cajas idénticas competían entre sí
+             y el activo no destacaba: el borde no distinguía nada, solo hacía
+             ruido.
+          2. El activo se marca con una barra de acento pegada al canto
+             izquierdo del raíl, no solo con el relleno. Es lo que se localiza
+             con visión periférica sin tener que leer iconos.
+          3. Una línea fina separa cada cambio de categoría. No reordena nada:
+             el separador aparece justo donde el registro ya cambia de familia
+             (Operaciones → Ventas y compras → Finanzas…), la misma taxonomía
+             que usa la pantalla de Apps.
+        */}
+        <div className="flex-1 flex flex-col items-center gap-0.5 w-full overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {modules.map((mod, i) => {
             const isActive = active?.id === mod.id;
+            const cat = mod.category || 'General';
+            const startsGroup = i > 0 && (modules[i - 1].category || 'General') !== cat;
             return (
-              <button
-                key={mod.id}
-                onClick={() => handleClick(mod.id)}
-                title={mod.label}
-                aria-label={mod.label}
-                className={cn(
-                  'group relative w-11 h-11 flex items-center justify-center rounded-xs',
-                  'transition-all duration-200 ease-out',
-                  'hover:scale-110',
-                )}
-              >
-                <NavIconChip iconName={mod.icon} size={18} active={isActive} />
-                <span
-                  className={cn(
-                    'absolute left-full ml-2 px-2 py-1 rounded-md',
-                    'bg-slate-900 text-white dark:bg-slate-700 text-xs font-medium whitespace-nowrap',
-                    'opacity-0 pointer-events-none translate-x-1',
-                    'group-hover:opacity-100 group-hover:translate-x-0',
-                    'transition-all duration-150 z-50 shadow-lg',
-                  )}
-                >
-                  {mod.label}
-                </span>
-              </button>
+              <React.Fragment key={mod.id}>
+                {startsGroup && <hr className="w-7 my-1.5 border-t border-border-subtle" />}
+                <Tooltip content={mod.label} side="right">
+                  <button
+                    onClick={() => handleClick(mod.id)}
+                    aria-label={mod.label}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={cn(
+                      'relative w-11 h-10 flex items-center justify-center rounded-sm',
+                      'transition-colors duration-150',
+                      isActive
+                        ? 'bg-accent/15 text-accent'
+                        : 'text-fg-subtle hover:bg-bg-hover hover:text-fg-default',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'absolute -left-2 w-[3px] h-5 rounded-r-full bg-accent',
+                        'transition-opacity duration-150',
+                        isActive ? 'opacity-100' : 'opacity-0',
+                      )}
+                      aria-hidden
+                    />
+                    <PluginIcon iconName={mod.icon} size={19} strokeWidth={isActive ? 2.4 : 2} />
+                  </button>
+                </Tooltip>
+              </React.Fragment>
             );
           })}
         </div>
 
         {/* Tenant + Usuario al pie */}
-        <div className="flex flex-col items-center gap-2 w-full pt-2 border-t border-line dark:border-ink-700">
+        <div className="flex flex-col items-center gap-2 w-full pt-2 border-t border-border-default">
           <div className="relative" ref={tenantRef}>
             <button
               onClick={() => {
@@ -430,18 +428,18 @@ export const IconSidebar: React.FC = () => {
               title="Cambiar empresa"
               aria-label="Cambiar empresa"
               className={cn(
-                'group relative w-11 h-11 flex items-center justify-center rounded-xs',
-                'transition-all duration-200 ease-out hover:scale-110',
+                'relative w-11 h-10 flex items-center justify-center rounded-sm',
+                'transition-colors duration-150',
                 tenantOpen
-                  ? 'bg-accent/15 text-accent dark:bg-accent/20 dark:text-accent'
-                  : 'text-ink-500 dark:text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700 hover:text-accent dark:hover:text-accent',
+                  ? 'bg-accent/15 text-accent'
+                  : 'text-fg-subtle hover:bg-bg-hover hover:text-fg-default',
               )}
             >
-              <Building2 size={20} />
+              <Building2 size={19} />
             </button>
             {tenantOpen && (
-              <div className="absolute bottom-0 left-full ml-2 w-72 p-3 bg-white dark:bg-ink-800 border border-line dark:border-ink-700 rounded-sm shadow-xl z-50">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-2">
+              <div className="absolute bottom-0 left-full ml-2 w-72 p-3 bg-bg-card border border-border-default rounded-sm shadow-k-lg z-popover">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-2">
                   Empresa activa
                 </p>
                 <TenantSwitcher />
@@ -458,9 +456,12 @@ export const IconSidebar: React.FC = () => {
               title={user?.username || 'Usuario'}
               aria-label="Menú de usuario"
               className={cn(
-                'group relative w-10 h-10 flex items-center justify-center rounded-full overflow-hidden',
-                'transition-all duration-200 ease-out hover:scale-110',
-                !user?.avatarImageUrl && 'bg-gradient-to-br from-ink-700 to-ink-900 text-white',
+                'relative w-9 h-9 flex items-center justify-center rounded-full overflow-hidden',
+                'transition-colors duration-150',
+                // `ink-*` es la escala de TEXTO y está congelada a propósito:
+                // el degradado de antes dejaba el avatar azul marino con
+                // cualquier tema. El primario del tenant sí lo sigue.
+                !user?.avatarImageUrl && 'bg-primary text-primary-fg',
                 'border-2',
                 userOpen ? 'border-accent' : 'border-transparent',
               )}
@@ -476,11 +477,10 @@ export const IconSidebar: React.FC = () => {
                   {user?.username?.charAt(0)?.toUpperCase() || 'A'}
                 </span>
               )}
-              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-ink-900 rounded-full" />
             </button>
             {userOpen && (
-              <div className="absolute bottom-0 left-full ml-2 w-56 p-3 bg-white dark:bg-ink-800 border border-line dark:border-ink-700 rounded-sm shadow-xl z-50">
-                <div className="mb-2 pb-2 border-b border-line-2 dark:border-ink-700">
+              <div className="absolute bottom-0 left-full ml-2 w-56 p-3 bg-bg-card border border-border-default rounded-sm shadow-k-lg z-popover">
+                <div className="mb-2 pb-2 border-b border-border-subtle">
                   <p className="text-sm font-bold truncate" style={{ color: 'var(--fg-default)' }}>
                     {user?.username || 'Administrador'}
                   </p>
@@ -496,13 +496,13 @@ export const IconSidebar: React.FC = () => {
                     setUserOpen(false);
                     logout();
                   }}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xs text-sm font-medium text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xs text-sm font-medium text-danger-fg hover:bg-danger-bg transition-colors"
                 >
                   <LogOut size={14} />
                   Cerrar sesión
                 </button>
                 <div
-                  className="mt-2 pt-2 border-t border-line-2 dark:border-ink-700 text-[10px] font-mono flex items-center justify-between"
+                  className="mt-2 pt-2 border-t border-border-subtle text-[10px] font-mono flex items-center justify-between"
                   style={{ color: 'var(--fg-muted)' }}
                 >
                   <span>Keirost</span>
@@ -552,7 +552,7 @@ const MobileModuleAccordion: React.FC<{
           'w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors border-l-4',
           isActive
             ? 'bg-accent/10 text-accent border-accent'
-            : 'text-ink-700 dark:text-slate-200 hover:bg-line-2 dark:hover:bg-ink-700 border-transparent',
+            : 'text-fg-body hover:bg-bg-hover border-transparent',
         )}
       >
         <NavIconChip iconName={mod.icon} size={20} active={isActive} />
@@ -565,7 +565,7 @@ const MobileModuleAccordion: React.FC<{
         )}
       </button>
       {open && hasSubs && (
-        <div className="bg-line-2/40 dark:bg-ink-900/60 border-l-4 border-accent/20">
+        <div className="bg-bg-muted border-l-4 border-accent/20">
           {visibleSubTabs.map((sub: any) => {
             const subActive = sub.path === currentPath;
             return (
@@ -576,7 +576,7 @@ const MobileModuleAccordion: React.FC<{
                   'w-full flex items-center gap-3 pl-14 pr-5 py-2.5 text-left text-sm transition-colors',
                   subActive
                     ? 'text-accent font-semibold'
-                    : 'text-ink-700 dark:text-ink-400 hover:text-accent hover:bg-line-2 dark:hover:bg-ink-700 font-medium',
+                    : 'text-fg-body hover:text-accent hover:bg-bg-hover font-medium',
                 )}
               >
                 {sub.icon && <PluginIcon iconName={sub.icon} size={14} />}

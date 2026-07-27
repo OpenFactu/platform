@@ -2,7 +2,7 @@ import { stockApi } from '@/modules/inventory/api';
 import { Trash2, Plus, AlertCircle, CheckCircle2, ChevronRight, Barcode } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
-import { Button, cn, Input, Modal } from '@openfactu/ui';
+import { Button, cn, DatePicker, Input, Modal, SearchableSelect } from '@openfactu/ui';
 
 interface BatchDetail {
   batchNum: string;
@@ -93,17 +93,15 @@ export const BatchSelectionModal: React.FC<Props> = ({
       maxWidth="2xl"
     >
       <div className="space-y-6 p-1 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
-        <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between bg-bg-muted p-4 rounded-lg border border-border-default">
           <div>
-            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            <p className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
               Cantidad Requerida
             </p>
-            <p className="text-2xl font-black text-slate-800 dark:text-slate-100">
-              {targetQuantity}
-            </p>
+            <p className="text-2xl font-black text-fg-default">{targetQuantity}</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            <p className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
               Total Asignado
             </p>
             <div
@@ -115,10 +113,13 @@ export const BatchSelectionModal: React.FC<Props> = ({
           </div>
         </div>
 
+        {/* Rejilla editable (lote/serie, cantidad y caducidad por fila, con
+            alta/baja de líneas en caliente): se queda como <table> a mano — la
+            Table del paquete es de solo lectura. */}
         <div className="max-h-[400px] overflow-y-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase border-b">
+              <tr className="text-[10px] font-black text-fg-subtle uppercase border-b">
                 <th className="pb-2">{manageBy === 'B' ? 'Número de Lote' : 'Número de Serie'}</th>
                 <th className="pb-2 w-32 text-center">Cantidad</th>
                 {manageBy === 'B' && <th className="pb-2 w-48">F. Caducidad</th>}
@@ -130,25 +131,22 @@ export const BatchSelectionModal: React.FC<Props> = ({
                 <tr key={idx} className="group">
                   <td className="py-2 pr-2">
                     {isSale && !readOnly ? (
-                      <select
+                      <SearchableSelect
+                        options={availableBatches.map((ab) => ({
+                          value: ab.batchNum,
+                          label: ab.batchNum,
+                          secondaryLabel: `Disp: ${ab.quantity} · ${
+                            ab.warehouseName
+                              ? `${ab.warehouseName}${ab.zoneName ? ` - ${ab.zoneName}` : ''}`
+                              : 'Ubicación desconocida'
+                          }`,
+                        }))}
                         value={d.batchNum}
-                        onChange={(e) => updateLine(idx, 'batchNum', e.target.value)}
-                        className="w-full h-9 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-slate-50 dark:bg-slate-800/50 font-bold"
-                      >
-                        <option value="">
-                          Seleccionar {manageBy === 'B' ? 'lote' : 'serie'}...
-                        </option>
-                        {availableBatches.map((ab) => {
-                          const location = ab.warehouseName
-                            ? ` [${ab.warehouseName}${ab.zoneName ? ` - ${ab.zoneName}` : ''}]`
-                            : ' [Ubicación desconocida]';
-                          return (
-                            <option key={ab.batchNum} value={ab.batchNum}>
-                              {ab.batchNum} (Disp: {ab.quantity}){location}
-                            </option>
-                          );
-                        })}
-                      </select>
+                        onChange={(v) => updateLine(idx, 'batchNum', v)}
+                        clearable
+                        loading={loading}
+                        placeholder={`Seleccionar ${manageBy === 'B' ? 'lote' : 'serie'}...`}
+                      />
                     ) : (
                       <Input
                         placeholder={manageBy === 'B' ? 'Lote...' : 'Serie...'}
@@ -156,9 +154,9 @@ export const BatchSelectionModal: React.FC<Props> = ({
                         onChange={(e) => updateLine(idx, 'batchNum', e.target.value)}
                         disabled={readOnly}
                         className={cn(
-                          'h-9 border-slate-200 dark:border-slate-700',
+                          'h-9 border-border-default',
                           readOnly
-                            ? 'bg-white dark:bg-slate-900 border-transparent font-bold text-slate-700 dark:text-slate-200'
+                            ? 'bg-bg-card border-transparent font-bold text-fg-body'
                             : 'focus:border-blue-500',
                         )}
                       />
@@ -171,35 +169,31 @@ export const BatchSelectionModal: React.FC<Props> = ({
                       onChange={(e) => updateLine(idx, 'quantity', Number(e.target.value))}
                       disabled={manageBy === 'S' || readOnly}
                       className={cn(
-                        'h-9 text-center border-slate-200 dark:border-slate-700',
-                        readOnly &&
-                          'bg-white dark:bg-slate-900 border-transparent font-bold text-slate-700 dark:text-slate-200',
+                        'h-9 text-center border-border-default',
+                        readOnly && 'bg-bg-card border-transparent font-bold text-fg-body',
                       )}
                     />
                   </td>
                   {manageBy === 'B' && (
                     <td className="py-2 px-2">
-                      <Input
-                        type="date"
-                        value={d.expiryDate || ''}
-                        onChange={(e) => updateLine(idx, 'expiryDate', e.target.value)}
+                      <DatePicker
+                        value={d.expiryDate || null}
+                        onChange={(v) => updateLine(idx, 'expiryDate', v ?? '')}
                         disabled={readOnly}
-                        className={cn(
-                          'h-9 border-slate-200 dark:border-slate-700',
-                          readOnly &&
-                            'bg-white dark:bg-slate-900 border-transparent font-bold text-slate-700 dark:text-slate-200',
-                        )}
                       />
                     </td>
                   )}
                   <td className="py-2 text-right">
                     {!readOnly && (
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => removeLine(idx)}
-                        className="text-slate-300 dark:text-slate-600 hover:text-red-500 transition-colors"
+                        title="Quitar línea"
                       >
                         <Trash2 size={16} />
-                      </button>
+                      </Button>
                     )}
                   </td>
                 </tr>

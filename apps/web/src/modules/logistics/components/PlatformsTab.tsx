@@ -5,7 +5,18 @@
  */
 import { platformsApi } from '../api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  NumberInput,
+  Modal,
+  Badge,
+  Loader,
+  Switch,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
 import { Plus, Trash2, Edit2, RotateCcw, Archive, Building2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
@@ -14,6 +25,7 @@ import type { Platform } from '../domain/platform';
 export const PlatformsTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<Platform[]>([]);
   const [loading, setLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
@@ -67,7 +79,13 @@ export const PlatformsTab: React.FC = () => {
   };
 
   const archive = async (p: Platform) => {
-    if (!confirm(`¿Archivar plataforma ${p.name}?`)) return;
+    const ok = await popup.confirm({
+      title: 'Archivar plataforma',
+      message: `¿Archivar la plataforma "${p.name}"?`,
+      tone: 'danger',
+      confirmLabel: 'Archivar',
+    });
+    if (!ok) return;
     await platformsApi.archive(p.id);
     load();
   };
@@ -79,15 +97,9 @@ export const PlatformsTab: React.FC = () => {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-            className="rounded border-slate-300 dark:border-slate-600"
-          />
-          Mostrar archivadas
-        </label>
+        {/* Surte efecto al instante (recarga la lista), no es campo de un
+            formulario → Switch, que además sí tiene prop `label`. */}
+        <Switch checked={showArchived} onChange={setShowArchived} label="Mostrar archivadas" />
         <Button onClick={openCreate} className="flex items-center gap-2">
           <Plus size={14} /> Nueva plataforma
         </Button>
@@ -110,22 +122,20 @@ export const PlatformsTab: React.FC = () => {
               return (
                 <li
                   key={p.id}
-                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 ${
+                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0 ${
                     archived ? 'opacity-60' : ''
                   }`}
                 >
                   <Building2 size={16} className="text-slate-400 shrink-0" />
-                  <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                  <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                     {p.code}
                   </code>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-                        {p.name}
-                      </span>
+                      <span className="font-semibold text-sm text-fg-default">{p.name}</span>
                       {archived && <Badge variant="neutral">Archivada</Badge>}
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex gap-3 flex-wrap">
+                    <div className="text-[11px] text-fg-muted mt-0.5 flex gap-3 flex-wrap">
                       {p.address && <span className="truncate max-w-md">{p.address}</span>}
                       {p.openingHours && <span>· {p.openingHours}</span>}
                       {p.contactPhone && <span>· {p.contactPhone}</span>}
@@ -133,29 +143,35 @@ export const PlatformsTab: React.FC = () => {
                   </div>
                   {!archived ? (
                     <>
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => openEdit(p)}
-                        className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
                         title="Editar"
                       >
                         <Edit2 size={13} />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => archive(p)}
-                        className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                         title="Archivar"
                       >
                         <Archive size={13} />
-                      </button>
+                      </Button>
                     </>
                   ) : (
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => restore(p)}
-                      className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded"
                       title="Restaurar"
                     >
                       <RotateCcw size={13} />
-                    </button>
+                    </Button>
                   )}
                 </li>
               );
@@ -171,111 +187,75 @@ export const PlatformsTab: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Nombre *
-            </label>
-            <Input
-              value={form.name || ''}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Mercamadrid — Nave 4"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Dirección
-            </label>
-            <Input
-              value={form.address || ''}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="Av. de Madrid s/n, 28053 Madrid"
-            />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Se geolocaliza automáticamente al guardar.
-            </p>
-          </div>
+          <Input
+            label="Nombre"
+            requiredMark
+            value={form.name || ''}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            placeholder="Mercamadrid — Nave 4"
+          />
+          <Input
+            label="Dirección"
+            value={form.address || ''}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            placeholder="Av. de Madrid s/n, 28053 Madrid"
+            helperText="Se geolocaliza automáticamente al guardar."
+          />
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Latitud
-              </label>
-              <Input
-                type="number"
-                step="0.000001"
-                value={form.lat ?? ''}
-                onChange={(e) =>
-                  setForm({ ...form, lat: e.target.value === '' ? null : Number(e.target.value) })
-                }
-                placeholder="40.3981"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Longitud
-              </label>
-              <Input
-                type="number"
-                step="0.000001"
-                value={form.lng ?? ''}
-                onChange={(e) =>
-                  setForm({ ...form, lng: e.target.value === '' ? null : Number(e.target.value) })
-                }
-                placeholder="-3.6554"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Horario
-            </label>
-            <Input
-              value={form.openingHours || ''}
-              onChange={(e) => setForm({ ...form, openingHours: e.target.value })}
-              placeholder="L-V 8-18, S 8-14"
+            {/* `lat`/`lng` son doublePrecision en el servidor, así que llegan ya
+                numéricas: NumberInput trabaja con ellas sin conversión, y el
+                campo vacío se envía como null (emptyValue por defecto). */}
+            <NumberInput
+              label="Latitud"
+              value={form.lat ?? null}
+              onChange={(v) => setForm({ ...form, lat: v })}
+              precision={6}
+              thousandSeparator={false}
+              allowNegative
+              placeholder="40.3981"
+            />
+            <NumberInput
+              label="Longitud"
+              value={form.lng ?? null}
+              onChange={(v) => setForm({ ...form, lng: v })}
+              precision={6}
+              thousandSeparator={false}
+              allowNegative
+              placeholder="-3.6554"
             />
           </div>
+          <Input
+            label="Horario"
+            value={form.openingHours || ''}
+            onChange={(e) => setForm({ ...form, openingHours: e.target.value })}
+            placeholder="L-V 8-18, S 8-14"
+          />
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Contacto
-              </label>
-              <Input
-                value={form.contactName || ''}
-                onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-                placeholder="Juan Pérez"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Teléfono
-              </label>
-              <Input
-                value={form.contactPhone || ''}
-                onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
-                placeholder="+34 600 000 000"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Email
-            </label>
             <Input
-              type="email"
-              value={form.contactEmail || ''}
-              onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+              label="Contacto"
+              value={form.contactName || ''}
+              onChange={(e) => setForm({ ...form, contactName: e.target.value })}
+              placeholder="Juan Pérez"
+            />
+            <Input
+              label="Teléfono"
+              value={form.contactPhone || ''}
+              onChange={(e) => setForm({ ...form, contactPhone: e.target.value })}
+              placeholder="+34 600 000 000"
             />
           </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Notas
-            </label>
-            <Input
-              value={form.notes || ''}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <Input
+            label="Email"
+            type="email"
+            value={form.contactEmail || ''}
+            onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+          />
+          <Input
+            label="Notas"
+            value={form.notes || ''}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>

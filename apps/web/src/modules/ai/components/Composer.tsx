@@ -15,6 +15,7 @@ import {
 import { AttachmentThumb } from './AttachmentThumb';
 import { ContextUsageRing } from './ContextUsageRing';
 import { MAX_ATTACHMENTS } from '../domain/constants';
+import { DOCUMENT_ACCEPT } from '../domain/droppedFiles';
 import type { DocumentAttachment } from '../hooks/useComposerState';
 
 export const Composer: React.FC<{
@@ -29,10 +30,10 @@ export const Composer: React.FC<{
   extractingDocs: boolean;
   supportsImages: boolean;
   busy: boolean;
+  /** Lo gobierna el contenedor (`useFileDropZone`): toda la superficie del
+   * chat es zona de soltar, aquí solo se refleja resaltando la caja. */
   dragOver: boolean;
-  setDragOver: (v: boolean) => void;
-  addFiles: (files: FileList | null) => void;
-  addDocuments: (files: FileList | null) => void;
+  addDropped: (files: FileList | File[] | null) => void;
   send: (text: string) => void;
   stop: () => void;
   textareaRef: React.RefObject<HTMLTextAreaElement>;
@@ -57,9 +58,7 @@ export const Composer: React.FC<{
   supportsImages,
   busy,
   dragOver,
-  setDragOver,
-  addFiles,
-  addDocuments,
+  addDropped,
   send,
   stop,
   textareaRef,
@@ -84,11 +83,11 @@ export const Composer: React.FC<{
           {documents.map((d, i) => (
             <div
               key={`doc-${i}`}
-              className="relative shrink-0 h-16 w-32 flex flex-col items-center justify-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2"
+              className="relative shrink-0 h-16 w-32 flex flex-col items-center justify-center gap-1 rounded-md border border-border-default bg-bg-muted px-2"
               title={d.filename}
             >
               <FileText size={16} className="text-accent" />
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate w-full text-center">
+              <span className="text-[10px] text-fg-muted truncate w-full text-center">
                 {d.filename}
               </span>
               <button
@@ -102,7 +101,7 @@ export const Composer: React.FC<{
             </div>
           ))}
           {extractingDocs && (
-            <div className="shrink-0 h-16 w-32 flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 text-slate-400">
+            <div className="shrink-0 h-16 w-32 flex items-center justify-center rounded-md border border-border-default text-slate-400">
               <Loader2 size={16} className="animate-spin" />
             </div>
           )}
@@ -115,41 +114,28 @@ export const Composer: React.FC<{
             <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
               Respondiendo a un fragmento
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 break-words">
-              {quotedText}
-            </p>
+            <p className="text-xs text-fg-body line-clamp-2 break-words">{quotedText}</p>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={clearQuote}
-            className="shrink-0 p-1 rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
             title="Quitar cita"
+            className="shrink-0 text-slate-400 hover:text-rose-500"
           >
             <X size={14} />
-          </button>
+          </Button>
         </div>
       )}
       <div
-        className={`rounded-xl border bg-white dark:bg-slate-800 shadow-sm transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 ${
-          dragOver
-            ? 'border-accent ring-2 ring-accent/30'
-            : 'border-slate-200 dark:border-slate-700'
+        className={`rounded-lg border bg-bg-card shadow-sm transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 ${
+          dragOver ? 'border-accent ring-2 ring-accent/30' : 'border-border-default'
         }`}
-        onDragOver={(e) => {
-          e.preventDefault();
-          setDragOver(true);
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setDragOver(false);
-          if (supportsImages) addFiles(e.dataTransfer.files);
-          else addDocuments(e.dataTransfer.files);
-        }}
       >
         <textarea
           ref={textareaRef}
-          className="w-full bg-transparent p-3 text-sm focus:outline-none resize-none"
+          className="w-full bg-transparent p-3 text-sm focus:outline-none resize-none custom-scrollbar"
           rows={1}
           style={{ maxHeight: 200 }}
           value={input}
@@ -161,14 +147,13 @@ export const Composer: React.FC<{
             }
           }}
           onPaste={(e) => {
-            if (!supportsImages) return;
-            if (e.clipboardData.files.length > 0) addFiles(e.clipboardData.files);
+            if (e.clipboardData.files.length > 0) addDropped(e.clipboardData.files);
           }}
-          placeholder={
-            supportsImages
-              ? 'Escribe tu pregunta o pega/arrastra una imagen…'
-              : 'Escribe tu pregunta…'
-          }
+          /* Corto a propósito: el panel flotante son 420px y un placeholder de
+             dos líneas asoma barra de scroll (el textarea es rows={1} y el
+             autoresize mide el contenido, no el placeholder). Los formatos
+             admitidos se listan en el velo de arrastre y en los tooltips. */
+          placeholder="Escribe tu pregunta o arrastra un archivo…"
           disabled={busy}
         />
         <div className="flex items-center justify-between px-3 pb-2 gap-2 flex-wrap">
@@ -192,46 +177,47 @@ export const Composer: React.FC<{
                   multiple
                   className="hidden"
                   onChange={(e) => {
-                    addFiles(e.target.files);
+                    addDropped(e.target.files);
                     e.target.value = '';
                   }}
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={attachments.length >= MAX_ATTACHMENTS || busy}
-                  className="p-1.5 rounded-md text-slate-400 hover:text-accent hover:bg-accent/5 disabled:opacity-40"
                   title="Adjuntar imagen"
+                  className="text-slate-400 hover:text-accent"
                 >
                   <Paperclip size={18} />
-                </button>
+                </Button>
               </>
             )}
             <input
               ref={docInputRef}
               type="file"
-              accept=".xlsx,.xls,.xlsm,.pdf,.doc,.docx,.csv,.txt,.md,.tsv"
+              accept={DOCUMENT_ACCEPT}
               multiple
               className="hidden"
               onChange={(e) => {
-                addDocuments(e.target.files);
+                addDropped(e.target.files);
                 e.target.value = '';
               }}
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => docInputRef.current?.click()}
               disabled={busy || extractingDocs}
-              className="p-1.5 rounded-md text-slate-400 hover:text-accent hover:bg-accent/5 disabled:opacity-40"
               title="Adjuntar Excel, PDF, Word, CSV o TXT"
+              className="text-slate-400 hover:text-accent"
             >
               <FileUp size={18} />
-            </button>
+            </Button>
             {!supportsImages && (
-              <span
-                className="text-slate-300 dark:text-slate-600"
-                title="Este modelo no admite imágenes"
-              >
+              <span className="text-fg-subtle" title="Este modelo no admite imágenes">
                 <ImageOff size={13} />
               </span>
             )}

@@ -2,8 +2,18 @@ import { timeclockApi, employeesApi } from '../api';
 import type { TimeclockEntry as Entry } from '../domain/timeclock';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Badge, useToast } from '@openfactu/ui';
-import type { BadgeProps } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Badge,
+  useToast,
+  PageHeader,
+  Tabs,
+  DatePicker,
+  SearchableSelect,
+  Table,
+} from '@openfactu/ui';
+import type { BadgeProps, TableColumn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Timer, LogIn, LogOut, Coffee, RotateCcw, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
@@ -22,9 +32,19 @@ const KIND_VARIANT: Record<string, BadgeProps['variant']> = {
   break_end: 'neutral',
 };
 
+// Vistas de la página (sólo visibles para admin).
+const TABS = [
+  { key: 'me', label: 'Mis fichajes' },
+  { key: 'all', label: 'Todos' },
+];
+
 export const Timeclock: React.FC = () => {
   const { token, user } = useAuth();
-  const isAdmin = (user?.role || '').toLowerCase() === 'admin' || (user as any)?.isAdmin;
+  // La pestaña "todos" enseña los fichajes del resto de la plantilla, así que
+  // va por rol y no por permiso de ruta. Antes comparaba contra 'admin' en
+  // minúsculas, lo que dejaba fuera a SUPERUSER, y caía en un `user.isAdmin`
+  // que no existe en el tipo `User`.
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
   const [tab, setTab] = useState<'me' | 'all'>('me');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [employee, setEmployee] = useState<any>(null);
@@ -111,6 +131,17 @@ export const Timeclock: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, filters.employeeId, filters.from, filters.to, user?.tenantId]);
 
+  // Opciones del desplegable de empleados (maestro del servidor).
+  const employeeOptions = useMemo(
+    () =>
+      allEmployees.map((e) => ({
+        value: e.id,
+        label: `${e.firstName} ${e.lastName}`,
+        secondaryLabel: e.code,
+      })),
+    [allEmployees],
+  );
+
   const punch = async (kind: Entry['kind']) => {
     let coords: { latitude?: number; longitude?: number } = {};
     if (navigator.geolocation) {
@@ -137,85 +168,130 @@ export const Timeclock: React.FC = () => {
 
   const last = entries[0];
 
+  // Índice de empleados para resolver el nombre en la vista de administración
+  // sin recorrer la lista por fila.
+  const employeeById = useMemo(
+    () => Object.fromEntries(allEmployees.map((e) => [e.id, e])),
+    [allEmployees],
+  );
+
+  const whenColumn: TableColumn<Entry> = {
+    header: 'Fecha y hora',
+    sortable: true,
+    sortAccessor: (e) => e.at,
+    cell: (e) => <span className="font-mono">{new Date(e.at).toLocaleString('es-ES')}</span>,
+    primary: true,
+  };
+  const kindColumn: TableColumn<Entry> = {
+    header: 'Tipo',
+    sortable: true,
+    sortAccessor: (e) => e.kind,
+    cell: (e) => <Badge variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Badge>,
+  };
+  const sourceColumn: TableColumn<Entry> = {
+    header: 'Origen',
+    sortable: true,
+    sortAccessor: (e) => e.source || '',
+    cell: (e) => <span className="text-xs text-fg-muted">{e.source}</span>,
+  };
+
+  const myColumns: TableColumn<Entry>[] = [whenColumn, kindColumn, sourceColumn];
+
+  const allColumns: TableColumn<Entry>[] = [
+    whenColumn,
+    {
+      header: 'Empleado',
+      sortable: true,
+      sortAccessor: (e) => {
+        const emp = employeeById[e.employeeId ?? ''];
+        return emp ? `${emp.firstName} ${emp.lastName}` : (e.employeeId ?? '');
+      },
+      cell: (e) => {
+        const emp = employeeById[e.employeeId ?? ''];
+        return emp ? (
+          <span>
+            <span className="font-bold">
+              {emp.firstName} {emp.lastName}
+            </span>{' '}
+            <span className="text-xs text-fg-subtle">{emp.code}</span>
+          </span>
+        ) : (
+          e.employeeId
+        );
+      },
+    },
+    kindColumn,
+    sourceColumn,
+    {
+      header: 'Notas',
+      cell: (e) => <span className="text-xs text-fg-muted truncate max-w-xs block">{e.notes}</span>,
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <Timer className="text-emerald-600" size={32} /> Fichajes
-          </h1>
-          {tab === 'me' && employee && (
-            <p className="text-slate-500">
-              {employee.firstName} {employee.lastName} ({employee.code})
-            </p>
-          )}
-          {tab === 'all' && (
-            <p className="text-slate-500">Vista de todos los empleados (administración)</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {isAdmin && (
-            <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <button
-                onClick={() => setTab('me')}
-                className={
-                  'px-3 py-1.5 text-sm font-bold transition ' +
-                  (tab === 'me'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800')
+      <PageHeader
+        title="Fichajes"
+        subtitle={
+          tab === 'me' && employee
+            ? `${employee.firstName} ${employee.lastName} (${employee.code})`
+            : tab === 'all'
+              ? 'Vista de todos los empleados (administración)'
+              : undefined
+        }
+        icon={<Timer size={18} />}
+        size="lg"
+        actions={
+          <div className="flex items-center gap-2">
+            {/* Lo que cambia es la vista completa, no un filtro → Tabs. */}
+            {isAdmin && (
+              <Tabs
+                items={TABS}
+                value={tab}
+                onChange={(k) => setTab(k as 'me' | 'all')}
+                variant="segmented"
+                size="sm"
+              />
+            )}
+            {tab === 'me' && employee && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() =>
+                  exportEntriesExcel(
+                    new URLSearchParams({ employeeId: employee.id, from: monthStart }),
+                    `mis_fichajes_${monthStart}`,
+                    `Mis fichajes · desde ${monthStart}`,
+                  )
                 }
               >
-                Mis fichajes
-              </button>
-              <button
-                onClick={() => setTab('all')}
-                className={
-                  'px-3 py-1.5 text-sm font-bold transition ' +
-                  (tab === 'all'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800')
-                }
+                <Download size={14} /> Exportar mes
+              </Button>
+            )}
+            {tab === 'all' && isAdmin && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (filters.employeeId) params.set('employeeId', filters.employeeId);
+                  if (filters.from) params.set('from', filters.from);
+                  if (filters.to) params.set('to', filters.to);
+                  exportEntriesExcel(
+                    params,
+                    `fichajes_${filters.from}_${filters.to}`,
+                    `Fichajes · ${filters.from} a ${filters.to}`,
+                  );
+                }}
               >
-                Todos
-              </button>
-            </div>
-          )}
-          {tab === 'me' && employee && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() =>
-                exportEntriesExcel(
-                  new URLSearchParams({ employeeId: employee.id, from: monthStart }),
-                  `mis_fichajes_${monthStart}`,
-                  `Mis fichajes · desde ${monthStart}`,
-                )
-              }
-            >
-              <Download size={14} /> Exportar mes
-            </Button>
-          )}
-          {tab === 'all' && isAdmin && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                const params = new URLSearchParams();
-                if (filters.employeeId) params.set('employeeId', filters.employeeId);
-                if (filters.from) params.set('from', filters.from);
-                if (filters.to) params.set('to', filters.to);
-                exportEntriesExcel(
-                  params,
-                  `fichajes_${filters.from}_${filters.to}`,
-                  `Fichajes · ${filters.from} a ${filters.to}`,
-                );
-              }}
-            >
-              <Download size={14} /> Exportar Excel
-            </Button>
-          )}
-        </div>
-      </div>
+                <Download size={14} /> Exportar Excel
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       {tab === 'me' && (
         <>
@@ -249,42 +325,13 @@ export const Timeclock: React.FC = () => {
             </div>
           </Card>
 
-          <Card noPadding>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b">
-                  <th className="p-3">Fecha y hora</th>
-                  <th className="p-3">Tipo</th>
-                  <th className="p-3">Origen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading && (
-                  <tr>
-                    <td colSpan={3} className="p-6 text-center text-slate-400">
-                      Cargando…
-                    </td>
-                  </tr>
-                )}
-                {!loading &&
-                  entries.map((e) => (
-                    <tr key={e.id} className="border-b">
-                      <td className="p-3 font-mono">{new Date(e.at).toLocaleString('es-ES')}</td>
-                      <td className="p-3">
-                        <Badge variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Badge>
-                      </td>
-                      <td className="p-3 text-xs text-slate-500">{e.source}</td>
-                    </tr>
-                  ))}
-                {!loading && entries.length === 0 && (
-                  <tr>
-                    <td colSpan={3} className="p-6 text-center text-slate-400 italic">
-                      Sin fichajes
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+          <Card className="overflow-hidden" noPadding>
+            <Table
+              columns={myColumns}
+              data={entries}
+              isLoading={loading}
+              emptyMessage="Sin fichajes"
+            />
           </Card>
         </>
       )}
@@ -294,99 +341,40 @@ export const Timeclock: React.FC = () => {
           <Card className="p-4" noPadding>
             <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
               <div>
+                {/* SearchableSelect no tiene prop `label` → se conserva el
+                    <label> suelto. El vacío es válido («Todos») → clearable. */}
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
                   Empleado
                 </label>
-                <select
+                <SearchableSelect
+                  options={employeeOptions}
                   value={filters.employeeId}
-                  onChange={(e) => setFilters({ ...filters, employeeId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="">Todos</option>
-                  {allEmployees.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.code} — {e.firstName} {e.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Desde
-                </label>
-                <input
-                  type="date"
-                  value={filters.from}
-                  onChange={(e) => setFilters({ ...filters, from: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+                  onChange={(v) => setFilters({ ...filters, employeeId: v })}
+                  placeholder="Todos"
+                  clearable
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Hasta
-                </label>
-                <input
-                  type="date"
-                  value={filters.to}
-                  onChange={(e) => setFilters({ ...filters, to: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                />
-              </div>
+              {/* El rango se guarda como '' cuando se vacía, igual que hacía el
+                  <input type="date">. */}
+              <DatePicker
+                label="Desde"
+                value={filters.from || null}
+                onChange={(v) => setFilters({ ...filters, from: v ?? '' })}
+              />
+              <DatePicker
+                label="Hasta"
+                value={filters.to || null}
+                onChange={(v) => setFilters({ ...filters, to: v ?? '' })}
+              />
               <div className="text-xs text-slate-500">
-                <span className="font-bold text-slate-700 dark:text-slate-300">
-                  {allEntries.length}
-                </span>{' '}
-                fichajes en el rango
+                <span className="font-bold text-fg-body">{allEntries.length}</span> fichajes en el
+                rango
               </div>
             </div>
           </Card>
 
-          <Card noPadding>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-slate-500 border-b">
-                  <th className="p-3">Fecha y hora</th>
-                  <th className="p-3">Empleado</th>
-                  <th className="p-3">Tipo</th>
-                  <th className="p-3">Origen</th>
-                  <th className="p-3">Notas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allEntries.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-400 italic">
-                      Sin fichajes en el rango
-                    </td>
-                  </tr>
-                )}
-                {allEntries.map((e: any) => {
-                  const emp = allEmployees.find((x) => x.id === e.employeeId);
-                  return (
-                    <tr key={e.id} className="border-b">
-                      <td className="p-3 font-mono">{new Date(e.at).toLocaleString('es-ES')}</td>
-                      <td className="p-3">
-                        {emp ? (
-                          <span>
-                            <span className="font-bold">
-                              {emp.firstName} {emp.lastName}
-                            </span>{' '}
-                            <span className="text-xs text-slate-400">{emp.code}</span>
-                          </span>
-                        ) : (
-                          e.employeeId
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Badge>
-                      </td>
-                      <td className="p-3 text-xs text-slate-500">{e.source}</td>
-                      <td className="p-3 text-xs text-slate-500 truncate max-w-xs">{e.notes}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <Card className="overflow-hidden" noPadding>
+            <Table columns={allColumns} data={allEntries} emptyMessage="Sin fichajes en el rango" />
           </Card>
         </>
       )}

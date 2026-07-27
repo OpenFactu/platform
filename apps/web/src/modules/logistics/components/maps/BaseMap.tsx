@@ -130,6 +130,10 @@ export const BaseMap = forwardRef<BaseMapHandle, BaseMapProps>(function BaseMap(
         {children}
       </Map>
 
+      {/* Conmutador mapa/satélite: overlay posicionado en absoluto sobre el
+          canvas de MapLibre. Se queda con <button> crudos a propósito —
+          envolverlos en `Button` rompe el posicionamiento y el hit-testing
+          frente a los gestos del mapa. */}
       {canToggle && (
         <div
           style={{

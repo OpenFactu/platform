@@ -1,10 +1,39 @@
 /* MapLibre CSS — debe ir ANTES de cualquier otra regla (requisito de @import). */
 @import 'maplibre-gl/dist/maplibre-gl.css';
+/*
+ * Design tokens del brand guide + keyframes que los componentes referencian
+ * por nombre. Los publica @openfactu/ui, que es la fuente única de verdad:
+ * antes estaban duplicados a mano aquí y se desincronizaban.
+ *
+ * Los valores de este archivo son los de fábrica. ThemeContext los sobreescribe
+ * en runtime con estilos inline sobre <html> cuando el tenant tiene branding
+ * propio (Ajustes → Branding), y un inline gana siempre a una hoja de estilos.
+ */
+@import '@openfactu/ui/styles.css';
+
+/*
+ * Keirost va con las esquinas rectas. En lugar de perseguir clase por clase el
+ * `rounded-*` de cada componente, se aplana aquí la escala de radios: tanto los
+ * componentes del paquete como las utilidades `rounded-xs|sm|md|lg` de la app
+ * (que el preset de Tailwind mapea a estas mismas variables) leen de aquí, así
+ * que una sola definición cuadra toda la interfaz.
+ *
+ * `--k-radius-full` se queda: lo necesitan avatares y píldoras, que sí son
+ * redondos a propósito.
+ */
+:root {
+  --k-radius-xs: 2px;
+  --k-radius-sm: 2px;
+  --k-radius-md: 2px;
+  --k-radius-lg: 2px;
+}
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Anti-FOUC: el fondo tiene que estar pintado antes de que monte React.
+   Coordinado con el <style> inline de index.html. */
 html {
   color-scheme: light;
   background: #fafbfc;
@@ -12,83 +41,6 @@ html {
 html.dark {
   color-scheme: dark;
   background: #0a1628;
-}
-
-/*
- * Design tokens Keirost (brand guide v1.0).
- * Los colores primary/accent se SOBREESCRIBEN dinámicamente desde
- * ThemeContext si el tenant tiene colores custom en Ajustes → Branding.
- * Estos son los valores de fábrica.
- */
-:root {
-  /* Colores en formato RGB (space-separated) para que Tailwind aplique /alpha */
-  --color-primary-rgb: 10 22 40; /* #0A1628 · ink */
-  --color-primary-hover-rgb: 45 58 74; /* #2D3A4A · ink-2 */
-  --color-primary-fg-rgb: 255 255 255;
-  --color-accent-rgb: 13 148 136; /* #0D9488 · teal */
-  --color-accent-fg-rgb: 255 255 255;
-
-  /* Alias hex (útiles fuera de Tailwind: inline styles, SVG stroke, etc.) */
-  --color-primary: rgb(var(--color-primary-rgb));
-  --color-primary-hover: rgb(var(--color-primary-hover-rgb));
-  --color-primary-fg: rgb(var(--color-primary-fg-rgb));
-  --color-accent: rgb(var(--color-accent-rgb));
-  --color-accent-fg: rgb(var(--color-accent-fg-rgb));
-
-  /* Escala semántica Keirost */
-  --k-teal-50: #f0fafa;
-  --k-teal-100: #ccefed;
-  --k-teal-500: #0d9488;
-  --k-teal-600: #0a6e63;
-  --k-ink-900: #0a1628;
-  --k-ink-700: #2d3a4a;
-  --k-ink-500: #64748b;
-  --k-ink-400: #94a3b8;
-  --k-line: #e2e8f0;
-  --k-line-2: #f1f5f9;
-  --k-surface: #fafbfc;
-  --k-ink-800: #1a2535;
-  --k-teal-900: #042b26;
-
-  /* Semánticos */
-  --k-success: #16a34a;
-  --k-warning: #d97706;
-  --k-danger: #dc2626;
-  --k-info: #2563eb;
-
-  /* Tipografía Keirost: Space Grotesk (display), DM Sans (body), JetBrains Mono (code) */
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, monospace;
-
-  --bg-app: #fafbfc;
-  --bg-card: #ffffff;
-  --bg-sidebar: #0a1628;
-  --fg-default: #0a1628;
-  --fg-muted: #64748b;
-  --border-default: #e2e8f0;
-}
-
-html.dark {
-  --bg-app: #0a1628;
-  --bg-card: #1a2535;
-  --bg-sidebar: #042b26;
-  --fg-default: #e2e8f0;
-  --fg-muted: #94a3b8;
-  --border-default: #2d3a4a;
-}
-
-/*
- * Override Midnight: el Card del paquete @openfactu/ui usa `dark:bg-slate-900`
- * (#0f172a), casi idéntico al fondo de la app (#0A1628), así los cards
- * desaparecen visualmente. Forzamos ink-800 (#1A2535) y un borde más marcado.
- */
-html.dark [class*='bg-slate-900'].border {
-  background-color: #1a2535 !important;
-  border-color: #2d3a4a !important;
-}
-html.dark .bg-slate-900 {
-  background-color: #1a2535;
 }
 
 /* ---------- Animación "aurora" del login ---------- */
@@ -206,69 +158,7 @@ html.dark .k-aurora--global > span {
   opacity: 0.45;
 }
 
-/* Entrada de fila de tabla — visible pero no invasiva */
-@keyframes k-row-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Escalado + fade para cards al montar */
-@keyframes k-card-in {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-.k-card-in {
-  animation: k-card-in 0.45s cubic-bezier(0.2, 0, 0, 1) both;
-}
-
-/* Badge/Chip que pulsa al aparecer */
-@keyframes k-pop-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.4);
-  }
-  60% {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-.k-pop-in {
-  animation: k-pop-in 0.35s cubic-bezier(0.2, 0, 0.2, 1.3) both;
-}
-
-/* Menú kebab (RowActionsMenu) — abre con fade + scale desde la esquina superior derecha. */
-@keyframes row-actions-menu-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.92);
-  }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-.row-actions-menu-in {
-  animation: row-actions-menu-in 0.18s cubic-bezier(0.2, 0, 0, 1) both;
-}
+/* k-row-in, k-card-in y k-pop-in los aporta @openfactu/ui/styles.css. */
 
 /* Sacudida al llegar una nueva notificación */
 @keyframes k-bell-shake {

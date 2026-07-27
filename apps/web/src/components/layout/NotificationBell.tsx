@@ -153,7 +153,7 @@ export const NotificationBell: React.FC = () => {
     <div ref={wrapperRef} className="relative">
       <button
         onClick={togglePanel}
-        className="relative p-2 rounded-xs text-ink-500 dark:text-ink-400 hover:text-accent dark:hover:text-accent hover:bg-line-2 dark:hover:bg-ink-700 transition-colors"
+        className="relative p-2 rounded-xs text-fg-muted hover:text-accent dark:hover:text-accent hover:bg-bg-hover transition-colors"
         aria-label={`${unread} notificaciones sin leer`}
       >
         <Bell size={16} className={shake ? 'k-bell-shake' : ''} />
@@ -169,9 +169,9 @@ export const NotificationBell: React.FC = () => {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-[360px] max-w-[calc(100vw-2rem)] bg-white dark:bg-ink-800 border border-line dark:border-ink-700 rounded-sm shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-line dark:border-ink-700">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">
+        <div className="absolute right-0 top-full mt-2 w-[360px] max-w-[calc(100vw-2rem)] bg-bg-card border border-border-default rounded-sm shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border-default">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-fg-muted">
               Notificaciones
             </span>
             {unread > 0 && (
@@ -196,33 +196,27 @@ export const NotificationBell: React.FC = () => {
                   onClick={() => openNotif(n)}
                   style={{ animationDelay: `${idx * 25}ms` }}
                   className={cn(
-                    'w-full text-left k-slide-fade flex items-start gap-3 px-3 py-2.5 border-b border-line-2 dark:border-ink-700 hover:bg-line-2/60 dark:hover:bg-ink-900/60 transition-colors',
+                    'w-full text-left k-slide-fade flex items-start gap-3 px-3 py-2.5 border-b border-border-subtle hover:bg-bg-hover transition-colors',
                     !n.readAt && 'bg-accent/5',
                   )}
                 >
                   <span
                     className={cn(
                       'w-2 h-2 rounded-full shrink-0 mt-1.5',
-                      n.readAt
-                        ? 'bg-ink-300 dark:bg-ink-500'
-                        : LEVEL_COLORS[n.level] || 'bg-accent',
+                      n.readAt ? 'bg-fg-subtle' : LEVEL_COLORS[n.level] || 'bg-accent',
                     )}
                   />
                   <div className="flex-1 min-w-0">
                     <div
                       className={cn(
                         'text-sm truncate',
-                        n.readAt
-                          ? 'text-ink-500 dark:text-ink-400'
-                          : 'font-bold text-ink-900 dark:text-slate-100',
+                        n.readAt ? 'text-fg-muted' : 'font-bold text-fg-default',
                       )}
                     >
                       {n.title}
                     </div>
                     {n.body && (
-                      <div className="text-[11px] text-ink-500 dark:text-ink-400 line-clamp-2 mt-0.5">
-                        {n.body}
-                      </div>
+                      <div className="text-[11px] text-fg-muted line-clamp-2 mt-0.5">{n.body}</div>
                     )}
                     <div className="text-[10px] font-mono text-ink-400 mt-0.5">
                       {fmt.date(new Date(n.createdAt))}

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Button, Input, useToast } from '@openfactu/ui';
+import { Modal, Button, Input, Textarea, useToast } from '@openfactu/ui';
 import { Camera, Eraser, CheckCircle2 } from 'lucide-react';
 
 interface Props {
@@ -176,26 +176,28 @@ export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, 
           )}
 
           <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Nombre receptor
-              </label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="—" />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                DNI / NIF {showValidation && <span className="text-rose-500">(requerido)</span>}
-              </label>
-              <Input
-                value={doc}
-                onChange={(e) => {
-                  setDoc(e.target.value.toUpperCase());
-                  if (showValidation) setShowValidation(false);
-                }}
-                placeholder="12345678A"
-                className={showValidation ? '!border-rose-400 !ring-rose-200' : ''}
-              />
-            </div>
+            <Input
+              label="Nombre receptor"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="—"
+            />
+            {/* El requisito es "firma O DNI", así que el error no cuelga de un
+                `required` nativo: se marca el campo con `status` cuando la
+                validación de `submit` falla. */}
+            <Input
+              label={
+                <>DNI / NIF {showValidation && <span className="text-danger">(requerido)</span>}</>
+              }
+              value={doc}
+              onChange={(e) => {
+                setDoc(e.target.value.toUpperCase());
+                if (showValidation) setShowValidation(false);
+              }}
+              placeholder="12345678A"
+              status={showValidation ? 'error' : undefined}
+              showStatusIcon={false}
+            />
           </div>
 
           <div>
@@ -203,13 +205,9 @@ export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, 
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 Firma {showValidation && <span className="text-rose-500">(requerida)</span>}
               </label>
-              <button
-                type="button"
-                onClick={clearCanvas}
-                className="text-[11px] text-slate-500 hover:text-rose-500 inline-flex items-center gap-1"
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={clearCanvas}>
                 <Eraser size={12} /> Borrar
-              </button>
+              </Button>
             </div>
             <div
               className={
@@ -217,7 +215,7 @@ export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, 
                 // dibuja en negro — si el contenedor es oscuro no se ve ni al
                 // firmar ni después en el email adjunto.
                 'rounded-lg border-2 border-dashed bg-white touch-none ' +
-                (showValidation ? 'border-rose-400' : 'border-slate-300 dark:border-slate-700')
+                (showValidation ? 'border-rose-400' : 'border-border-strong')
               }
             >
               <canvas
@@ -242,20 +240,25 @@ export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, 
                 <img
                   src={photo}
                   alt="Entrega"
-                  className="w-full max-h-56 object-contain rounded-lg border border-slate-200 dark:border-slate-700"
+                  className="w-full max-h-56 object-contain rounded-lg border border-border-default"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => setPhoto(null)}
-                  className="absolute top-2 right-2 px-2 py-1 text-[11px] bg-black/60 text-white rounded"
+                  className="absolute top-2 right-2"
                 >
                   Quitar
-                </button>
+                </Button>
               </div>
             ) : (
-              <label className="flex items-center justify-center gap-2 w-full h-20 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer active:bg-slate-100 dark:active:bg-slate-800">
+              <label className="flex items-center justify-center gap-2 w-full h-20 rounded-lg border-2 border-dashed border-border-strong bg-bg-muted cursor-pointer active:bg-slate-100 dark:active:bg-slate-800">
                 <Camera size={18} className="text-slate-500" />
-                <span className="text-sm text-slate-600 dark:text-slate-300">Hacer foto</span>
+                <span className="text-sm text-fg-body">Hacer foto</span>
+                {/* Captura con la cámara del móvil: <input type="file"> oculto
+                    disparado por el <label>. No se sustituye por FileDropzone —
+                    `capture="environment"` es lo que abre la cámara. */}
                 <input
                   type="file"
                   accept="image/*"
@@ -267,20 +270,15 @@ export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, 
             )}
           </div>
 
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Observaciones
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-2"
-              placeholder="Opcional: incidencias, portería, etc."
-            />
-          </div>
+          <Textarea
+            label="Observaciones"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            placeholder="Opcional: incidencias, portería, etc."
+          />
         </div>
-        <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_-8px_16px_-8px_rgba(0,0,0,0.08)]">
+        <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 border-t border-border-subtle bg-bg-card shadow-[0_-8px_16px_-8px_rgba(0,0,0,0.08)]">
           <Button
             onClick={submit}
             disabled={submitting}

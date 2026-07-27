@@ -57,7 +57,7 @@ export const DebugPanel: React.FC = () => {
       /* noop */
     }
 
-    console.log('[DebugPanel] Position saved:', pos); 
+    console.log('[DebugPanel] Position saved:', pos);
     console.log('[DebugPanel] debugEnabled:', debugEnabled);
   }, [pos]);
 
@@ -143,7 +143,7 @@ export const DebugPanel: React.FC = () => {
     setErr(null);
     try {
       const r = await action();
-      const body = (r.data ?? {});
+      const body = r.data ?? {};
       if (!r.ok) throw new Error(body?.error || `HTTP ${r.status}`);
       setMsg(body?.message || JSON.stringify(body));
     } catch (e: any) {
@@ -153,15 +153,9 @@ export const DebugPanel: React.FC = () => {
     }
   };
 
-  const resetSetup = () =>
-    call('reset', () =>
-      coreApi.raw('POST', '/api/setup/dev-reset', {}),
-    );
+  const resetSetup = () => call('reset', () => coreApi.raw('POST', '/api/setup/dev-reset', {}));
 
-  const reseedGeo = () =>
-    call('geo', () =>
-      coreApi.raw('POST', '/api/geo/seed'),
-    );
+  const reseedGeo = () => call('geo', () => coreApi.raw('POST', '/api/geo/seed'));
 
   const forceWizard = () => {
     const url = new URL(window.location.href);
@@ -173,7 +167,7 @@ export const DebugPanel: React.FC = () => {
   return (
     <div className="fixed z-[99999] font-sans" style={{ right: pos.right, bottom: pos.bottom }}>
       {open ? (
-        <div className="w-80 rounded-xl shadow-2xl bg-amber-50 dark:bg-amber-950 border-2 border-amber-300 dark:border-amber-700 overflow-hidden">
+        <div className="w-80 rounded-lg shadow-2xl bg-amber-50 dark:bg-amber-950 border-2 border-amber-300 dark:border-amber-700 overflow-hidden">
           <div
             className="flex items-center justify-between px-3 py-2 bg-amber-200/60 dark:bg-amber-900/60 border-b border-amber-300 dark:border-amber-700 cursor-move select-none touch-none"
             onPointerDown={onDragPointerDown}

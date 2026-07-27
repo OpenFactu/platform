@@ -5,10 +5,15 @@ import {
   Button,
   Input,
   Loader,
+  PageHeader,
   useToast,
+  usePopup,
   Modal,
   Badge,
+  Select,
   SearchableSelect,
+  NumberInput,
+  EmptyState,
 } from '@openfactu/ui';
 import { LayoutGrid, Plus, Trash2, Edit2, Code2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -62,6 +67,7 @@ const defaultForm = () => ({
 export const DashboardWidgets: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<WidgetRow[]>([]);
   const [metrics, setMetrics] = useState<MetricOption[]>([]);
@@ -171,10 +177,16 @@ export const DashboardWidgets: React.FC = () => {
   };
 
   const remove = async (row: WidgetRow) => {
-    if (!confirm(`¿Eliminar el widget "${row.title}"?`)) return;
+    const ok = await popup.confirm({
+      title: 'Eliminar widget',
+      message: `¿Eliminar el widget "${row.title}" del dashboard?`,
+      tone: 'danger',
+      confirmLabel: 'Eliminar',
+    });
+    if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/dashboard-widgets/${row.id}`);
     if (!res.ok) {
-      const err = (res.data ?? {});
+      const err = res.data ?? {};
       toast.error(err.error || 'Error al eliminar');
       return;
     }
@@ -184,30 +196,25 @@ export const DashboardWidgets: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <LayoutGrid className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-              Widgets de dashboard
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Elegí una métrica del catálogo o escribí tu propio componente React, sin necesidad de
-              un plugin.
-            </p>
-          </div>
-        </div>
-        <Button onClick={openCreate} className="flex items-center gap-2">
-          <Plus size={14} /> Nuevo widget
-        </Button>
-      </header>
+      <PageHeader
+        title="Widgets de dashboard"
+        subtitle="Elegí una métrica del catálogo o escribí tu propio componente React, sin necesidad de un plugin."
+        icon={<LayoutGrid size={18} />}
+        size="sm"
+        divider
+        actions={
+          <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+            <Plus size={14} /> Nuevo widget
+          </Button>
+        }
+      />
 
       <Card bodyClassName="p-0">
         <button
           onClick={() => setShowPluginWay((v) => !v)}
           className="w-full flex items-center justify-between px-4 py-3 text-left"
         >
-          <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <span className="flex items-center gap-2 text-sm font-semibold text-fg-body">
             <Code2 size={15} className="text-slate-400" />
             Avanzado: registrar el widget desde un plugin (código en disco)
           </span>
@@ -219,7 +226,7 @@ export const DashboardWidgets: React.FC = () => {
         </button>
         {showPluginWay && (
           <div className="px-4 pb-4 space-y-2">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-fg-muted">
               Si preferís empaquetar el widget como parte de un plugin instalable (en vez de
               guardarlo acá), desde el <code>init()</code> del plugin (
               <code>plugins/&lt;mi-plugin&gt;/index.ts</code>):
@@ -236,13 +243,17 @@ export const DashboardWidgets: React.FC = () => {
           <Loader />
         </div>
       ) : rows.length === 0 ? (
-        <Card bodyClassName="py-16 text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Aún no has creado ningún widget.
-          </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-            Pulsa "Nuevo widget" para añadir uno al Dashboard.
-          </p>
+        <Card bodyClassName="p-0">
+          <EmptyState
+            icon={<LayoutGrid size={18} />}
+            title="Aún no has creado ningún widget"
+            hint="Elige una métrica del catálogo o escribe tu propio componente React para el Dashboard."
+            action={
+              <Button onClick={openCreate} className="flex items-center gap-2">
+                <Plus size={14} /> Nuevo widget
+              </Button>
+            }
+          />
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -250,13 +261,11 @@ export const DashboardWidgets: React.FC = () => {
             {rows.map((r) => (
               <li
                 key={r.id}
-                className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                className="flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-0"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-                      {r.title}
-                    </span>
+                    <span className="font-semibold text-sm text-fg-default">{r.title}</span>
                     {r.kind === 'code' ? (
                       <Badge variant="info">Componente React</Badge>
                     ) : r.kind === 'query' ? (
@@ -267,30 +276,32 @@ export const DashboardWidgets: React.FC = () => {
                     <Badge variant="neutral">{r.size}</Badge>
                   </div>
                   {r.subtitle && (
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                      {r.subtitle}
-                    </div>
+                    <div className="text-[11px] text-fg-muted truncate">{r.subtitle}</div>
                   )}
                 </div>
                 {r.kind === 'metric' && (
-                  <span className="font-black tabular-nums text-slate-700 dark:text-slate-200 text-sm">
+                  <span className="font-black tabular-nums text-fg-body text-sm">
                     {r.value ?? '—'}
                   </span>
                 )}
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => openEdit(r)}
                   title="Editar"
-                  className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-primary hover:bg-primary/10 rounded"
                 >
                   <Edit2 size={13} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => remove(r)}
                   title="Eliminar"
-                  className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                 >
                   <Trash2 size={13} />
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -310,7 +321,7 @@ export const DashboardWidgets: React.FC = () => {
               Tipo de widget
             </label>
             {form.kind === 'query' ? (
-              <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+              <p className="text-xs text-fg-muted italic">
                 Este widget lo creó el asistente de IA a partir de una consulta. Desde aquí puedes
                 editar título, subtítulo, tamaño y orden; para cambiar la consulta, pídeselo al
                 asistente en el chat.
@@ -336,25 +347,17 @@ export const DashboardWidgets: React.FC = () => {
               </div>
             )}
           </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Título
-            </label>
-            <Input
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              placeholder="Artículos en catálogo"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Subtítulo (opcional)
-            </label>
-            <Input
-              value={form.subtitle}
-              onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
-            />
-          </div>
+          <Input
+            label="Título"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="Artículos en catálogo"
+          />
+          <Input
+            label="Subtítulo (opcional)"
+            value={form.subtitle}
+            onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
+          />
           {form.kind === 'metric' ? (
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
@@ -381,35 +384,29 @@ export const DashboardWidgets: React.FC = () => {
                 >
                   <Code2 size={13} /> Editar código
                 </Button>
-                <span className="text-xs text-slate-400 dark:text-slate-500">
+                <span className="text-xs text-fg-subtle">
                   {form.sourceCode.trim() ? 'Código guardado ✓' : 'Sin código todavía'}
                 </span>
               </div>
             </div>
           ) : null}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Tamaño
-              </label>
-              <SearchableSelect
-                value={form.size}
-                onChange={(value) => setForm({ ...form, size: value as typeof form.size })}
-                options={WIDGET_SIZE_OPTIONS}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Orden
-              </label>
-              <Input
-                type="number"
-                value={form.displayOrder}
-                onChange={(e) => setForm({ ...form, displayOrder: Number(e.target.value) || 0 })}
-              />
-            </div>
+            {/* 4 opciones fijas: Select, no SearchableSelect. */}
+            <Select
+              label="Tamaño"
+              value={form.size}
+              onChange={(value) => setForm({ ...form, size: value as typeof form.size })}
+              options={WIDGET_SIZE_OPTIONS}
+            />
+            <NumberInput
+              label="Orden"
+              value={form.displayOrder}
+              onChange={(v) => setForm({ ...form, displayOrder: v ?? 0 })}
+              emptyValue="zero"
+              thousandSeparator={false}
+            />
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>

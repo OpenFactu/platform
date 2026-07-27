@@ -1,8 +1,19 @@
 import { collectiveAgreementsApi } from '../api';
 import type { CollectiveAgreement as Agreement } from '../domain/collectiveAgreement';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  Table,
+  useToast,
+  usePopup,
+  PageHeader,
+} from '@openfactu/ui';
+import type { TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
@@ -22,10 +33,12 @@ const empty = (): Partial<Agreement> => ({
 
 export const CollectiveAgreements: React.FC = () => {
   const { token, user } = useAuth();
+  const { canWrite, canDelete } = usePagePermissions();
   const [rows, setRows] = useState<Agreement[]>([]);
   const [editing, setEditing] = useState<Partial<Agreement> | null>(null);
   const [loading, setLoading] = useState(true);
   const toast = useToast();
+  const popup = usePopup();
   const headers = useMemo(
     () => ({ Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' }),
     [token, user?.tenantId],
@@ -66,27 +79,82 @@ export const CollectiveAgreements: React.FC = () => {
   };
 
   const remove = async (a: Agreement) => {
-    if (!confirm(`¿Borrar convenio ${a.code}?`)) return;
+    const ok = await popup.confirm({
+      title: 'Borrar convenio',
+      message: `¿Borrar convenio ${a.code}?`,
+      tone: 'danger',
+      confirmLabel: 'Borrar',
+    });
+    if (!ok) return;
     await collectiveAgreementsApi.remove(a.id);
     fetchAll();
   };
 
+  const money = (v: unknown) =>
+    `${Number(v || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €`;
+
+  const columns: TableColumn<Agreement>[] = [
+    { header: 'Código', accessor: 'code', sortable: true, primary: true },
+    { header: 'Nombre', accessor: 'name', sortable: true },
+    {
+      header: 'Sector',
+      sortable: true,
+      sortAccessor: (r) => r.sector || '',
+      cell: (r) => <span className="text-fg-muted">{r.sector || '—'}</span>,
+    },
+    {
+      header: 'Salario base',
+      align: 'right',
+      sortable: true,
+      sortAccessor: (r) => Number(r.baseSalary || 0),
+      cell: (r) => <span className="tabular-nums">{money(r.baseSalary)}</span>,
+      className: 'tabular-nums',
+    },
+    { header: 'Vacac.', accessor: 'vacationDays', align: 'right', sortable: true },
+    { header: 'h/sem', accessor: 'weeklyHours', align: 'right', sortable: true },
+    {
+      header: 'Vigencia',
+      cell: (r) => (
+        <span className="text-xs text-fg-muted">
+          {r.validFrom?.slice(0, 10) || '—'} → {r.validTo?.slice(0, 10) || '—'}
+        </span>
+      ),
+    },
+  ];
+
+  // Editar/borrar viven en el menú ⋯ de la fila; la Table los ofrece también con
+  // click derecho, así no hace falta una columna de botones.
+  const rowActions = (r: Agreement): RowAction[] => [
+    {
+      label: 'Editar',
+      icon: <Pencil size={14} />,
+      disabled: !canWrite,
+      onClick: () => setEditing(r),
+    },
+    {
+      label: 'Borrar',
+      icon: <Trash2 size={14} />,
+      destructive: true,
+      disabled: !canDelete,
+      onClick: () => remove(r),
+    },
+  ];
+
   return (
     <div className="p-4 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <BookOpen className="text-emerald-600" size={32} /> Convenios colectivos
-          </h1>
-          <p className="text-slate-500 text-sm">
-            Catálogo de convenios. Asigna uno a cada contrato para que el salario base y los días de
-            vacaciones se sugieran automáticamente.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setEditing(empty())}>
-          <Plus size={14} /> Nuevo convenio
-        </Button>
-      </div>
+      <PageHeader
+        title="Convenios colectivos"
+        subtitle="Catálogo de convenios. Asigna uno a cada contrato para que el salario base y los días de vacaciones se sugieran automáticamente."
+        icon={<BookOpen size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+              <Plus size={14} /> Nuevo convenio
+            </Button>
+          )
+        }
+      />
 
       {editing && (
         <Card noPadding>
@@ -110,17 +178,15 @@ export const CollectiveAgreements: React.FC = () => {
               value={editing.sector || ''}
               onChange={(e) => setEditing({ ...editing, sector: e.target.value })}
             />
-            <Input
+            <DatePicker
               label="Vigencia desde"
-              type="date"
-              value={(editing.validFrom || '').slice(0, 10)}
-              onChange={(e) => setEditing({ ...editing, validFrom: e.target.value })}
+              value={(editing.validFrom || '').slice(0, 10) || null}
+              onChange={(v) => setEditing({ ...editing, validFrom: v ?? '' })}
             />
-            <Input
+            <DatePicker
               label="Vigencia hasta"
-              type="date"
-              value={(editing.validTo || '').slice(0, 10)}
-              onChange={(e) => setEditing({ ...editing, validTo: e.target.value })}
+              value={(editing.validTo || '').slice(0, 10) || null}
+              onChange={(v) => setEditing({ ...editing, validTo: v ?? '' })}
             />
             <Input
               label="Salario base anual"
@@ -151,65 +217,23 @@ export const CollectiveAgreements: React.FC = () => {
               <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
                 Cancelar
               </Button>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit" disabled={!canWrite}>
+                Guardar
+              </Button>
             </div>
           </form>
         </Card>
       )}
 
-      <Card noPadding>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="p-3">Código</th>
-              <th className="p-3">Nombre</th>
-              <th className="p-3">Sector</th>
-              <th className="p-3 text-right">Salario base</th>
-              <th className="p-3 text-right">Vacac.</th>
-              <th className="p-3 text-right">h/sem</th>
-              <th className="p-3">Vigencia</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={8} className="p-6 text-center text-slate-400">
-                  Cargando…
-                </td>
-              </tr>
-            )}
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b">
-                <td className="p-3 font-mono text-xs">{r.code}</td>
-                <td className="p-3 font-medium">{r.name}</td>
-                <td className="p-3 text-slate-500">{r.sector || '—'}</td>
-                <td className="p-3 text-right tabular-nums">
-                  {Number(r.baseSalary || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}{' '}
-                  €
-                </td>
-                <td className="p-3 text-right tabular-nums">{r.vacationDays}</td>
-                <td className="p-3 text-right tabular-nums">{r.weeklyHours}</td>
-                <td className="p-3 text-xs text-slate-500">
-                  {r.validFrom?.slice(0, 10) || '—'} → {r.validTo?.slice(0, 10) || '—'}
-                </td>
-                <td className="p-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => setEditing(r)}
-                      className="text-slate-500 hover:text-indigo-600"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    <button onClick={() => remove(r)} className="text-slate-400 hover:text-red-500">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <Card className="overflow-hidden" noPadding>
+        <Table
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          rowActions={rowActions}
+          onRowClick={(r) => setEditing(r)}
+          emptyMessage="Todavía no hay convenios dados de alta."
+        />
       </Card>
     </div>
   );

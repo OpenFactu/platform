@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { DatePicker } from '@openfactu/ui';
 import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
 import { reportsApi } from '../api';
@@ -17,7 +18,8 @@ export const ReportStockMovements: React.FC = () => {
     if (from) qs.append('from', from);
     if (to) qs.append('to', to);
     setLoading(true);
-    reportsApi.get<any>(`/api/reports/stock-movements?${qs}`)
+    reportsApi
+      .get<any>(`/api/reports/stock-movements?${qs}`)
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };
@@ -47,29 +49,15 @@ export const ReportStockMovements: React.FC = () => {
       onRefresh={load}
       filename="movimientos-stock"
       filters={
-        <div className="flex items-center gap-3 flex-wrap">
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-              Desde
-            </label>
-            <input
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-              Hasta
-            </label>
-            <input
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            />
-          </div>
+        <div className="flex items-end gap-3 flex-wrap">
+          {/* El estado guarda '' como «sin filtro»; DatePicker habla en null. */}
+          <DatePicker
+            label="Desde"
+            value={from || null}
+            onChange={(v) => setFrom(v ?? '')}
+            clearable
+          />
+          <DatePicker label="Hasta" value={to || null} onChange={(v) => setTo(v ?? '')} clearable />
         </div>
       }
     />

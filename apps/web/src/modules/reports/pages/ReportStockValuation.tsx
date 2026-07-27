@@ -12,7 +12,8 @@ export const ReportStockValuation: React.FC = () => {
 
   const load = () => {
     setLoading(true);
-    reportsApi.get<any>('/api/reports/stock-valuation')
+    reportsApi
+      .get<any>('/api/reports/stock-valuation')
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };

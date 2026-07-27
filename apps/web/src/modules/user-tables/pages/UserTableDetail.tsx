@@ -1,7 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { Button, Card, Loader, useToast } from '@openfactu/ui';
+import { Button, Card, Loader, PageHeader, useToast } from '@openfactu/ui';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
@@ -30,7 +30,8 @@ export const UserTableDetail: React.FC = () => {
   useEffect(() => {
     if (isNew || !id || !user?.tenantId) return;
     setLoading(true);
-    coreApi.get(`/api/user-tables/${tblName}/rows/${id}`)
+    coreApi
+      .get(`/api/user-tables/${tblName}/rows/${id}`)
       .then((d) => setValues(d || {}))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -67,23 +68,35 @@ export const UserTableDetail: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-        <div className="flex items-center gap-3">
-          <button
+      <PageHeader
+        title={isNew ? 'Nuevo registro' : 'Editar registro'}
+        size="sm"
+        divider
+        className="pb-4"
+        breadcrumbs={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
             onClick={() => openTab(`/u/${name}`)}
-            className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50"
+            title="Volver"
+            className="w-fit"
           >
             <ArrowLeft size={14} />
-          </button>
-          <h1 className="text-lg font-black text-slate-900 dark:text-slate-100">
-            {isNew ? 'Nuevo registro' : 'Editar registro'}
-          </h1>
-        </div>
-        <Button onClick={save} disabled={saving} className="flex items-center gap-2">
-          <Save size={14} />
-          {saving ? 'Guardando...' : 'Guardar'}
-        </Button>
-      </header>
+          </Button>
+        }
+        actions={
+          <Button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="flex items-center gap-2"
+          >
+            <Save size={14} />
+            {saving ? 'Guardando...' : 'Guardar'}
+          </Button>
+        }
+      />
 
       <Card bodyClassName="p-6">
         <PluginFieldsSection

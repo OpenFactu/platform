@@ -16,7 +16,7 @@
 import { templatesApi } from '@/modules/document-templates/api';
 import { apiClient } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { Modal, Button, Select, NumberInput } from '@openfactu/ui';
 import { Tag, Printer } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -98,24 +98,18 @@ export const LabelPrintButton: React.FC<Props> = ({
     }
   };
 
-  const btnBase =
-    'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200';
-
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
         onClick={(e) => {
           e.stopPropagation();
           setOpen(true);
         }}
         title={title}
-        className={
-          className ||
-          (variant === 'full'
-            ? `${btnBase} px-2.5 py-1 text-xs`
-            : `${btnBase} h-7 w-7 justify-center p-0`)
-        }
+        className={className || (variant === 'full' ? '' : 'h-7 w-7 p-0')}
       >
         {triggerLabel ?? (
           <>
@@ -123,101 +117,79 @@ export const LabelPrintButton: React.FC<Props> = ({
             {variant === 'full' && <span>Etiqueta</span>}
           </>
         )}
-      </button>
+      </Button>
 
-      {open &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) setOpen(false);
-            }}
-          >
-            <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
-                <Printer size={16} className="text-slate-500" />
-                <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Imprimir etiqueta
-                </div>
-              </div>
-              <div className="p-4 space-y-3 text-sm">
-                {!templates && !error && (
-                  <div className="text-slate-400 italic">Cargando plantillas…</div>
-                )}
-                {templates && templates.length === 0 && (
-                  <div className="text-amber-600 dark:text-amber-400">
-                    No hay plantillas de tipo "Etiqueta libre". Créala desde
-                    <em> Plantillas de documento</em> seleccionando ese tipo.
-                  </div>
-                )}
-                {templates && templates.length > 0 && (
-                  <>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Plantilla
-                      </label>
-                      <select
-                        value={selectedId}
-                        onChange={(e) => setSelectedId(e.target.value)}
-                        className="mt-1 w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                      >
-                        {templates.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                            {t.isDefault ? ' (default)' : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        Copias
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={200}
-                        value={copies}
-                        onChange={(e) =>
-                          setCopies(Math.max(1, Math.min(200, Number(e.target.value) || 1)))
-                        }
-                        className="mt-1 w-24 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-                      />
-                    </div>
-                    {Object.keys(params).length > 0 && (
-                      <details className="text-[11px] text-slate-500 dark:text-slate-400">
-                        <summary className="cursor-pointer">Parámetros enviados</summary>
-                        <pre className="mt-1 p-2 rounded bg-slate-50 dark:bg-slate-800 overflow-auto">
-                          {JSON.stringify(params, null, 2)}
-                        </pre>
-                      </details>
-                    )}
-                  </>
-                )}
-                {error && <div className="text-red-500 text-xs whitespace-pre-wrap">⚠ {error}</div>}
-              </div>
-              <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="text-xs px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={doPrint}
-                  disabled={!selectedId || printing}
-                  className="text-xs px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 inline-flex items-center gap-1"
-                >
-                  <Printer size={13} />
-                  {printing ? 'Generando…' : 'Imprimir'}
-                </button>
-              </div>
+      {/* El Modal del paquete ya trae portal, backdrop, cierre al pulsar fuera
+          y el pie de botones; antes esto era un createPortal a mano con el
+          overlay en slate-900/70 fijo. */}
+      <Modal
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title="Imprimir etiqueta"
+        size="sm"
+        closeOnOverlayClick
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={doPrint}
+              disabled={!selectedId}
+              isLoading={printing}
+            >
+              <Printer size={13} />
+              {printing ? 'Generando…' : 'Imprimir'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3 text-sm">
+          {!templates && !error && (
+            <div className="text-fg-subtle italic">Cargando plantillas…</div>
+          )}
+          {templates && templates.length === 0 && (
+            <div className="text-warning-fg">
+              No hay plantillas de tipo "Etiqueta libre". Créala desde
+              <em> Plantillas de documento</em> seleccionando ese tipo.
             </div>
-          </div>,
-          document.body,
-        )}
+          )}
+          {templates && templates.length > 0 && (
+            <>
+              <Select
+                label="Plantilla"
+                value={selectedId}
+                onChange={setSelectedId}
+                options={templates.map((t) => ({
+                  value: t.id,
+                  label: `${t.name}${t.isDefault ? ' (default)' : ''}`,
+                }))}
+              />
+              {/* El recorte a [1, 200] lo hace ya el propio NumberInput al salir
+                  del campo; aquí solo se cubre el caso de dejarlo vacío. */}
+              <NumberInput
+                label="Copias"
+                min={1}
+                max={200}
+                value={copies}
+                onChange={(v) => setCopies(v ?? 1)}
+                containerClassName="w-24"
+              />
+              {Object.keys(params).length > 0 && (
+                <details className="text-[11px] text-fg-muted">
+                  <summary className="cursor-pointer">Parámetros enviados</summary>
+                  <pre className="mt-1 p-2 rounded bg-bg-muted overflow-auto">
+                    {JSON.stringify(params, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </>
+          )}
+          {error && <div className="text-danger-fg text-xs whitespace-pre-wrap">⚠ {error}</div>}
+        </div>
+      </Modal>
     </>
   );
 };

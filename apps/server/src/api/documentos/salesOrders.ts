@@ -42,6 +42,7 @@ router.get('/', async (req: any, res) => {
         status: schema.salesOrders.status,
         subtotal: schema.salesOrders.subtotal,
         taxTotal: schema.salesOrders.taxTotal,
+        origin: schema.salesOrders.origin,
       })
       .from(schema.salesOrders)
       .leftJoin(schema.documentSeries, eq(schema.salesOrders.seriesId, schema.documentSeries.id))

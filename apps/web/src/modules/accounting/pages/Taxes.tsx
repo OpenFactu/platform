@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Badge } from '@openfactu/ui';
+import { Card, Button, Input, Table, PageHeader, useToast, Badge } from '@openfactu/ui';
+import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Percent, Plus, Trash2, Edit3, Save, X, Info } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { taxesApi } from '../api';
 import type { Tax } from '../domain/accounting';
+
+/** Id sintético de la fila de alta — se anexa a `data` para que comparta
+ *  columnas (y por tanto anchos) con el resto de la tabla. */
+const NEW_ROW_ID = '__new';
 
 export const Taxes: React.FC = () => {
   const { user } = useAuth();
@@ -82,53 +85,161 @@ export const Taxes: React.FC = () => {
     }
   };
 
-  const ctxMenu = useContextMenu<Tax>();
-  const buildCtxItems = (t: Tax) => [
+  /** Filas de la tabla: los impuestos más, si se está creando, la fila de alta. */
+  const rows: any[] = newRow ? [...taxes, { id: NEW_ROW_ID, ...newRow }] : taxes;
+
+  const columns: TableColumn<any>[] = [
     {
-      label: 'Editar',
-      icon: <Edit3 size={14} />,
-      disabled: !canWrite,
-      onClick: () => setEditingId(t.id),
+      header: 'Código / Identificador',
+      cell: (t) => {
+        if (t.id === NEW_ROW_ID)
+          return (
+            <Input
+              placeholder="Ej: IVA_21"
+              value={newRow?.code ?? ''}
+              onChange={(e) => setNewRow({ code: e.target.value, rate: newRow?.rate ?? '' })}
+            />
+          );
+        if (editingId === t.id)
+          return (
+            <Input
+              value={t.code}
+              onChange={(e) =>
+                setTaxes(taxes.map((x) => (x.id === t.id ? { ...x, code: e.target.value } : x)))
+              }
+            />
+          );
+        return (
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-bg-muted rounded-lg flex items-center justify-center text-fg-subtle group-hover:bg-accent/10 group-hover:text-accent transition-colors">
+              <Percent size={16} />
+            </div>
+            <div>
+              <p className="font-black text-fg-default">{t.code}</p>
+              <p className="text-[10px] text-fg-subtle font-bold uppercase">
+                Identificador Maestro
+              </p>
+            </div>
+          </div>
+        );
+      },
     },
     {
-      label: 'Eliminar',
-      icon: <Trash2 size={14} />,
-      destructive: true,
-      disabled: !canDelete,
-      onClick: () => handleDelete(t.id),
+      header: 'Porcentaje (%)',
+      align: 'center',
+      cell: (t) => {
+        if (t.id === NEW_ROW_ID)
+          return (
+            <Input
+              type="number"
+              placeholder="21"
+              value={newRow?.rate ?? ''}
+              onChange={(e) => setNewRow({ code: newRow?.code ?? '', rate: e.target.value })}
+              className="text-center"
+            />
+          );
+        if (editingId === t.id)
+          return (
+            <Input
+              type="number"
+              value={t.rate}
+              onChange={(e) =>
+                setTaxes(taxes.map((x) => (x.id === t.id ? { ...x, rate: e.target.value } : x)))
+              }
+              className="text-center"
+            />
+          );
+        return <Badge variant="neutral">{t.rate}%</Badge>;
+      },
+    },
+    {
+      // Guardar/cancelar tienen que estar siempre visibles mientras se edita,
+      // así que se quedan en su columna; editar y eliminar van a `rowActions`.
+      header: 'Acciones',
+      align: 'right',
+      width: '11rem',
+      cell: (t) => {
+        if (t.id === NEW_ROW_ID)
+          return (
+            <div className="flex items-center justify-end gap-2">
+              <Button type="button" size="sm" onClick={handleCreate} className="gap-2">
+                <Save size={14} /> Guardar
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => setNewRow(null)}>
+                <X size={14} />
+              </Button>
+            </div>
+          );
+        if (editingId === t.id)
+          return (
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleUpdate(t.id, t.code, String(t.rate))}
+                className="gap-2"
+              >
+                <Save size={14} /> Aplicar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => setEditingId(null)}
+              >
+                <X size={14} />
+              </Button>
+            </div>
+          );
+        return null;
+      },
     },
   ];
 
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que los permisos se declaran
+  // una vez en lugar de duplicarse entre botones y menú contextual.
+  const rowActions = (t: any): RowAction[] =>
+    t.id === NEW_ROW_ID || editingId === t.id
+      ? []
+      : [
+          {
+            label: 'Editar',
+            icon: <Edit3 size={14} />,
+            disabled: !canWrite,
+            onClick: () => setEditingId(t.id),
+          },
+          {
+            label: 'Eliminar',
+            icon: <Trash2 size={14} />,
+            destructive: true,
+            disabled: !canDelete,
+            onClick: () => handleDelete(t.id),
+          },
+        ];
+
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-amber-600 rounded-lg text-white">
-              <Percent size={20} />
-            </span>
-            <span className="text-[10px] font-black text-amber-600 dark:text-amber-300 uppercase tracking-[0.2em]">
-              Finanzas / Configuración
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            Gestión de Impuestos
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
-            Configura los tipos de IVA y retenciones aplicables a tus documentos.
-          </p>
-        </div>
-        <Button
-          onClick={() => setNewRow({ code: '', rate: '' })}
-          disabled={!!newRow || !canWrite}
-          className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all"
-        >
-          <Plus size={18} /> Nuevo Impuesto
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow="Finanzas / Configuración"
+        title="Gestión de Impuestos"
+        subtitle="Configura los tipos de IVA y retenciones aplicables a tus documentos."
+        icon={<Percent size={18} />}
+        size="lg"
+        actions={
+          <Button
+            type="button"
+            onClick={() => setNewRow({ code: '', rate: '' })}
+            disabled={!!newRow || !canWrite}
+            className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all"
+          >
+            <Plus size={18} /> Nuevo Impuesto
+          </Button>
+        }
+      />
 
-      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/30 rounded-2xl flex items-start gap-4 text-blue-800 dark:text-blue-300">
-        <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-xl text-blue-600 dark:text-blue-300">
+      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/30 rounded-lg flex items-start gap-4 text-blue-800 dark:text-blue-300">
+        <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-300">
           <Info size={20} />
         </div>
         <div className="text-sm">
@@ -142,181 +253,16 @@ export const Taxes: React.FC = () => {
       </div>
 
       <Card className="overflow-hidden border-0" noPadding>
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-black text-slate-400 dark:text-slate-400">
-              <th className="p-6">Código / Identificador</th>
-              <th className="p-6 text-center">Porcentaje (%)</th>
-              <th className="p-6 text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {/* New Row Placeholder */}
-            {newRow && (
-              <tr className="bg-blue-50/30 dark:bg-blue-500/5 animate-in zoom-in-95 duration-200">
-                <td className="p-4">
-                  <Input
-                    placeholder="Ej: IVA_21"
-                    value={newRow.code}
-                    onChange={(e) => setNewRow({ ...newRow, code: e.target.value })}
-                    className="h-10"
-                  />
-                </td>
-                <td className="p-4">
-                  <Input
-                    type="number"
-                    placeholder="21"
-                    value={newRow.rate}
-                    onChange={(e) => setNewRow({ ...newRow, rate: e.target.value })}
-                    className="h-10 text-center"
-                  />
-                </td>
-                <td className="p-4 text-right space-x-2">
-                  <Button size="sm" onClick={handleCreate} className="h-10 gap-2">
-                    <Save size={14} /> Guardar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setNewRow(null)}
-                    className="h-10"
-                  >
-                    <X size={14} />
-                  </Button>
-                </td>
-              </tr>
-            )}
-
-            {taxes.map((t) => (
-              <tr
-                key={t.id}
-                onContextMenu={(e) => ctxMenu.open(e, t)}
-                className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group"
-              >
-                <td className="p-6">
-                  {editingId === t.id ? (
-                    <Input
-                      value={t.code}
-                      onChange={(e) =>
-                        setTaxes(
-                          taxes.map((x) => (x.id === t.id ? { ...x, code: e.target.value } : x)),
-                        )
-                      }
-                      className="h-10"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 dark:text-slate-400 group-hover:bg-amber-100 dark:group-hover:bg-amber-500/20 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                        <Percent size={18} />
-                      </div>
-                      <div>
-                        <p className="font-black text-slate-800 dark:text-slate-100">{t.code}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold uppercase">
-                          Identificador Maestro
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </td>
-                <td className="p-6 text-center">
-                  {editingId === t.id ? (
-                    <Input
-                      type="number"
-                      value={t.rate}
-                      onChange={(e) =>
-                        setTaxes(
-                          taxes.map((x) => (x.id === t.id ? { ...x, rate: e.target.value } : x)),
-                        )
-                      }
-                      className="h-10 text-center"
-                    />
-                  ) : (
-                    <Badge variant="neutral" className="text-lg py-1 px-3 h-9">
-                      {t.rate}%
-                    </Badge>
-                  )}
-                </td>
-                <td className="p-6 text-right space-x-2">
-                  {editingId === t.id ? (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => handleUpdate(t.id, t.code, String(t.rate))}
-                        className="h-10 gap-2"
-                      >
-                        <Save size={14} /> Aplicar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setEditingId(null)}
-                        className="h-10"
-                      >
-                        <X size={14} />
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => canWrite && setEditingId(t.id)}
-                        disabled={!canWrite}
-                        className="h-10 border-transparent hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-300 transition-all disabled:opacity-30 disabled:grayscale"
-                      >
-                        <Edit3 size={16} />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => canDelete && handleDelete(t.id)}
-                        disabled={!canDelete}
-                        className="h-10 border-transparent hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300 transition-all disabled:opacity-30 disabled:grayscale"
-                      >
-                        <Trash2 size={16} />
-                      </Button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-
-            {!loading && taxes.length === 0 && !newRow && (
-              <tr>
-                <td colSpan={3} className="p-20 text-center text-slate-400 dark:text-slate-500">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center text-slate-200">
-                      <Percent size={32} />
-                    </div>
-                    <p className="font-medium">No hay impuestos definidos todavía.</p>
-                    <Button variant="secondary" onClick={() => setNewRow({ code: '', rate: '' })}>
-                      Configurar el primer impuesto
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            )}
-            {loading && (
-              <tr>
-                <td colSpan={3} className="p-20 text-center">
-                  <Loader size="lg" />
-                  <p className="text-slate-400 dark:text-slate-500 mt-4 font-medium italic">
-                    Sincronizando con el servidor...
-                  </p>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
+        {/* La Table trae cabecera, esqueleto de carga y estado vacío: el
+            <table> a mano y sus filas especiales sobraban. */}
+        <Table
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          rowActions={rowActions}
+          emptyMessage="No hay impuestos definidos todavía."
         />
-      )}
+      </Card>
     </div>
   );
 };

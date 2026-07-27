@@ -23,7 +23,7 @@
 
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
-import { Card, Button, Input, useToast } from '@openfactu/ui';
+import { Card, Button, Input, useToast, usePopup } from '@openfactu/ui';
 import { HardDrive, Cloud, CheckCircle2, AlertTriangle, Save, Link2, Unlink } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -66,6 +66,7 @@ const SECRET_SET = '__SET__';
 export const StorageSettingsTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [config, setConfig] = useState<StorageConfig>({ provider: 'local' });
   // Panel que se está viendo/editando — independiente del backend realmente
   // activo (config.provider). Ver comentario de cabecera.
@@ -169,7 +170,10 @@ export const StorageSettingsTab: React.FC = () => {
       await patchConfig(patch);
       toast.success('Configuración guardada');
     } catch (e) {
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al guardar');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al guardar',
+      );
     } finally {
       setSaving(false);
     }
@@ -194,21 +198,24 @@ export const StorageSettingsTab: React.FC = () => {
     } catch (e) {
       popup?.close();
       setConnecting(false);
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al iniciar la conexión');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al iniciar la conexión',
+      );
     }
   };
 
   const disconnect = async (p: CloudProvider) => {
-    if (
-      !window.confirm(
-        `¿Desconectar ${PROVIDER_LABELS[p]}? Los backups y subidas a este proveedor dejarán de funcionar.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await popup.confirm({
+      title: `Desconectar ${PROVIDER_LABELS[p]}`,
+      message: `Los backups y subidas a ${PROVIDER_LABELS[p]} dejarán de funcionar. Los archivos ya subidos siguen accesibles mientras la autorización no se revoque en el proveedor.`,
+      tone: 'danger',
+      confirmLabel: 'Desconectar',
+    });
+    if (!ok) return;
     try {
       const res = await coreApi.raw('POST', `/api/config/storage/oauth/${p}/disconnect`);
-      if (!res.ok) throw new Error((res.data)?.error || `HTTP ${res.status}`);
+      if (!res.ok) throw new Error(res.data?.error || `HTTP ${res.status}`);
       toast.success(`${PROVIDER_LABELS[p]} desconectado`);
       const cfgRes = await coreApi.raw('GET', '/api/config/storage');
       if (cfgRes.ok) {
@@ -218,7 +225,10 @@ export const StorageSettingsTab: React.FC = () => {
       }
       await loadOauthStatus();
     } catch (e) {
-      toast.error((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al desconectar');
+      toast.error(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al desconectar',
+      );
     }
   };
 
@@ -229,7 +239,11 @@ export const StorageSettingsTab: React.FC = () => {
       const body = res.data;
       setHealth(body);
     } catch (e) {
-      setHealth({ ok: false, provider: 'unknown', detail: (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) });
+      setHealth({
+        ok: false,
+        provider: 'unknown',
+        detail: e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined,
+      });
     }
   };
 
@@ -248,11 +262,11 @@ export const StorageSettingsTab: React.FC = () => {
     <div className="space-y-6">
       <Card>
         <div className="p-6 space-y-4">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <HardDrive size={18} />
             <h2 className="text-lg font-bold">Backend de almacenamiento</h2>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
+          <p className="text-sm text-fg-muted leading-snug">
             Backend activo ahora mismo:{' '}
             <strong>
               {activeProvider === 'local'
@@ -429,7 +443,7 @@ const CloudProviderPanel: React.FC<{
         </p>
 
         <details className="group">
-          <summary className="cursor-pointer text-xs font-bold text-slate-500 dark:text-slate-400 select-none">
+          <summary className="cursor-pointer text-xs font-bold text-fg-muted select-none">
             Usar credenciales OAuth propias (avanzado)
           </summary>
           <div className="mt-3 space-y-3">
@@ -468,10 +482,10 @@ const ProviderCard: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className={`relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-sm font-bold ${
+    className={`relative flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all text-sm font-bold ${
       viewing
         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
-        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+        : 'border-border-default bg-bg-card text-fg-muted hover:border-border-strong'
     }`}
   >
     {active && (
@@ -485,9 +499,7 @@ const ProviderCard: React.FC<{
     {connected !== undefined && (
       <span
         className={`text-[9px] uppercase tracking-wider ${
-          connected
-            ? 'text-emerald-600 dark:text-emerald-400'
-            : 'text-slate-400 dark:text-slate-500'
+          connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-fg-subtle'
         }`}
       >
         {connected ? 'conectado' : 'sin conectar'}

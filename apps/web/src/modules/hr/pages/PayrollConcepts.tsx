@@ -1,12 +1,21 @@
 import { payrollConceptsApi } from '../api';
 import type { PayrollConcept as Concept } from '../domain/payroll';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  useToast,
+  Badge,
+  usePopup,
+  PageHeader,
+  Select,
+  Checkbox,
+} from '@openfactu/ui';
+import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ListChecks, Plus, Pencil, Trash2, Wand2 } from 'lucide-react';
-import { ContextMenu } from '@/components/common/ContextMenu';
-import { withRowContextMenu } from '@/components/common/withRowContextMenu';
-import { useContextMenu } from '@/hooks/useContextMenu';
 import { ApiError } from '@/shared/http';
 
 const KIND_LABELS: Record<Concept['kind'], string> = {
@@ -24,6 +33,18 @@ const CALC_LABELS: Record<Concept['calculation'], string> = {
   percent_of_base: '% sobre base',
   per_hour: 'Por hora',
 };
+
+// Los desplegables del formulario usan el nombre largo del tipo; KIND_LABELS es
+// la versión abreviada para el Badge del listado, así que no se reutiliza aquí.
+const KIND_OPTIONS = [
+  { value: 'devengo', label: 'Devengo' },
+  { value: 'deduccion', label: 'Deducción' },
+  { value: 'aportacion_empresa', label: 'Aportación empresa' },
+];
+const CALC_OPTIONS = (['fixed', 'percent_of_base', 'per_hour'] as const).map((value) => ({
+  value,
+  label: CALC_LABELS[value],
+}));
 
 const empty = (): Partial<Concept> => ({
   code: '',
@@ -78,7 +99,9 @@ export const PayrollConcepts: React.FC = () => {
       setEditing(null);
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error al guardar');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error al guardar',
+      );
     }
   };
 
@@ -118,33 +141,12 @@ export const PayrollConcepts: React.FC = () => {
       header: 'Activo',
       cell: (r: Concept) => (r.isActive ? 'Sí' : 'No'),
     },
-    {
-      header: 'Acciones',
-      align: 'right' as const,
-      cell: (r: Concept) => (
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => setEditing(r)}
-            className="text-slate-500 hover:text-indigo-600"
-            title="Editar"
-          >
-            <Pencil size={16} />
-          </button>
-          <button
-            onClick={() => remove(r)}
-            className="text-slate-400 hover:text-red-500"
-            title="Eliminar"
-          >
-            <Trash2 size={16} />
-          </button>
-        </div>
-      ),
-    },
   ];
 
-  const ctxMenu = useContextMenu<Concept>();
-  const ctxColumns = withRowContextMenu(columns, (e, item) => ctxMenu.open(e, item));
-  const buildCtxItems = (r: Concept) => [
+  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
+  // del hover y en el menú de click derecho, así que no hace falta duplicarlas
+  // en una columna de botones.
+  const rowActions = (r: Concept): RowAction[] => [
     { label: 'Editar', icon: <Pencil size={14} />, onClick: () => setEditing(r) },
     {
       label: 'Eliminar',
@@ -156,45 +158,45 @@ export const PayrollConcepts: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-            <ListChecks className="text-indigo-600 dark:text-indigo-300" size={32} />
-            Conceptos de nómina
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Catálogo de pluses, complementos y deducciones que pueden añadirse a las nóminas.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={async () => {
-              try {
-                const d = await payrollConceptsApi.seedDefaults();
-                if (d.created === 0) {
-                  toast.success('El catálogo ya estaba completo');
-                } else {
-                  toast.success(`Creados ${d.created} conceptos estándar`);
+      <PageHeader
+        title="Conceptos de nómina"
+        subtitle="Catálogo de pluses, complementos y deducciones que pueden añadirse a las nóminas."
+        icon={<ListChecks size={18} />}
+        size="lg"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                try {
+                  const d = await payrollConceptsApi.seedDefaults();
+                  if (d.created === 0) {
+                    toast.success('El catálogo ya estaba completo');
+                  } else {
+                    toast.success(`Creados ${d.created} conceptos estándar`);
+                  }
+                  fetchAll();
+                } catch (err) {
+                  toast.error(
+                    err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error',
+                  );
                 }
-                fetchAll();
-              } catch (err) {
-                toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
-              }
-            }}
-            title="Crea de un click los conceptos típicos: salario base, pluses, IRPF, SS empleado y SS empresa"
-          >
-            <Wand2 size={14} /> Cargar catálogo estándar
-          </Button>
-          <Button size="sm" onClick={() => setEditing(empty())}>
-            <Plus size={14} /> Nuevo concepto
-          </Button>
-        </div>
-      </div>
+              }}
+              title="Crea de un click los conceptos típicos: salario base, pluses, IRPF, SS empleado y SS empresa"
+            >
+              <Wand2 size={14} /> Cargar catálogo estándar
+            </Button>
+            <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+              <Plus size={14} /> Nuevo concepto
+            </Button>
+          </div>
+        }
+      />
 
       {editing && (
-        <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+        <Card className="border-border-subtle shadow-lg" noPadding>
           <form onSubmit={save} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Input
@@ -211,36 +213,23 @@ export const PayrollConcepts: React.FC = () => {
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Tipo
-                </label>
-                <select
-                  value={editing.kind}
-                  onChange={(e) => setEditing({ ...editing, kind: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="devengo">Devengo</option>
-                  <option value="deduccion">Deducción</option>
-                  <option value="aportacion_empresa">Aportación empresa</option>
-                </select>
-              </div>
+              {/* Listas estáticas y cortas → Select, que sí tiene prop `label`. */}
+              <Select
+                label="Tipo"
+                options={KIND_OPTIONS}
+                value={editing.kind || 'devengo'}
+                onChange={(v) => setEditing({ ...editing, kind: v as Concept['kind'] })}
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Cálculo
-                </label>
-                <select
-                  value={editing.calculation}
-                  onChange={(e) => setEditing({ ...editing, calculation: e.target.value as any })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="fixed">Fijo</option>
-                  <option value="percent_of_base">% sobre base</option>
-                  <option value="per_hour">Por hora</option>
-                </select>
-              </div>
+              <Select
+                label="Cálculo"
+                options={CALC_OPTIONS}
+                value={editing.calculation || 'fixed'}
+                onChange={(v) =>
+                  setEditing({ ...editing, calculation: v as Concept['calculation'] })
+                }
+              />
               <Input
                 type="number"
                 step="0.01"
@@ -255,20 +244,20 @@ export const PayrollConcepts: React.FC = () => {
                 value={editing.defaultPercent ?? ''}
                 onChange={(e) => setEditing({ ...editing, defaultPercent: e.target.value || null })}
               />
+              {/* Campos de formulario (se persisten al guardar) → Checkbox, que
+                  no tiene prop `label`: se conserva el <label> envolvente. */}
               <div className="flex items-end gap-3 pb-2">
                 <label className="text-sm flex items-center gap-2 select-none">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={!!editing.taxableIrpf}
-                    onChange={(e) => setEditing({ ...editing, taxableIrpf: e.target.checked })}
+                    onChange={(checked) => setEditing({ ...editing, taxableIrpf: checked })}
                   />
                   Sujeto a IRPF
                 </label>
                 <label className="text-sm flex items-center gap-2 select-none">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={!!editing.taxableSs}
-                    onChange={(e) => setEditing({ ...editing, taxableSs: e.target.checked })}
+                    onChange={(checked) => setEditing({ ...editing, taxableSs: checked })}
                   />
                   Sujeto a SS
                 </label>
@@ -276,10 +265,9 @@ export const PayrollConcepts: React.FC = () => {
             </div>
             <div className="flex items-center gap-3">
               <label className="text-sm flex items-center gap-2 select-none">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={editing.isActive ?? true}
-                  onChange={(e) => setEditing({ ...editing, isActive: e.target.checked })}
+                  onChange={(checked) => setEditing({ ...editing, isActive: checked })}
                 />
                 Activo
               </label>
@@ -294,17 +282,9 @@ export const PayrollConcepts: React.FC = () => {
         </Card>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
-        <Table columns={ctxColumns} data={rows} isLoading={loading} />
+      <Card className="overflow-hidden border-border-subtle" noPadding>
+        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
-      {ctxMenu.state && (
-        <ContextMenu
-          x={ctxMenu.state.x}
-          y={ctxMenu.state.y}
-          items={buildCtxItems(ctxMenu.state.data)}
-          onClose={ctxMenu.close}
-        />
-      )}
     </div>
   );
 };

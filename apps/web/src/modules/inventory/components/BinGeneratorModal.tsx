@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Card, Button, Input, Loader, useToast, Modal } from '@openfactu/ui';
-import { LayoutGrid, Play, X, Info } from 'lucide-react';
+import { Button, Input, Loader, NumberInput, useToast, Modal } from '@openfactu/ui';
+import { LayoutGrid, Play, Info } from 'lucide-react';
 import { warehousesApi } from '../api';
 
 interface BinGeneratorModalProps {
@@ -9,6 +9,42 @@ interface BinGeneratorModalProps {
   onClose: () => void;
 }
 
+interface Range {
+  start: number;
+  end: number;
+  padding: number;
+}
+
+/**
+ * Un segmento de la nomenclatura (pasillo / columna / nivel): rango "de X al Y".
+ * Con NumberInput el valor llega ya numérico — antes un `parseInt('')` dejaba
+ * NaN en el estado y el total de la malla se iba a NaN.
+ */
+const SegmentRange: React.FC<{
+  label: string;
+  range: Range;
+  onChange: (range: Range) => void;
+}> = ({ label, range, onChange }) => (
+  <div className="space-y-2">
+    <p className="text-[11px] font-bold text-fg-muted">{label}</p>
+    <div className="flex items-center gap-2">
+      <NumberInput
+        value={range.start}
+        onChange={(v) => onChange({ ...range, start: v ?? 1 })}
+        min={1}
+        inputSize="sm"
+      />
+      <span className="text-fg-subtle">al</span>
+      <NumberInput
+        value={range.end}
+        onChange={(v) => onChange({ ...range, end: v ?? 1 })}
+        min={1}
+        inputSize="sm"
+      />
+    </div>
+  </div>
+);
+
 export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
   warehouseId,
   onSuccess,
@@ -16,9 +52,9 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
 }) => {
   const [prefix, setPrefix] = useState('B');
   const [separator, setSeparator] = useState('-');
-  const [aisleRange, setAisleRange] = useState({ start: 1, end: 5, padding: 2 });
-  const [stackRange, setStackRange] = useState({ start: 1, end: 10, padding: 2 });
-  const [levelRange, setLevelRange] = useState({ start: 1, end: 3, padding: 2 });
+  const [aisleRange, setAisleRange] = useState<Range>({ start: 1, end: 5, padding: 2 });
+  const [stackRange, setStackRange] = useState<Range>({ start: 1, end: 10, padding: 2 });
+  const [levelRange, setLevelRange] = useState<Range>({ start: 1, end: 3, padding: 2 });
   const [isGenerating, setIsGenerating] = useState(false);
   const toast = useToast();
 
@@ -56,7 +92,7 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
     >
       <div className="space-y-6">
         {/* Configuración Nomenclatura */}
-        <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+        <div className="grid grid-cols-2 gap-4 p-4 bg-bg-muted rounded-lg border border-border-subtle">
           <Input
             label="Prefijo"
             placeholder="Ej: B, P, R..."
@@ -77,76 +113,13 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
             <LayoutGrid size={12} /> Definición de Segmentos
           </p>
           <div className="grid grid-cols-3 gap-4 border-l-4 border-blue-500 pl-4 py-2">
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                Pasillo (Aisle)
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  value={aisleRange.start}
-                  onChange={(e) =>
-                    setAisleRange({ ...aisleRange, start: parseInt(e.target.value) })
-                  }
-                  className="h-8"
-                />
-                <span className="text-slate-300 dark:text-slate-600">al</span>
-                <Input
-                  type="number"
-                  value={aisleRange.end}
-                  onChange={(e) => setAisleRange({ ...aisleRange, end: parseInt(e.target.value) })}
-                  className="h-8"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                Columna (Stack)
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  value={stackRange.start}
-                  onChange={(e) =>
-                    setStackRange({ ...stackRange, start: parseInt(e.target.value) })
-                  }
-                  className="h-8"
-                />
-                <span className="text-slate-300 dark:text-slate-600">al</span>
-                <Input
-                  type="number"
-                  value={stackRange.end}
-                  onChange={(e) => setStackRange({ ...stackRange, end: parseInt(e.target.value) })}
-                  className="h-8"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                Nivel (Level)
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  value={levelRange.start}
-                  onChange={(e) =>
-                    setLevelRange({ ...levelRange, start: parseInt(e.target.value) })
-                  }
-                  className="h-8"
-                />
-                <span className="text-slate-300 dark:text-slate-600">al</span>
-                <Input
-                  type="number"
-                  value={levelRange.end}
-                  onChange={(e) => setLevelRange({ ...levelRange, end: parseInt(e.target.value) })}
-                  className="h-8"
-                />
-              </div>
-            </div>
+            <SegmentRange label="Pasillo (Aisle)" range={aisleRange} onChange={setAisleRange} />
+            <SegmentRange label="Columna (Stack)" range={stackRange} onChange={setStackRange} />
+            <SegmentRange label="Nivel (Level)" range={levelRange} onChange={setLevelRange} />
           </div>
         </div>
 
-        <div className="p-4 bg-blue-50 dark:bg-blue-500/10 rounded-xl border border-blue-100 dark:border-blue-500/20 flex items-center justify-between">
+        <div className="p-4 bg-blue-50 dark:bg-blue-500/10 rounded-lg border border-blue-100 dark:border-blue-500/20 flex items-center justify-between">
           <div className="flex items-center gap-3 text-blue-700">
             <Info size={20} />
             <div>

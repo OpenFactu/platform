@@ -103,10 +103,7 @@ export function useGeo() {
     async (regionId: string): Promise<GeoRow[]> => {
       const key = `region:${regionId}`;
       if (!_subRegionsCache.has(key)) {
-        _subRegionsCache.set(
-          key,
-          request<GeoRow[]>(`/api/geo/regions/${regionId}/subregions`),
-        );
+        _subRegionsCache.set(key, request<GeoRow[]>(`/api/geo/regions/${regionId}/subregions`));
       }
       return _subRegionsCache.get(key)!;
     },

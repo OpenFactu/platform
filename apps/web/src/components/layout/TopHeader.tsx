@@ -18,11 +18,11 @@ export const TopHeader: React.FC = () => {
   const toggleTheme = () => update('branding', { themeMode: isDark ? 'light' : 'dark' });
 
   return (
-    <header className="h-14 bg-white dark:bg-ink-900 border-b border-line dark:border-ink-700 flex items-center px-3 md:px-4 gap-2 md:gap-4 z-10">
+    <header className="h-14 bg-bg-card border-b border-border-default flex items-center px-3 md:px-4 gap-2 md:gap-4 z-10">
       {/* Hamburguesa (también en desktop: abre el drawer con etiquetas) */}
       <button
         onClick={toggleMobileNav}
-        className="p-2 rounded-xs text-ink-500 dark:text-ink-400 hover:text-accent dark:hover:text-accent hover:bg-line-2 dark:hover:bg-ink-700 transition-colors"
+        className="p-2 rounded-xs text-fg-muted hover:text-accent dark:hover:text-accent hover:bg-bg-hover transition-colors"
         aria-label="Abrir menú"
       >
         <Menu size={20} />
@@ -41,7 +41,7 @@ export const TopHeader: React.FC = () => {
             <Boxes className="text-primary-fg" size={16} />
           </div>
         )}
-        <span className="hidden sm:inline text-sm font-bold text-ink-900 dark:text-slate-100 tracking-tight">
+        <span className="hidden sm:inline text-sm font-bold text-fg-default tracking-tight">
           {branding.appName}
         </span>
       </div>
@@ -57,7 +57,7 @@ export const TopHeader: React.FC = () => {
         <LocaleToggle />
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-xs text-ink-500 dark:text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700 hover:text-accent dark:hover:text-accent transition-colors"
+          className="p-2 rounded-xs text-fg-muted hover:bg-bg-hover hover:text-accent dark:hover:text-accent transition-colors"
           aria-label="Cambiar tema"
         >
           {isDark ? <Sun size={16} /> : <Moon size={16} />}
@@ -74,7 +74,7 @@ const LocaleToggle: React.FC = () => {
   return (
     <button
       onClick={() => setLocale(next)}
-      className="flex items-center gap-1 px-2 py-2 rounded-xs text-ink-500 dark:text-ink-400 hover:bg-line-2 dark:hover:bg-ink-700 hover:text-accent dark:hover:text-accent transition-colors"
+      className="flex items-center gap-1 px-2 py-2 rounded-xs text-fg-muted hover:bg-bg-hover hover:text-accent dark:hover:text-accent transition-colors"
       aria-label={`Idioma: ${locale.toUpperCase()}`}
       title={`Idioma: ${locale.toUpperCase()}`}
     >

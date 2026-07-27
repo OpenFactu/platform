@@ -45,10 +45,10 @@ const SectionHeader: React.FC<{
   children: React.ReactNode;
   action?: React.ReactNode;
 }> = ({ icon, children, action }) => (
-  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+  <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border-default bg-bg-muted">
     <div className="flex items-center gap-2 min-w-0">
-      <span className="text-slate-500 dark:text-slate-400 shrink-0">{icon}</span>
-      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400 truncate">
+      <span className="text-fg-muted shrink-0">{icon}</span>
+      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted truncate">
         {children}
       </p>
     </div>
@@ -116,12 +116,14 @@ export const StockDetailModal: React.FC<Props> = ({
       ) : (
         <div className="p-5 space-y-5">
           {/* Resumen */}
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 px-4 py-3">
-            <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border-default bg-bg-muted px-4 py-3">
+            <div className="flex items-center gap-2 text-fg-muted">
               <Boxes size={16} />
-              <span className="text-[11px] font-bold uppercase tracking-wide">Stock total físico</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide">
+                Stock total físico
+              </span>
             </div>
-            <span className="text-2xl font-black font-mono tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">
+            <span className="text-2xl font-black font-mono tracking-tight text-fg-default tabular-nums">
               {totalStock.toFixed(2)}
             </span>
           </div>
@@ -131,7 +133,7 @@ export const StockDetailModal: React.FC<Props> = ({
             {/* Columna izquierda */}
             <div className="space-y-4 min-w-0">
               {/* Stock por almacén */}
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="rounded-lg border border-border-default overflow-hidden">
                 <SectionHeader icon={<Warehouse size={12} />}>Stock por Almacén</SectionHeader>
                 <Table
                   className="w-full"
@@ -151,7 +153,9 @@ export const StockDetailModal: React.FC<Props> = ({
                       align: 'right',
                       width: '32%',
                       cell: (item: WarehouseStock) => (
-                        <span className="font-mono tabular-nums">{Number(item.stock).toFixed(2)}</span>
+                        <span className="font-mono tabular-nums">
+                          {Number(item.stock).toFixed(2)}
+                        </span>
                       ),
                     },
                   ]}
@@ -160,22 +164,24 @@ export const StockDetailModal: React.FC<Props> = ({
 
               {/* Reparto por zonas */}
               {zoneStock.length > 0 && (
-                <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-                  <SectionHeader icon={<Package size={12} />}>Reparto por Ubicaciones (Zonas)</SectionHeader>
+                <div className="rounded-lg border border-border-default overflow-hidden">
+                  <SectionHeader icon={<Package size={12} />}>
+                    Reparto por Ubicaciones (Zonas)
+                  </SectionHeader>
                   <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {zoneStock.map((zs) => (
                       <div
                         key={`${zs.warehouseId}-${zs.zoneId}`}
-                        className="p-2.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col gap-1 hover:border-primary/40 transition-colors"
+                        className="p-2.5 rounded-md bg-bg-card border border-border-default flex flex-col gap-1 hover:border-primary/40 transition-colors"
                       >
-                        <span className="text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight leading-none truncate">
+                        <span className="text-[10px] font-black text-fg-default uppercase tracking-tight leading-none truncate">
                           {zs.zoneName}
                         </span>
                         <div className="flex justify-between items-end gap-1">
-                          <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase truncate">
+                          <span className="text-[9px] text-fg-subtle font-bold uppercase truncate">
                             {zs.warehouseName}
                           </span>
-                          <span className="text-lg font-black text-slate-900 dark:text-slate-100 font-mono tracking-tighter leading-none tabular-nums">
+                          <span className="text-lg font-black text-fg-default font-mono tracking-tighter leading-none tabular-nums">
                             {Number(zs.stock).toFixed(2)}
                           </span>
                         </div>
@@ -188,7 +194,7 @@ export const StockDetailModal: React.FC<Props> = ({
 
             {/* Columna derecha: trazabilidad por lote/serie */}
             {tracksBatches && (
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col min-w-0">
+              <div className="rounded-lg border border-border-default overflow-hidden flex flex-col min-w-0">
                 <SectionHeader
                   icon={<Tag size={12} />}
                   action={
@@ -216,12 +222,14 @@ export const StockDetailModal: React.FC<Props> = ({
                                 {item.batchNum}
                               </Badge>
                             ) : (
-                              <span className="text-slate-300 dark:text-slate-600">—</span>
+                              <span className="text-fg-subtle">—</span>
                             ),
                         },
                         {
                           header: 'Almacén',
-                          cell: (item: Batch) => <span className="truncate">{item.warehouseName}</span>,
+                          cell: (item: Batch) => (
+                            <span className="truncate">{item.warehouseName}</span>
+                          ),
                         },
                         {
                           header: 'Cant.',
@@ -236,7 +244,7 @@ export const StockDetailModal: React.FC<Props> = ({
                           align: 'right',
                           width: '20%',
                           cell: (item: Batch) => (
-                            <span className="text-slate-500 dark:text-slate-400">
+                            <span className="text-fg-muted">
                               {fmt.date(item?.expiryDate || null) || '—'}
                             </span>
                           ),
@@ -246,9 +254,7 @@ export const StockDetailModal: React.FC<Props> = ({
                           align: 'right',
                           width: '18%',
                           cell: (item: Batch) => (
-                            <span className="truncate text-slate-500 dark:text-slate-400">
-                              {item.zoneName || '—'}
-                            </span>
+                            <span className="truncate text-fg-muted">{item.zoneName || '—'}</span>
                           ),
                         },
                       ]}
@@ -256,8 +262,8 @@ export const StockDetailModal: React.FC<Props> = ({
                   </div>
                 ) : (
                   <div className="p-8 text-center flex-1 flex flex-col items-center justify-center">
-                    <Package size={24} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                    <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                    <Package size={24} className="mx-auto text-fg-subtle mb-2" />
+                    <p className="text-[11px] text-fg-subtle italic">
                       No hay lotes o series con existencias disponibles en este momento.
                     </p>
                   </div>
@@ -267,7 +273,7 @@ export const StockDetailModal: React.FC<Props> = ({
           </div>
 
           {/* Pie */}
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
             <Button onClick={onClose}>Cerrar</Button>
           </div>
         </div>

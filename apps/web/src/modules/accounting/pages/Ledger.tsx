@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, useToast, Badge } from '@openfactu/ui';
+import { Table, Card, PageHeader, useToast, Badge, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { BookOpenCheck } from 'lucide-react';
 import { chartOfAccountsApi, journalEntriesApi } from '../api';
@@ -12,7 +12,6 @@ export const Ledger: React.FC = () => {
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
-
 
   useEffect(() => {
     if (!user?.tenantId) return;
@@ -66,13 +65,7 @@ export const Ledger: React.FC = () => {
       header: 'Saldo',
       align: 'right' as const,
       cell: (r: LedgerRow) => (
-        <b
-          className={
-            r.runningBalance >= 0
-              ? 'text-slate-700 dark:text-slate-200'
-              : 'text-red-600 dark:text-red-400'
-          }
-        >
+        <b className={r.runningBalance >= 0 ? 'text-fg-body' : 'text-red-600 dark:text-red-400'}>
           {r.runningBalance.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
         </b>
       ),
@@ -81,34 +74,26 @@ export const Ledger: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
-          <BookOpenCheck className="text-blue-600 dark:text-blue-300" size={32} />
-          Libro mayor
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-          Movimientos posteados por cuenta, con saldo corriente.
-        </p>
-      </div>
+      <PageHeader
+        title="Libro mayor"
+        subtitle="Movimientos posteados por cuenta, con saldo corriente."
+        icon={<BookOpenCheck size={18} />}
+        size="lg"
+      />
 
-      <Card className="p-6 border-blue-50 shadow-lg" noPadding>
+      <Card className="border-border-subtle shadow-lg" noPadding>
         <div className="p-6 flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Cuenta
-            </label>
-            <select
+            <label className="block text-sm font-medium text-fg-body mb-1">Cuenta</label>
+            {/* SearchableSelect y no Select: el plan contable puede tener cientos
+                de cuentas y sin buscador es inmanejable. */}
+            <SearchableSelect
+              options={accounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` }))}
               value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-            >
-              <option value="">— seleccionar cuenta —</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.code} — {a.name}
-                </option>
-              ))}
-            </select>
+              onChange={setSelected}
+              placeholder="— seleccionar cuenta —"
+              clearable
+            />
           </div>
           {account && (
             <div className="flex items-center gap-2">
@@ -121,7 +106,7 @@ export const Ledger: React.FC = () => {
         </div>
       </Card>
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table columns={columns} data={rows} isLoading={loading} />
       </Card>
     </div>

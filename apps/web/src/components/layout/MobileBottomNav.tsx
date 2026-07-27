@@ -47,7 +47,7 @@ export const MobileBottomNav: React.FC = () => {
         onClick={() => handleSlot(s)}
         className={cn(
           'flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors',
-          isActive ? 'text-accent' : 'text-ink-500 dark:text-ink-400 hover:text-accent',
+          isActive ? 'text-accent' : 'text-fg-muted hover:text-accent',
         )}
         aria-label={s.label}
       >
@@ -60,7 +60,7 @@ export const MobileBottomNav: React.FC = () => {
   return (
     <>
       <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-ink-900 border-t border-line dark:border-ink-700"
+        className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-bg-card border-t border-border-default"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         aria-label="Navegación inferior"
       >
@@ -72,7 +72,7 @@ export const MobileBottomNav: React.FC = () => {
             <button
               onClick={() => setScanOpen(true)}
               aria-label="Escanear código de barras"
-              className="absolute -top-5 w-14 h-14 rounded-full bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/40 border-4 border-white dark:border-ink-900 active:scale-95 transition-transform"
+              className="absolute -top-5 w-14 h-14 rounded-full bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/40 border-4 border-bg-card active:scale-95 transition-transform"
             >
               <ScanLine size={24} />
             </button>

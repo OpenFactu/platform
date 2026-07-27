@@ -1,7 +1,20 @@
 import { vehiclesApi } from '../api';
 import { employeesApi } from '@/modules/hr/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Modal, Badge, Loader, useToast } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  NumberInput,
+  Modal,
+  Badge,
+  Loader,
+  Select,
+  SearchableSelect,
+  Switch,
+  useToast,
+  usePopup,
+} from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, RotateCcw, Archive } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -21,9 +34,13 @@ const STATUS_LABEL: Record<string, string> = {
   retired: 'Retirado',
 };
 
+// El desplegable de estado deriva sus opciones de las etiquetas de arriba.
+const STATUS_OPTIONS = Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label }));
+
 export const VehiclesTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const [rows, setRows] = useState<Vehicle[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,8 +93,13 @@ export const VehiclesTab: React.FC = () => {
   };
 
   const archive = async (v: Vehicle) => {
-    if (!confirm(`¿Archivar vehículo ${v.plate}? Las rutas pasadas conservarán su registro.`))
-      return;
+    const ok = await popup.confirm({
+      title: 'Archivar vehículo',
+      message: `¿Archivar el vehículo ${v.plate}? Las rutas pasadas conservarán su registro.`,
+      tone: 'danger',
+      confirmLabel: 'Archivar',
+    });
+    if (!ok) return;
     try {
       await vehiclesApi.archive(v.id);
       toast.success('Vehículo archivado');
@@ -102,15 +124,8 @@ export const VehiclesTab: React.FC = () => {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
-            className="rounded border-slate-300 dark:border-slate-600"
-          />
-          Mostrar archivados
-        </label>
+        {/* Recarga la lista al instante, no es campo de formulario → Switch. */}
+        <Switch checked={showArchived} onChange={setShowArchived} label="Mostrar archivados" />
         <Button onClick={openCreate} className="flex items-center gap-2">
           <Plus size={14} /> Nuevo vehículo
         </Button>
@@ -133,7 +148,7 @@ export const VehiclesTab: React.FC = () => {
               return (
                 <li
                   key={v.id}
-                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 ${
+                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0 ${
                     archived ? 'opacity-60' : ''
                   }`}
                 >
@@ -142,10 +157,10 @@ export const VehiclesTab: React.FC = () => {
                   </Badge>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                      <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                         {v.code}
                       </code>
-                      <span className="font-semibold text-sm text-slate-800 dark:text-slate-100 tracking-wide">
+                      <span className="font-semibold text-sm text-fg-default tracking-wide">
                         {v.plate}
                       </span>
                       {(v.brand || v.model) && (
@@ -154,7 +169,7 @@ export const VehiclesTab: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex gap-3 flex-wrap">
+                    <div className="text-[11px] text-fg-muted mt-0.5 flex gap-3 flex-wrap">
                       {defDriver && (
                         <span>
                           Conductor habitual: {defDriver.firstName} {defDriver.lastName}
@@ -166,30 +181,36 @@ export const VehiclesTab: React.FC = () => {
                   </div>
                   {!archived && (
                     <>
-                      <button
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => openEdit(v)}
-                        className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded"
                         title="Editar"
                       >
                         <Edit2 size={13} />
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
                         onClick={() => archive(v)}
-                        className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded"
                         title="Archivar"
                       >
                         <Archive size={13} />
-                      </button>
+                      </Button>
                     </>
                   )}
                   {archived && (
-                    <button
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => restore(v)}
-                      className="p-1.5 text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded"
                       title="Restaurar"
                     >
                       <RotateCcw size={13} />
-                    </button>
+                    </Button>
                   )}
                 </li>
               );
@@ -206,112 +227,74 @@ export const VehiclesTab: React.FC = () => {
       >
         <div className="space-y-3 pt-4">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Matrícula *
-              </label>
-              <Input
-                value={form.plate || ''}
-                onChange={(e) => setForm({ ...form, plate: e.target.value.toUpperCase() })}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Estado
-              </label>
-              <select
-                value={form.status || 'active'}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-              >
-                <option value="active">Activo</option>
-                <option value="maintenance">En taller</option>
-                <option value="retired">Retirado</option>
-              </select>
-            </div>
+            <Input
+              label="Matrícula"
+              requiredMark
+              value={form.plate || ''}
+              onChange={(e) => setForm({ ...form, plate: e.target.value.toUpperCase() })}
+            />
+            {/* Lista estática y corta → Select (sí tiene prop `label`). */}
+            <Select
+              label="Estado"
+              options={STATUS_OPTIONS}
+              value={form.status || 'active'}
+              onChange={(v) => setForm({ ...form, status: v })}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Marca
-              </label>
-              <Input
-                value={form.brand || ''}
-                onChange={(e) => setForm({ ...form, brand: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Modelo
-              </label>
-              <Input
-                value={form.model || ''}
-                onChange={(e) => setForm({ ...form, model: e.target.value })}
-              />
-            </div>
+            <Input
+              label="Marca"
+              value={form.brand || ''}
+              onChange={(e) => setForm({ ...form, brand: e.target.value })}
+            />
+            <Input
+              label="Modelo"
+              value={form.model || ''}
+              onChange={(e) => setForm({ ...form, model: e.target.value })}
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Capacidad (kg)
-              </label>
-              <Input
-                type="number"
-                value={form.capacityKg ?? ''}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    capacityKg: e.target.value === '' ? null : Number(e.target.value),
-                  })
-                }
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Capacidad (m³)
-              </label>
-              <Input
-                type="number"
-                step="0.1"
-                value={form.capacityM3 ?? ''}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    capacityM3: e.target.value === '' ? null : Number(e.target.value),
-                  })
-                }
-              />
-            </div>
+            {/* Capacidades son doublePrecision en el servidor: llegan como
+                number y se envían como number. El campo vacío sigue siendo
+                null (emptyValue por defecto). */}
+            <NumberInput
+              label="Capacidad (kg)"
+              value={form.capacityKg ?? null}
+              onChange={(v) => setForm({ ...form, capacityKg: v })}
+              precision={2}
+              min={0}
+            />
+            <NumberInput
+              label="Capacidad (m³)"
+              value={form.capacityM3 ?? null}
+              onChange={(v) => setForm({ ...form, capacityM3: v })}
+              precision={2}
+              min={0}
+            />
           </div>
           <div>
+            {/* Empleados del servidor → SearchableSelect (sin prop `label`). */}
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
               Conductor habitual
             </label>
-            <select
+            <SearchableSelect
+              options={employees.map((e) => ({
+                value: e.id,
+                label: `${e.firstName} ${e.lastName}`,
+                secondaryLabel: e.code || undefined,
+              }))}
               value={form.defaultDriverEmployeeId || ''}
-              onChange={(e) =>
-                setForm({ ...form, defaultDriverEmployeeId: e.target.value || null })
-              }
-              className="w-full h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3"
-            >
-              <option value="">— sin asignar —</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.firstName} {e.lastName} {e.code ? `(${e.code})` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Notas
-            </label>
-            <Input
-              value={form.notes || ''}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              onChange={(v) => setForm({ ...form, defaultDriverEmployeeId: v || null })}
+              placeholder="— sin asignar —"
+              clearable
             />
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <Input
+            label="Notas"
+            value={form.notes || ''}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>

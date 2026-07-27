@@ -33,7 +33,7 @@ function renderCell<T>(col: TableColumn<T>, line: T, idx: number): React.ReactNo
 export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
   if (!lines.length) {
     return (
-      <p className="p-6 text-center text-sm font-medium text-slate-400 dark:text-slate-500">
+      <p className="p-6 text-center text-sm font-medium text-fg-subtle">
         {emptyMessage ?? 'Sin líneas'}
       </p>
     );
@@ -55,7 +55,7 @@ export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none mb-1.5">
+              <p className="text-[10px] font-black uppercase tracking-widest text-fg-subtle leading-none mb-1.5">
                 {first?.header || 'Artículo'} · L{idx + 1}
               </p>
               {first && renderCell(first, line, idx)}
@@ -71,7 +71,7 @@ export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 mt-3">
             {fieldCols.map((col, colIdx) => (
               <div key={`${col.header}-${colIdx}`} className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 leading-none mb-1.5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-fg-subtle leading-none mb-1.5">
                   {col.header}
                 </p>
                 <div className="text-sm [&_input]:max-w-full [&_select]:max-w-full">
