@@ -11,6 +11,7 @@ import {
   Modal,
   Loader,
   Badge,
+  PageHeader,
   useToast,
   usePopup,
 } from '@openfactu/ui';
@@ -251,20 +252,18 @@ export const Automations: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-4">
-        <div className="flex items-center gap-3">
-          <Zap className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-fg-default tracking-tight">Automatizaciones</h1>
-            <p className="text-xs text-fg-muted">
-              Ejecuta acciones según un horario, un evento del sistema o a demanda.
-            </p>
-          </div>
-        </div>
-        <Button onClick={openCreate} className="flex items-center gap-2">
-          <Plus size={14} /> Nueva
-        </Button>
-      </header>
+      <PageHeader
+        title="Automatizaciones"
+        subtitle="Ejecuta acciones según un horario, un evento del sistema o a demanda."
+        icon={<Zap size={18} />}
+        size="sm"
+        divider
+        actions={
+          <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+            <Plus size={14} /> Nueva
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="py-20 flex justify-center">
@@ -273,7 +272,7 @@ export const Automations: React.FC = () => {
       ) : rows.length === 0 ? (
         <Card bodyClassName="p-0">
           <EmptyState
-            icon={<Zap size={28} />}
+            icon={<Zap size={18} />}
             title="Aún no has creado automatizaciones"
             hint="Lanza un email, un webhook o una notificación según un horario o un evento del sistema."
             action={
@@ -564,7 +563,7 @@ export const Automations: React.FC = () => {
             </div>
           ) : logs.length === 0 ? (
             <EmptyState
-              icon={<History size={24} />}
+              icon={<History size={18} />}
               title="Sin ejecuciones aún"
               hint="Usa «Ejecutar ahora» para probarla sin esperar al trigger."
             />

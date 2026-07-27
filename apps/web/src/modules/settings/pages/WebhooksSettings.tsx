@@ -21,6 +21,7 @@ import {
   Modal,
   Badge,
   Loader,
+  PageHeader,
   useToast,
   usePopup,
 } from '@openfactu/ui';
@@ -135,23 +136,18 @@ export const WebhooksSettings: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <div className="flex items-center gap-3">
-          <Webhook className="text-indigo-600 dark:text-indigo-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-fg-default">
-              Webhooks salientes
-            </h1>
-            <p className="text-xs text-fg-muted">
-              Suscríbete a eventos del sistema y recíbelos en tu propia URL con firma HMAC-SHA256
-              opcional.
-            </p>
-          </div>
-        </div>
-        <Button onClick={openNew} className="flex items-center gap-2">
-          <Plus size={14} /> Nuevo
-        </Button>
-      </header>
+      <PageHeader
+        title="Webhooks salientes"
+        subtitle="Suscríbete a eventos del sistema y recíbelos en tu propia URL con firma HMAC-SHA256 opcional."
+        icon={<Webhook size={18} />}
+        size="sm"
+        divider
+        actions={
+          <Button type="button" onClick={openNew} className="flex items-center gap-2">
+            <Plus size={14} /> Nuevo
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="py-10 flex justify-center">
@@ -160,7 +156,7 @@ export const WebhooksSettings: React.FC = () => {
       ) : subs.length === 0 ? (
         <Card bodyClassName="p-0">
           <EmptyState
-            icon={<Webhook size={28} />}
+            icon={<Webhook size={18} />}
             title="Sin suscripciones"
             hint="Crea la primera para recibir eventos del sistema en tu propia URL."
             action={

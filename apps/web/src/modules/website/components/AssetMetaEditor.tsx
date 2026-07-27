@@ -26,7 +26,7 @@ export const AssetMetaEditor: React.FC<Props> = ({ asset, onSave, onClose }) => 
 
   return (
     <div
-      className="absolute inset-0 z-10 bg-bg-card backdrop-blur-sm rounded-xl p-2.5 flex flex-col gap-2 text-left"
+      className="absolute inset-0 z-10 bg-bg-card backdrop-blur-sm rounded-lg p-2.5 flex flex-col gap-2 text-left"
       onClick={(e) => e.stopPropagation()}
     >
       <Input

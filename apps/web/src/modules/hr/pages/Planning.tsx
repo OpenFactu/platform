@@ -9,7 +9,7 @@ import type { ShiftAssignment, ShiftTemplate } from '../domain/shift';
 import type { Employee } from '../domain/employee';
 import type { Incident, IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast, Tabs, Checkbox } from '@openfactu/ui';
+import { Card, Button, Input, useToast, PageHeader, Tabs, Checkbox } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
 import {
@@ -361,36 +361,40 @@ export const Planning: React.FC = () => {
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <CalendarDays className="text-emerald-600" size={32} /> Planificación
-          </h1>
-          <p className="text-slate-500 text-sm">
+      <PageHeader
+        title="Planificación"
+        subtitle={
+          <>
             {rangeLabel(rangeStart, days)} ·{' '}
             {assigns.filter((a) => a.status !== 'cancelled').length} turnos ·{' '}
             {grandTotal.toFixed(1)} h planificadas
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Tabs
-            items={VIEW_TABS}
-            value={view}
-            onChange={(k) => setView(k as 'week' | 'month')}
-            variant="segmented"
-            size="sm"
-          />
-          <Button variant="secondary" size="sm" onClick={() => navigate(-1)}>
-            <ChevronLeft size={16} />
-          </Button>
-          <Button variant="secondary" size="sm" onClick={goToday}>
-            <CalendarCheck size={14} /> Hoy
-          </Button>
-          <Button variant="secondary" size="sm" onClick={() => navigate(1)}>
-            <ChevronRight size={16} />
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+        icon={<CalendarDays size={18} />}
+        size="lg"
+        actions={
+          // El selector de vista y la navegación del rango van juntos a la
+          // derecha: no son pestañas de la página, sino controles del calendario.
+          <div className="flex items-center gap-2 flex-wrap">
+            <Tabs
+              items={VIEW_TABS}
+              value={view}
+              onChange={(k) => setView(k as 'week' | 'month')}
+              variant="segmented"
+              size="sm"
+            />
+            <Button type="button" variant="secondary" size="sm" onClick={() => navigate(-1)}>
+              <ChevronLeft size={16} />
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={goToday}>
+              <CalendarCheck size={14} /> Hoy
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => navigate(1)}>
+              <ChevronRight size={16} />
+            </Button>
+          </div>
+        }
+      />
 
       <Card className="overflow-x-auto" noPadding>
         <table className="w-full text-sm border-separate border-spacing-0">

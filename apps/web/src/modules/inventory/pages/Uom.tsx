@@ -8,6 +8,7 @@ import {
   usePopup,
   Badge,
   SearchableSelect,
+  PageHeader,
 } from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
@@ -106,58 +107,60 @@ export const Uom: React.FC = () => {
 
   const columns: TableColumn<any>[] = [
     {
-      header: 'Nombre y Código',
+      header: 'Código',
+      width: '9rem',
+      primary: true,
+      sortable: true,
+      sortAccessor: (u) => u.code ?? '',
       cell: (u) => {
         if (u.id === NEW_ROW_ID)
           return (
-            <div className="space-y-2">
-              <Input
-                placeholder="Nombre (Ej: Paquete)"
-                value={newRow?.name ?? ''}
-                onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
-              />
-              <Input
-                placeholder="Código (Ej: pq)"
-                value={newRow?.code ?? ''}
-                onChange={(e) => setNewRow({ ...newRow, code: e.target.value })}
-                className="font-mono uppercase"
-              />
-            </div>
+            <Input
+              placeholder="Ej: pq"
+              value={newRow?.code ?? ''}
+              onChange={(e) => setNewRow({ ...newRow, code: e.target.value })}
+              className="font-mono uppercase"
+            />
           );
         if (editingId === u.id)
           return (
-            <div className="space-y-2">
-              <Input
-                value={u.name}
-                onChange={(e) =>
-                  setUoms(uoms.map((x) => (x.id === u.id ? { ...x, name: e.target.value } : x)))
-                }
-              />
-              <Input
-                value={u.code}
-                onChange={(e) =>
-                  setUoms(uoms.map((x) => (x.id === u.id ? { ...x, code: e.target.value } : x)))
-                }
-                className="font-mono uppercase"
-              />
-            </div>
+            <Input
+              value={u.code}
+              onChange={(e) =>
+                setUoms(uoms.map((x) => (x.id === u.id ? { ...x, code: e.target.value } : x)))
+              }
+              className="font-mono uppercase"
+            />
           );
-        return (
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-bg-muted text-fg-subtle rounded-xl flex items-center justify-center text-xs font-black group-hover:bg-accent/10 group-hover:text-accent transition-colors">
-              {u.code?.toUpperCase().substring(0, 3) || 'UOM'}
-            </div>
-            <div>
-              <p className="font-bold text-fg-default text-sm leading-tight">{u.name}</p>
-              <Badge
-                variant="neutral"
-                className="mt-1 font-mono uppercase tracking-widest text-[9px] bg-bg-muted"
-              >
-                {u.code || '---'}
-              </Badge>
-            </div>
-          </div>
-        );
+        return <span className="font-mono uppercase text-fg-body">{u.code || '—'}</span>;
+      },
+    },
+    {
+      header: 'Nombre',
+      sortable: true,
+      sortAccessor: (u) => u.name ?? '',
+      cell: (u) => {
+        if (u.id === NEW_ROW_ID)
+          return (
+            <Input
+              placeholder="Ej: Paquete"
+              value={newRow?.name ?? ''}
+              onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
+            />
+          );
+        if (editingId === u.id)
+          return (
+            <Input
+              value={u.name}
+              onChange={(e) =>
+                setUoms(uoms.map((x) => (x.id === u.id ? { ...x, name: e.target.value } : x)))
+              }
+            />
+          );
+        // El código ya tiene su propia columna: aquí solo va el nombre. Antes
+        // se repetía tres veces en la misma celda (chip de 40px, nombre y
+        // badge), que era lo que dejaba la tabla vacía a la derecha.
+        return <span className="text-fg-default text-sm">{u.name}</span>;
       },
     },
     {
@@ -211,13 +214,15 @@ export const Uom: React.FC = () => {
               />
             </div>
           );
+        // "Unidad base" es un hecho, no una alerta: va como distintivo neutro
+        // en vez de un recuadro verde que competía con el resto de la fila.
         return !u.baseUomId ? (
-          <div className="inline-flex items-center gap-2 text-success-fg bg-success-bg px-2 py-1 rounded-lg border border-success/20">
-            <Settings2 size={12} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Unidad Base</span>
-          </div>
+          <Badge variant="neutral">
+            <Settings2 size={11} className="mr-1" />
+            Unidad base
+          </Badge>
         ) : (
-          <div className="flex items-center gap-2 text-fg-muted font-bold text-xs">
+          <div className="flex items-center gap-2 text-fg-muted text-xs">
             <span className="text-fg-default">1 {u.code}</span>
             <ArrowRightLeft size={10} className="text-fg-subtle" />
             <span className="text-accent bg-accent/10 px-2 py-0.5 rounded-md border border-accent/20">
@@ -230,7 +235,10 @@ export const Uom: React.FC = () => {
     {
       // Guardar/cancelar tienen que estar siempre visibles mientras se edita,
       // así que se quedan en su columna; editar y eliminar van a `rowActions`.
-      header: 'Acciones',
+      // Sin rótulo: en lectura esta columna va vacía (editar y borrar viven en
+      // el menú de fila) y solo aparece al crear o editar, con Guardar/Aplicar.
+      header: '',
+      id: 'row-form-actions',
       align: 'right',
       width: '11rem',
       cell: (u) => {
@@ -290,31 +298,23 @@ export const Uom: React.FC = () => {
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-blue-600 rounded-lg text-white">
-              <Hash size={20} />
-            </span>
-            <span className="text-[10px] font-black text-blue-600 dark:text-blue-300 uppercase tracking-[0.2em]">
-              Logística / Maestro
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
-            Unidades de Medida
-          </h1>
-          <p className="text-fg-muted font-medium">
-            Define las dimensiones y conversiones globales para tus artículos.
-          </p>
-        </div>
-        <Button
-          onClick={() => setNewRow({ name: '', code: '', baseValue: '1.0000', baseUomId: null })}
-          disabled={!!newRow || !canWrite}
-          className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
-        >
-          <Plus size={18} /> Nueva Unidad
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow="Logística / Maestro"
+        title="Unidades de Medida"
+        subtitle="Define las dimensiones y conversiones globales para tus artículos."
+        icon={<Hash size={18} />}
+        size="lg"
+        actions={
+          <Button
+            type="button"
+            onClick={() => setNewRow({ name: '', code: '', baseValue: '1.0000', baseUomId: null })}
+            disabled={!!newRow || !canWrite}
+            className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
+          >
+            <Plus size={18} /> Nueva Unidad
+          </Button>
+        }
+      />
 
       <Card className="overflow-hidden border-0" noPadding>
         {/* La Table trae cabecera, esqueleto de carga y estado vacío: el

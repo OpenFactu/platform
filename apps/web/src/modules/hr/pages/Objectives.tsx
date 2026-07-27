@@ -6,9 +6,11 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Badge,
   useToast,
   usePopup,
+  PageHeader,
   Select,
   SearchableSelect,
   Progress,
@@ -211,21 +213,19 @@ export const Objectives: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <Target className="text-rose-500" size={32} /> Objetivos SMART
-          </h1>
-          <p className="text-slate-500 text-sm">
-            Objetivos por empleado con métrica medible y progreso.
-          </p>
-        </div>
-        {canWrite && (
-          <Button size="sm" onClick={() => setEditing(empty())}>
-            <Plus size={14} /> Nuevo objetivo
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Objetivos SMART"
+        subtitle="Objetivos por empleado con métrica medible y progreso."
+        icon={<Target size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+              <Plus size={14} /> Nuevo objetivo
+            </Button>
+          )
+        }
+      />
 
       <Card noPadding>
         <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
@@ -307,11 +307,10 @@ export const Objectives: React.FC = () => {
               value={String(editing.weight ?? '1')}
               onChange={(e) => setEditing({ ...editing, weight: e.target.value })}
             />
-            <Input
+            <DatePicker
               label="Fecha límite"
-              type="date"
-              value={(editing.dueDate || '').slice(0, 10)}
-              onChange={(e) => setEditing({ ...editing, dueDate: e.target.value })}
+              value={(editing.dueDate || '').slice(0, 10) || null}
+              onChange={(v) => setEditing({ ...editing, dueDate: v ?? '' })}
             />
             <Select
               label="Estado"

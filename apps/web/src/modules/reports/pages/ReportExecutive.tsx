@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, SearchableSelect } from '@openfactu/ui';
+import { Card, Button, PageHeader, SearchableSelect } from '@openfactu/ui';
 import {
   ArrowLeft,
   Download,
@@ -52,41 +52,45 @@ export const ReportExecutive: React.FC = () => {
 
   return (
     <div className="p-6 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
+      <PageHeader
+        title="Informe ejecutivo"
+        subtitle="Resumen del período para socios y dirección."
+        icon={<FileBarChart size={18} />}
+        size="md"
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
             <ArrowLeft size={12} className="mr-1" /> Volver
           </Button>
-          <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-            <FileBarChart size={22} className="text-rose-600" />
-            Informe ejecutivo
-          </h1>
-          <p className="text-slate-500 text-sm mt-0.5">
-            Resumen del período para socios y dirección.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={load} className="flex items-center gap-2">
-            <RefreshCw size={16} />
-            Actualizar
-          </Button>
-          <Button onClick={downloadPdf} className="flex items-center gap-2">
-            <Download size={16} />
-            PDF
-          </Button>
-        </div>
-      </div>
-      <Card className="p-4">
-        <div className="max-w-sm">
-          <label className="block text-xs font-bold text-fg-body mb-1">Período</label>
-          <SearchableSelect
-            options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
-            value={periodId}
-            onChange={setPeriodId}
-            placeholder="— seleccionar período —"
-          />
-        </div>
-      </Card>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={load}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw size={16} />
+              Actualizar
+            </Button>
+            <Button type="button" onClick={downloadPdf} className="flex items-center gap-2">
+              <Download size={16} />
+              PDF
+            </Button>
+          </div>
+        }
+        toolbar={
+          <div className="max-w-sm">
+            <label className="block text-xs font-bold text-fg-body mb-1">Período</label>
+            <SearchableSelect
+              options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
+              value={periodId}
+              onChange={setPeriodId}
+              placeholder="— seleccionar período —"
+            />
+          </div>
+        }
+      />
       {loading || !data ? (
         <Card className="p-10 text-center text-slate-400 italic">Cargando…</Card>
       ) : (

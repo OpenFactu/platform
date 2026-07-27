@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Select } from '@openfactu/ui';
+import { Card, Button, PageHeader, Select } from '@openfactu/ui';
 import { ArrowLeft, RefreshCw, LineChart as LineChartIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -49,33 +49,37 @@ export const ReportCashflow: React.FC = () => {
 
   return (
     <div className="p-6 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
+      <PageHeader
+        title="Cash-flow"
+        subtitle={`Cobros vs pagos reales últimos ${days} días.`}
+        icon={<LineChartIcon size={18} />}
+        size="md"
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
             <ArrowLeft size={12} className="mr-1" /> Volver
           </Button>
-          <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-            <LineChartIcon size={22} className="text-cyan-600" />
-            Cash-flow
-          </h1>
-          <p className="text-slate-500 text-sm mt-0.5">
-            Cobros vs pagos reales últimos {days} días.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select
-            options={RANGE_OPTIONS}
-            value={String(days)}
-            onChange={(v) => setDays(Number(v))}
-            ariaLabel="Rango de días"
-            containerClassName="w-48"
-          />
-          <Button variant="secondary" onClick={load} className="flex items-center gap-2">
-            <RefreshCw size={16} />
-            Actualizar
-          </Button>
-        </div>
-      </div>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <Select
+              options={RANGE_OPTIONS}
+              value={String(days)}
+              onChange={(v) => setDays(Number(v))}
+              ariaLabel="Rango de días"
+              containerClassName="w-48"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={load}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw size={16} />
+              Actualizar
+            </Button>
+          </div>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5 bg-emerald-50 dark:bg-emerald-500/10">

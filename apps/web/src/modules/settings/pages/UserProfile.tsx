@@ -1,6 +1,6 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, FileDropzone, useToast, usePopup } from '@openfactu/ui';
+import { Card, Button, Input, FileDropzone, PageHeader, useToast, usePopup } from '@openfactu/ui';
 import { UserCircle, Upload, X as XIcon, Save, PenLine, ImageIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { TwoFactorSettings } from '../components/TwoFactorSettings';
@@ -192,16 +192,12 @@ export const UserProfile: React.FC = () => {
 
   return (
     <div className="p-8 max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-          <UserCircle className="text-blue-600 dark:text-blue-300" size={32} />
-          Mi perfil
-        </h1>
-        <p className="text-fg-muted mt-1 font-medium">
-          Tu firma personal aparecerá en los PDFs de los documentos que tú emitas, sustituyendo a la
-          firma genérica de la empresa.
-        </p>
-      </div>
+      <PageHeader
+        title="Mi perfil"
+        subtitle="Tu firma personal aparecerá en los PDFs de los documentos que tú emitas, sustituyendo a la firma genérica de la empresa."
+        icon={<UserCircle size={18} />}
+        size="lg"
+      />
 
       <Card className="p-6 space-y-4 border-border-subtle">
         <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
@@ -216,10 +212,10 @@ export const UserProfile: React.FC = () => {
             <img
               src={profile.avatarImageUrl}
               alt="Foto de perfil"
-              className="w-16 h-16 rounded-xl object-cover border border-border-default"
+              className="w-16 h-16 rounded-lg object-cover border border-border-default"
             />
           ) : (
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xl font-black text-fg-body">
+            <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xl font-black text-fg-body">
               {profile?.username?.charAt(0).toUpperCase()}
             </div>
           )}
@@ -230,7 +226,7 @@ export const UserProfile: React.FC = () => {
               variant="button"
               accept="image/png,image/jpeg,image/webp"
               maxSizeMb={5}
-              icon={<Upload size={14} />}
+              icon={<Upload size={18} />}
               label={profile?.avatarImageUrl ? 'Reemplazar' : 'Subir foto'}
               isUploading={uploadingAvatar}
               uploadingLabel="Subiendo…"
@@ -307,7 +303,7 @@ export const UserProfile: React.FC = () => {
               variant="button"
               accept="image/png,image/jpeg"
               maxSizeMb={5}
-              icon={<Upload size={14} />}
+              icon={<Upload size={18} />}
               label={profile?.signatureImageUrl ? 'Reemplazar' : 'Subir PNG/JPG'}
               isUploading={uploading}
               uploadingLabel="Subiendo…"

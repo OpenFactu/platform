@@ -1,7 +1,7 @@
 import { hrReportsApi } from '../api';
 import type { LaborCostRow as Row } from '../api/hrReportsApi';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, DatePicker, Select, Table } from '@openfactu/ui';
+import { Card, Button, DatePicker, Select, Table, PageHeader } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { PiggyBank, Download } from 'lucide-react';
@@ -123,20 +123,17 @@ export const LaborCost: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <PiggyBank className="text-indigo-600" size={32} /> Coste laboral
-          </h1>
-          <p className="text-slate-500 text-sm">
-            Bruto + SS empresa, agrupado por dimensión. Datos provenientes de las nóminas aprobadas
-            y sus líneas en el rango.
-          </p>
-        </div>
-        <Button size="sm" variant="secondary" onClick={exportExcel}>
-          <Download size={14} /> Exportar Excel
-        </Button>
-      </div>
+      <PageHeader
+        title="Coste laboral"
+        subtitle="Bruto + SS empresa, agrupado por dimensión. Datos provenientes de las nóminas aprobadas y sus líneas en el rango."
+        icon={<PiggyBank size={18} />}
+        size="lg"
+        actions={
+          <Button type="button" size="sm" variant="secondary" onClick={exportExcel}>
+            <Download size={14} /> Exportar Excel
+          </Button>
+        }
+      />
 
       <Card noPadding>
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
@@ -165,19 +162,19 @@ export const LaborCost: React.FC = () => {
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="rounded-xl border-2 border-emerald-300 bg-bg-card p-4">
+        <div className="rounded-lg border-2 border-emerald-300 bg-bg-card p-4">
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
             Bruto pagado
           </div>
           <div className="text-2xl font-black tabular-nums mt-1">{fmt(totals.gross)} €</div>
         </div>
-        <div className="rounded-xl border-2 border-indigo-300 bg-bg-card p-4">
+        <div className="rounded-lg border-2 border-indigo-300 bg-bg-card p-4">
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
             SS a cargo empresa
           </div>
           <div className="text-2xl font-black tabular-nums mt-1">{fmt(totals.ssEr)} €</div>
         </div>
-        <div className="rounded-xl border-2 border-rose-300 bg-bg-card p-4">
+        <div className="rounded-lg border-2 border-rose-300 bg-bg-card p-4">
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
             Coste total
           </div>

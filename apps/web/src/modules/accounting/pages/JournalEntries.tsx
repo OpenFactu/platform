@@ -4,6 +4,8 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
+  PageHeader,
   useToast,
   Badge,
   usePopup,
@@ -275,33 +277,29 @@ export const JournalEntries: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-            <ScrollText className="text-blue-600 dark:text-blue-300" size={32} />
-            Asientos contables
-          </h1>
-          <p className="text-fg-muted mt-1 font-medium">
-            Doble partida. Los asientos posteados son inmutables — para corregir se reversan.
-          </p>
-        </div>
-        {canWrite && (
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={18} />
-            Nuevo asiento
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Asientos contables"
+        subtitle="Doble partida. Los asientos posteados son inmutables — para corregir se reversan."
+        icon={<ScrollText size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={18} />
+              Nuevo asiento
+            </Button>
+          )
+        }
+      />
 
       {formOpen && (
         <Card className="p-6 border-blue-50 shadow-lg" noPadding>
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                type="date"
+              <DatePicker
                 label="Fecha"
-                value={(header.date as string) || ''}
-                onChange={(e) => setHeader({ ...header, date: e.target.value })}
+                value={(header.date as string) || null}
+                onChange={(v) => setHeader({ ...header, date: v ?? '' })}
                 disabled={isReadOnly}
                 required
               />

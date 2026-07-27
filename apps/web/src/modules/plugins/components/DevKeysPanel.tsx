@@ -79,7 +79,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
     <div>
       {/* Nuevo key generado — mostrar una sola vez */}
       {newKey && (
-        <div className="mb-6 p-5 rounded-xl border-2 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20">
+        <div className="mb-6 p-5 rounded-lg border-2 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20">
           <div className="flex items-center gap-2 mb-3">
             <Shield size={18} className="text-emerald-600 dark:text-emerald-400" />
             <h3 className="font-bold text-emerald-900 dark:text-emerald-100">API Key generada</h3>
@@ -188,7 +188,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
             {keys.map((k) => (
               <div
                 key={k.id}
-                className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
+                className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
                   k.isActive
                     ? 'border-border-default bg-bg-card'
                     : 'border-border-default bg-bg-muted opacity-60'
@@ -255,7 +255,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
       </Card>
 
       {/* Instrucciones */}
-      <div className="mt-6 p-5 rounded-xl bg-bg-muted border border-border-default">
+      <div className="mt-6 p-5 rounded-lg bg-bg-muted border border-border-default">
         <h4 className="font-semibold text-sm text-fg-default mb-3">Como usar las API Keys</h4>
         <div className="space-y-2 text-xs text-fg-muted font-mono">
           <p># Desde otro ordenador, sube tu plugin al servidor:</p>

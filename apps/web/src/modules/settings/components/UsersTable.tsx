@@ -47,10 +47,10 @@ export const UsersTable: React.FC<UsersTableProps> = ({
             <img
               src={u.avatarImageUrl}
               alt={u.username}
-              className="w-9 h-9 rounded-xl object-cover border border-border-default"
+              className="w-9 h-9 rounded-lg object-cover border border-border-default"
             />
           ) : (
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xs font-black text-fg-body">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xs font-black text-fg-body">
               {u.username?.charAt(0).toUpperCase()}
             </div>
           )}

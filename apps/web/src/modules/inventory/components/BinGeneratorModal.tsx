@@ -92,7 +92,7 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
     >
       <div className="space-y-6">
         {/* Configuración Nomenclatura */}
-        <div className="grid grid-cols-2 gap-4 p-4 bg-bg-muted rounded-xl border border-border-subtle">
+        <div className="grid grid-cols-2 gap-4 p-4 bg-bg-muted rounded-lg border border-border-subtle">
           <Input
             label="Prefijo"
             placeholder="Ej: B, P, R..."
@@ -119,7 +119,7 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
           </div>
         </div>
 
-        <div className="p-4 bg-blue-50 dark:bg-blue-500/10 rounded-xl border border-blue-100 dark:border-blue-500/20 flex items-center justify-between">
+        <div className="p-4 bg-blue-50 dark:bg-blue-500/10 rounded-lg border border-blue-100 dark:border-blue-500/20 flex items-center justify-between">
           <div className="flex items-center gap-3 text-blue-700">
             <Info size={20} />
             <div>

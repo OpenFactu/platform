@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Input, SearchableSelect } from '@openfactu/ui';
+import { Card, DatePicker, Input, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { crudApi } from '@/shared/api';
 
@@ -134,18 +134,16 @@ export const DocumentFiscalPanel: React.FC<Props> = ({
             </Field>
 
             <Field label="Vencimiento">
-              <Input
-                type="date"
-                value={get('dueDate') || ''}
-                onChange={(e) => set('dueDate', e.target.value)}
+              <DatePicker
+                value={get('dueDate') || null}
+                onChange={(v) => set('dueDate', v ?? '')}
               />
             </Field>
 
             <Field label="Fecha de operación">
-              <Input
-                type="date"
-                value={get('supplyDate') || ''}
-                onChange={(e) => set('supplyDate', e.target.value)}
+              <DatePicker
+                value={get('supplyDate') || null}
+                onChange={(v) => set('supplyDate', v ?? '')}
               />
             </Field>
 

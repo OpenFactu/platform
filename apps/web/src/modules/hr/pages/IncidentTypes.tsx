@@ -1,7 +1,17 @@
 import { incidentTypesApi } from '../api';
 import type { IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, Badge, usePopup, Checkbox } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  useToast,
+  Badge,
+  usePopup,
+  Checkbox,
+  PageHeader,
+} from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { AlertOctagon, Plus, Pencil, Trash2 } from 'lucide-react';
@@ -102,19 +112,17 @@ export const IncidentTypes: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <AlertOctagon className="text-amber-600" size={32} /> Tipos de incidencia
-          </h1>
-          <p className="text-slate-500">
-            Configura los tipos de ausencia/incidencia y su política.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setEditing(empty())}>
-          <Plus size={14} /> Nuevo tipo
-        </Button>
-      </div>
+      <PageHeader
+        title="Tipos de incidencia"
+        subtitle="Configura los tipos de ausencia/incidencia y su política."
+        icon={<AlertOctagon size={18} />}
+        size="lg"
+        actions={
+          <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+            <Plus size={14} /> Nuevo tipo
+          </Button>
+        }
+      />
 
       {editing && (
         <Card className="p-6" noPadding>

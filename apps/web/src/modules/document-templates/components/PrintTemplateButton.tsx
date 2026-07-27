@@ -100,7 +100,7 @@ export const PrintTemplateButton: React.FC<Props> = ({
       </Button>
 
       {open && templates && templates.length > 1 && (
-        <div className="absolute right-0 mt-2 w-72 bg-bg-card border border-border-default rounded-xl z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-72 bg-bg-card border border-border-default rounded-lg z-50 overflow-hidden">
           <div className="px-3 py-2 border-b border-border-subtle bg-bg-muted">
             <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">
               Elige una plantilla

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Table, useToast, Badge } from '@openfactu/ui';
+import { Card, Button, Input, Table, PageHeader, useToast, Badge } from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -220,34 +220,26 @@ export const Taxes: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-amber-600 rounded-lg text-white">
-              <Percent size={20} />
-            </span>
-            <span className="text-[10px] font-black text-amber-600 dark:text-amber-300 uppercase tracking-[0.2em]">
-              Finanzas / Configuración
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-fg-default tracking-tight">
-            Gestión de Impuestos
-          </h1>
-          <p className="text-fg-muted font-medium">
-            Configura los tipos de IVA y retenciones aplicables a tus documentos.
-          </p>
-        </div>
-        <Button
-          onClick={() => setNewRow({ code: '', rate: '' })}
-          disabled={!!newRow || !canWrite}
-          className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all"
-        >
-          <Plus size={18} /> Nuevo Impuesto
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow="Finanzas / Configuración"
+        title="Gestión de Impuestos"
+        subtitle="Configura los tipos de IVA y retenciones aplicables a tus documentos."
+        icon={<Percent size={18} />}
+        size="lg"
+        actions={
+          <Button
+            type="button"
+            onClick={() => setNewRow({ code: '', rate: '' })}
+            disabled={!!newRow || !canWrite}
+            className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all"
+          >
+            <Plus size={18} /> Nuevo Impuesto
+          </Button>
+        }
+      />
 
-      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/30 rounded-2xl flex items-start gap-4 text-blue-800 dark:text-blue-300">
-        <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-xl text-blue-600 dark:text-blue-300">
+      <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/30 rounded-lg flex items-start gap-4 text-blue-800 dark:text-blue-300">
+        <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-300">
           <Info size={20} />
         </div>
         <div className="text-sm">

@@ -1,7 +1,7 @@
 import { shiftTemplatesApi } from '../api';
 import type { ShiftTemplate } from '../domain/shift';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, ColorInput } from '@openfactu/ui';
+import { Table, Card, Button, Input, useToast, PageHeader, ColorInput } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Clock, Plus, Pencil, Trash2 } from 'lucide-react';
@@ -109,20 +109,17 @@ export const ShiftTemplates: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <Clock className="text-indigo-600" size={32} /> Plantillas de turno
-          </h1>
-          <p className="text-slate-500">
-            Cada plantilla define un turno por horas reales (no fijo). Se usan en patrones y
-            asignaciones.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setEditing(empty())}>
-          <Plus size={14} /> Nueva plantilla
-        </Button>
-      </div>
+      <PageHeader
+        title="Plantillas de turno"
+        subtitle="Cada plantilla define un turno por horas reales (no fijo). Se usan en patrones y asignaciones."
+        icon={<Clock size={18} />}
+        size="lg"
+        actions={
+          <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+            <Plus size={14} /> Nueva plantilla
+          </Button>
+        }
+      />
 
       {editing && (
         <Card noPadding>

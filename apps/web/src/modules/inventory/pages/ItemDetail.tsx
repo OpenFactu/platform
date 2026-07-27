@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Badge, Button, Card, Loader, usePopup, useToast } from '@openfactu/ui';
+import { Badge, Button, Card, Loader, PageHeader, usePopup, useToast } from '@openfactu/ui';
 import { ArrowLeft, Boxes, Package, Save, Tag } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
@@ -151,59 +151,74 @@ export const ItemDetail: React.FC = () => {
             <img
               src={cover}
               alt={item.name}
-              className="w-32 h-32 rounded-xl object-cover border border-border-default shrink-0"
+              className="w-32 h-32 rounded-lg object-cover border border-border-default shrink-0"
             />
           ) : (
-            <div className="w-32 h-32 rounded-xl bg-bg-muted border border-border-default flex items-center justify-center text-fg-subtle shrink-0">
+            <div className="w-32 h-32 rounded-lg bg-bg-muted border border-border-default flex items-center justify-center text-fg-subtle shrink-0">
               <Package size={40} />
             </div>
           )}
-          <div className="flex-1 min-w-0">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/items')}
-              className="mb-1 gap-1"
-            >
-              <ArrowLeft size={12} /> Catálogo
-            </Button>
-            <h1 className="text-2xl font-black text-fg-default tracking-tight font-display truncate">
-              {form.values.name || item.name}
-            </h1>
-            <p className="font-mono text-xs text-blue-600 dark:text-blue-300 font-black uppercase mt-0.5">
-              {item.code}
-            </p>
-            <div className="flex flex-wrap items-center gap-2 mt-3">
-              <Badge>{item.kind === 'box' ? 'Caja' : 'Producto'}</Badge>
-              <Badge>{MANAGE_LABEL[form.values.manageBy] ?? form.values.manageBy}</Badge>
-              {form.values.webVisible && <Badge>En la web</Badge>}
-            </div>
-          </div>
-          <div className="flex md:flex-col gap-2 shrink-0">
-            <Button onClick={handleSave} disabled={!canWrite || form.saving}>
-              {form.saving ? (
-                <Loader size="sm" variant="white" />
-              ) : (
-                <>
-                  <Save size={14} className="mr-2" /> Guardar
-                </>
-              )}
-            </Button>
-            <Button variant="secondary" onClick={handleViewStock}>
-              <Boxes size={14} className="mr-2" /> Inventario
-            </Button>
-            <LabelPrintButton
-              params={{ itemId: item.id }}
-              title="Imprimir etiqueta del artículo"
-              className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg border border-border-default text-sm font-semibold text-fg-body hover:bg-bg-hover"
-              triggerLabel={
-                <>
-                  <Tag size={14} /> Etiqueta
-                </>
-              }
-            />
-          </div>
+          {/* La imagen queda fuera de la PageHeader (no sabe expresarla); el resto
+              de la identidad de la ficha sí es una cabecera de página al uso. */}
+          <PageHeader
+            className="flex-1 min-w-0"
+            size="md"
+            breadcrumbs={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/items')}
+                className="w-fit gap-1"
+              >
+                <ArrowLeft size={12} /> Catálogo
+              </Button>
+            }
+            title={
+              <>
+                {form.values.name || item.name}
+                {/* Los Badge van con el título y no en `subtitle`: PageHeader pinta
+                    el subtítulo dentro de un <p> y Badge es un <div>, que el
+                    navegador cerraría en falso rompiendo la línea. */}
+                <span className="flex flex-wrap items-center gap-2">
+                  <Badge>{item.kind === 'box' ? 'Caja' : 'Producto'}</Badge>
+                  <Badge>{MANAGE_LABEL[form.values.manageBy] ?? form.values.manageBy}</Badge>
+                  {form.values.webVisible && <Badge>En la web</Badge>}
+                </span>
+              </>
+            }
+            subtitle={
+              <span className="font-mono text-xs text-accent font-black uppercase">
+                {item.code}
+              </span>
+            }
+            actions={
+              <div className="flex md:flex-col gap-2 shrink-0">
+                <Button type="button" onClick={handleSave} disabled={!canWrite || form.saving}>
+                  {form.saving ? (
+                    <Loader size="sm" variant="white" />
+                  ) : (
+                    <>
+                      <Save size={14} className="mr-2" /> Guardar
+                    </>
+                  )}
+                </Button>
+                <Button type="button" variant="secondary" onClick={handleViewStock}>
+                  <Boxes size={14} className="mr-2" /> Inventario
+                </Button>
+                <LabelPrintButton
+                  params={{ itemId: item.id }}
+                  title="Imprimir etiqueta del artículo"
+                  className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg border border-border-default text-sm font-semibold text-fg-body hover:bg-bg-hover"
+                  triggerLabel={
+                    <>
+                      <Tag size={14} /> Etiqueta
+                    </>
+                  }
+                />
+              </div>
+            }
+          />
         </div>
       </Card>
 

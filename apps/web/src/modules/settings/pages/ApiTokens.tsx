@@ -14,6 +14,7 @@ import {
   Loader,
   Checkbox,
   EmptyState,
+  PageHeader,
   useToast,
   usePopup,
 } from '@openfactu/ui';
@@ -164,20 +165,22 @@ export const ApiTokens: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <div className="flex items-center gap-3">
-          <Key className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-fg-default tracking-tight">Tokens de API</h1>
-            <p className="text-xs text-fg-muted">
-              Credenciales para integraciones server-to-server (plugins, sistemas externos).
-            </p>
-          </div>
-        </div>
-        <Button onClick={() => setShowCreate(true)} className="flex items-center gap-2">
-          <Plus size={14} /> Nuevo token
-        </Button>
-      </header>
+      <PageHeader
+        title="Tokens de API"
+        subtitle="Credenciales para integraciones server-to-server (plugins, sistemas externos)."
+        icon={<Key size={18} />}
+        size="sm"
+        divider
+        actions={
+          <Button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus size={14} /> Nuevo token
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="py-10 flex justify-center">
@@ -186,7 +189,7 @@ export const ApiTokens: React.FC = () => {
       ) : rows.length === 0 ? (
         <Card bodyClassName="p-0">
           <EmptyState
-            icon={<Key size={28} />}
+            icon={<Key size={18} />}
             title="Sin tokens creados"
             hint="Crea una credencial para que un sistema externo consuma la API sin usar tu usuario."
             action={

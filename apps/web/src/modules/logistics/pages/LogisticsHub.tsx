@@ -8,7 +8,7 @@ import {
   Building2,
   AlertTriangle,
 } from 'lucide-react';
-import { Tabs } from '@openfactu/ui';
+import { PageHeader, Tabs } from '@openfactu/ui';
 import { ShipmentsTab } from '../components/ShipmentsTab';
 import { RoutesTab } from '../components/RoutesTab';
 import { PackagesTab } from '../components/PackagesTab';
@@ -45,20 +45,16 @@ export const LogisticsHub: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <div className="flex items-center gap-3">
-          <Truck className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-fg-default tracking-tight">Centro logístico</h1>
-            <p className="text-xs text-fg-muted">
-              Envíos, rutas, paquetes y acopios con seguimiento en tiempo real.
-            </p>
-          </div>
-        </div>
-      </header>
-
-      {/* Scroll horizontal cuando no caben, sin wrap (patrón CompanySettings). */}
-      <Tabs items={tabs} value={tab} onChange={(k) => setTab(k as Tab)} scrollable />
+      <PageHeader
+        title="Centro logístico"
+        subtitle="Envíos, rutas, paquetes y acopios con seguimiento en tiempo real."
+        icon={<Truck size={18} />}
+        size="sm"
+        tabs={
+          /* Scroll horizontal cuando no caben, sin wrap (patrón CompanySettings). */
+          <Tabs items={tabs} value={tab} onChange={(k) => setTab(k as Tab)} scrollable />
+        }
+      />
 
       {tab === 'preparation' && <PreparationTab />}
       {tab === 'shipments' && <ShipmentsTab />}

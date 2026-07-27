@@ -5,10 +5,12 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Loader,
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
   SearchableSelect,
 } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
@@ -161,21 +163,20 @@ const DocumentList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
-        <div>
-          <h1 className="text-4xl font-black text-fg-default">{config.labelPlural}</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Gestiona todos los {config.labelPlural.toLowerCase()}
-          </p>
-        </div>
-        {canWrite && (
-          <div className="flex items-center gap-3">
-            <Button onClick={onCreate} className="gap-2">
+      <PageHeader
+        size="lg"
+        divider
+        className="pb-8"
+        title={config.labelPlural}
+        subtitle={`Gestiona todos los ${config.labelPlural.toLowerCase()}`}
+        actions={
+          canWrite && (
+            <Button type="button" onClick={onCreate} className="gap-2">
               <Plus size={16} /> Nuevo {config.label}
             </Button>
-          </div>
-        )}
-      </div>
+          )
+        }
+      />
 
       <div className="flex gap-2 mb-4">
         <Input
@@ -332,11 +333,7 @@ const DocumentForm: React.FC<{
           </div>
           <div>
             <label className="block text-xs font-mono uppercase text-slate-500 mb-1">Fecha</label>
-            <Input
-              type="date"
-              value={state.date}
-              onChange={(e) => setState.setDate(e.target.value)}
-            />
+            <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
           </div>
           {masters.warehouses.length > 0 && (
             <div>

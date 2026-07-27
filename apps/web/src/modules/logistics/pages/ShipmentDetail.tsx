@@ -11,6 +11,7 @@ import {
   Input,
   Checkbox,
   DropdownMenu,
+  PageHeader,
   SearchableSelect,
   useToast,
 } from '@openfactu/ui';
@@ -346,8 +347,21 @@ export const ShipmentDetail: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <div className="flex items-center gap-3">
+      <PageHeader
+        size="sm"
+        divider
+        title={
+          <>
+            {isInbound ? 'Recepción' : isPickup ? 'Recogida' : 'Envío propio'} ·{' '}
+            {shipment.trackingNumber || (shipment.id || '').slice(0, 8)}
+            {/* El Badge de estado va con el título y no en `subtitle`: PageHeader
+                pinta el subtítulo dentro de un <p> y Badge es un <div>, que el
+                navegador cerraría en falso rompiendo la línea. */}
+            <Badge variant={prepBadge.variant}>{prepBadge.label}</Badge>
+          </>
+        }
+        icon={isInbound ? <PackageCheck size={22} /> : <TruckIcon size={22} />}
+        breadcrumbs={
           <Button
             type="button"
             variant="outline"
@@ -357,80 +371,78 @@ export const ShipmentDetail: React.FC = () => {
           >
             <ArrowLeft size={14} />
           </Button>
-          <div className="flex items-center gap-2">
-            {isInbound ? (
-              <PackageCheck className="text-emerald-600 dark:text-emerald-300" size={22} />
-            ) : (
-              <TruckIcon className="text-blue-600 dark:text-blue-300" size={22} />
+        }
+        subtitle={
+          <span className="flex items-center gap-2 flex-wrap">
+            {!isInbound && shipment.driverName && <span>Conductor: {shipment.driverName}</span>}
+            {!isInbound && shipment.vehiclePlate && <span>· {shipment.vehiclePlate}</span>}
+            {isInbound && shipment.carrier && shipment.carrier !== 'propio' && (
+              <span>Transportista: {shipment.carrier}</span>
             )}
-            <div>
-              <h1 className="text-lg font-black text-fg-default">
-                {isInbound ? 'Recepción' : isPickup ? 'Recogida' : 'Envío propio'} ·{' '}
-                {shipment.trackingNumber || (shipment.id || '').slice(0, 8)}
-              </h1>
-              <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                <Badge variant={prepBadge.variant}>{prepBadge.label}</Badge>
-                {!isInbound && shipment.driverName && <span>Conductor: {shipment.driverName}</span>}
-                {!isInbound && shipment.vehiclePlate && <span>· {shipment.vehiclePlate}</span>}
-                {isInbound && shipment.carrier && shipment.carrier !== 'propio' && (
-                  <span>Transportista: {shipment.carrier}</span>
+            {isInbound && shipment.trackingNumber && (
+              <span className="font-mono">Tracking: {shipment.trackingNumber}</span>
+            )}
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Desktop: acciones en línea */}
+            <div className="hidden md:flex items-center gap-2 flex-wrap justify-end">
+              {shipment.status !== 'cancelled' &&
+                shipment.status !== 'delivered' &&
+                shipment.status !== 'returned' && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setCancelModal({ reason: '', cancelDn: false })}
+                    className="flex items-center gap-2 !text-rose-600"
+                  >
+                    ✕ Cancelar
+                  </Button>
                 )}
-                {isInbound && shipment.trackingNumber && (
-                  <span className="font-mono">Tracking: {shipment.trackingNumber}</span>
+              {shipment.status !== 'cancelled' && shipment.status !== 'returned' && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setReturnModal({ reason: '', cancelDn: false })}
+                  className="flex items-center gap-2 !text-amber-700"
+                >
+                  ↩ Devolver
+                </Button>
+              )}
+              {!isInbound &&
+                shipment.kind !== 'pickup_return' &&
+                ['delivered', 'exception'].includes(shipment.status) && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={openPickupModal}
+                    className="flex items-center gap-2 !text-purple-700"
+                  >
+                    📦 Programar recogida
+                  </Button>
                 )}
-              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={load}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw size={14} /> Refrescar
+              </Button>
+            </div>
+            {/* Móvil: kebab con las mismas acciones. DropdownMenu ya gestiona
+                apertura, cierre al elegir y click fuera. */}
+            <div className="md:hidden">
+              <DropdownMenu align="end" items={actionItems}>
+                <Button type="button" variant="outline" size="sm" aria-label="Más acciones">
+                  <MoreVertical size={16} />
+                </Button>
+              </DropdownMenu>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          {/* Desktop: acciones en línea */}
-          <div className="hidden md:flex items-center gap-2 flex-wrap justify-end">
-            {shipment.status !== 'cancelled' &&
-              shipment.status !== 'delivered' &&
-              shipment.status !== 'returned' && (
-                <Button
-                  variant="secondary"
-                  onClick={() => setCancelModal({ reason: '', cancelDn: false })}
-                  className="flex items-center gap-2 !text-rose-600"
-                >
-                  ✕ Cancelar
-                </Button>
-              )}
-            {shipment.status !== 'cancelled' && shipment.status !== 'returned' && (
-              <Button
-                variant="secondary"
-                onClick={() => setReturnModal({ reason: '', cancelDn: false })}
-                className="flex items-center gap-2 !text-amber-700"
-              >
-                ↩ Devolver
-              </Button>
-            )}
-            {!isInbound &&
-              shipment.kind !== 'pickup_return' &&
-              ['delivered', 'exception'].includes(shipment.status) && (
-                <Button
-                  variant="secondary"
-                  onClick={openPickupModal}
-                  className="flex items-center gap-2 !text-purple-700"
-                >
-                  📦 Programar recogida
-                </Button>
-              )}
-            <Button variant="secondary" onClick={load} className="flex items-center gap-2">
-              <RefreshCw size={14} /> Refrescar
-            </Button>
-          </div>
-          {/* Móvil: kebab con las mismas acciones. DropdownMenu ya gestiona
-              apertura, cierre al elegir y click fuera. */}
-          <div className="md:hidden">
-            <DropdownMenu align="end" items={actionItems}>
-              <Button type="button" variant="outline" size="sm" aria-label="Más acciones">
-                <MoreVertical size={16} />
-              </Button>
-            </DropdownMenu>
-          </div>
-        </div>
-      </header>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Mapa (solo outbound — en recepciones no hay tracking GPS propio) */}
@@ -527,7 +539,7 @@ export const ShipmentDetail: React.FC = () => {
         ) : (
           <Card className="md:col-span-2" bodyClassName="p-6 space-y-4">
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
+              <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
                 <PackageCheck size={24} className="text-emerald-600 dark:text-emerald-300" />
               </div>
               <div className="flex-1 min-w-0">

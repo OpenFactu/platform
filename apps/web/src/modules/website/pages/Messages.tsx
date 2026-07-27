@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Badge, Card, Loader, useToast } from '@openfactu/ui';
+import { Badge, Card, Loader, PageHeader, useToast } from '@openfactu/ui';
 import { Inbox, MailOpen } from 'lucide-react';
 import { websiteApi } from '../api/websiteApi';
 import type { WebsiteSubmission } from '../domain/website';
@@ -41,23 +41,18 @@ export const Messages: React.FC = () => {
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <header className="space-y-1 pb-2">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="p-1.5 bg-teal-600 rounded-lg text-white">
-            <Inbox size={20} />
-          </span>
-          <span className="text-[10px] font-black text-teal-600 dark:text-teal-300 uppercase tracking-[0.2em]">
-            Website / Mensajes
-          </span>
-        </div>
-        <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
-          Mensajes de contacto
-        </h1>
-        <p className="text-fg-muted font-medium">
-          {unread > 0 ? `${unread} sin leer` : 'Todo leído'} — enviados desde el formulario de tu
-          web pública.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Website / Mensajes"
+        title="Mensajes de contacto"
+        subtitle={
+          <>
+            {unread > 0 ? `${unread} sin leer` : 'Todo leído'} — enviados desde el formulario de tu
+            web pública.
+          </>
+        }
+        icon={<Inbox size={18} />}
+        size="lg"
+      />
 
       <Card className="overflow-hidden border-0" noPadding>
         {rows.length === 0 ? (

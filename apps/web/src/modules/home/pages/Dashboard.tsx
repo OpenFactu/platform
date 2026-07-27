@@ -7,6 +7,7 @@ import { UserDashboardWidgets } from '@/components/dashboard/UserDashboardWidget
 import {
   Card,
   Badge,
+  PageHeader,
   SkeletonPage,
   SegmentedControl,
   EmptyState as UiEmptyState,
@@ -259,39 +260,40 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-6 duration-500">
-      <header className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-black text-fg-default tracking-tighter font-display">
-            Business Overview
-          </h1>
-          <p className="text-fg-muted font-medium text-sm flex items-center gap-2">
+      <PageHeader
+        title="Business Overview"
+        subtitle={
+          <span className="flex items-center gap-2">
             <CalendarDays size={14} className="text-fg-subtle" />
             {periodLabel}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Toggle filtro de período: es un filtro de lo que se está viendo, no
-              un cambio de vista, así que va con SegmentedControl (grupo de radio). */}
-          <SegmentedControl
-            options={SCOPE_OPTIONS}
-            value={scope}
-            // SegmentedControl emite string; el estado es la unión 'all' | 'active'.
-            onChange={(v) => setScope(v as 'all' | 'active')}
-            size="sm"
-            uppercase
-            aria-label="Ámbito del periodo"
-          />
-          <Badge
-            variant="success"
-            className="px-2.5 py-1 text-[10px] font-black uppercase flex items-center gap-1.5"
-            title={liveEvents > 0 ? `${liveEvents} eventos recibidos` : 'Canal en vivo activo'}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="hidden sm:inline">En vivo</span>
-            {liveEvents > 0 && <span className="opacity-70">{liveEvents}</span>}
-          </Badge>
-        </div>
-      </header>
+          </span>
+        }
+        size="md"
+        actions={
+          <div className="flex items-center gap-2">
+            {/* Toggle filtro de período: es un filtro de lo que se está viendo, no
+                un cambio de vista, así que va con SegmentedControl (grupo de radio). */}
+            <SegmentedControl
+              options={SCOPE_OPTIONS}
+              value={scope}
+              // SegmentedControl emite string; el estado es la unión 'all' | 'active'.
+              onChange={(v) => setScope(v as 'all' | 'active')}
+              size="sm"
+              uppercase
+              aria-label="Ámbito del periodo"
+            />
+            <Badge
+              variant="success"
+              className="px-2.5 py-1 text-[10px] font-black uppercase flex items-center gap-1.5"
+              title={liveEvents > 0 ? `${liveEvents} eventos recibidos` : 'Canal en vivo activo'}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline">En vivo</span>
+              {liveEvents > 0 && <span className="opacity-70">{liveEvents}</span>}
+            </Badge>
+          </div>
+        }
+      />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -735,4 +737,4 @@ const EmptyState: React.FC<{ icon: any; title: string; hint: string }> = ({
   icon: Icon,
   title,
   hint,
-}) => <UiEmptyState icon={<Icon size={20} />} title={title} hint={hint} className="h-full" />;
+}) => <UiEmptyState icon={<Icon size={18} />} title={title} hint={hint} className="h-full" />;

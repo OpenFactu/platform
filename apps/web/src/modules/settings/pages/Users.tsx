@@ -8,6 +8,7 @@ import {
   Select,
   SearchableSelect,
   Loader,
+  PageHeader,
   useToast,
   usePopup,
 } from '@openfactu/ui';
@@ -301,7 +302,7 @@ const PermissionsEditor: React.FC<{
                         active={p.read}
                         color="emerald"
                         label="Ver"
-                        icon={<Eye size={9} />}
+                        icon={<Eye size={18} />}
                         disabled={disabled}
                         onChange={(v) => togglePerm(item.path, 'read', v)}
                       />
@@ -309,7 +310,7 @@ const PermissionsEditor: React.FC<{
                         active={p.write}
                         color="blue"
                         label="Crear"
-                        icon={<Pencil size={9} />}
+                        icon={<Pencil size={18} />}
                         disabled={disabled}
                         onChange={(v) => togglePerm(item.path, 'write', v)}
                       />
@@ -317,7 +318,7 @@ const PermissionsEditor: React.FC<{
                         active={p.delete}
                         color="rose"
                         label="Borrar"
-                        icon={<AlertTriangle size={9} />}
+                        icon={<AlertTriangle size={18} />}
                         disabled={disabled}
                         onChange={(v) => togglePerm(item.path, 'delete', v)}
                       />
@@ -551,32 +552,25 @@ export const Users: React.FC = () => {
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
-      <header className="flex items-end justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-blue-600 rounded-lg text-white">
-              <UsersIcon size={20} />
-            </span>
-            <span className="text-[10px] font-black text-blue-600 dark:text-blue-300 uppercase tracking-[0.2em]">
-              Gestión Central
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-fg-default tracking-tight">Usuarios</h1>
-          <p className="text-fg-muted font-medium">
-            Gestiona accesos, roles y permisos por empresa.
-          </p>
-        </div>
-        {!showForm && (
-          <Button
-            onClick={() => setShowForm(true)}
-            disabled={!canWrite}
-            className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
-          >
-            <UserPlus size={18} /> Nuevo Usuario
-          </Button>
-        )}
-      </header>
+      <PageHeader
+        title="Usuarios"
+        subtitle="Gestiona accesos, roles y permisos por empresa."
+        eyebrow="Gestión Central"
+        icon={<UsersIcon size={18} />}
+        size="lg"
+        actions={
+          !showForm && (
+            <Button
+              type="button"
+              onClick={() => setShowForm(true)}
+              disabled={!canWrite}
+              className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
+            >
+              <UserPlus size={18} /> Nuevo Usuario
+            </Button>
+          )
+        }
+      />
 
       {/* Formulario */}
       {showForm && (
@@ -709,7 +703,7 @@ export const Users: React.FC = () => {
               </div>
 
               {globalRole === 'SUPERUSER' && (
-                <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/30 rounded-xl text-amber-700 dark:text-amber-200">
+                <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/30 rounded-lg text-amber-700 dark:text-amber-200">
                   <ShieldCheck size={18} className="shrink-0" />
                   <p className="text-sm font-bold">
                     Los SUPERUSER tienen acceso global a todas las empresas sin necesidad de
@@ -719,7 +713,7 @@ export const Users: React.FC = () => {
               )}
 
               {activeMemberships.length === 0 && globalRole !== 'SUPERUSER' && (
-                <div className="flex items-center gap-3 p-4 bg-bg-muted border border-dashed border-border-default rounded-xl text-fg-subtle">
+                <div className="flex items-center gap-3 p-4 bg-bg-muted border border-dashed border-border-default rounded-lg text-fg-subtle">
                   <Building2 size={18} className="shrink-0" />
                   <p className="text-sm font-medium">
                     Pulsa"Añadir Empresa"para asignar acceso a una empresa.
@@ -734,7 +728,7 @@ export const Users: React.FC = () => {
                     return (
                       <div
                         key={idx}
-                        className="flex items-center gap-3 p-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/30 rounded-xl opacity-60"
+                        className="flex items-center gap-3 p-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/30 rounded-lg opacity-60"
                       >
                         <span className="text-xs text-rose-600 dark:text-rose-300 font-bold line-through">
                           {m.tenantName}

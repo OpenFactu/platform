@@ -1,6 +1,6 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Badge, useToast } from '@openfactu/ui';
+import { Card, Button, Badge, PageHeader, useToast } from '@openfactu/ui';
 import {
   Activity,
   Mail,
@@ -145,29 +145,23 @@ export const BackgroundTasks: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
-      <header className="flex items-end justify-between border-b border-line dark:border-ink-700 pb-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-accent/10 text-accent border border-accent/20 rounded-sm">
-            <Activity size={28} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold font-display text-ink-900 dark:text-slate-100">
-              Tareas en segundo plano
-            </h1>
-            <p className="text-sm text-ink-500 dark:text-ink-400">
-              Cola de envíos, backups, subidas y su estado en tiempo real.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono text-ink-400 animate-pulse">
-            ● {new Date(lastUpdate).toLocaleTimeString('es-ES')}
-          </span>
-          <Button variant="outline" size="sm" onClick={load} className="gap-1">
-            <RefreshCw size={12} /> Refrescar
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        title="Tareas en segundo plano"
+        subtitle="Cola de envíos, backups, subidas y su estado en tiempo real."
+        icon={<Activity size={18} />}
+        size="md"
+        divider
+        actions={
+          <>
+            <span className="text-[10px] font-mono text-fg-subtle animate-pulse">
+              ● {new Date(lastUpdate).toLocaleTimeString('es-ES')}
+            </span>
+            <Button type="button" variant="outline" size="sm" onClick={load} className="gap-1">
+              <RefreshCw size={12} /> Refrescar
+            </Button>
+          </>
+        }
+      />
 
       {/* Stats agregadas — correo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

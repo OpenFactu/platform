@@ -202,7 +202,7 @@ export const AttachmentsPanel: React.FC<Props> = ({
 
   if (compact) return <div>{inner}</div>;
 
-  return <div className="rounded-xl border border-border-default bg-bg-card p-4">{inner}</div>;
+  return <div className="rounded-lg border border-border-default bg-bg-card p-4">{inner}</div>;
 };
 
 function formatBytes(n: number): string {

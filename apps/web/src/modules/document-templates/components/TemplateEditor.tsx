@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTabs } from '@/context/TabsContext';
-import { Card, Button, Input, useToast, SearchableSelect, cn } from '@openfactu/ui';
+import { Card, Button, Input, PageHeader, useToast, SearchableSelect, cn } from '@openfactu/ui';
 import { ArrowLeft, Save, PanelRightOpen, PanelRightClose, LayoutTemplate } from 'lucide-react';
 import {
   buildVisualTemplate,
@@ -185,44 +185,44 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   return (
     <div className="h-full flex flex-col overflow-hidden p-6 gap-4 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border-subtle pb-4 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="p-2 bg-bg-card hover:bg-bg-hover border border-border-default rounded-xl text-fg-subtle hover:text-fg-body"
-          >
+      <PageHeader
+        title={template ? 'Editar Plantilla' : 'Nueva Plantilla'}
+        subtitle={
+          mode === 'visual'
+            ? 'Personaliza colores, logo y secciones desde el formulario. No necesitas saber HTML.'
+            : 'Editor HTML avanzado con variables Handlebars. Vista previa en vivo.'
+        }
+        size="md"
+        divider
+        className="flex-shrink-0"
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={18} />
-          </button>
-          <div>
-            <h1 className="text-2xl font-black text-fg-default tracking-tighter">
-              {template ? 'Editar Plantilla' : 'Nueva Plantilla'}
-            </h1>
-            <p className="text-xs text-fg-muted font-medium">
-              {mode === 'visual'
-                ? 'Personaliza colores, logo y secciones desde el formulario. No necesitas saber HTML.'
-                : 'Editor HTML avanzado con variables Handlebars. Vista previa en vivo.'}
-            </p>
+          </Button>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setExplorerOpen((o) => !o)}
+              className="flex items-center gap-2 h-10"
+              title={explorerOpen ? 'Ocultar campos' : 'Mostrar campos'}
+            >
+              {explorerOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+              Campos
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSave}
+              isLoading={saving}
+              className="flex items-center gap-2 h-10 px-6"
+            >
+              <Save size={16} /> Guardar
+            </Button>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => setExplorerOpen((o) => !o)}
-            className="flex items-center gap-2 h-10"
-            title={explorerOpen ? 'Ocultar campos' : 'Mostrar campos'}
-          >
-            {explorerOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-            Campos
-          </Button>
-          <Button
-            onClick={handleSave}
-            isLoading={saving}
-            className="flex items-center gap-2 h-10 px-6"
-          >
-            <Save size={16} /> Guardar
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Metadata */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-shrink-0">

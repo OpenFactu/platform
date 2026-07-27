@@ -8,6 +8,7 @@ import {
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
   SearchableSelect,
 } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
@@ -219,15 +220,12 @@ export const DocumentSeries: React.FC = () => {
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-          <FileDigit className="text-blue-600 dark:text-blue-300" size={32} />
-          Series Documentales
-        </h1>
-        <p className="text-fg-muted mt-1 font-medium">
-          Configura los rangos de numeración para cada tipo de documento del sistema.
-        </p>
-      </div>
+      <PageHeader
+        size="lg"
+        title="Series Documentales"
+        subtitle="Configura los rangos de numeración para cada tipo de documento del sistema."
+        icon={<FileDigit size={18} />}
+      />
 
       <Card className="p-6 border-blue-50 shadow-lg" noPadding>
         <form

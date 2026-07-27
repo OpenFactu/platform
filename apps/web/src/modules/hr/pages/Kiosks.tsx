@@ -1,7 +1,7 @@
 import { kiosksApi } from '../api';
 import type { Kiosk } from '../domain/kiosk';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Table, useToast, usePopup } from '@openfactu/ui';
+import { Card, Button, Input, Table, useToast, usePopup, PageHeader } from '@openfactu/ui';
 import type { TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
@@ -157,21 +157,19 @@ export const Kiosks: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <Tablet className="text-indigo-600" size={32} /> Kioskos de fichaje
-          </h1>
-          <p className="text-slate-500">
-            Terminales compartidos donde los empleados fichan introduciendo su PIN personal.
-          </p>
-        </div>
-        {canWrite && (
-          <Button size="sm" onClick={() => setEditing({ name: '', location: '' })}>
-            <Plus size={14} /> Nuevo kiosko
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Kioskos de fichaje"
+        subtitle="Terminales compartidos donde los empleados fichan introduciendo su PIN personal."
+        icon={<Tablet size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" size="sm" onClick={() => setEditing({ name: '', location: '' })}>
+              <Plus size={14} /> Nuevo kiosko
+            </Button>
+          )
+        }
+      />
 
       {editing && (
         <Card noPadding>

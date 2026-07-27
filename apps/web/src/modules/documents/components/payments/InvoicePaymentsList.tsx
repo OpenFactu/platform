@@ -5,6 +5,7 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   SearchableSelect,
   EmptyState,
   useToast,
@@ -239,13 +240,7 @@ const EditPaymentForm: React.FC<EditPaymentFormProps> = ({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Input
-          type="date"
-          label="Fecha"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          required
-        />
+        <DatePicker label="Fecha" value={date} onChange={(v) => setDate(v ?? '')} required />
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
             Nº de referencia <span className="text-rose-600 font-black">*</span>

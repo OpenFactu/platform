@@ -2,7 +2,16 @@ import { priceListsApi, type PriceList, type PriceListEntry } from '../api';
 import { itemsApi } from '@/modules/inventory/api';
 import type { Item } from '@/modules/inventory/domain/item';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Table, useToast, usePopup, EmptyState } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Table,
+  useToast,
+  usePopup,
+  EmptyState,
+  PageHeader,
+} from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -226,22 +235,14 @@ export const PriceLists: React.FC = () => {
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-accent rounded-lg text-accent-fg">
-              <DollarSign size={20} />
-            </span>
-            <span className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">
-              Comercial / Pricing
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-fg-default tracking-tight">Gestión de Tarifas</h1>
-          <p className="text-fg-muted font-medium">
-            Controla tus márgenes y listas de precios de forma masiva.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        size="lg"
+        className="pb-2"
+        eyebrow="Comercial / Pricing"
+        icon={<DollarSign size={18} />}
+        title="Gestión de Tarifas"
+        subtitle="Controla tus márgenes y listas de precios de forma masiva."
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
         {/* Master Table: Price Lists */}
@@ -422,7 +423,7 @@ export const PriceLists: React.FC = () => {
             </Card>
           ) : (
             <EmptyState
-              icon={<Tag size={40} />}
+              icon={<Tag size={18} />}
               title="Potencia Comercial"
               hint="Selecciona una lista de la izquierda para empezar a optimizar tus márgenes de beneficio de forma masiva."
               className="h-full min-h-[400px] border-2 border-dashed border-border-default rounded-[2.5rem] bg-bg-muted"

@@ -14,6 +14,7 @@ import {
   DatePicker,
   Tabs,
   Table,
+  PageHeader,
 } from '@openfactu/ui';
 import type { BadgeProps, TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -341,24 +342,23 @@ export const Evaluations: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <ClipboardCheck className="text-indigo-600" size={32} /> Evaluaciones
-          </h1>
-          <p className="text-slate-500 text-sm">
-            Ciclos de evaluación con competencias ponderadas. Al cerrar una evaluación se calcula la
-            puntuación final como Σ(score × peso) / Σpeso.
-          </p>
-        </div>
-        {/* Lo que cambia es la vista completa, no un filtro → Tabs. */}
-        <Tabs
-          items={TABS}
-          value={tab}
-          onChange={(k) => setTab(k as 'cycles' | 'competencies')}
-          variant="segmented"
-        />
-      </div>
+      <PageHeader
+        title="Evaluaciones"
+        subtitle="Ciclos de evaluación con competencias ponderadas. Al cerrar una evaluación se calcula la puntuación final como Σ(score × peso) / Σpeso."
+        icon={<ClipboardCheck size={18} />}
+        size="lg"
+        actions={
+          // Lo que cambia es la vista completa, no un filtro → Tabs. Van en
+          // `actions` (a la derecha del título) porque la variante segmented ya
+          // se pintaba así, no pegadas al borde inferior.
+          <Tabs
+            items={TABS}
+            value={tab}
+            onChange={(k) => setTab(k as 'cycles' | 'competencies')}
+            variant="segmented"
+          />
+        }
+      />
 
       {tab === 'cycles' && !openCycle && (
         <>

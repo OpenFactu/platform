@@ -17,6 +17,7 @@ import {
   Badge,
   Loader,
   Checkbox,
+  PageHeader,
   useToast,
   usePopup,
   SearchableSelect,
@@ -180,21 +181,18 @@ export const CarriersSettings: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <div className="flex items-center gap-3">
-          <Truck className="text-indigo-600 dark:text-indigo-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-fg-default">Transportistas</h1>
-            <p className="text-xs text-fg-muted">
-              Da de alta cualquier transportista. Si existe un adapter en el core puedes conectarlo;
-              si no, queda como gestión manual.
-            </p>
-          </div>
-        </div>
-        <Button onClick={openNewCarrier} className="flex items-center gap-2">
-          <Plus size={14} /> Nuevo
-        </Button>
-      </header>
+      <PageHeader
+        title="Transportistas"
+        subtitle="Da de alta cualquier transportista. Si existe un adapter en el core puedes conectarlo; si no, queda como gestión manual."
+        icon={<Truck size={18} />}
+        size="sm"
+        divider
+        actions={
+          <Button type="button" onClick={openNewCarrier} className="flex items-center gap-2">
+            <Plus size={14} /> Nuevo
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="py-10 flex justify-center">

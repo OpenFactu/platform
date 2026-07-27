@@ -96,7 +96,7 @@ export const MessageBubble: React.FC<{
       <div
         className={
           isUser
-            ? 'max-w-[85%] rounded-xl px-4 py-3 text-sm shadow-sm bg-accent text-white'
+            ? 'max-w-[85%] rounded-lg px-4 py-3 text-sm shadow-sm bg-accent text-white'
             : 'max-w-full w-full px-1 text-sm text-fg-default'
         }
       >

@@ -2,7 +2,7 @@ import { stockApi } from '@/modules/inventory/api';
 import { Trash2, Plus, AlertCircle, CheckCircle2, ChevronRight, Barcode } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
-import { Button, cn, Input, Modal, SearchableSelect } from '@openfactu/ui';
+import { Button, cn, DatePicker, Input, Modal, SearchableSelect } from '@openfactu/ui';
 
 interface BatchDetail {
   batchNum: string;
@@ -93,7 +93,7 @@ export const BatchSelectionModal: React.FC<Props> = ({
       maxWidth="2xl"
     >
       <div className="space-y-6 p-1 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
-        <div className="flex items-center justify-between bg-bg-muted p-4 rounded-xl border border-border-default">
+        <div className="flex items-center justify-between bg-bg-muted p-4 rounded-lg border border-border-default">
           <div>
             <p className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
               Cantidad Requerida
@@ -176,15 +176,10 @@ export const BatchSelectionModal: React.FC<Props> = ({
                   </td>
                   {manageBy === 'B' && (
                     <td className="py-2 px-2">
-                      <Input
-                        type="date"
-                        value={d.expiryDate || ''}
-                        onChange={(e) => updateLine(idx, 'expiryDate', e.target.value)}
+                      <DatePicker
+                        value={d.expiryDate || null}
+                        onChange={(v) => updateLine(idx, 'expiryDate', v ?? '')}
                         disabled={readOnly}
-                        className={cn(
-                          'h-9 border-border-default',
-                          readOnly && 'bg-bg-card border-transparent font-bold text-fg-body',
-                        )}
                       />
                     </td>
                   )}

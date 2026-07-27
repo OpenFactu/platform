@@ -549,7 +549,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
     >
       <div className="flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
         {/* ----------- TOP GRID: Líneas del documento ----------- */}
-        <div className="rounded-xl border border-border-default bg-bg-muted overflow-hidden">
+        <div className="rounded-lg border border-border-default bg-bg-muted overflow-hidden">
           <div className="px-4 py-2 bg-bg-muted border-b border-border-default flex items-center justify-between">
             <p className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
               Líneas del documento
@@ -664,7 +664,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
         {selectedLine && selectedItem && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
             {/* -------- IZQUIERDA: Lista de lotes/series existentes -------- */}
-            <div className="rounded-xl border border-border-default bg-bg-card flex flex-col overflow-hidden min-h-[320px]">
+            <div className="rounded-lg border border-border-default bg-bg-card flex flex-col overflow-hidden min-h-[320px]">
               <div className="px-4 py-2 bg-bg-muted border-b border-border-default flex items-center justify-between gap-2">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
                   {isSale
@@ -868,7 +868,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
             </div>
 
             {/* -------- DERECHA: Asignado a esta línea -------- */}
-            <div className="rounded-xl border border-border-default bg-bg-card flex flex-col overflow-hidden">
+            <div className="rounded-lg border border-border-default bg-bg-card flex flex-col overflow-hidden">
               <div className="px-4 py-2 bg-bg-muted border-b border-border-default flex items-center justify-between gap-2">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
                   Asignado

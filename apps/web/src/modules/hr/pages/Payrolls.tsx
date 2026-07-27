@@ -15,6 +15,7 @@ import {
   useToast,
   Badge,
   usePopup,
+  PageHeader,
   Checkbox,
   SearchableSelect,
   NumberInput,
@@ -369,89 +370,92 @@ export const Payrolls: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-            <Banknote className="text-emerald-600 dark:text-emerald-300" size={32} />
-            Nóminas
-          </h1>
-          <p className="text-fg-muted mt-1 font-medium text-sm max-w-2xl">
+      <PageHeader
+        title="Nóminas"
+        subtitle={
+          <span className="block max-w-2xl">
             Cómo funciona: 1) <b>"Generar mes en curso"</b> crea un borrador para cada empleado con
             salario base + IRPF + SS automáticos. 2) Edita líneas/pluses si hace falta. 3) Aprueba →
             se genera el asiento contable (gasto de personal, SS e IRPF).
-          </p>
-        </div>
-        {canWrite && (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={async () => {
-                const y = new Date().getFullYear();
-                const m = new Date().getMonth() + 1;
-                const ok = await popup.confirm({
-                  title: `Generar nóminas de ${MONTHS[m - 1]} ${y}`,
-                  message:
-                    'Crea un borrador de nómina para cada empleado activo, con salario base de su contrato y IRPF/SS automáticos. ¿Continuar?',
-                  confirmLabel: 'Generar',
-                });
-                if (!ok) return;
-                const active = employees.filter((e: any) => e.status === 'active');
-                let n = 0;
-                let skipped = 0;
-                for (const e of active) {
-                  try {
-                    const r = await payrollsApi.createSafe({
-                      employeeId: e.id,
-                      periodYear: y,
-                      periodMonth: m,
-                    });
-                    const d = r.data;
-                    if (r.status === 409) {
-                      skipped++;
-                      continue;
-                    }
-                    if (!r.ok) continue;
-                    // Salario base del contrato
-                    const cs = await contractsApi.listByEmployee(e.id).catch(() => []);
-                    const c =
-                      (Array.isArray(cs) ? cs : []).find((x: any) => x.isActive) ||
-                      (Array.isArray(cs) ? cs[0] : null);
-                    if (c) {
-                      const monthly = Number(c.grossSalary || 0) / Number(c.paymentsPerYear || 12);
-                      if (monthly > 0) {
-                        await payrollsApi.addLine(d.id!, {
-                          concept: 'Salario base',
-                          type: 'earning',
-                          amount: monthly.toFixed(2),
-                        });
+          </span>
+        }
+        icon={<Banknote size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={async () => {
+                  const y = new Date().getFullYear();
+                  const m = new Date().getMonth() + 1;
+                  const ok = await popup.confirm({
+                    title: `Generar nóminas de ${MONTHS[m - 1]} ${y}`,
+                    message:
+                      'Crea un borrador de nómina para cada empleado activo, con salario base de su contrato y IRPF/SS automáticos. ¿Continuar?',
+                    confirmLabel: 'Generar',
+                  });
+                  if (!ok) return;
+                  const active = employees.filter((e: any) => e.status === 'active');
+                  let n = 0;
+                  let skipped = 0;
+                  for (const e of active) {
+                    try {
+                      const r = await payrollsApi.createSafe({
+                        employeeId: e.id,
+                        periodYear: y,
+                        periodMonth: m,
+                      });
+                      const d = r.data;
+                      if (r.status === 409) {
+                        skipped++;
+                        continue;
                       }
+                      if (!r.ok) continue;
+                      // Salario base del contrato
+                      const cs = await contractsApi.listByEmployee(e.id).catch(() => []);
+                      const c =
+                        (Array.isArray(cs) ? cs : []).find((x: any) => x.isActive) ||
+                        (Array.isArray(cs) ? cs[0] : null);
+                      if (c) {
+                        const monthly =
+                          Number(c.grossSalary || 0) / Number(c.paymentsPerYear || 12);
+                        if (monthly > 0) {
+                          await payrollsApi.addLine(d.id!, {
+                            concept: 'Salario base',
+                            type: 'earning',
+                            amount: monthly.toFixed(2),
+                          });
+                        }
+                      }
+                      await payrollsApi.autoDeductions(d.id!);
+                      n++;
+                    } catch {
+                      /* sigue con el siguiente empleado */
                     }
-                    await payrollsApi.autoDeductions(d.id!);
-                    n++;
-                  } catch {
-                    /* sigue con el siguiente empleado */
                   }
-                }
-                if (n === 0 && skipped > 0) {
-                  toast.success(`Sin novedades · ${skipped} ya existían`);
-                } else if (skipped > 0) {
-                  toast.success(`Generadas ${n} · ${skipped} ya existían`);
-                } else {
-                  toast.success(`Generadas ${n} nóminas`);
-                }
-                fetchAll();
-              }}
-              title="Crea un borrador de nómina por cada empleado activo con salario y deducciones automáticas"
-            >
-              <CheckCircle size={14} /> Generar mes en curso
-            </Button>
-            <Button size="sm" onClick={() => setCreating(true)}>
-              <Plus size={14} /> Nueva nómina
-            </Button>
-          </div>
-        )}
-      </div>
+                  if (n === 0 && skipped > 0) {
+                    toast.success(`Sin novedades · ${skipped} ya existían`);
+                  } else if (skipped > 0) {
+                    toast.success(`Generadas ${n} · ${skipped} ya existían`);
+                  } else {
+                    toast.success(`Generadas ${n} nóminas`);
+                  }
+                  fetchAll();
+                }}
+                title="Crea un borrador de nómina por cada empleado activo con salario y deducciones automáticas"
+              >
+                <CheckCircle size={14} /> Generar mes en curso
+              </Button>
+              <Button type="button" size="sm" onClick={() => setCreating(true)}>
+                <Plus size={14} /> Nueva nómina
+              </Button>
+            </div>
+          )
+        }
+      />
 
       {creating && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

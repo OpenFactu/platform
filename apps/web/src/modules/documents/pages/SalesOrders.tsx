@@ -6,12 +6,14 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Loader,
   Textarea,
   usePopup,
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
   SearchableSelect,
 } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
@@ -229,37 +231,37 @@ const SOList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
-        <div>
-          <h1 className="text-4xl font-black text-fg-default flex items-center gap-4 tracking-tighter">
-            <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl text-blue-600 dark:text-blue-300 shadow-sm border border-blue-100 dark:border-blue-500/20">
-              <FileDigit size={32} />
-            </div>
-            Pedidos de Venta
-          </h1>
-          <p className="text-fg-muted mt-2 font-medium ml-1">
-            Gestión de preventas y órdenes de clientes.
-          </p>
-          {doc.state.mastersError && (
-            <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-700 dark:text-amber-200 text-xs font-bold animate-in slide-in-from-top">
+      <PageHeader
+        size="lg"
+        divider
+        className="pb-8"
+        icon={<FileDigit size={18} />}
+        title="Pedidos de Venta"
+        subtitle="Gestión de preventas y órdenes de clientes."
+        toolbar={
+          doc.state.mastersError && (
+            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg text-amber-700 dark:text-amber-200 text-xs font-bold animate-in slide-in-from-top">
               <AlertCircle size={16} />
               {doc.state.mastersError}
             </div>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {doc.state.canWrite && onCreateFromClone && (
-            <CloneDocumentActions docType="SO" onPaste={onCreateFromClone} show="paste" />
-          )}
-          <Button
-            onClick={onCreate}
-            disabled={!doc.state.canWrite}
-            className="flex items-center gap-2 h-12 px-6 disabled:opacity-50"
-          >
-            <Plus size={20} /> Nuevo Pedido
-          </Button>
-        </div>
-      </div>
+          )
+        }
+        actions={
+          <div className="flex items-center gap-3">
+            {doc.state.canWrite && onCreateFromClone && (
+              <CloneDocumentActions docType="SO" onPaste={onCreateFromClone} show="paste" />
+            )}
+            <Button
+              type="button"
+              onClick={onCreate}
+              disabled={!doc.state.canWrite}
+              className="flex items-center gap-2 h-12 px-6 disabled:opacity-50"
+            >
+              <Plus size={20} /> Nuevo Pedido
+            </Button>
+          </div>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
@@ -461,24 +463,32 @@ const SOForm: React.FC<{
 
   return (
     <div className="p-4 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button type="button" variant="secondary" onClick={onBack} title="Volver">
+      <PageHeader
+        size="lg"
+        breadcrumbs={
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onBack}
+            title="Volver"
+            className="self-start"
+          >
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-3xl font-black text-fg-default tracking-tight">
-            Nuevo Pedido de Venta
-          </h1>
-        </div>
-        <Button
-          onClick={onSubmit}
-          isLoading={state.isSubmitting}
-          disabled={!!state.seriesError || !state.canWrite}
-          className="shadow-lg px-8 flex items-center gap-2 disabled:opacity-50"
-        >
-          <Save size={18} /> Confirmar Pedido
-        </Button>
-      </div>
+        }
+        title="Nuevo Pedido de Venta"
+        actions={
+          <Button
+            type="button"
+            onClick={onSubmit}
+            isLoading={state.isSubmitting}
+            disabled={!!state.seriesError || !state.canWrite}
+            className="shadow-lg px-8 flex items-center gap-2 disabled:opacity-50"
+          >
+            <Save size={18} /> Confirmar Pedido
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 md:col-span-2 space-y-6 border-t-4 border-t-blue-500">
@@ -536,22 +546,15 @@ const SOForm: React.FC<{
               <label className="text-[10px] font-black text-fg-subtle uppercase">
                 Fec. Contabilización
               </label>
-              <Input
-                type="date"
-                value={state.date}
-                onChange={(e) => setState.setDate(e.target.value)}
-                className="h-10"
-              />
+              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-fg-subtle uppercase">
                 Fec. Entrega Prevista
               </label>
-              <Input
-                type="date"
+              <DatePicker
                 value={extraState.deliveryDate}
-                onChange={(e) => extraState.setDeliveryDate(e.target.value)}
-                className="h-10 border-blue-100 dark:border-blue-500/20 bg-blue-50/20"
+                onChange={(v) => extraState.setDeliveryDate(v ?? '')}
               />
             </div>
             <InternalOrderHeaderField
@@ -620,7 +623,7 @@ const SOForm: React.FC<{
         const docRate = Number(state.withholdingRate || 0);
         if (partnerRate > 0 && docRate === 0) {
           return (
-            <div className="flex items-center justify-between gap-4 p-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+            <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
               <div className="flex items-start gap-3 min-w-0">
                 <AlertCircle
                   size={18}

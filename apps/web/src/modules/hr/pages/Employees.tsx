@@ -6,11 +6,13 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   useToast,
   Badge,
   usePopup,
   Select,
   SearchableSelect,
+  PageHeader,
 } from '@openfactu/ui';
 import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
@@ -228,23 +230,20 @@ export const Employees: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-            <UserRound className="text-blue-600 dark:text-blue-300" size={32} />
-            Empleados
-          </h1>
-          <p className="text-fg-muted mt-1 font-medium">
-            Maestro de personal. La nómina se imputa al centro de coste del empleado.
-          </p>
-        </div>
-        {canWrite && (
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={18} />
-            Nuevo empleado
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Empleados"
+        subtitle="Maestro de personal. La nómina se imputa al centro de coste del empleado."
+        icon={<UserRound size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={18} />
+              Nuevo empleado
+            </Button>
+          )
+        }
+      />
 
       {formOpen && (
         <Card className="p-6 border-blue-50 shadow-lg" noPadding>
@@ -288,23 +287,20 @@ export const Employees: React.FC = () => {
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                type="date"
+              <DatePicker
                 label="Fecha nacimiento"
-                value={form.birthDate ? form.birthDate.substring(0, 10) : ''}
-                onChange={(e) => setForm({ ...form, birthDate: e.target.value || null })}
+                value={form.birthDate ? form.birthDate.substring(0, 10) : null}
+                onChange={(v) => setForm({ ...form, birthDate: v || null })}
               />
-              <Input
-                type="date"
+              <DatePicker
                 label="Fecha alta"
-                value={form.hireDate ? form.hireDate.substring(0, 10) : ''}
-                onChange={(e) => setForm({ ...form, hireDate: e.target.value || null })}
+                value={form.hireDate ? form.hireDate.substring(0, 10) : null}
+                onChange={(v) => setForm({ ...form, hireDate: v || null })}
               />
-              <Input
-                type="date"
+              <DatePicker
                 label="Fecha baja"
-                value={form.terminationDate ? form.terminationDate.substring(0, 10) : ''}
-                onChange={(e) => setForm({ ...form, terminationDate: e.target.value || null })}
+                value={form.terminationDate ? form.terminationDate.substring(0, 10) : null}
+                onChange={(v) => setForm({ ...form, terminationDate: v || null })}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Badge, Loader, useToast } from '@openfactu/ui';
+import { Table, Card, Button, Badge, Loader, PageHeader, useToast } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import {
   FileCode,
@@ -156,45 +156,42 @@ export const TemplatesList: React.FC<Props> = ({
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-line dark:border-ink-700 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-ink-900 dark:text-slate-100 flex items-center gap-4 tracking-tight font-display">
-            <div className="p-3 bg-accent/10 rounded-sm text-accent border border-accent/20">
-              <FileCode size={28} />
-            </div>
-            Plantillas de Documento
-          </h1>
-          <p className="text-ink-500 dark:text-ink-400 mt-2 font-medium ml-1">
-            Formatos PDF personalizables para facturas, albaranes, pedidos, etiquetas y documentos
-            libres.
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            onClick={handleResyncDefaults}
-            disabled={resyncing}
-            variant="outline"
-            className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
-            title="Regenera las plantillas por defecto con la paleta Keirost + trazabilidad. No toca plantillas custom."
-          >
-            <RefreshCw size={16} className={resyncing ? 'animate-spin' : ''} />
-            {resyncing ? 'Regenerando…' : 'Regenerar estándares'}
-          </Button>
-          {onAiGenerate && (
+      <PageHeader
+        title="Plantillas de Documento"
+        subtitle="Formatos PDF personalizables para facturas, albaranes, pedidos, etiquetas y documentos libres."
+        icon={<FileCode size={18} />}
+        size="lg"
+        divider
+        actions={
+          <div className="flex gap-2 flex-wrap">
             <Button
-              onClick={onAiGenerate}
+              type="button"
+              onClick={handleResyncDefaults}
+              disabled={resyncing}
               variant="outline"
               className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
-              title="Describe la plantilla en lenguaje natural y la IA la genera"
+              title="Regenera las plantillas por defecto con la paleta Keirost + trazabilidad. No toca plantillas custom."
             >
-              <Sparkles size={16} /> Generar con IA
+              <RefreshCw size={16} className={resyncing ? 'animate-spin' : ''} />
+              {resyncing ? 'Regenerando…' : 'Regenerar estándares'}
             </Button>
-          )}
-          <Button onClick={onCreate} className="flex items-center gap-2 h-12 px-6">
-            <Plus size={18} /> Nueva Plantilla
-          </Button>
-        </div>
-      </div>
+            {onAiGenerate && (
+              <Button
+                type="button"
+                onClick={onAiGenerate}
+                variant="outline"
+                className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
+                title="Describe la plantilla en lenguaje natural y la IA la genera"
+              >
+                <Sparkles size={16} /> Generar con IA
+              </Button>
+            )}
+            <Button type="button" onClick={onCreate} className="flex items-center gap-2 h-12 px-6">
+              <Plus size={18} /> Nueva Plantilla
+            </Button>
+          </div>
+        }
+      />
 
       {loading && <Loader />}
 

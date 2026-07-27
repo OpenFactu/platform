@@ -240,7 +240,7 @@ export const appsPluginManager: React.FC = () => {
 
           {plugins.length === 0 && !loading && (
             <EmptyState
-              icon={<Puzzle size={48} />}
+              icon={<Puzzle size={18} />}
               title="No hay plugins instalados"
               hint="Coloca plugins en la carpeta /plugins/ del servidor."
               className="py-20"

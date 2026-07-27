@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, Loader, useToast, Badge, usePopup } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  Loader,
+  PageHeader,
+  useToast,
+  Badge,
+  usePopup,
+} from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -167,15 +178,12 @@ export const AccountingPeriods: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-          <Calendar className="text-blue-600 dark:text-blue-300" size={32} />
-          Periodos Contables
-        </h1>
-        <p className="text-fg-muted mt-1 font-medium">
-          Define los ejercicios o años fiscales para acotar la contabilidad y series.
-        </p>
-      </div>
+      <PageHeader
+        title="Periodos Contables"
+        subtitle="Define los ejercicios o años fiscales para acotar la contabilidad y series."
+        icon={<Calendar size={18} />}
+        size="lg"
+      />
 
       <Card className="p-6 border-blue-50 shadow-lg" noPadding>
         <form onSubmit={handleSubmit} className="p-6 flex flex-col md:flex-row gap-4 items-center">
@@ -196,20 +204,10 @@ export const AccountingPeriods: React.FC = () => {
             />
           </div>
           <div className="flex-1">
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-            />
+            <DatePicker value={startDate} onChange={(v) => setStartDate(v ?? '')} required />
           </div>
           <div className="flex-1">
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              required
-            />
+            <DatePicker value={endDate} onChange={(v) => setEndDate(v ?? '')} required />
           </div>
           <Button
             type="submit"

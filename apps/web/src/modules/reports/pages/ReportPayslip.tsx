@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Badge, Table, useToast } from '@openfactu/ui';
+import { Card, Button, Badge, PageHeader, Table, useToast } from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, Banknote } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -90,18 +90,17 @@ export const ReportPayslip: React.FC = () => {
 
   return (
     <div className="p-6 w-full space-y-5">
-      <div>
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
-          <ArrowLeft size={12} className="mr-1" /> Volver
-        </Button>
-        <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-          <Banknote size={22} className="text-success" />
-          Recibo de nómina
-        </h1>
-        <p className="text-fg-muted text-sm mt-0.5">
-          Selecciona una nómina aprobada para descargar el recibo.
-        </p>
-      </div>
+      <PageHeader
+        title="Recibo de nómina"
+        subtitle="Selecciona una nómina aprobada para descargar el recibo."
+        icon={<Banknote size={18} />}
+        size="md"
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
+            <ArrowLeft size={12} className="mr-1" /> Volver
+          </Button>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
         <Table

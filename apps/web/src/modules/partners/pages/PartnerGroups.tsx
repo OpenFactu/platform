@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Checkbox, useToast, usePopup, Badge, Table } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Checkbox,
+  useToast,
+  usePopup,
+  Badge,
+  Table,
+  PageHeader,
+} from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -137,7 +147,7 @@ export const PartnerGroups: React.FC = () => {
           </div>
         ) : (
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-bg-muted text-accent rounded-xl flex items-center justify-center font-black group-hover:bg-accent group-hover:text-accent-fg transition-all text-xs">
+            <div className="w-10 h-10 bg-bg-muted text-accent rounded-lg flex items-center justify-center font-black group-hover:bg-accent group-hover:text-accent-fg transition-all text-xs">
               {g.code?.substring(0, 2).toUpperCase() || '??'}
             </div>
             <div>
@@ -217,33 +227,25 @@ export const PartnerGroups: React.FC = () => {
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-accent rounded-lg text-accent-fg">
-              <Network size={20} />
-            </span>
-            <span className="text-[10px] font-black text-accent uppercase tracking-[0.2em]">
-              CRM / Estructura
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
-            Grupos de Socios
-          </h1>
-          <p className="text-fg-muted font-medium">
-            Clasifica tus interlocutores comerciales para segmentación y tarifas.
-          </p>
-        </div>
-        <Button
-          onClick={() =>
-            setNewRow({ code: '', name: '', codePrefix: '', isCustomer: false, isVendor: false })
-          }
-          disabled={!!newRow || !canWrite}
-          className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all"
-        >
-          <Plus size={18} /> Nuevo Grupo
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow="CRM / Estructura"
+        title="Grupos de Socios"
+        subtitle="Clasifica tus interlocutores comerciales para segmentación y tarifas."
+        icon={<Network size={18} />}
+        size="lg"
+        actions={
+          <Button
+            type="button"
+            onClick={() =>
+              setNewRow({ code: '', name: '', codePrefix: '', isCustomer: false, isVendor: false })
+            }
+            disabled={!!newRow || !canWrite}
+            className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all"
+          >
+            <Plus size={18} /> Nuevo Grupo
+          </Button>
+        }
+      />
 
       <Card className="overflow-hidden border-0" noPadding>
         <Table

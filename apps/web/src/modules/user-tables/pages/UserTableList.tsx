@@ -1,7 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Table, Button, Loader, useToast, usePopup, Badge } from '@openfactu/ui';
+import { Card, Table, Button, Loader, PageHeader, useToast, usePopup, Badge } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { Plus, Trash2, Eye, Table as TableIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -154,25 +154,33 @@ export const UserTableList: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-4 flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <TableIcon className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-fg-default tracking-tight">
-              {meta?.label || name}
-            </h1>
-            <div className="flex items-center gap-2 text-xs text-fg-muted">
-              <Badge variant={meta?.kind === 'document' ? 'info' : 'neutral'}>
-                {meta?.kind === 'document' ? 'Documento' : 'Maestro'}
-              </Badge>
-              {meta?.description && <span>{meta.description}</span>}
-            </div>
-          </div>
-        </div>
-        <Button onClick={() => openTab(`/u/${name}/new`)} className="flex items-center gap-2">
-          <Plus size={14} /> Nuevo
-        </Button>
-      </header>
+      <PageHeader
+        title={
+          <>
+            {meta?.label || name}
+            {/* El Badge va con el título y no en `subtitle`: PageHeader pinta el
+                subtítulo dentro de un <p> y Badge es un <div>, que el navegador
+                cerraría en falso rompiendo la línea. */}
+            <Badge variant={meta?.kind === 'document' ? 'info' : 'neutral'}>
+              {meta?.kind === 'document' ? 'Documento' : 'Maestro'}
+            </Badge>
+          </>
+        }
+        subtitle={meta?.description || undefined}
+        icon={<TableIcon size={18} />}
+        size="sm"
+        divider
+        className="pb-4"
+        actions={
+          <Button
+            type="button"
+            onClick={() => openTab(`/u/${name}/new`)}
+            className="flex items-center gap-2"
+          >
+            <Plus size={14} /> Nuevo
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="py-20 flex justify-center">

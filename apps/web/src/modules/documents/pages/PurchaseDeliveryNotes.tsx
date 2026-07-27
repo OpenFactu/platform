@@ -5,11 +5,13 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Loader,
   usePopup,
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
   SearchableSelect,
 } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
@@ -248,37 +250,36 @@ const PDNList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
-        <div>
-          <h1 className="text-4xl font-black text-fg-default flex items-center gap-4 tracking-tighter">
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl text-emerald-600 dark:text-emerald-300 shadow-sm border border-emerald-100 dark:border-emerald-500/20">
-              <Truck size={32} />
-            </div>
-            Entradas (Albaranes)
-          </h1>
-          <p className="text-fg-muted mt-2 font-medium ml-1">
-            Registro físico de entrada de productos y trazabilidad.
-          </p>
-          {doc.state.mastersError && (
-            <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-700 dark:text-amber-200 text-xs font-bold animate-in slide-in-from-top">
+      <PageHeader
+        title="Entradas (Albaranes)"
+        subtitle="Registro físico de entrada de productos y trazabilidad."
+        icon={<Truck size={18} />}
+        size="lg"
+        divider
+        toolbar={
+          doc.state.mastersError ? (
+            <div className="flex items-center gap-2 p-3 bg-warning-bg border border-warning rounded-lg text-warning-fg text-xs font-bold animate-in slide-in-from-top">
               <AlertCircle size={16} />
               {doc.state.mastersError}
             </div>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {doc.state.canWrite && onCreateFromClone && (
-            <CloneDocumentActions docType="PDN" onPaste={onCreateFromClone} show="paste" />
-          )}
-          <Button
-            onClick={onCreate}
-            disabled={!doc.state.canWrite}
-            className="flex items-center gap-2 h-12 px-6 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:grayscale"
-          >
-            <Plus size={20} /> Registrar Nueva Entrada
-          </Button>
-        </div>
-      </div>
+          ) : undefined
+        }
+        actions={
+          <div className="flex items-center gap-3">
+            {doc.state.canWrite && onCreateFromClone && (
+              <CloneDocumentActions docType="PDN" onPaste={onCreateFromClone} show="paste" />
+            )}
+            <Button
+              type="button"
+              onClick={onCreate}
+              disabled={!doc.state.canWrite}
+              className="flex items-center gap-2 disabled:opacity-50"
+            >
+              <Plus size={20} /> Registrar Nueva Entrada
+            </Button>
+          </div>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
@@ -459,46 +460,45 @@ const PDNForm: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
-        <div className="flex items-center gap-4">
+      <PageHeader
+        title={
+          <span className="flex items-center gap-3">
+            Registro de Entrada
+            {orderId && (
+              <Badge
+                variant="info"
+                className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 italic"
+              >
+                De Pedido
+              </Badge>
+            )}
+          </span>
+        }
+        subtitle={
+          <span className="flex items-center gap-2">
+            <PlusSquare size={14} />
+            Documento de recepción de mercancía y control de stock.
+          </span>
+        }
+        size="lg"
+        divider
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={onBack} title="Volver">
+            <ArrowLeft size={14} className="mr-1" /> Volver
+          </Button>
+        }
+        actions={
           <Button
             type="button"
-            variant="secondary"
-            onClick={onBack}
-            title="Volver"
-            className="rounded-2xl"
-          >
-            <ArrowLeft size={20} />
-          </Button>
-          <div>
-            <h1 className="text-4xl font-black text-fg-default tracking-tighter flex items-center gap-3">
-              Registro de Entrada
-              {orderId && (
-                <Badge
-                  variant="info"
-                  className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 border-blue-100 dark:border-blue-500/20 italic"
-                >
-                  De Pedido
-                </Badge>
-              )}
-            </h1>
-            <p className="text-fg-muted mt-1 font-medium ml-1 flex items-center gap-2">
-              <PlusSquare size={14} className="text-emerald-500" />
-              Documento de recepción de mercancía y control de stock.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
             onClick={onSubmit}
             isLoading={state.isSubmitting}
             disabled={!!state.seriesError}
-            className="flex items-center gap-2 h-12 px-8"
+            className="flex items-center gap-2"
           >
             <Save size={20} /> Registrar Albarán
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 md:col-span-2 space-y-6 border-t-4 border-t-emerald-500">
@@ -532,12 +532,7 @@ const PDNForm: React.FC<{
               <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Fecha Albarán *
               </label>
-              <Input
-                type="date"
-                value={state.date}
-                onChange={(e) => setState.setDate(e.target.value)}
-                className="font-bold h-10"
-              />
+              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
             </div>
             <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
           </div>
@@ -601,7 +596,7 @@ const PDNForm: React.FC<{
         const docRate = Number(state.withholdingRate || 0);
         if (partnerRate > 0 && docRate === 0) {
           return (
-            <div className="flex items-center justify-between gap-4 p-3 rounded-xl border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+            <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
               <div className="flex items-start gap-3 min-w-0">
                 <AlertCircle
                   size={18}
@@ -641,7 +636,7 @@ const PDNForm: React.FC<{
         )}
         <div className="p-6 bg-bg-muted flex flex-col md:flex-row justify-between items-start md:items-center border-t border-border-default gap-6">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center bg-bg-card border border-border-default rounded-xl p-1 shadow-sm">
+            <div className="flex items-center bg-bg-card border border-border-default rounded-lg p-1 shadow-sm">
               {[1, 5, 10].map((n) => (
                 <Button
                   key={n}
@@ -665,7 +660,7 @@ const PDNForm: React.FC<{
               <PlusSquare size={16} /> Añadir Línea Libre
             </Button>
           </div>
-          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-2xl border border-border-subtle shadow-sm">
+          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-lg border border-border-subtle shadow-sm">
             <div className="flex justify-between w-full text-[10px] font-black text-fg-subtle uppercase tracking-widest px-1">
               <span>Base Imponible:</span>
               <span className="text-fg-body">{computations.subtotal.toFixed(2)} €</span>
@@ -819,7 +814,7 @@ const PDNDetail: React.FC<{
             )}
           </div>
           {pdn.orderId && (
-            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-lg">
               <ShoppingCart size={14} className="text-blue-600 dark:text-blue-300 shrink-0" />
               <p className="text-xs font-bold text-blue-800 dark:text-blue-200 leading-tight">
                 Desde pedido {pdn.orderPrefix}-{pdn.periodCode}-

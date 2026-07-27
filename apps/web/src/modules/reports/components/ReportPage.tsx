@@ -107,7 +107,7 @@ export function ReportPage<T extends Record<string, any>>({
       <PageHeader
         title={title}
         subtitle={subtitle}
-        icon={<FileText size={22} />}
+        icon={<FileText size={18} />}
         breadcrumbs={
           <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
             <ArrowLeft size={12} className="mr-1" /> Volver

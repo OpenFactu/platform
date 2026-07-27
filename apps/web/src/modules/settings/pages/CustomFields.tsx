@@ -11,6 +11,7 @@ import {
   SearchableSelect,
   EmptyState,
   Loader,
+  PageHeader,
   useToast,
   usePopup,
   Modal,
@@ -537,57 +538,64 @@ export const CustomFields: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-4 flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <Wrench className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-fg-default tracking-tight">
-              Campos personalizados
-            </h1>
-            <p className="text-xs text-fg-muted">
-              Añade campos propios a cualquier tabla sin escribir código. Aparecen en form, detalle
-              y PDF.
-            </p>
+      <PageHeader
+        title="Campos personalizados"
+        subtitle="Añade campos propios a cualquier tabla sin escribir código. Aparecen en form, detalle y PDF."
+        icon={<Wrench size={18} />}
+        size="sm"
+        divider
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={openCreateTable}
+              className="flex items-center gap-2"
+            >
+              <TableIcon size={14} /> Nueva tabla
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowPacksModal(true)}
+              className="flex items-center gap-2"
+            >
+              <Package size={14} /> Packs
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={exportAll}
+              className="flex items-center gap-2"
+            >
+              <Download size={14} /> Exportar
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2"
+            >
+              <Upload size={14} /> Importar
+            </Button>
+            {/* SE UTILIZA PARA EL INPUT DE ARCHIVO */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) importFile(f);
+                e.currentTarget.value = '';
+              }}
+            />
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={14} /> Nuevo campo
+            </Button>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={openCreateTable} className="flex items-center gap-2">
-            <TableIcon size={14} /> Nueva tabla
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => setShowPacksModal(true)}
-            className="flex items-center gap-2"
-          >
-            <Package size={14} /> Packs
-          </Button>
-          <Button variant="secondary" onClick={exportAll} className="flex items-center gap-2">
-            <Download size={14} /> Exportar
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2"
-          >
-            <Upload size={14} /> Importar
-          </Button>
-          {/* SE UTILIZA PARA EL INPUT DE ARCHIVO */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            hidden
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) importFile(f);
-              e.currentTarget.value = '';
-            }}
-          />
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={14} /> Nuevo campo
-          </Button>
-        </div>
-      </header>
+        }
+      />
 
       {/* ── Tablas de usuario ─────────────────────────────────────────── */}
       <Card bodyClassName="p-0">
@@ -607,7 +615,7 @@ export const CustomFields: React.FC = () => {
         </div>
         {userTables.length === 0 ? (
           <EmptyState
-            icon={<TableIcon size={28} />}
+            icon={<TableIcon size={18} />}
             title="Aún no has creado tablas propias"
             hint="Crea una para tener una entidad nueva con listado, formulario y menú."
             action={
@@ -712,7 +720,7 @@ export const CustomFields: React.FC = () => {
       ) : grouped.length === 0 ? (
         <Card bodyClassName="p-0">
           <EmptyState
-            icon={<Wrench size={28} />}
+            icon={<Wrench size={18} />}
             title="Aún no has creado ningún campo personalizado"
             hint="Crea uno a medida o instala un pack de campos ya preparados."
             action={

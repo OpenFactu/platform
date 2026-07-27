@@ -120,7 +120,7 @@ export const TwoFactorSettings: React.FC = () => {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
               enabled
                 ? 'bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-300'
                 : 'bg-bg-muted text-fg-subtle'

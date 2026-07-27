@@ -1,6 +1,6 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Table, Card } from '@openfactu/ui';
+import { Table, Card, PageHeader } from '@openfactu/ui';
 import { PluginComponentLoader } from '@/components/plugins/PluginComponentLoader';
 
 interface PluginViewRendererProps {
@@ -40,7 +40,7 @@ export const PluginViewRenderer: React.FC<PluginViewRendererProps> = ({
   if (type === 'table') {
     return (
       <div className="p-8 space-y-6">
-        <h1 className="text-2xl font-bold text-fg-default">{title}</h1>
+        <PageHeader title={title} size="md" />
         <Card>
           <Table columns={config.columns} data={data} isLoading={loading} />
         </Card>
@@ -51,7 +51,7 @@ export const PluginViewRenderer: React.FC<PluginViewRendererProps> = ({
   if (type === 'custom') {
     return (
       <div className="p-8 space-y-6">
-        <h1 className="text-2xl font-bold text-fg-default">{title}</h1>
+        <PageHeader title={title} size="md" />
         <PluginComponentLoader
           pluginId={pluginId}
           componentPath={config.component}

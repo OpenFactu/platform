@@ -51,7 +51,7 @@ export function DocumentCardList<T>({
     return (
       <div className="space-y-3 p-4">
         {[0, 1, 2].map((i) => (
-          <Skeleton key={i} className="h-28 w-full rounded-xl" />
+          <Skeleton key={i} className="h-28 w-full rounded-lg" />
         ))}
       </div>
     );

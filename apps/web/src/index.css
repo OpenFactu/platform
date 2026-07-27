@@ -11,6 +11,23 @@
  */
 @import '@openfactu/ui/styles.css';
 
+/*
+ * Keirost va con las esquinas rectas. En lugar de perseguir clase por clase el
+ * `rounded-*` de cada componente, se aplana aquí la escala de radios: tanto los
+ * componentes del paquete como las utilidades `rounded-xs|sm|md|lg` de la app
+ * (que el preset de Tailwind mapea a estas mismas variables) leen de aquí, así
+ * que una sola definición cuadra toda la interfaz.
+ *
+ * `--k-radius-full` se queda: lo necesitan avatares y píldoras, que sí son
+ * redondos a propósito.
+ */
+:root {
+  --k-radius-xs: 2px;
+  --k-radius-sm: 2px;
+  --k-radius-md: 2px;
+  --k-radius-lg: 2px;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

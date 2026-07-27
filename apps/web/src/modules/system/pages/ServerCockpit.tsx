@@ -11,7 +11,7 @@
 
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState, useRef } from 'react';
-import { Table } from '@openfactu/ui';
+import { PageHeader, Table } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import {
   Cpu,
@@ -185,29 +185,24 @@ export const ServerCockpit: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6 w-full">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 text-primary rounded-lg">
-            <Activity size={22} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-fg-default">Cockpit del servidor</h1>
-            <p className="text-sm text-fg-muted">
-              Métricas en vivo del proceso, host y base de datos. Refresco cada 3s.
-            </p>
-          </div>
-        </div>
-        {m && (
-          <div className="flex flex-col items-end text-xs">
-            <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 text-primary font-mono font-bold">
-              <Server size={12} /> Keirost v{m.version}
-            </span>
-            <span className="mt-1 text-[10px] text-slate-400 font-mono">
-              {m.process.nodeVersion} · {m.process.platform}
-            </span>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title="Cockpit del servidor"
+        subtitle="Métricas en vivo del proceso, host y base de datos. Refresco cada 3s."
+        icon={<Activity size={18} />}
+        size="md"
+        actions={
+          m && (
+            <div className="flex flex-col items-end text-xs">
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 text-primary font-mono font-bold">
+                <Server size={12} /> Keirost v{m.version}
+              </span>
+              <span className="mt-1 text-[10px] text-fg-subtle font-mono">
+                {m.process.nodeVersion} · {m.process.platform}
+              </span>
+            </div>
+          )
+        }
+      />
 
       {error && (
         <div className="p-4 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 text-sm">
@@ -283,7 +278,7 @@ export const ServerCockpit: React.FC = () => {
       )}
 
       {services && (
-        <div className="rounded-xl border border-border-default bg-bg-card p-5">
+        <div className="rounded-lg border border-border-default bg-bg-card p-5">
           <div className="flex items-center gap-2 text-fg-body mb-3">
             <Server size={16} />
             <h2 className="text-sm font-bold uppercase tracking-wider">Servicios</h2>
@@ -304,7 +299,7 @@ export const ServerCockpit: React.FC = () => {
       )}
 
       {plugins && plugins.length > 0 && (
-        <div className="rounded-xl border border-border-default bg-bg-card p-5">
+        <div className="rounded-lg border border-border-default bg-bg-card p-5">
           <div className="flex items-center gap-2 text-fg-body mb-3">
             <Puzzle size={16} />
             <h2 className="text-sm font-bold uppercase tracking-wider">
@@ -340,7 +335,7 @@ export const ServerCockpit: React.FC = () => {
       )}
 
       {m && (
-        <div className="rounded-xl border border-border-default bg-bg-card p-5">
+        <div className="rounded-lg border border-border-default bg-bg-card p-5">
           <div className="flex items-center gap-2 text-fg-body mb-3">
             <Building size={16} />
             <h2 className="text-sm font-bold uppercase tracking-wider">
@@ -376,7 +371,7 @@ const MetricCard: React.FC<{
   maxY?: number;
   hideBar?: boolean;
 }> = ({ icon, title, value, subtitle, barPct, history, maxY, hideBar }) => (
-  <div className="rounded-xl border border-border-default bg-bg-card p-5 flex flex-col">
+  <div className="rounded-lg border border-border-default bg-bg-card p-5 flex flex-col">
     <div className="flex items-center gap-2 text-fg-body mb-2">
       {icon}
       <h3 className="text-xs font-bold uppercase tracking-wider">{title}</h3>
@@ -454,7 +449,7 @@ const Stat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
 );
 
 const HostPanel: React.FC<{ host: Metrics['host'] }> = ({ host }) => (
-  <div className="rounded-xl border border-border-default bg-bg-card p-5">
+  <div className="rounded-lg border border-border-default bg-bg-card p-5">
     <div className="flex items-center gap-2 text-fg-body mb-3">
       <Globe size={16} />
       <h2 className="text-sm font-bold uppercase tracking-wider">Host</h2>
@@ -497,7 +492,7 @@ const TrafficPanel: React.FC<{
   const methods = Object.entries(requests.byMethod).sort((a, b) => b[1] - a[1]);
   const peak = Math.max(...history, 1);
   return (
-    <div className="rounded-xl border border-border-default bg-bg-card p-5">
+    <div className="rounded-lg border border-border-default bg-bg-card p-5">
       <div className="flex items-center gap-2 text-fg-body mb-3">
         <Activity size={16} />
         <h2 className="text-sm font-bold uppercase tracking-wider">Tráfico HTTP</h2>

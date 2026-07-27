@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Table } from '@openfactu/ui';
+import { Card, Button, DatePicker, PageHeader, Table } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, RefreshCw, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -92,30 +92,36 @@ export const ReportVAT: React.FC = () => {
 
   return (
     <div className="p-6 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
+      <PageHeader
+        title="Libro de IVA"
+        subtitle="IVA repercutido y soportado (modelo 303)."
+        icon={<Receipt size={18} />}
+        size="md"
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
             <ArrowLeft size={12} className="mr-1" /> Volver
           </Button>
-          <h1 className="text-2xl font-black tracking-tight flex items-center gap-2">
-            <Receipt size={22} className="text-warning" />
-            Libro de IVA
-          </h1>
-          <p className="text-fg-muted text-sm mt-0.5">IVA repercutido y soportado (modelo 303).</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={load} className="flex items-center gap-2">
-            <RefreshCw size={16} /> Actualizar
-          </Button>
-          <Button onClick={downloadPdf} className="flex items-center gap-2">
-            <Download size={16} /> PDF
-          </Button>
-        </div>
-      </div>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={load}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw size={16} /> Actualizar
+            </Button>
+            <Button type="button" onClick={downloadPdf} className="flex items-center gap-2">
+              <Download size={16} /> PDF
+            </Button>
+          </div>
+        }
+      />
 
       <Card className="p-4 flex items-end gap-3 flex-wrap">
-        <Input type="date" label="Desde" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input type="date" label="Hasta" value={to} onChange={(e) => setTo(e.target.value)} />
+        <DatePicker label="Desde" value={from} onChange={(v) => setFrom(v ?? '')} clearable />
+        <DatePicker label="Hasta" value={to} onChange={(v) => setTo(v ?? '')} clearable />
       </Card>
 
       {loading || !data ? (

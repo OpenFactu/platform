@@ -4,12 +4,13 @@ import {
   Table,
   Card,
   Button,
-  Input,
+  DatePicker,
   Loader,
   usePopup,
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
 } from '@openfactu/ui';
 import { SearchableSelect } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
@@ -169,28 +170,24 @@ const QuoteList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
-        <div>
-          <h1 className="text-4xl font-black text-fg-default flex items-center gap-4 tracking-tighter">
-            <div className="p-3 bg-sky-50 dark:bg-sky-500/10 rounded-2xl text-sky-600 dark:text-sky-300 shadow-sm border border-sky-100 dark:border-sky-500/20">
-              <FileSignature size={32} />
-            </div>
-            Presupuestos
-          </h1>
-          <p className="text-fg-muted mt-2 font-medium ml-1">
-            Ofertas a clientes, convertibles en pedido o factura al aceptarse.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        size="lg"
+        divider
+        className="pb-8"
+        icon={<FileSignature size={18} />}
+        title="Presupuestos"
+        subtitle="Ofertas a clientes, convertibles en pedido o factura al aceptarse."
+        actions={
           <Button
+            type="button"
             onClick={onCreate}
             disabled={!canWrite}
             className="flex items-center gap-2 h-12 px-6 disabled:opacity-50"
           >
             <Plus size={20} /> Nuevo Presupuesto
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
@@ -327,29 +324,31 @@ const QuoteForm: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
-        <div className="flex items-center gap-4">
+      <PageHeader
+        size="lg"
+        divider
+        className="pb-8"
+        breadcrumbs={
           <Button
             type="button"
             variant="secondary"
             onClick={onBack}
             title="Volver"
-            className="rounded-2xl"
+            className="rounded-lg self-start"
           >
             <ArrowLeft size={20} />
           </Button>
-          <div>
-            <h1 className="text-3xl font-black text-fg-default tracking-tighter">
-              Nuevo Presupuesto
-            </h1>
-            <p className="text-fg-muted mt-1 font-medium ml-1 flex items-center gap-2">
-              <FileText size={14} className="text-sky-500" />
-              Oferta sin efecto en stock ni contabilidad.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
+        }
+        title="Nuevo Presupuesto"
+        subtitle={
+          <span className="flex items-center gap-2">
+            <FileText size={14} className="text-accent" />
+            Oferta sin efecto en stock ni contabilidad.
+          </span>
+        }
+        actions={
           <Button
+            type="button"
             onClick={onSubmit}
             isLoading={state.isSubmitting}
             disabled={!!state.seriesError || !state.canWrite}
@@ -357,8 +356,8 @@ const QuoteForm: React.FC<{
           >
             <Save size={20} /> Guardar Presupuesto
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 md:col-span-2 space-y-6 border-border-subtle">
@@ -386,23 +385,13 @@ const QuoteForm: React.FC<{
               <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Fecha *
               </label>
-              <Input
-                type="date"
-                value={state.date}
-                onChange={(e) => setState.setDate(e.target.value)}
-                className="font-bold text-fg-body h-10 border-border-default"
-              />
+              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Válido hasta
               </label>
-              <Input
-                type="date"
-                value={validUntil}
-                onChange={(e) => setValidUntil(e.target.value)}
-                className="font-bold text-fg-body h-10 border-border-default"
-              />
+              <DatePicker value={validUntil} onChange={(v) => setValidUntil(v ?? '')} />
             </div>
             <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
           </div>
@@ -470,7 +459,7 @@ const QuoteForm: React.FC<{
           >
             <PlusSquare size={16} /> Añadir Línea
           </Button>
-          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-2xl border border-border-subtle shadow-sm">
+          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-lg border border-border-subtle shadow-sm">
             <div className="flex justify-between w-full text-[10px] font-black text-fg-subtle uppercase tracking-widest px-1">
               <span>Base Imponible:</span>
               <span className="text-fg-body">{computations.subtotal.toFixed(2)} €</span>
@@ -620,7 +609,7 @@ const QuoteDetail: React.FC<{
               </p>
             )}
           </div>
-          <div className="flex items-center gap-3 p-3 bg-sky-50 dark:bg-sky-500/5 border border-sky-100 dark:border-sky-500/30 rounded-xl">
+          <div className="flex items-center gap-3 p-3 bg-sky-50 dark:bg-sky-500/5 border border-sky-100 dark:border-sky-500/30 rounded-lg">
             <FileText size={16} className="text-sky-600 dark:text-sky-300 shrink-0" />
             <p className="text-xs text-sky-800 dark:text-sky-200 font-medium leading-tight">
               Documento de oferta — no mueve stock ni genera apuntes contables.

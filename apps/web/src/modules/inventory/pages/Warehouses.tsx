@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Loader, useToast, usePopup, Modal } from '@openfactu/ui';
+import { Card, Button, Input, Loader, PageHeader, useToast, usePopup, Modal } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -160,19 +160,14 @@ export const Warehouses: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-4">
-        <div className="flex items-center gap-3">
-          <WarehouseIcon className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-fg-default tracking-tight">
-              Almacenes y ubicaciones
-            </h1>
-            <p className="text-xs text-fg-muted">
-              Centros logísticos y la malla de bins dentro de cada uno.
-            </p>
-          </div>
-        </div>
-      </header>
+      <PageHeader
+        title="Almacenes y ubicaciones"
+        subtitle="Centros logísticos y la malla de bins dentro de cada uno."
+        icon={<WarehouseIcon size={18} />}
+        size="sm"
+        divider
+        className="pb-4"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
         {/* PANEL IZQUIERDO — lista de almacenes */}

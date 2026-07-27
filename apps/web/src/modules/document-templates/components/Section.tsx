@@ -21,7 +21,7 @@ export const Section: React.FC<Props> = ({
   return (
     <div
       className={cn(
-        'border rounded-xl overflow-hidden transition-all',
+        'border rounded-lg overflow-hidden transition-all',
         subtle ? 'border-border-subtle bg-bg-card' : 'border-border-default bg-bg-card shadow-sm',
       )}
     >

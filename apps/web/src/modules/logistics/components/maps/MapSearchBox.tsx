@@ -133,12 +133,12 @@ export const MapSearchBox: React.FC<Props> = ({
   // En inline el dropdown se posiciona absolute respecto al wrapper para
   // no estirar el formulario; en floating queda justo bajo la caja.
   const dropdownClass = inline
-    ? 'absolute left-0 right-0 mt-1 z-20 bg-bg-card rounded-xl shadow-lg border border-border-default overflow-hidden max-h-80 overflow-y-auto'
-    : 'mt-1 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden max-h-80 overflow-y-auto';
+    ? 'absolute left-0 right-0 mt-1 z-20 bg-bg-card rounded-lg shadow-lg border border-border-default overflow-hidden max-h-80 overflow-y-auto'
+    : 'mt-1 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden max-h-80 overflow-y-auto';
 
   const inputBoxClass = inline
     ? 'flex items-center gap-2 bg-bg-card rounded-lg border border-border-default h-10 px-3'
-    : 'flex items-center gap-2 bg-white rounded-xl shadow-lg border border-slate-200 px-3 py-2';
+    : 'flex items-center gap-2 bg-white rounded-lg shadow-lg border border-slate-200 px-3 py-2';
 
   return (
     <div ref={wrapperRef} style={wrapperStyle} className={className}>

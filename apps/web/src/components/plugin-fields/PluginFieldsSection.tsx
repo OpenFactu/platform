@@ -41,7 +41,7 @@ export const PluginFieldsSection: React.FC<Props> = ({
     <div className="space-y-5">
       {header && (
         <div className="flex items-center gap-2">
-          <Puzzle size={14} className="text-primary" />
+          <Puzzle size={14} className="text-accent" />
           <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-subtle">
             {title}
           </h4>

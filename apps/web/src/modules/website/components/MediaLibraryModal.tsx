@@ -188,7 +188,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {Array.from({ length: 8 }, (_, i) => (
-              <div key={i} className="rounded-xl overflow-hidden border border-border-default">
+              <div key={i} className="rounded-lg overflow-hidden border border-border-default">
                 <Skeleton className="h-28 w-full rounded-none" />
                 <div className="p-2 space-y-2">
                   <Skeleton className="h-3 w-3/4" />
@@ -212,7 +212,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
                 <button
                   type="button"
                   onClick={() => onSelect(asset.publicUrl)}
-                  className="group relative w-full rounded-xl overflow-hidden border border-border-default hover:border-primary hover:ring-2 hover:ring-primary/30 transition-all text-left bg-bg-muted"
+                  className="group relative w-full rounded-lg overflow-hidden border border-border-default hover:border-primary hover:ring-2 hover:ring-primary/30 transition-all text-left bg-bg-muted"
                 >
                   {asset.mime.startsWith('video/') ? (
                     <video

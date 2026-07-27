@@ -7,6 +7,7 @@ import {
   Card,
   Button,
   KpiCard,
+  PageHeader,
   useToast,
   DatePicker,
   SearchableSelect,
@@ -209,20 +210,17 @@ export const Performance: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <TrendingUp className="text-success" size={32} /> Rendimiento
-          </h1>
-          <p className="text-fg-muted text-sm">
-            Productividad por empleado: contratadas vs planificadas vs fichadas, % cumplimiento,
-            horas extra, mapa de incidencias.
-          </p>
-        </div>
-        <Button size="sm" variant="secondary" onClick={exportExcel}>
-          <Download size={14} /> Exportar Excel
-        </Button>
-      </div>
+      <PageHeader
+        title="Rendimiento"
+        subtitle="Productividad por empleado: contratadas vs planificadas vs fichadas, % cumplimiento, horas extra, mapa de incidencias."
+        icon={<TrendingUp size={18} />}
+        size="lg"
+        actions={
+          <Button type="button" size="sm" variant="secondary" onClick={exportExcel}>
+            <Download size={14} /> Exportar Excel
+          </Button>
+        }
+      />
 
       <Card noPadding>
         <div className="p-4 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">

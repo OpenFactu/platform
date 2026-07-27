@@ -482,7 +482,7 @@ const ProviderCard: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className={`relative flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-sm font-bold ${
+    className={`relative flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all text-sm font-bold ${
       viewing
         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
         : 'border-border-default bg-bg-card text-fg-muted hover:border-border-strong'

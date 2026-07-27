@@ -1,7 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Input, Select, useToast } from '@openfactu/ui';
+import { Card, Button, Input, PageHeader, Select, useToast } from '@openfactu/ui';
 import { Building, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { CountrySelect } from '@/components/geo/CountrySelect';
@@ -88,26 +88,24 @@ export const NewCompany: React.FC = () => {
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => navigate(-1)}
-          title="Volver"
-        >
-          <ArrowLeft size={18} />
-        </Button>
-        <div className="p-2 bg-emerald-100 text-emerald-700 dark:text-emerald-200 rounded-lg">
-          <Building size={22} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-fg-default">Nueva Empresa</h1>
-          <p className="text-sm text-fg-muted">
-            Se creará un nuevo esquema con los datos maestros por defecto.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Nueva Empresa"
+        subtitle="Se creará un nuevo esquema con los datos maestros por defecto."
+        icon={<Building size={18} />}
+        size="md"
+        breadcrumbs={
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate(-1)}
+            title="Volver"
+            className="w-fit"
+          >
+            <ArrowLeft size={18} />
+          </Button>
+        }
+      />
 
       <Card>
         <div className="p-6 space-y-4">

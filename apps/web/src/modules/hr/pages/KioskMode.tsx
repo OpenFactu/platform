@@ -190,27 +190,27 @@ export const KioskMode: React.FC = () => {
               <button
                 key={d}
                 onClick={() => press(String(d))}
-                className="h-16 md:h-20 rounded-2xl bg-slate-800 hover:bg-slate-700 active:bg-slate-700/80 active:scale-95 text-3xl font-black transition shadow-lg"
+                className="h-16 md:h-20 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-700/80 active:scale-95 text-3xl font-black transition shadow-lg"
               >
                 {d}
               </button>
             ))}
             <button
               onClick={clear}
-              className="h-16 md:h-20 rounded-2xl bg-slate-800 hover:bg-rose-600/80 text-rose-300 hover:text-white text-base font-bold transition shadow-lg"
+              className="h-16 md:h-20 rounded-lg bg-slate-800 hover:bg-rose-600/80 text-rose-300 hover:text-white text-base font-bold transition shadow-lg"
               title="Limpiar"
             >
               C
             </button>
             <button
               onClick={() => press('0')}
-              className="h-16 md:h-20 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-3xl font-black transition shadow-lg"
+              className="h-16 md:h-20 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-3xl font-black transition shadow-lg"
             >
               0
             </button>
             <button
               onClick={back}
-              className="h-16 md:h-20 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 transition shadow-lg flex items-center justify-center"
+              className="h-16 md:h-20 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 transition shadow-lg flex items-center justify-center"
               title="Borrar"
             >
               <Delete size={26} />
@@ -222,7 +222,7 @@ export const KioskMode: React.FC = () => {
             <button
               onClick={() => punch('in')}
               disabled={busy}
-              className="h-20 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-50 transition shadow-xl flex flex-col items-center justify-center gap-1"
+              className="h-20 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-50 transition shadow-xl flex flex-col items-center justify-center gap-1"
             >
               <LogIn size={24} />
               <span className="text-base font-black">Entrada</span>
@@ -230,7 +230,7 @@ export const KioskMode: React.FC = () => {
             <button
               onClick={() => punch('out')}
               disabled={busy}
-              className="h-20 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 disabled:opacity-50 transition shadow-xl flex flex-col items-center justify-center gap-1"
+              className="h-20 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-95 disabled:opacity-50 transition shadow-xl flex flex-col items-center justify-center gap-1"
             >
               <LogOut size={24} />
               <span className="text-base font-black">Salida</span>
@@ -238,14 +238,14 @@ export const KioskMode: React.FC = () => {
             <button
               onClick={() => punch('break_start')}
               disabled={busy}
-              className="h-16 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 transition shadow-lg flex items-center justify-center gap-2 text-amber-300"
+              className="h-16 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 transition shadow-lg flex items-center justify-center gap-2 text-amber-300"
             >
               <Coffee size={20} /> <span className="font-bold">Pausa</span>
             </button>
             <button
               onClick={() => punch('break_end')}
               disabled={busy}
-              className="h-16 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 transition shadow-lg flex items-center justify-center gap-2 text-amber-300"
+              className="h-16 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 disabled:opacity-50 transition shadow-lg flex items-center justify-center gap-2 text-amber-300"
             >
               <RotateCcw size={20} /> <span className="font-bold">Vuelvo</span>
             </button>
@@ -255,7 +255,7 @@ export const KioskMode: React.FC = () => {
           {feedback && (
             <div
               className={
-                'mt-6 max-w-md mx-auto px-5 py-4 rounded-2xl border-2 flex items-center gap-3 ' +
+                'mt-6 max-w-md mx-auto px-5 py-4 rounded-lg border-2 flex items-center gap-3 ' +
                 (feedback.ok
                   ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
                   : 'border-rose-400/40 bg-rose-500/10 text-rose-200')

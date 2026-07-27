@@ -2,6 +2,7 @@ import { coreApi } from '@/shared/api';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   Search,
+  Zap,
   Users,
   Package,
   FileStack,
@@ -11,6 +12,8 @@ import {
   UserRound,
   Briefcase,
   BookOpen,
+  FileText,
+  Settings,
 } from 'lucide-react';
 import { CommandPalette, useCommandPalette } from '@openfactu/ui';
 import type { CommandSection } from '@openfactu/ui';
@@ -54,6 +57,119 @@ interface DocResult {
   status: string;
 }
 
+interface QuickAction {
+  id: string;
+  label: string;
+  keywords: string;
+  path: string;
+  icon: React.ReactNode;
+  /** True si abre un alta. Se refleja en el subtítulo ("Crear" vs "Ir a"). */
+  creates?: boolean;
+}
+
+/**
+ * Atajos a las altas y a las pantallas que más se visitan. Salen siempre,
+ * también con la paleta recién abierta y sin escribir nada: es la lista de "qué
+ * puedo hacer desde aquí". Se filtran en cliente porque no dependen del
+ * servidor, a diferencia de los resultados de búsqueda.
+ */
+const ACTIONS: QuickAction[] = [
+  {
+    id: 'new-sales-invoice',
+    label: 'Nueva factura de venta',
+    keywords: 'crear factura venta cliente',
+    path: '/sales/invoices/new',
+    icon: <FileStack size={14} />,
+    creates: true,
+  },
+  {
+    id: 'new-purchase-invoice',
+    label: 'Nueva factura de compra',
+    keywords: 'crear factura compra proveedor',
+    path: '/purchases/invoices/new',
+    icon: <FileStack size={14} />,
+    creates: true,
+  },
+  {
+    id: 'new-sales-order',
+    label: 'Nuevo pedido de venta',
+    keywords: 'crear pedido venta cliente',
+    path: '/sales-orders/new',
+    icon: <FileDigit size={14} />,
+    creates: true,
+  },
+  {
+    id: 'new-purchase-order',
+    label: 'Nuevo pedido de compra',
+    keywords: 'crear pedido compra proveedor',
+    path: '/purchase-orders/new',
+    icon: <FileDigit size={14} />,
+    creates: true,
+  },
+  {
+    id: 'new-sales-dn',
+    label: 'Nuevo albarán de venta',
+    keywords: 'crear albaran venta entrega',
+    path: '/sales/delivery-notes/new',
+    icon: <Truck size={14} />,
+    creates: true,
+  },
+  {
+    id: 'new-purchase-dn',
+    label: 'Nuevo albarán de compra',
+    keywords: 'crear albaran compra recepcion',
+    path: '/purchases/delivery-notes/new',
+    icon: <Truck size={14} />,
+    creates: true,
+  },
+  {
+    id: 'new-quote',
+    label: 'Nuevo presupuesto',
+    keywords: 'crear presupuesto oferta cotizacion',
+    path: '/sales/quotes/new',
+    icon: <FileText size={14} />,
+    creates: true,
+  },
+  {
+    id: 'go-partners',
+    label: 'Interlocutores',
+    keywords: 'clientes proveedores contactos',
+    path: '/partners',
+    icon: <Users size={14} />,
+  },
+  {
+    id: 'go-items',
+    label: 'Artículos',
+    keywords: 'catalogo productos stock',
+    path: '/items',
+    icon: <Package size={14} />,
+  },
+  {
+    id: 'go-journal',
+    label: 'Asientos contables',
+    keywords: 'diario contabilidad apuntes',
+    path: '/journal-entries',
+    icon: <ScrollText size={14} />,
+  },
+  {
+    id: 'go-employees',
+    label: 'Empleados',
+    keywords: 'rrhh plantilla personal',
+    path: '/hr/employees',
+    icon: <UserRound size={14} />,
+  },
+  {
+    id: 'go-settings',
+    label: 'Ajustes de la empresa',
+    keywords: 'configuracion branding tema',
+    path: '/settings/company',
+    icon: <Settings size={14} />,
+  },
+];
+
+/** Sin tildes y en minúsculas, para que "albaran" encuentre "albarán". */
+const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
 const EMPTY: SearchResults = {
   partners: [],
   items: [],
@@ -86,11 +202,15 @@ export const GlobalSearch: React.FC = () => {
   const { open, openPalette, close } = useCommandPalette({ shortcut: 'mod+k' });
   const [results, setResults] = useState<SearchResults>(EMPTY);
   const [loading, setLoading] = useState(false);
+  // El término se guarda porque en modo servidor la paleta no filtra nada, y
+  // las acciones sí hay que cribarlas aquí.
+  const [term, setTerm] = useState('');
 
   // Modo servidor: la paleta no filtra en cliente, solo avisa del término
   // (ya con su propio debounce) y pinta lo que le devolvamos.
   const runSearch = useCallback(
     async (term: string) => {
+      setTerm(term);
       if (term.trim().length < 2) {
         setResults(EMPTY);
         setLoading(false);
@@ -114,10 +234,32 @@ export const GlobalSearch: React.FC = () => {
     (path: string, title?: string) => {
       close();
       setResults(EMPTY);
+      setTerm('');
       openTab(path, title ? { title } : undefined);
     },
     [close, openTab],
   );
+
+  const actionSection = useMemo<CommandSection | null>(() => {
+    const q = norm(term.trim());
+    const hits = q
+      ? ACTIONS.filter((a) => norm(`${a.label} ${a.keywords}`).includes(q))
+      : ACTIONS.slice(0, 7);
+    if (hits.length === 0) return null;
+    return {
+      key: 'actions',
+      label: 'Acciones',
+      icon: <Zap size={14} />,
+      items: hits.map((a) => ({
+        id: a.id,
+        label: a.label,
+        description: a.creates ? 'Crear' : 'Ir a',
+        keywords: a.keywords,
+        icon: a.icon,
+        onSelect: () => go(a.path, a.label),
+      })),
+    };
+  }, [term, go]);
 
   const sections = useMemo<CommandSection[]>(() => {
     /**
@@ -300,6 +442,13 @@ export const GlobalSearch: React.FC = () => {
       }));
   }, [results, fmt, go]);
 
+  // Las acciones van primero: son lo único disponible con la paleta recién
+  // abierta, y con término escrito siguen siendo el camino más corto.
+  const allSections = useMemo(
+    () => (actionSection ? [actionSection, ...sections] : sections),
+    [actionSection, sections],
+  );
+
   return (
     <>
       {/*
@@ -324,7 +473,7 @@ export const GlobalSearch: React.FC = () => {
       <CommandPalette
         open={open}
         onClose={close}
-        sections={sections}
+        sections={allSections}
         onSearch={runSearch}
         debounceMs={220}
         loading={loading}

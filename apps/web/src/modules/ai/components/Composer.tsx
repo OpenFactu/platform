@@ -130,7 +130,7 @@ export const Composer: React.FC<{
         </div>
       )}
       <div
-        className={`rounded-xl border bg-bg-card shadow-sm transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 ${
+        className={`rounded-lg border bg-bg-card shadow-sm transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 ${
           dragOver ? 'border-accent ring-2 ring-accent/30' : 'border-border-default'
         }`}
         onDragOver={(e) => {

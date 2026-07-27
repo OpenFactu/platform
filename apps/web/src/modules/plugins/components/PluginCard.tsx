@@ -37,7 +37,7 @@ export const PluginCard: React.FC<PluginCardProps> = ({
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <div
-              className={`w-11 h-11 rounded-xl flex items-center justify-center border shadow-k-sm overflow-hidden p-2 ${
+              className={`w-11 h-11 rounded-lg flex items-center justify-center border shadow-k-sm overflow-hidden p-2 ${
                 plugin.isActive
                   ? 'bg-success-bg border-success'
                   : 'bg-bg-muted border-border-default'

@@ -206,7 +206,7 @@ export const AiChat: React.FC = () => {
                     key={text}
                     type="button"
                     onClick={() => composer.send(text)}
-                    className="group flex items-start gap-3 text-left p-3.5 rounded-xl border border-border-default bg-bg-card hover:border-accent/40 hover:bg-accent/5 dark:hover:bg-accent/10 hover:-translate-y-0.5 transition-all shadow-sm"
+                    className="group flex items-start gap-3 text-left p-3.5 rounded-lg border border-border-default bg-bg-card hover:border-accent/40 hover:bg-accent/5 dark:hover:bg-accent/10 hover:-translate-y-0.5 transition-all shadow-sm"
                   >
                     <span className="shrink-0 w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center group-hover:bg-accent group-hover:text-white transition-colors">
                       <Icon size={16} />

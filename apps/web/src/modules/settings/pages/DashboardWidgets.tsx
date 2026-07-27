@@ -5,6 +5,7 @@ import {
   Button,
   Input,
   Loader,
+  PageHeader,
   useToast,
   usePopup,
   Modal,
@@ -195,23 +196,18 @@ export const DashboardWidgets: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-4 flex-wrap gap-2">
-        <div className="flex items-center gap-3">
-          <LayoutGrid className="text-blue-600 dark:text-blue-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black text-fg-default tracking-tight">
-              Widgets de dashboard
-            </h1>
-            <p className="text-xs text-fg-muted">
-              Elegí una métrica del catálogo o escribí tu propio componente React, sin necesidad de
-              un plugin.
-            </p>
-          </div>
-        </div>
-        <Button onClick={openCreate} className="flex items-center gap-2">
-          <Plus size={14} /> Nuevo widget
-        </Button>
-      </header>
+      <PageHeader
+        title="Widgets de dashboard"
+        subtitle="Elegí una métrica del catálogo o escribí tu propio componente React, sin necesidad de un plugin."
+        icon={<LayoutGrid size={18} />}
+        size="sm"
+        divider
+        actions={
+          <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+            <Plus size={14} /> Nuevo widget
+          </Button>
+        }
+      />
 
       <Card bodyClassName="p-0">
         <button
@@ -249,7 +245,7 @@ export const DashboardWidgets: React.FC = () => {
       ) : rows.length === 0 ? (
         <Card bodyClassName="p-0">
           <EmptyState
-            icon={<LayoutGrid size={28} />}
+            icon={<LayoutGrid size={18} />}
             title="Aún no has creado ningún widget"
             hint="Elige una métrica del catálogo o escribe tu propio componente React para el Dashboard."
             action={

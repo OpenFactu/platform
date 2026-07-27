@@ -28,6 +28,7 @@ import {
   Select,
   Tabs,
   Textarea,
+  PageHeader,
 } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import {
@@ -608,60 +609,68 @@ export const StockMovements: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
-        <div className="flex items-center gap-3">
-          {(creating || viewing) && (
+      <PageHeader
+        title={
+          creating
+            ? cfg.newTitle
+            : viewing
+              ? `${cfg.label.slice(0, -1)} ${viewing.code}`
+              : 'Movimientos de stock'
+        }
+        subtitle={
+          creating
+            ? 'Rellena la cabecera y las líneas. Los artículos gestionados por lote/serie exigen el número.'
+            : viewing
+              ? `Detalle del documento — estado: ${STATUS_COPY[viewing.status]?.label || viewing.status}`
+              : 'Traspasos, entradas y salidas internas — con trazabilidad por zona, lote y unidad de medida.'
+        }
+        icon={<ArrowRightLeft size={18} />}
+        size="sm"
+        divider
+        className="pb-3"
+        breadcrumbs={
+          (creating || viewing) && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={creating ? cancelCreate : closeView}
               title="Volver al listado"
+              className="w-fit"
             >
               <ArrowLeft size={14} />
             </Button>
-          )}
-          <ArrowRightLeft className="text-amber-600 dark:text-amber-300" size={22} />
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-fg-default">
-              {creating
-                ? cfg.newTitle
-                : viewing
-                  ? `${cfg.label.slice(0, -1)} ${viewing.code}`
-                  : 'Movimientos de stock'}
-            </h1>
-            <p className="text-xs text-fg-muted">
-              {creating
-                ? 'Rellena la cabecera y las líneas. Los artículos gestionados por lote/serie exigen el número.'
-                : viewing
-                  ? `Detalle del documento — estado: ${STATUS_COPY[viewing.status]?.label || viewing.status}`
-                  : 'Traspasos, entradas y salidas internas — con trazabilidad por zona, lote y unidad de medida.'}
-            </p>
-          </div>
-        </div>
-        {!creating && !viewing && (
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={14} /> {cfg.newTitle}
-          </Button>
-        )}
-      </header>
+          )
+        }
+        actions={
+          !creating &&
+          !viewing && (
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={14} /> {cfg.newTitle}
+            </Button>
+          )
+        }
+        tabs={
+          // Las tres vistas del hub: Tabs 'underline' ya trae el subrayado de la
+          // activa y el scroll horizontal que se hacía a mano.
+          !creating && !viewing ? (
+            <Tabs
+              variant="underline"
+              size="sm"
+              scrollable
+              value={kind}
+              onChange={(k) => setKind(k as Kind)}
+              items={(Object.keys(KIND_CFG) as Kind[]).map((k) => {
+                const { label, Icon } = KIND_CFG[k];
+                return { key: k, label, icon: <Icon size={13} /> };
+              })}
+            />
+          ) : undefined
+        }
+      />
 
       {!creating && !viewing && (
         <>
-          {/* Las tres vistas del hub: Tabs 'underline' ya trae el subrayado de la
-              activa y el scroll horizontal que se hacía a mano. */}
-          <Tabs
-            variant="underline"
-            size="sm"
-            scrollable
-            value={kind}
-            onChange={(k) => setKind(k as Kind)}
-            items={(Object.keys(KIND_CFG) as Kind[]).map((k) => {
-              const { label, Icon } = KIND_CFG[k];
-              return { key: k, label, icon: <Icon size={13} /> };
-            })}
-          />
-
           {loading ? (
             <div className="py-10 flex justify-center">
               <Loader />

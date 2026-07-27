@@ -1,7 +1,7 @@
 import { paymentMethodsApi, paymentsApi } from '@/modules/accounting/api';
 import { ApiError } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
-import { Modal, Input, Button, SearchableSelect, useToast } from '@openfactu/ui';
+import { Modal, Input, DatePicker, Button, SearchableSelect, useToast } from '@openfactu/ui';
 import { CreditCard } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nContext';
 import type { PaymentMethod } from '@/modules/accounting/domain/accounting';
@@ -120,7 +120,7 @@ export const RegisterPaymentModal: React.FC<Props> = ({
             <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
               {t('payment.date')}
             </label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DatePicker value={date} onChange={(v) => setDate(v ?? '')} />
           </div>
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">

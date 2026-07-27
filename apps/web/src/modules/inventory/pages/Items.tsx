@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Card, Button, Input, useToast } from '@openfactu/ui';
+import { Table, Card, Button, Input, Badge, PageHeader, useToast } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import StockDetailModal from '../components/StockDetailModal';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -102,16 +102,23 @@ export const Items: React.FC = () => {
         );
       },
     },
+    /*
+     * Tipografía: antes TODAS las celdas iban en `font-black`/`font-bold`, así
+     * que ninguna destacaba y la tabla se leía como un bloque. Ahora solo el
+     * nombre del artículo lleva peso; el resto va en regular y la jerarquía la
+     * marcan el tamaño y el color. Los números van en `tabular-nums` para que
+     * las columnas cuadren en vertical.
+     */
     {
       header: 'Código / Nombre',
       sortable: true,
       sortAccessor: (i: any) => `${i.code} ${i.name}`.toLowerCase(),
       accessor: (i: any) => (
         <div className="flex flex-col">
-          <span className="font-black text-blue-600 dark:text-blue-300 text-[10px] uppercase tracking-tighter">
+          <span className="font-mono text-[10px] uppercase tracking-tight text-fg-subtle">
             {i.code}
           </span>
-          <span className="font-bold text-fg-default text-sm leading-tight">{i.name}</span>
+          <span className="font-medium text-fg-default text-sm leading-tight">{i.name}</span>
         </div>
       ),
     },
@@ -122,57 +129,51 @@ export const Items: React.FC = () => {
       accessor: (i: any) => {
         const uom = uoms.find((u) => u.id === i.uomId);
         return (
-          <span className="font-mono text-[11px] font-black text-fg-muted bg-bg-muted px-2 py-0.5 rounded border border-border-default uppercase">
-            {uom?.code || '?'}
-          </span>
+          <span className="font-mono text-[11px] text-fg-muted uppercase">{uom?.code || '?'}</span>
         );
       },
     },
     {
       header: 'Gestión',
-      accessor: (i: any) => (
-        <div className="flex items-center gap-1.5">
-          {i.manageBy === 'N' && (
-            <span className="p-0.5 px-1.5 bg-bg-muted text-fg-subtle text-[9px] font-black rounded uppercase border border-border-subtle">
-              Std
-            </span>
-          )}
-          {i.manageBy === 'B' && (
-            <span className="p-0.5 px-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-300 text-[9px] font-black rounded uppercase border border-amber-100 dark:border-amber-500/20 italic">
-              Lote
-            </span>
-          )}
-          {i.manageBy === 'S' && (
-            <span className="p-0.5 px-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-[9px] font-black rounded uppercase border border-indigo-100 dark:border-indigo-500/20 italic">
-              Serie
-            </span>
-          )}
-        </div>
-      ),
+      accessor: (i: any) =>
+        // 'N' (estándar) no se marca: es el caso por defecto y un distintivo en
+        // cada fila sería ruido. Solo se señala lo que se sale de la norma.
+        i.manageBy === 'B' ? (
+          <Badge variant="warning">Lote</Badge>
+        ) : i.manageBy === 'S' ? (
+          <Badge variant="info">Serie</Badge>
+        ) : (
+          <span className="text-fg-subtle text-xs">—</span>
+        ),
     },
     {
       header: 'Comprometido',
+      align: 'right' as const,
       accessor: (i: any) => (
-        <span className="text-fg-subtle font-mono text-[11px] font-bold">
+        <span className="text-fg-subtle font-mono text-[11px] tabular-nums">
           -{Number(i.committed).toFixed(2)}
         </span>
       ),
     },
     {
       header: 'Pedido',
+      align: 'right' as const,
       accessor: (i: any) => (
-        <span className="text-blue-400 font-mono text-[11px] font-bold">
+        <span className="text-fg-muted font-mono text-[11px] tabular-nums">
           +{Number(i.ordered).toFixed(2)}
         </span>
       ),
     },
     {
       header: 'Disponible',
+      align: 'right' as const,
       accessor: (i: any) => {
         const available = Number(i.stock) - Number(i.committed) + Number(i.ordered);
+        // El rojo del negativo sí es semántico (no hay stock disponible), así
+        // que se queda; el positivo no necesita color propio.
         return (
           <span
-            className={`font-mono font-black ${available > 0 ? 'text-blue-600 dark:text-blue-300' : 'text-rose-600 dark:text-rose-300'}`}
+            className={`font-mono tabular-nums ${available > 0 ? 'text-fg-default' : 'text-danger-fg'}`}
           >
             {available.toFixed(2)}
           </span>
@@ -181,15 +182,17 @@ export const Items: React.FC = () => {
     },
     {
       header: 'Precio Base',
+      align: 'right' as const,
       accessor: (i: any) => (
-        <span className="font-mono font-bold text-fg-body">{i.basePrice}€</span>
+        <span className="font-mono tabular-nums text-fg-body">{i.basePrice}€</span>
       ),
     },
     {
       header: 'Stock Total',
+      align: 'right' as const,
       accessor: (i: any) => (
         <span
-          className={`font-mono font-black ${i.stock > 0 ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-500'}`}
+          className={`font-mono tabular-nums ${i.stock > 0 ? 'text-fg-default' : 'text-danger-fg'}`}
         >
           {i.stock.toFixed(2)}
         </span>
@@ -269,18 +272,13 @@ export const Items: React.FC = () => {
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tighter font-display">
-            <Package className="text-blue-600 dark:text-blue-300" size={32} />
-            Catálogo de Artículos
-          </h1>
-          <p className="text-fg-muted mt-1 font-medium text-sm">
-            Gestión de datos maestros de productos y servicios.
-          </p>
-        </div>
-        <div className="relative group flex gap-2 items-center">
-          <div className="relative w-full md:w-80">
+      <PageHeader
+        title="Catálogo de Artículos"
+        subtitle="Gestión de datos maestros de productos y servicios."
+        icon={<Package size={18} />}
+        size="lg"
+        actions={
+          <div className="relative group w-full md:w-80">
             <Search
               size={16}
               className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle group-focus-within:text-accent transition-colors"
@@ -297,8 +295,8 @@ export const Items: React.FC = () => {
               aria-label="Escanear con cámara"
             />
           </div>
-        </div>
-      </header>
+        }
+      />
 
       <div className="space-y-8">
         {/* Tabla Maestra */}

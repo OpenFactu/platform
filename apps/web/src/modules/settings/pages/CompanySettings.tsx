@@ -7,6 +7,7 @@ import {
   Checkbox,
   ColorInput,
   NumberInput,
+  PageHeader,
   Select,
   Tabs,
   Loader,
@@ -342,33 +343,27 @@ export const CompanySettings: React.FC = () => {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-accent/10 text-accent border border-accent/20 rounded-sm">
-          <Building size={22} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-ink-900 dark:text-slate-100 font-display">
-            Configuración de Empresa
-          </h1>
-          <p className="text-sm text-ink-500 dark:text-ink-400">
-            Datos fiscales, branding, formato y comportamiento.
-          </p>
-        </div>
-      </div>
-
-      {/* Pestañas internas de la pantalla (no la navegación de módulo):
-          `scrollable` reproduce el scroll horizontal que había a mano. */}
-      <Tabs
-        variant="underline"
-        size="sm"
-        scrollable
-        items={tabs.map((t) => ({
-          key: t.id,
-          label: t.label,
-          icon: <t.icon size={13} />,
-        }))}
-        value={activeTab}
-        onChange={(key) => setActiveTab(key as TabId)}
+      <PageHeader
+        title="Configuración de Empresa"
+        subtitle="Datos fiscales, branding, formato y comportamiento."
+        icon={<Building size={18} />}
+        size="md"
+        /* Pestañas internas de la pantalla (no la navegación de módulo):
+           `scrollable` reproduce el scroll horizontal que había a mano. */
+        tabs={
+          <Tabs
+            variant="underline"
+            size="sm"
+            scrollable
+            items={tabs.map((t) => ({
+              key: t.id,
+              label: t.label,
+              icon: <t.icon size={13} />,
+            }))}
+            value={activeTab}
+            onChange={(key) => setActiveTab(key as TabId)}
+          />
+        }
       />
 
       {activeTab === 'fiscal' && (

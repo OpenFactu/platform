@@ -4,8 +4,10 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Select,
   SearchableSelect,
+  PageHeader,
   useToast,
   Badge,
   usePopup,
@@ -205,23 +207,20 @@ export const InternalOrders: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-            <Briefcase className="text-amber-600 dark:text-amber-300" size={32} />
-            Proyectos y órdenes internas
-          </h1>
-          <p className="text-fg-muted mt-1 font-medium">
-            Tercera dimensión analítica. Agrupa costes e ingresos por iniciativa, proyecto o WBS.
-          </p>
-        </div>
-        {canWrite && (
-          <Button onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={18} />
-            Nuevo
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Proyectos y órdenes internas"
+        subtitle="Tercera dimensión analítica. Agrupa costes e ingresos por iniciativa, proyecto o WBS."
+        icon={<Briefcase size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" onClick={openCreate} className="flex items-center gap-2">
+              <Plus size={18} />
+              Nuevo
+            </Button>
+          )
+        }
+      />
 
       {formOpen && (
         <Card className="p-6 border-blue-50 shadow-lg" noPadding>
@@ -248,17 +247,15 @@ export const InternalOrders: React.FC = () => {
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                type="date"
+              <DatePicker
                 label="Inicio"
-                value={form.startDate ? form.startDate.substring(0, 10) : ''}
-                onChange={(e) => setForm({ ...form, startDate: e.target.value || null })}
+                value={form.startDate ? form.startDate.substring(0, 10) : null}
+                onChange={(v) => setForm({ ...form, startDate: v || null })}
               />
-              <Input
-                type="date"
+              <DatePicker
                 label="Fin"
-                value={form.endDate ? form.endDate.substring(0, 10) : ''}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value || null })}
+                value={form.endDate ? form.endDate.substring(0, 10) : null}
+                onChange={(v) => setForm({ ...form, endDate: v || null })}
               />
               <Input
                 type="number"

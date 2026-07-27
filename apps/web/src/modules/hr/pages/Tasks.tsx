@@ -7,10 +7,12 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Badge,
   useToast,
   usePopup,
   cn,
+  PageHeader,
   Select,
   SearchableSelect,
 } from '@openfactu/ui';
@@ -165,22 +167,17 @@ export const Tasks: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-4">
       {/* Cabecera compacta */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <ListTodo className="text-accent" size={22} />
-          <div>
-            <h1 className="text-xl font-bold text-ink-900 dark:text-slate-100 leading-tight">
-              Tareas
-            </h1>
-            <p className="text-xs text-ink-500 dark:text-ink-400">
-              Planificador ligero · arrastra una tarea a otra columna para cambiar de estado
-            </p>
-          </div>
-        </div>
-        <Button size="sm" onClick={() => setEditing(empty())}>
-          <Plus size={14} /> Nueva tarea
-        </Button>
-      </div>
+      <PageHeader
+        title="Tareas"
+        subtitle="Planificador ligero · arrastra una tarea a otra columna para cambiar de estado"
+        icon={<ListTodo size={18} />}
+        size="sm"
+        actions={
+          <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+            <Plus size={14} /> Nueva tarea
+          </Button>
+        }
+      />
 
       {/* Filtros */}
       <Card noPadding>
@@ -416,17 +413,15 @@ export const Tasks: React.FC = () => {
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Input
+                <DatePicker
                   label="Inicio"
-                  type="date"
-                  value={(editing.startDate || '').slice(0, 10)}
-                  onChange={(e) => setEditing({ ...editing, startDate: e.target.value })}
+                  value={(editing.startDate || '').slice(0, 10) || null}
+                  onChange={(v) => setEditing({ ...editing, startDate: v ?? '' })}
                 />
-                <Input
+                <DatePicker
                   label="Fin"
-                  type="date"
-                  value={(editing.dueDate || '').slice(0, 10)}
-                  onChange={(e) => setEditing({ ...editing, dueDate: e.target.value })}
+                  value={(editing.dueDate || '').slice(0, 10) || null}
+                  onChange={(v) => setEditing({ ...editing, dueDate: v ?? '' })}
                 />
                 <Input
                   label="Estimadas (h)"

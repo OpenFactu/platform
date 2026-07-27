@@ -5,11 +5,13 @@ import {
   Card,
   Button,
   Input,
+  DatePicker,
   Loader,
   usePopup,
   useToast,
   Badge,
   FilterBar,
+  PageHeader,
   SearchableSelect,
   cn,
 } from '@openfactu/ui';
@@ -230,37 +232,36 @@ const InvoiceList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
-        <div>
-          <h1 className="text-4xl font-black text-fg-default flex items-center gap-4 tracking-tighter">
-            <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-600 dark:text-amber-300 shadow-sm border border-amber-100 dark:border-amber-500/20">
-              <FileStack size={32} />
-            </div>
-            Facturas de Compra
-          </h1>
-          <p className="text-fg-muted mt-2 font-medium ml-1">
-            Registro para el libro de IVA y pagos a proveedores.
-          </p>
-          {mastersError && (
-            <div className="mt-4 flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl text-amber-700 dark:text-amber-200 text-xs font-bold animate-in slide-in-from-top">
+      <PageHeader
+        title="Facturas de Compra"
+        subtitle="Registro para el libro de IVA y pagos a proveedores."
+        icon={<FileStack size={18} />}
+        size="lg"
+        divider
+        toolbar={
+          mastersError ? (
+            <div className="flex items-center gap-2 p-3 bg-warning-bg border border-warning rounded-lg text-warning-fg text-xs font-bold animate-in slide-in-from-top">
               <AlertCircle size={16} />
               {mastersError}
             </div>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {doc.state.canWrite && onCreateFromClone && (
-            <CloneDocumentActions docType="PINV" onPaste={onCreateFromClone} show="paste" />
-          )}
-          <Button
-            onClick={onCreate}
-            disabled={!doc.state.canWrite}
-            className="flex items-center gap-2 h-12 px-6 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:grayscale"
-          >
-            <Plus size={20} /> Nueva Factura Directa
-          </Button>
-        </div>
-      </div>
+          ) : undefined
+        }
+        actions={
+          <div className="flex items-center gap-3">
+            {doc.state.canWrite && onCreateFromClone && (
+              <CloneDocumentActions docType="PINV" onPaste={onCreateFromClone} show="paste" />
+            )}
+            <Button
+              type="button"
+              onClick={onCreate}
+              disabled={!doc.state.canWrite}
+              className="flex items-center gap-2 disabled:opacity-50"
+            >
+              <Plus size={20} /> Nueva Factura Directa
+            </Button>
+          </div>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
@@ -441,40 +442,37 @@ const InvoiceForm: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
-        <div className="flex items-center gap-4">
+      <PageHeader
+        title={
+          state.lines.some((l: any) => l.baseId)
+            ? 'Facturación de Albarán'
+            : 'Nueva Factura Directa'
+        }
+        subtitle={
+          <span className="flex items-center gap-2">
+            <FileText size={14} />
+            Ingreso de gasto y contabilización de impuestos.
+          </span>
+        }
+        size="lg"
+        divider
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={onBack} title="Volver">
+            <ArrowLeft size={14} className="mr-1" /> Volver
+          </Button>
+        }
+        actions={
           <Button
             type="button"
-            variant="secondary"
-            onClick={onBack}
-            title="Volver"
-            className="rounded-2xl"
-          >
-            <ArrowLeft size={20} />
-          </Button>
-          <div>
-            <h1 className="text-4xl font-black text-fg-default tracking-tighter flex items-center gap-3">
-              {state.lines.some((l: any) => l.baseId)
-                ? 'Facturación de Albarán'
-                : 'Nueva Factura Directa'}
-            </h1>
-            <p className="text-fg-muted mt-1 font-medium ml-1 flex items-center gap-2">
-              <FileText size={14} className="text-amber-500" />
-              Ingreso de gasto y contabilización de impuestos.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
             onClick={() => onSubmit()}
             isLoading={state.isSubmitting}
             disabled={!!state.seriesError || !state.canWrite}
-            className="flex items-center gap-2 h-12 px-8 focus:ring-4 ring-blue-500/10 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 disabled:opacity-50"
           >
             <Save size={20} /> Asentar Factura
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 md:col-span-2 space-y-6 border-border-subtle">
@@ -502,12 +500,7 @@ const InvoiceForm: React.FC<{
               <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Fecha Factura *
               </label>
-              <Input
-                type="date"
-                value={state.date}
-                onChange={(e) => setState.setDate(e.target.value)}
-                className="font-bold text-fg-body h-10 border-border-default"
-              />
+              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
             </div>
             <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
           </div>
@@ -585,7 +578,7 @@ const InvoiceForm: React.FC<{
         )}
         <div className="p-6 bg-bg-muted flex flex-col md:flex-row justify-between items-start md:items-center border-t border-border-subtle gap-6">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center bg-bg-card border border-border-default rounded-xl p-1 shadow-sm">
+            <div className="flex items-center bg-bg-card border border-border-default rounded-lg p-1 shadow-sm">
               {[1, 5, 10].map((n) => (
                 <Button
                   key={n}
@@ -609,7 +602,7 @@ const InvoiceForm: React.FC<{
               <PlusSquare size={16} /> Línea de Gasto
             </Button>
           </div>
-          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-2xl border border-border-subtle shadow-sm">
+          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-lg border border-border-subtle shadow-sm">
             <div className="flex justify-between w-full text-[10px] font-black text-fg-subtle uppercase tracking-widest px-1">
               <span>Base Imponible:</span>
               <span className="text-fg-body">{computations.subtotal.toFixed(2)} €</span>
@@ -795,14 +788,14 @@ const InvoiceDetail: React.FC<{
             )}
           </div>
           {fromDelivery && (
-            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-lg">
               <Copy size={14} className="text-blue-600 dark:text-blue-300 shrink-0" />
               <p className="text-xs text-blue-800 dark:text-blue-200 font-medium leading-tight">
                 Factura generada desde uno o varios albaranes de compra.
               </p>
             </div>
           )}
-          <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/30 rounded-xl">
+          <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/30 rounded-lg">
             <FileText size={16} className="text-amber-600 dark:text-amber-300 shrink-0" />
             <p className="text-xs text-amber-800 dark:text-amber-200 font-medium leading-tight">
               Documento contable firme — genera obligación de pago.

@@ -8,6 +8,7 @@ import {
   usePopup,
   Badge,
   SearchableSelect,
+  PageHeader,
 } from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
@@ -280,31 +281,23 @@ export const Categories: React.FC = () => {
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-blue-600 rounded-lg text-white">
-              <Layers size={20} />
-            </span>
-            <span className="text-[10px] font-black text-blue-600 dark:text-blue-300 uppercase tracking-[0.2em]">
-              Logística / Clasificación
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
-            Categorías
-          </h1>
-          <p className="text-fg-muted font-medium">
-            Clasifica tus artículos y establece secuencias de códigos por familia.
-          </p>
-        </div>
-        <Button
-          onClick={() => setNewRow({ name: '', codePrefix: '', parentId: '' })}
-          disabled={!!newRow || !canWrite}
-          className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
-        >
-          <Plus size={18} /> Nueva Categoría
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow="Logística / Clasificación"
+        title="Categorías"
+        subtitle="Clasifica tus artículos y establece secuencias de códigos por familia."
+        icon={<Layers size={18} />}
+        size="lg"
+        actions={
+          <Button
+            type="button"
+            onClick={() => setNewRow({ name: '', codePrefix: '', parentId: '' })}
+            disabled={!!newRow || !canWrite}
+            className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
+          >
+            <Plus size={18} /> Nueva Categoría
+          </Button>
+        }
+      />
 
       <Card className="overflow-hidden border-0" noPadding>
         {/* La Table trae cabecera, esqueleto de carga y estado vacío: el

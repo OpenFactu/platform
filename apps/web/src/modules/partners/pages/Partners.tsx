@@ -14,6 +14,7 @@ import {
   Tabs,
   EmptyState,
   SearchInput,
+  PageHeader,
 } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import {
@@ -470,24 +471,22 @@ export const Partners: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-            <Users className="text-blue-600 dark:text-blue-300" size={32} />
-            Interlocutores
-          </h1>
-          <p className="text-fg-muted mt-1 font-medium">
-            Gestión centralizada de Clientes y Proveedores.
-          </p>
-        </div>
-        <Button
-          onClick={() => openModal()}
-          disabled={!canWrite}
-          className="flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:grayscale transition-all"
-        >
-          <Plus size={18} /> Nuevo Interlocutor
-        </Button>
-      </div>
+      <PageHeader
+        title="Interlocutores"
+        subtitle="Gestión centralizada de Clientes y Proveedores."
+        icon={<Users size={18} />}
+        size="lg"
+        actions={
+          <Button
+            type="button"
+            onClick={() => openModal()}
+            disabled={!canWrite}
+            className="flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:grayscale transition-all"
+          >
+            <Plus size={18} /> Nuevo Interlocutor
+          </Button>
+        }
+      />
 
       <Card className="overflow-hidden" noPadding>
         <div className="p-3 border-b border-border-subtle">
@@ -496,7 +495,7 @@ export const Partners: React.FC = () => {
             onChange={setSearch}
             placeholder="Buscar por código, razón social, NIF, grupo o contacto…"
             clearable
-            className="max-w-md"
+            containerClassName="max-w-md"
           />
         </div>
         <Table
@@ -504,6 +503,7 @@ export const Partners: React.FC = () => {
           data={visiblePartners}
           isLoading={loading}
           rowActions={rowActions}
+          onRowClick={(p: any) => openModal(p)}
           emptyMessage={
             search ? `Ningún interlocutor coincide con “${search}”.` : 'Aún no hay interlocutores.'
           }
@@ -780,7 +780,7 @@ export const Partners: React.FC = () => {
                 </div>
                 {addresses.length === 0 ? (
                   <EmptyState
-                    icon={<MapPin size={28} />}
+                    icon={<MapPin size={18} />}
                     title="No hay direcciones definidas"
                     hint="Añade una dirección de facturación o envío."
                     action={

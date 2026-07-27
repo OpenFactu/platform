@@ -1,5 +1,5 @@
 import React from 'react';
-import { Input, cn } from '@openfactu/ui';
+import { DatePicker, Input, cn } from '@openfactu/ui';
 import type { PluginFieldDef } from './types';
 import { ReferenceSelect } from './ReferenceSelect';
 
@@ -43,10 +43,9 @@ export const PluginFieldInput: React.FC<Props> = ({
 
     case 'DATE':
       return (
-        <Input
-          type="date"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
+        <DatePicker
+          value={value || null}
+          onChange={(v) => onChange(v ?? '')}
           disabled={isDisabled}
           className={className}
         />

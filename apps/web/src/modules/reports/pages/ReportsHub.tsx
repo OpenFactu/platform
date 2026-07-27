@@ -45,7 +45,7 @@ const ReportCard: React.FC<ReportCardProps> = ({ title, description, icon: Icon,
     <button
       type="button"
       onClick={() => navigate(path)}
-      className="group text-left p-5 rounded-xl border border-border-default bg-bg-card hover:border-accent hover:shadow-k-md transition-all"
+      className="group text-left p-5 rounded-lg border border-border-default bg-bg-card hover:border-accent hover:shadow-k-md transition-all"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="p-2.5 rounded-lg bg-accent/10 text-accent shrink-0">

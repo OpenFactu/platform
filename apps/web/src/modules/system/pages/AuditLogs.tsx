@@ -9,6 +9,7 @@ import {
   DatePicker,
   EmptyState,
   Badge,
+  PageHeader,
   Table,
 } from '@openfactu/ui';
 import type { BadgeProps, RowAction, TableColumn } from '@openfactu/ui';
@@ -138,7 +139,7 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
           emptyMessage="Sin campos comparables"
         />
       ) : (
-        <pre className="bg-bg-muted rounded-xl p-4 text-xs font-mono text-fg-body overflow-auto whitespace-pre-wrap">
+        <pre className="bg-bg-muted rounded-lg p-4 text-xs font-mono text-fg-body overflow-auto whitespace-pre-wrap">
           {JSON.stringify(log.action === 'DELETE' ? old : next, null, 2)}
         </pre>
       )}
@@ -264,30 +265,21 @@ export const AuditLogs: React.FC = () => {
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       {selectedLog && <DiffModal log={selectedLog} onClose={() => setSelectedLog(null)} />}
 
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-violet-600 rounded-lg text-white">
-              <ClipboardList size={20} />
-            </span>
-            <span className="text-[10px] font-black text-violet-600 uppercase tracking-[0.2em]">
-              Gestión Central / Seguridad
-            </span>
+      <PageHeader
+        title="Registros de Auditoría"
+        subtitle="Histórico completo de creaciones, modificaciones y eliminaciones."
+        eyebrow="Gestión Central / Seguridad"
+        icon={<ClipboardList size={18} />}
+        size="lg"
+        actions={
+          <div className="text-right">
+            <p className="text-2xl font-black text-fg-default">{total.toLocaleString()}</p>
+            <p className="text-xs text-fg-subtle font-bold uppercase tracking-widest">
+              registros totales
+            </p>
           </div>
-          <h1 className="text-4xl font-black text-fg-default tracking-tight">
-            Registros de Auditoría
-          </h1>
-          <p className="text-fg-muted font-medium">
-            Histórico completo de creaciones, modificaciones y eliminaciones.
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-2xl font-black text-fg-default">{total.toLocaleString()}</p>
-          <p className="text-xs text-fg-subtle font-bold uppercase tracking-widest">
-            registros totales
-          </p>
-        </div>
-      </header>
+        }
+      />
 
       {/* Filtros */}
       <Card className="border-0">
@@ -355,7 +347,7 @@ export const AuditLogs: React.FC = () => {
       {!loading && logs.length === 0 ? (
         <Card className="border-0">
           <EmptyState
-            icon={<ClipboardList size={32} />}
+            icon={<ClipboardList size={18} />}
             title="No se encontraron registros de auditoría"
             hint="Prueba a ampliar el rango de fechas o a quitar filtros."
           />

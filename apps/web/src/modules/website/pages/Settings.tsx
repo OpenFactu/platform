@@ -6,6 +6,7 @@ import {
   ColorInput,
   Input,
   Loader,
+  PageHeader,
   SearchableSelect,
   Select,
   usePopup,
@@ -114,24 +115,17 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500 max-w-4xl">
-      <header className="flex items-end justify-between gap-6 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-teal-600 rounded-lg text-white">
-              <Settings2 size={20} />
-            </span>
-            <span className="text-[10px] font-black text-teal-600 dark:text-teal-300 uppercase tracking-[0.2em]">
-              Website / Ajustes
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
-            Ajustes de la web
-          </h1>
-        </div>
-        <Button onClick={handleSave} disabled={saving}>
-          <Save size={16} className="mr-2" /> {saving ? 'Guardando…' : 'Guardar'}
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow="Website / Ajustes"
+        title="Ajustes de la web"
+        icon={<Settings2 size={18} />}
+        size="lg"
+        actions={
+          <Button type="button" onClick={handleSave} disabled={saving}>
+            <Save size={16} className="mr-2" /> {saving ? 'Guardando…' : 'Guardar'}
+          </Button>
+        }
+      />
 
       <Card className="space-y-4">
         <h2 className="font-black text-fg-default">Identidad</h2>
@@ -257,7 +251,7 @@ export const Settings: React.FC = () => {
           un dominio propio (requiere configuración DNS).
         </p>
         {newHost && (
-          <div className="flex gap-2 items-center bg-teal-50/40 dark:bg-teal-500/5 p-3 rounded-xl">
+          <div className="flex gap-2 items-center bg-teal-50/40 dark:bg-teal-500/5 p-3 rounded-lg">
             <Select
               ariaLabel="Tipo de host"
               value={newHost.kind}

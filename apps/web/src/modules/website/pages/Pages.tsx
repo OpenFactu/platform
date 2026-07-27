@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Button, Card, Input, Loader, Table, usePopup, useToast } from '@openfactu/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  Loader,
+  PageHeader,
+  Table,
+  usePopup,
+  useToast,
+} from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import {
   ArrowDown,
@@ -262,51 +272,60 @@ export const Pages: React.FC = () => {
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 bg-teal-600 rounded-lg text-white">
-              <Globe size={20} />
-            </span>
-            <span className="text-[10px] font-black text-teal-600 dark:text-teal-300 uppercase tracking-[0.2em]">
-              Website / Páginas
-            </span>
-          </div>
-          <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
-            {site?.name || 'Mi web'}
-          </h1>
-          <p className="text-fg-muted font-medium">
+      <PageHeader
+        eyebrow="Website / Páginas"
+        title={site?.name || 'Mi web'}
+        subtitle={
+          <>
             Construye tu web por bloques y publícala en{' '}
             <a
               href={publicUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-teal-600 dark:text-teal-300 font-bold hover:underline"
+              className="text-accent font-bold hover:underline"
             >
               /site/{site?.slug}
             </a>
             .
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => window.open(publicUrl, '_blank')}>
-            <ExternalLink size={16} className="mr-2" /> Ver web
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={handleProductTemplate}
-            title="Diseña cómo se ven las fichas de producto (/p/…) de la tienda"
-          >
-            <Tag size={16} className="mr-2" /> Plantilla de producto
-          </Button>
-          <Button variant="secondary" onClick={handlePublishAll} disabled={publishing}>
-            <Rocket size={16} className="mr-2" /> {publishing ? 'Publicando…' : 'Publicar todo'}
-          </Button>
-          <Button onClick={() => setNewRow({ title: '', path: '/' })} disabled={!!newRow}>
-            <Plus size={18} className="mr-2" /> Nueva página
-          </Button>
-        </div>
-      </header>
+          </>
+        }
+        icon={<Globe size={18} />}
+        size="lg"
+        actions={
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => window.open(publicUrl, '_blank')}
+            >
+              <ExternalLink size={16} className="mr-2" /> Ver web
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleProductTemplate}
+              title="Diseña cómo se ven las fichas de producto (/p/…) de la tienda"
+            >
+              <Tag size={16} className="mr-2" /> Plantilla de producto
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handlePublishAll}
+              disabled={publishing}
+            >
+              <Rocket size={16} className="mr-2" /> {publishing ? 'Publicando…' : 'Publicar todo'}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => setNewRow({ title: '', path: '/' })}
+              disabled={!!newRow}
+            >
+              <Plus size={18} className="mr-2" /> Nueva página
+            </Button>
+          </div>
+        }
+      />
 
       <Card className="overflow-hidden border-0" noPadding>
         <Table

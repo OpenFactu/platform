@@ -9,6 +9,7 @@ import {
   useToast,
   Badge,
   usePopup,
+  PageHeader,
   Select,
   Checkbox,
 } from '@openfactu/ui';
@@ -157,44 +158,42 @@ export const PayrollConcepts: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-            <ListChecks className="text-indigo-600 dark:text-indigo-300" size={32} />
-            Conceptos de nómina
-          </h1>
-          <p className="text-fg-muted mt-1 font-medium">
-            Catálogo de pluses, complementos y deducciones que pueden añadirse a las nóminas.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={async () => {
-              try {
-                const d = await payrollConceptsApi.seedDefaults();
-                if (d.created === 0) {
-                  toast.success('El catálogo ya estaba completo');
-                } else {
-                  toast.success(`Creados ${d.created} conceptos estándar`);
+      <PageHeader
+        title="Conceptos de nómina"
+        subtitle="Catálogo de pluses, complementos y deducciones que pueden añadirse a las nóminas."
+        icon={<ListChecks size={18} />}
+        size="lg"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                try {
+                  const d = await payrollConceptsApi.seedDefaults();
+                  if (d.created === 0) {
+                    toast.success('El catálogo ya estaba completo');
+                  } else {
+                    toast.success(`Creados ${d.created} conceptos estándar`);
+                  }
+                  fetchAll();
+                } catch (err) {
+                  toast.error(
+                    err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error',
+                  );
                 }
-                fetchAll();
-              } catch (err) {
-                toast.error(
-                  err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error',
-                );
-              }
-            }}
-            title="Crea de un click los conceptos típicos: salario base, pluses, IRPF, SS empleado y SS empresa"
-          >
-            <Wand2 size={14} /> Cargar catálogo estándar
-          </Button>
-          <Button size="sm" onClick={() => setEditing(empty())}>
-            <Plus size={14} /> Nuevo concepto
-          </Button>
-        </div>
-      </div>
+              }}
+              title="Crea de un click los conceptos típicos: salario base, pluses, IRPF, SS empleado y SS empresa"
+            >
+              <Wand2 size={14} /> Cargar catálogo estándar
+            </Button>
+            <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+              <Plus size={14} /> Nuevo concepto
+            </Button>
+          </div>
+        }
+      />
 
       {editing && (
         <Card className="p-6 border-blue-50 shadow-lg" noPadding>

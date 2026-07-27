@@ -7,6 +7,7 @@ import {
   Button,
   Badge,
   useToast,
+  PageHeader,
   Tabs,
   DatePicker,
   SearchableSelect,
@@ -229,67 +230,68 @@ export const Timeclock: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <Timer className="text-emerald-600" size={32} /> Fichajes
-          </h1>
-          {tab === 'me' && employee && (
-            <p className="text-slate-500">
-              {employee.firstName} {employee.lastName} ({employee.code})
-            </p>
-          )}
-          {tab === 'all' && (
-            <p className="text-slate-500">Vista de todos los empleados (administración)</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Lo que cambia es la vista completa, no un filtro → Tabs. */}
-          {isAdmin && (
-            <Tabs
-              items={TABS}
-              value={tab}
-              onChange={(k) => setTab(k as 'me' | 'all')}
-              variant="segmented"
-              size="sm"
-            />
-          )}
-          {tab === 'me' && employee && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() =>
-                exportEntriesExcel(
-                  new URLSearchParams({ employeeId: employee.id, from: monthStart }),
-                  `mis_fichajes_${monthStart}`,
-                  `Mis fichajes · desde ${monthStart}`,
-                )
-              }
-            >
-              <Download size={14} /> Exportar mes
-            </Button>
-          )}
-          {tab === 'all' && isAdmin && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                const params = new URLSearchParams();
-                if (filters.employeeId) params.set('employeeId', filters.employeeId);
-                if (filters.from) params.set('from', filters.from);
-                if (filters.to) params.set('to', filters.to);
-                exportEntriesExcel(
-                  params,
-                  `fichajes_${filters.from}_${filters.to}`,
-                  `Fichajes · ${filters.from} a ${filters.to}`,
-                );
-              }}
-            >
-              <Download size={14} /> Exportar Excel
-            </Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Fichajes"
+        subtitle={
+          tab === 'me' && employee
+            ? `${employee.firstName} ${employee.lastName} (${employee.code})`
+            : tab === 'all'
+              ? 'Vista de todos los empleados (administración)'
+              : undefined
+        }
+        icon={<Timer size={18} />}
+        size="lg"
+        actions={
+          <div className="flex items-center gap-2">
+            {/* Lo que cambia es la vista completa, no un filtro → Tabs. */}
+            {isAdmin && (
+              <Tabs
+                items={TABS}
+                value={tab}
+                onChange={(k) => setTab(k as 'me' | 'all')}
+                variant="segmented"
+                size="sm"
+              />
+            )}
+            {tab === 'me' && employee && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() =>
+                  exportEntriesExcel(
+                    new URLSearchParams({ employeeId: employee.id, from: monthStart }),
+                    `mis_fichajes_${monthStart}`,
+                    `Mis fichajes · desde ${monthStart}`,
+                  )
+                }
+              >
+                <Download size={14} /> Exportar mes
+              </Button>
+            )}
+            {tab === 'all' && isAdmin && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (filters.employeeId) params.set('employeeId', filters.employeeId);
+                  if (filters.from) params.set('from', filters.from);
+                  if (filters.to) params.set('to', filters.to);
+                  exportEntriesExcel(
+                    params,
+                    `fichajes_${filters.from}_${filters.to}`,
+                    `Fichajes · ${filters.from} a ${filters.to}`,
+                  );
+                }}
+              >
+                <Download size={14} /> Exportar Excel
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       {tab === 'me' && (
         <>

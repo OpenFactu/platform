@@ -18,6 +18,7 @@ import {
   DatePicker,
   Tabs,
   Table,
+  PageHeader,
 } from '@openfactu/ui';
 import type { BadgeProps, TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -360,23 +361,23 @@ export const Commissions: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <Percent className="text-amber-600" size={32} /> Comisiones
-          </h1>
-          <p className="text-slate-500 text-sm">
-            Reglas de comisión sobre ventas atribuidas a comerciales. Volcado a nómina con un click.
-          </p>
-        </div>
-        {/* Lo que cambia es la vista completa, no un filtro → Tabs. */}
-        <Tabs
-          items={TABS}
-          value={tab}
-          onChange={(k) => setTab(k as 'rules' | 'accruals')}
-          variant="segmented"
-        />
-      </div>
+      <PageHeader
+        title="Comisiones"
+        subtitle="Reglas de comisión sobre ventas atribuidas a comerciales. Volcado a nómina con un click."
+        icon={<Percent size={18} />}
+        size="lg"
+        actions={
+          // Lo que cambia es la vista completa, no un filtro → Tabs. Van en
+          // `actions` (a la derecha del título) porque la variante segmented ya
+          // se pintaba así, no pegadas al borde inferior.
+          <Tabs
+            items={TABS}
+            value={tab}
+            onChange={(k) => setTab(k as 'rules' | 'accruals')}
+            variant="segmented"
+          />
+        }
+      />
 
       {tab === 'rules' && (
         <>

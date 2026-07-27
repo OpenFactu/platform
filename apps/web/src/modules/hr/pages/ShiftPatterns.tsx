@@ -7,7 +7,17 @@ import type {
 } from '../domain/shift';
 import type { Employee } from '../domain/employee';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast, NumberInput, SearchableSelect, Table } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  useToast,
+  PageHeader,
+  NumberInput,
+  SearchableSelect,
+  Table,
+} from '@openfactu/ui';
 import type { TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
@@ -199,22 +209,21 @@ export const ShiftPatterns: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <Repeat className="text-indigo-600" size={32} /> Patrones de turno
-          </h1>
-          <p className="text-slate-500">
-            Rotaciones cíclicas que se aplican a empleados con offsets distintos. Al "expandir" se
-            generan asignaciones reales por día.
-          </p>
-        </div>
-        {canWrite && (
-          <Button size="sm" onClick={newPattern}>
-            <Plus size={14} /> Nuevo patrón
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Patrones de turno"
+        subtitle={
+          'Rotaciones cíclicas que se aplican a empleados con offsets distintos. Al "expandir" se generan asignaciones reales por día.'
+        }
+        icon={<Repeat size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" size="sm" onClick={newPattern}>
+              <Plus size={14} /> Nuevo patrón
+            </Button>
+          )
+        }
+      />
 
       {!editing && (
         <Card className="overflow-hidden" noPadding>
@@ -521,17 +530,15 @@ export const ShiftPatterns: React.FC = () => {
                   <Calendar size={16} /> Expandir patrón a fechas
                 </h3>
                 <div className="flex items-center gap-3">
-                  <Input
+                  <DatePicker
                     label="Desde"
-                    type="date"
                     value={expanding.from}
-                    onChange={(e) => setExpanding({ ...expanding, from: e.target.value })}
+                    onChange={(v) => setExpanding({ ...expanding, from: v ?? '' })}
                   />
-                  <Input
+                  <DatePicker
                     label="Hasta"
-                    type="date"
                     value={expanding.to}
-                    onChange={(e) => setExpanding({ ...expanding, to: e.target.value })}
+                    onChange={(v) => setExpanding({ ...expanding, to: v ?? '' })}
                   />
                   <div className="self-end">
                     <Button onClick={expand} disabled={!canWrite}>
@@ -590,12 +597,7 @@ const AssignmentForm: React.FC<{
             placeholder="— seleccionar —"
           />
         </div>
-        <Input
-          label="Desde"
-          type="date"
-          value={validFrom}
-          onChange={(e) => setValidFrom(e.target.value)}
-        />
+        <DatePicker label="Desde" value={validFrom} onChange={(v) => setValidFrom(v ?? '')} />
         <div className="w-24">
           <NumberInput
             label="Offset"

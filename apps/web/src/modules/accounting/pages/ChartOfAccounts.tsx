@@ -4,6 +4,7 @@ import {
   Card,
   Button,
   Input,
+  PageHeader,
   useToast,
   Badge,
   usePopup,
@@ -193,72 +194,73 @@ export const ChartOfAccounts: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-            <BookOpen className="text-blue-600 dark:text-blue-300" size={32} />
-            Plan contable
-          </h1>
-          <p className="text-fg-muted mt-1 font-medium">
-            Estructura jerárquica de cuentas. Una cuenta analítica obliga a informar centro de
-            coste, beneficio o proyecto en los asientos.
-          </p>
-        </div>
-        {canWrite && (
-          <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
-            {rows.length === 0 && (
-              <Button
-                variant="secondary"
-                onClick={async () => {
-                  const ok = await popup.confirm({
-                    title: 'Configurar contabilidad',
-                    message:
-                      'Creará un plan contable mínimo (PGC abreviado) y los mapeos de cuenta por defecto.',
-                    confirmLabel: 'Continuar',
-                  });
-                  if (!ok) return;
-                  let d;
-                  try {
-                    d = await chartOfAccountsApi.seed();
-                  } catch (err) {
-                    toast.error(
-                      (err instanceof Error && err.message) || 'Error al sembrar contabilidad',
+      <PageHeader
+        title="Plan contable"
+        subtitle="Estructura jerárquica de cuentas. Una cuenta analítica obliga a informar centro de coste, beneficio o proyecto en los asientos."
+        icon={<BookOpen size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
+              {rows.length === 0 && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={async () => {
+                    const ok = await popup.confirm({
+                      title: 'Configurar contabilidad',
+                      message:
+                        'Creará un plan contable mínimo (PGC abreviado) y los mapeos de cuenta por defecto.',
+                      confirmLabel: 'Continuar',
+                    });
+                    if (!ok) return;
+                    let d;
+                    try {
+                      d = await chartOfAccountsApi.seed();
+                    } catch (err) {
+                      toast.error(
+                        (err instanceof Error && err.message) || 'Error al sembrar contabilidad',
+                      );
+                      return;
+                    }
+                    toast.success(
+                      `${d.accountsCreated} cuentas y ${d.mappingsCreated} mapeos creados`,
                     );
-                    return;
-                  }
-                  toast.success(
-                    `${d.accountsCreated} cuentas y ${d.mappingsCreated} mapeos creados`,
-                  );
+                    fetchRows();
+                  }}
+                  className="flex items-center gap-2 whitespace-nowrap"
+                  title="Crea el PGC abreviado y los mapeos por defecto"
+                >
+                  <Wand2 size={16} />
+                  Configurar en 1 clic
+                </Button>
+              )}
+              <ExcelTools
+                data={rows}
+                filename="plan-contable"
+                columns={[
+                  { key: 'code', label: 'Código', required: true },
+                  { key: 'name', label: 'Nombre', required: true },
+                  { key: 'type', label: 'Tipo' },
+                  { key: 'notes', label: 'Notas' },
+                ]}
+                onImport={async (parsed) => {
+                  await chartOfAccountsApi.bulkImport(parsed);
                   fetchRows();
                 }}
+              />
+              <Button
+                type="button"
+                onClick={openCreate}
                 className="flex items-center gap-2 whitespace-nowrap"
-                title="Crea el PGC abreviado y los mapeos por defecto"
               >
-                <Wand2 size={16} />
-                Configurar en 1 clic
+                <Plus size={16} />
+                Nueva cuenta
               </Button>
-            )}
-            <ExcelTools
-              data={rows}
-              filename="plan-contable"
-              columns={[
-                { key: 'code', label: 'Código', required: true },
-                { key: 'name', label: 'Nombre', required: true },
-                { key: 'type', label: 'Tipo' },
-                { key: 'notes', label: 'Notas' },
-              ]}
-              onImport={async (parsed) => {
-                await chartOfAccountsApi.bulkImport(parsed);
-                fetchRows();
-              }}
-            />
-            <Button onClick={openCreate} className="flex items-center gap-2 whitespace-nowrap">
-              <Plus size={16} />
-              Nueva cuenta
-            </Button>
-          </div>
-        )}
-      </div>
+            </div>
+          )
+        }
+      />
 
       {formOpen && (
         <Card className="p-6 border-blue-50 shadow-lg" noPadding>

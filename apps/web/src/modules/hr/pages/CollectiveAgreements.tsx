@@ -1,7 +1,16 @@
 import { collectiveAgreementsApi } from '../api';
 import type { CollectiveAgreement as Agreement } from '../domain/collectiveAgreement';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Table, useToast, usePopup } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  DatePicker,
+  Table,
+  useToast,
+  usePopup,
+  PageHeader,
+} from '@openfactu/ui';
 import type { TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
@@ -133,22 +142,19 @@ export const CollectiveAgreements: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <BookOpen className="text-emerald-600" size={32} /> Convenios colectivos
-          </h1>
-          <p className="text-slate-500 text-sm">
-            Catálogo de convenios. Asigna uno a cada contrato para que el salario base y los días de
-            vacaciones se sugieran automáticamente.
-          </p>
-        </div>
-        {canWrite && (
-          <Button size="sm" onClick={() => setEditing(empty())}>
-            <Plus size={14} /> Nuevo convenio
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Convenios colectivos"
+        subtitle="Catálogo de convenios. Asigna uno a cada contrato para que el salario base y los días de vacaciones se sugieran automáticamente."
+        icon={<BookOpen size={18} />}
+        size="lg"
+        actions={
+          canWrite && (
+            <Button type="button" size="sm" onClick={() => setEditing(empty())}>
+              <Plus size={14} /> Nuevo convenio
+            </Button>
+          )
+        }
+      />
 
       {editing && (
         <Card noPadding>
@@ -172,17 +178,15 @@ export const CollectiveAgreements: React.FC = () => {
               value={editing.sector || ''}
               onChange={(e) => setEditing({ ...editing, sector: e.target.value })}
             />
-            <Input
+            <DatePicker
               label="Vigencia desde"
-              type="date"
-              value={(editing.validFrom || '').slice(0, 10)}
-              onChange={(e) => setEditing({ ...editing, validFrom: e.target.value })}
+              value={(editing.validFrom || '').slice(0, 10) || null}
+              onChange={(v) => setEditing({ ...editing, validFrom: v ?? '' })}
             />
-            <Input
+            <DatePicker
               label="Vigencia hasta"
-              type="date"
-              value={(editing.validTo || '').slice(0, 10)}
-              onChange={(e) => setEditing({ ...editing, validTo: e.target.value })}
+              value={(editing.validTo || '').slice(0, 10) || null}
+              onChange={(v) => setEditing({ ...editing, validTo: v ?? '' })}
             />
             <Input
               label="Salario base anual"

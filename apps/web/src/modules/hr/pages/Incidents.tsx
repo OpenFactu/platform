@@ -12,6 +12,7 @@ import {
   Badge,
   SearchableSelect,
   EmptyState,
+  PageHeader,
 } from '@openfactu/ui';
 import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -188,17 +189,17 @@ export const Incidents: React.FC = () => {
 
   return (
     <div className="p-4 w-full space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-black flex items-center gap-3">
-            <AlertTriangle className="text-amber-500" size={32} /> Incidencias
-          </h1>
-          <p className="text-slate-500">Ausencias, retrasos, bajas, sustituciones.</p>
-        </div>
-        <Button size="sm" onClick={() => setCreating(true)}>
-          <Plus size={14} /> Nueva incidencia
-        </Button>
-      </div>
+      <PageHeader
+        title="Incidencias"
+        subtitle="Ausencias, retrasos, bajas, sustituciones."
+        icon={<AlertTriangle size={18} />}
+        size="lg"
+        actions={
+          <Button type="button" size="sm" onClick={() => setCreating(true)}>
+            <Plus size={14} /> Nueva incidencia
+          </Button>
+        }
+      />
 
       {creating && (
         <Card noPadding>
@@ -278,7 +279,7 @@ export const Incidents: React.FC = () => {
               </div>
               {substituteOptions.length === 0 ? (
                 <EmptyState
-                  icon={<UserCheck size={28} />}
+                  icon={<UserCheck size={18} />}
                   title="No hay candidatos elegibles"
                   hint="Filtros: mismo departamento, sin turno solapado, sin incidencia propia activa."
                 />

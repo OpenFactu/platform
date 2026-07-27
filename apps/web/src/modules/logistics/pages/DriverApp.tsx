@@ -9,6 +9,7 @@ import {
   Input,
   DatePicker,
   EmptyState,
+  PageHeader,
   useToast,
 } from '@openfactu/ui';
 import {
@@ -597,7 +598,7 @@ export const DriverApp: React.FC = () => {
                 <span className="text-xs text-slate-500">{packageScan.weightKg} kg</span>
               )}
             </div>
-            <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border-2 border-amber-500 p-4">
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-500/10 border-2 border-amber-500 p-4">
               <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 mb-1">
                 Entregar en
               </div>
@@ -629,7 +630,7 @@ export const DriverApp: React.FC = () => {
         {scanResult && (
           <div className="pt-2">
             {scanResult.ownership === 'mine' && (
-              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border-2 border-emerald-500 p-4">
+              <div className="rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border-2 border-emerald-500 p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 size={28} className="text-emerald-500" strokeWidth={2.5} />
                   <div className="text-lg font-black text-emerald-700 dark:text-emerald-300">
@@ -670,7 +671,7 @@ export const DriverApp: React.FC = () => {
               </div>
             )}
             {scanResult.ownership === 'other' && (
-              <div className="rounded-xl bg-rose-50 dark:bg-rose-500/10 border-2 border-rose-500 p-4">
+              <div className="rounded-lg bg-rose-50 dark:bg-rose-500/10 border-2 border-rose-500 p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <XIcon size={28} className="text-rose-500" strokeWidth={2.5} />
                   <div className="text-lg font-black text-rose-700 dark:text-rose-300">
@@ -693,7 +694,7 @@ export const DriverApp: React.FC = () => {
               </div>
             )}
             {scanResult.ownership === 'unassigned' && (
-              <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 border-2 border-amber-500 p-4">
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-500/10 border-2 border-amber-500 p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle size={28} className="text-amber-500" strokeWidth={2.5} />
                   <div className="text-lg font-black text-amber-700 dark:text-amber-300">
@@ -797,23 +798,25 @@ export const DriverApp: React.FC = () => {
   if (!selectedId) {
     return (
       <div className="min-h-screen bg-bg-muted p-3">
-        <header className="mb-3 flex items-start gap-3">
-          <div className="flex-1">
-            <h1 className="text-xl font-black text-fg-default">Hola, {user?.username}</h1>
-            <p className="text-xs text-slate-500">Tus rutas asignadas</p>
-          </div>
-          {/* Botón táctil grande: se conservan flex-col y el relleno original
-              para no perder superficie de toque en móvil. */}
-          <Button
-            type="button"
-            onClick={() => setScanOpen(true)}
-            className="flex-col gap-0.5 px-4 py-2 rounded-xl shadow-md active:scale-95"
-            title="Escanear acopio"
-          >
-            <QrCode size={22} />
-            <span className="text-[10px] font-bold tracking-wide">ESCANEAR</span>
-          </Button>
-        </header>
+        <PageHeader
+          title={`Hola, ${user?.username}`}
+          subtitle="Tus rutas asignadas"
+          size="sm"
+          className="mb-3"
+          actions={
+            /* Botón táctil grande: se conservan flex-col y el relleno original
+               para no perder superficie de toque en móvil. */
+            <Button
+              type="button"
+              onClick={() => setScanOpen(true)}
+              className="flex-col gap-0.5 px-4 py-2 rounded-lg shadow-md active:scale-95"
+              title="Escanear acopio"
+            >
+              <QrCode size={22} />
+              <span className="text-[10px] font-bold tracking-wide">ESCANEAR</span>
+            </Button>
+          }
+        />
         {renderScanModals()}
 
         {/* Filtro de fecha — por defecto solo las rutas de hoy. */}
@@ -852,12 +855,12 @@ export const DriverApp: React.FC = () => {
           </div>
         ) : routes.length === 0 ? (
           <Card bodyClassName="py-10">
-            <EmptyState icon={<RouteIcon size={28} />} title="No tienes rutas asignadas" />
+            <EmptyState icon={<RouteIcon size={18} />} title="No tienes rutas asignadas" />
           </Card>
         ) : visibleRoutes.length === 0 ? (
           <Card bodyClassName="py-10">
             <EmptyState
-              icon={<RouteIcon size={28} />}
+              icon={<RouteIcon size={18} />}
               title={`Sin rutas para ${dateFilter === todayStr() ? 'hoy' : 'ese día'}`}
               hint="Usa «Todas» para ver el resto."
               action={
@@ -880,7 +883,7 @@ export const DriverApp: React.FC = () => {
               <button
                 key={r.id}
                 onClick={() => setSelectedId(r.id)}
-                className="w-full text-left bg-bg-card border border-border-default rounded-xl p-4 active:scale-[0.98] transition-transform"
+                className="w-full text-left bg-bg-card border border-border-default rounded-lg p-4 active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant={r.status === 'active' ? 'info' : 'neutral'}>{r.status}</Badge>
@@ -1306,7 +1309,7 @@ export const DriverApp: React.FC = () => {
           <Button
             type="button"
             onClick={markAllArrived}
-            className="w-full h-10 rounded-xl mb-2 text-sm !bg-blue-500 hover:!bg-blue-600 !text-white shadow-sm active:scale-[0.98]"
+            className="w-full h-10 rounded-lg mb-2 text-sm !bg-blue-500 hover:!bg-blue-600 !text-white shadow-sm active:scale-[0.98]"
           >
             <MapPin size={16} /> Llegué en todas las paradas pendientes
           </Button>

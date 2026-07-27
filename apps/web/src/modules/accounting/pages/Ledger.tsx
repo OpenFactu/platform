@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, useToast, Badge, SearchableSelect } from '@openfactu/ui';
+import { Table, Card, PageHeader, useToast, Badge, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { BookOpenCheck } from 'lucide-react';
 import { chartOfAccountsApi, journalEntriesApi } from '../api';
@@ -74,15 +74,12 @@ export const Ledger: React.FC = () => {
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
-          <BookOpenCheck className="text-blue-600 dark:text-blue-300" size={32} />
-          Libro mayor
-        </h1>
-        <p className="text-fg-muted mt-1 font-medium">
-          Movimientos posteados por cuenta, con saldo corriente.
-        </p>
-      </div>
+      <PageHeader
+        title="Libro mayor"
+        subtitle="Movimientos posteados por cuenta, con saldo corriente."
+        icon={<BookOpenCheck size={18} />}
+        size="lg"
+      />
 
       <Card className="p-6 border-blue-50 shadow-lg" noPadding>
         <div className="p-6 flex flex-col md:flex-row gap-4 items-end">

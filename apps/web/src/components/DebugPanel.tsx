@@ -167,7 +167,7 @@ export const DebugPanel: React.FC = () => {
   return (
     <div className="fixed z-[99999] font-sans" style={{ right: pos.right, bottom: pos.bottom }}>
       {open ? (
-        <div className="w-80 rounded-xl shadow-2xl bg-amber-50 dark:bg-amber-950 border-2 border-amber-300 dark:border-amber-700 overflow-hidden">
+        <div className="w-80 rounded-lg shadow-2xl bg-amber-50 dark:bg-amber-950 border-2 border-amber-300 dark:border-amber-700 overflow-hidden">
           <div
             className="flex items-center justify-between px-3 py-2 bg-amber-200/60 dark:bg-amber-900/60 border-b border-amber-300 dark:border-amber-700 cursor-move select-none touch-none"
             onPointerDown={onDragPointerDown}
