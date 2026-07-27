@@ -61,9 +61,7 @@ export const ReportLedger: React.FC = () => {
       pdfQuery={{ accountId }}
       filters={
         <div className="max-w-md">
-          <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-            Cuenta
-          </label>
+          <label className="block text-xs font-bold text-fg-body mb-1">Cuenta</label>
           {/* SearchableSelect y no Select: el plan contable puede tener cientos
               de cuentas y sin buscador es inmanejable. */}
           <SearchableSelect

@@ -230,11 +230,11 @@ export const Employees: React.FC = () => {
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
+          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
             <UserRound className="text-blue-600 dark:text-blue-300" size={32} />
             Empleados
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+          <p className="text-fg-muted mt-1 font-medium">
             Maestro de personal. La nómina se imputa al centro de coste del empleado.
           </p>
         </div>
@@ -312,9 +312,7 @@ export const Employees: React.FC = () => {
                 {/* SearchableSelect no tiene prop `label` → se conserva el
                     <label> suelto. El vacío es válido («sin asignar») →
                     clearable. */}
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                  Departamento
-                </label>
+                <label className="block text-sm font-medium text-fg-body mb-1">Departamento</label>
                 <SearchableSelect
                   options={departmentOptions}
                   value={form.departmentId || ''}
@@ -324,7 +322,7 @@ export const Employees: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-fg-body mb-1">
                   Centro de coste
                 </label>
                 <SearchableSelect
@@ -344,7 +342,7 @@ export const Employees: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-fg-body mb-1">
                 Usuario asociado
               </label>
               <SearchableSelect
@@ -354,7 +352,7 @@ export const Employees: React.FC = () => {
                 placeholder="— sin vincular (no podrá iniciar sesión) —"
                 clearable
               />
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-fg-muted mt-1">
                 Vincula este empleado a un usuario del sistema. Si el empleado es repartidor, crea
                 primero el usuario con rol <b>DRIVER</b> en Usuarios y selecciónalo aquí.
               </p>
@@ -421,7 +419,7 @@ export const Employees: React.FC = () => {
         </Card>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table
           columns={columns}
           data={rows}

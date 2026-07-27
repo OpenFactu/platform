@@ -135,14 +135,14 @@ export const WebhooksSettings: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-3">
           <Webhook className="text-indigo-600 dark:text-indigo-300" size={22} />
           <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            <h1 className="text-xl font-black tracking-tight text-fg-default">
               Webhooks salientes
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-fg-muted">
               Suscríbete a eventos del sistema y recíbelos en tu propia URL con firma HMAC-SHA256
               opcional.
             </p>
@@ -176,13 +176,11 @@ export const WebhooksSettings: React.FC = () => {
             {subs.map((s) => (
               <li
                 key={s.id}
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-                      {s.name}
-                    </span>
+                    <span className="font-semibold text-sm text-fg-default">{s.name}</span>
                     {!s.isActive && <Badge variant="neutral">Inactivo</Badge>}
                     {s.secret && <Badge variant="info">Firmado HMAC</Badge>}
                   </div>
@@ -262,7 +260,7 @@ export const WebhooksSettings: React.FC = () => {
               {AVAILABLE_EVENTS.map((e) => (
                 <label
                   key={e.value}
-                  className="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-slate-50 dark:bg-slate-800/40 cursor-pointer"
+                  className="flex items-center gap-2 text-xs px-2 py-1.5 rounded bg-bg-muted cursor-pointer"
                 >
                   <Checkbox
                     checked={(form.events || []).includes(e.value)}
@@ -281,7 +279,7 @@ export const WebhooksSettings: React.FC = () => {
             />
             Activo
           </label>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>

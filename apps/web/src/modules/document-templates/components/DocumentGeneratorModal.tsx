@@ -105,7 +105,11 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
         );
         if (!cancelled) setOptionsMap(optMap);
       } catch (e) {
-        if (!cancelled) setLoadError((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'No se pudo cargar la plantilla');
+        if (!cancelled)
+          setLoadError(
+            (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+              'No se pudo cargar la plantilla',
+          );
       }
     })();
     return () => {
@@ -181,14 +185,17 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
         onClose();
       }
     } catch (e) {
-      setError((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error al generar el documento');
+      setError(
+        (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+          'Error al generar el documento',
+      );
     } finally {
       setGenerating(false);
     }
   };
 
   const inputCls =
-    'mt-1 w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm';
+    'mt-1 w-full px-2 py-1.5 rounded border border-border-default bg-bg-card text-sm';
 
   return createPortal(
     <div
@@ -197,24 +204,22 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
+      <div className="w-full max-w-md rounded-xl bg-bg-card border border-border-default shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="px-4 py-3 border-b border-border-default flex items-center gap-2">
           <FileDown size={16} className="text-slate-500" />
-          <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            Generar: {templateName}
-          </div>
+          <div className="text-sm font-semibold text-fg-body">Generar: {templateName}</div>
         </div>
         <div className="p-4 space-y-3 text-sm overflow-y-auto">
           {!paramDefs && !loadError && <div className="text-slate-400 italic">Cargando…</div>}
           {loadError && <div className="text-red-500 text-xs">⚠ {loadError}</div>}
           {paramDefs && paramDefs.length === 0 && (
-            <div className="text-slate-500 dark:text-slate-400 text-xs">
+            <div className="text-fg-muted text-xs">
               Esta plantilla no tiene parámetros de entrada. Pulsa “Generar PDF”.
             </div>
           )}
           {paramDefs?.map((p) => (
             <div key={p.name}>
-              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <label className="text-[11px] font-bold text-fg-muted uppercase tracking-wider">
                 {p.label ?? p.name}
                 {p.required && <span className="text-rose-500"> *</span>}
               </label>
@@ -233,13 +238,13 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
                 </select>
               ) : p.type === 'multiselect' ? (
                 (optionsMap[p.name] ?? []).length > 0 ? (
-                  <div className="mt-1 max-h-40 overflow-y-auto rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="mt-1 max-h-40 overflow-y-auto rounded border border-border-default bg-bg-card divide-y divide-border-subtle">
                     {(optionsMap[p.name] ?? []).map((o) => {
                       const arr = (values[p.name] as string[]) ?? [];
                       return (
                         <label
                           key={o.value}
-                          className="flex items-center gap-2 px-2 py-1 text-xs cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                          className="flex items-center gap-2 px-2 py-1 text-xs cursor-pointer hover:bg-bg-hover"
                         >
                           <input
                             type="checkbox"
@@ -282,7 +287,7 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
           ))}
           {paramDefs && (
             <div>
-              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <label className="text-[11px] font-bold text-fg-muted uppercase tracking-wider">
                 Copias
               </label>
               <input
@@ -291,7 +296,7 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
                 max={200}
                 value={copies}
                 onChange={(e) => setCopies(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
-                className="mt-1 w-24 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                className="mt-1 w-24 px-2 py-1.5 rounded border border-border-default bg-bg-card text-sm"
               />
             </div>
           )}
@@ -307,11 +312,11 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
             </div>
           )}
         </div>
-        <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end gap-2">
+        <div className="px-4 py-3 border-t border-border-default bg-bg-muted flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="text-xs px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="text-xs px-3 py-1.5 rounded border border-border-strong text-fg-body hover:bg-bg-hover"
           >
             {warnings.length > 0 ? 'Cerrar' : 'Cancelar'}
           </button>

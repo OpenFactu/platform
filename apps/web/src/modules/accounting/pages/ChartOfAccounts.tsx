@@ -195,11 +195,11 @@ export const ChartOfAccounts: React.FC = () => {
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
+          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
             <BookOpen className="text-blue-600 dark:text-blue-300" size={32} />
             Plan contable
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+          <p className="text-fg-muted mt-1 font-medium">
             Estructura jerárquica de cuentas. Una cuenta analítica obliga a informar centro de
             coste, beneficio o proyecto en los asientos.
           </p>
@@ -287,7 +287,7 @@ export const ChartOfAccounts: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-fg-body mb-1">
                   Cuenta padre (opcional)
                 </label>
                 {/* SearchableSelect y no Select: el plan contable puede tener
@@ -348,7 +348,7 @@ export const ChartOfAccounts: React.FC = () => {
         </Card>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table
           columns={columns}
           data={rows}

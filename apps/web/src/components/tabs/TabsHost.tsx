@@ -10,7 +10,7 @@ import { PluginViewRenderer } from '@/modules/plugins/components/PluginViewRende
 const MAX_MOUNTED_TABS = 3;
 
 const NotFound: React.FC = () => (
-  <div className="p-8 text-slate-500 dark:text-slate-400">
+  <div className="p-8 text-fg-muted">
     <h2 className="text-lg font-bold mb-2">Ruta no encontrada</h2>
     <p className="text-sm">La pestaña apunta a una ruta que ya no existe.</p>
   </div>

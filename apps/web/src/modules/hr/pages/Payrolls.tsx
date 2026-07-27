@@ -367,11 +367,11 @@ export const Payrolls: React.FC = () => {
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
+          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
             <Banknote className="text-emerald-600 dark:text-emerald-300" size={32} />
             Nóminas
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium text-sm max-w-2xl">
+          <p className="text-fg-muted mt-1 font-medium text-sm max-w-2xl">
             Cómo funciona: 1) <b>"Generar mes en curso"</b> crea un borrador para cada empleado con
             salario base + IRPF + SS automáticos. 2) Edita líneas/pluses si hace falta. 3) Aprueba →
             se genera el asiento contable (gasto de personal, SS e IRPF).
@@ -537,7 +537,7 @@ export const Payrolls: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+              <div className="rounded-lg border border-border-default p-3 space-y-2">
                 {/* Campos del formulario (se aplican al crear, no al instante):
                     Checkbox, que no tiene prop `label` — se conserva el <label>. */}
                 <label className="flex items-start gap-2 cursor-pointer">
@@ -587,7 +587,7 @@ export const Payrolls: React.FC = () => {
         </div>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
 
@@ -601,7 +601,7 @@ export const Payrolls: React.FC = () => {
                     <ListPlus size={20} />
                     Editar líneas / pluses
                   </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-fg-muted">
                     {empMap[editLines.employeeId]
                       ? `${empMap[editLines.employeeId].firstName} ${empMap[editLines.employeeId].lastName}`
                       : editLines.employeeId}
@@ -743,7 +743,7 @@ export const Payrolls: React.FC = () => {
                     return (
                       <div
                         key={grp.key}
-                        className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden"
+                        className="rounded-lg border border-border-default overflow-hidden"
                       >
                         <div
                           className={
@@ -875,7 +875,7 @@ const PayrollLineRow: React.FC<{
   };
 
   return (
-    <tr className="border-b border-slate-50 dark:border-slate-800">
+    <tr className="border-b border-border-subtle">
       <td className="py-2 px-3">
         <div className="font-medium">{line.concept}</div>
       </td>

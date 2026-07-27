@@ -346,7 +346,7 @@ export const ShipmentDetail: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-3">
           <Button
             type="button"
@@ -364,7 +364,7 @@ export const ShipmentDetail: React.FC = () => {
               <TruckIcon className="text-blue-600 dark:text-blue-300" size={22} />
             )}
             <div>
-              <h1 className="text-lg font-black text-slate-900 dark:text-slate-100">
+              <h1 className="text-lg font-black text-fg-default">
                 {isInbound ? 'Recepción' : isPickup ? 'Recogida' : 'Envío propio'} ·{' '}
                 {shipment.trackingNumber || (shipment.id || '').slice(0, 8)}
               </h1>
@@ -531,22 +531,20 @@ export const ShipmentDetail: React.FC = () => {
                 <PackageCheck size={24} className="text-emerald-600 dark:text-emerald-300" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-base font-black text-slate-900 dark:text-slate-100">
-                  Recepción de mercancía
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <h3 className="text-base font-black text-fg-default">Recepción de mercancía</h3>
+                <p className="text-xs text-fg-muted mt-0.5">
                   El proveedor entrega en tus instalaciones. Verifica cantidades en{' '}
                   <b>Preparación</b> y pulsa <b>Recibir</b> cuando esté todo conforme.
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-subtle">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
                   <Warehouse className="inline mr-1" size={11} /> Punto de recepción
                 </div>
-                <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <div className="text-sm font-semibold text-fg-default">
                   {shipment.destinationAddress || 'Tu almacén'}
                 </div>
               </div>
@@ -554,7 +552,7 @@ export const ShipmentDetail: React.FC = () => {
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
                   <TruckIcon className="inline mr-1" size={11} /> Transportista del proveedor
                 </div>
-                <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                <div className="text-sm font-semibold text-fg-default">
                   {shipment.carrier && shipment.carrier !== 'propio' ? shipment.carrier : '—'}
                 </div>
                 {shipment.trackingNumber && (
@@ -567,7 +565,7 @@ export const ShipmentDetail: React.FC = () => {
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
                   Albarán origen
                 </div>
-                <div className="text-xs font-mono text-slate-600 dark:text-slate-300">
+                <div className="text-xs font-mono text-fg-body">
                   {shipment.sourceDocId ? String(shipment.sourceDocId).slice(0, 8) + '…' : '—'}
                 </div>
               </div>
@@ -575,7 +573,7 @@ export const ShipmentDetail: React.FC = () => {
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
                   Recepción
                 </div>
-                <div className="text-xs text-slate-600 dark:text-slate-300">
+                <div className="text-xs text-fg-body">
                   {shipment.receivedAt ? fmt.date(shipment.receivedAt) : 'Pendiente de verificar'}
                 </div>
               </div>
@@ -596,7 +594,7 @@ export const ShipmentDetail: React.FC = () => {
                 <>📍 {isPickup ? 'Dirección de recogida' : 'Dirección de envío'}</>
               )}
             </div>
-            <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 whitespace-pre-line">
+            <div className="text-sm font-semibold text-fg-default whitespace-pre-line">
               {shipment.destinationAddress || (
                 <span className="text-slate-400 italic font-normal">Sin dirección asignada</span>
               )}
@@ -619,10 +617,10 @@ export const ShipmentDetail: React.FC = () => {
               <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
                 Reporte de posición
               </div>
-              <div className="text-[11px] text-slate-600 dark:text-slate-300">
+              <div className="text-[11px] text-fg-body">
                 La app del conductor (u otro tracker) debe hacer <code>POST</code> con lat/lng a:
               </div>
-              <div className="font-mono text-[10px] bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded p-2 break-all text-slate-700 dark:text-slate-200">
+              <div className="font-mono text-[10px] bg-bg-muted border border-border-default rounded p-2 break-all text-fg-body">
                 {trackUrl}
               </div>
               <Button
@@ -645,7 +643,7 @@ export const ShipmentDetail: React.FC = () => {
           )}
 
           <Card bodyClassName="p-0">
-            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <div className="px-4 py-2 border-b border-border-subtle text-[10px] font-black uppercase tracking-wider text-slate-500">
               Eventos ({events.length})
             </div>
             <ul className="max-h-[300px] overflow-auto">
@@ -655,24 +653,16 @@ export const ShipmentDetail: React.FC = () => {
                 events.map((e) => (
                   <li
                     key={e.id}
-                    className="px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0 text-xs"
+                    className="px-4 py-2 border-b border-border-subtle last:border-0 text-xs"
                   >
                     <div className="flex items-center gap-2">
                       <Badge variant="neutral">{e.kind}</Badge>
-                      {e.status && (
-                        <span className="font-semibold text-slate-700 dark:text-slate-200">
-                          {e.status}
-                        </span>
-                      )}
+                      {e.status && <span className="font-semibold text-fg-body">{e.status}</span>}
                       <span className="text-[10px] text-slate-400 ml-auto">
                         {fmt.date(e.createdAt)}
                       </span>
                     </div>
-                    {e.description && (
-                      <div className="mt-0.5 text-slate-600 dark:text-slate-300">
-                        {e.description}
-                      </div>
-                    )}
+                    {e.description && <div className="mt-0.5 text-fg-body">{e.description}</div>}
                   </li>
                 ))
               )}
@@ -705,7 +695,7 @@ export const ShipmentDetail: React.FC = () => {
                   onChange={(v) => setCancelModal({ ...cancelModal, cancelDn: v })}
                   className="mt-1"
                 />
-                <span className="text-xs text-slate-700 dark:text-slate-200">
+                <span className="text-xs text-fg-body">
                   También anular el albarán asociado.
                   <span className="block text-[11px] text-slate-500 mt-0.5">
                     Desmarcado = se mantiene el albarán para trazabilidad y poder re-preparar.
@@ -747,7 +737,7 @@ export const ShipmentDetail: React.FC = () => {
                   onChange={(v) => setReturnModal({ ...returnModal, cancelDn: v })}
                   className="mt-1"
                 />
-                <span className="text-xs text-slate-700 dark:text-slate-200">
+                <span className="text-xs text-fg-body">
                   Devolución definitiva — anular también el albarán.
                   <span className="block text-[11px] text-slate-500 mt-0.5">
                     Desmarcado = albarán sigue abierto para poder reintentar el reparto más
@@ -778,7 +768,7 @@ export const ShipmentDetail: React.FC = () => {
       >
         {pickupModal && (
           <div className="space-y-4">
-            <div className="text-xs text-slate-600 dark:text-slate-300 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 px-3 py-2">
+            <div className="text-xs text-fg-body rounded-lg bg-bg-muted border border-border-default px-3 py-2">
               Recoger en: <b>{shipment.destinationAddress || '—'}</b>
               {shipment.recipientName ? ` · ${shipment.recipientName}` : ''}
             </div>

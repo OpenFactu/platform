@@ -43,9 +43,7 @@ export const InternalOrderHeaderField: React.FC<Props> = ({
 
   return (
     <div className="space-y-2">
-      <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-        {label}
-      </label>
+      <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">{label}</label>
       <SearchableSelect
         value={value || ''}
         onChange={(v) => onChange(v || null)}

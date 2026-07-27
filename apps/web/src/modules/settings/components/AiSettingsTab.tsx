@@ -440,7 +440,7 @@ export const AiSettingsTab: React.FC = () => {
     <div className="space-y-6">
       <Card>
         <div className="p-5 space-y-4">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <Bot size={18} />
             <h2 className="text-lg font-bold">Proveedor de IA</h2>
           </div>
@@ -554,7 +554,7 @@ export const AiSettingsTab: React.FC = () => {
       {isLocal && cfg.localBackend === 'vllm' && (
         <Card>
           <div className="p-5 space-y-2">
-            <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200">Modelos (vLLM)</h2>
+            <h2 className="text-lg font-bold text-fg-body">Modelos (vLLM)</h2>
             <p className="text-xs text-slate-500">
               vLLM carga su modelo desde Hugging Face al arrancar el contenedor (repo id +
               HF_TOKEN); no se descargan modelos en caliente. Usa el buscador para localizar el repo
@@ -568,9 +568,7 @@ export const AiSettingsTab: React.FC = () => {
         <Card>
           <div className="p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-700 dark:text-slate-200">
-                Modelos locales (Ollama)
-              </h2>
+              <h2 className="text-lg font-bold text-fg-body">Modelos locales (Ollama)</h2>
               <Button variant="secondary" onClick={loadLocalModels} disabled={loadingLocal}>
                 <span className="inline-flex items-center gap-2">
                   <RefreshCw size={14} className={loadingLocal ? 'animate-spin' : ''} />
@@ -587,7 +585,7 @@ export const AiSettingsTab: React.FC = () => {
             )}
 
             {local && local.reachable && (
-              <div className="text-xs p-2 rounded-md bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 space-y-1">
+              <div className="text-xs p-2 rounded-md bg-bg-muted text-fg-body space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold uppercase tracking-wider text-[10px] text-slate-500">
                     Motor de ejecución
@@ -613,9 +611,9 @@ export const AiSettingsTab: React.FC = () => {
             )}
 
             {local && local.reachable && (
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 p-4 space-y-3">
+              <div className="rounded-lg border border-border-default bg-bg-muted p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold text-sm">
+                  <div className="flex items-center gap-2 text-fg-body font-bold text-sm">
                     <span className="p-1.5 rounded-md bg-accent/10 text-accent">
                       <Gauge size={14} />
                     </span>
@@ -685,7 +683,7 @@ export const AiSettingsTab: React.FC = () => {
                     className={`flex items-center gap-3 text-sm rounded-lg px-3 py-2.5 transition-colors ${
                       cfg.model === m.name
                         ? 'border border-accent/40 bg-accent/5'
-                        : 'border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                        : 'border border-border-default hover:bg-bg-hover'
                     }`}
                   >
                     <ModelAvatar name={m.name} />
@@ -743,7 +741,7 @@ export const AiSettingsTab: React.FC = () => {
               </div>
             )}
 
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+            <div className="pt-2 border-t border-border-default">
               <Button
                 variant="secondary"
                 onClick={() => setHfModalOpen(true)}
@@ -833,7 +831,7 @@ const ModelRow: React.FC<{
   onDownload,
   onCancel,
 }) => (
-  <div className="rounded-lg border border-slate-200 dark:border-slate-700 hover:border-accent/30 hover:bg-accent/[0.03] transition-colors px-3 py-2.5 space-y-2">
+  <div className="rounded-lg border border-border-default hover:border-accent/30 hover:bg-accent/[0.03] transition-colors px-3 py-2.5 space-y-2">
     <div className="flex items-center gap-3 text-sm">
       <ModelAvatar name={id} />
       <div className="flex-1 min-w-0">
@@ -841,7 +839,7 @@ const ModelRow: React.FC<{
         {description && <div className="text-[11px] text-slate-400 break-all">{description}</div>}
         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
           {sizeGb !== undefined && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-bg-muted text-fg-muted">
               ~{sizeGb} GB
             </span>
           )}
@@ -851,11 +849,7 @@ const ModelRow: React.FC<{
             </span>
           )}
         </div>
-        {pullName && (
-          <code className="text-[10px] text-slate-400 dark:text-slate-500 break-all">
-            {pullName}
-          </code>
-        )}
+        {pullName && <code className="text-[10px] text-fg-subtle break-all">{pullName}</code>}
       </div>
       {download && !download.failed ? (
         <Button variant="secondary" onClick={onCancel}>

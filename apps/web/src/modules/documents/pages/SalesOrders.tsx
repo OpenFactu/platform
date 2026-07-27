@@ -144,10 +144,8 @@ const SOList: React.FC<{
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {formatDocCode(item)}
-          </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
+          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="text-[10px] text-fg-subtle font-mono mt-1">
             ID: {item.id.substring(0, 8)}
           </span>
         </div>
@@ -172,9 +170,7 @@ const SOList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
       accessor: (item: any) => (
-        <span className="font-black text-slate-900 dark:text-slate-100">
-          {fmt.money(item.total)}
-        </span>
+        <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
       ),
     },
     {
@@ -233,15 +229,15 @@ const SOList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-4 tracking-tighter">
+          <h1 className="text-4xl font-black text-fg-default flex items-center gap-4 tracking-tighter">
             <div className="p-3 bg-blue-50 dark:bg-blue-500/10 rounded-2xl text-blue-600 dark:text-blue-300 shadow-sm border border-blue-100 dark:border-blue-500/20">
               <FileDigit size={32} />
             </div>
             Pedidos de Venta
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium ml-1">
+          <p className="text-fg-muted mt-2 font-medium ml-1">
             Gestión de preventas y órdenes de clientes.
           </p>
           {doc.state.mastersError && (
@@ -330,9 +326,7 @@ const SOList: React.FC<{
               {
                 label: 'Total',
                 value: (item: any) => (
-                  <span className="font-black text-slate-900 dark:text-slate-100">
-                    {fmt.money(item.total)}
-                  </span>
+                  <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
                 ),
               },
             ]}
@@ -472,7 +466,7 @@ const SOForm: React.FC<{
           <Button type="button" variant="secondary" onClick={onBack} title="Volver">
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          <h1 className="text-3xl font-black text-fg-default tracking-tight">
             Nuevo Pedido de Venta
           </h1>
         </div>
@@ -490,7 +484,7 @@ const SOForm: React.FC<{
         <Card className="p-6 md:col-span-2 space-y-6 border-t-4 border-t-blue-500">
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Cliente *
               </label>
               <SearchableSelect
@@ -502,7 +496,7 @@ const SOForm: React.FC<{
             </div>
             {warehouseLocation !== 'line' && (
               <div className="space-y-2">
-                <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                   Almacén de Salida *
                 </label>
                 <SearchableSelect
@@ -515,7 +509,7 @@ const SOForm: React.FC<{
           </div>
           <div className="grid grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Dirección Facturación
               </label>
               <Textarea
@@ -526,7 +520,7 @@ const SOForm: React.FC<{
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Dirección de Envío
               </label>
               <Textarea
@@ -539,7 +533,7 @@ const SOForm: React.FC<{
           </div>
           <div className="grid grid-cols-3 gap-6 pt-2">
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">
+              <label className="text-[10px] font-black text-fg-subtle uppercase">
                 Fec. Contabilización
               </label>
               <Input
@@ -550,7 +544,7 @@ const SOForm: React.FC<{
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">
+              <label className="text-[10px] font-black text-fg-subtle uppercase">
                 Fec. Entrega Prevista
               </label>
               <Input
@@ -568,15 +562,13 @@ const SOForm: React.FC<{
         </Card>
 
         <div className="space-y-6">
-          <Card className="p-6 space-y-6 bg-slate-50/50 dark:bg-slate-800/50">
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest border-b pb-2">
+          <Card className="p-6 space-y-6 bg-bg-muted">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest border-b pb-2">
               Control de Series
             </h4>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Serie de Pedido *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Serie de Pedido *</label>
                 <SearchableSelect
                   value={state.seriesId}
                   onChange={setState.setSeriesId}
@@ -584,7 +576,7 @@ const SOForm: React.FC<{
                 />
                 {state.isManualSeries && (
                   <div className="mt-2 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                    <label className="text-[10px] font-bold text-fg-muted">
                       Número de documento (manual) *
                     </label>
                     <Input
@@ -602,9 +594,7 @@ const SOForm: React.FC<{
                 )}
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Periodo Contable *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Periodo Contable *</label>
                 <SearchableSelect
                   value={state.periodId}
                   onChange={setState.setPeriodId}
@@ -662,13 +652,13 @@ const SOForm: React.FC<{
 
       <DocumentFiscalPanel kind="sales" state={state} setState={setState} collapsible />
 
-      <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-lg overflow-hidden border-border-subtle" noPadding>
         {isMobile ? (
           <MobileLineCards columns={columns} lines={state.lines || []} />
         ) : (
           <Table columns={columns} data={state.lines} />
         )}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center border-t border-slate-200 dark:border-slate-700">
+        <div className="p-4 bg-bg-muted flex justify-between items-center border-t border-border-default">
           <Button
             variant="ghost"
             size="sm"
@@ -679,10 +669,8 @@ const SOForm: React.FC<{
           </Button>
           <div className="space-y-1 text-right min-w-[200px]">
             <div className="flex justify-between px-2">
-              <span className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500">
-                Subtotal:
-              </span>
-              <span className="font-bold text-slate-800 dark:text-slate-100">
+              <span className="text-[10px] font-black uppercase text-fg-subtle">Subtotal:</span>
+              <span className="font-bold text-fg-default">
                 {computations.subtotal.toFixed(2)} €
               </span>
             </div>
@@ -698,7 +686,7 @@ const SOForm: React.FC<{
                 </span>
               </div>
             )}
-            <div className="flex justify-between px-2 pt-2 mt-1 border-t text-xl font-black text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700">
+            <div className="flex justify-between px-2 pt-2 mt-1 border-t text-xl font-black text-fg-default border-border-default">
               <span className="text-[10px] uppercase">Total Pedido:</span>
               <span>{computations.total.toFixed(2)} €</span>
             </div>
@@ -777,38 +765,35 @@ const SODetail: React.FC<{
         <InternalOrderChip internalOrderId={order.internalOrderId} />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card
-          className="md:col-span-2 border-slate-100 dark:border-slate-800"
-          bodyClassName="p-6 space-y-5"
-        >
+        <Card className="md:col-span-2 border-border-subtle" bodyClassName="p-6 space-y-5">
           <div>
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] mb-2">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] mb-2">
               Cliente
             </h4>
-            <p className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <p className="text-xl font-black text-fg-default tracking-tight">
               {partner?.name || '—'}
             </p>
             {partner?.nif && (
-              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5 font-mono">
+              <p className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider mt-0.5 font-mono">
                 NIF: {partner.nif}
               </p>
             )}
           </div>
           {(order.billToAddress || order.shipToAddress) && (
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-subtle">
               <div>
-                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <span className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
                   Facturar a
                 </span>
-                <pre className="text-[11px] font-sans text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-snug mt-1">
+                <pre className="text-[11px] font-sans text-fg-body whitespace-pre-wrap leading-snug mt-1">
                   {order.billToAddress || '—'}
                 </pre>
               </div>
               <div>
-                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <span className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
                   Enviar a
                 </span>
-                <pre className="text-[11px] font-sans text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-snug mt-1">
+                <pre className="text-[11px] font-sans text-fg-body whitespace-pre-wrap leading-snug mt-1">
                   {order.shipToAddress || '—'}
                 </pre>
               </div>
@@ -816,32 +801,32 @@ const SODetail: React.FC<{
           )}
         </Card>
 
-        <Card className="border-slate-100 dark:border-slate-800" bodyClassName="p-6 space-y-4">
-          <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] border-b border-slate-100 dark:border-slate-800 pb-2">
+        <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
+          <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] border-b border-border-subtle pb-2">
             Información
           </h4>
           <dl className="space-y-2.5">
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Fecha
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {fmt.date(order.date)}
               </dd>
             </div>
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Entrega
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {order.deliveryDate ? fmt.date(order.deliveryDate) : '—'}
               </dd>
             </div>
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Líneas
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {order.lines?.length ?? 0}
               </dd>
             </div>
@@ -849,7 +834,7 @@ const SODetail: React.FC<{
         </Card>
       </div>
 
-      <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-sm overflow-hidden border-border-subtle" noPadding>
         {isMobile ? (
           <MobileLineCards columns={columns} lines={order.lines || []} />
         ) : (

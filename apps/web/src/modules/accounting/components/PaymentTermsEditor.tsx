@@ -100,7 +100,7 @@ export const PaymentTermsEditor: React.FC = () => {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase font-black tracking-wider">
+        <p className="text-[11px] text-fg-subtle uppercase font-black tracking-wider">
           Contado, 30 días, 30/60…
         </p>
         <Button
@@ -115,7 +115,7 @@ export const PaymentTermsEditor: React.FC = () => {
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <thead className="text-[10px] font-black uppercase tracking-wider text-fg-muted">
             <tr>
               <th className="text-left py-2">Nombre</th>
               <th className="text-left py-2">Detalle</th>
@@ -138,7 +138,7 @@ export const PaymentTermsEditor: React.FC = () => {
               </tr>
             ) : (
               rows.map((t) => (
-                <tr key={t.id} className="border-t border-slate-100 dark:border-slate-800">
+                <tr key={t.id} className="border-t border-border-subtle">
                   <td className="py-2 font-bold">{t.name}</td>
                   <td className="py-2">{renderSummary(t)}</td>
                   <td className="py-2 text-center">
@@ -282,7 +282,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+          <label className="text-xs font-black uppercase tracking-wider text-fg-muted flex items-center gap-2">
             <CalendarClock size={14} /> Splits
           </label>
           <div className="flex items-center gap-2">
@@ -295,9 +295,9 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
           </div>
         </div>
 
-        <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="border border-border-default rounded-lg overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900/60 text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="text-left py-2 px-3 w-12">#</th>
                 <th className="text-left py-2 px-3">Días desde la factura</th>
@@ -307,7 +307,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
             </thead>
             <tbody>
               {lines.map((l, i) => (
-                <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
+                <tr key={i} className="border-t border-border-subtle">
                   <td className="py-2 px-3 text-slate-400 font-mono">{i + 1}</td>
                   <td className="py-2 px-3">
                     <NumberInput
@@ -347,7 +347,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-slate-50 dark:bg-slate-900/60 font-black">
+              <tr className="bg-bg-muted font-black">
                 <td colSpan={2} className="py-2 px-3 text-right text-xs uppercase">
                   Total porcentajes:
                 </td>
@@ -376,7 +376,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
         )}
       </div>
 
-      <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+      <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
           <X size={14} className="mr-1" /> Cancelar
         </Button>

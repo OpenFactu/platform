@@ -16,24 +16,20 @@ interface Props {
 /** Render read-only de un valor de campo plugin. Uso: listados, detalles, PDF. */
 export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
   if (value === null || value === undefined || value === '') {
-    return <span className="text-slate-300 dark:text-slate-600">—</span>;
+    return <span className="text-fg-subtle">—</span>;
   }
 
   switch (def.fieldType) {
     case 'BOOLEAN':
       return (
-        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+        <span className="text-xs font-bold text-fg-body">
           {value === true || value === 'true' ? 'Sí' : 'No'}
         </span>
       );
 
     case 'ENUM': {
       const opt = (def.options ?? []).find((o) => o.value === value);
-      return (
-        <span className="text-xs text-slate-700 dark:text-slate-200">
-          {opt?.label ?? String(value)}
-        </span>
-      );
+      return <span className="text-xs text-fg-body">{opt?.label ?? String(value)}</span>;
     }
 
     case 'MULTISELECT': {
@@ -44,10 +40,7 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
           {arr.map((v: string) => {
             const o = opts.find((x) => x.value === v);
             return (
-              <span
-                key={v}
-                className="text-[10px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded"
-              >
+              <span key={v} className="text-[10px] px-1.5 py-0.5 bg-bg-muted rounded">
                 {o?.label ?? v}
               </span>
             );
@@ -77,10 +70,7 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
 
     case 'PHONE':
       return (
-        <a
-          href={`tel:${String(value).replace(/\s/g, '')}`}
-          className="text-xs text-slate-700 dark:text-slate-200"
-        >
+        <a href={`tel:${String(value).replace(/\s/g, '')}`} className="text-xs text-fg-body">
           {String(value)}
         </a>
       );
@@ -89,7 +79,7 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
       return (
         <span className="inline-flex items-center gap-2 text-xs">
           <span
-            className="w-4 h-4 rounded border border-slate-200 dark:border-slate-700"
+            className="w-4 h-4 rounded border border-border-default"
             style={{ background: String(value) }}
           />
           <span className="font-mono">{String(value)}</span>
@@ -97,37 +87,35 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
       );
 
     case 'DATE':
-      return <span className="text-xs text-slate-700 dark:text-slate-200">{fmt?.date?.(value) ?? String(value)}</span>;
+      return <span className="text-xs text-fg-body">{fmt?.date?.(value) ?? String(value)}</span>;
 
     case 'CURRENCY':
       return (
-        <span className="font-medium text-slate-700 dark:text-slate-200 tabular-nums">
+        <span className="font-medium text-fg-body tabular-nums">
           {fmt?.money?.(value) ?? String(value)}
         </span>
       );
 
     case 'PERCENT':
       return (
-        <span className="font-medium text-slate-700 dark:text-slate-200 tabular-nums">
+        <span className="font-medium text-fg-body tabular-nums">
           {fmt?.number?.(value, 2) ?? String(value)}%
         </span>
       );
 
     case 'INTEGER':
-      return (
-        <span className="tabular-nums text-slate-700 dark:text-slate-200">{String(value)}</span>
-      );
+      return <span className="tabular-nums text-fg-body">{String(value)}</span>;
 
     case 'DECIMAL':
       return (
-        <span className="tabular-nums text-slate-700 dark:text-slate-200">
+        <span className="tabular-nums text-fg-body">
           {fmt?.number?.(value, 4) ?? String(value)}
         </span>
       );
 
     case 'JSONB':
       return (
-        <code className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate block max-w-xs">
+        <code className="text-[10px] font-mono text-fg-muted truncate block max-w-xs">
           {typeof value === 'object' ? JSON.stringify(value) : String(value)}
         </code>
       );
@@ -136,12 +124,10 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
       // Sin caché de etiquetas aquí; mostramos el id crudo. Para resolver
       // a label se puede hacer una lookup explícita en la página.
       return (
-        <span className="font-mono text-[11px] text-slate-600 dark:text-slate-300">
-          {String(value).slice(0, 8)}…
-        </span>
+        <span className="font-mono text-[11px] text-fg-body">{String(value).slice(0, 8)}…</span>
       );
 
     default:
-      return <span className="text-xs text-slate-700 dark:text-slate-200">{String(value)}</span>;
+      return <span className="text-xs text-fg-body">{String(value)}</span>;
   }
 };

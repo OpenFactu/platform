@@ -76,9 +76,7 @@ export const ReportPL: React.FC = () => {
 
       <Card className="p-4">
         <div className="max-w-sm">
-          <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-            Período
-          </label>
+          <label className="block text-xs font-bold text-fg-body mb-1">Período</label>
           <SearchableSelect
             options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
             value={periodId}
@@ -99,7 +97,7 @@ export const ReportPL: React.FC = () => {
             <table className="w-full text-sm">
               <tbody>
                 {data.incomeRows.map((r) => (
-                  <tr key={r.code} className="border-b border-slate-100 dark:border-slate-800">
+                  <tr key={r.code} className="border-b border-border-subtle">
                     <td className="py-1 font-mono text-xs text-slate-500">{r.code}</td>
                     <td className="py-1">{r.name}</td>
                     <td className="py-1 text-right tabular-nums">{fmt.money(r.amount)}</td>
@@ -124,7 +122,7 @@ export const ReportPL: React.FC = () => {
             <table className="w-full text-sm">
               <tbody>
                 {data.expenseRows.map((r) => (
-                  <tr key={r.code} className="border-b border-slate-100 dark:border-slate-800">
+                  <tr key={r.code} className="border-b border-border-subtle">
                     <td className="py-1 font-mono text-xs text-slate-500">{r.code}</td>
                     <td className="py-1">{r.name}</td>
                     <td className="py-1 text-right tabular-nums">{fmt.money(r.amount)}</td>

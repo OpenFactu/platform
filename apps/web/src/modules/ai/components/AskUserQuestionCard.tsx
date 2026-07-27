@@ -112,7 +112,7 @@ export const AskUserQuestionCard: React.FC<{
                 className={`text-left px-3 py-1.5 rounded-lg border text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   isSelected
                     ? 'border-accent bg-accent text-white'
-                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-accent hover:text-accent'
+                    : 'border-border-default bg-bg-card hover:border-accent hover:text-accent'
                 }`}
               >
                 <div className="font-bold flex items-center gap-1">

@@ -168,11 +168,11 @@ export const AccountingPeriods: React.FC = () => {
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
+        <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
           <Calendar className="text-blue-600 dark:text-blue-300" size={32} />
           Periodos Contables
         </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+        <p className="text-fg-muted mt-1 font-medium">
           Define los ejercicios o años fiscales para acotar la contabilidad y series.
         </p>
       </div>
@@ -222,7 +222,7 @@ export const AccountingPeriods: React.FC = () => {
         </form>
       </Card>
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table columns={columns} data={periods} isLoading={loading} rowActions={rowActions} />
       </Card>
     </div>
@@ -260,8 +260,8 @@ const ClosePreviewBody: React.FC<ClosePreviewBodyProps> = ({ preview, onCancel, 
           </span>
         </h3>
         {preview.regularizationLines?.length > 0 ? (
-          <table className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded overflow-hidden">
-            <thead className="bg-slate-50 dark:bg-slate-800 text-slate-600">
+          <table className="w-full text-sm border border-border-default rounded overflow-hidden">
+            <thead className="bg-bg-muted text-slate-600">
               <tr>
                 <th className="p-2 text-left">Cuenta</th>
                 <th className="p-2 text-left">Descripción</th>
@@ -271,7 +271,7 @@ const ClosePreviewBody: React.FC<ClosePreviewBodyProps> = ({ preview, onCancel, 
             </thead>
             <tbody>
               {preview.regularizationLines.map((l: any, i: number) => (
-                <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
+                <tr key={i} className="border-t border-border-subtle">
                   <td className="p-2 font-mono text-xs">{l.accountId}</td>
                   <td className="p-2">{l.description}</td>
                   <td className="p-2 text-right">

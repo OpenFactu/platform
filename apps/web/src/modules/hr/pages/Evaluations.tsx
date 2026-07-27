@@ -301,7 +301,7 @@ export const Evaluations: React.FC = () => {
               </thead>
               <tbody>
                 {cycles.map((c) => (
-                  <tr key={c.id} className="border-b hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <tr key={c.id} className="border-b hover:bg-bg-hover">
                     <td className="p-3 font-bold">{c.name}</td>
                     <td className="p-3">{c.startDate?.slice(0, 10)}</td>
                     <td className="p-3">{c.endDate?.slice(0, 10)}</td>
@@ -546,7 +546,7 @@ export const Evaluations: React.FC = () => {
                               };
                               setScores(next);
                             }}
-                            className="w-20 text-right px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent"
+                            className="w-20 text-right px-2 py-1 rounded border border-border-default bg-transparent"
                           />
                         </td>
                         <td className="p-2 text-right">
@@ -565,7 +565,7 @@ export const Evaluations: React.FC = () => {
                               };
                               setScores(next);
                             }}
-                            className="w-20 text-right px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent"
+                            className="w-20 text-right px-2 py-1 rounded border border-border-default bg-transparent"
                           />
                         </td>
                         <td className="p-2">
@@ -577,7 +577,7 @@ export const Evaluations: React.FC = () => {
                               next[i] = { ...s, comments: e.target.value };
                               setScores(next);
                             }}
-                            className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-transparent"
+                            className="w-full px-2 py-1 rounded border border-border-default bg-transparent"
                           />
                         </td>
                       </tr>

@@ -251,14 +251,12 @@ export const Automations: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-4">
         <div className="flex items-center gap-3">
           <Zap className="text-blue-600 dark:text-blue-300" size={22} />
           <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-              Automatizaciones
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <h1 className="text-xl font-black text-fg-default tracking-tight">Automatizaciones</h1>
+            <p className="text-xs text-fg-muted">
               Ejecuta acciones según un horario, un evento del sistema o a demanda.
             </p>
           </div>
@@ -291,7 +289,7 @@ export const Automations: React.FC = () => {
             {rows.map((a) => (
               <li
                 key={a.id}
-                className="flex items-center gap-3 px-4 py-3 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle last:border-0"
               >
                 {/* Acción inmediata (PATCH al pulsar), de ahí que sea un Button
                     con icono de estado y no un Checkbox del formulario. */}
@@ -307,14 +305,12 @@ export const Automations: React.FC = () => {
                 </Button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-                      {a.name}
-                    </span>
+                    <span className="font-semibold text-sm text-fg-default">{a.name}</span>
                     <Badge variant="neutral">{a.triggerType}</Badge>
                     <Badge variant="info">{a.actionType}</Badge>
                     {!a.enabled && <Badge variant="warning">Inactiva</Badge>}
                   </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono truncate">
+                  <div className="text-[11px] text-fg-muted mt-0.5 font-mono truncate">
                     {a.triggerType === 'schedule' && `cron: ${a.triggerConfig?.cron || ''}`}
                     {a.triggerType === 'event' && `event: ${a.triggerConfig?.event || ''}`}
                     {a.triggerType === 'manual' && 'ejecución manual'}
@@ -543,7 +539,7 @@ export const Automations: React.FC = () => {
             </>
           )}
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>
@@ -577,14 +573,14 @@ export const Automations: React.FC = () => {
               {logs.map((r) => (
                 <li
                   key={r.id}
-                  className="px-3 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0 flex items-start gap-3"
+                  className="px-3 py-2 border-b border-border-subtle last:border-0 flex items-start gap-3"
                 >
                   <Badge variant={r.status === 'ok' ? 'success' : 'error'}>{r.status}</Badge>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                    <div className="text-[11px] text-fg-muted font-mono">
                       {fmt.date(r.startedAt)} · {r.durationMs ?? 0}ms · {r.triggerSource}
                     </div>
-                    <div className="text-xs text-slate-700 dark:text-slate-200 break-words mt-0.5">
+                    <div className="text-xs text-fg-body break-words mt-0.5">
                       {r.status === 'ok' ? r.outputText : r.errorText}
                     </div>
                   </div>
@@ -610,7 +606,7 @@ const FieldBox: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
   </div>
 );
 const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-1 pt-2">
+  <div className="text-[10px] font-black uppercase tracking-widest text-fg-subtle border-b border-border-subtle pb-1 pt-2">
     {children}
   </div>
 );

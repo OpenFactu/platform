@@ -48,14 +48,14 @@ export const ForgotPassword: React.FC = () => {
               <CheckCircle2 size={28} />
             </div>
             <div className="space-y-2">
-              <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              <h3 className="text-2xl font-black text-fg-default tracking-tight">
                 Revisa tu correo
               </h3>
-              <p className="text-slate-500 dark:text-slate-300 font-medium text-sm leading-relaxed">
+              <p className="text-fg-muted font-medium text-sm leading-relaxed">
                 Si el email <strong>{email}</strong> corresponde a una cuenta, te hemos enviado un
                 enlace para restablecer tu contraseña. Caduca en 1 hora.
               </p>
-              <p className="text-slate-400 dark:text-slate-500 text-xs pt-2">
+              <p className="text-fg-subtle text-xs pt-2">
                 ¿No lo recibes? Comprueba spam o pide a tu administrador que te lo restablezca.
               </p>
             </div>
@@ -70,21 +70,21 @@ export const ForgotPassword: React.FC = () => {
         ) : (
           <>
             <div className="space-y-2">
-              <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+              <h3 className="text-2xl font-black text-fg-default tracking-tight">
                 Recuperar contraseña
               </h3>
-              <p className="text-slate-500 dark:text-slate-300 font-medium text-sm">
+              <p className="text-fg-muted font-medium text-sm">
                 Introduce tu email y te enviaremos un enlace para crear una nueva contraseña.
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-1.5">
-                <label className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest ml-1">
+                <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
                   Email
                 </label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-4 flex items-center text-slate-400 dark:text-slate-500 group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
+                  <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
                     <Mail size={18} />
                   </div>
                   <input
@@ -94,7 +94,7 @@ export const ForgotPassword: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="usuario@empresa.com"
-                    className="w-full bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
+                    className="w-full bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
                   />
                 </div>
               </div>
@@ -116,7 +116,7 @@ export const ForgotPassword: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="w-full flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400 hover:text-[#0D9488] font-bold text-sm"
+                className="w-full flex items-center justify-center gap-2 text-fg-muted hover:text-[#0D9488] font-bold text-sm"
               >
                 <ArrowLeft size={16} /> Volver a iniciar sesión
               </button>

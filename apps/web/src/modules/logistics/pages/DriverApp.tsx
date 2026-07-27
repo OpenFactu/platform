@@ -601,7 +601,7 @@ export const DriverApp: React.FC = () => {
               <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 mb-1">
                 Entregar en
               </div>
-              <div className="text-base font-bold text-slate-900 dark:text-slate-100 leading-snug">
+              <div className="text-base font-bold text-fg-default leading-snug">
                 {packageScan.destinationAddress || 'SIN DIRECCIÓN'}
               </div>
             </div>
@@ -636,7 +636,7 @@ export const DriverApp: React.FC = () => {
                     ¡Es tuyo!
                   </div>
                 </div>
-                <div className="text-sm text-slate-700 dark:text-slate-200">
+                <div className="text-sm text-fg-body">
                   Acopio <b>{scanResult.stagingName}</b> ({scanResult.stagingCode}) —{' '}
                   {scanResult.packagesCount} paquete(s).
                 </div>
@@ -652,12 +652,12 @@ export const DriverApp: React.FC = () => {
                       <button
                         key={r.id}
                         onClick={() => openMyRouteFromScan(r.id)}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] transition"
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-card border border-emerald-300 dark:border-emerald-500/50 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] transition"
                       >
                         <code className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 text-[11px] font-mono rounded">
                           {r.code}
                         </code>
-                        <span className="flex-1 text-left text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                        <span className="flex-1 text-left text-sm font-semibold text-fg-default truncate">
                           {r.name || '—'}
                         </span>
                         <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-bold">
@@ -677,7 +677,7 @@ export const DriverApp: React.FC = () => {
                     Este acopio NO es tuyo
                   </div>
                 </div>
-                <div className="text-sm text-slate-700 dark:text-slate-200">
+                <div className="text-sm text-fg-body">
                   Está asignado a <b>{scanResult.otherDriver}</b>
                   {scanResult.otherRouteCode && (
                     <>
@@ -700,7 +700,7 @@ export const DriverApp: React.FC = () => {
                     Sin ruta asignada
                   </div>
                 </div>
-                <div className="text-sm text-slate-700 dark:text-slate-200">
+                <div className="text-sm text-fg-body">
                   El acopio <b>{scanResult.stagingName}</b> aún no tiene ruta planificada ni activa.
                 </div>
               </div>
@@ -717,7 +717,7 @@ export const DriverApp: React.FC = () => {
         maxWidth="sm"
       >
         <div className="pt-2 space-y-4">
-          <p className="text-sm text-slate-700 dark:text-slate-200">
+          <p className="text-sm text-fg-body">
             Se marcarán <b>{confirmBulkArrive}</b> parada(s) pendiente(s) como <b>llegadas</b> con
             la hora actual.
           </p>
@@ -796,12 +796,10 @@ export const DriverApp: React.FC = () => {
 
   if (!selectedId) {
     return (
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-3">
+      <div className="min-h-screen bg-bg-muted p-3">
         <header className="mb-3 flex items-start gap-3">
           <div className="flex-1">
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100">
-              Hola, {user?.username}
-            </h1>
+            <h1 className="text-xl font-black text-fg-default">Hola, {user?.username}</h1>
             <p className="text-xs text-slate-500">Tus rutas asignadas</p>
           </div>
           {/* Botón táctil grande: se conservan flex-col y el relleno original
@@ -882,13 +880,13 @@ export const DriverApp: React.FC = () => {
               <button
                 key={r.id}
                 onClick={() => setSelectedId(r.id)}
-                className="w-full text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 active:scale-[0.98] transition-transform"
+                className="w-full text-left bg-bg-card border border-border-default rounded-xl p-4 active:scale-[0.98] transition-transform"
               >
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant={r.status === 'active' ? 'info' : 'neutral'}>{r.status}</Badge>
                   <code className="text-[10px] font-mono">{r.code}</code>
                 </div>
-                <div className="font-bold text-slate-800 dark:text-slate-100">{r.name}</div>
+                <div className="font-bold text-fg-default">{r.name}</div>
                 <div className="text-[11px] text-slate-500 mt-1">
                   {r.plannedDate} · {r.vehiclePlate || '—'}
                 </div>
@@ -1029,7 +1027,7 @@ export const DriverApp: React.FC = () => {
   ).length;
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 p-3 space-y-3">
+    <div className="min-h-screen bg-bg-muted p-3 space-y-3">
       {renderScanModals()}
       <div className="flex items-center justify-between">
         <Button
@@ -1062,7 +1060,7 @@ export const DriverApp: React.FC = () => {
       <Card bodyClassName="p-4 space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
-            <div className="font-bold text-slate-800 dark:text-slate-100">{detail.route.name}</div>
+            <div className="font-bold text-fg-default">{detail.route.name}</div>
             <div className="text-[11px] text-slate-500">
               {detail.route.plannedDate} · {detail.route.vehiclePlate || '—'}
             </div>
@@ -1121,10 +1119,10 @@ export const DriverApp: React.FC = () => {
 
         {/* Vehículo detallado */}
         {detail.vehicle && (
-          <div className="rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 px-3 py-2">
+          <div className="rounded-lg bg-bg-muted border border-border-default px-3 py-2">
             <div className="flex items-center gap-2">
               <TruckIconLucide size={16} className="text-slate-500" />
-              <span className="font-mono font-bold text-sm text-slate-800 dark:text-slate-100">
+              <span className="font-mono font-bold text-sm text-fg-default">
                 {detail.vehicle.plate}
               </span>
               {(detail.vehicle.brand || detail.vehicle.model) && (
@@ -1165,7 +1163,7 @@ export const DriverApp: React.FC = () => {
                   >
                     <Warehouse size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                      <div className="text-sm font-semibold text-fg-default truncate">
                         {p.name}
                         {p.platform && (
                           <span className="ml-2 text-[11px] font-normal text-slate-500">
@@ -1204,7 +1202,7 @@ export const DriverApp: React.FC = () => {
           <button
             type="button"
             onClick={() => setMapOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500"
+            className="w-full flex items-center justify-between px-4 py-2 border-b border-border-subtle text-[10px] font-black uppercase tracking-[0.15em] text-slate-500"
           >
             <span>
               Mapa · {mapPoints.length} parada{mapPoints.length === 1 ? '' : 's'}
@@ -1220,7 +1218,7 @@ export const DriverApp: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => centerMap(mapRef)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-card shadow-md border border-border-default text-[11px] font-bold uppercase tracking-wider text-fg-body hover:bg-bg-hover active:scale-95 transition"
                   title={lastFix ? 'Centrar en mi GPS' : 'Centrar en la 1ª parada'}
                 >
                   <Navigation size={12} /> Centrar
@@ -1228,7 +1226,7 @@ export const DriverApp: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setMapFullscreen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-card shadow-md border border-border-default text-[11px] font-bold uppercase tracking-wider text-fg-body hover:bg-bg-hover active:scale-95 transition"
                   title="Ampliar mapa"
                 >
                   <Maximize2 size={12} /> Ampliar
@@ -1256,7 +1254,7 @@ export const DriverApp: React.FC = () => {
           <button
             type="button"
             onClick={() => centerMap(mapRefFull)}
-            className="absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 shadow-md border border-slate-200 dark:border-slate-700 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-95 transition"
+            className="absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-card shadow-md border border-border-default text-[11px] font-bold uppercase tracking-wider text-fg-body hover:bg-bg-hover active:scale-95 transition"
             title={lastFix ? 'Centrar en mi GPS' : 'Centrar en la 1ª parada'}
           >
             <Navigation size={12} /> Centrar
@@ -1272,7 +1270,7 @@ export const DriverApp: React.FC = () => {
       {/* Confirmación de finalizar ruta — avisa si quedan paradas sin cerrar. */}
       <Modal isOpen={finishConfirm} onClose={() => setFinishConfirm(false)} title="Finalizar ruta">
         <div className="space-y-3">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
+          <p className="text-sm text-fg-body">
             {openStopsCount > 0
               ? `Quedan ${openStopsCount} parada(s) sin entregar. Se marcarán como aplazadas y volverán al almacén para reintentarse.`
               : 'Todas las paradas están cerradas. ¿Finalizar la ruta?'}
@@ -1290,7 +1288,7 @@ export const DriverApp: React.FC = () => {
 
       {/* Header de la lista de repartos */}
       <div className="flex items-center justify-between mt-2 mb-1 px-1">
-        <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+        <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-fg-muted">
           Repartos · {detail.stops.length}
         </h2>
         <span className="text-[10px] text-slate-400">
@@ -1347,16 +1345,14 @@ export const DriverApp: React.FC = () => {
                 )}
                 {isPickup && <Badge variant="warning">↩ Recogida de devolución</Badge>}
               </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-0.5">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-0.5">
                 {isPickup ? 'Recoger de' : 'Entregar en'}
               </div>
-              <div className="font-semibold text-slate-800 dark:text-slate-100">{addr || '—'}</div>
+              <div className="font-semibold text-fg-default">{addr || '—'}</div>
               {(ship?.recipientName || ship?.recipientEmail) && (
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <div className="text-xs text-fg-muted mt-0.5">
                   {ship?.recipientName && (
-                    <span className="font-medium text-slate-700 dark:text-slate-200">
-                      {ship.recipientName}
-                    </span>
+                    <span className="font-medium text-fg-body">{ship.recipientName}</span>
                   )}
                   {ship?.recipientName && ship?.recipientEmail && ' · '}
                   {ship?.recipientEmail && (
@@ -1382,7 +1378,7 @@ export const DriverApp: React.FC = () => {
                     {/* Llamada directa */}
                     <a
                       href={`tel:${ship.recipientPhone.replace(/\s+/g, '')}`}
-                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 text-[11px] font-black uppercase tracking-wider active:scale-[0.97] transition-all"
+                      className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-200 dark:bg-slate-700 text-fg-default text-[11px] font-black uppercase tracking-wider active:scale-[0.97] transition-all"
                     >
                       📞 Llamar
                     </a>

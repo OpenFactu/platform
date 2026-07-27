@@ -12,7 +12,8 @@ export const ReportProfitCostCenter: React.FC = () => {
 
   const load = () => {
     setLoading(true);
-    reportsApi.get<any>('/api/reports/profit-cost-center')
+    reportsApi
+      .get<any>('/api/reports/profit-cost-center')
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };

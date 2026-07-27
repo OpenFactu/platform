@@ -36,5 +36,4 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       </ToastProvider>
     </I18nProvider>
   </React.StrictMode>,
-  
 );

@@ -40,7 +40,7 @@ export const PluginViewRenderer: React.FC<PluginViewRendererProps> = ({
   if (type === 'table') {
     return (
       <div className="p-8 space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{title}</h1>
+        <h1 className="text-2xl font-bold text-fg-default">{title}</h1>
         <Card>
           <Table columns={config.columns} data={data} isLoading={loading} />
         </Card>
@@ -51,7 +51,7 @@ export const PluginViewRenderer: React.FC<PluginViewRendererProps> = ({
   if (type === 'custom') {
     return (
       <div className="p-8 space-y-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{title}</h1>
+        <h1 className="text-2xl font-bold text-fg-default">{title}</h1>
         <PluginComponentLoader
           pluginId={pluginId}
           componentPath={config.component}

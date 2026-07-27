@@ -127,10 +127,10 @@ export const Uom: React.FC = () => {
               Logística / Maestro
             </span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight text-display">
+          <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
             Unidades de Medida
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <p className="text-fg-muted font-medium">
             Define las dimensiones y conversiones globales para tus artículos.
           </p>
         </div>
@@ -146,7 +146,7 @@ export const Uom: React.FC = () => {
       <Card className="overflow-hidden border-0" noPadding>
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-black text-slate-400 dark:text-slate-500">
+            <tr className="bg-bg-muted border-b border-border-subtle text-[10px] uppercase font-black text-fg-subtle">
               <th className="px-6 py-4">Nombre y Código</th>
               <th className="px-6 py-4">Conversión Logística</th>
               <th className="px-6 py-4 text-right">Acciones</th>
@@ -178,7 +178,7 @@ export const Uom: React.FC = () => {
                       onChange={(e) => setNewRow({ ...newRow, baseValue: e.target.value })}
                       className="h-9 w-24 text-center"
                     />
-                    <span className="text-xs font-bold text-slate-400 dark:text-slate-500">de</span>
+                    <span className="text-xs font-bold text-fg-subtle">de</span>
                     <SearchableSelect
                       options={uomOptions()}
                       value={newRow.baseUomId || ''}
@@ -209,7 +209,7 @@ export const Uom: React.FC = () => {
                   e.stopPropagation();
                   openContextMenu(e, buildCtxItems(u));
                 }}
-                className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group"
+                className="hover:bg-bg-hover transition-colors group"
               >
                 <td className="px-6 py-4">
                   {editingId === u.id ? (
@@ -239,12 +239,10 @@ export const Uom: React.FC = () => {
                         {u.code?.toUpperCase().substring(0, 3) || 'UOM'}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">
-                          {u.name}
-                        </p>
+                        <p className="font-bold text-fg-default text-sm leading-tight">{u.name}</p>
                         <Badge
                           variant="neutral"
-                          className="mt-1 font-mono uppercase tracking-widest text-[9px] bg-slate-100 dark:bg-slate-800"
+                          className="mt-1 font-mono uppercase tracking-widest text-[9px] bg-bg-muted"
                         >
                           {u.code || '---'}
                         </Badge>
@@ -268,7 +266,7 @@ export const Uom: React.FC = () => {
                         }
                         className="h-9 w-24 text-center"
                       />
-                      <ArrowRightLeft size={12} className="text-slate-300 dark:text-slate-600" />
+                      <ArrowRightLeft size={12} className="text-fg-subtle" />
                       <SearchableSelect
                         options={uomOptions(u.id)}
                         value={u.baseUomId || ''}
@@ -291,12 +289,9 @@ export const Uom: React.FC = () => {
                           </span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-bold text-xs">
-                          <span className="text-slate-900 dark:text-slate-100">1 {u.code}</span>
-                          <ArrowRightLeft
-                            size={10}
-                            className="text-slate-300 dark:text-slate-600"
-                          />
+                        <div className="flex items-center gap-2 text-fg-muted font-bold text-xs">
+                          <span className="text-fg-default">1 {u.code}</span>
+                          <ArrowRightLeft size={10} className="text-fg-subtle" />
                           <span className="text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-100 dark:border-blue-500/20">
                             {u.baseValue} {uoms.find((x) => x.id === u.baseUomId)?.code}
                           </span>

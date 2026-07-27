@@ -47,7 +47,7 @@ const DataTable: React.FC<{ rows: Row[]; maxRows?: number }> = ({ rows, maxRows 
   const columns = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
   const shown = rows.slice(0, maxRows);
   return (
-    <div className="overflow-x-auto custom-scrollbar max-h-72 rounded border border-slate-200 dark:border-slate-700">
+    <div className="overflow-x-auto custom-scrollbar max-h-72 rounded border border-border-default">
       <table className={tableCls}>
         <thead>
           <tr>
@@ -58,9 +58,9 @@ const DataTable: React.FC<{ rows: Row[]; maxRows?: number }> = ({ rows, maxRows 
         </thead>
         <tbody>
           {shown.map((row, i) => (
-            <tr key={i} className="bg-white dark:bg-slate-900">
+            <tr key={i} className="bg-bg-card">
               {columns.map((c) => (
-                <td key={c} className="text-slate-700 dark:text-slate-200">
+                <td key={c} className="text-fg-body">
                   {fmtCell(row[c])}
                 </td>
               ))}
@@ -69,7 +69,7 @@ const DataTable: React.FC<{ rows: Row[]; maxRows?: number }> = ({ rows, maxRows 
         </tbody>
       </table>
       {rows.length > maxRows && (
-        <div className="text-[10px] text-slate-400 px-2 py-1 bg-slate-50 dark:bg-slate-800">
+        <div className="text-[10px] text-slate-400 px-2 py-1 bg-bg-muted">
           Mostrando {maxRows} de {rows.length} filas
         </div>
       )}
@@ -86,15 +86,11 @@ const MiniBarChart: React.FC<{ rows: Array<{ x: unknown; y: unknown }> }> = ({ r
         const pct = Math.max(2, Math.round((val / max) * 100));
         return (
           <div key={i} className="flex items-center gap-2 text-[11px]">
-            <span className="w-24 truncate text-slate-500 dark:text-slate-400 shrink-0">
-              {String(r.x)}
-            </span>
-            <div className="flex-1 h-3 bg-slate-100 dark:bg-slate-800 rounded overflow-hidden">
+            <span className="w-24 truncate text-fg-muted shrink-0">{String(r.x)}</span>
+            <div className="flex-1 h-3 bg-bg-muted rounded overflow-hidden">
               <div className="h-full bg-emerald-500 rounded" style={{ width: `${pct}%` }} />
             </div>
-            <span className="w-10 text-right text-slate-600 dark:text-slate-300 tabular-nums shrink-0">
-              {val}
-            </span>
+            <span className="w-10 text-right text-fg-body tabular-nums shrink-0">{val}</span>
           </div>
         );
       })}
@@ -131,7 +127,7 @@ export const ToolResultView: React.FC<{ output: unknown }> = ({ output }) => {
   }
   if (preview?.chartType === 'kpi') {
     return (
-      <p className="text-xl font-black text-slate-800 dark:text-slate-100 tabular-nums py-1">
+      <p className="text-xl font-black text-fg-default tabular-nums py-1">
         {fmtCell(preview.value)}
       </p>
     );
@@ -147,7 +143,7 @@ export const ToolResultView: React.FC<{ output: unknown }> = ({ output }) => {
           {Object.entries(header).map(([k, v]) => (
             <React.Fragment key={k}>
               <span className="text-slate-400">{k}</span>
-              <span className="text-slate-700 dark:text-slate-200 truncate">{fmtCell(v)}</span>
+              <span className="text-fg-body truncate">{fmtCell(v)}</span>
             </React.Fragment>
           ))}
         </div>
@@ -171,7 +167,7 @@ export const ToolResultView: React.FC<{ output: unknown }> = ({ output }) => {
         {output.map((s) => (
           <span
             key={s}
-            className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
+            className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-muted text-fg-body"
           >
             {s}
           </span>
@@ -187,7 +183,7 @@ export const ToolResultView: React.FC<{ output: unknown }> = ({ output }) => {
         {output.map((s, i) => (
           <pre
             key={i}
-            className="text-[11px] font-mono text-slate-600 dark:text-slate-300 whitespace-pre-wrap break-all bg-slate-50 dark:bg-slate-900/40 rounded p-1.5"
+            className="text-[11px] font-mono text-fg-body whitespace-pre-wrap break-all bg-bg-muted rounded p-1.5"
           >
             {s}
           </pre>
@@ -198,7 +194,7 @@ export const ToolResultView: React.FC<{ output: unknown }> = ({ output }) => {
 
   // Fallback: JSON legible
   return (
-    <pre className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap break-all max-h-56 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-900/40 rounded p-2">
+    <pre className="text-[11px] text-fg-muted whitespace-pre-wrap break-all max-h-56 overflow-y-auto custom-scrollbar bg-bg-muted rounded p-2">
       {typeof output === 'string' ? output : JSON.stringify(output, null, 2)}
     </pre>
   );

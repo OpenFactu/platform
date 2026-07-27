@@ -20,8 +20,8 @@ export const PdfPreviewCard: React.FC<{ base64: string; title?: string }> = ({ b
   if (!url) return null;
 
   return (
-    <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-50 dark:bg-slate-800/60 text-[11px] text-slate-500 dark:text-slate-400">
+    <div className="rounded-lg border border-border-default overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-bg-muted text-[11px] text-fg-muted">
         <span>{title || 'Vista previa'}</span>
         <a
           href={url}

@@ -238,11 +238,7 @@ export const Dashboard: React.FC = () => {
     );
 
   if (error || !data) {
-    return (
-      <div className="p-12 text-center text-slate-500 dark:text-slate-400">
-        {error || 'Sin datos disponibles'}
-      </div>
-    );
+    return <div className="p-12 text-center text-fg-muted">{error || 'Sin datos disponibles'}</div>;
   }
 
   const salesDelta = computeDelta(data.sales.total, data.sales.prevTotal);
@@ -265,11 +261,11 @@ export const Dashboard: React.FC = () => {
     <div className="p-4 w-full space-y-6 duration-500">
       <header className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter font-display">
+          <h1 className="text-2xl font-black text-fg-default tracking-tighter font-display">
             Business Overview
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium text-sm flex items-center gap-2">
-            <CalendarDays size={14} className="text-slate-400 dark:text-slate-400" />
+          <p className="text-fg-muted font-medium text-sm flex items-center gap-2">
+            <CalendarDays size={14} className="text-fg-subtle" />
             {periodLabel}
           </p>
         </div>
@@ -484,7 +480,7 @@ export const Dashboard: React.FC = () => {
               hint="Crea una factura o un albarán para verlo aquí."
             />
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            <ul className="divide-y divide-border-subtle">
               {data.recentDocs.map((d) => {
                 const Icon = DOC_TYPE_ICONS[d.type] || FileText;
                 return (
@@ -497,25 +493,17 @@ export const Dashboard: React.FC = () => {
                         <Icon size={16} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-400 dark:text-slate-400 font-bold uppercase tracking-wide">
+                        <p className="text-xs text-fg-subtle font-bold uppercase tracking-wide">
                           {DOC_TYPE_LABELS[d.type] || d.type}
                         </p>
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                          {d.code}
-                        </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                          {d.partnerName || '—'}
-                        </p>
+                        <p className="text-sm font-bold text-fg-default truncate">{d.code}</p>
+                        <p className="text-xs text-fg-muted truncate">{d.partnerName || '—'}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                          {fmt.money(d.total)}
-                        </p>
-                        <p className="text-[11px] text-slate-400 dark:text-slate-400">
-                          {fmt.date(d.date)}
-                        </p>
+                        <p className="text-sm font-bold text-fg-default">{fmt.money(d.total)}</p>
+                        <p className="text-[11px] text-fg-subtle">{fmt.date(d.date)}</p>
                       </div>
-                      <ChevronRight size={14} className="text-slate-300 dark:text-slate-300" />
+                      <ChevronRight size={14} className="text-fg-subtle" />
                     </button>
                   </li>
                 );
@@ -537,16 +525,14 @@ export const Dashboard: React.FC = () => {
                 {data.stockAlerts.lowStock.map((it) => (
                   <li key={it.id} className="flex items-center justify-between text-sm">
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                        {it.name}
-                      </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-400">{it.code}</p>
+                      <p className="font-bold text-fg-default truncate">{it.name}</p>
+                      <p className="text-[11px] text-fg-subtle">{it.code}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-rose-600 dark:text-rose-300">
                         {Number(it.stock).toFixed(2)}
                       </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-400">
+                      <p className="text-[11px] text-fg-subtle">
                         min {Number(it.minStock).toFixed(2)}
                       </p>
                     </div>
@@ -568,18 +554,14 @@ export const Dashboard: React.FC = () => {
                 {data.stockAlerts.expiringBatches.map((b) => (
                   <li key={b.id} className="flex items-center justify-between text-sm">
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-800 dark:text-slate-100 truncate">
-                        {b.itemName}
-                      </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-400">
-                        Lote {b.batchNum}
-                      </p>
+                      <p className="font-bold text-fg-default truncate">{b.itemName}</p>
+                      <p className="text-[11px] text-fg-subtle">Lote {b.batchNum}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-amber-600 dark:text-amber-300">
                         {fmt.date(b.expiryDate)}
                       </p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-400">
+                      <p className="text-[11px] text-fg-subtle">
                         {Number(b.quantity).toFixed(2)} ud
                       </p>
                     </div>
@@ -597,14 +579,12 @@ export const Dashboard: React.FC = () => {
           {!data.topItems || data.topItems.length === 0 ? (
             <EmptyState icon={Package} title="Sin ventas" hint="Aún no hay líneas facturadas." />
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            <ul className="divide-y divide-border-subtle">
               {data.topItems.map((it) => (
                 <li key={it.id} className="py-2.5 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate">
-                      {it.name}
-                    </p>
-                    <p className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                    <p className="font-bold text-fg-default text-sm truncate">{it.name}</p>
+                    <p className="text-[11px] font-mono text-fg-subtle">
                       {it.code} · {it.qty} uds
                     </p>
                   </div>
@@ -629,14 +609,14 @@ export const Dashboard: React.FC = () => {
               hint="Los movimientos aparecerán aquí."
             />
           ) : (
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800 max-h-96 overflow-y-auto overflow-x-hidden scrollbar-hide">
+            <ul className="divide-y divide-border-subtle max-h-96 overflow-y-auto overflow-x-hidden scrollbar-hide">
               {data.activityFeed.map((ev, i) => {
                 const id = `${ev.type}|${ev.createdAt}`;
                 const isFresh = freshIds.has(id);
                 return (
                   <li
                     key={`${id}-${i}`}
-                    className={`relative py-2 flex items-center gap-3 min-w-0 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 px-2 -mx-2 rounded-md cursor-pointer transition-colors ${
+                    className={`relative py-2 flex items-center gap-3 min-w-0 hover:bg-bg-hover px-2 -mx-2 rounded-md cursor-pointer transition-colors ${
                       isFresh
                         ? 'bg-blue-50 dark:bg-blue-500/10 animate-in slide-in-from-top-2 fade-in duration-500'
                         : ''
@@ -649,7 +629,7 @@ export const Dashboard: React.FC = () => {
                       }`}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-700 dark:text-slate-200 truncate">
+                      <p className="text-sm text-fg-body truncate">
                         {ev.label}
                         {isFresh && (
                           <span className="ml-2 text-[9px] font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded">
@@ -657,7 +637,7 @@ export const Dashboard: React.FC = () => {
                           </span>
                         )}
                       </p>
-                      <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                      <p className="text-[10px] font-mono text-fg-subtle">
                         {new Date(ev.createdAt).toLocaleString('es-ES', {
                           day: '2-digit',
                           month: 'short',
@@ -667,7 +647,7 @@ export const Dashboard: React.FC = () => {
                       </p>
                     </div>
                     {ev.amount != null && (
-                      <span className="flex-shrink-0 font-bold tabular-nums text-xs text-slate-700 dark:text-slate-300">
+                      <span className="flex-shrink-0 font-bold tabular-nums text-xs text-fg-body">
                         {fmt.money(ev.amount)}
                       </span>
                     )}
@@ -709,7 +689,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
 }) => {
   const deltaColor =
     delta == null
-      ? 'text-slate-400 dark:text-slate-400'
+      ? 'text-fg-subtle'
       : delta >= 0
         ? 'text-emerald-600 dark:text-emerald-400'
         : 'text-rose-600 dark:text-rose-400';
@@ -718,15 +698,13 @@ const KpiCard: React.FC<KpiCardProps> = ({
     <Card className="relative group transition-all">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 tracking-wider leading-tight mb-1.5 line-clamp-1">
+          <p className="text-[9px] sm:text-[10px] font-black uppercase text-fg-subtle tracking-wider leading-tight mb-1.5 line-clamp-1">
             {label}
           </p>
-          <p className="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight truncate tabular-nums">
+          <p className="text-lg sm:text-2xl font-black text-fg-default tracking-tight truncate tabular-nums">
             {value}
           </p>
-          <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-            {subtitle}
-          </p>
+          <p className="text-[10px] sm:text-[11px] text-fg-muted mt-0.5 truncate">{subtitle}</p>
           <p
             className={`text-[10px] sm:text-[11px] font-bold mt-1.5 flex items-center gap-1 truncate ${deltaColor}`}
             title={

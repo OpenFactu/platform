@@ -113,7 +113,7 @@ export const ItemGeneralFields: React.FC<Props> = ({
         })()}
       </div>
       <div className="flex flex-col gap-1.5">
-        <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
+        <label className="text-[11px] font-bold text-fg-muted uppercase tracking-wider ml-1">
           Categoría (Define Prefijo)
         </label>
         <SearchableSelect
@@ -130,7 +130,7 @@ export const ItemGeneralFields: React.FC<Props> = ({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
+        <label className="text-[11px] font-bold text-fg-muted uppercase tracking-wider ml-1">
           Unidad Base <span className="text-rose-500">*</span>
         </label>
         {/* El `required` del <select> nativo no llegaba a validar nada (no hay

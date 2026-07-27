@@ -59,7 +59,7 @@ export const ReportPayslip: React.FC = () => {
 
       <Card className="overflow-hidden" noPadding>
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 dark:bg-slate-900/60 text-[10px] font-black uppercase tracking-wider text-slate-500">
+          <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-wider text-slate-500">
             <tr>
               <th className="text-left p-3">Empleado</th>
               <th className="text-left p-3">Período</th>
@@ -87,10 +87,7 @@ export const ReportPayslip: React.FC = () => {
                 const emp = employees[p.employeeId];
                 const name = emp ? `${emp.firstName} ${emp.lastName}` : p.employeeId;
                 return (
-                  <tr
-                    key={p.id}
-                    className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
-                  >
+                  <tr key={p.id} className="border-t border-border-subtle hover:bg-bg-hover">
                     <td className="p-3">{name}</td>
                     <td className="p-3 font-mono text-xs">
                       {p.periodYear}-{String(p.periodMonth).padStart(2, '0')}

@@ -126,10 +126,10 @@ export const PartnerGroups: React.FC = () => {
               CRM / Estructura
             </span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight text-display">
+          <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
             Grupos de Socios
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <p className="text-fg-muted font-medium">
             Clasifica tus interlocutores comerciales para segmentación y tarifas.
           </p>
         </div>
@@ -147,7 +147,7 @@ export const PartnerGroups: React.FC = () => {
       <Card className="overflow-hidden border-0" noPadding>
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-black text-slate-400 dark:text-slate-500">
+            <tr className="bg-bg-muted border-b border-border-subtle text-[10px] uppercase font-black text-fg-subtle">
               <th className="px-6 py-4">Identificación</th>
               <th className="px-6 py-4">Codificación</th>
               <th className="px-6 py-4 text-center">Tipología</th>
@@ -181,16 +181,16 @@ export const PartnerGroups: React.FC = () => {
                   />
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex flex-col gap-2 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="flex flex-col gap-2 bg-bg-card p-2 rounded-lg border border-border-default">
                     {/* Checkbox no tiene prop `label`: el <label> envolvente se conserva. */}
-                    <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+                    <label className="flex items-center gap-2 text-xs font-bold text-fg-body cursor-pointer">
                       <Checkbox
                         checked={newRow.isCustomer}
                         onChange={(checked) => setNewRow({ ...newRow, isCustomer: checked })}
                       />
                       <span>Cliente</span>
                     </label>
-                    <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+                    <label className="flex items-center gap-2 text-xs font-bold text-fg-body cursor-pointer">
                       <Checkbox
                         checked={newRow.isVendor}
                         onChange={(checked) => setNewRow({ ...newRow, isVendor: checked })}
@@ -220,7 +220,7 @@ export const PartnerGroups: React.FC = () => {
                   e.stopPropagation();
                   openContextMenu(e, buildCtxItems(g));
                 }}
-                className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group"
+                className="hover:bg-bg-hover transition-colors group"
               >
                 <td className="px-6 py-4">
                   {editingId === g.id ? (
@@ -250,10 +250,8 @@ export const PartnerGroups: React.FC = () => {
                         {g.code?.substring(0, 2).toUpperCase() || '??'}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">
-                          {g.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
+                        <p className="font-bold text-fg-default text-sm leading-tight">{g.name}</p>
+                        <p className="text-[10px] text-fg-subtle font-bold uppercase tracking-widest">
                           {g.code}
                         </p>
                       </div>
@@ -277,20 +275,18 @@ export const PartnerGroups: React.FC = () => {
                   ) : g.codePrefix ? (
                     <Badge
                       variant="neutral"
-                      className="font-mono tracking-widest text-[10px] bg-slate-100 dark:bg-slate-800"
+                      className="font-mono tracking-widest text-[10px] bg-bg-muted"
                     >
                       {g.codePrefix}-XXX
                     </Badge>
                   ) : (
-                    <span className="text-slate-300 dark:text-slate-600 italic text-[10px]">
-                      Sin Prefijo
-                    </span>
+                    <span className="text-fg-subtle italic text-[10px]">Sin Prefijo</span>
                   )}
                 </td>
                 <td className="px-6 py-4">
                   {editingId === g.id ? (
                     <div className="flex flex-col gap-2">
-                      <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+                      <label className="flex items-center gap-2 text-xs font-bold text-fg-body cursor-pointer">
                         <Checkbox
                           checked={g.isCustomer}
                           onChange={(checked) =>
@@ -303,7 +299,7 @@ export const PartnerGroups: React.FC = () => {
                         />
                         <span>Cliente</span>
                       </label>
-                      <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+                      <label className="flex items-center gap-2 text-xs font-bold text-fg-body cursor-pointer">
                         <Checkbox
                           checked={g.isVendor}
                           onChange={(checked) =>

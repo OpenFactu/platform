@@ -549,19 +549,19 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
     >
       <div className="flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
         {/* ----------- TOP GRID: Líneas del documento ----------- */}
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/40 overflow-hidden">
-          <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+        <div className="rounded-xl border border-border-default bg-bg-muted overflow-hidden">
+          <div className="px-4 py-2 bg-bg-muted border-b border-border-default flex items-center justify-between">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
               Líneas del documento
             </p>
-            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+            <p className="text-[10px] font-bold text-fg-subtle">
               {traceableLines.length} línea{traceableLines.length === 1 ? '' : 's'} con trazabilidad
             </p>
           </div>
           <div className="max-h-[180px] overflow-auto">
             <table className="w-full text-[12px] min-w-[520px]">
-              <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
-                <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+              <thead className="sticky top-0 bg-bg-muted backdrop-blur-sm border-b border-border-default">
+                <tr className="text-[9px] font-black uppercase tracking-widest text-fg-subtle">
                   <th className="px-3 py-2 text-left">#</th>
                   <th className="px-3 py-2 text-left">Artículo</th>
                   <th className="px-3 py-2 text-center">Tipo</th>
@@ -571,13 +571,10 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                   <th className="px-3 py-2 text-center">Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-border-subtle">
                 {traceableLines.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={7}
-                      className="px-3 py-8 text-center text-xs text-slate-400 dark:text-slate-500 italic"
-                    >
+                    <td colSpan={7} className="px-3 py-8 text-center text-xs text-fg-subtle italic">
                       No hay líneas con lotes o series en este documento.
                     </td>
                   </tr>
@@ -599,24 +596,20 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                       onClick={() => setSelectedIdx(originalIdx)}
                       className={cn(
                         'cursor-pointer transition-colors',
-                        isSelected
-                          ? 'bg-primary/10 dark:bg-primary/15'
-                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/40',
+                        isSelected ? 'bg-primary/10 dark:bg-primary/15' : 'hover:bg-bg-hover',
                       )}
                     >
-                      <td className="px-3 py-2 text-slate-400 dark:text-slate-500 font-mono text-[11px]">
-                        {i + 1}
-                      </td>
+                      <td className="px-3 py-2 text-fg-subtle font-mono text-[11px]">{i + 1}</td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2 min-w-0">
                           {isSelected && (
                             <div className="w-1 h-6 bg-primary rounded-full shrink-0" />
                           )}
                           <div className="min-w-0">
-                            <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">
+                            <p className="font-semibold text-fg-default truncate">
                               {item?.name || '—'}
                             </p>
-                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-mono">
+                            <p className="text-[10px] font-bold text-fg-subtle uppercase tracking-wider font-mono">
                               {item?.code || '—'}
                             </p>
                           </div>
@@ -627,10 +620,10 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                           {type}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-right font-bold tabular-nums text-slate-700 dark:text-slate-200">
+                      <td className="px-3 py-2 text-right font-bold tabular-nums text-fg-body">
                         {req.toFixed(2)}
                       </td>
-                      <td className="px-3 py-2 text-right font-bold tabular-nums text-slate-700 dark:text-slate-200">
+                      <td className="px-3 py-2 text-right font-bold tabular-nums text-fg-body">
                         {asig.toFixed(2)}
                       </td>
                       <td
@@ -667,9 +660,9 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
         {selectedLine && selectedItem && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
             {/* -------- IZQUIERDA: Lista de lotes/series existentes -------- */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 flex flex-col overflow-hidden min-h-[320px]">
-              <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+            <div className="rounded-xl border border-border-default bg-bg-card flex flex-col overflow-hidden min-h-[320px]">
+              <div className="px-4 py-2 bg-bg-muted border-b border-border-default flex items-center justify-between gap-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
                   {isSale
                     ? 'Stock disponible'
                     : `${manageBy === 'S' ? 'Series' : 'Lotes'} existentes`}
@@ -690,7 +683,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
               </div>
 
               {/* Search */}
-              <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+              <div className="p-2 border-b border-border-subtle">
                 <Input
                   inputSize="sm"
                   leftIcon={<Search size={12} />}
@@ -702,7 +695,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
 
               {/* Crear nuevo (solo compra) */}
               {!isSale && (
-                <div className="p-2 border-b border-slate-100 dark:border-slate-800 bg-amber-50/40 dark:bg-amber-500/5 space-y-1">
+                <div className="p-2 border-b border-border-subtle bg-amber-50/40 dark:bg-amber-500/5 space-y-1">
                   <div className="flex items-center gap-1.5">
                     {/* El lector USB y la cámara escriben aquí: `inputRef` expone el
                         <input> interno para mantener el foco entre lecturas, y el
@@ -775,7 +768,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                       <Plus size={14} />
                     </Button>
                   </div>
-                  <p className="text-[9px] text-slate-400 dark:text-slate-500 italic px-1 leading-tight">
+                  <p className="text-[9px] text-fg-subtle italic px-1 leading-tight">
                     Pega con <kbd className="font-mono">,</kbd> <kbd className="font-mono">;</kbd> o
                     saltos de línea · rangos tipo <kbd className="font-mono">S0001-S0010</kbd> · usa{' '}
                     <kbd className="font-mono">📷</kbd> para escanear con cámara o un lector USB
@@ -786,19 +779,19 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
               {/* Lista de existentes */}
               <div className="flex-1 overflow-y-auto max-h-[320px]">
                 {loadingAvail ? (
-                  <p className="p-4 text-[11px] text-slate-400 dark:text-slate-500 italic text-center">
+                  <p className="p-4 text-[11px] text-fg-subtle italic text-center">
                     Cargando {manageBy === 'S' ? 'series' : 'lotes'}...
                   </p>
                 ) : availableList.length === 0 ? (
-                  <p className="p-4 text-[11px] text-slate-400 dark:text-slate-500 italic text-center">
+                  <p className="p-4 text-[11px] text-fg-subtle italic text-center">
                     {isSale
                       ? 'No hay stock disponible con trazabilidad.'
                       : `No hay ${manageBy === 'S' ? 'series' : 'lotes'} previos para este artículo.`}
                   </p>
                 ) : (
                   <table className="w-full text-[11px]">
-                    <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-100 dark:border-slate-800">
-                      <tr className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    <thead className="sticky top-0 bg-bg-muted backdrop-blur-sm border-b border-border-subtle">
+                      <tr className="text-[9px] font-black uppercase tracking-wider text-fg-subtle">
                         <th className="px-2 py-1.5 text-left">
                           {manageBy === 'S' ? 'Nº Serie' : 'Lote'}
                         </th>
@@ -814,7 +807,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                         <th className="px-2 py-1.5 w-6"></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-border-subtle">
                       {availableList.map((ab) => {
                         const alreadyAssigned =
                           manageBy === 'S' && assigned.some((a) => a.batchNum === ab.batchNum);
@@ -829,22 +822,22 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                                 : 'hover:bg-primary/5 cursor-pointer',
                             )}
                           >
-                            <td className="px-2 py-1.5 font-mono font-bold text-slate-700 dark:text-slate-200">
+                            <td className="px-2 py-1.5 font-mono font-bold text-fg-body">
                               {ab.batchNum}
                             </td>
                             {manageBy === 'B' && (
-                              <td className="px-2 py-1.5 text-right font-bold tabular-nums text-slate-600 dark:text-slate-300">
+                              <td className="px-2 py-1.5 text-right font-bold tabular-nums text-fg-body">
                                 {Number(ab.quantity).toFixed(2)}
                               </td>
                             )}
                             {isSale && (
-                              <td className="px-2 py-1.5 text-slate-400 dark:text-slate-500 text-[10px] truncate">
+                              <td className="px-2 py-1.5 text-fg-subtle text-[10px] truncate">
                                 {ab.warehouseName || '—'}
                                 {ab.zoneName ? ` / ${ab.zoneName}` : ''}
                               </td>
                             )}
                             {!isSale && manageBy === 'B' && (
-                              <td className="px-2 py-1.5 text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">
+                              <td className="px-2 py-1.5 text-[10px] text-fg-subtle tabular-nums">
                                 {ab.expiryDate ? new Date(ab.expiryDate).toLocaleDateString() : '—'}
                               </td>
                             )}
@@ -871,9 +864,9 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
             </div>
 
             {/* -------- DERECHA: Asignado a esta línea -------- */}
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 flex flex-col overflow-hidden">
-              <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+            <div className="rounded-xl border border-border-default bg-bg-card flex flex-col overflow-hidden">
+              <div className="px-4 py-2 bg-bg-muted border-b border-border-default flex items-center justify-between gap-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
                   Asignado
                 </p>
                 <div className="flex items-center gap-3">
@@ -888,7 +881,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                     />
                   </span>
                   <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider">
-                    <span className="text-slate-400 dark:text-slate-500 tabular-nums">
+                    <span className="text-fg-subtle tabular-nums">
                       {manageBy === 'S'
                         ? `${assigned.length} / ${Math.round(requiredQty)} series`
                         : `${totalAssigned.toFixed(2)} / ${requiredQty.toFixed(2)}`}
@@ -902,8 +895,8 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                 </div>
               </div>
               {showZoneColumn && assigned.length > 0 && (
-                <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 bg-indigo-50/40 dark:bg-indigo-500/5 flex items-center gap-2">
-                  <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 shrink-0">
+                <div className="px-3 py-2 border-b border-border-subtle bg-indigo-50/40 dark:bg-indigo-500/5 flex items-center gap-2">
+                  <span className="text-[9px] font-black uppercase tracking-wider text-fg-muted shrink-0">
                     Zona todos:
                   </span>
                   {/* Actúa como acción, no como campo: el valor vuelve siempre a
@@ -927,8 +920,8 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                   />
                 ) : (
                   <table className="w-full text-[11px]">
-                    <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-100 dark:border-slate-800">
-                      <tr className="text-[9px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    <thead className="sticky top-0 bg-bg-muted backdrop-blur-sm border-b border-border-subtle">
+                      <tr className="text-[9px] font-black uppercase tracking-wider text-fg-subtle">
                         <th className="px-2 py-1.5 w-6"></th>
                         <th className="px-2 py-1.5 text-left">
                           {manageBy === 'S' ? 'Nº Serie' : 'Lote'}
@@ -939,12 +932,9 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                         <th className="px-2 py-1.5 w-6"></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-border-subtle">
                       {assigned.map((a) => (
-                        <tr
-                          key={a.batchNum}
-                          className="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                        >
+                        <tr key={a.batchNum} className="hover:bg-bg-hover">
                           <td className="px-2 py-1.5">
                             <Button
                               type="button"
@@ -956,7 +946,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                               <ChevronLeft size={14} />
                             </Button>
                           </td>
-                          <td className="px-2 py-1.5 font-mono font-bold text-slate-700 dark:text-slate-200">
+                          <td className="px-2 py-1.5 font-mono font-bold text-fg-body">
                             {a.batchNum}
                           </td>
                           {manageBy === 'B' && (
@@ -974,7 +964,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                             </td>
                           )}
                           {manageBy === 'B' && (
-                            <td className="px-2 py-1.5 text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">
+                            <td className="px-2 py-1.5 text-[10px] text-fg-subtle tabular-nums">
                               {a.expiryDate ? new Date(a.expiryDate).toLocaleDateString() : '—'}
                             </td>
                           )}
@@ -1008,12 +998,12 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                 )}
               </div>
               {selectedItem && (
-                <div className="px-3 py-2 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px]">
-                  <span className="font-bold text-slate-500 dark:text-slate-400 truncate">
+                <div className="px-3 py-2 bg-bg-muted border-t border-border-subtle flex items-center justify-between text-[10px]">
+                  <span className="font-bold text-fg-muted truncate">
                     <Barcode size={10} className="inline mr-1" />
                     {selectedItem.name}
                   </span>
-                  <span className="font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0 ml-2">
+                  <span className="font-black uppercase tracking-wider text-fg-subtle shrink-0 ml-2">
                     {assigned.length} línea{assigned.length === 1 ? '' : 's'}
                   </span>
                 </div>
@@ -1023,8 +1013,8 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
         )}
 
         {/* ----------- FOOTER ----------- */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 italic">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-border-subtle">
+          <p className="text-[11px] text-fg-subtle italic">
             {
               traceableLines.filter(({ originalIdx }) => {
                 const l = lines[originalIdx];

@@ -321,10 +321,8 @@ export const Timeclock: React.FC = () => {
                 onChange={(v) => setFilters({ ...filters, to: v ?? '' })}
               />
               <div className="text-xs text-slate-500">
-                <span className="font-bold text-slate-700 dark:text-slate-300">
-                  {allEntries.length}
-                </span>{' '}
-                fichajes en el rango
+                <span className="font-bold text-fg-body">{allEntries.length}</span> fichajes en el
+                rango
               </div>
             </div>
           </Card>

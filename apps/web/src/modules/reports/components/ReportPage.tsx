@@ -85,15 +85,11 @@ export function ReportPage<T extends Record<string, any>>({
           <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mb-2">
             <ArrowLeft size={12} className="mr-1" /> Volver
           </Button>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2 tracking-tight">
+          <h1 className="text-2xl font-black text-fg-default flex items-center gap-2 tracking-tight">
             <FileText size={22} className="text-blue-600 dark:text-blue-300" />
             {title}
           </h1>
-          {subtitle && (
-            <p className="text-slate-500 dark:text-slate-400 font-medium text-sm mt-0.5">
-              {subtitle}
-            </p>
-          )}
+          {subtitle && <p className="text-fg-muted font-medium text-sm mt-0.5">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {onRefresh && (
@@ -112,12 +108,12 @@ export function ReportPage<T extends Record<string, any>>({
         </div>
       </div>
 
-      {filters && <Card className="p-4 border-slate-100 dark:border-slate-800">{filters}</Card>}
+      {filters && <Card className="p-4 border-border-subtle">{filters}</Card>}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400">
+            <thead className="bg-bg-muted text-fg-muted">
               <tr>
                 {columns.map((c) => (
                   <th
@@ -151,18 +147,12 @@ export function ReportPage<T extends Record<string, any>>({
                 </tr>
               ) : (
                 rows.map((r, i) => (
-                  <tr
-                    key={i}
-                    className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/30"
-                  >
+                  <tr key={i} className="border-t border-border-subtle hover:bg-bg-hover">
                     {columns.map((c) => {
                       const raw = r[c.key];
                       const value = c.format ? c.format(raw, r) : raw;
                       return (
-                        <td
-                          key={c.key}
-                          className="px-3 py-2 text-xs text-slate-700 dark:text-slate-200 tabular-nums"
-                        >
+                        <td key={c.key} className="px-3 py-2 text-xs text-fg-body tabular-nums">
                           {value == null || value === '' ? '—' : String(value)}
                         </td>
                       );

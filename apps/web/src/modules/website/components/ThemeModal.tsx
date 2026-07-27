@@ -115,12 +115,12 @@ export const ThemeModal: React.FC<Props> = ({ open, onClose, site, onSaved }) =>
               size="sm"
               onClick={() => setCssFullscreen(true)}
               title="Pantalla completa"
-              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              className="text-slate-400 hover:text-fg-body"
             >
               <Maximize2 size={13} />
             </Button>
           </div>
-          <div className="h-40 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="h-40 rounded-lg border border-border-default overflow-hidden">
             <AdvancedEditor value={customCss} onChange={setCustomCss} language="css" />
           </div>
           <p className="text-[11px] text-slate-400 mt-1">
@@ -129,16 +129,16 @@ export const ThemeModal: React.FC<Props> = ({ open, onClose, site, onSaved }) =>
           </p>
         </div>
         {cssFullscreen && (
-          <div className="fixed inset-0 z-[100] bg-white dark:bg-slate-900 flex flex-col p-4 gap-3">
+          <div className="fixed inset-0 z-[100] bg-bg-card flex flex-col p-4 gap-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+              <span className="text-sm font-bold text-fg-body">
                 CSS personalizado — pantalla completa
               </span>
               <Button size="sm" variant="secondary" onClick={() => setCssFullscreen(false)}>
                 <Minimize2 size={14} className="mr-2" /> Salir (Esc)
               </Button>
             </div>
-            <div className="flex-1 min-h-0 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div className="flex-1 min-h-0 rounded-lg border border-border-default overflow-hidden">
               <AdvancedEditor value={customCss} onChange={setCustomCss} language="css" />
             </div>
           </div>

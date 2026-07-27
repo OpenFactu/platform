@@ -10,12 +10,12 @@ interface Props {
 
 export const PreviewPane: React.FC<Props> = ({ previewUrl, previewing, onRefresh }) => (
   <Card
-    className="h-full border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50"
+    className="h-full border-border-subtle bg-bg-muted"
     noPadding
     bodyClassName="h-full flex flex-col overflow-hidden p-3"
   >
     <div className="flex items-center justify-between mb-2 flex-shrink-0">
-      <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
+      <div className="text-[10px] font-black text-fg-subtle uppercase tracking-widest flex items-center gap-2">
         <Eye size={12} /> Vista previa PDF
         {previewing && <Loader />}
       </div>
@@ -26,7 +26,7 @@ export const PreviewPane: React.FC<Props> = ({ previewUrl, previewing, onRefresh
         Refrescar
       </button>
     </div>
-    <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden relative">
+    <div className="flex-1 min-h-0 bg-bg-card border border-border-default rounded-lg overflow-hidden relative">
       {previewUrl ? (
         <iframe
           src={previewUrl}
@@ -34,7 +34,7 @@ export const PreviewPane: React.FC<Props> = ({ previewUrl, previewing, onRefresh
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
         />
       ) : (
-        <div className="h-full flex items-center justify-center text-slate-300 dark:text-slate-600 text-sm italic">
+        <div className="h-full flex items-center justify-center text-fg-subtle text-sm italic">
           Generando vista previa...
         </div>
       )}

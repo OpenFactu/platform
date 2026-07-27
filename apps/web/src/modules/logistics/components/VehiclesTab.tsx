@@ -148,7 +148,7 @@ export const VehiclesTab: React.FC = () => {
               return (
                 <li
                   key={v.id}
-                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 ${
+                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0 ${
                     archived ? 'opacity-60' : ''
                   }`}
                 >
@@ -157,10 +157,10 @@ export const VehiclesTab: React.FC = () => {
                   </Badge>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                      <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                         {v.code}
                       </code>
-                      <span className="font-semibold text-sm text-slate-800 dark:text-slate-100 tracking-wide">
+                      <span className="font-semibold text-sm text-fg-default tracking-wide">
                         {v.plate}
                       </span>
                       {(v.brand || v.model) && (
@@ -169,7 +169,7 @@ export const VehiclesTab: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex gap-3 flex-wrap">
+                    <div className="text-[11px] text-fg-muted mt-0.5 flex gap-3 flex-wrap">
                       {defDriver && (
                         <span>
                           Conductor habitual: {defDriver.firstName} {defDriver.lastName}
@@ -294,7 +294,7 @@ export const VehiclesTab: React.FC = () => {
             value={form.notes || ''}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>

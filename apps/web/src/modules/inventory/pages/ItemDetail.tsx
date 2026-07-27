@@ -151,10 +151,10 @@ export const ItemDetail: React.FC = () => {
             <img
               src={cover}
               alt={item.name}
-              className="w-32 h-32 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+              className="w-32 h-32 rounded-xl object-cover border border-border-default shrink-0"
             />
           ) : (
-            <div className="w-32 h-32 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-300 dark:text-slate-600 shrink-0">
+            <div className="w-32 h-32 rounded-xl bg-bg-muted border border-border-default flex items-center justify-center text-fg-subtle shrink-0">
               <Package size={40} />
             </div>
           )}
@@ -168,7 +168,7 @@ export const ItemDetail: React.FC = () => {
             >
               <ArrowLeft size={12} /> Catálogo
             </Button>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight font-display truncate">
+            <h1 className="text-2xl font-black text-fg-default tracking-tight font-display truncate">
               {form.values.name || item.name}
             </h1>
             <p className="font-mono text-xs text-blue-600 dark:text-blue-300 font-black uppercase mt-0.5">
@@ -196,7 +196,7 @@ export const ItemDetail: React.FC = () => {
             <LabelPrintButton
               params={{ itemId: item.id }}
               title="Imprimir etiqueta del artículo"
-              className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg border border-border-default text-sm font-semibold text-fg-body hover:bg-bg-hover"
               triggerLabel={
                 <>
                   <Tag size={14} /> Etiqueta

@@ -110,10 +110,10 @@ export const Taxes: React.FC = () => {
               Finanzas / Configuración
             </span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          <h1 className="text-4xl font-black text-fg-default tracking-tight">
             Gestión de Impuestos
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <p className="text-fg-muted font-medium">
             Configura los tipos de IVA y retenciones aplicables a tus documentos.
           </p>
         </div>
@@ -143,13 +143,13 @@ export const Taxes: React.FC = () => {
       <Card className="overflow-hidden border-0" noPadding>
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-black text-slate-400 dark:text-slate-400">
+            <tr className="bg-bg-muted border-b border-border-subtle text-[10px] uppercase font-black text-fg-subtle">
               <th className="p-6">Código / Identificador</th>
               <th className="p-6 text-center">Porcentaje (%)</th>
               <th className="p-6 text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          <tbody className="divide-y divide-border-subtle">
             {/* New Row Placeholder */}
             {newRow && (
               <tr className="bg-blue-50/30 dark:bg-blue-500/5 animate-in zoom-in-95 duration-200">
@@ -190,7 +190,7 @@ export const Taxes: React.FC = () => {
               <tr
                 key={t.id}
                 onContextMenu={(e) => openContextMenu(e, buildCtxItems(t))}
-                className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors group"
+                className="hover:bg-bg-hover transition-colors group"
               >
                 <td className="p-6">
                   {editingId === t.id ? (
@@ -205,12 +205,12 @@ export const Taxes: React.FC = () => {
                     />
                   ) : (
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 dark:text-slate-400 group-hover:bg-amber-100 dark:group-hover:bg-amber-500/20 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                      <div className="w-10 h-10 bg-bg-muted rounded-xl flex items-center justify-center text-fg-subtle group-hover:bg-amber-100 dark:group-hover:bg-amber-500/20 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                         <Percent size={18} />
                       </div>
                       <div>
-                        <p className="font-black text-slate-800 dark:text-slate-100">{t.code}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold uppercase">
+                        <p className="font-black text-fg-default">{t.code}</p>
+                        <p className="text-[10px] text-fg-subtle font-bold uppercase">
                           Identificador Maestro
                         </p>
                       </div>
@@ -282,9 +282,9 @@ export const Taxes: React.FC = () => {
 
             {!loading && taxes.length === 0 && !newRow && (
               <tr>
-                <td colSpan={3} className="p-20 text-center text-slate-400 dark:text-slate-500">
+                <td colSpan={3} className="p-20 text-center text-fg-subtle">
                   <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-full flex items-center justify-center text-slate-200">
+                    <div className="w-16 h-16 bg-bg-muted rounded-full flex items-center justify-center text-slate-200">
                       <Percent size={32} />
                     </div>
                     <p className="font-medium">No hay impuestos definidos todavía.</p>
@@ -299,7 +299,7 @@ export const Taxes: React.FC = () => {
               <tr>
                 <td colSpan={3} className="p-20 text-center">
                   <Loader size="lg" />
-                  <p className="text-slate-400 dark:text-slate-500 mt-4 font-medium italic">
+                  <p className="text-fg-subtle mt-4 font-medium italic">
                     Sincronizando con el servidor...
                   </p>
                 </td>

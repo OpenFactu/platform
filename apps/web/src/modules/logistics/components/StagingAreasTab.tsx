@@ -486,14 +486,14 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
               return (
                 <li
                   key={a.id}
-                  className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                  className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0"
                 >
-                  <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded shrink-0">
+                  <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded shrink-0">
                     {a.code}
                   </code>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">
+                      <span className="font-semibold text-sm text-fg-default truncate">
                         {a.name}
                       </span>
                       {partner && (
@@ -502,7 +502,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex gap-3 flex-wrap">
+                    <div className="text-[11px] text-fg-muted mt-0.5 flex gap-3 flex-wrap">
                       {wh && <span>Almacén: {wh.name}</span>}
                       {a.address && <span className="truncate max-w-sm">{a.address}</span>}
                     </div>
@@ -708,7 +708,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             Pega lat/lng de Google Maps si conoces el punto exacto. Si no, se geolocalizará por
             dirección.
           </p>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>
@@ -768,12 +768,12 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                     return (
                       <li
                         key={ai.id}
-                        className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                        className="flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-0"
                       >
-                        <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                        <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                           {it?.code || '—'}
                         </code>
-                        <span className="flex-1 text-sm text-slate-800 dark:text-slate-100">
+                        <span className="flex-1 text-sm text-fg-default">
                           {it?.name || ai.itemId}
                         </span>
                         {ai.expectedQty != null && (
@@ -823,14 +823,14 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                   {areaPackages.map((pk) => (
                     <li
                       key={pk.id}
-                      className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                      className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0"
                     >
                       <Badge variant={PKG_BADGE[pk.status] || 'neutral'}>{pk.status}</Badge>
-                      <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                      <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                         {pk.code}
                       </code>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex gap-3 flex-wrap">
+                        <div className="text-[11px] text-fg-muted flex gap-3 flex-wrap">
                           {pk.shipmentId && (
                             <span>
                               Envío:{' '}
@@ -850,7 +850,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                 </ul>
               </Card>
             )}
-            <div className="text-[11px] text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="text-[11px] text-slate-500 pt-2 border-t border-border-subtle flex items-center justify-between">
               <span>
                 Total paquetes: <b>{areaPackages.length}</b>
               </span>
@@ -872,7 +872,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
       >
         {qrFor && (
           <div className="space-y-3 pt-4">
-            <div className="flex items-center justify-center p-4 bg-white rounded-lg border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-center p-4 bg-white rounded-lg border border-border-subtle">
               {qrFor.imgUrl ? (
                 <img src={qrFor.imgUrl} alt="QR" className="w-80 h-80" />
               ) : (
@@ -891,12 +891,12 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                     {qrFor.payload.routes.map((r: any) => (
                       <li
                         key={r.id}
-                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700"
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-bg-muted border border-border-default"
                       >
-                        <code className="px-1.5 py-0.5 bg-white dark:bg-slate-900 text-[10px] font-mono rounded shadow-sm">
+                        <code className="px-1.5 py-0.5 bg-bg-card text-[10px] font-mono rounded shadow-sm">
                           {r.code}
                         </code>
-                        <span className="flex-1 text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                        <span className="flex-1 text-xs font-semibold text-fg-default truncate">
                           {r.name || '—'}
                         </span>
                         <span className="text-[11px] text-slate-500 shrink-0">

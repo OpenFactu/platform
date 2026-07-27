@@ -128,7 +128,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
   };
 
   const textareaCls =
-    'w-full rounded-md border border-slate-200 dark:border-slate-700 bg-transparent p-2 text-sm ' +
+    'w-full rounded-md border border-border-default bg-transparent p-2 text-sm ' +
     'focus:outline-none focus:ring-2 focus:ring-accent/40 min-h-[80px] resize-y';
 
   return (
@@ -193,7 +193,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
           {result && (
             <>
               {result.notes && (
-                <div className="text-xs p-2 rounded-md bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300">
+                <div className="text-xs p-2 rounded-md bg-bg-muted text-fg-body">
                   {result.notes}
                 </div>
               )}
@@ -208,7 +208,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
                     return (
                       <div
                         key={q.name}
-                        className="border border-slate-200 dark:border-slate-700 rounded-md p-2 space-y-1"
+                        className="border border-border-default rounded-md p-2 space-y-1"
                       >
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-mono font-bold">{q.name}</span>
@@ -272,7 +272,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
         </div>
 
         {/* ── Columna derecha: preview PDF ── */}
-        <div className="border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden min-h-[60vh] flex items-center justify-center bg-slate-50 dark:bg-slate-900/40">
+        <div className="border border-border-default rounded-md overflow-hidden min-h-[60vh] flex items-center justify-center bg-bg-muted">
           {previewLoading && (
             <div className="text-sm text-slate-400 flex items-center gap-2">
               <Loader2 size={16} className="animate-spin" /> Renderizando PDF…

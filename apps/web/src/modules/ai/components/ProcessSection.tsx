@@ -21,14 +21,14 @@ export const ProcessSection: React.FC<{
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-accent dark:hover:text-accent transition-colors"
+        className="flex items-center gap-1.5 text-[11px] font-bold text-fg-muted hover:text-accent dark:hover:text-accent transition-colors"
       >
         {active ? <Loader2 size={12} className="animate-spin text-accent" /> : <Brain size={12} />}
         {active ? 'Pensando…' : `Ver proceso (${count} paso${count === 1 ? '' : 's'})`}
         <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="pl-3 border-l-2 border-slate-200 dark:border-slate-700 space-y-1.5 max-h-72 overflow-y-auto custom-scrollbar">
+        <div className="pl-3 border-l-2 border-border-default space-y-1.5 max-h-72 overflow-y-auto custom-scrollbar">
           {children}
         </div>
       )}

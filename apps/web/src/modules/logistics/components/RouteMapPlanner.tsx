@@ -143,7 +143,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-      <div className="md:col-span-3 h-[420px] rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700">
+      <div className="md:col-span-3 h-[420px] rounded-lg overflow-hidden border border-border-default">
         {loading ? (
           <div className="h-full flex items-center justify-center text-sm text-slate-400">
             Cargando envíos…
@@ -214,7 +214,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
           </Button>
         </div>
         {selectedIds.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center text-center text-[11px] text-slate-400 px-2 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700">
+          <div className="flex-1 flex items-center justify-center text-center text-[11px] text-slate-400 px-2 rounded-lg border-2 border-dashed border-border-default">
             Haz click en los pines del mapa para añadirlos a la ruta en el orden que quieras.
           </div>
         ) : (
@@ -224,7 +224,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
               return (
                 <li
                   key={id}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-bg-muted border border-border-default text-xs"
                 >
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-bold">
                     {i + 1}

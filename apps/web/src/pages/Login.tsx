@@ -219,7 +219,7 @@ export const Login: React.FC = () => {
           <div className="lg:hidden flex flex-col items-center mb-8">
             <KeirostLogo size={56} variant="dark" className="mb-4" />
             <h1
-              className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight"
+              className="text-2xl font-extrabold text-fg-default tracking-tight"
               style={{ fontFamily: "'Space Grotesk', sans-serif" }}
             >
               Keirost <span className="text-teal-600">ERP</span>
@@ -227,10 +227,8 @@ export const Login: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-              Iniciar Sesión
-            </h3>
-            <p className="text-slate-500 dark:text-slate-300 font-medium">
+            <h3 className="text-3xl font-black text-fg-default tracking-tight">Iniciar Sesión</h3>
+            <p className="text-fg-muted font-medium">
               Introduce tus credenciales para acceder al ERP.
             </p>
           </div>
@@ -246,11 +244,11 @@ export const Login: React.FC = () => {
             <div className={`space-y-5 ${twoFactorRequired ? 'hidden' : ''}`}>
               {/* Input Email / Username — primero */}
               <div className="space-y-1.5 focus-within:translate-y-[-2px] transition-transform">
-                <label className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest ml-1">
+                <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
                   Usuario / Email
                 </label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-4 flex items-center text-slate-400 dark:text-slate-500 group-focus-within:text-[#0D9488] dark:group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
+                  <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] dark:group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
                     {loginAvatarUrl ? (
                       <img
                         src={loginAvatarUrl}
@@ -268,7 +266,7 @@ export const Login: React.FC = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     onBlur={(e) => fetchTenantsForUser(e.target.value)}
                     placeholder="admin o usuario@empresa.com"
-                    className="w-full bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
+                    className="w-full bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
                   />
                 </div>
               </div>
@@ -276,7 +274,7 @@ export const Login: React.FC = () => {
               {/* Selector de Empresa — aparece después de introducir el usuario */}
               {tenants.length > 1 && (
                 <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <label className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest ml-1">
+                  <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
                     Empresa
                   </label>
                   <div ref={tenantWrapperRef} className="relative">
@@ -285,23 +283,19 @@ export const Login: React.FC = () => {
                       onClick={() => setTenantOpen((o) => !o)}
                       aria-haspopup="listbox"
                       aria-expanded={tenantOpen}
-                      className="w-full flex items-center bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-10 text-left text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all hover:border-[#94A3B8]"
+                      className="w-full flex items-center bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-10 text-left text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all hover:border-[#94A3B8]"
                     >
-                      <div className="absolute inset-y-0 left-4 flex items-center text-slate-400 dark:text-slate-500">
+                      <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle">
                         <Building className="w-4 h-4" />
                       </div>
                       <span
-                        className={
-                          selectedTenant
-                            ? 'text-slate-900 dark:text-slate-100 truncate'
-                            : 'text-slate-400 dark:text-slate-500'
-                        }
+                        className={selectedTenant ? 'text-fg-default truncate' : 'text-fg-subtle'}
                       >
                         {selectedTenant
                           ? tenants.find((t) => t.id === selectedTenant)?.name
                           : 'Seleccionar empresa...'}
                       </span>
-                      <div className="absolute inset-y-0 right-4 flex items-center text-slate-400 dark:text-slate-500">
+                      <div className="absolute inset-y-0 right-4 flex items-center text-fg-subtle">
                         <ChevronDown
                           size={18}
                           className={`transition-transform ${tenantOpen ? 'rotate-180' : ''}`}
@@ -328,16 +322,12 @@ export const Login: React.FC = () => {
                                   className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm font-medium transition-colors ${
                                     isActive
                                       ? 'bg-[#0D9488]/10 text-[#0D9488]'
-                                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                      : 'text-fg-body hover:bg-bg-hover'
                                   }`}
                                 >
                                   <Building
                                     size={14}
-                                    className={
-                                      isActive
-                                        ? 'text-[#0D9488]'
-                                        : 'text-slate-400 dark:text-slate-500'
-                                    }
+                                    className={isActive ? 'text-[#0D9488]' : 'text-fg-subtle'}
                                   />
                                   <span className="flex-1 truncate">{t.name}</span>
                                   {isActive && <Check size={14} className="text-[#0D9488]" />}
@@ -361,7 +351,7 @@ export const Login: React.FC = () => {
               {/* Input Password */}
               <div className="space-y-1.5 focus-within:translate-y-[-2px] transition-transform">
                 <div className="flex justify-between items-center ml-1">
-                  <label className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest">
+                  <label className="text-xs font-black text-fg-muted uppercase tracking-widest">
                     Contraseña
                   </label>
                   <button
@@ -373,7 +363,7 @@ export const Login: React.FC = () => {
                   </button>
                 </div>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-4 flex items-center text-slate-400 dark:text-slate-500 group-focus-within:text-[#0D9488] dark:group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
+                  <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] dark:group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
                     <Lock size={18} />
                   </div>
                   <input
@@ -382,12 +372,12 @@ export const Login: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-12 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
+                    className="w-full bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-12 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-4 flex items-center text-slate-400 dark:text-slate-500 hover:text-[#0D9488] dark:hover:text-[#0D9488] transition-colors"
+                    className="absolute inset-y-0 right-4 flex items-center text-fg-subtle hover:text-[#0D9488] dark:hover:text-[#0D9488] transition-colors"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -398,11 +388,11 @@ export const Login: React.FC = () => {
             {/* Paso 2FA — se muestra cuando la contraseña es correcta y el usuario tiene 2FA */}
             {twoFactorRequired && (
               <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                <label className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest ml-1">
+                <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
                   Código de verificación
                 </label>
                 <div className="relative group">
-                  <div className="absolute inset-y-0 left-4 flex items-center text-slate-400 dark:text-slate-500 group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
+                  <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
                     <ShieldCheck size={18} />
                   </div>
                   <input
@@ -413,10 +403,10 @@ export const Login: React.FC = () => {
                     value={totpCode}
                     onChange={(e) => setTotpCode(e.target.value)}
                     placeholder="123456 o código de respaldo"
-                    className="w-full bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium tracking-widest"
+                    className="w-full bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium tracking-widest"
                   />
                 </div>
-                <p className="text-[11px] text-slate-400 dark:text-slate-500 ml-1 pt-1">
+                <p className="text-[11px] text-fg-subtle ml-1 pt-1">
                   Introduce el código de tu app de autenticación.
                 </p>
               </div>
@@ -443,7 +433,7 @@ export const Login: React.FC = () => {
             </div>
 
             <div className="text-center pt-4">
-              <p className="text-slate-500 dark:text-slate-300 text-xs font-bold">
+              <p className="text-fg-muted text-xs font-bold">
                 ¿Dudas con tu acceso?{' '}
                 <button
                   type="button"
@@ -457,18 +447,18 @@ export const Login: React.FC = () => {
 
           {/* Trusted Badges */}
           <div className="pt-12 flex items-center justify-center gap-8 opacity-40 grayscale hover:grayscale-0 transition-all">
-            <div className="flex items-center gap-2 text-[10px] font-black text-slate-900 dark:text-slate-100 tracking-tighter">
+            <div className="flex items-center gap-2 text-[10px] font-black text-fg-default tracking-tighter">
               <CheckCircle2 size={16} />
               <span>SECURED DB</span>
             </div>
-            <div className="flex items-center gap-2 text-[10px] font-black text-slate-900 dark:text-slate-100 tracking-tighter">
+            <div className="flex items-center gap-2 text-[10px] font-black text-fg-default tracking-tighter">
               <Zap size={16} />
               <span>TURBO CORE</span>
             </div>
           </div>
         </div>
 
-        <p className="absolute bottom-8 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] pointer-events-none">
+        <p className="absolute bottom-8 text-fg-muted text-[10px] font-black uppercase tracking-[0.2em] pointer-events-none">
           Open Source ERP Platform &bull; 2026
         </p>
       </div>

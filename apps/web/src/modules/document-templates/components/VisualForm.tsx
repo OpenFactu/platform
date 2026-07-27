@@ -22,9 +22,7 @@ interface Props {
 // -------------------- Field helpers --------------------
 
 const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <label className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-    {children}
-  </label>
+  <label className="text-[10px] font-bold text-fg-body uppercase tracking-wider">{children}</label>
 );
 
 const ColorField: React.FC<{ label: string; value: string; onChange: (v: string) => void }> = ({
@@ -39,7 +37,7 @@ const ColorField: React.FC<{ label: string; value: string; onChange: (v: string)
         type="color"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-9 h-9 rounded-lg border border-slate-200 dark:border-slate-700 cursor-pointer flex-shrink-0"
+        className="w-9 h-9 rounded-lg border border-border-default cursor-pointer flex-shrink-0"
       />
       <Input
         value={value}
@@ -62,7 +60,7 @@ const NumberField: React.FC<{
   <div className="space-y-1">
     <FieldLabel>
       {label}
-      {unit && <span className="text-slate-400 dark:text-slate-500 normal-case"> ({unit})</span>}
+      {unit && <span className="text-fg-subtle normal-case"> ({unit})</span>}
     </FieldLabel>
     <Input
       type="number"
@@ -87,9 +85,7 @@ const RangeField: React.FC<{
   <div className="space-y-1">
     <div className="flex items-center justify-between">
       <FieldLabel>{label}</FieldLabel>
-      <span className="text-[10px] font-mono font-bold text-slate-600 dark:text-slate-300">
-        {value}
-      </span>
+      <span className="text-[10px] font-mono font-bold text-fg-body">{value}</span>
     </div>
     <input
       type="range"
@@ -121,7 +117,7 @@ const CheckboxRow: React.FC<{
   title: string;
   description?: string;
 }> = ({ checked, onChange, title, description }) => (
-  <label className="flex items-center gap-3 p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+  <label className="flex items-center gap-3 p-2.5 border border-border-default rounded-lg hover:bg-bg-hover cursor-pointer">
     <input
       type="checkbox"
       checked={checked}
@@ -129,10 +125,8 @@ const CheckboxRow: React.FC<{
       className="w-4 h-4 flex-shrink-0"
     />
     <div>
-      <div className="text-xs font-bold text-slate-700 dark:text-slate-200">{title}</div>
-      {description && (
-        <div className="text-[10px] text-slate-400 dark:text-slate-500">{description}</div>
-      )}
+      <div className="text-xs font-bold text-fg-body">{title}</div>
+      {description && <div className="text-[10px] text-fg-subtle">{description}</div>}
     </div>
   </label>
 );
@@ -305,7 +299,7 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
             onChange={(v) => updateOpt('showCompanyContact', v)}
             title="Mostrar contacto (teléfono, email, web)"
           />
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 italic pt-1">
+          <p className="text-[10px] text-fg-subtle italic pt-1">
             Los datos se leen de <code>SystemConfig</code> (company_name, company_phone...).
             Configurables en los ajustes del tenant.
           </p>
@@ -421,7 +415,9 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
         <div className="space-y-2">
           <CheckboxRow
             checked={!!(opts as any).showCustomFields}
-            onChange={(v) => (updateOpt as unknown as (k: string, val: boolean) => void)('showCustomFields', v)}
+            onChange={(v) =>
+              (updateOpt as unknown as (k: string, val: boolean) => void)('showCustomFields', v)
+            }
             title="Mostrar campos personalizados"
             description="Vuelca automáticamente los campos custom definidos para este documento (`visibleIn=pdf`) al final del PDF."
           />
@@ -430,7 +426,12 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
               <FieldLabel>Título del bloque</FieldLabel>
               <Input
                 value={(opts as any).customFieldsLabel ?? 'Datos adicionales'}
-                onChange={(e) => (updateOpt as unknown as (k: string, val: string) => void)('customFieldsLabel', e.target.value)}
+                onChange={(e) =>
+                  (updateOpt as unknown as (k: string, val: string) => void)(
+                    'customFieldsLabel',
+                    e.target.value,
+                  )
+                }
                 placeholder="Datos adicionales"
               />
             </div>
@@ -501,7 +502,7 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
               onChange={(e) => updateFooter('text', e.target.value)}
               placeholder="Documento generado electrónicamente..."
             />
-            <p className="text-[9px] text-slate-400 dark:text-slate-500 italic">
+            <p className="text-[9px] text-fg-subtle italic">
               Admite variables: <code>{'{{company.name}}'}</code>, <code>{'{{doc.docCode}}'}</code>,{' '}
               <code>{'{{generatedAt}}'}</code>
             </p>
@@ -539,12 +540,12 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
             placeholder="/* Ej: .party { background: #fef3c7; } */"
             rows={8}
             className={cn(
-              'w-full rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-2',
-              'text-[11px] font-mono text-slate-800 dark:text-slate-100 resize-y',
+              'w-full rounded-lg border border-border-default px-3 py-2',
+              'text-[11px] font-mono text-fg-default resize-y',
               'focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300',
             )}
           />
-          <p className="text-[9px] text-slate-400 dark:text-slate-500 italic">
+          <p className="text-[9px] text-fg-subtle italic">
             Se añade al final del bloque <code>&lt;style&gt;</code>, por lo que puede sobrescribir
             cualquier estilo de la plantilla base.
           </p>

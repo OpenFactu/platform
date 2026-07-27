@@ -50,10 +50,10 @@ export const Messages: React.FC = () => {
             Website / Mensajes
           </span>
         </div>
-        <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight text-display">
+        <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
           Mensajes de contacto
         </h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium">
+        <p className="text-fg-muted font-medium">
           {unread > 0 ? `${unread} sin leer` : 'Todo leído'} — enviados desde el formulario de tu
           web pública.
         </p>
@@ -66,17 +66,17 @@ export const Messages: React.FC = () => {
             Aún no has recibido ningún mensaje.
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+          <ul className="divide-y divide-border-subtle">
             {rows.map((row) => (
               <li
                 key={row.id}
                 onClick={() => markRead(row)}
-                className={`px-6 py-4 cursor-pointer transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-800/50 ${row.read ? 'opacity-70' : ''}`}
+                className={`px-6 py-4 cursor-pointer transition-colors hover:bg-bg-hover ${row.read ? 'opacity-70' : ''}`}
               >
                 <div className="flex items-center justify-between gap-4 mb-1">
                   <div className="flex items-center gap-2 min-w-0">
                     {!row.read && <Badge variant="info">Nuevo</Badge>}
-                    <span className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate">
+                    <span className="font-bold text-fg-default text-sm truncate">
                       {row.name || 'Sin nombre'}
                     </span>
                     {row.email && (
@@ -93,17 +93,15 @@ export const Messages: React.FC = () => {
                     {new Date(row.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap">
-                  {row.message}
-                </p>
+                <p className="text-sm text-fg-body whitespace-pre-wrap">{row.message}</p>
                 {row.meta?.fields && Object.keys(row.meta.fields).length > 0 && (
-                  <dl className="mt-2 grid gap-x-6 gap-y-1 md:grid-cols-2 text-xs bg-slate-50 dark:bg-slate-800/60 rounded-lg p-3">
+                  <dl className="mt-2 grid gap-x-6 gap-y-1 md:grid-cols-2 text-xs bg-bg-muted rounded-lg p-3">
                     {Object.entries(row.meta.fields).map(([key, value]) => (
                       <div key={key} className="flex gap-2 min-w-0">
-                        <dt className="font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        <dt className="font-bold text-fg-muted whitespace-nowrap">
                           {key.replace(/_/g, ' ')}:
                         </dt>
-                        <dd className="text-slate-700 dark:text-slate-200 truncate">{value}</dd>
+                        <dd className="text-fg-body truncate">{value}</dd>
                       </div>
                     ))}
                   </dl>

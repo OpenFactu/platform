@@ -104,7 +104,7 @@ export const TemplatesList: React.FC<Props> = ({
       header: 'Nombre',
       accessor: (item: TemplateRow) => (
         <div className="flex items-center gap-2">
-          <span className="font-bold text-slate-800 dark:text-slate-100">{item.name}</span>
+          <span className="font-bold text-fg-default">{item.name}</span>
           {item.isDefault && (
             <Badge variant="success" className="text-[9px] font-black uppercase">
               Default
@@ -201,8 +201,8 @@ export const TemplatesList: React.FC<Props> = ({
       {!loading && (
         <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 items-start">
           {/* Panel izquierdo: tipos */}
-          <Card noPadding className="overflow-hidden border-slate-100 dark:border-slate-800">
-            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800">
+          <Card noPadding className="overflow-hidden border-border-subtle">
+            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-border-subtle">
               Tipo de documento
             </div>
             <ul>
@@ -217,7 +217,7 @@ export const TemplatesList: React.FC<Props> = ({
                       className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left border-l-2 transition-colors ${
                         active
                           ? 'border-accent bg-accent/5'
-                          : 'border-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                          : 'border-transparent hover:bg-bg-hover'
                       }`}
                     >
                       <span className="flex items-center gap-2 min-w-0">
@@ -227,13 +227,13 @@ export const TemplatesList: React.FC<Props> = ({
                           {docType}
                         </span>
                         <span
-                          className={`text-sm truncate ${active ? 'font-bold text-slate-800 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}`}
+                          className={`text-sm truncate ${active ? 'font-bold text-fg-default' : 'text-fg-body'}`}
                         >
                           {getDocTypeLabel(docType)}
                         </span>
                       </span>
                       <span
-                        className={`text-[10px] font-bold shrink-0 ${count > 0 ? 'text-slate-500' : 'text-slate-300 dark:text-slate-600'}`}
+                        className={`text-[10px] font-bold shrink-0 ${count > 0 ? 'text-slate-500' : 'text-fg-subtle'}`}
                       >
                         {count}
                       </span>
@@ -247,7 +247,7 @@ export const TemplatesList: React.FC<Props> = ({
           {/* Panel derecho: plantillas del tipo seleccionado */}
           <Card
             noPadding
-            className="overflow-hidden shadow-lg dark:bg-transparent border-slate-100 dark:border-slate-800"
+            className="overflow-hidden shadow-lg dark:bg-transparent border-border-subtle"
           >
             {selectedType && (
               <div
@@ -263,7 +263,7 @@ export const TemplatesList: React.FC<Props> = ({
               </div>
             )}
             {rows.length === 0 ? (
-              <div className="p-10 text-center text-slate-400 dark:text-slate-500 text-sm italic flex items-center justify-center gap-2">
+              <div className="p-10 text-center text-fg-subtle text-sm italic flex items-center justify-center gap-2">
                 <AlertCircle size={14} /> Sin plantillas para este tipo
               </div>
             ) : (

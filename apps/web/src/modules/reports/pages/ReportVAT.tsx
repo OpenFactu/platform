@@ -63,7 +63,7 @@ export const ReportVAT: React.FC = () => {
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
+              <tr key={i} className="border-t border-border-subtle">
                 <td className="py-1">{fmt.date(r.date)}</td>
                 <td className="py-1 font-mono">{r.code}</td>
                 <td className="py-1 font-mono">{r.partnerNif}</td>

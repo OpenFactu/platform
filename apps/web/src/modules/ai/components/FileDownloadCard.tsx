@@ -32,7 +32,7 @@ export const FileDownloadCard: React.FC<{ filename: string; mimeType: string; ba
   };
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-slate-200 dark:border-slate-700 p-3 max-w-sm">
+    <div className="flex items-center gap-3 rounded-lg border border-border-default p-3 max-w-sm">
       <span className="p-2 rounded-md bg-accent/10 text-accent shrink-0">
         <Icon size={18} />
       </span>

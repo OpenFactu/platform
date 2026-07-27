@@ -62,7 +62,10 @@ export const AttachmentsPanel: React.FC<Props> = ({
     setLoading(true);
     setError(null);
     try {
-      const res = await coreApi.raw('GET', `/api/attachments?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`);
+      const res = await coreApi.raw(
+        'GET',
+        `/api/attachments?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`,
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setItems(res.data);
     } catch (e: any) {
@@ -135,7 +138,7 @@ export const AttachmentsPanel: React.FC<Props> = ({
     <>
       {!compact && (
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <Paperclip size={16} />
             <h3 className="text-sm font-bold uppercase tracking-wider">{title}</h3>
             <span className="text-xs text-slate-400">({items.length})</span>
@@ -154,7 +157,7 @@ export const AttachmentsPanel: React.FC<Props> = ({
         className={`mt-2 px-4 py-3 rounded-lg border-2 border-dashed cursor-pointer transition-all text-center text-xs ${
           dragOver
             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
-            : 'border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-600'
+            : 'border-border-strong bg-bg-muted text-fg-muted hover:border-blue-400 hover:text-blue-600'
         }`}
       >
         <input
@@ -179,13 +182,11 @@ export const AttachmentsPanel: React.FC<Props> = ({
           {items.map((a) => (
             <li
               key={a.id}
-              className="flex items-center gap-2 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750"
+              className="flex items-center gap-2 px-2 py-1.5 rounded border border-border-default bg-bg-card hover:bg-bg-hover"
             >
               <FileText size={14} className="text-slate-400 shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
-                  {a.fileName}
-                </div>
+                <div className="text-xs font-semibold text-fg-body truncate">{a.fileName}</div>
                 <div className="text-[10px] text-slate-400 flex items-center gap-2">
                   <span>{formatBytes(a.size)}</span>
                   <span>·</span>
@@ -219,11 +220,7 @@ export const AttachmentsPanel: React.FC<Props> = ({
 
   if (compact) return <div>{inner}</div>;
 
-  return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
-      {inner}
-    </div>
-  );
+  return <div className="rounded-xl border border-border-default bg-bg-card p-4">{inner}</div>;
 };
 
 function formatBytes(n: number): string {

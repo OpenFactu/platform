@@ -82,15 +82,12 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
-        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">
+      <div className="p-3 border-b border-border-subtle flex-shrink-0">
+        <div className="flex items-center gap-2 text-[10px] font-black text-fg-subtle uppercase tracking-widest mb-2">
           <Code2 size={12} /> Campos disponibles
         </div>
         <div className="relative">
-          <Search
-            size={12}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
-          />
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-subtle" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -98,7 +95,7 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
             className="pl-7 h-8 text-xs"
           />
         </div>
-        <p className="text-[9px] text-slate-400 dark:text-slate-500 italic mt-2 leading-tight">
+        <p className="text-[9px] text-fg-subtle italic mt-2 leading-tight">
           {insertMode === 'insert'
             ? 'Click en un campo para insertarlo en el editor'
             : 'Click en un campo para copiarlo al portapapeles'}
@@ -108,9 +105,9 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
       <div className="flex-1 min-h-0 overflow-y-auto">
         {filteredGroups.map((group) => (
           <div key={group.group} className="border-b border-slate-50">
-            <div className="sticky top-0 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
-              <span className="text-slate-500 dark:text-slate-400">{GROUP_ICON[group.icon]}</span>
-              <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+            <div className="sticky top-0 px-3 py-2 bg-bg-muted border-b border-border-subtle flex items-center gap-2">
+              <span className="text-fg-muted">{GROUP_ICON[group.icon]}</span>
+              <span className="text-[10px] font-black text-fg-body uppercase tracking-wider">
                 {group.label}
               </span>
             </div>
@@ -125,36 +122,36 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
                   key={field.path}
                   type="button"
                   onClick={() => handleFieldClick(field)}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 border-b border-slate-50 last:border-b-0 group transition-colors"
+                  className="w-full text-left px-3 py-2 hover:bg-bg-hover border-b border-slate-50 last:border-b-0 group transition-colors"
                 >
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <code className="text-[11px] font-mono font-semibold text-slate-800 dark:text-slate-100 truncate">
+                        <code className="text-[11px] font-mono font-semibold text-fg-default truncate">
                           {field.path}
                         </code>
                         <span
                           className={cn(
                             'text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border inline-flex items-center gap-0.5 flex-shrink-0',
                             TYPE_COLORS[field.type] ||
-                              'bg-slate-50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+                              'bg-bg-muted text-fg-body border-border-default',
                           )}
                         >
                           {TYPE_ICON[field.type]} {field.type}
                         </span>
                       </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+                      <div className="text-[10px] text-fg-muted mt-0.5 leading-tight">
                         {field.description}
                       </div>
                       {field.example && (
-                        <div className="text-[9px] text-slate-400 dark:text-slate-500 italic mt-0.5 font-mono">
+                        <div className="text-[9px] text-fg-subtle italic mt-0.5 font-mono">
                           ej: {field.example}
                         </div>
                       )}
                     </div>
                     <Copy
                       size={11}
-                      className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-500 flex-shrink-0 mt-0.5"
+                      className="text-fg-subtle group-hover:text-indigo-500 flex-shrink-0 mt-0.5"
                     />
                   </div>
                 </button>
@@ -176,15 +173,13 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
               <code className="text-[11px] font-mono font-semibold text-indigo-700 block break-all">
                 {helper.usage}
               </code>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {helper.description}
-              </div>
+              <div className="text-[10px] text-fg-muted mt-0.5">{helper.description}</div>
             </div>
           ))}
         </div>
 
         {filteredGroups.length === 0 && (
-          <div className="p-6 text-center text-slate-300 dark:text-slate-600 text-xs italic">
+          <div className="p-6 text-center text-fg-subtle text-xs italic">
             No hay campos que coincidan con"{search}"{' '}
           </div>
         )}

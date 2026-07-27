@@ -158,10 +158,7 @@ const FontPreview: React.FC<{ fontId: string }> = ({ fontId }) => {
     document.head.appendChild(link);
   }, [font]);
   return (
-    <p
-      className="mt-2 text-sm text-slate-600 dark:text-slate-300"
-      style={{ fontFamily: font.sans }}
-    >
+    <p className="mt-2 text-sm text-fg-body" style={{ fontFamily: font.sans }}>
       AaBbCc 0123 — Ejemplo de texto con esta fuente
     </p>
   );
@@ -378,7 +375,7 @@ export const CompanySettings: React.FC = () => {
         <div className="space-y-6">
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
                 País e identificación
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -414,9 +411,7 @@ export const CompanySettings: React.FC = () => {
 
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Domicilio
-              </h2>
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">Domicilio</h2>
               <Input
                 label="Dirección"
                 value={fiscal.address}
@@ -469,9 +464,7 @@ export const CompanySettings: React.FC = () => {
 
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Contacto
-              </h2>
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">Contacto</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Email"
@@ -500,7 +493,7 @@ export const CompanySettings: React.FC = () => {
 
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
                 Preferencias
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -640,9 +633,7 @@ export const CompanySettings: React.FC = () => {
 
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                Marca
-              </h2>
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">Marca</h2>
               <Input
                 label="Nombre de la aplicación"
                 value={brandingDraft.appName}
@@ -657,13 +648,11 @@ export const CompanySettings: React.FC = () => {
                 />
                 {brandingDraft.logoUrl && (
                   <div className="mt-3 flex items-center gap-3">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      Vista previa:
-                    </span>
+                    <span className="text-xs text-fg-muted">Vista previa:</span>
                     <img
                       src={brandingDraft.logoUrl}
                       alt="logo"
-                      className="h-12 w-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700"
+                      className="h-12 w-12 rounded-lg object-cover border border-border-default"
                     />
                   </div>
                 )}
@@ -673,7 +662,7 @@ export const CompanySettings: React.FC = () => {
 
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
                 Apariencia
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -698,7 +687,7 @@ export const CompanySettings: React.FC = () => {
           </Card>
 
           {!isAdmin && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
+            <p className="text-xs text-fg-muted text-right">
               Solo un administrador puede guardar esta configuración.
             </p>
           )}
@@ -722,7 +711,7 @@ export const CompanySettings: React.FC = () => {
         <div className="space-y-6">
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
                 Regionalización
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -757,19 +746,19 @@ export const CompanySettings: React.FC = () => {
                 />
               </div>
 
-              <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                <p className="text-xs font-black uppercase text-slate-500 dark:text-slate-400 tracking-wide mb-2">
+              <div className="mt-4 p-4 bg-bg-muted rounded-lg">
+                <p className="text-xs font-black uppercase text-fg-muted tracking-wide mb-2">
                   Vista previa
                 </p>
-                <div className="space-y-1 text-sm text-slate-800 dark:text-slate-200">
+                <div className="space-y-1 text-sm text-fg-default">
                   <p>
-                    <span className="text-slate-500 dark:text-slate-400">Importe:</span>{' '}
+                    <span className="text-fg-muted">Importe:</span>{' '}
                     <span className="font-bold">
                       {formatCurrency(1234.56, formatDraft, fiscal.currency || 'EUR')}
                     </span>
                   </p>
                   <p>
-                    <span className="text-slate-500 dark:text-slate-400">Fecha:</span>{' '}
+                    <span className="text-fg-muted">Fecha:</span>{' '}
                     <span className="font-bold">{formatDate(new Date(), formatDraft)}</span>
                   </p>
                 </div>
@@ -778,7 +767,7 @@ export const CompanySettings: React.FC = () => {
           </Card>
 
           {!isAdmin && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
+            <p className="text-xs text-fg-muted text-right">
               Solo un administrador puede guardar esta configuración.
             </p>
           )}
@@ -798,7 +787,7 @@ export const CompanySettings: React.FC = () => {
         <div className="space-y-6">
           <Card>
             <div className="p-6 space-y-1">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-4">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted mb-4">
                 Flags de comportamiento
               </h2>
               <FlagRow
@@ -879,12 +868,12 @@ export const CompanySettings: React.FC = () => {
                 checked={!!flagsDraft.hrAdvancedEnabled}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, hrAdvancedEnabled: v })}
               />
-              <div className="flex items-center justify-between py-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between py-3 border-t border-border-subtle">
                 <div className="flex-1 pr-4">
-                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                  <div className="text-sm font-semibold text-fg-default">
                     Ubicación del almacén en documentos
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="text-xs text-fg-muted mt-0.5">
                     Elige si el almacén se captura una vez en la cabecera del documento o por línea
                     (junto con la ubicación/zona).
                   </div>
@@ -903,7 +892,7 @@ export const CompanySettings: React.FC = () => {
           </Card>
 
           {!isAdmin && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
+            <p className="text-xs text-fg-muted text-right">
               Solo un administrador puede guardar esta configuración.
             </p>
           )}
@@ -923,10 +912,10 @@ export const CompanySettings: React.FC = () => {
         <div className="space-y-6">
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
                 URL pública
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-fg-muted">
                 Esta URL se usa en los emails de seguimiento de envíos, webhooks y enlaces
                 compartidos con clientes. Debe ser accesible desde internet.
               </p>
@@ -940,7 +929,7 @@ export const CompanySettings: React.FC = () => {
           </Card>
 
           {!isAdmin && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 text-right">
+            <p className="text-xs text-fg-muted text-right">
               Solo un administrador puede guardar esta configuración.
             </p>
           )}
@@ -984,13 +973,13 @@ const FlagRow: React.FC<{
   // Checkbox y no Switch: aunque son flags de empresa, aquí se editan sobre un
   // borrador (`flagsDraft`) y solo se persisten al pulsar «Guardar
   // comportamiento» — no al mover el control.
-  <label className="flex items-start gap-4 py-3 border-b border-slate-100 dark:border-slate-800 last:border-0 cursor-pointer">
+  <label className="flex items-start gap-4 py-3 border-b border-border-subtle last:border-0 cursor-pointer">
     <span className="mt-1">
       <Checkbox checked={checked} onChange={onChange} />
     </span>
     <div className="flex-1">
-      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{label}</p>
-      <p className="text-xs text-slate-500 dark:text-slate-400">{hint}</p>
+      <p className="text-sm font-bold text-fg-default">{label}</p>
+      <p className="text-xs text-fg-muted">{hint}</p>
     </div>
   </label>
 );

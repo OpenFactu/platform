@@ -220,11 +220,11 @@ export const DataTransferTab: React.FC = () => {
     <div className="space-y-4">
       <Card>
         <div className="p-6 space-y-3">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <Download size={18} />
             <h2 className="text-lg font-bold">Exportar empresa</h2>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
+          <p className="text-sm text-fg-muted leading-snug">
             Descarga un fichero <code>.zip</code> con el esquema, datos y adjuntos locales de la
             empresa elegida. Útil para backups o para mover la empresa a otra instalación de
             Keirost.
@@ -253,7 +253,7 @@ export const DataTransferTab: React.FC = () => {
               {busy === 'Exportar empresa' ? 'Exportando…' : 'Exportar'}
             </Button>
           </div>
-          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+          <label className="flex items-center gap-2 text-xs text-fg-body cursor-pointer">
             <Checkbox checked={includeUploads} onChange={setIncludeUploads} />
             <span>
               Incluir archivos adjuntos (storage/uploads). Desactiva si solo quieres datos y el zip
@@ -266,11 +266,11 @@ export const DataTransferTab: React.FC = () => {
 
       <Card>
         <div className="p-6 space-y-3">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <Upload size={18} />
             <h2 className="text-lg font-bold">Importar empresa desde .zip</h2>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
+          <p className="text-sm text-fg-muted leading-snug">
             Crea una empresa nueva a partir de un export. Puedes elegir un nombre distinto al
             original — se aplicará al nuevo schema y al display name. Útil para tener una copia de
             debug ("Empresa-test", "Empresa-2026", etc.) sin tocar la original.
@@ -303,11 +303,11 @@ export const DataTransferTab: React.FC = () => {
 
       <Card>
         <div className="p-6 space-y-3">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <FileSpreadsheet size={18} />
             <h2 className="text-lg font-bold">Exportar datos en CSV (otro ERP)</h2>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
+          <p className="text-sm text-fg-muted leading-snug">
             Descarga un zip con un CSV por cada entidad principal (clientes, items, facturas,
             albaranes, pedidos…). Formato genérico para que cualquier otro ERP importe los datos.
             Una vez exportado, ya no es responsabilidad nuestra cómo los procesa el destino.
@@ -336,7 +336,7 @@ export const DataTransferTab: React.FC = () => {
               <Trash2 size={18} />
               <h2 className="text-lg font-bold">Zona de peligro — Eliminar empresa</h2>
             </div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
+            <p className="text-sm text-fg-muted leading-snug">
               Borra la empresa elegida de forma <strong>permanente</strong>: su schema completo
               (documentos, stock, contabilidad, usuarios asociados…) y sus archivos locales. No hay
               marcha atrás salvo que tengas un backup — expórtala o haz un backup primero si no
@@ -356,7 +356,7 @@ export const DataTransferTab: React.FC = () => {
             />
             {deleteTenant && (
               <>
-                <p className="text-xs text-slate-600 dark:text-slate-300">
+                <p className="text-xs text-fg-body">
                   Para confirmar, escribe el nombre exacto de la empresa:{' '}
                   <code className="font-bold">{deleteTenant.name}</code>
                 </p>
@@ -402,7 +402,7 @@ const ProgressBar: React.FC<{
           <div className="h-full w-1/3 bg-blue-600 animate-pulse" />
         )}
       </div>
-      <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+      <div className="text-[10px] text-fg-muted font-mono">
         {determinate
           ? `${progress.loadedMB.toFixed(1)} / ${progress.totalMB.toFixed(1)} MB · ${progress.pct}%`
           : `${progress.loadedMB.toFixed(1)} MB transferidos…`}

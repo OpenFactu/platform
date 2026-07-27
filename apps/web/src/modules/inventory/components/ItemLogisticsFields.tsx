@@ -48,7 +48,7 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
     <div className="space-y-6">
       {/* Tipo de artículo y trazabilidad: elegir uno de N con descripción, es
           decir RadioGroup — antes eran tarjetas pintadas a mano. */}
-      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
+      <div className="p-4 bg-bg-muted border border-border-default">
         <RadioGroup
           label="Tipo de artículo"
           orientation="horizontal"
@@ -58,8 +58,8 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
         />
 
         {values.kind === 'box' && (
-          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700/50 space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <div className="mt-4 pt-4 border-t border-border-default space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-fg-muted">
               Dimensiones de la caja (opcional)
             </p>
             <div className="grid grid-cols-3 gap-2">
@@ -91,7 +91,7 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
         )}
       </div>
 
-      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
+      <div className="p-4 bg-bg-muted border border-border-default">
         <RadioGroup
           label="Trazabilidad obligatoria"
           options={MANAGE_BY_OPTIONS}
@@ -100,17 +100,17 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
         />
       </div>
 
-      <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
-        <label className="text-[11px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-3 block">
+      <div className="p-4 bg-bg-muted border border-border-default">
+        <label className="text-[11px] font-black text-fg-default uppercase tracking-widest mb-3 block">
           Ubicación por defecto
         </label>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-4">
+        <p className="text-[11px] text-fg-muted mb-4">
           Cuando selecciones este artículo en un pedido o albarán se rellenará automáticamente su
           almacén y ubicación. Puedes cambiarlo por línea.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
               Almacén
             </label>
             <SearchableSelect
@@ -129,7 +129,7 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
             />
           </div>
           <div>
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-1">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
               Ubicación / Bin
             </label>
             <SearchableSelect

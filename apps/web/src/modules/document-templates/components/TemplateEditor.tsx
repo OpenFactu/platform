@@ -185,19 +185,19 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   return (
     <div className="h-full flex flex-col overflow-hidden p-6 gap-4 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 flex-shrink-0">
+      <div className="flex items-center justify-between border-b border-border-subtle pb-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+            className="p-2 bg-bg-card hover:bg-bg-hover border border-border-default rounded-xl text-fg-subtle hover:text-fg-body"
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter">
+            <h1 className="text-2xl font-black text-fg-default tracking-tighter">
               {template ? 'Editar Plantilla' : 'Nueva Plantilla'}
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+            <p className="text-xs text-fg-muted font-medium">
               {mode === 'visual'
                 ? 'Personaliza colores, logo y secciones desde el formulario. No necesitas saber HTML.'
                 : 'Editor HTML avanzado con variables Handlebars. Vista previa en vivo.'}
@@ -227,13 +227,13 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
       {/* Metadata */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-shrink-0">
         <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+          <label className="text-[10px] font-black text-fg-subtle uppercase tracking-widest">
             Nombre
           </label>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+          <label className="text-[10px] font-black text-fg-subtle uppercase tracking-widest">
             Tipo de documento
           </label>
           <SearchableSelect
@@ -250,7 +250,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
               onChange={(e) => setIsDefault(e.target.checked)}
               className="w-4 h-4"
             />
-            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 select-none">
+            <span className="text-xs font-bold text-fg-body select-none">
               Usar como default para este tipo
             </span>
           </label>
@@ -289,7 +289,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
         {/* Editor pane */}
         <div className="flex-1 min-w-0 min-h-0">
           <Card
-            className="h-full border-slate-100 dark:border-slate-800"
+            className="h-full border-border-subtle"
             noPadding
             bodyClassName="h-full flex flex-col overflow-hidden"
           >
@@ -315,7 +315,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
         >
           {explorerOpen && (
             <Card
-              className="h-full border-slate-100 dark:border-slate-800"
+              className="h-full border-border-subtle"
               noPadding
               bodyClassName="h-full flex flex-col overflow-hidden"
             >

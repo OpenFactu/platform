@@ -291,11 +291,11 @@ export const BackupsTab: React.FC = () => {
     <div className="space-y-4">
       <Card>
         <div className="p-6 space-y-4">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <DatabaseBackup size={18} />
             <h2 className="text-lg font-bold">Backups automáticos</h2>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
+          <p className="text-sm text-fg-muted leading-snug">
             El servidor genera un <code>.zip</code> completo de la empresa (esquema + datos
             {config.includeUploads ? ' + adjuntos' : ''}) según esta programación y lo guarda en el
             destino elegido, conservando solo los últimos {config.retentionCount || '—'}.
@@ -303,7 +303,7 @@ export const BackupsTab: React.FC = () => {
 
           {/* Checkbox y no Switch: la programación se persiste con «Guardar
               programación», no al marcar la casilla. */}
-          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 cursor-pointer font-bold">
+          <label className="flex items-center gap-2 text-sm text-fg-body cursor-pointer font-bold">
             <Checkbox checked={config.enabled} onChange={(v) => set('enabled', v)} />
             Activar backups automáticos
           </label>
@@ -353,7 +353,7 @@ export const BackupsTab: React.FC = () => {
             />
           </div>
 
-          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
+          <label className="flex items-center gap-2 text-xs text-fg-body cursor-pointer">
             <Checkbox checked={config.includeUploads} onChange={(v) => set('includeUploads', v)} />
             <span>Incluir archivos adjuntos locales (storage/uploads) en el zip.</span>
           </label>
@@ -395,7 +395,7 @@ export const BackupsTab: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                  <tr className="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-border-default">
                     <th className="py-2 pr-3">Fecha</th>
                     <th className="py-2 pr-3">Tipo</th>
                     <th className="py-2 pr-3">Destino</th>
@@ -406,10 +406,7 @@ export const BackupsTab: React.FC = () => {
                 </thead>
                 <tbody>
                   {runs.map((run) => (
-                    <tr
-                      key={run.id}
-                      className="border-b border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-200"
-                    >
+                    <tr key={run.id} className="border-b border-border-subtle text-fg-body">
                       <td className="py-2 pr-3 whitespace-nowrap">
                         {new Date(run.startedAt).toLocaleString()}
                       </td>
@@ -493,7 +490,7 @@ export const BackupsTab: React.FC = () => {
       {restoreRun && (
         <Card>
           <div className="p-6 space-y-3">
-            <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+            <div className="flex items-center gap-2 text-fg-body">
               <RotateCcw size={18} />
               <h3 className="text-lg font-bold">Restaurar backup</h3>
             </div>

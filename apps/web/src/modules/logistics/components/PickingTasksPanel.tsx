@@ -169,7 +169,7 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
             <span>{progress}%</span>
           </div>
         </div>
-        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded overflow-hidden">
+        <div className="h-2 bg-bg-muted rounded overflow-hidden">
           <div className="h-full bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
         </div>
       </div>
@@ -187,16 +187,13 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
               const hasBatch = !!t.batchNumber;
               const BatchIcon = manageBy === 'S' ? Layers3 : Package;
               return (
-                <li
-                  key={t.id}
-                  className="px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
-                >
+                <li key={t.id} className="px-4 py-2 border-b border-border-subtle last:border-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant={STATUS_BADGE[t.status] || 'neutral'}>{t.status}</Badge>
-                    <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                    <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                       {it?.code || t.itemId || '—'}
                     </code>
-                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100 min-w-0 truncate">
+                    <span className="text-sm font-medium text-fg-default min-w-0 truncate">
                       {it?.name || '—'}
                     </span>
                     {hasBatch && (

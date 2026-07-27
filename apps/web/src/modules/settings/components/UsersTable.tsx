@@ -47,20 +47,20 @@ export const UsersTable: React.FC<UsersTableProps> = ({
             <img
               src={u.avatarImageUrl}
               alt={u.username}
-              className="w-9 h-9 rounded-xl object-cover border border-slate-200 dark:border-slate-700"
+              className="w-9 h-9 rounded-xl object-cover border border-border-default"
             />
           ) : (
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xs font-black text-slate-600 dark:text-slate-200">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xs font-black text-fg-body">
               {u.username?.charAt(0).toUpperCase()}
             </div>
           )}
-          <span className="font-black text-slate-800 dark:text-slate-100">{u.username}</span>
+          <span className="font-black text-fg-default">{u.username}</span>
         </div>
       ),
     },
     {
       header: 'Email',
-      cell: (u) => <span className="text-sm text-slate-500 dark:text-slate-400">{u.email}</span>,
+      cell: (u) => <span className="text-sm text-fg-muted">{u.email}</span>,
     },
     {
       header: 'Rol Global',
@@ -85,19 +85,15 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         if (u.membershipCount > 0) {
           return (
             <div className="flex items-center gap-1.5">
-              <Building2 size={13} className="text-slate-400 dark:text-slate-500" />
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+              <Building2 size={13} className="text-fg-subtle" />
+              <span className="text-sm font-bold text-fg-body">
                 {u.membershipCount} empresa{u.membershipCount !== 1 ? 's' : ''}
               </span>
             </div>
           );
         }
         if (u.tenantName) {
-          return (
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-              {u.tenantName}
-            </span>
-          );
+          return <span className="text-xs text-fg-muted font-medium">{u.tenantName}</span>;
         }
         return <span className="text-xs text-rose-400 font-bold">Sin asignar</span>;
       },

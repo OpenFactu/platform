@@ -84,11 +84,11 @@ export const Composer: React.FC<{
           {documents.map((d, i) => (
             <div
               key={`doc-${i}`}
-              className="relative shrink-0 h-16 w-32 flex flex-col items-center justify-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2"
+              className="relative shrink-0 h-16 w-32 flex flex-col items-center justify-center gap-1 rounded-md border border-border-default bg-bg-muted px-2"
               title={d.filename}
             >
               <FileText size={16} className="text-accent" />
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate w-full text-center">
+              <span className="text-[10px] text-fg-muted truncate w-full text-center">
                 {d.filename}
               </span>
               <button
@@ -102,7 +102,7 @@ export const Composer: React.FC<{
             </div>
           ))}
           {extractingDocs && (
-            <div className="shrink-0 h-16 w-32 flex items-center justify-center rounded-md border border-slate-200 dark:border-slate-700 text-slate-400">
+            <div className="shrink-0 h-16 w-32 flex items-center justify-center rounded-md border border-border-default text-slate-400">
               <Loader2 size={16} className="animate-spin" />
             </div>
           )}
@@ -115,9 +115,7 @@ export const Composer: React.FC<{
             <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
               Respondiendo a un fragmento
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 break-words">
-              {quotedText}
-            </p>
+            <p className="text-xs text-fg-body line-clamp-2 break-words">{quotedText}</p>
           </div>
           <Button
             type="button"
@@ -132,10 +130,8 @@ export const Composer: React.FC<{
         </div>
       )}
       <div
-        className={`rounded-xl border bg-white dark:bg-slate-800 shadow-sm transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 ${
-          dragOver
-            ? 'border-accent ring-2 ring-accent/30'
-            : 'border-slate-200 dark:border-slate-700'
+        className={`rounded-xl border bg-bg-card shadow-sm transition-colors focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/20 ${
+          dragOver ? 'border-accent ring-2 ring-accent/30' : 'border-border-default'
         }`}
         onDragOver={(e) => {
           e.preventDefault();
@@ -234,10 +230,7 @@ export const Composer: React.FC<{
               <FileUp size={18} />
             </Button>
             {!supportsImages && (
-              <span
-                className="text-slate-300 dark:text-slate-600"
-                title="Este modelo no admite imágenes"
-              >
+              <span className="text-fg-subtle" title="Este modelo no admite imágenes">
                 <ImageOff size={13} />
               </span>
             )}

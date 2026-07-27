@@ -93,9 +93,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
 
   if (loading) {
     return (
-      <div className="text-xs text-slate-400 dark:text-slate-500 italic text-center p-6">
-        Cargando trazabilidad…
-      </div>
+      <div className="text-xs text-fg-subtle italic text-center p-6">Cargando trazabilidad…</div>
     );
   }
   if (!data) return null;
@@ -106,23 +104,18 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
       onClick={() =>
         openTab(`${TYPE_PATH[d.type] ?? `/documents/${d.type}`}/${d.id}`, { title: d.code })
       }
-      className="w-full group flex items-center gap-3 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50 hover:bg-blue-50/40 dark:hover:bg-blue-500/5 transition-all text-left"
+      className="w-full group flex items-center gap-3 p-2.5 rounded-lg border border-border-subtle hover:border-blue-300 dark:hover:border-blue-500/50 hover:bg-blue-50/40 dark:hover:bg-blue-500/5 transition-all text-left"
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <Badge variant="info">{TYPE_LABEL[d.type] ?? d.type}</Badge>
-          <span className="font-mono font-black text-sm text-slate-800 dark:text-slate-100 truncate">
-            {d.code}
-          </span>
+          <span className="font-mono font-black text-sm text-fg-default truncate">{d.code}</span>
         </div>
-        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">
+        <div className="text-[11px] text-fg-muted mt-0.5 font-mono">
           {fmt.date(d.date)} · {fmt.money(d.total)}
         </div>
       </div>
-      <ChevronRight
-        size={16}
-        className="text-slate-300 dark:text-slate-600 group-hover:text-blue-500 shrink-0"
-      />
+      <ChevronRight size={16} className="text-fg-subtle group-hover:text-blue-500 shrink-0" />
     </button>
   );
 
@@ -130,13 +123,11 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
     <>
       {empty && (
         <div className="flex flex-col items-center justify-center py-10 text-center">
-          <div className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 mb-3">
-            <Link2 size={22} className="text-slate-400 dark:text-slate-500" />
+          <div className="p-3 rounded-full bg-bg-muted mb-3">
+            <Link2 size={22} className="text-fg-subtle" />
           </div>
-          <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
-            Sin documentos enlazados
-          </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-xs">
+          <p className="text-sm font-bold text-fg-body">Sin documentos enlazados</p>
+          <p className="text-xs text-fg-subtle mt-1 max-w-xs">
             Cuando este documento origine o se genere desde otro, aparecerá aquí la cadena completa.
           </p>
         </div>
@@ -144,7 +135,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
 
       {data.parents.length > 0 && (
         <div>
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-1.5">
             <ArrowUp size={11} /> Origen
           </div>
           <div className="space-y-1.5">{data.parents.map(renderDoc)}</div>
@@ -153,7 +144,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
 
       {data.children.length > 0 && (
         <div>
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-1.5">
             <ArrowDown size={11} /> Derivado
           </div>
           <div className="space-y-1.5">{data.children.map(renderDoc)}</div>
@@ -171,7 +162,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
                 key={p.id}
                 className="flex items-center justify-between text-xs p-2 rounded-lg bg-emerald-50/60 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/20"
               >
-                <span className="text-slate-600 dark:text-slate-300 font-mono">
+                <span className="text-fg-body font-mono">
                   {fmt.date(p.date)}
                   {p.reference && <span className="ml-2 text-slate-400">· Ref {p.reference}</span>}
                 </span>
@@ -217,10 +208,10 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
   if (bare) return <div className="space-y-4">{inner}</div>;
 
   return (
-    <Card className="border-slate-100 dark:border-slate-800" bodyClassName="p-5 space-y-4">
+    <Card className="border-border-subtle" bodyClassName="p-5 space-y-4">
       <div className="flex items-center gap-2">
         <Link2 size={16} className="text-blue-600 dark:text-blue-300" />
-        <h4 className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-[0.15em]">
+        <h4 className="text-[10px] font-black uppercase text-fg-muted tracking-[0.15em]">
           Trazabilidad
         </h4>
       </div>

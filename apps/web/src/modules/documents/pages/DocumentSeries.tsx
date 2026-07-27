@@ -220,11 +220,11 @@ export const DocumentSeries: React.FC = () => {
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
+        <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
           <FileDigit className="text-blue-600 dark:text-blue-300" size={32} />
           Series Documentales
         </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+        <p className="text-fg-muted mt-1 font-medium">
           Configura los rangos de numeración para cada tipo de documento del sistema.
         </p>
       </div>
@@ -235,9 +235,7 @@ export const DocumentSeries: React.FC = () => {
           className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end"
         >
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Nombre Serie
-            </label>
+            <label className="text-xs font-bold text-fg-muted uppercase">Nombre Serie</label>
             <Input
               placeholder="Ej: Principal PO"
               value={name}
@@ -246,9 +244,7 @@ export const DocumentSeries: React.FC = () => {
             />
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Tipo Documento
-            </label>
+            <label className="text-xs font-bold text-fg-muted uppercase">Tipo Documento</label>
             <div className="mt-1">
               <SearchableSelect
                 value={docType}
@@ -262,9 +258,7 @@ export const DocumentSeries: React.FC = () => {
             </div>
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Numeración
-            </label>
+            <label className="text-xs font-bold text-fg-muted uppercase">Numeración</label>
             <div className="mt-1">
               <SearchableSelect
                 value={numberingMode}
@@ -277,9 +271,7 @@ export const DocumentSeries: React.FC = () => {
             </div>
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Aplica al Periodo
-            </label>
+            <label className="text-xs font-bold text-fg-muted uppercase">Aplica al Periodo</label>
             <div className="mt-1">
               <SearchableSelect
                 value={periodId}
@@ -290,9 +282,7 @@ export const DocumentSeries: React.FC = () => {
             </div>
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-              Prefijo Visual
-            </label>
+            <label className="text-xs font-bold text-fg-muted uppercase">Prefijo Visual</label>
             <Input
               placeholder="Ej: F24"
               value={prefix}
@@ -301,16 +291,14 @@ export const DocumentSeries: React.FC = () => {
           </div>
           {numberingMode === 'MANUAL' ? (
             <div className="md:col-span-2 flex items-end">
-              <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+              <p className="text-xs text-fg-muted italic">
                 Serie manual: el número de cada documento se teclea al crearlo.
               </p>
             </div>
           ) : (
             <>
               <div className="md:col-span-1">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-                  Inicio de Rango
-                </label>
+                <label className="text-xs font-bold text-fg-muted uppercase">Inicio de Rango</label>
                 <Input
                   type="number"
                   value={firstNumber}
@@ -319,9 +307,7 @@ export const DocumentSeries: React.FC = () => {
                 />
               </div>
               <div className="md:col-span-1">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
-                  Límite Final
-                </label>
+                <label className="text-xs font-bold text-fg-muted uppercase">Límite Final</label>
                 <Input
                   type="number"
                   value={lastNumber}
@@ -344,7 +330,7 @@ export const DocumentSeries: React.FC = () => {
         </form>
       </Card>
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <FilterBar
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}

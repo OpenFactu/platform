@@ -143,7 +143,11 @@ export const ServerCockpit: React.FC = () => {
           req: pushRing(h.req, reqPerSec),
         }));
       } catch (e) {
-        if (!cancelled) setError((e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) || 'Error');
+        if (!cancelled)
+          setError(
+            (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
+              'Error',
+          );
       }
     };
     tick();
@@ -173,10 +177,8 @@ export const ServerCockpit: React.FC = () => {
             <Activity size={22} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              Cockpit del servidor
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <h1 className="text-2xl font-bold text-fg-default">Cockpit del servidor</h1>
+            <p className="text-sm text-fg-muted">
               Métricas en vivo del proceso, host y base de datos. Refresco cada 3s.
             </p>
           </div>
@@ -267,8 +269,8 @@ export const ServerCockpit: React.FC = () => {
       )}
 
       {services && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-3">
+        <div className="rounded-xl border border-border-default bg-bg-card p-5">
+          <div className="flex items-center gap-2 text-fg-body mb-3">
             <Server size={16} />
             <h2 className="text-sm font-bold uppercase tracking-wider">Servicios</h2>
           </div>
@@ -288,8 +290,8 @@ export const ServerCockpit: React.FC = () => {
       )}
 
       {plugins && plugins.length > 0 && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-3">
+        <div className="rounded-xl border border-border-default bg-bg-card p-5">
+          <div className="flex items-center gap-2 text-fg-body mb-3">
             <Puzzle size={16} />
             <h2 className="text-sm font-bold uppercase tracking-wider">
               Plugins cargados ({plugins.length})
@@ -299,12 +301,10 @@ export const ServerCockpit: React.FC = () => {
             {plugins.map((p) => (
               <li
                 key={p.id}
-                className="flex items-start justify-between gap-2 p-2 rounded-lg border border-slate-100 dark:border-slate-800"
+                className="flex items-start justify-between gap-2 p-2 rounded-lg border border-border-subtle"
               >
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                    {p.name}
-                  </div>
+                  <div className="text-xs font-bold text-fg-default truncate">{p.name}</div>
                   <div className="text-[10px] font-mono text-slate-400 truncate">{p.id}</div>
                 </div>
                 <div className="flex flex-col items-end text-[10px] flex-shrink-0">
@@ -326,8 +326,8 @@ export const ServerCockpit: React.FC = () => {
       )}
 
       {m && (
-        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-3">
+        <div className="rounded-xl border border-border-default bg-bg-card p-5">
+          <div className="flex items-center gap-2 text-fg-body mb-3">
             <Building size={16} />
             <h2 className="text-sm font-bold uppercase tracking-wider">
               Empresas ({m.tenants.total})
@@ -337,7 +337,7 @@ export const ServerCockpit: React.FC = () => {
             <p className="text-xs text-slate-400 italic">No hay empresas registradas.</p>
           ) : (
             <table className="w-full text-xs">
-              <thead className="text-slate-500 dark:text-slate-400">
+              <thead className="text-fg-muted">
                 <tr>
                   <th className="text-left py-1">Empresa</th>
                   <th className="text-right py-1">Tamaño</th>
@@ -345,7 +345,7 @@ export const ServerCockpit: React.FC = () => {
               </thead>
               <tbody>
                 {m.tenants.schemas.map((t) => (
-                  <tr key={t.name} className="border-t border-slate-100 dark:border-slate-800">
+                  <tr key={t.name} className="border-t border-border-subtle">
                     <td className="py-1.5 font-mono">{t.name}</td>
                     <td className="py-1.5 text-right tabular-nums">{t.sizeMB.toFixed(1)} MB</td>
                   </tr>
@@ -375,15 +375,13 @@ const MetricCard: React.FC<{
   maxY?: number;
   hideBar?: boolean;
 }> = ({ icon, title, value, subtitle, barPct, history, maxY, hideBar }) => (
-  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 flex flex-col">
-    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-2">
+  <div className="rounded-xl border border-border-default bg-bg-card p-5 flex flex-col">
+    <div className="flex items-center gap-2 text-fg-body mb-2">
       {icon}
       <h3 className="text-xs font-bold uppercase tracking-wider">{title}</h3>
     </div>
     <div className="flex items-baseline gap-2">
-      <span className="text-3xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-        {value}
-      </span>
+      <span className="text-3xl font-bold text-fg-default tabular-nums">{value}</span>
     </div>
     {!hideBar && (
       <div className="mt-2 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
@@ -400,7 +398,7 @@ const MetricCard: React.FC<{
         <Sparkline data={history} maxY={maxY} color={colorForPct(barPct)} />
       </div>
     )}
-    <p className="mt-2 text-[10px] text-slate-500 dark:text-slate-400 truncate" title={subtitle}>
+    <p className="mt-2 text-[10px] text-fg-muted truncate" title={subtitle}>
       {subtitle}
     </p>
   </div>
@@ -448,15 +446,15 @@ const Sparkline: React.FC<{ data: number[]; maxY?: number; color: string }> = ({
 const Stat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div>
     <div className="text-[10px] text-slate-400 uppercase tracking-wider">{label}</div>
-    <div className="text-sm font-mono text-slate-700 dark:text-slate-200 truncate" title={value}>
+    <div className="text-sm font-mono text-fg-body truncate" title={value}>
       {value}
     </div>
   </div>
 );
 
 const HostPanel: React.FC<{ host: Metrics['host'] }> = ({ host }) => (
-  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-    <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-3">
+  <div className="rounded-xl border border-border-default bg-bg-card p-5">
+    <div className="flex items-center gap-2 text-fg-body mb-3">
       <Globe size={16} />
       <h2 className="text-sm font-bold uppercase tracking-wider">Host</h2>
     </div>
@@ -468,7 +466,7 @@ const HostPanel: React.FC<{ host: Metrics['host'] }> = ({ host }) => (
     </div>
     {host.interfaces.length > 0 && (
       <>
-        <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
+        <div className="flex items-center gap-2 text-fg-muted mb-1">
           <Network size={12} />
           <span className="text-[10px] font-bold uppercase tracking-wider">Interfaces de red</span>
         </div>
@@ -476,7 +474,7 @@ const HostPanel: React.FC<{ host: Metrics['host'] }> = ({ host }) => (
           {host.interfaces.map((iface, i) => (
             <li
               key={`${iface.name}-${iface.address}-${i}`}
-              className="flex justify-between text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800 py-0.5"
+              className="flex justify-between text-fg-body border-t border-border-subtle py-0.5"
             >
               <span className="text-slate-500">{iface.name}</span>
               <span className="tabular-nums">{iface.address}</span>
@@ -498,8 +496,8 @@ const TrafficPanel: React.FC<{
   const methods = Object.entries(requests.byMethod).sort((a, b) => b[1] - a[1]);
   const peak = Math.max(...history, 1);
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
-      <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 mb-3">
+    <div className="rounded-xl border border-border-default bg-bg-card p-5">
+      <div className="flex items-center gap-2 text-fg-body mb-3">
         <Activity size={16} />
         <h2 className="text-sm font-bold uppercase tracking-wider">Tráfico HTTP</h2>
       </div>
@@ -553,13 +551,11 @@ const TrafficPanel: React.FC<{
         <table className="w-full text-[11px] mt-2">
           <tbody>
             {methods.map(([method, count]) => (
-              <tr key={method} className="border-t border-slate-100 dark:border-slate-800">
-                <td className="py-1 font-mono font-bold text-slate-700 dark:text-slate-200">
-                  {method}
-                </td>
+              <tr key={method} className="border-t border-border-subtle">
+                <td className="py-1 font-mono font-bold text-fg-body">{method}</td>
                 <td className="py-1 text-right tabular-nums text-slate-500">{count}</td>
                 <td className="py-1 w-1/2 pl-2">
-                  <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div className="h-1 rounded-full bg-bg-muted overflow-hidden">
                     <div
                       className="h-full bg-sky-500"
                       style={{ width: `${(count * 100) / total}%` }}
@@ -584,11 +580,11 @@ const ServiceRow: React.FC<{ svc: ServiceCheck }> = ({ svc }) => {
         ? 'text-amber-600 dark:text-amber-400'
         : 'text-rose-600 dark:text-rose-400';
   return (
-    <li className="flex items-start gap-2 p-2 rounded-lg border border-slate-100 dark:border-slate-800">
+    <li className="flex items-start gap-2 p-2 rounded-lg border border-border-subtle">
       <Icon size={16} className={`mt-0.5 flex-shrink-0 ${cls}`} />
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-bold text-slate-800 dark:text-slate-200">{svc.label}</div>
-        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate" title={svc.detail}>
+        <div className="text-xs font-bold text-fg-default">{svc.label}</div>
+        <div className="text-[11px] text-fg-muted truncate" title={svc.detail}>
           {svc.detail}
         </div>
       </div>

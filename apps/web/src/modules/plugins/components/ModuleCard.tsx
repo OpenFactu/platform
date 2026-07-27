@@ -13,9 +13,9 @@ interface ModuleCardProps {
 /**
  * Tarjeta de un módulo core activable. El verde del estado "activo" sale de los
  * tokens `success` (semántico: sigue significando "encendido" en cualquier
- * tema), y la superficie del `Card` del paquete — antes era un `<div>` con
- * `bg-white dark:bg-slate-900`, que pintaba el mosaico de azul marino aunque la
- * empresa tuviera un tema grafito.
+ * tema), y la superficie del `Card` del paquete — antes era un `<div>` con la
+ * pareja blanco/slate-900 fija, que pintaba el mosaico de azul marino aunque
+ * la empresa tuviera un tema grafito.
  */
 export const ModuleCard: React.FC<ModuleCardProps> = ({
   module,

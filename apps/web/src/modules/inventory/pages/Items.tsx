@@ -93,10 +93,10 @@ export const Items: React.FC = () => {
           <img
             src={src}
             alt=""
-            className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-700"
+            className="w-8 h-8 rounded-lg object-cover border border-border-default"
           />
         ) : (
-          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-300 dark:text-slate-600">
+          <div className="w-8 h-8 rounded-lg bg-bg-muted border border-border-default flex items-center justify-center text-fg-subtle">
             <Package size={14} />
           </div>
         );
@@ -111,9 +111,7 @@ export const Items: React.FC = () => {
           <span className="font-black text-blue-600 dark:text-blue-300 text-[10px] uppercase tracking-tighter">
             {i.code}
           </span>
-          <span className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">
-            {i.name}
-          </span>
+          <span className="font-bold text-fg-default text-sm leading-tight">{i.name}</span>
         </div>
       ),
     },
@@ -124,7 +122,7 @@ export const Items: React.FC = () => {
       accessor: (i: any) => {
         const uom = uoms.find((u) => u.id === i.uomId);
         return (
-          <span className="font-mono text-[11px] font-black text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 uppercase">
+          <span className="font-mono text-[11px] font-black text-fg-muted bg-bg-muted px-2 py-0.5 rounded border border-border-default uppercase">
             {uom?.code || '?'}
           </span>
         );
@@ -135,7 +133,7 @@ export const Items: React.FC = () => {
       accessor: (i: any) => (
         <div className="flex items-center gap-1.5">
           {i.manageBy === 'N' && (
-            <span className="p-0.5 px-1.5 bg-slate-50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 text-[9px] font-black rounded uppercase border border-slate-100 dark:border-slate-800">
+            <span className="p-0.5 px-1.5 bg-bg-muted text-fg-subtle text-[9px] font-black rounded uppercase border border-border-subtle">
               Std
             </span>
           )}
@@ -155,7 +153,7 @@ export const Items: React.FC = () => {
     {
       header: 'Comprometido',
       accessor: (i: any) => (
-        <span className="text-slate-400 dark:text-slate-500 font-mono text-[11px] font-bold">
+        <span className="text-fg-subtle font-mono text-[11px] font-bold">
           -{Number(i.committed).toFixed(2)}
         </span>
       ),
@@ -184,9 +182,7 @@ export const Items: React.FC = () => {
     {
       header: 'Precio Base',
       accessor: (i: any) => (
-        <span className="font-mono font-bold text-slate-600 dark:text-slate-300">
-          {i.basePrice}€
-        </span>
+        <span className="font-mono font-bold text-fg-body">{i.basePrice}€</span>
       ),
     },
     {
@@ -212,7 +208,7 @@ export const Items: React.FC = () => {
           <LabelPrintButton
             params={{ itemId: i.id }}
             title="Imprimir etiqueta del artículo"
-            className="p-2 text-slate-300 dark:text-slate-600 hover:text-purple-600 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all"
+            className="p-2 text-fg-subtle hover:text-purple-600 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all"
             triggerLabel={<Tag size={14} />}
           />
         </div>
@@ -275,11 +271,11 @@ export const Items: React.FC = () => {
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tighter font-display">
+          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tighter font-display">
             <Package className="text-blue-600 dark:text-blue-300" size={32} />
             Catálogo de Artículos
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium text-sm">
+          <p className="text-fg-muted mt-1 font-medium text-sm">
             Gestión de datos maestros de productos y servicios.
           </p>
         </div>
@@ -287,7 +283,7 @@ export const Items: React.FC = () => {
           <div className="relative w-full md:w-80">
             <Search
               size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 group-focus-within:text-accent transition-colors"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle group-focus-within:text-accent transition-colors"
             />
             <Input
               placeholder="Buscar por código, nombre o barcode…"

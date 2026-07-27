@@ -58,7 +58,7 @@ export const ComponentRenderer: React.FC<{ compiledCode: string }> = ({ compiled
     );
   }
   return (
-    <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 overflow-x-auto">
+    <div className="rounded-lg border border-border-default p-3 overflow-x-auto">
       <Component />
     </div>
   );

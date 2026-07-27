@@ -68,7 +68,7 @@ export const UserTableDetail: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-4">
         <div className="flex items-center gap-3">
           <Button
             type="button"
@@ -79,7 +79,7 @@ export const UserTableDetail: React.FC = () => {
           >
             <ArrowLeft size={14} />
           </Button>
-          <h1 className="text-lg font-black text-slate-900 dark:text-slate-100">
+          <h1 className="text-lg font-black text-fg-default">
             {isNew ? 'Nuevo registro' : 'Editar registro'}
           </h1>
         </div>

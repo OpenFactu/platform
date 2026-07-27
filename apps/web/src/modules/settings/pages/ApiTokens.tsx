@@ -164,14 +164,12 @@ export const ApiTokens: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-3">
           <Key className="text-blue-600 dark:text-blue-300" size={22} />
           <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-              Tokens de API
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <h1 className="text-xl font-black text-fg-default tracking-tight">Tokens de API</h1>
+            <p className="text-xs text-fg-muted">
               Credenciales para integraciones server-to-server (plugins, sistemas externos).
             </p>
           </div>
@@ -204,7 +202,7 @@ export const ApiTokens: React.FC = () => {
             {rows.map((t) => (
               <li
                 key={t.id}
-                className={`flex items-center gap-3 px-4 py-3 border-b border-slate-50 dark:border-slate-800/50 last:border-0 ${
+                className={`flex items-center gap-3 px-4 py-3 border-b border-border-subtle last:border-0 ${
                   t.revokedAt ? 'opacity-50' : ''
                 }`}
               >
@@ -213,14 +211,12 @@ export const ApiTokens: React.FC = () => {
                 </Badge>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-                      {t.name}
-                    </span>
-                    <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                    <span className="font-semibold text-sm text-fg-default">{t.name}</span>
+                    <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                       {t.prefix}…
                     </code>
                   </div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex gap-3 flex-wrap">
+                  <div className="text-[11px] text-fg-muted mt-0.5 flex gap-3 flex-wrap">
                     <span>Scopes: {t.scopes}</span>
                     <span>Creado: {new Date(t.createdAt).toLocaleDateString('es-ES')}</span>
                     {t.lastUsedAt && (
@@ -273,11 +269,9 @@ export const ApiTokens: React.FC = () => {
                     />
                   </span>
                   <div>
-                    <div className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                    <div className="text-sm font-medium text-fg-default">
                       {s.label}{' '}
-                      <code className="px-1 bg-slate-100 dark:bg-slate-800 text-[10px] font-mono rounded">
-                        {s.id}
-                      </code>
+                      <code className="px-1 bg-bg-muted text-[10px] font-mono rounded">{s.id}</code>
                     </div>
                     <div className="text-[11px] text-slate-500">{s.description}</div>
                   </div>
@@ -285,7 +279,7 @@ export const ApiTokens: React.FC = () => {
               ))}
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowCreate(false)}>
               Cancelar
             </Button>
@@ -309,7 +303,7 @@ export const ApiTokens: React.FC = () => {
                 Token ({created.name})
               </label>
               <div className="flex items-center gap-2">
-                <code className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded break-all">
+                <code className="flex-1 px-3 py-2 bg-bg-muted text-[11px] font-mono rounded break-all">
                   {created.token}
                 </code>
                 <Button
@@ -322,14 +316,14 @@ export const ApiTokens: React.FC = () => {
             </div>
             <div className="text-[11px] text-slate-500">
               Úsalo como cabecera HTTP:
-              <pre className="mt-1 p-2 bg-slate-50 dark:bg-slate-900 rounded text-[11px] font-mono">
+              <pre className="mt-1 p-2 bg-bg-muted rounded text-[11px] font-mono">
                 Authorization: Bearer {created.token.slice(0, 15)}…
               </pre>
             </div>
             {created.scopes.some((s) => s.startsWith('mcp:')) && (
               <div className="text-[11px] text-slate-500">
                 Config de Claude Desktop / Claude Code (servidor MCP remoto vía HTTP):
-                <pre className="mt-1 p-2 bg-slate-50 dark:bg-slate-900 rounded text-[11px] font-mono whitespace-pre-wrap break-all">
+                <pre className="mt-1 p-2 bg-bg-muted rounded text-[11px] font-mono whitespace-pre-wrap break-all">
                   {JSON.stringify(
                     {
                       mcpServers: {
@@ -345,7 +339,7 @@ export const ApiTokens: React.FC = () => {
                 </pre>
               </div>
             )}
-            <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-end pt-4 border-t border-border-subtle">
               <Button onClick={() => setCreated(null)}>Cerrar</Button>
             </div>
           </div>

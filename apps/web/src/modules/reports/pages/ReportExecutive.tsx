@@ -78,9 +78,7 @@ export const ReportExecutive: React.FC = () => {
       </div>
       <Card className="p-4">
         <div className="max-w-sm">
-          <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-            Período
-          </label>
+          <label className="block text-xs font-bold text-fg-body mb-1">Período</label>
           <SearchableSelect
             options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
             value={periodId}

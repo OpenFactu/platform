@@ -159,11 +159,11 @@ export const PayrollConcepts: React.FC = () => {
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
+          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
             <ListChecks className="text-indigo-600 dark:text-indigo-300" size={32} />
             Conceptos de nómina
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+          <p className="text-fg-muted mt-1 font-medium">
             Catálogo de pluses, complementos y deducciones que pueden añadirse a las nóminas.
           </p>
         </div>
@@ -283,7 +283,7 @@ export const PayrollConcepts: React.FC = () => {
         </Card>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
     </div>

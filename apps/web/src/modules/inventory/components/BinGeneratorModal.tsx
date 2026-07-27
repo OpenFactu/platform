@@ -26,7 +26,7 @@ const SegmentRange: React.FC<{
   onChange: (range: Range) => void;
 }> = ({ label, range, onChange }) => (
   <div className="space-y-2">
-    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400">{label}</p>
+    <p className="text-[11px] font-bold text-fg-muted">{label}</p>
     <div className="flex items-center gap-2">
       <NumberInput
         value={range.start}
@@ -34,7 +34,7 @@ const SegmentRange: React.FC<{
         min={1}
         inputSize="sm"
       />
-      <span className="text-slate-300 dark:text-slate-600">al</span>
+      <span className="text-fg-subtle">al</span>
       <NumberInput
         value={range.end}
         onChange={(v) => onChange({ ...range, end: v ?? 1 })}
@@ -92,7 +92,7 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
     >
       <div className="space-y-6">
         {/* Configuración Nomenclatura */}
-        <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+        <div className="grid grid-cols-2 gap-4 p-4 bg-bg-muted rounded-xl border border-border-subtle">
           <Input
             label="Prefijo"
             placeholder="Ej: B, P, R..."

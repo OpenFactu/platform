@@ -19,7 +19,8 @@ export const ReportAging: React.FC<Props> = ({ kind }) => {
 
   const load = () => {
     setLoading(true);
-    reportsApi.get<any>(endpoint)
+    reportsApi
+      .get<any>(endpoint)
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };

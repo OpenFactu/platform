@@ -149,7 +149,7 @@ export const AiChat: React.FC = () => {
     <div
       className={
         fullscreen
-          ? 'fixed inset-0 z-50 bg-slate-50 dark:bg-slate-950 flex animate-in fade-in duration-200'
+          ? 'fixed inset-0 z-50 bg-bg-muted flex animate-in fade-in duration-200'
           : 'h-full flex animate-in fade-in duration-500'
       }
     >
@@ -191,7 +191,7 @@ export const AiChat: React.FC = () => {
                 <h2 className="text-2xl font-bold text-ink-900 dark:text-slate-100">
                   Hola, soy <span className="k-shimmer-text">{ASSISTANT_NAME}</span>
                 </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                <p className="text-sm text-fg-muted max-w-md mx-auto leading-relaxed">
                   Pregúntame sobre los datos de tu empresa, adjunta un Excel/PDF/Word para que lo
                   lea, o pídeme crear un borrador o un widget para el Dashboard — cualquier acción
                   te pedirá confirmación antes de ejecutarse.
@@ -206,12 +206,12 @@ export const AiChat: React.FC = () => {
                     key={text}
                     type="button"
                     onClick={() => composer.send(text)}
-                    className="group flex items-start gap-3 text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60 hover:border-accent/40 hover:bg-accent/5 dark:hover:bg-accent/10 hover:-translate-y-0.5 transition-all shadow-sm"
+                    className="group flex items-start gap-3 text-left p-3.5 rounded-xl border border-border-default bg-bg-card hover:border-accent/40 hover:bg-accent/5 dark:hover:bg-accent/10 hover:-translate-y-0.5 transition-all shadow-sm"
                   >
                     <span className="shrink-0 w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center group-hover:bg-accent group-hover:text-white transition-colors">
                       <Icon size={16} />
                     </span>
-                    <span className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-snug pt-1.5">
+                    <span className="text-xs font-medium text-fg-body leading-snug pt-1.5">
                       {text}
                     </span>
                   </button>
@@ -242,7 +242,7 @@ export const AiChat: React.FC = () => {
 
                 {status === 'submitted' && (
                   <div className="flex justify-start">
-                    <div className="px-1 text-sm text-slate-400 dark:text-slate-500 inline-flex items-center gap-2">
+                    <div className="px-1 text-sm text-fg-subtle inline-flex items-center gap-2">
                       <Loader2 size={14} className="animate-spin text-accent" /> Pensando…
                     </div>
                   </div>

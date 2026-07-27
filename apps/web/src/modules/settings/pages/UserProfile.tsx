@@ -193,21 +193,21 @@ export const UserProfile: React.FC = () => {
   return (
     <div className="p-8 max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
+        <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
           <UserCircle className="text-blue-600 dark:text-blue-300" size={32} />
           Mi perfil
         </h1>
-        <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+        <p className="text-fg-muted mt-1 font-medium">
           Tu firma personal aparecerá en los PDFs de los documentos que tú emitas, sustituyendo a la
           firma genérica de la empresa.
         </p>
       </div>
 
-      <Card className="p-6 space-y-4 border-slate-100 dark:border-slate-800">
-        <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+      <Card className="p-6 space-y-4 border-border-subtle">
+        <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
           <ImageIcon size={14} /> Foto de perfil
         </h2>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+        <p className="text-[11px] text-fg-muted">
           Se usa en la tabla de Usuarios y en tus mensajes del asistente de IA (PNG o JPG, máx. 5
           MB).
         </p>
@@ -216,10 +216,10 @@ export const UserProfile: React.FC = () => {
             <img
               src={profile.avatarImageUrl}
               alt="Foto de perfil"
-              className="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-700"
+              className="w-16 h-16 rounded-xl object-cover border border-border-default"
             />
           ) : (
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xl font-black text-slate-600 dark:text-slate-200">
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600 flex items-center justify-center text-xl font-black text-fg-body">
               {profile?.username?.charAt(0).toUpperCase()}
             </div>
           )}
@@ -257,26 +257,26 @@ export const UserProfile: React.FC = () => {
         </div>
       </Card>
 
-      <Card className="p-6 space-y-4 border-slate-100 dark:border-slate-800">
-        <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+      <Card className="p-6 space-y-4 border-border-subtle">
+        <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
           <UserCircle size={14} /> Datos de la cuenta
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input label="Email" value={profile?.email || ''} disabled />
           <Input label="Usuario" value={profile?.username || ''} disabled />
         </div>
-        <p className="text-[11px] text-slate-400 dark:text-slate-500">
+        <p className="text-[11px] text-fg-subtle">
           Para cambiar email o contraseña, ve a la sección Usuarios (requiere permisos).
         </p>
       </Card>
 
       <TwoFactorSettings />
 
-      <Card className="p-6 space-y-4 border-slate-100 dark:border-slate-800">
-        <h2 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+      <Card className="p-6 space-y-4 border-border-subtle">
+        <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
           <PenLine size={14} /> Firma para PDFs
         </h2>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+        <p className="text-[11px] text-fg-muted">
           Rellena tu nombre y cargo. Opcionalmente sube una imagen de tu firma (PNG o JPG, máx. 5
           MB). Si rellenas estos campos, prevalecen sobre la firma de la empresa en tus PDFs.
         </p>
@@ -296,12 +296,10 @@ export const UserProfile: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">
-            Imagen de firma
-          </label>
+          <label className="block text-xs text-fg-muted mb-1">Imagen de firma</label>
           <div className="flex items-center gap-3 flex-wrap">
             {profile?.signatureImageUrl && signaturePreview && (
-              <div className="p-2 border border-slate-200 dark:border-slate-700 rounded-md bg-white dark:bg-slate-900">
+              <div className="p-2 border border-border-default rounded-md bg-bg-card">
                 <img src={signaturePreview} alt="Firma actual" className="h-14 object-contain" />
               </div>
             )}

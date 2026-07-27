@@ -29,7 +29,7 @@ export const MessageFooter: React.FC<{
   const tokensPerSec = tokens && seconds && seconds > 0.1 ? tokens / seconds : null;
 
   return (
-    <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center gap-2 flex-wrap text-[10px] text-slate-400">
+    <div className="mt-1.5 pt-1.5 border-t border-border-subtle flex items-center gap-2 flex-wrap text-[10px] text-slate-400">
       {tokens !== undefined && (
         <span
           title={

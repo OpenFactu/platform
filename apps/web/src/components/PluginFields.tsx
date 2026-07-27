@@ -45,15 +45,15 @@ export const PluginFields: React.FC<PluginFieldsProps> = ({
   if (loading || fields.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border-t border-border-subtle bg-bg-muted">
       <div className="col-span-full">
-        <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest mb-2">
+        <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest mb-2">
           Campos Adicionales (Plugins)
         </h4>
       </div>
       {fields.map((f) => (
         <div key={f.id} className="space-y-1">
-          <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tight">
+          <label className="text-[10px] font-bold text-fg-muted uppercase tracking-tight">
             {f.label}
           </label>
           {f.fieldType === 'BOOLEAN' ? (
@@ -65,9 +65,7 @@ export const PluginFields: React.FC<PluginFieldsProps> = ({
                 disabled={disabled}
                 className="w-4 h-4 accent-blue-600"
               />
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                Activar
-              </span>
+              <span className="text-xs font-medium text-fg-body">Activar</span>
             </div>
           ) : (
             <Input
@@ -76,7 +74,7 @@ export const PluginFields: React.FC<PluginFieldsProps> = ({
               onChange={(e) => onChange(f.fieldName, e.target.value)}
               placeholder={f.label}
               disabled={disabled}
-              className="h-10 text-sm border-slate-200 dark:border-slate-700"
+              className="h-10 text-sm border-border-default"
             />
           )}
         </div>

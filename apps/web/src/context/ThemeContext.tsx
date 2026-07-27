@@ -392,7 +392,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
         const res = await coreApi.raw('GET', `/api/config/${section}`);
         if (!res.ok) return null;
-        return (res.data) as T;
+        return res.data as T;
       } catch {
         return null;
       }
@@ -426,7 +426,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!token || !user?.tenantId) throw new Error('No autenticado');
       const res = await coreApi.raw('PUT', `/api/config/${section}`, patch);
       if (!res.ok) {
-        const err = (res.data ?? { error: 'Error al guardar' });
+        const err = res.data ?? { error: 'Error al guardar' };
         throw new Error(err.error || 'Error al guardar');
       }
       const data = res.data;

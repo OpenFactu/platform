@@ -248,15 +248,12 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
             La primera fila es cabecera
           </label>
 
-          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-auto max-h-80">
+          <div className="border border-border-default rounded-lg overflow-auto max-h-80">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0">
+              <thead className="bg-bg-muted sticky top-0">
                 <tr>
                   {headerRow.map((h, i) => (
-                    <th
-                      key={i}
-                      className="p-2 text-left border-b border-slate-200 dark:border-slate-700"
-                    >
+                    <th key={i} className="p-2 text-left border-b border-border-default">
                       <div className="text-slate-500 mb-1 truncate">
                         {hasHeader ? h : `Col ${i + 1}`}
                       </div>
@@ -276,7 +273,7 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
               </thead>
               <tbody>
                 {bodyRows.slice(0, 10).map((row, ri) => (
-                  <tr key={ri} className="border-t border-slate-100 dark:border-slate-800">
+                  <tr key={ri} className="border-t border-border-subtle">
                     {row.map((v, i) => (
                       <td key={i} className="p-2 font-mono">
                         {v}
@@ -287,13 +284,13 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
               </tbody>
             </table>
             {bodyRows.length > 10 && (
-              <div className="p-2 text-xs text-slate-500 border-t border-slate-200 dark:border-slate-700">
+              <div className="p-2 text-xs text-slate-500 border-t border-border-default">
                 ... y {bodyRows.length - 10} fila(s) más
               </div>
             )}
           </div>
 
-          <div className="text-sm text-slate-600 dark:text-slate-300">
+          <div className="text-sm text-fg-body">
             {parsed.length} fila(s) válida(s) para importar
             {bodyRows.length - parsed.length > 0 && (
               <span className="text-amber-600 ml-2">

@@ -12,7 +12,8 @@ export const ReportHeadcount: React.FC = () => {
 
   const load = () => {
     setLoading(true);
-    reportsApi.get<any>('/api/reports/headcount')
+    reportsApi
+      .get<any>('/api/reports/headcount')
       .then((d) => setRows(Array.isArray(d) ? d : []))
       .finally(() => setLoading(false));
   };

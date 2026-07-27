@@ -195,10 +195,8 @@ export const PriceLists: React.FC = () => {
               Comercial / Pricing
             </span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            Gestión de Tarifas
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <h1 className="text-4xl font-black text-fg-default tracking-tight">Gestión de Tarifas</h1>
+          <p className="text-fg-muted font-medium">
             Controla tus márgenes y listas de precios de forma masiva.
           </p>
         </div>
@@ -223,12 +221,12 @@ export const PriceLists: React.FC = () => {
           >
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-black text-slate-400 dark:text-slate-500">
+                <tr className="bg-bg-muted border-b border-border-subtle text-[10px] uppercase font-black text-fg-subtle">
                   <th className="px-6 py-4">Nombre de la Tarifa</th>
                   <th className="px-6 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-border-subtle">
                 {newListRow && (
                   <tr className="bg-primary/5 dark:bg-primary/10">
                     <td className="px-4 py-3">
@@ -263,7 +261,7 @@ export const PriceLists: React.FC = () => {
                       e.stopPropagation();
                       openContextMenu(e, buildCtxItems(l));
                     }}
-                    className={`cursor-pointer transition-all group border-l-2 ${selectedList?.id === l.id ? 'bg-slate-100 dark:bg-slate-800 border-l-primary' : 'border-l-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+                    className={`cursor-pointer transition-all group border-l-2 ${selectedList?.id === l.id ? 'bg-bg-muted border-l-primary' : 'border-l-transparent hover:bg-bg-hover'}`}
                   >
                     <td className="px-6 py-3">
                       {editingListId === l.id ? (
@@ -282,12 +280,12 @@ export const PriceLists: React.FC = () => {
                       ) : (
                         <div className="flex items-center gap-3">
                           <div
-                            className={`p-1.5 rounded-lg transition-colors ${selectedList?.id === l.id ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 group-hover:bg-blue-100 dark:hover:bg-blue-500/20 group-hover:text-blue-600 dark:hover:text-blue-300'}`}
+                            className={`p-1.5 rounded-lg transition-colors ${selectedList?.id === l.id ? 'bg-blue-600 text-white' : 'bg-bg-muted text-fg-subtle group-hover:bg-blue-100 dark:hover:bg-blue-500/20 group-hover:text-blue-600 dark:hover:text-blue-300'}`}
                           >
                             <Tag size={14} />
                           </div>
                           <span
-                            className={`text-sm font-bold ${selectedList?.id === l.id ? 'text-blue-700 dark:text-blue-200' : 'text-slate-700 dark:text-slate-200'}`}
+                            className={`text-sm font-bold ${selectedList?.id === l.id ? 'text-blue-700 dark:text-blue-200' : 'text-fg-body'}`}
                           >
                             {l.name}
                           </span>
@@ -319,7 +317,7 @@ export const PriceLists: React.FC = () => {
                               canWrite && setEditingListId(l.id);
                             }}
                             disabled={!canWrite}
-                            className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-blue-600 dark:hover:text-blue-300"
+                            className="p-1.5 text-fg-subtle hover:text-blue-600 dark:hover:text-blue-300"
                           >
                             <Plus size={14} className="rotate-45" />
                           </Button>
@@ -332,7 +330,7 @@ export const PriceLists: React.FC = () => {
                               canDelete && handleDeleteList(l.id);
                             }}
                             disabled={!canDelete}
-                            className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500"
+                            className="p-1.5 text-fg-subtle hover:text-rose-500"
                           >
                             <Trash2 size={14} />
                           </Button>
@@ -357,12 +355,12 @@ export const PriceLists: React.FC = () => {
         <div className="xl:col-span-8">
           {selectedList ? (
             <Card className="border-0 overflow-hidden" noPadding>
-              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="p-6 bg-bg-muted border-b border-border-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 leading-tight">
+                  <h2 className="text-xl font-black text-fg-default leading-tight">
                     Precios: {selectedList.name}
                   </h2>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1">
+                  <p className="text-[10px] text-fg-subtle font-bold uppercase tracking-widest mt-1">
                     Asignación masiva de precios especiales
                   </p>
                 </div>
@@ -378,7 +376,7 @@ export const PriceLists: React.FC = () => {
 
               <div className="overflow-x-auto max-h-[800px] scrollbar-thin scrollbar-thumb-slate-200">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[9px] uppercase font-black text-slate-400 dark:text-slate-500 sticky top-0 z-10 shadow-sm">
+                  <thead className="bg-bg-card border-b border-border-subtle text-[9px] uppercase font-black text-fg-subtle sticky top-0 z-10 shadow-sm">
                     <tr>
                       <th className="px-6 py-3">Artículo</th>
                       <th className="px-6 py-3 text-center">Precio Base</th>
@@ -396,22 +394,19 @@ export const PriceLists: React.FC = () => {
                           100
                         : 0;
                       return (
-                        <tr
-                          key={item.id}
-                          className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 group transition-colors"
-                        >
+                        <tr key={item.id} className="hover:bg-bg-hover group transition-colors">
                           <td className="px-6 py-3">
                             <div className="flex flex-col">
-                              <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 tracking-tighter uppercase">
+                              <span className="text-[9px] font-black text-fg-subtle tracking-tighter uppercase">
                                 {item.code}
                               </span>
-                              <span className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-tight">
+                              <span className="text-sm font-bold text-fg-default leading-tight">
                                 {item.name}
                               </span>
                             </div>
                           </td>
                           <td className="px-6 py-3 text-center">
-                            <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
+                            <span className="font-mono text-xs font-bold text-fg-muted">
                               {item.basePrice}€
                             </span>
                           </td>
@@ -424,15 +419,13 @@ export const PriceLists: React.FC = () => {
                                 {Math.abs(diff).toFixed(1)}% {diff >= 0 ? 'Recargo' : 'Dcto'}
                               </div>
                             ) : (
-                              <span className="text-slate-300 dark:text-slate-600 italic text-[10px]">
-                                Sin cambios
-                              </span>
+                              <span className="text-fg-subtle italic text-[10px]">Sin cambios</span>
                             )}
                           </td>
                           <td className="px-6 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
                               <div className="relative w-32">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 dark:text-slate-600">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-fg-subtle">
                                   €
                                 </span>
                                 <input
@@ -441,7 +434,7 @@ export const PriceLists: React.FC = () => {
                                   step="0.01"
                                   placeholder={String(item.basePrice ?? '')}
                                   defaultValue={itemPrice?.price || ''}
-                                  className="h-9 w-full pl-6 pr-2 rounded-lg border border-slate-100 dark:border-slate-800 text-xs font-black text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all outline-none text-right"
+                                  className="h-9 w-full pl-6 pr-2 rounded-lg border border-border-subtle text-xs font-black text-fg-default bg-bg-muted focus:bg-bg-card focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all outline-none text-right"
                                 />
                               </div>
                               <Button
@@ -467,10 +460,7 @@ export const PriceLists: React.FC = () => {
                     })}
                     {filteredItems.length === 0 && (
                       <tr>
-                        <td
-                          colSpan={4}
-                          className="p-20 text-center text-slate-300 dark:text-slate-600 italic"
-                        >
+                        <td colSpan={4} className="p-20 text-center text-fg-subtle italic">
                           No hay artículos que coincidan con la búsqueda.
                         </td>
                       </tr>
@@ -484,7 +474,7 @@ export const PriceLists: React.FC = () => {
               icon={<Tag size={40} />}
               title="Potencia Comercial"
               hint="Selecciona una lista de la izquierda para empezar a optimizar tus márgenes de beneficio de forma masiva."
-              className="h-full min-h-[400px] border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-[2.5rem] bg-slate-50/50 dark:bg-slate-800/50"
+              className="h-full min-h-[400px] border-2 border-dashed border-border-default rounded-[2.5rem] bg-bg-muted"
             />
           )}
         </div>

@@ -144,7 +144,7 @@ export const IncidentsTab: React.FC = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <AlertTriangle className="text-rose-500" size={18} />
-          <span className="text-sm text-slate-600 dark:text-slate-300">
+          <span className="text-sm text-fg-body">
             {incidents.length === 0
               ? 'Sin incidencias activas'
               : `${incidents.length} incidencia(s) activa(s)`}
@@ -162,9 +162,7 @@ export const IncidentsTab: React.FC = () => {
       ) : incidents.length === 0 ? (
         <Card bodyClassName="py-16 text-center">
           <CheckCircle2 size={40} className="mx-auto text-emerald-500 mb-2" />
-          <div className="text-sm font-bold text-slate-700 dark:text-slate-200">
-            Todo fluye sin incidencias
-          </div>
+          <div className="text-sm font-bold text-fg-body">Todo fluye sin incidencias</div>
           <div className="text-xs text-slate-500 mt-0.5">
             Cuando un conductor reporte una incidencia desde su app, aparecerá aquí.
           </div>
@@ -175,10 +173,7 @@ export const IncidentsTab: React.FC = () => {
             {incidents.map((inc) => {
               const s = inc.shipment;
               return (
-                <li
-                  key={s.id}
-                  className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 px-4 py-3"
-                >
+                <li key={s.id} className="border-b border-border-subtle last:border-0 px-4 py-3">
                   <div className="flex items-start gap-3 flex-wrap">
                     <div className="shrink-0 w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center">
                       <AlertTriangle size={18} className="text-rose-500" />
@@ -187,7 +182,7 @@ export const IncidentsTab: React.FC = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge variant="error">Incidencia</Badge>
                         {s.trackingNumber && (
-                          <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                          <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                             {s.trackingNumber}
                           </code>
                         )}
@@ -204,7 +199,7 @@ export const IncidentsTab: React.FC = () => {
                         )}
                       </div>
                       {s.destinationAddress && (
-                        <div className="text-sm text-slate-700 dark:text-slate-200 mt-0.5 truncate">
+                        <div className="text-sm text-fg-body mt-0.5 truncate">
                           {s.destinationAddress}
                           {s.recipientName && (
                             <span className="text-slate-500 text-xs"> · {s.recipientName}</span>
@@ -263,9 +258,7 @@ export const IncidentsTab: React.FC = () => {
         <>
           <div className="flex items-center gap-2 pt-2">
             <MessageCircle size={16} className="text-amber-500" />
-            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-              Reportadas por clientes
-            </span>
+            <span className="text-sm font-bold text-fg-body">Reportadas por clientes</span>
             <span className="text-[11px] text-slate-400">
               vía chat de seguimiento · últimos 30 días
             </span>
@@ -278,7 +271,7 @@ export const IncidentsTab: React.FC = () => {
                 return (
                   <li
                     key={ci.eventId}
-                    className="border-b border-slate-50 dark:border-slate-800/50 last:border-0 px-4 py-3"
+                    className="border-b border-border-subtle last:border-0 px-4 py-3"
                   >
                     <div className="flex items-start gap-3 flex-wrap">
                       <div className="shrink-0 w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
@@ -293,7 +286,7 @@ export const IncidentsTab: React.FC = () => {
                           </span>
                         </div>
                         {ci.destinationAddress && (
-                          <div className="text-sm text-slate-700 dark:text-slate-200 mt-0.5 truncate">
+                          <div className="text-sm text-fg-body mt-0.5 truncate">
                             {ci.destinationAddress}
                             {ci.recipientName && (
                               <span className="text-slate-500 text-xs"> · {ci.recipientName}</span>
@@ -350,7 +343,7 @@ export const IncidentsTab: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3">
-          <div className="text-sm text-slate-700 dark:text-slate-200">
+          <div className="text-sm text-fg-body">
             El envío volverá al estado <b>En tránsito</b> para que el conductor pueda completar la
             entrega. La incidencia seguirá visible en el historial del envío.
           </div>
@@ -359,7 +352,7 @@ export const IncidentsTab: React.FC = () => {
               <b>Motivo original:</b> {resolveModal.reason}
             </div>
           )}
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
             <Button
               variant="secondary"
               onClick={() => setResolveModal(null)}
@@ -388,7 +381,7 @@ export const IncidentsTab: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3">
-          <div className="text-sm text-slate-700 dark:text-slate-200">
+          <div className="text-sm text-fg-body">
             Se marcará el envío como <b>devuelto</b> y se creará una entrada de stock (GoodsReceipt)
             en borrador sobre el almacén origen para que revises y postees el retorno de mercancía.
           </div>
@@ -404,7 +397,7 @@ export const IncidentsTab: React.FC = () => {
             rows={3}
             placeholder="Resumen breve — p. ej. cliente rechazó, producto dañado…"
           />
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
             <Button
               variant="secondary"
               onClick={() => {

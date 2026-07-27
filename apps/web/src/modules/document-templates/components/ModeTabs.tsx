@@ -11,14 +11,14 @@ interface Props {
 }
 
 export const ModeTabs: React.FC<Props> = ({ mode, onVisual, onAdvanced }) => (
-  <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
+  <div className="flex gap-1 p-1 bg-bg-muted rounded-xl w-fit">
     <button
       onClick={onVisual}
       className={cn(
         'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all',
         mode === 'visual'
-          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm'
-          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
+          ? 'bg-bg-card text-fg-default shadow-sm'
+          : 'text-fg-muted hover:text-fg-body',
       )}
     >
       <Palette size={14} /> Modo Visual
@@ -28,8 +28,8 @@ export const ModeTabs: React.FC<Props> = ({ mode, onVisual, onAdvanced }) => (
       className={cn(
         'flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all',
         mode === 'advanced'
-          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm'
-          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
+          ? 'bg-bg-card text-fg-default shadow-sm'
+          : 'text-fg-muted hover:text-fg-body',
       )}
     >
       <Code2 size={14} /> Modo Avanzado (HTML)

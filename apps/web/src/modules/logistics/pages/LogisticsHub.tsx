@@ -45,14 +45,12 @@ export const LogisticsHub: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-3">
           <Truck className="text-blue-600 dark:text-blue-300" size={22} />
           <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-              Centro logístico
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <h1 className="text-xl font-black text-fg-default tracking-tight">Centro logístico</h1>
+            <p className="text-xs text-fg-muted">
               Envíos, rutas, paquetes y acopios con seguimiento en tiempo real.
             </p>
           </div>

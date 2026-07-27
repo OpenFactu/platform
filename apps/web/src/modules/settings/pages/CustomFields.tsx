@@ -537,14 +537,14 @@ export const CustomFields: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 flex-wrap gap-2">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <Wrench className="text-blue-600 dark:text-blue-300" size={22} />
           <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-xl font-black text-fg-default tracking-tight">
               Campos personalizados
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-fg-muted">
               Añade campos propios a cualquier tabla sin escribir código. Aparecen en form, detalle
               y PDF.
             </p>
@@ -591,13 +591,13 @@ export const CustomFields: React.FC = () => {
 
       {/* ── Tablas de usuario ─────────────────────────────────────────── */}
       <Card bodyClassName="p-0">
-        <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="px-4 py-2 border-b border-border-subtle flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TableIcon size={14} className="text-primary" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300">
+            <span className="text-[10px] font-black uppercase tracking-widest text-fg-body">
               Tablas de usuario
             </span>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
+            <span className="text-[10px] text-fg-subtle font-semibold">
               {userTables.length} {userTables.length === 1 ? 'tabla' : 'tablas'}
             </span>
           </div>
@@ -624,7 +624,7 @@ export const CustomFields: React.FC = () => {
               return (
                 <li
                   key={ut.id}
-                  className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
+                  className="flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-0 hover:bg-bg-hover"
                 >
                   <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 flex items-center justify-center">
                     <PluginIcon iconName={ut.iconName || 'Table'} size={14} />
@@ -633,29 +633,25 @@ export const CustomFields: React.FC = () => {
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
                         onClick={() => openTab(`/u/${pathName}`)}
-                        className="font-semibold text-sm text-slate-800 dark:text-slate-100 hover:text-blue-600 text-left"
+                        className="font-semibold text-sm text-fg-default hover:text-blue-600 text-left"
                       >
                         {ut.label || pathName}
                       </button>
-                      <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 font-mono text-[10px] text-slate-500 dark:text-slate-400 rounded">
+                      <code className="px-1.5 py-0.5 bg-bg-muted font-mono text-[10px] text-fg-muted rounded">
                         {ut.tableName}
                       </code>
                       <Badge variant={ut.kind === 'document' ? 'info' : 'neutral'}>
                         {ut.kind === 'document' ? 'Documento' : 'Maestro'}
                       </Badge>
                       {ut.menuModule && (
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                          menú: {ut.menuModule}
-                        </span>
+                        <span className="text-[10px] text-fg-subtle">menú: {ut.menuModule}</span>
                       )}
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                      <span className="text-[10px] text-fg-subtle">
                         {count} {count === 1 ? 'campo' : 'campos'}
                       </span>
                     </div>
                     {ut.description && (
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {ut.description}
-                      </div>
+                      <div className="text-[11px] text-fg-muted truncate">{ut.description}</div>
                     )}
                   </div>
                   <Button
@@ -739,9 +735,9 @@ export const CustomFields: React.FC = () => {
         <div className="space-y-3">
           {grouped.map(([tbl, list]) => (
             <Card key={tbl} bodyClassName="p-0">
-              <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 flex items-center gap-2">
+              <div className="px-4 py-2 border-b border-border-subtle text-[11px] font-black uppercase tracking-widest text-fg-body flex items-center gap-2">
                 {tbl}
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">
+                <span className="text-[10px] text-fg-subtle font-semibold">
                   {list.length} campos
                 </span>
               </div>
@@ -749,18 +745,18 @@ export const CustomFields: React.FC = () => {
                 {list.map((r) => (
                   <li
                     key={r.id}
-                    className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                    className="flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-0"
                   >
                     <code className="px-2 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 font-mono text-[11px] rounded">
                       {r.fieldName}
                     </code>
                     <button
                       onClick={() => openEdit(r)}
-                      className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex-1 truncate text-left hover:text-blue-600"
+                      className="text-sm font-semibold text-fg-body flex-1 truncate text-left hover:text-blue-600"
                     >
                       {r.label}
                       {r.section && (
-                        <span className="ml-2 text-[10px] text-slate-400 dark:text-slate-500 font-medium uppercase tracking-wider">
+                        <span className="ml-2 text-[10px] text-fg-subtle font-medium uppercase tracking-wider">
                           · {r.section}
                         </span>
                       )}
@@ -845,7 +841,7 @@ export const CustomFields: React.FC = () => {
                   onChange={(v) => setForm({ ...form, fieldType: v })}
                   disabled={!!editingId}
                 />
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                <div className="text-[11px] text-fg-muted mt-1">
                   {TYPE_OPTIONS.find((t) => t.value === form.fieldType)?.hint}
                 </div>
               </Field>
@@ -1068,7 +1064,7 @@ export const CustomFields: React.FC = () => {
             </div>
           </Section>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>
@@ -1097,8 +1093,8 @@ export const CustomFields: React.FC = () => {
             <Card key={p.id} bodyClassName="p-4 flex items-start gap-4">
               <Package className="text-blue-500 mt-0.5" size={18} />
               <div className="flex-1">
-                <div className="font-bold text-slate-800 dark:text-slate-100">{p.label}</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <div className="font-bold text-fg-default">{p.label}</div>
+                <div className="text-xs text-fg-muted mt-0.5">
                   {p.count} campos:{' '}
                   {p.fields.map((f: any) => `${f.tableName}.${f.fieldName}`).join(', ')}
                 </div>
@@ -1173,7 +1169,7 @@ export const CustomFields: React.FC = () => {
               placeholder="Opcional"
             />
           </Field>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowTableModal(false)}>
               Cancelar
             </Button>
@@ -1187,7 +1183,7 @@ export const CustomFields: React.FC = () => {
 
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="space-y-3">
-    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-1">
+    <div className="text-[10px] font-black uppercase tracking-widest text-fg-subtle border-b border-border-subtle pb-1">
       {title}
     </div>
     <div className="space-y-3">{children}</div>
@@ -1216,7 +1212,7 @@ const Toggle: React.FC<{ label: string; checked: boolean; onChange: (v: boolean)
   // pulsar «Crear campo» / «Guardar cambios».
   <label className="flex items-center gap-2 cursor-pointer select-none">
     <Checkbox checked={checked} onChange={onChange} />
-    <span className="text-sm text-slate-700 dark:text-slate-200">{label}</span>
+    <span className="text-sm text-fg-body">{label}</span>
   </label>
 );
 

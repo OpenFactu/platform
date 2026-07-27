@@ -394,7 +394,7 @@ export const Planning: React.FC = () => {
         <table className="w-full text-sm border-separate border-spacing-0">
           <thead>
             <tr>
-              <th className="sticky left-0 z-20 bg-slate-50 dark:bg-slate-900 border-b border-r border-slate-200 dark:border-slate-700 p-3 text-left min-w-[200px]">
+              <th className="sticky left-0 z-20 bg-bg-muted border-b border-r border-border-default p-3 text-left min-w-[200px]">
                 Empleado
               </th>
               {Array.from({ length: days }).map((_, i) => {
@@ -407,12 +407,12 @@ export const Planning: React.FC = () => {
                   <th
                     key={i}
                     className={
-                      'border-b border-slate-200 dark:border-slate-700 p-2 text-center font-medium ' +
+                      'border-b border-border-default p-2 text-center font-medium ' +
                       (isToday
                         ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 '
                         : isWeekend
-                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 '
-                          : 'bg-slate-50 dark:bg-slate-900 ')
+                          ? 'bg-bg-muted text-slate-500 '
+                          : 'bg-bg-muted ')
                     }
                     style={{ minWidth: view === 'week' ? 180 : 120 }}
                   >
@@ -421,7 +421,7 @@ export const Planning: React.FC = () => {
                   </th>
                 );
               })}
-              <th className="sticky right-0 z-20 border-b border-l border-slate-200 dark:border-slate-700 p-3 text-right bg-slate-50 dark:bg-slate-900 min-w-[120px]">
+              <th className="sticky right-0 z-20 border-b border-l border-border-default p-3 text-right bg-bg-muted min-w-[120px]">
                 Total
               </th>
             </tr>
@@ -438,9 +438,9 @@ export const Planning: React.FC = () => {
               const tot = totalsByEmp[e.id] || { hours: 0, shifts: 0 };
               const contracted = Number(e.contractHours || 0);
               return (
-                <tr key={e.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                  <td className="sticky left-0 z-10 bg-white dark:bg-slate-900 border-b border-r border-slate-100 dark:border-slate-800 p-3">
-                    <div className="font-bold text-slate-800 dark:text-slate-100">
+                <tr key={e.id} className="hover:bg-bg-hover">
+                  <td className="sticky left-0 z-10 bg-bg-card border-b border-r border-border-subtle p-3">
+                    <div className="font-bold text-fg-default">
                       {e.firstName} {e.lastName}
                     </div>
                     <div className="text-[10px] text-slate-400">{e.code}</div>
@@ -475,7 +475,7 @@ export const Planning: React.FC = () => {
                           );
                         }}
                         className={
-                          'border-b border-slate-100 dark:border-slate-800 p-1.5 align-top relative group cursor-pointer transition ' +
+                          'border-b border-border-subtle p-1.5 align-top relative group cursor-pointer transition ' +
                           (blockingIncident
                             ? 'bg-amber-50/40 dark:bg-amber-500/5 '
                             : isToday
@@ -556,7 +556,7 @@ export const Planning: React.FC = () => {
                         </div>
                         {/* Acción contextual: vacío → "+ añadir" suave / con turno → "+ partido" en hover. */}
                         {!list.length ? (
-                          <div className="mt-1 h-5 flex items-center justify-center text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition">
+                          <div className="mt-1 h-5 flex items-center justify-center text-fg-subtle opacity-0 group-hover:opacity-100 transition">
                             <Plus size={14} />
                           </div>
                         ) : (
@@ -584,8 +584,8 @@ export const Planning: React.FC = () => {
                       </td>
                     );
                   })}
-                  <td className="sticky right-0 z-10 bg-white dark:bg-slate-900 border-b border-l border-slate-100 dark:border-slate-800 p-3 text-right">
-                    <div className="font-black text-slate-800 dark:text-slate-100 tabular-nums text-lg">
+                  <td className="sticky right-0 z-10 bg-bg-card border-b border-l border-border-subtle p-3 text-right">
+                    <div className="font-black text-fg-default tabular-nums text-lg">
                       {tot.hours.toFixed(1)}
                       <span className="text-xs text-slate-400 ml-1">h</span>
                     </div>
@@ -615,12 +615,12 @@ export const Planning: React.FC = () => {
         </table>
       </Card>
 
-      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 p-3 text-xs text-slate-500 space-y-1.5">
+      <div className="rounded-lg border border-border-default bg-bg-muted p-3 text-xs text-slate-500 space-y-1.5">
         {loading && <div>Cargando…</div>}
         <div>
-          <b className="text-slate-700 dark:text-slate-300">Cómo funciona:</b> click en celda vacía
-          → crear turno. Click en un turno → editar / cancelar / borrar. Hover una celda con turno →
-          "+ partido" para añadir 2º tramo (turno partido).
+          <b className="text-fg-body">Cómo funciona:</b> click en celda vacía → crear turno. Click
+          en un turno → editar / cancelar / borrar. Hover una celda con turno → "+ partido" para
+          añadir 2º tramo (turno partido).
         </div>
         <div className="flex flex-wrap gap-3 items-center pt-1">
           <span className="inline-flex items-center gap-1.5">
@@ -693,7 +693,7 @@ export const Planning: React.FC = () => {
                           'px-3 py-1.5 rounded-lg text-xs font-bold border-2 ' +
                           (form.shiftTemplateId === t.id
                             ? 'border-indigo-500 ring-2 ring-indigo-300/50'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300')
+                            : 'border-border-default hover:border-slate-300')
                         }
                         style={{
                           background:
@@ -712,8 +712,8 @@ export const Planning: React.FC = () => {
                     className={
                       'px-3 py-1.5 rounded-lg text-xs font-bold border-2 ' +
                       (!form.shiftTemplateId
-                        ? 'border-slate-500 bg-slate-100 dark:bg-slate-700'
-                        : 'border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400')
+                        ? 'border-slate-500 bg-bg-muted'
+                        : 'border-dashed border-border-strong hover:border-slate-400')
                     }
                   >
                     Personalizado
@@ -846,7 +846,7 @@ export const Planning: React.FC = () => {
                     }
                     const total = h1 + h2;
                     return (
-                      <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800">
+                      <div className="px-3 py-2 rounded-lg bg-bg-muted">
                         <div className="text-lg font-black tabular-nums">{total.toFixed(2)} h</div>
                         {split && (
                           <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold tabular-nums mt-0.5">
@@ -866,7 +866,7 @@ export const Planning: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between gap-2 pt-3 border-t border-border-default">
                 <div className="flex items-center gap-2">
                   {modal.kind === 'edit' && (
                     <>

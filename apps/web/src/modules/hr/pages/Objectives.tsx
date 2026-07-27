@@ -159,8 +159,7 @@ export const Objectives: React.FC = () => {
             onChange={(v) => setFilter({ ...filter, status: v })}
           />
           <div className="text-xs text-slate-500">
-            <span className="font-bold text-slate-700 dark:text-slate-300">{rows.length}</span>{' '}
-            objetivos
+            <span className="font-bold text-fg-body">{rows.length}</span> objetivos
           </div>
         </div>
       </Card>

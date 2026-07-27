@@ -41,7 +41,7 @@ export const AdvancedEditor = forwardRef<AdvancedEditorHandle, Props>(
       <div className="w-full h-full overflow-hidden">
         <Suspense
           fallback={
-            <div className="h-full flex items-center justify-center text-slate-400 dark:text-slate-500">
+            <div className="h-full flex items-center justify-center text-fg-subtle">
               <Loader />
             </div>
           }

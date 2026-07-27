@@ -49,13 +49,12 @@ const FLAGS: Record<string, string> = {
   US: '🇺🇸',
 };
 
-const labelCls = 'text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1 block';
-const descCls = 'text-xs text-slate-400 dark:text-slate-500 mt-1';
-const sectionTitleCls =
-  'text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3';
-const sectionDescCls = 'text-xs text-slate-400 dark:text-slate-500 mb-3';
-const dividerCls = 'border-t border-slate-200 dark:border-slate-700';
-const footerCls = 'flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700';
+const labelCls = 'text-xs font-semibold text-fg-muted mb-1 block';
+const descCls = 'text-xs text-fg-subtle mt-1';
+const sectionTitleCls = 'text-xs font-bold uppercase tracking-wider text-fg-muted mb-3';
+const sectionDescCls = 'text-xs text-fg-subtle mb-3';
+const dividerCls = 'border-t border-border-default';
+const footerCls = 'flex justify-end gap-3 pt-4 border-t border-border-default';
 
 const TABS = [
   { key: 'general', label: 'General', icon: FileText },
@@ -141,7 +140,7 @@ const MunicipalitySearch: React.FC<MunicipalitySearchProps> = ({
         leftIcon={<Search size={14} />}
       />
       {open && subRegionId && query.trim().length >= 1 && (
-        <div className="absolute left-0 right-0 top-full z-[100999] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-lg max-h-52 overflow-auto">
+        <div className="absolute left-0 right-0 top-full z-[100999] bg-bg-card border border-border-default shadow-lg max-h-52 overflow-auto">
           {loading ? (
             <div className="px-3 py-2 text-sm text-slate-400 italic">Buscando…</div>
           ) : results.length === 0 ? (
@@ -157,7 +156,7 @@ const MunicipalitySearch: React.FC<MunicipalitySearchProps> = ({
                       setQuery(r.name);
                       setOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between text-slate-700 dark:text-slate-200"
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-bg-hover flex items-center justify-between text-fg-body"
                   >
                     <span>{r.name}</span>
                     {r.id === value && <Check size={14} className="text-accent" />}
@@ -401,9 +400,7 @@ export const Partners: React.FC = () => {
         <span className="font-bold">
           {p.name}
           {p.foreignName && (
-            <span className="text-slate-400 dark:text-slate-500 font-normal text-xs ml-1">
-              ({p.foreignName})
-            </span>
+            <span className="text-fg-subtle font-normal text-xs ml-1">({p.foreignName})</span>
           )}
         </span>
       ),
@@ -446,11 +443,11 @@ export const Partners: React.FC = () => {
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
+          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
             <Users className="text-blue-600 dark:text-blue-300" size={32} />
             Interlocutores
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+          <p className="text-fg-muted mt-1 font-medium">
             Gestión centralizada de Clientes y Proveedores.
           </p>
         </div>
@@ -514,7 +511,7 @@ export const Partners: React.FC = () => {
                       placeholder="Se asignará automáticamente..."
                       value={formData.code}
                       readOnly
-                      className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-mono"
+                      className="bg-bg-muted text-fg-muted font-mono"
                     />
                   </div>
                 </div>
@@ -755,7 +752,7 @@ export const Partners: React.FC = () => {
                       return (
                         <div
                           key={idx}
-                          className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-slate-50/50 dark:bg-slate-800/50 relative group"
+                          className="border border-border-default rounded-lg p-4 bg-bg-muted relative group"
                         >
                           <Button
                             type="button"

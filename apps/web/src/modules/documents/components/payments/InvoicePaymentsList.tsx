@@ -12,7 +12,10 @@ import {
 } from '@openfactu/ui';
 import { CreditCard, Trash2, Inbox, Pencil } from 'lucide-react';
 import { useFormat } from '@/hooks/useFormat';
-import type { Payment as PaymentRow, PaymentMethod as MethodRow } from '@/modules/accounting/domain/accounting';
+import type {
+  Payment as PaymentRow,
+  PaymentMethod as MethodRow,
+} from '@/modules/accounting/domain/accounting';
 
 interface Props {
   kind: 'sales' | 'purchase';
@@ -85,7 +88,9 @@ export const InvoicePaymentsList: React.FC<Props> = ({
       await load();
       onChanged?.();
     } catch (e) {
-      toast.error(e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al actualizar');
+      toast.error(
+        e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al actualizar',
+      );
     }
   };
 
@@ -103,7 +108,9 @@ export const InvoicePaymentsList: React.FC<Props> = ({
       await load();
       onChanged?.();
     } catch (e) {
-      toast.error(e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al eliminar');
+      toast.error(
+        e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al eliminar',
+      );
     }
   };
 

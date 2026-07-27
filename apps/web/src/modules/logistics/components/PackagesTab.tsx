@@ -189,10 +189,10 @@ export const PackagesTab: React.FC = () => {
             {rows.map((p) => (
               <li
                 key={p.id}
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0"
               >
                 <Badge variant={STATUS_BADGE[p.status] || 'neutral'}>{p.status}</Badge>
-                <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                   {p.code}
                 </code>
                 <div className="flex-1 min-w-0">
@@ -301,7 +301,7 @@ export const PackagesTab: React.FC = () => {
             precision={2}
             min={0}
           />
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>
@@ -369,15 +369,15 @@ export const PackagesTab: React.FC = () => {
                     return (
                       <li
                         key={l.id}
-                        className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                        className="flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-0"
                       >
-                        <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                        <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                           {it?.code || '—'}
                         </code>
-                        <span className="flex-1 text-sm text-slate-800 dark:text-slate-100 truncate">
+                        <span className="flex-1 text-sm text-fg-default truncate">
                           {it?.name || l.itemId}
                         </span>
-                        <span className="text-[11px] font-bold tabular-nums text-slate-600 dark:text-slate-300">
+                        <span className="text-[11px] font-bold tabular-nums text-fg-body">
                           {Number(l.quantity).toFixed(2)} {it?.uomCode ? String(it.uomCode) : ''}
                         </span>
                         {linesFor.status !== 'shipped' && linesFor.status !== 'delivered' && (
@@ -398,7 +398,7 @@ export const PackagesTab: React.FC = () => {
               </Card>
             )}
 
-            <div className="text-[11px] text-slate-500 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="text-[11px] text-slate-500 flex items-center justify-between pt-2 border-t border-border-subtle">
               <span>
                 Total líneas: <b>{lines.length}</b>
               </span>

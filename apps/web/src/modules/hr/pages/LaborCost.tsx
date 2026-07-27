@@ -110,26 +110,25 @@ export const LaborCost: React.FC = () => {
             onChange={(v) => setFilters({ ...filters, groupBy: v as typeof filters.groupBy })}
           />
           <div className="text-xs text-slate-500">
-            <span className="font-bold text-slate-700 dark:text-slate-300">{rows.length}</span>{' '}
-            grupos
+            <span className="font-bold text-fg-body">{rows.length}</span> grupos
           </div>
         </div>
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="rounded-xl border-2 border-emerald-300 bg-white dark:bg-slate-900 p-4">
+        <div className="rounded-xl border-2 border-emerald-300 bg-bg-card p-4">
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
             Bruto pagado
           </div>
           <div className="text-2xl font-black tabular-nums mt-1">{fmt(totals.gross)} €</div>
         </div>
-        <div className="rounded-xl border-2 border-indigo-300 bg-white dark:bg-slate-900 p-4">
+        <div className="rounded-xl border-2 border-indigo-300 bg-bg-card p-4">
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
             SS a cargo empresa
           </div>
           <div className="text-2xl font-black tabular-nums mt-1">{fmt(totals.ssEr)} €</div>
         </div>
-        <div className="rounded-xl border-2 border-rose-300 bg-white dark:bg-slate-900 p-4">
+        <div className="rounded-xl border-2 border-rose-300 bg-bg-card p-4">
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
             Coste total
           </div>

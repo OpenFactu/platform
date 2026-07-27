@@ -156,7 +156,7 @@ export const RoutesTab: React.FC = () => {
                 <li
                   key={r.id}
                   className={
-                    'flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 ' +
+                    'flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0 ' +
                     (isDone
                       ? 'bg-emerald-50/60 dark:bg-emerald-500/5 border-l-4 border-l-emerald-500 dark:border-l-emerald-400 pl-3'
                       : '')
@@ -179,7 +179,7 @@ export const RoutesTab: React.FC = () => {
                           'px-1.5 py-0.5 text-[11px] font-mono rounded ' +
                           (isDone
                             ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200'
-                            : 'bg-slate-100 dark:bg-slate-800')
+                            : 'bg-bg-muted')
                         }
                       >
                         {r.code}
@@ -188,15 +188,15 @@ export const RoutesTab: React.FC = () => {
                         className={
                           'font-semibold text-sm ' +
                           (isDone
-                            ? 'text-slate-500 dark:text-slate-400 line-through decoration-emerald-500/40'
-                            : 'text-slate-800 dark:text-slate-100')
+                            ? 'text-fg-muted line-through decoration-emerald-500/40'
+                            : 'text-fg-default')
                         }
                       >
                         {r.name}
                       </span>
                       <span className="text-[11px] text-slate-500">{r.plannedDate}</span>
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    <div className="text-[11px] text-fg-muted mt-0.5">
                       Conductor:{' '}
                       {r.driverEmployeeId && empMap.get(r.driverEmployeeId)
                         ? `${empMap.get(r.driverEmployeeId)!.firstName} ${empMap.get(r.driverEmployeeId)!.lastName}`
@@ -350,7 +350,7 @@ export const RoutesTab: React.FC = () => {
             />
           </div>
           {!editing && (
-            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="pt-4 border-t border-border-subtle">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
                 Croquis — envíos sin ruta
               </div>
@@ -362,7 +362,7 @@ export const RoutesTab: React.FC = () => {
               />
             </div>
           )}
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>

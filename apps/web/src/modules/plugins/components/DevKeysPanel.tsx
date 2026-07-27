@@ -93,7 +93,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                 Client ID
               </label>
               <div className="flex items-center gap-2 mt-1">
-                <code className="flex-1 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-800 dark:text-slate-200 select-all">
+                <code className="flex-1 bg-bg-card border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm font-mono text-fg-default select-all">
                   {newKey.clientId}
                 </code>
                 <Button
@@ -115,7 +115,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                 Client Secret
               </label>
               <div className="flex items-center gap-2 mt-1">
-                <code className="flex-1 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm font-mono text-slate-800 dark:text-slate-200 select-all">
+                <code className="flex-1 bg-bg-card border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm font-mono text-fg-default select-all">
                   {newKey.clientSecret}
                 </code>
                 <Button
@@ -133,7 +133,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
               </div>
             </div>
           </div>
-          <div className="mt-4 p-3 bg-white/50 dark:bg-slate-900/50 rounded-lg">
+          <div className="mt-4 p-3 bg-bg-card rounded-lg">
             <p className="text-xs text-emerald-700 dark:text-emerald-300 font-mono">
               openfactu plugin push --server http://tu-servidor:3000 --client-id {newKey.clientId}{' '}
               --client-secret {newKey.clientSecret}
@@ -174,10 +174,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
         {loading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-16 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse"
-              />
+              <div key={i} className="h-16 bg-bg-muted rounded-lg animate-pulse" />
             ))}
           </div>
         ) : keys.length === 0 ? (
@@ -193,8 +190,8 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                 key={k.id}
                 className={`flex items-center justify-between p-4 rounded-xl border transition-colors ${
                   k.isActive
-                    ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50'
-                    : 'border-slate-200/50 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 opacity-60'
+                    ? 'border-border-default bg-bg-card'
+                    : 'border-border-default bg-bg-muted opacity-60'
                 }`}
               >
                 <div className="flex items-center gap-4">
@@ -202,19 +199,15 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                     className={`w-9 h-9 rounded-lg flex items-center justify-center ${
                       k.isActive
                         ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-500'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                        : 'bg-bg-muted text-slate-400'
                     }`}
                   >
                     <Key size={16} />
                   </div>
                   <div>
-                    <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">
-                      {k.name}
-                    </div>
+                    <div className="font-semibold text-sm text-fg-default">{k.name}</div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <code className="text-[11px] text-slate-400 dark:text-slate-500 font-mono">
-                        {k.clientId}
-                      </code>
+                      <code className="text-[11px] text-fg-subtle font-mono">{k.clientId}</code>
                       <Button
                         type="button"
                         variant="ghost"
@@ -229,7 +222,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                 </div>
                 <div className="flex items-center gap-3">
                   {k.lastUsedAt && (
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                    <span className="text-[10px] text-fg-subtle">
                       Ultimo uso: {new Date(k.lastUsedAt).toLocaleDateString('es-ES')}
                     </span>
                   )}
@@ -262,19 +255,17 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
       </Card>
 
       {/* Instrucciones */}
-      <div className="mt-6 p-5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700">
-        <h4 className="font-semibold text-sm text-slate-900 dark:text-slate-100 mb-3">
-          Como usar las API Keys
-        </h4>
-        <div className="space-y-2 text-xs text-slate-500 dark:text-slate-400 font-mono">
+      <div className="mt-6 p-5 rounded-xl bg-bg-muted border border-border-default">
+        <h4 className="font-semibold text-sm text-fg-default mb-3">Como usar las API Keys</h4>
+        <div className="space-y-2 text-xs text-fg-muted font-mono">
           <p># Desde otro ordenador, sube tu plugin al servidor:</p>
-          <p className="text-slate-700 dark:text-slate-300">
+          <p className="text-fg-body">
             openfactu plugin push ./mi-plugin --server http://tu-servidor:3000 --client-id ofk_...
             --client-secret ofs_...
           </p>
           <p className="mt-3"># O enlaza un plugin local para desarrollo:</p>
-          <p className="text-slate-700 dark:text-slate-300">openfactu plugin link ./mi-plugin</p>
-          <p className="text-slate-700 dark:text-slate-300">openfactu plugin dev mi-plugin</p>
+          <p className="text-fg-body">openfactu plugin link ./mi-plugin</p>
+          <p className="text-fg-body">openfactu plugin dev mi-plugin</p>
         </div>
       </div>
     </div>

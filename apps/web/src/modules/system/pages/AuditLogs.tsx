@@ -52,7 +52,7 @@ const ACTION_OPTIONS = [
 // Único label que sigue a mano (SearchableSelect no tiene prop `label`); imita
 // el estilo del label que pintan Select y DatePicker para que los cuatro
 // filtros de la fila se vean iguales.
-const filterLabelCls = 'block text-[12px] font-medium text-slate-700 dark:text-slate-300 mb-1.5';
+const filterLabelCls = 'block text-[12px] font-medium text-fg-body mb-1.5';
 
 const ENTITY_TYPES = [
   'Item',
@@ -98,7 +98,7 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
       {log.action === 'UPDATE' && old && next ? (
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
+            <tr className="text-[10px] font-black text-fg-subtle uppercase tracking-widest border-b border-border-subtle">
               <th className="pb-3 text-left w-1/3">Campo</th>
               <th className="pb-3 text-left w-1/3">Anterior</th>
               <th className="pb-3 text-left w-1/3">Nuevo</th>
@@ -109,9 +109,9 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
               const changed = JSON.stringify(old[k]) !== JSON.stringify(next[k]);
               return (
                 <tr key={k} className={changed ? 'bg-amber-50/50' : ''}>
-                  <td className="py-2 font-medium text-slate-600 dark:text-slate-300">{k}</td>
+                  <td className="py-2 font-medium text-fg-body">{k}</td>
                   <td
-                    className={`py-2 font-mono text-xs ${changed ? 'text-rose-600 dark:text-rose-300' : 'text-slate-500 dark:text-slate-400'}`}
+                    className={`py-2 font-mono text-xs ${changed ? 'text-rose-600 dark:text-rose-300' : 'text-fg-muted'}`}
                   >
                     {old[k] === null || old[k] === undefined ? (
                       <span className="opacity-30 italic">null</span>
@@ -120,7 +120,7 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
                     )}
                   </td>
                   <td
-                    className={`py-2 font-mono text-xs ${changed ? 'text-emerald-700 dark:text-emerald-200 font-semibold' : 'text-slate-500 dark:text-slate-400'}`}
+                    className={`py-2 font-mono text-xs ${changed ? 'text-emerald-700 dark:text-emerald-200 font-semibold' : 'text-fg-muted'}`}
                   >
                     {next[k] === null || next[k] === undefined ? (
                       <span className="opacity-30 italic">null</span>
@@ -134,7 +134,7 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
           </tbody>
         </table>
       ) : (
-        <pre className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-xs font-mono text-slate-700 dark:text-slate-200 overflow-auto whitespace-pre-wrap">
+        <pre className="bg-bg-muted rounded-xl p-4 text-xs font-mono text-fg-body overflow-auto whitespace-pre-wrap">
           {JSON.stringify(log.action === 'DELETE' ? old : next, null, 2)}
         </pre>
       )}
@@ -204,18 +204,16 @@ export const AuditLogs: React.FC = () => {
               Gestión Central / Seguridad
             </span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+          <h1 className="text-4xl font-black text-fg-default tracking-tight">
             Registros de Auditoría
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <p className="text-fg-muted font-medium">
             Histórico completo de creaciones, modificaciones y eliminaciones.
           </p>
         </div>
         <div className="text-right">
-          <p className="text-2xl font-black text-slate-900 dark:text-slate-100">
-            {total.toLocaleString()}
-          </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
+          <p className="text-2xl font-black text-fg-default">{total.toLocaleString()}</p>
+          <p className="text-xs text-fg-subtle font-bold uppercase tracking-widest">
             registros totales
           </p>
         </div>
@@ -276,11 +274,7 @@ export const AuditLogs: React.FC = () => {
               <Search size={16} />
               Filtrar
             </Button>
-            <Button
-              variant="secondary"
-              onClick={handleReset}
-              className="h-10 gap-2 text-slate-500 dark:text-slate-400"
-            >
+            <Button variant="secondary" onClick={handleReset} className="h-10 gap-2 text-fg-muted">
               <RotateCcw size={14} />
             </Button>
           </div>
@@ -291,7 +285,7 @@ export const AuditLogs: React.FC = () => {
       <Card className="overflow-hidden border-0" noPadding>
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-black text-slate-400 dark:text-slate-500">
+            <tr className="bg-bg-muted border-b border-border-subtle text-[10px] uppercase font-black text-fg-subtle">
               <th className="p-4 pl-6">Fecha / Hora</th>
               <th className="p-4">Acción</th>
               <th className="p-4">Entidad</th>
@@ -305,9 +299,7 @@ export const AuditLogs: React.FC = () => {
               <tr>
                 <td colSpan={6} className="p-20 text-center">
                   <Loader size="lg" />
-                  <p className="text-slate-400 dark:text-slate-500 mt-4 font-medium italic">
-                    Cargando registros...
-                  </p>
+                  <p className="text-fg-subtle mt-4 font-medium italic">Cargando registros...</p>
                 </td>
               </tr>
             )}
@@ -328,19 +320,16 @@ export const AuditLogs: React.FC = () => {
                 const date = new Date(log.createdAt);
                 const hasDetail = log.oldValue || log.newValue;
                 return (
-                  <tr
-                    key={log.id}
-                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group"
-                  >
+                  <tr key={log.id} className="hover:bg-bg-hover transition-colors group">
                     <td className="p-4 pl-6">
-                      <p className="font-bold text-slate-800 dark:text-slate-100 text-sm tabular-nums">
+                      <p className="font-bold text-fg-default text-sm tabular-nums">
                         {date.toLocaleDateString('es-ES', {
                           day: '2-digit',
                           month: '2-digit',
                           year: 'numeric',
                         })}
                       </p>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono tabular-nums">
+                      <p className="text-[10px] text-fg-subtle font-mono tabular-nums">
                         {date.toLocaleTimeString('es-ES', {
                           hour: '2-digit',
                           minute: '2-digit',
@@ -356,17 +345,15 @@ export const AuditLogs: React.FC = () => {
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className="font-bold text-slate-700 dark:text-slate-200 text-sm">
-                        {log.entityType}
-                      </span>
+                      <span className="font-bold text-fg-body text-sm">{log.entityType}</span>
                     </td>
                     <td className="p-4">
-                      <span className="font-mono text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg">
+                      <span className="font-mono text-xs text-fg-muted bg-bg-muted px-2 py-1 rounded-lg">
                         {log.entityId.slice(0, 12)}…
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      <span className="text-xs text-fg-muted font-medium">
                         {log.userId ? (
                           log.userId.slice(0, 12) + '…'
                         ) : (
@@ -404,7 +391,7 @@ export const AuditLogs: React.FC = () => {
             total={total}
             onPageChange={(p) => setPage(Math.min(totalPages, Math.max(1, p)))}
             pageSizeOptions={[]}
-            className="p-4 pl-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50"
+            className="p-4 pl-6 border-t border-border-subtle bg-bg-muted"
           />
         )}
       </Card>

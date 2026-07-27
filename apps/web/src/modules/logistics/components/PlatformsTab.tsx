@@ -122,22 +122,20 @@ export const PlatformsTab: React.FC = () => {
               return (
                 <li
                   key={p.id}
-                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 ${
+                  className={`flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0 ${
                     archived ? 'opacity-60' : ''
                   }`}
                 >
                   <Building2 size={16} className="text-slate-400 shrink-0" />
-                  <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                  <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                     {p.code}
                   </code>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-                        {p.name}
-                      </span>
+                      <span className="font-semibold text-sm text-fg-default">{p.name}</span>
                       {archived && <Badge variant="neutral">Archivada</Badge>}
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex gap-3 flex-wrap">
+                    <div className="text-[11px] text-fg-muted mt-0.5 flex gap-3 flex-wrap">
                       {p.address && <span className="truncate max-w-md">{p.address}</span>}
                       {p.openingHours && <span>· {p.openingHours}</span>}
                       {p.contactPhone && <span>· {p.contactPhone}</span>}
@@ -257,7 +255,7 @@ export const PlatformsTab: React.FC = () => {
             value={form.notes || ''}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>

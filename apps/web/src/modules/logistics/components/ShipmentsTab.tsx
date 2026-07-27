@@ -407,7 +407,7 @@ export const ShipmentsTab: React.FC = () => {
         <Card bodyClassName="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[780px]">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              <thead className="bg-bg-muted text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 <tr>
                   <th className="px-4 py-2 text-left">Estado</th>
                   <th className="px-4 py-2 text-left">Transportista</th>
@@ -423,7 +423,7 @@ export const ShipmentsTab: React.FC = () => {
                   return (
                     <tr
                       key={s.id}
-                      className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-800/30 cursor-pointer"
+                      className="border-t border-border-subtle hover:bg-bg-hover cursor-pointer"
                       onClick={() => openTab(`/logistics/shipments/${s.id}`)}
                     >
                       <td className="px-4 py-2">
@@ -439,7 +439,7 @@ export const ShipmentsTab: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-2 text-slate-700 dark:text-slate-200">
+                      <td className="px-4 py-2 text-fg-body">
                         {s.carrier}
                         {s.trackingNumber && (
                           <span className="ml-2 font-mono text-[10px] text-slate-500">
@@ -447,18 +447,18 @@ export const ShipmentsTab: React.FC = () => {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-slate-700 dark:text-slate-200">
+                      <td className="px-4 py-2 text-fg-body">
                         {s.driverName || '—'}
                         {s.vehiclePlate && (
-                          <span className="ml-2 text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                          <span className="ml-2 text-[10px] font-mono bg-bg-muted px-1.5 py-0.5 rounded">
                             {s.vehiclePlate}
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-slate-600 dark:text-slate-300 truncate max-w-[280px]">
+                      <td className="px-4 py-2 text-fg-body truncate max-w-[280px]">
                         {s.destinationAddress || '—'}
                       </td>
-                      <td className="px-4 py-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <td className="px-4 py-2 text-[11px] text-fg-muted">
                         {s.lastLat != null && s.lastLng != null ? timeAgo(s.lastLocationAt) : '—'}
                       </td>
                       <td className="px-4 py-2 text-right whitespace-nowrap">
@@ -512,7 +512,7 @@ export const ShipmentsTab: React.FC = () => {
             total={total}
             onPageChange={setPage}
             pageSizeOptions={[]}
-            className="px-4 py-2 border-t border-slate-100 dark:border-slate-800"
+            className="px-4 py-2 border-t border-border-subtle"
           />
         </Card>
       )}
@@ -561,7 +561,7 @@ export const ShipmentsTab: React.FC = () => {
           </div>
 
           {/* ─── Transportista ─── */}
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+          <div className="border-t border-border-subtle pt-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
               Transportista
             </div>
@@ -604,7 +604,7 @@ export const ShipmentsTab: React.FC = () => {
           </div>
 
           {/* ─── Conductor y vehículo ─── */}
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+          <div className="border-t border-border-subtle pt-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
               Conductor y vehículo
             </div>
@@ -664,7 +664,7 @@ export const ShipmentsTab: React.FC = () => {
           </div>
 
           {/* ─── Dirección ─── */}
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+          <div className="border-t border-border-subtle pt-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
               {form.kind === 'pickup_return' ? 'Recogida' : 'Destino'}
             </div>
@@ -732,7 +732,7 @@ export const ShipmentsTab: React.FC = () => {
           </div>
 
           {/* ─── Destinatario / contacto ─── */}
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+          <div className="border-t border-border-subtle pt-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
               {form.kind === 'pickup_return'
                 ? 'Contacto en el punto de recogida'
@@ -760,7 +760,7 @@ export const ShipmentsTab: React.FC = () => {
           </div>
 
           {/* ─── Detalles adicionales ─── */}
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+          <div className="border-t border-border-subtle pt-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
               Detalles adicionales
             </div>
@@ -783,7 +783,7 @@ export const ShipmentsTab: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>

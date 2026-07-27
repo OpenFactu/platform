@@ -51,7 +51,8 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
 
   useEffect(() => {
     setLoading(true);
-    coreApi.get(`/api/document-links?type=${type}&id=${id}`)
+    coreApi
+      .get(`/api/document-links?type=${type}&id=${id}`)
       .then((d) => {
         if (d.error) toast.error(d.error);
         else setData(d);
@@ -103,7 +104,7 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
   return (
     <div className="space-y-6">
       {/* Cadena horizontal */}
-      <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 border border-slate-200 dark:border-slate-700 p-5 overflow-x-auto">
+      <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-950 border border-border-default p-5 overflow-x-auto">
         <div className="flex items-center gap-2 min-w-fit">
           {chain.length === 0 ? (
             <div className="w-full text-center text-sm text-slate-400 italic py-4">
@@ -127,17 +128,17 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
                       className={`flex-shrink-0 px-3 py-2 rounded-lg border-2 transition-all text-left ${
                         item.highlight
                           ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/20 cursor-default ring-2 ring-blue-200 dark:ring-blue-500/30'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-500/50 hover:-translate-y-0.5'
+                          : 'border-border-default bg-bg-card hover:border-blue-300 dark:hover:border-blue-500/50 hover:-translate-y-0.5'
                       }`}
                     >
-                      <div className="text-[9px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      <div className="text-[9px] font-black uppercase tracking-wider text-fg-muted">
                         {DOC_TYPE_LABELS[item.ref.type]}
                       </div>
-                      <div className="font-mono font-bold text-sm text-slate-900 dark:text-slate-100">
+                      <div className="font-mono font-bold text-sm text-fg-default">
                         {item.ref.code}
                       </div>
                       {item.ref.total > 0 && (
-                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                        <div className="text-[10px] text-fg-muted font-mono">
                           {fmt.money(item.ref.total)}
                         </div>
                       )}
@@ -175,12 +176,7 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
                       </Badge>
                     </div>
                   )}
-                  {!isLast && (
-                    <ChevronRight
-                      size={20}
-                      className="text-slate-400 dark:text-slate-600 flex-shrink-0"
-                    />
-                  )}
+                  {!isLast && <ChevronRight size={20} className="text-fg-subtle flex-shrink-0" />}
                 </React.Fragment>
               );
             })

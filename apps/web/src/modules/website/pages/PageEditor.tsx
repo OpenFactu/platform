@@ -150,19 +150,17 @@ export const PageEditor: React.FC = () => {
     <div
       className={
         fullscreen
-          ? 'flex flex-col fixed inset-0 z-[100] bg-white dark:bg-slate-900'
+          ? 'flex flex-col fixed inset-0 z-[100] bg-bg-card'
           : 'flex flex-col h-[calc(100vh-7rem)] min-h-[480px] animate-in fade-in duration-300'
       }
     >
-      <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border-default bg-bg-card">
         <div className="flex items-center gap-3 min-w-0">
           <Button size="sm" variant="secondary" onClick={() => navigate('/website/pages')}>
             <ArrowLeft size={14} className="mr-1" /> Páginas
           </Button>
           <div className="min-w-0">
-            <p className="font-black text-slate-900 dark:text-slate-100 truncate leading-tight">
-              {page.title}
-            </p>
+            <p className="font-black text-fg-default truncate leading-tight">{page.title}</p>
             <p className="text-[11px] font-mono text-slate-400 leading-tight">{page.path}</p>
           </div>
           {page.status === 'published' ? (

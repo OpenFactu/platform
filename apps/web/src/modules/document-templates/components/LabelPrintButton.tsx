@@ -99,7 +99,7 @@ export const LabelPrintButton: React.FC<Props> = ({
   };
 
   const btnBase =
-    'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200';
+    'inline-flex items-center gap-1.5 rounded-lg border border-border-default bg-bg-card hover:bg-bg-hover text-fg-body';
 
   return (
     <>
@@ -133,12 +133,10 @@ export const LabelPrintButton: React.FC<Props> = ({
               if (e.target === e.currentTarget) setOpen(false);
             }}
           >
-            <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
+            <div className="w-full max-w-md rounded-xl bg-bg-card border border-border-default shadow-2xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-border-default flex items-center gap-2">
                 <Printer size={16} className="text-slate-500" />
-                <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  Imprimir etiqueta
-                </div>
+                <div className="text-sm font-semibold text-fg-body">Imprimir etiqueta</div>
               </div>
               <div className="p-4 space-y-3 text-sm">
                 {!templates && !error && (
@@ -153,13 +151,13 @@ export const LabelPrintButton: React.FC<Props> = ({
                 {templates && templates.length > 0 && (
                   <>
                     <div>
-                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <label className="text-[11px] font-bold text-fg-muted uppercase tracking-wider">
                         Plantilla
                       </label>
                       <select
                         value={selectedId}
                         onChange={(e) => setSelectedId(e.target.value)}
-                        className="mt-1 w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                        className="mt-1 w-full px-2 py-1.5 rounded border border-border-default bg-bg-card text-sm"
                       >
                         {templates.map((t) => (
                           <option key={t.id} value={t.id}>
@@ -170,7 +168,7 @@ export const LabelPrintButton: React.FC<Props> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <label className="text-[11px] font-bold text-fg-muted uppercase tracking-wider">
                         Copias
                       </label>
                       <input
@@ -181,13 +179,13 @@ export const LabelPrintButton: React.FC<Props> = ({
                         onChange={(e) =>
                           setCopies(Math.max(1, Math.min(200, Number(e.target.value) || 1)))
                         }
-                        className="mt-1 w-24 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                        className="mt-1 w-24 px-2 py-1.5 rounded border border-border-default bg-bg-card text-sm"
                       />
                     </div>
                     {Object.keys(params).length > 0 && (
-                      <details className="text-[11px] text-slate-500 dark:text-slate-400">
+                      <details className="text-[11px] text-fg-muted">
                         <summary className="cursor-pointer">Parámetros enviados</summary>
-                        <pre className="mt-1 p-2 rounded bg-slate-50 dark:bg-slate-800 overflow-auto">
+                        <pre className="mt-1 p-2 rounded bg-bg-muted overflow-auto">
                           {JSON.stringify(params, null, 2)}
                         </pre>
                       </details>
@@ -196,11 +194,11 @@ export const LabelPrintButton: React.FC<Props> = ({
                 )}
                 {error && <div className="text-red-500 text-xs whitespace-pre-wrap">⚠ {error}</div>}
               </div>
-              <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex justify-end gap-2">
+              <div className="px-4 py-3 border-t border-border-default bg-bg-muted flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="text-xs px-3 py-1.5 rounded border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="text-xs px-3 py-1.5 rounded border border-border-strong text-fg-body hover:bg-bg-hover"
                 >
                   Cancelar
                 </button>

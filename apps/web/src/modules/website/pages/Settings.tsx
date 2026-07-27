@@ -124,7 +124,7 @@ export const Settings: React.FC = () => {
               Website / Ajustes
             </span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight text-display">
+          <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
             Ajustes de la web
           </h1>
         </div>
@@ -134,7 +134,7 @@ export const Settings: React.FC = () => {
       </header>
 
       <Card className="space-y-4">
-        <h2 className="font-black text-slate-800 dark:text-slate-100">Identidad</h2>
+        <h2 className="font-black text-fg-default">Identidad</h2>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-slate-500 block mb-1">Nombre del site</label>
@@ -160,7 +160,7 @@ export const Settings: React.FC = () => {
       </Card>
 
       <Card className="space-y-4">
-        <h2 className="font-black text-slate-800 dark:text-slate-100">Tema</h2>
+        <h2 className="font-black text-fg-default">Tema</h2>
         <p className="text-xs text-slate-400 -mt-2">
           Por defecto la web usa el branding de la empresa; aquí puedes sobreescribirlo solo para la
           web.
@@ -189,7 +189,7 @@ export const Settings: React.FC = () => {
       </Card>
 
       <Card className="space-y-4">
-        <h2 className="font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+        <h2 className="font-black text-fg-default flex items-center gap-2">
           <ShoppingCart size={16} /> Tienda
         </h2>
         <div>
@@ -214,7 +214,7 @@ export const Settings: React.FC = () => {
       </Card>
 
       <Card className="space-y-4">
-        <h2 className="font-black text-slate-800 dark:text-slate-100">SEO por defecto</h2>
+        <h2 className="font-black text-fg-default">SEO por defecto</h2>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="text-xs font-bold text-slate-500 block mb-1">Título SEO</label>
@@ -242,7 +242,7 @@ export const Settings: React.FC = () => {
 
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-black text-slate-800 dark:text-slate-100">Dominios</h2>
+          <h2 className="font-black text-fg-default">Dominios</h2>
           <Button
             size="sm"
             variant="secondary"
@@ -282,7 +282,7 @@ export const Settings: React.FC = () => {
             </Button>
           </div>
         )}
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="divide-y divide-border-subtle">
           {hosts.map((host) => (
             <li key={host.id} className="flex items-center justify-between py-2">
               <div className="flex items-center gap-3">
@@ -291,7 +291,7 @@ export const Settings: React.FC = () => {
                 ) : (
                   <Link2 size={16} className="text-slate-400" />
                 )}
-                <span className="font-mono text-sm text-slate-700 dark:text-slate-200">
+                <span className="font-mono text-sm text-fg-body">
                   {host.kind === 'slug' ? `/site/${host.value}` : host.value}
                 </span>
                 {host.kind === 'domain' && !host.verified && (
@@ -305,7 +305,7 @@ export const Settings: React.FC = () => {
                   size="sm"
                   onClick={() => handleRemoveHost(host)}
                   title="Quitar dominio"
-                  className="text-slate-300 dark:text-slate-600 hover:text-rose-500"
+                  className="text-fg-subtle hover:text-rose-500"
                 >
                   <Trash2 size={15} />
                 </Button>

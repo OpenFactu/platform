@@ -100,9 +100,9 @@ export const PrintTemplateButton: React.FC<Props> = ({
       </Button>
 
       {open && templates && templates.length > 1 && (
-        <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl z-50 overflow-hidden">
-          <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+        <div className="absolute right-0 mt-2 w-72 bg-bg-card border border-border-default rounded-xl z-50 overflow-hidden">
+          <div className="px-3 py-2 border-b border-border-subtle bg-bg-muted">
+            <p className="text-[10px] font-black uppercase tracking-wider text-fg-muted">
               Elige una plantilla
             </p>
           </div>
@@ -111,12 +111,10 @@ export const PrintTemplateButton: React.FC<Props> = ({
               <li key={t.id}>
                 <button
                   onClick={() => doDownload(t.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-bg-hover transition-colors"
                 >
-                  <FileCode size={14} className="text-slate-400 dark:text-slate-500" />
-                  <span className="flex-1 text-sm text-slate-700 dark:text-slate-200 truncate">
-                    {t.name}
-                  </span>
+                  <FileCode size={14} className="text-fg-subtle" />
+                  <span className="flex-1 text-sm text-fg-body truncate">{t.name}</span>
                   {t.isDefault && (
                     <span className="text-[9px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
                       Default

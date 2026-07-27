@@ -201,7 +201,7 @@ export const ShiftPatterns: React.FC = () => {
             </thead>
             <tbody>
               {list.map((p) => (
-                <tr key={p.id} className="border-b hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                <tr key={p.id} className="border-b hover:bg-bg-hover">
                   <td className="p-3 font-medium">{p.name}</td>
                   <td className="p-3">{p.cycleWeeks}</td>
                   <td className="p-3">{p.isActive ? 'Sí' : 'No'}</td>
@@ -278,7 +278,7 @@ export const ShiftPatterns: React.FC = () => {
                           'px-2.5 py-1 rounded-md text-xs font-bold border-2 ' +
                           (brush === t.id
                             ? 'ring-2 ring-indigo-300/50 border-indigo-500'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300')
+                            : 'border-border-default hover:border-indigo-300')
                         }
                         style={{
                           background: brush === t.id ? t.color || '#6366F1' : 'transparent',
@@ -332,18 +332,18 @@ export const ShiftPatterns: React.FC = () => {
                 </div>
               </div>
 
-              <div className="overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="overflow-auto rounded-lg border border-border-default">
                 <table className="w-full text-xs border-separate border-spacing-0">
                   <thead>
                     <tr>
-                      <th className="bg-slate-100 dark:bg-slate-800 border-b border-r border-slate-200 dark:border-slate-700 px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-20">
+                      <th className="bg-bg-muted border-b border-r border-border-default px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-20">
                         Semana
                       </th>
                       {DAYS.map((d, i) => (
                         <th
                           key={d}
                           className={
-                            'bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-slate-500 ' +
+                            'bg-bg-muted border-b border-border-default px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-slate-500 ' +
                             (i < 6 ? 'border-r' : '') +
                             (i >= 5 ? ' bg-slate-200/60 dark:bg-slate-800/80' : '')
                           }
@@ -355,8 +355,8 @@ export const ShiftPatterns: React.FC = () => {
                   </thead>
                   <tbody>
                     {Array.from({ length: editing.cycleWeeks }).map((_, w) => (
-                      <tr key={w} className={w % 2 ? 'bg-slate-50/50 dark:bg-slate-900/30' : ''}>
-                        <td className="border-b border-r border-slate-200 dark:border-slate-700 px-2 py-2 text-center text-slate-700 dark:text-slate-200">
+                      <tr key={w} className={w % 2 ? 'bg-bg-muted' : ''}>
+                        <td className="border-b border-r border-border-default px-2 py-2 text-center text-fg-body">
                           <div className="font-black mb-1">{w + 1}</div>
                           <div className="flex items-center justify-center gap-1">
                             {/* Micro-acciones dentro de la matriz: se mantiene el
@@ -414,9 +414,9 @@ export const ShiftPatterns: React.FC = () => {
                                 if (!tplId && brush) setSlot(w, d + 1, brush);
                               }}
                               className={
-                                'border-b border-slate-200 dark:border-slate-700 p-1.5 cursor-pointer ' +
+                                'border-b border-border-default p-1.5 cursor-pointer ' +
                                 (d < 6 ? 'border-r ' : '') +
-                                (isWeekend ? 'bg-slate-100/60 dark:bg-slate-800/40' : '') +
+                                (isWeekend ? 'bg-bg-muted' : '') +
                                 (!tplId && brush
                                   ? ' hover:bg-indigo-50 dark:hover:bg-indigo-500/10'
                                   : '')
@@ -431,7 +431,7 @@ export const ShiftPatterns: React.FC = () => {
                               <select
                                 value={tplId}
                                 onChange={(e) => setSlot(w, d + 1, e.target.value)}
-                                className="w-full text-xs px-2 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+                                className="w-full text-xs px-2 py-1.5 rounded-md border border-border-default bg-bg-card font-bold focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
                                 style={{
                                   background: tpl?.color ? tpl.color : undefined,
                                   color: tpl?.color ? 'white' : undefined,
@@ -559,7 +559,7 @@ const AssignmentForm: React.FC<{
     [employees],
   );
   return (
-    <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+    <div className="pt-3 border-t border-border-default">
       <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto_auto] gap-3 items-end">
         <div className="min-w-0">
           {/* SearchableSelect no tiene prop `label` → se conserva el <label>

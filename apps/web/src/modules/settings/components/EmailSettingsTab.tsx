@@ -160,7 +160,7 @@ export const EmailSettingsTab: React.FC = () => {
     <div className="space-y-6">
       <Card>
         <div className="p-5 space-y-4">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <Mail size={18} />
             <h2 className="text-lg font-bold">Servidor SMTP</h2>
           </div>
@@ -260,7 +260,7 @@ export const EmailSettingsTab: React.FC = () => {
 
       <Card>
         <div className="p-5 space-y-4">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+          <div className="flex items-center gap-2 text-fg-body">
             <Send size={18} />
             <h2 className="text-lg font-bold">Enviar prueba</h2>
           </div>

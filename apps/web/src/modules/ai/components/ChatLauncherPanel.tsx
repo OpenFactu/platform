@@ -186,8 +186,8 @@ export const ChatLauncherPanel: React.FC = () => {
       )}
 
       {open && (
-        <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] h-full flex flex-col bg-white dark:bg-slate-900 sm:border-l border-slate-200 dark:border-slate-700 shadow-2xl animate-in fade-in slide-in-from-right duration-300 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 shrink-0 bg-gradient-to-r from-accent/10 via-transparent to-transparent">
+        <div className="fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] h-full flex flex-col bg-bg-card sm:border-l border-border-default shadow-2xl animate-in fade-in slide-in-from-right duration-300 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0 bg-gradient-to-r from-accent/10 via-transparent to-transparent">
             <div className="flex items-center gap-2 font-bold">
               <span className="relative shrink-0">
                 <Bot size={18} className="text-accent" />

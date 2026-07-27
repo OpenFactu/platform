@@ -97,10 +97,8 @@ const DocumentList: React.FC<{
       sortAccessor: (item: any) => item.docCode || '',
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {formatDocCode(item)}
-          </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">
+          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="text-[10px] text-fg-subtle font-mono mt-1">
             ID: {item.id.substring(0, 8)}
           </span>
         </div>
@@ -118,7 +116,7 @@ const DocumentList: React.FC<{
       sortAccessor: (item: any) => item.partnerName || '',
       accessor: (item: any) => (
         <div>
-          <p className="font-bold text-slate-700 dark:text-slate-200">{item.partnerName}</p>
+          <p className="font-bold text-fg-body">{item.partnerName}</p>
           <p className="text-[10px] text-slate-400 uppercase mt-1">
             CIE: {item.partnerId?.substring(0, 6)}
           </p>
@@ -131,9 +129,7 @@ const DocumentList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
       accessor: (item: any) => (
-        <span className="font-black text-slate-900 dark:text-slate-100">
-          {fmt.money(item.total)}
-        </span>
+        <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
       ),
     },
     {
@@ -165,11 +161,9 @@ const DocumentList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100">
-            {config.labelPlural}
-          </h1>
+          <h1 className="text-4xl font-black text-fg-default">{config.labelPlural}</h1>
           <p className="text-sm text-slate-500 mt-1">
             Gestiona todos los {config.labelPlural.toLowerCase()}
           </p>
@@ -215,9 +209,7 @@ const DocumentList: React.FC<{
             {
               label: 'Total',
               value: (item: any) => (
-                <span className="font-black text-slate-900 dark:text-slate-100">
-                  {fmt.money(item.total)}
-                </span>
+                <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
               ),
             },
           ]}

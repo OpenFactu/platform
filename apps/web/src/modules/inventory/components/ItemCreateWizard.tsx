@@ -149,7 +149,7 @@ export const ItemCreateWizard: React.FC<Props> = ({
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-3 pt-6 mt-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between gap-3 pt-6 mt-4 border-t border-border-subtle">
           <div>
             {step > 1 && (
               <Button type="button" variant="secondary" onClick={() => setStep(step - 1)}>

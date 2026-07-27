@@ -546,7 +546,7 @@ export const StockMovements: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-3">
           {(creating || viewing) && (
             <Button
@@ -561,14 +561,14 @@ export const StockMovements: React.FC = () => {
           )}
           <ArrowRightLeft className="text-amber-600 dark:text-amber-300" size={22} />
           <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
+            <h1 className="text-xl font-black tracking-tight text-fg-default">
               {creating
                 ? cfg.newTitle
                 : viewing
                   ? `${cfg.label.slice(0, -1)} ${viewing.code}`
                   : 'Movimientos de stock'}
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-fg-muted">
               {creating
                 ? 'Rellena la cabecera y las líneas. Los artículos gestionados por lote/serie exigen el número.'
                 : viewing
@@ -615,13 +615,13 @@ export const StockMovements: React.FC = () => {
                     <li
                       key={r.id}
                       onClick={() => openView(r)}
-                      className="flex items-center gap-3 px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/50 last:border-0 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0 cursor-pointer hover:bg-bg-hover transition-colors"
                     >
-                      <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded shrink-0">
+                      <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded shrink-0">
                         {r.code}
                       </code>
                       <Badge variant={sc.variant}>{sc.label}</Badge>
-                      <div className="flex-1 min-w-0 text-xs text-slate-600 dark:text-slate-300">
+                      <div className="flex-1 min-w-0 text-xs text-fg-body">
                         {kind === 'transfer' ? (
                           <span className="flex items-center gap-1">
                             {whName(r.fromWarehouseId)}
@@ -714,7 +714,7 @@ export const StockMovements: React.FC = () => {
                   <Badge variant={STATUS_COPY[viewing.status]?.variant || 'neutral'}>
                     {STATUS_COPY[viewing.status]?.label || viewing.status}
                   </Badge>
-                  <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-xs font-mono rounded">
+                  <code className="px-1.5 py-0.5 bg-bg-muted text-xs font-mono rounded">
                     {viewing.code}
                   </code>
                   <span className="text-xs text-slate-500">
@@ -722,13 +722,13 @@ export const StockMovements: React.FC = () => {
                   </span>
                 </div>
                 {kind === 'transfer' ? (
-                  <div className="text-sm flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                  <div className="text-sm flex items-center gap-2 text-fg-body">
                     <span>{whName(viewing.fromWarehouseId)}</span>
                     <ArrowRight size={12} className="text-slate-400" />
                     <span>{whName(viewing.toWarehouseId)}</span>
                   </div>
                 ) : (
-                  <div className="text-sm text-slate-700 dark:text-slate-200">
+                  <div className="text-sm text-fg-body">
                     Almacén: <b>{whName(viewing.warehouseId)}</b>
                     {viewing.type && (
                       <span className="ml-2 text-slate-400 text-xs">· {viewing.type}</span>
@@ -806,12 +806,12 @@ export const StockMovements: React.FC = () => {
             </div>
 
             {/* Timeline de fechas */}
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+            <div className="mt-4 pt-4 border-t border-border-subtle grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Creado
                 </div>
-                <div className="text-slate-700 dark:text-slate-200">
+                <div className="text-fg-body">
                   {new Date(viewing.createdAt).toLocaleString('es-ES')}
                 </div>
               </div>
@@ -820,7 +820,7 @@ export const StockMovements: React.FC = () => {
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Enviado
                   </div>
-                  <div className="text-slate-700 dark:text-slate-200">
+                  <div className="text-fg-body">
                     {new Date(viewing.sentAt).toLocaleString('es-ES')}
                   </div>
                 </div>
@@ -830,7 +830,7 @@ export const StockMovements: React.FC = () => {
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Recibido
                   </div>
-                  <div className="text-slate-700 dark:text-slate-200">
+                  <div className="text-fg-body">
                     {new Date(viewing.receivedAt).toLocaleString('es-ES')}
                   </div>
                 </div>
@@ -840,7 +840,7 @@ export const StockMovements: React.FC = () => {
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Posteado
                   </div>
-                  <div className="text-slate-700 dark:text-slate-200">
+                  <div className="text-fg-body">
                     {new Date(viewing.postedAt).toLocaleString('es-ES')}
                   </div>
                 </div>
@@ -850,7 +850,7 @@ export const StockMovements: React.FC = () => {
 
           {/* Líneas */}
           <Card bodyClassName="p-0">
-            <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500">
+            <div className="px-4 py-2 border-b border-border-subtle text-[10px] font-black uppercase tracking-wider text-slate-500">
               Líneas ({viewing.lines?.length || 0})
             </div>
             {!viewing.lines || viewing.lines.length === 0 ? (
@@ -858,7 +858,7 @@ export const StockMovements: React.FC = () => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[700px]">
-                  <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <thead className="bg-bg-muted text-[10px] font-bold uppercase tracking-wider text-slate-500">
                     <tr>
                       <th className="px-3 py-2 text-left w-8">#</th>
                       <th className="px-3 py-2 text-left">Artículo</th>
@@ -886,9 +886,9 @@ export const StockMovements: React.FC = () => {
                       const zone = (zid: string | null) =>
                         zid ? zones.find((z) => z.id === zid)?.name || '—' : '—';
                       return (
-                        <tr key={l.id} className="border-t border-slate-100 dark:border-slate-800">
+                        <tr key={l.id} className="border-t border-border-subtle">
                           <td className="px-3 py-2 text-slate-500">{l.lineNum}</td>
-                          <td className="px-3 py-2 text-slate-800 dark:text-slate-100">
+                          <td className="px-3 py-2 text-fg-default">
                             <div className="font-semibold">{it?.name || l.itemId}</div>
                             {it?.code && (
                               <div className="text-[11px] text-slate-500 font-mono">{it.code}</div>
@@ -898,7 +898,7 @@ export const StockMovements: React.FC = () => {
                           <td className="px-3 py-2 text-slate-500">{uom?.code || '—'}</td>
                           <td className="px-3 py-2">
                             {l.batchNum ? (
-                              <code className="text-[11px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                              <code className="text-[11px] font-mono bg-bg-muted px-1.5 py-0.5 rounded">
                                 {l.batchNum}
                               </code>
                             ) : (
@@ -907,17 +907,11 @@ export const StockMovements: React.FC = () => {
                           </td>
                           {kind === 'transfer' ? (
                             <>
-                              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                                {zone(l.fromZoneId)}
-                              </td>
-                              <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                                {zone(l.toZoneId)}
-                              </td>
+                              <td className="px-3 py-2 text-fg-body">{zone(l.fromZoneId)}</td>
+                              <td className="px-3 py-2 text-fg-body">{zone(l.toZoneId)}</td>
                             </>
                           ) : (
-                            <td className="px-3 py-2 text-slate-600 dark:text-slate-300">
-                              {zone(l.zoneId)}
-                            </td>
+                            <td className="px-3 py-2 text-fg-body">{zone(l.zoneId)}</td>
                           )}
                         </tr>
                       );
@@ -1063,10 +1057,10 @@ export const StockMovements: React.FC = () => {
                   return (
                     <div
                       key={i}
-                      className="rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 p-2.5"
+                      className="rounded-lg border border-border-default bg-bg-muted p-2.5"
                     >
                       <div className="flex items-start gap-2">
-                        <div className="w-6 h-6 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[11px] font-bold text-slate-500 shrink-0 mt-1">
+                        <div className="w-6 h-6 rounded-full bg-bg-card border border-border-default flex items-center justify-center text-[11px] font-bold text-slate-500 shrink-0 mt-1">
                           {i + 1}
                         </div>
                         <div className="flex-1 grid grid-cols-12 gap-2">
@@ -1112,7 +1106,7 @@ export const StockMovements: React.FC = () => {
                               UoM
                             </label>
                             <div
-                              className="h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-800/60 text-sm px-3 flex items-center text-slate-600 dark:text-slate-300"
+                              className="h-10 rounded-lg border border-border-default bg-bg-muted text-sm px-3 flex items-center text-fg-body"
                               title="Unidad del artículo"
                             >
                               {uom ? uom.code : '—'}
@@ -1348,7 +1342,7 @@ export const StockMovements: React.FC = () => {
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 mt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-end gap-2 pt-3 mt-2 border-t border-border-subtle">
               <Button variant="secondary" onClick={cancelCreate}>
                 Cancelar
               </Button>

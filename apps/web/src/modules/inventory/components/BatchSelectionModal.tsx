@@ -93,17 +93,15 @@ export const BatchSelectionModal: React.FC<Props> = ({
       maxWidth="2xl"
     >
       <div className="space-y-6 p-1 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
-        <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between bg-bg-muted p-4 rounded-xl border border-border-default">
           <div>
-            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            <p className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
               Cantidad Requerida
             </p>
-            <p className="text-2xl font-black text-slate-800 dark:text-slate-100">
-              {targetQuantity}
-            </p>
+            <p className="text-2xl font-black text-fg-default">{targetQuantity}</p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            <p className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
               Total Asignado
             </p>
             <div
@@ -118,7 +116,7 @@ export const BatchSelectionModal: React.FC<Props> = ({
         <div className="max-h-[400px] overflow-y-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase border-b">
+              <tr className="text-[10px] font-black text-fg-subtle uppercase border-b">
                 <th className="pb-2">{manageBy === 'B' ? 'Número de Lote' : 'Número de Serie'}</th>
                 <th className="pb-2 w-32 text-center">Cantidad</th>
                 {manageBy === 'B' && <th className="pb-2 w-48">F. Caducidad</th>}
@@ -153,9 +151,9 @@ export const BatchSelectionModal: React.FC<Props> = ({
                         onChange={(e) => updateLine(idx, 'batchNum', e.target.value)}
                         disabled={readOnly}
                         className={cn(
-                          'h-9 border-slate-200 dark:border-slate-700',
+                          'h-9 border-border-default',
                           readOnly
-                            ? 'bg-white dark:bg-slate-900 border-transparent font-bold text-slate-700 dark:text-slate-200'
+                            ? 'bg-bg-card border-transparent font-bold text-fg-body'
                             : 'focus:border-blue-500',
                         )}
                       />
@@ -168,9 +166,8 @@ export const BatchSelectionModal: React.FC<Props> = ({
                       onChange={(e) => updateLine(idx, 'quantity', Number(e.target.value))}
                       disabled={manageBy === 'S' || readOnly}
                       className={cn(
-                        'h-9 text-center border-slate-200 dark:border-slate-700',
-                        readOnly &&
-                          'bg-white dark:bg-slate-900 border-transparent font-bold text-slate-700 dark:text-slate-200',
+                        'h-9 text-center border-border-default',
+                        readOnly && 'bg-bg-card border-transparent font-bold text-fg-body',
                       )}
                     />
                   </td>
@@ -182,9 +179,8 @@ export const BatchSelectionModal: React.FC<Props> = ({
                         onChange={(e) => updateLine(idx, 'expiryDate', e.target.value)}
                         disabled={readOnly}
                         className={cn(
-                          'h-9 border-slate-200 dark:border-slate-700',
-                          readOnly &&
-                            'bg-white dark:bg-slate-900 border-transparent font-bold text-slate-700 dark:text-slate-200',
+                          'h-9 border-border-default',
+                          readOnly && 'bg-bg-card border-transparent font-bold text-fg-body',
                         )}
                       />
                     </td>

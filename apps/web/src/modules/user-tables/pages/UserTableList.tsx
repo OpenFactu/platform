@@ -96,7 +96,7 @@ export const UserTableList: React.FC = () => {
       cols.push({
         header: meta.label || 'Registro',
         accessor: (r: any) => (
-          <span className="font-semibold text-slate-800 dark:text-slate-100">
+          <span className="font-semibold text-fg-default">
             {r[meta.displayField as string] ?? '—'}
           </span>
         ),
@@ -154,14 +154,14 @@ export const UserTableList: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 flex-wrap gap-2">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <TableIcon className="text-blue-600 dark:text-blue-300" size={22} />
           <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-xl font-black text-fg-default tracking-tight">
               {meta?.label || name}
             </h1>
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center gap-2 text-xs text-fg-muted">
               <Badge variant={meta?.kind === 'document' ? 'info' : 'neutral'}>
                 {meta?.kind === 'document' ? 'Documento' : 'Maestro'}
               </Badge>

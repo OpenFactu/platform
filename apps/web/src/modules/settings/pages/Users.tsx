@@ -562,10 +562,8 @@ export const Users: React.FC = () => {
               Gestión Central
             </span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-            Usuarios
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <h1 className="text-4xl font-black text-fg-default tracking-tight">Usuarios</h1>
+          <p className="text-fg-muted font-medium">
             Gestiona accesos, roles y permisos por empresa.
           </p>
         </div>
@@ -584,7 +582,7 @@ export const Users: React.FC = () => {
       {showForm && (
         <Card className="border-0">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">
+            <h2 className="text-xl font-black text-fg-default">
               {editingUser ? `Editando: ${editingUser.username}` : 'Nuevo Usuario'}
             </h2>
             <Button
@@ -640,20 +638,16 @@ export const Users: React.FC = () => {
                   requirements={password ? PASSWORD_REQUIREMENTS : undefined}
                 />
                 {editingUser && (
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                  <p className="text-[10px] text-fg-subtle">
                     Escribe o genera una nueva contraseña para restablecer el acceso del usuario.
                   </p>
                 )}
               </div>
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                <label className="text-[10px] font-black text-fg-subtle uppercase tracking-widest flex items-center gap-1.5">
                   <ShieldCheck
                     size={11}
-                    className={
-                      isPrivileged
-                        ? 'text-blue-500 dark:text-blue-300'
-                        : 'text-slate-300 dark:text-slate-600'
-                    }
+                    className={isPrivileged ? 'text-blue-500 dark:text-blue-300' : 'text-fg-subtle'}
                   />
                   Rol Global {!isPrivileged && <Lock size={9} className="text-rose-400" />}
                 </label>
@@ -673,7 +667,7 @@ export const Users: React.FC = () => {
                     ]}
                   />
                 ) : (
-                  <div className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-3 text-sm text-slate-500 dark:text-slate-400 font-bold">
+                  <div className="w-full bg-bg-muted border border-border-default rounded-lg py-2 px-3 text-sm text-fg-muted font-bold">
                     {globalRole === 'USER'
                       ? 'Usuario estándar'
                       : globalRole === 'ADMIN'
@@ -689,13 +683,13 @@ export const Users: React.FC = () => {
             </div>
 
             {/* Memberships de empresa */}
-            <div className="space-y-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="space-y-4 pt-2 border-t border-border-subtle">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
+                  <h3 className="text-sm font-black text-fg-default uppercase tracking-tight">
                     Acceso a Empresas
                   </h3>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">
+                  <p className="text-[10px] text-fg-subtle font-bold mt-0.5">
                     {activeMemberships.length === 0
                       ? 'Sin empresas asignadas — este usuario no podrá iniciar sesión'
                       : `${activeMemberships.length} empresa${activeMemberships.length > 1 ? 's' : ''} asignada${activeMemberships.length > 1 ? 's' : ''}`}
@@ -725,7 +719,7 @@ export const Users: React.FC = () => {
               )}
 
               {activeMemberships.length === 0 && globalRole !== 'SUPERUSER' && (
-                <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-500">
+                <div className="flex items-center gap-3 p-4 bg-bg-muted border border-dashed border-border-default rounded-xl text-fg-subtle">
                   <Building2 size={18} className="shrink-0" />
                   <p className="text-sm font-medium">
                     Pulsa"Añadir Empresa"para asignar acceso a una empresa.
@@ -837,7 +831,7 @@ export const Users: React.FC = () => {
 
                       {/* Panel de permisos expandido */}
                       {m.role === 'USER' && m.expanded && (
-                        <div className="px-4 pb-4 border-t border-slate-100 dark:border-slate-800">
+                        <div className="px-4 pb-4 border-t border-border-subtle">
                           <div className="flex justify-end gap-2 pt-3 pb-1">
                             <Button
                               type="button"
@@ -880,7 +874,7 @@ export const Users: React.FC = () => {
             </div>
 
             {/* Acciones */}
-            <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex gap-3 justify-end pt-4 border-t border-border-subtle">
               <Button variant="secondary" type="button" onClick={resetForm}>
                 Cancelar
               </Button>

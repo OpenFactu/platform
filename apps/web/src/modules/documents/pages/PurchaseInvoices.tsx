@@ -132,10 +132,8 @@ const InvoiceList: React.FC<{
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-slate-900 dark:text-slate-100 leading-none">
-            {formatDocCode(item)}
-          </span>
-          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1 uppercase tracking-tighter">
+          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="text-[10px] text-fg-subtle font-mono mt-1 uppercase tracking-tighter">
             ID: {item.id.substring(0, 8)}
           </span>
         </div>
@@ -151,10 +149,8 @@ const InvoiceList: React.FC<{
       header: 'Proveedor',
       accessor: (item: any) => (
         <div>
-          <p className="font-bold text-slate-700 dark:text-slate-200 leading-tight">
-            {item.partnerName}
-          </p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mt-1">
+          <p className="font-bold text-fg-body leading-tight">{item.partnerName}</p>
+          <p className="text-[10px] text-fg-subtle uppercase tracking-widest leading-none mt-1">
             CIE: {item.partnerId.substring(0, 6)}
           </p>
         </div>
@@ -168,9 +164,7 @@ const InvoiceList: React.FC<{
             <FileText size={11} /> {item.baseDocCode}
           </span>
         ) : (
-          <span className="text-[10px] text-slate-300 dark:text-slate-600 font-bold italic">
-            Directa
-          </span>
+          <span className="text-[10px] text-fg-subtle font-bold italic">Directa</span>
         ),
     },
     {
@@ -187,7 +181,7 @@ const InvoiceList: React.FC<{
             )}
           </span>
         ) : (
-          <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
+          <span className="text-fg-subtle text-xs">—</span>
         ),
     },
     {
@@ -196,9 +190,7 @@ const InvoiceList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
       accessor: (item: any) => (
-        <span className="font-black text-slate-900 dark:text-slate-100">
-          {fmt.money(item.total)}
-        </span>
+        <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
       ),
     },
     {
@@ -238,15 +230,15 @@ const InvoiceList: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-4 tracking-tighter">
+          <h1 className="text-4xl font-black text-fg-default flex items-center gap-4 tracking-tighter">
             <div className="p-3 bg-amber-50 dark:bg-amber-500/10 rounded-2xl text-amber-600 dark:text-amber-300 shadow-sm border border-amber-100 dark:border-amber-500/20">
               <FileStack size={32} />
             </div>
             Facturas de Compra
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium ml-1">
+          <p className="text-fg-muted mt-2 font-medium ml-1">
             Registro para el libro de IVA y pagos a proveedores.
           </p>
           {mastersError && (
@@ -324,9 +316,7 @@ const InvoiceList: React.FC<{
               {
                 label: 'Total',
                 value: (item: any) => (
-                  <span className="font-black text-slate-900 dark:text-slate-100">
-                    {fmt.money(item.total)}
-                  </span>
+                  <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
                 ),
               },
               {
@@ -451,7 +441,7 @@ const InvoiceForm: React.FC<{
 
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border-subtle pb-8">
         <div className="flex items-center gap-4">
           <Button
             type="button"
@@ -463,12 +453,12 @@ const InvoiceForm: React.FC<{
             <ArrowLeft size={20} />
           </Button>
           <div>
-            <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tighter flex items-center gap-3">
+            <h1 className="text-4xl font-black text-fg-default tracking-tighter flex items-center gap-3">
               {state.lines.some((l: any) => l.baseId)
                 ? 'Facturación de Albarán'
                 : 'Nueva Factura Directa'}
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium ml-1 flex items-center gap-2">
+            <p className="text-fg-muted mt-1 font-medium ml-1 flex items-center gap-2">
               <FileText size={14} className="text-amber-500" />
               Ingreso de gasto y contabilización de impuestos.
             </p>
@@ -487,9 +477,9 @@ const InvoiceForm: React.FC<{
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 md:col-span-2 space-y-6 border-slate-100 dark:border-slate-800">
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex justify-between items-baseline gap-4">
-            <h3 className="font-black text-slate-700 dark:text-slate-200 uppercase text-[11px] tracking-[0.15em] leading-none">
+        <Card className="p-6 md:col-span-2 space-y-6 border-border-subtle">
+          <div className="border-b border-border-subtle pb-3 flex justify-between items-baseline gap-4">
+            <h3 className="font-black text-fg-body uppercase text-[11px] tracking-[0.15em] leading-none">
               Cabecera de Factura
             </h3>
             <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider leading-none">
@@ -498,7 +488,7 @@ const InvoiceForm: React.FC<{
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Proveedor / Acreedor *
               </label>
               <SearchableSelect
@@ -509,14 +499,14 @@ const InvoiceForm: React.FC<{
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Fecha Factura *
               </label>
               <Input
                 type="date"
                 value={state.date}
                 onChange={(e) => setState.setDate(e.target.value)}
-                className="font-bold text-slate-700 dark:text-slate-200 h-10 border-slate-200 dark:border-slate-700"
+                className="font-bold text-fg-body h-10 border-border-default"
               />
             </div>
             <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
@@ -526,15 +516,13 @@ const InvoiceForm: React.FC<{
         <DocumentFiscalPanel kind="purchase" state={state} setState={setState} />
 
         <div className="space-y-6">
-          <Card className="p-6 space-y-6 border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-widest border-b pb-2">
+          <Card className="p-6 space-y-6 border-border-subtle bg-bg-muted">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest border-b pb-2">
               Series y Periodo
             </h4>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Serie de Numeración *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Serie de Numeración *</label>
                 <SearchableSelect
                   value={state.seriesId}
                   onChange={setState.setSeriesId}
@@ -542,7 +530,7 @@ const InvoiceForm: React.FC<{
                 />
                 {state.isManualSeries && (
                   <div className="mt-2 space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                    <label className="text-[10px] font-bold text-fg-muted">
                       Número de documento (manual) *
                     </label>
                     <Input
@@ -562,9 +550,7 @@ const InvoiceForm: React.FC<{
                 )}
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                  Periodo Contable *
-                </label>
+                <label className="text-[10px] font-bold text-fg-muted">Periodo Contable *</label>
                 <SearchableSelect
                   value={state.periodId}
                   onChange={setState.setPeriodId}
@@ -583,7 +569,7 @@ const InvoiceForm: React.FC<{
         </div>
       </div>
 
-      <Card className="shadow-lg overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-lg overflow-hidden border-border-subtle" noPadding>
         {isMobileForm ? (
           <MobileLineCards
             columns={columns}
@@ -597,9 +583,9 @@ const InvoiceForm: React.FC<{
             emptyMessage="No hay líneas en la factura."
           />
         )}
-        <div className="p-6 bg-slate-50/50 dark:bg-slate-800/50 flex flex-col md:flex-row justify-between items-start md:items-center border-t border-slate-100 dark:border-slate-800 gap-6">
+        <div className="p-6 bg-bg-muted flex flex-col md:flex-row justify-between items-start md:items-center border-t border-border-subtle gap-6">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-1 shadow-sm">
+            <div className="flex items-center bg-bg-card border border-border-default rounded-xl p-1 shadow-sm">
               {[1, 5, 10].map((n) => (
                 <Button
                   key={n}
@@ -618,27 +604,25 @@ const InvoiceForm: React.FC<{
               variant="secondary"
               size="sm"
               onClick={() => actions.addLine()}
-              className="text-amber-600 dark:text-amber-300 font-bold flex items-center gap-2 h-10 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+              className="text-amber-600 dark:text-amber-300 font-bold flex items-center gap-2 h-10 border-border-default bg-bg-card"
             >
               <PlusSquare size={16} /> Línea de Gasto
             </Button>
           </div>
-          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <div className="flex justify-between w-full text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest px-1">
+          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-2xl border border-border-subtle shadow-sm">
+            <div className="flex justify-between w-full text-[10px] font-black text-fg-subtle uppercase tracking-widest px-1">
               <span>Base Imponible:</span>
-              <span className="text-slate-600 dark:text-slate-300">
-                {computations.subtotal.toFixed(2)} €
-              </span>
+              <span className="text-fg-body">{computations.subtotal.toFixed(2)} €</span>
             </div>
             <div className="flex justify-between w-full text-[10px] font-black text-amber-500 uppercase tracking-widest px-1">
               <span>Cuota IVA:</span>
               <span>{computations.taxTotal.toFixed(2)} €</span>
             </div>
             <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-slate-50">
-              <span className="text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 tracking-widest">
+              <span className="text-[10px] uppercase font-black text-fg-subtle tracking-widest">
                 Total Factura:
               </span>
-              <span className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tighter ml-4">
+              <span className="text-2xl font-black text-fg-default tracking-tighter ml-4">
                 {computations.total.toFixed(2)} €
               </span>
             </div>
@@ -796,19 +780,16 @@ const InvoiceDetail: React.FC<{
         </div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card
-          className="md:col-span-2 border-slate-100 dark:border-slate-800"
-          bodyClassName="p-6 space-y-5"
-        >
+        <Card className="md:col-span-2 border-border-subtle" bodyClassName="p-6 space-y-5">
           <div>
-            <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] mb-2">
+            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] mb-2">
               Proveedor
             </h4>
-            <p className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <p className="text-xl font-black text-fg-default tracking-tight">
               {partner?.name || '—'}
             </p>
             {partner?.nif && (
-              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5 font-mono">
+              <p className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider mt-0.5 font-mono">
                 NIF: {partner.nif}
               </p>
             )}
@@ -829,45 +810,41 @@ const InvoiceDetail: React.FC<{
           </div>
         </Card>
 
-        <Card className="border-slate-100 dark:border-slate-800" bodyClassName="p-6 space-y-4">
-          <h4 className="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-[0.15em] border-b border-slate-100 dark:border-slate-800 pb-2">
+        <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
+          <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] border-b border-border-subtle pb-2">
             Información
           </h4>
           <dl className="space-y-2.5">
             <div className="flex justify-between items-baseline gap-4">
-              <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                 Fecha
               </dt>
-              <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+              <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {fmt.date(invoice.date)}
               </dd>
             </div>
             {series && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Serie
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {series.name}
-                </dd>
+                <dd className="text-sm font-bold text-fg-default truncate">{series.name}</dd>
               </div>
             )}
             {period && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Periodo
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {period.name}
-                </dd>
+                <dd className="text-sm font-bold text-fg-default truncate">{period.name}</dd>
               </div>
             )}
             {docType && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Tipo de factura
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate flex items-center gap-2">
+                <dd className="text-sm font-bold text-fg-default truncate flex items-center gap-2">
                   {docType.name}
                   {docType.isRectify && (
                     <span className="px-1.5 py-0.5 rounded-xs text-[9px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
@@ -879,30 +856,26 @@ const InvoiceDetail: React.FC<{
             )}
             {payMethod && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Método de pago
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {payMethod.name}
-                </dd>
+                <dd className="text-sm font-bold text-fg-default truncate">{payMethod.name}</dd>
               </div>
             )}
             {payTerm && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Plazo de pago
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">
-                  {payTerm.name}
-                </dd>
+                <dd className="text-sm font-bold text-fg-default truncate">{payTerm.name}</dd>
               </div>
             )}
             {invoice.dueDate && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
                   Vencimiento
                 </dt>
-                <dd className="text-sm font-bold text-slate-800 dark:text-slate-100 tabular-nums">
+                <dd className="text-sm font-bold text-fg-default tabular-nums">
                   {fmt.date(invoice.dueDate)}
                 </dd>
               </div>
@@ -921,7 +894,7 @@ const InvoiceDetail: React.FC<{
         </Card>
       </div>
 
-      <Card className="shadow-sm overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="shadow-sm overflow-hidden border-border-subtle" noPadding>
         {isMobile ? (
           <MobileLineCards columns={columns} lines={invoice.lines || []} />
         ) : (

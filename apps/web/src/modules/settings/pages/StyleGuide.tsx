@@ -123,7 +123,7 @@ export const StyleGuide: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 pb-24">
+    <div className="min-h-screen bg-bg-card pb-24">
       <div className="max-w-6xl mx-auto px-10 py-16">
         {/* HERO */}
         <div className="pt-10 pb-14 border-b border-[var(--k-line)] mb-16 flex items-start justify-between gap-10">
@@ -219,7 +219,7 @@ export const StyleGuide: React.FC = () => {
                 body: 'No rotar, distorsionar, cambiar colores fuera de la paleta ni añadir efectos.',
               },
             ].map((r) => (
-              <div key={r.title} className="bg-white dark:bg-slate-900 p-6">
+              <div key={r.title} className="bg-bg-card p-6">
                 <Label>{r.title}</Label>
                 <div className="text-[13px] text-[var(--k-ink-700)] dark:text-slate-300 leading-[1.7]">
                   {r.body}
@@ -302,7 +302,7 @@ export const StyleGuide: React.FC = () => {
           <Label>Semánticos</Label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--k-line)] border border-[var(--k-line)]">
             {Semantics.map((s) => (
-              <div key={s.name} className="bg-white dark:bg-slate-900 p-5">
+              <div key={s.name} className="bg-bg-card p-5">
                 <div className="w-2 h-2 rounded-full mb-2" style={{ background: s.hex }} />
                 <div className="text-[13px] font-medium text-[var(--k-ink-900)] dark:text-slate-100">
                   {s.name}
@@ -319,7 +319,7 @@ export const StyleGuide: React.FC = () => {
           <SectionHeader num="03" title="Tipografía" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[var(--k-line)] border border-[var(--k-line)] mb-8">
-            <div className="bg-white dark:bg-slate-900 p-7">
+            <div className="bg-bg-card p-7">
               <Label>Display / Títulos</Label>
               <div className="font-display text-[28px] font-bold tracking-[-0.5px]">
                 Space Grotesk
@@ -331,7 +331,7 @@ export const StyleGuide: React.FC = () => {
                 Google Fonts · 400 500 600 700
               </div>
             </div>
-            <div className="bg-white dark:bg-slate-900 p-7">
+            <div className="bg-bg-card p-7">
               <Label>Cuerpo / UI</Label>
               <div className="font-sans text-[28px] font-light">DM Sans</div>
               <div className="font-sans text-[13px] text-[var(--k-ink-500)] mt-2">
@@ -487,7 +487,7 @@ export const StyleGuide: React.FC = () => {
         <section className="mb-20">
           <SectionHeader num="05" title="Espaciado & Forma" />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[var(--k-line)] border border-[var(--k-line)]">
-            <div className="bg-white dark:bg-slate-900 p-7">
+            <div className="bg-bg-card p-7">
               <Label>Escala de espaciado</Label>
               <div className="flex items-end gap-5">
                 {[4, 8, 12, 16, 24, 32, 48, 64, 80].map((v) => (
@@ -502,7 +502,7 @@ export const StyleGuide: React.FC = () => {
                 ))}
               </div>
             </div>
-            <div className="bg-white dark:bg-slate-900 p-7">
+            <div className="bg-bg-card p-7">
               <Label>Border radius</Label>
               <div className="flex items-end gap-6">
                 {[

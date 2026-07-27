@@ -29,15 +29,13 @@ export const ItemWebFields: React.FC<Props> = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40">
+      <div className="flex items-start gap-3 p-3 rounded-lg border border-border-default bg-bg-muted">
         <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
           <Globe size={16} />
         </div>
         <label className="flex items-center gap-2 cursor-pointer flex-1 pt-1">
           <Checkbox checked={webVisible} onChange={setWebVisible} />
-          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
-            Vender en la web
-          </span>
+          <span className="text-sm font-bold text-fg-body">Vender en la web</span>
         </label>
       </div>
       <p className="text-[11px] text-slate-400 -mt-2">
@@ -62,7 +60,7 @@ export const ItemWebFields: React.FC<Props> = ({
           {webImages.map((url, i) => (
             <div
               key={`${url}-${i}`}
-              className="relative w-20 h-20 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 group"
+              className="relative w-20 h-20 rounded-lg overflow-hidden border border-border-default group"
             >
               <img src={url} alt="" className="w-full h-full object-cover" />
               {i === 0 && (

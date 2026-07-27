@@ -195,14 +195,14 @@ export const DashboardWidgets: React.FC = () => {
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 flex-wrap gap-2">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <LayoutGrid className="text-blue-600 dark:text-blue-300" size={22} />
           <div>
-            <h1 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-xl font-black text-fg-default tracking-tight">
               Widgets de dashboard
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-fg-muted">
               Elegí una métrica del catálogo o escribí tu propio componente React, sin necesidad de
               un plugin.
             </p>
@@ -218,7 +218,7 @@ export const DashboardWidgets: React.FC = () => {
           onClick={() => setShowPluginWay((v) => !v)}
           className="w-full flex items-center justify-between px-4 py-3 text-left"
         >
-          <span className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <span className="flex items-center gap-2 text-sm font-semibold text-fg-body">
             <Code2 size={15} className="text-slate-400" />
             Avanzado: registrar el widget desde un plugin (código en disco)
           </span>
@@ -230,7 +230,7 @@ export const DashboardWidgets: React.FC = () => {
         </button>
         {showPluginWay && (
           <div className="px-4 pb-4 space-y-2">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-fg-muted">
               Si preferís empaquetar el widget como parte de un plugin instalable (en vez de
               guardarlo acá), desde el <code>init()</code> del plugin (
               <code>plugins/&lt;mi-plugin&gt;/index.ts</code>):
@@ -265,13 +265,11 @@ export const DashboardWidgets: React.FC = () => {
             {rows.map((r) => (
               <li
                 key={r.id}
-                className="flex items-center gap-3 px-4 py-2 border-b border-slate-50 dark:border-slate-800/50 last:border-0"
+                className="flex items-center gap-3 px-4 py-2 border-b border-border-subtle last:border-0"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-                      {r.title}
-                    </span>
+                    <span className="font-semibold text-sm text-fg-default">{r.title}</span>
                     {r.kind === 'code' ? (
                       <Badge variant="info">Componente React</Badge>
                     ) : r.kind === 'query' ? (
@@ -282,13 +280,11 @@ export const DashboardWidgets: React.FC = () => {
                     <Badge variant="neutral">{r.size}</Badge>
                   </div>
                   {r.subtitle && (
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                      {r.subtitle}
-                    </div>
+                    <div className="text-[11px] text-fg-muted truncate">{r.subtitle}</div>
                   )}
                 </div>
                 {r.kind === 'metric' && (
-                  <span className="font-black tabular-nums text-slate-700 dark:text-slate-200 text-sm">
+                  <span className="font-black tabular-nums text-fg-body text-sm">
                     {r.value ?? '—'}
                   </span>
                 )}
@@ -329,7 +325,7 @@ export const DashboardWidgets: React.FC = () => {
               Tipo de widget
             </label>
             {form.kind === 'query' ? (
-              <p className="text-xs text-slate-500 dark:text-slate-400 italic">
+              <p className="text-xs text-fg-muted italic">
                 Este widget lo creó el asistente de IA a partir de una consulta. Desde aquí puedes
                 editar título, subtítulo, tamaño y orden; para cambiar la consulta, pídeselo al
                 asistente en el chat.
@@ -392,7 +388,7 @@ export const DashboardWidgets: React.FC = () => {
                 >
                   <Code2 size={13} /> Editar código
                 </Button>
-                <span className="text-xs text-slate-400 dark:text-slate-500">
+                <span className="text-xs text-fg-subtle">
                   {form.sourceCode.trim() ? 'Código guardado ✓' : 'Sin código todavía'}
                 </span>
               </div>
@@ -414,7 +410,7 @@ export const DashboardWidgets: React.FC = () => {
               thousandSeparator={false}
             />
           </div>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>

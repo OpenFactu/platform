@@ -98,17 +98,17 @@ export const BackgroundTasks: React.FC = () => {
         coreApi.raw('GET', '/api/attachments/recent?limit=15'),
       ]);
 
-      const mailData = (mailRes.data ?? []);
+      const mailData = mailRes.data ?? [];
       setMails(Array.isArray(mailData) ? mailData : []);
 
       if (backupsRes.status === 403) {
         setCanSeeBackups(false);
       } else {
-        const backupData = (backupsRes.data ?? { runs: [] });
+        const backupData = backupsRes.data ?? { runs: [] };
         setBackups(Array.isArray(backupData?.runs) ? backupData.runs : []);
       }
 
-      const uploadsData = (uploadsRes.data ?? []);
+      const uploadsData = uploadsRes.data ?? [];
       setUploads(Array.isArray(uploadsData) ? uploadsData : []);
 
       setLastUpdate(Date.now());

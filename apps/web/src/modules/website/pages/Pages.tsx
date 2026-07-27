@@ -179,10 +179,10 @@ export const Pages: React.FC = () => {
               Website / Páginas
             </span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight text-display">
+          <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
             {site?.name || 'Mi web'}
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <p className="text-fg-muted font-medium">
             Construye tu web por bloques y publícala en{' '}
             <a
               href={publicUrl}
@@ -218,7 +218,7 @@ export const Pages: React.FC = () => {
       <Card className="overflow-hidden border-0" noPadding>
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-black text-slate-400 dark:text-slate-500">
+            <tr className="bg-bg-muted border-b border-border-subtle text-[10px] uppercase font-black text-fg-subtle">
               <th className="px-6 py-4">Página</th>
               <th className="px-6 py-4">Ruta</th>
               <th className="px-6 py-4">Estado</th>
@@ -226,7 +226,7 @@ export const Pages: React.FC = () => {
               <th className="px-6 py-4 text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          <tbody className="divide-y divide-border-subtle">
             {newRow && (
               <tr className="bg-teal-50/30 animate-in zoom-in-95 duration-200">
                 <td className="px-4 py-3">
@@ -259,12 +259,9 @@ export const Pages: React.FC = () => {
             )}
 
             {pages.map((page) => (
-              <tr
-                key={page.id}
-                className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
-              >
+              <tr key={page.id} className="hover:bg-bg-hover transition-colors">
                 <td className="px-6 py-3">
-                  <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                  <p className="font-bold text-fg-default text-sm">
                     {page.title}
                     {page.isHome && (
                       <Badge variant="neutral" className="ml-2 text-[10px]">
@@ -278,9 +275,7 @@ export const Pages: React.FC = () => {
                     )}
                   </p>
                 </td>
-                <td className="px-6 py-3 font-mono text-xs text-slate-500 dark:text-slate-400">
-                  {page.path}
-                </td>
+                <td className="px-6 py-3 font-mono text-xs text-fg-muted">{page.path}</td>
                 <td className="px-6 py-3">
                   {page.status === 'published' ? (
                     <Badge variant="success">Publicada</Badge>
@@ -320,7 +315,7 @@ export const Pages: React.FC = () => {
                         }
                         className={
                           page.showInNav === false
-                            ? 'text-slate-300 dark:text-slate-600'
+                            ? 'text-fg-subtle'
                             : 'text-teal-600 dark:text-teal-300'
                         }
                       >
@@ -339,7 +334,7 @@ export const Pages: React.FC = () => {
                     onClick={() => handleDelete(page)}
                     disabled={page.isHome}
                     title={page.isHome ? 'La página de inicio no se puede eliminar' : 'Eliminar'}
-                    className="text-slate-300 dark:text-slate-600 hover:text-rose-500"
+                    className="text-fg-subtle hover:text-rose-500"
                   >
                     <Trash2 size={16} />
                   </Button>

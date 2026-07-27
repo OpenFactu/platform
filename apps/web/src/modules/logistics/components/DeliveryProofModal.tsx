@@ -215,7 +215,7 @@ export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, 
                 // dibuja en negro — si el contenedor es oscuro no se ve ni al
                 // firmar ni después en el email adjunto.
                 'rounded-lg border-2 border-dashed bg-white touch-none ' +
-                (showValidation ? 'border-rose-400' : 'border-slate-300 dark:border-slate-700')
+                (showValidation ? 'border-rose-400' : 'border-border-strong')
               }
             >
               <canvas
@@ -240,7 +240,7 @@ export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, 
                 <img
                   src={photo}
                   alt="Entrega"
-                  className="w-full max-h-56 object-contain rounded-lg border border-slate-200 dark:border-slate-700"
+                  className="w-full max-h-56 object-contain rounded-lg border border-border-default"
                 />
                 <Button
                   type="button"
@@ -253,9 +253,9 @@ export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, 
                 </Button>
               </div>
             ) : (
-              <label className="flex items-center justify-center gap-2 w-full h-20 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer active:bg-slate-100 dark:active:bg-slate-800">
+              <label className="flex items-center justify-center gap-2 w-full h-20 rounded-lg border-2 border-dashed border-border-strong bg-bg-muted cursor-pointer active:bg-slate-100 dark:active:bg-slate-800">
                 <Camera size={18} className="text-slate-500" />
-                <span className="text-sm text-slate-600 dark:text-slate-300">Hacer foto</span>
+                <span className="text-sm text-fg-body">Hacer foto</span>
                 {/* Captura con la cámara del móvil: <input type="file"> oculto
                     disparado por el <label>. No se sustituye por FileDropzone —
                     `capture="environment"` es lo que abre la cámara. */}
@@ -278,7 +278,7 @@ export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, 
             placeholder="Opcional: incidencias, portería, etc."
           />
         </div>
-        <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-[0_-8px_16px_-8px_rgba(0,0,0,0.08)]">
+        <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 border-t border-border-subtle bg-bg-card shadow-[0_-8px_16px_-8px_rgba(0,0,0,0.08)]">
           <Button
             onClick={submit}
             disabled={submitting}

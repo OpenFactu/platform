@@ -130,7 +130,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
               className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
                 filters.folder === null
                   ? 'bg-primary text-primary-fg border-primary'
-                  : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  : 'border-border-default text-slate-500 hover:bg-bg-hover'
               }`}
             >
               Todas
@@ -143,7 +143,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
                 className={`px-2.5 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1 ${
                   filters.folder === folder
                     ? 'bg-primary text-primary-fg border-primary'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    : 'border-border-default text-slate-500 hover:bg-bg-hover'
                 }`}
               >
                 <Folder size={10} /> {folder}
@@ -155,7 +155,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
               className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
                 filters.folder === ''
                   ? 'bg-primary text-primary-fg border-primary'
-                  : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  : 'border-border-default text-slate-500 hover:bg-bg-hover'
               }`}
             >
               Sin carpeta
@@ -176,7 +176,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
                 className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
                   filters.tags.includes(tag)
                     ? 'bg-accent text-accent-fg border-accent'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    : 'border-border-default text-slate-500 hover:bg-bg-hover'
                 }`}
               >
                 #{tag}
@@ -188,10 +188,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {Array.from({ length: 8 }, (_, i) => (
-              <div
-                key={i}
-                className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700"
-              >
+              <div key={i} className="rounded-xl overflow-hidden border border-border-default">
                 <Skeleton className="h-28 w-full rounded-none" />
                 <div className="p-2 space-y-2">
                   <Skeleton className="h-3 w-3/4" />
@@ -215,7 +212,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
                 <button
                   type="button"
                   onClick={() => onSelect(asset.publicUrl)}
-                  className="group relative w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 hover:border-primary hover:ring-2 hover:ring-primary/30 transition-all text-left bg-slate-50 dark:bg-slate-800"
+                  className="group relative w-full rounded-xl overflow-hidden border border-border-default hover:border-primary hover:ring-2 hover:ring-primary/30 transition-all text-left bg-bg-muted"
                 >
                   {asset.mime.startsWith('video/') ? (
                     <video
@@ -233,9 +230,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
                     />
                   )}
                   <div className="p-2">
-                    <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate">
-                      {asset.fileName}
-                    </p>
+                    <p className="text-[11px] font-bold text-fg-body truncate">{asset.fileName}</p>
                     <div className="flex items-center gap-1 mt-1 flex-wrap">
                       {asset.provider === 'local' ? (
                         <HardDrive size={10} className="text-slate-400" />
@@ -258,14 +253,14 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
                       e.stopPropagation();
                       setEditingId(asset.id);
                     }}
-                    className="absolute top-1.5 right-8 p-1.5 rounded-lg bg-white/90 dark:bg-slate-900/90 text-slate-400 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1.5 right-8 p-1.5 rounded-lg bg-bg-card text-slate-400 hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <Pencil size={13} />
                   </span>
                   <span
                     role="button"
                     onClick={(e) => handleDelete(asset, e)}
-                    className="absolute top-1.5 right-1.5 p-1.5 rounded-lg bg-white/90 dark:bg-slate-900/90 text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1.5 right-1.5 p-1.5 rounded-lg bg-bg-card text-slate-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <Trash2 size={13} />
                   </span>

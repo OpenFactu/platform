@@ -180,14 +180,12 @@ export const CarriersSettings: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
-      <header className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      <header className="flex items-center justify-between border-b border-border-subtle pb-3">
         <div className="flex items-center gap-3">
           <Truck className="text-indigo-600 dark:text-indigo-300" size={22} />
           <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-slate-100">
-              Transportistas
-            </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <h1 className="text-xl font-black tracking-tight text-fg-default">Transportistas</h1>
+            <p className="text-xs text-fg-muted">
               Da de alta cualquier transportista. Si existe un adapter en el core puedes conectarlo;
               si no, queda como gestión manual.
             </p>
@@ -213,18 +211,13 @@ export const CarriersSettings: React.FC = () => {
               const isOpen = expanded === c.id;
               const adapter = adapters.find((a) => a.id === c.adapterId);
               return (
-                <li
-                  key={c.id}
-                  className="border-b border-slate-50 dark:border-slate-800/50 last:border-0"
-                >
+                <li key={c.id} className="border-b border-border-subtle last:border-0">
                   <div className="flex items-center gap-3 px-4 py-2.5">
                     <div className="flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(c)}>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">
-                          {c.name}
-                        </span>
+                        <span className="font-semibold text-sm text-fg-default">{c.name}</span>
                         {c.code && (
-                          <code className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[11px] font-mono rounded">
+                          <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                             {c.code}
                           </code>
                         )}
@@ -261,7 +254,7 @@ export const CarriersSettings: React.FC = () => {
                     </Button>
                   </div>
                   {isOpen && (
-                    <div className="px-4 pb-3 bg-slate-50/50 dark:bg-slate-800/30">
+                    <div className="px-4 pb-3 bg-bg-muted">
                       <div className="flex items-center justify-between mb-2 pt-2">
                         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                           Cuentas
@@ -286,7 +279,7 @@ export const CarriersSettings: React.FC = () => {
                             .map((a) => (
                               <li
                                 key={a.id}
-                                className="flex items-center gap-2 px-2 py-1.5 rounded bg-white dark:bg-slate-900 text-xs"
+                                className="flex items-center gap-2 px-2 py-1.5 rounded bg-bg-card text-xs"
                               >
                                 <span className="font-semibold">{a.name}</span>
                                 {a.sandbox && <Badge variant="warning">sandbox</Badge>}
@@ -375,7 +368,7 @@ export const CarriersSettings: React.FC = () => {
             />
             Activo
           </label>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowCarrierModal(false)}>
               Cancelar
             </Button>
@@ -400,7 +393,7 @@ export const CarriersSettings: React.FC = () => {
             placeholder="Producción, staging, cuenta secundaria…"
           />
           {selectedAdapter && selectedAdapter.credentialFields.length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="space-y-2 pt-2 border-t border-border-subtle">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 Credenciales ({selectedAdapter.name})
               </div>
@@ -443,7 +436,7 @@ export const CarriersSettings: React.FC = () => {
             </div>
           )}
           {!selectedAdapter && accountCarrier && (
-            <div className="text-[11px] text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded px-3 py-2">
+            <div className="text-[11px] text-slate-500 bg-bg-muted rounded px-3 py-2">
               Este carrier es manual. La cuenta servirá solo como etiqueta organizativa.
             </div>
           )}
@@ -461,7 +454,7 @@ export const CarriersSettings: React.FC = () => {
             />
             Cuenta por defecto
           </label>
-          <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowAccountModal(false)}>
               Cancelar
             </Button>

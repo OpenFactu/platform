@@ -57,7 +57,7 @@ export const DebugPanel: React.FC = () => {
       /* noop */
     }
 
-    console.log('[DebugPanel] Position saved:', pos); 
+    console.log('[DebugPanel] Position saved:', pos);
     console.log('[DebugPanel] debugEnabled:', debugEnabled);
   }, [pos]);
 
@@ -143,7 +143,7 @@ export const DebugPanel: React.FC = () => {
     setErr(null);
     try {
       const r = await action();
-      const body = (r.data ?? {});
+      const body = r.data ?? {};
       if (!r.ok) throw new Error(body?.error || `HTTP ${r.status}`);
       setMsg(body?.message || JSON.stringify(body));
     } catch (e: any) {
@@ -153,15 +153,9 @@ export const DebugPanel: React.FC = () => {
     }
   };
 
-  const resetSetup = () =>
-    call('reset', () =>
-      coreApi.raw('POST', '/api/setup/dev-reset', {}),
-    );
+  const resetSetup = () => call('reset', () => coreApi.raw('POST', '/api/setup/dev-reset', {}));
 
-  const reseedGeo = () =>
-    call('geo', () =>
-      coreApi.raw('POST', '/api/geo/seed'),
-    );
+  const reseedGeo = () => call('geo', () => coreApi.raw('POST', '/api/geo/seed'));
 
   const forceWizard = () => {
     const url = new URL(window.location.href);

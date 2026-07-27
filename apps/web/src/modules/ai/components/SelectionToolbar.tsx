@@ -14,10 +14,7 @@ export const SelectionToolbar: React.FC<{
   y: number;
   onClick: () => void;
 }> = ({ x, y, onClick }) => (
-  <div
-    className="fixed z-50 -translate-x-1/2 -translate-y-full"
-    style={{ left: x, top: y - 8 }}
-  >
+  <div className="fixed z-50 -translate-x-1/2 -translate-y-full" style={{ left: x, top: y - 8 }}>
     <Button
       variant="accent"
       size="sm"

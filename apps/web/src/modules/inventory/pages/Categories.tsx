@@ -135,10 +135,10 @@ export const Categories: React.FC = () => {
               Logística / Clasificación
             </span>
           </div>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-slate-100 tracking-tight text-display">
+          <h1 className="text-4xl font-black text-fg-default tracking-tight text-display">
             Categorías
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">
+          <p className="text-fg-muted font-medium">
             Clasifica tus artículos y establece secuencias de códigos por familia.
           </p>
         </div>
@@ -154,7 +154,7 @@ export const Categories: React.FC = () => {
       <Card className="overflow-hidden border-0" noPadding>
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-black text-slate-400 dark:text-slate-500">
+            <tr className="bg-bg-muted border-b border-border-subtle text-[10px] uppercase font-black text-fg-subtle">
               <th className="px-6 py-4">Información Básica</th>
               <th className="px-6 py-4">Prefijo Autogeneral</th>
               <th className="px-6 py-4">Estructura</th>
@@ -211,7 +211,7 @@ export const Categories: React.FC = () => {
                   e.stopPropagation();
                   openContextMenu(e, buildCtxItems(c));
                 }}
-                className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group"
+                className="hover:bg-bg-hover transition-colors group"
               >
                 <td className="px-6 py-3">
                   {editingId === c.id ? (
@@ -231,9 +231,7 @@ export const Categories: React.FC = () => {
                       <div className="w-8 h-8 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 rounded-lg flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
                         <Layers size={16} />
                       </div>
-                      <p className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-tight">
-                        {c.name}
-                      </p>
+                      <p className="font-bold text-fg-default text-sm leading-tight">{c.name}</p>
                     </div>
                   )}
                 </td>
@@ -254,14 +252,12 @@ export const Categories: React.FC = () => {
                   ) : c.codePrefix ? (
                     <Badge
                       variant="neutral"
-                      className="font-mono tracking-widest text-[10px] bg-slate-100 dark:bg-slate-800"
+                      className="font-mono tracking-widest text-[10px] bg-bg-muted"
                     >
                       {c.codePrefix}-XXX
                     </Badge>
                   ) : (
-                    <span className="text-slate-300 dark:text-slate-600 italic text-[10px]">
-                      Sin Prefijo
-                    </span>
+                    <span className="text-fg-subtle italic text-[10px]">Sin Prefijo</span>
                   )}
                 </td>
                 <td className="px-6 py-3">
@@ -280,10 +276,10 @@ export const Categories: React.FC = () => {
                       placeholder="-- Sin Padre --"
                     />
                   ) : (
-                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs font-semibold">
-                      <Network size={12} className="text-slate-300 dark:text-slate-600" />
+                    <div className="flex items-center gap-2 text-fg-muted text-xs font-semibold">
+                      <Network size={12} className="text-fg-subtle" />
                       {categories.find((p) => p.id === c.parentId)?.name || (
-                        <span className="text-slate-300 dark:text-slate-600 italic">Rizoma</span>
+                        <span className="text-fg-subtle italic">Rizoma</span>
                       )}
                     </div>
                   )}

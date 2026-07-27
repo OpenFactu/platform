@@ -277,11 +277,11 @@ export const JournalEntries: React.FC = () => {
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-3 tracking-tight">
+          <h1 className="text-3xl font-black text-fg-default flex items-center gap-3 tracking-tight">
             <ScrollText className="text-blue-600 dark:text-blue-300" size={32} />
             Asientos contables
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
+          <p className="text-fg-muted mt-1 font-medium">
             Doble partida. Los asientos posteados son inmutables — para corregir se reversan.
           </p>
         </div>
@@ -325,9 +325,9 @@ export const JournalEntries: React.FC = () => {
               />
             </div>
 
-            <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <div className="border border-border-default rounded-lg overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400">
+                <thead className="bg-bg-muted text-fg-body">
                   <tr>
                     <th className="p-2 text-left">#</th>
                     <th className="p-2 text-left">Cuenta</th>
@@ -339,7 +339,7 @@ export const JournalEntries: React.FC = () => {
                 </thead>
                 <tbody>
                   {lines.map((l, i) => (
-                    <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
+                    <tr key={i} className="border-t border-border-subtle">
                       <td className="p-2 text-slate-400">{i + 1}</td>
                       <td className="p-2">
                         <SearchableSelect
@@ -396,7 +396,7 @@ export const JournalEntries: React.FC = () => {
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-slate-50 dark:bg-slate-900/40 font-semibold">
+                <tfoot className="bg-bg-muted font-semibold">
                   <tr>
                     <td colSpan={3} className="p-2 text-right">
                       Totales:
@@ -414,7 +414,7 @@ export const JournalEntries: React.FC = () => {
                 </tfoot>
               </table>
               {!isReadOnly && (
-                <div className="p-2 bg-slate-50 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700">
+                <div className="p-2 bg-bg-muted border-t border-border-default">
                   <Button type="button" variant="ghost" size="sm" onClick={addLine}>
                     <Plus size={14} className="mr-1" />
                     Añadir línea
@@ -444,7 +444,7 @@ export const JournalEntries: React.FC = () => {
         </Card>
       )}
 
-      <Card className="overflow-hidden border-slate-100 dark:border-slate-800" noPadding>
+      <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
       </Card>
     </div>

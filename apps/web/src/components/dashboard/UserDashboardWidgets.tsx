@@ -177,8 +177,9 @@ export const UserDashboardWidgets: React.FC = () => {
 
   useEffect(() => {
     if (!user?.tenantId) return;
-    coreApi.get('/api/dashboard-widgets')
-      .catch(() => ([]))
+    coreApi
+      .get('/api/dashboard-widgets')
+      .catch(() => [])
       .then((d) => setWidgets(Array.isArray(d) ? d : []))
       .catch(() => setWidgets([]));
   }, [token, user?.tenantId]);
@@ -199,9 +200,7 @@ export const UserDashboardWidgets: React.FC = () => {
                 <div className="p-2.5 rounded-xs bg-accent/10 text-accent">
                   <LayoutGrid size={18} />
                 </div>
-                <p className="text-3xl font-black text-fg-default tabular-nums">
-                  {w.value ?? '—'}
-                </p>
+                <p className="text-3xl font-black text-fg-default tabular-nums">{w.value ?? '—'}</p>
               </div>
             )}
           </Card>
