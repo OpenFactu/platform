@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.2",
-    "@openfactu/cli": "^0.0.9",
+    "@openfactu/cli": "^0.1.2",
     "@openfactu/common": "^0.2.1",
     "@openfactu/pdf": "^0.2.0",
     "drizzle-orm": "^0.45.2",
