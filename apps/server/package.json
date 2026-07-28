@@ -4,13 +4,14 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only --watch ../../node_modules/@openfactu/pdf/dist,../../node_modules/@openfactu/common/dist,../../node_modules/@openfactu/site-builder/dist src/server.ts",
-    "build": "tsc --noEmit && tsc && npm run copy-assets",
+    "build": "npm run db:schema:public && tsc --noEmit && tsc && npm run copy-assets",
     "copy-assets": "node scripts/copy-assets.mjs",
     "start": "node dist/server.js",
     "sync": "ts-node src/scripts/sync-all-tenants.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:push:public": "ts-node src/scripts/push-public.ts"
+    "db:push:public": "ts-node src/scripts/push-public.ts",
+    "db:schema:public": "node scripts/generate-public-schema.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.16",

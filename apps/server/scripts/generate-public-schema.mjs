@@ -1,0 +1,129 @@
+#!/usr/bin/env node
+// Genera `sql/public-schema.sql`: el esquema público de Keirost, en SQL
+// idempotente, sacado del propio `schema.ts`.
+//
+// Lo ejecuta el servidor al arrancar para asegurarse de que las tablas del
+// esquema `public` están y tienen todas sus columnas. Antes ese SQL vivía
+// escrito a mano dentro de `server.ts` —185 líneas— y en `push-public.ts`, que
+// ya se había quedado atrás: diez columnas para «GlobalUser» donde el esquema
+// tiene dieciocho. Un esquema a medias no falla al crearlo; falla mucho
+// después, al consultarlo, con un error que no menciona ninguna columna.
+//
+// La lista de tablas sale del `tablesFilter` de `drizzle.config.ts`: el resto
+// son tablas de empresa y viven en el esquema de cada tenant.
+//
+//   node scripts/generate-public-schema.mjs
+
+import { execSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const raizServidor = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const CONFIG = path.join(raizServidor, 'drizzle.config.ts');
+const SALIDA = path.join(raizServidor, 'sql', 'public-schema.sql');
+
+/** Tablas del esquema público, según la configuración de Drizzle. */
+function tablasPublicas(configTs) {
+  const bloque = configTs.match(/tablesFilter\s*:\s*\[([\s\S]*?)\]/);
+  if (!bloque) {
+    throw new Error(
+      'drizzle.config.ts no declara «tablesFilter»: sin esa lista no se sabe qué tablas van al ' +
+        'esquema público, y generar uno vacío dejaría el ERP sin tablas',
+    );
+  }
+  return [...bloque[1].matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]);
+}
+
+/** Tabla sobre la que actúa una sentencia, si se puede saber. */
+function tablaDe(sentencia) {
+  const m = sentencia.match(
+    /^\s*(?:CREATE TABLE(?: IF NOT EXISTS)?|ALTER TABLE(?: ONLY)?|CREATE (?:UNIQUE )?INDEX[\s\S]*?\bON)\s+(?:"public"\.)?"([^"]+)"/i,
+  );
+  return m ? m[1] : null;
+}
+
+/** Tablas a las que apunta una clave foránea de la sentencia. */
+function referencias(sentencia) {
+  return [...sentencia.matchAll(/REFERENCES\s+(?:"public"\.)?"([^"]+)"/gi)].map((m) => m[1]);
+}
+
+/**
+ * Convierte un `CREATE TABLE` en su versión idempotente más los `ALTER TABLE
+ * ADD COLUMN` de cada columna.
+ *
+ * Los ALTER son lo que pone al día una instalación que ya existe: crear la
+ * tabla no basta cuando la tabla está pero le faltan columnas nuevas, que es
+ * justo lo que pasa al actualizar. Se repite la definición tal cual la escribe
+ * Drizzle —con su tipo, su NOT NULL y su DEFAULT—, que es lo que PostgreSQL
+ * admite en un ADD COLUMN.
+ */
+function idempotente(sentencia, tabla) {
+  const cuerpo = sentencia.match(/CREATE TABLE "[^"]+" \(([\s\S]*)\)\s*$/);
+  const creacion = sentencia.replace(/^CREATE TABLE\s+"/i, 'CREATE TABLE IF NOT EXISTS "');
+  if (!cuerpo) return [creacion];
+
+  const columnas = cuerpo[1]
+    .split('\n')
+    .map((l) => l.trim().replace(/,$/, ''))
+    .filter((l) => l.startsWith('"'));
+
+  const alteraciones = columnas
+    // Las claves primarias no se añaden después: si la tabla existe, ya la
+    // tiene, y si no existe la crea el CREATE de arriba.
+    .filter((c) => !/PRIMARY KEY/i.test(c))
+    .map((c) => `ALTER TABLE "${tabla}" ADD COLUMN IF NOT EXISTS ${c}`);
+
+  return [creacion, ...alteraciones];
+}
+
+function main() {
+  const tablas = new Set(tablasPublicas(readFileSync(CONFIG, 'utf8')));
+
+  // `drizzle-kit export` saca el DDL del esquema actual sin tocar ninguna base
+  // de datos. Trae todas las tablas, también las de empresa: se filtran aquí.
+  // `execSync` y no `execFileSync`: la orden es fija y sin nada del exterior, y
+  // así se resuelve `npx` igual en Windows que en el resto sin buscar el .cmd.
+  const exportado = execSync('npx drizzle-kit export --config drizzle.config.ts', {
+    cwd: raizServidor,
+    encoding: 'utf8',
+    maxBuffer: 32 * 1024 * 1024,
+  });
+
+  const sentencias = exportado
+    .split(/;\s*(?:\r?\n|$)/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .filter((s) => {
+      const tabla = tablaDe(s);
+      if (!tabla || !tablas.has(tabla)) return false;
+      // Una clave foránea hacia una tabla de empresa no se puede aplicar aquí:
+      // esa tabla no existe en «public».
+      return referencias(s).every((destino) => tablas.has(destino));
+    })
+    .flatMap((s) => idempotente(s, tablaDe(s)));
+
+  const creadas = sentencias
+    .filter((s) => s.startsWith('CREATE TABLE'))
+    .map((s) => s.match(/"([^"]+)"/)[1]);
+  const ausentes = [...tablas].filter((t) => !creadas.includes(t));
+  if (ausentes.length > 0) {
+    throw new Error(`el esquema exportado no trae estas tablas públicas: ${ausentes.join(', ')}`);
+  }
+
+  mkdirSync(path.dirname(SALIDA), { recursive: true });
+  writeFileSync(
+    SALIDA,
+    '-- Esquema público de Keirost. GENERADO: no editar a mano.\n' +
+      '-- Sale de schema.ts vía scripts/generate-public-schema.mjs.\n\n' +
+      sentencias.join(';\n\n') +
+      ';\n',
+    'utf8',
+  );
+  console.log(
+    `sql/public-schema.sql: ${creadas.length} tablas, ${sentencias.length} sentencias ` +
+      `(${creadas.join(', ')})`,
+  );
+}
+
+main();

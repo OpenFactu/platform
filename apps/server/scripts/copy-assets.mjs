@@ -26,3 +26,8 @@ copyMatching(
   (name) => name.endsWith('.sql'),
 );
 copyMatching(join(root, 'src/seed-data'), join(root, 'dist/seed-data'));
+
+// El esquema del schema `public`, que el servidor aplica al arrancar. Lo genera
+// `generate-public-schema.mjs` desde schema.ts: sin él, el servidor arranca
+// contra una base que puede estar incompleta y falla al consultarla.
+copyMatching(join(root, 'sql'), join(root, 'dist/sql'), (name) => name.endsWith('.sql'));

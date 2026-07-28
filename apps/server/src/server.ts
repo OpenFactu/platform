@@ -3,6 +3,8 @@ import './core/documents/registerDocumentTypes'; // MUST be first — registers 
 import express from 'express';
 import cors from 'cors';
 import { sql } from 'drizzle-orm';
+import fs from 'fs';
+import path from 'path';
 import { loadPlugins } from './plugins/loader';
 import setupRouter from './api/setup';
 import pluginsRouter from './api/plugins';
@@ -305,194 +307,47 @@ async function waitForDatabase(retries = 10, delay = 2000) {
 }
 
 // Inicializar plugins y pasarles app para que inyecten rutas
+/**
+ * Aplica el esquema del schema `public`: crea las tablas que falten y añade a
+ * las que ya estén las columnas nuevas.
+ *
+ * Es lo que pone al día una instalación existente al actualizar, sin lo cual
+ * habría que acordarse de ejecutar `db:push:public` a mano en cada despliegue.
+ */
+async function aplicarEsquemaPublico(): Promise<void> {
+  // Junto al `dist` compilado en producción, y en `apps/server` al ejecutar
+  // con ts-node.
+  const candidatos = [
+    path.join(__dirname, 'sql', 'public-schema.sql'),
+    path.join(__dirname, '..', 'sql', 'public-schema.sql'),
+  ];
+  const fichero = candidatos.find((ruta) => fs.existsSync(ruta));
+  if (!fichero) {
+    throw new Error(
+      `no se encontró public-schema.sql (buscado en ${candidatos.join(' y ')}). ` +
+        'Se genera al compilar con scripts/generate-public-schema.mjs.',
+    );
+  }
+
+  const publicDb = ClientFactory.getClient('public');
+  await publicDb.execute(sql.raw(fs.readFileSync(fichero, 'utf8')));
+}
+
 const start = async () => {
   try {
     console.log('[Server] Iniciando Keirost...');
     await waitForDatabase();
 
-    // Asegurar tablas del schema publico antes de cualquier operacion
+    // Asegurar tablas del schema publico antes de cualquier operacion.
+    //
+    // El SQL lo genera `scripts/generate-public-schema.mjs` desde el propio
+    // `schema.ts` al compilar. Antes vivía escrito a mano justo aquí, 185
+    // líneas, y en `push-public.ts`, donde ya se había quedado atrás: diez
+    // columnas para «GlobalUser» donde el esquema tiene dieciocho. Un esquema
+    // incompleto no falla al aplicarse; falla mucho después, al consultarlo,
+    // con un error que no menciona ninguna columna.
     try {
-      const publicDb = ClientFactory.getClient('public');
-      await publicDb.execute(
-        sql.raw(`
-        CREATE TABLE IF NOT EXISTS "Tenant" (
-          "id" TEXT PRIMARY KEY, "name" TEXT UNIQUE NOT NULL, "schemaName" TEXT UNIQUE NOT NULL,
-          "config" TEXT, "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS "GlobalUser" (
-          "id" TEXT PRIMARY KEY, "email" TEXT UNIQUE NOT NULL, "username" TEXT UNIQUE NOT NULL,
-          "password" TEXT NOT NULL, "role" TEXT NOT NULL DEFAULT 'USER',
-          "tenantId" TEXT REFERENCES "Tenant"("id"), "permissions" TEXT,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "signatureName" TEXT;
-        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "signatureRole" TEXT;
-        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "signatureImageUrl" TEXT;
-        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "resetTokenHash" TEXT;
-        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "resetTokenExpiresAt" TIMESTAMP;
-        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpSecret" TEXT;
-        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpEnabled" BOOLEAN NOT NULL DEFAULT FALSE;
-        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpBackupCodes" TEXT;
-        ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "avatarImageUrl" TEXT;
-        CREATE TABLE IF NOT EXISTS "UserTenantMembership" (
-          "id" TEXT PRIMARY KEY, "userId" TEXT NOT NULL REFERENCES "GlobalUser"("id") ON DELETE CASCADE,
-          "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
-          "role" TEXT NOT NULL DEFAULT 'USER', "permissions" TEXT,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE ("userId", "tenantId")
-        );
-        CREATE TABLE IF NOT EXISTS "AuditLog" (
-          "id" TEXT PRIMARY KEY, "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id"),
-          "entityType" TEXT NOT NULL, "entityId" TEXT NOT NULL, "action" TEXT NOT NULL,
-          "userId" TEXT REFERENCES "GlobalUser"("id"), "oldValue" JSONB, "newValue" JSONB,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS "PluginField" (
-          "id" TEXT PRIMARY KEY, "pluginId" TEXT NOT NULL, "tableName" TEXT NOT NULL,
-          "fieldName" TEXT NOT NULL, "fieldType" TEXT NOT NULL, "label" TEXT NOT NULL,
-          "isManaged" BOOLEAN NOT NULL DEFAULT TRUE,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "options" JSONB;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "required" BOOLEAN NOT NULL DEFAULT FALSE;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "tenantId" TEXT;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "helpText" TEXT;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "placeholder" TEXT;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "defaultValue" TEXT;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "readOnly" BOOLEAN NOT NULL DEFAULT FALSE;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "width" TEXT NOT NULL DEFAULT 'half';
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "displayOrder" INTEGER NOT NULL DEFAULT 0;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "section" TEXT;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "visibleIn" JSONB;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "showInList" BOOLEAN NOT NULL DEFAULT FALSE;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "readRoles" JSONB;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "writeRoles" JSONB;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "validation" JSONB;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "refTable" TEXT;
-        ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "refDisplayField" TEXT;
-        CREATE TABLE IF NOT EXISTS "PluginTable" (
-          "id" TEXT PRIMARY KEY, "pluginId" TEXT NOT NULL, "tableName" TEXT NOT NULL,
-          "definition" TEXT NOT NULL,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "tenantId" TEXT;
-        ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "label" TEXT;
-        ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "kind" TEXT NOT NULL DEFAULT 'master';
-        ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "iconName" TEXT;
-        ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "menuModule" TEXT;
-        ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "displayField" TEXT;
-        ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "description" TEXT;
-        CREATE TABLE IF NOT EXISTS "TenantPlugin" (
-          "id" TEXT PRIMARY KEY,
-          "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
-          "pluginId" TEXT NOT NULL,
-          "isActive" BOOLEAN NOT NULL DEFAULT FALSE,
-          "config" TEXT,
-          "activatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          "deactivatedAt" TIMESTAMP,
-          UNIQUE ("tenantId", "pluginId")
-        );
-        CREATE TABLE IF NOT EXISTS "ApiToken" (
-          "id" TEXT PRIMARY KEY,
-          "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
-          "name" TEXT NOT NULL,
-          "tokenHash" TEXT UNIQUE NOT NULL,
-          "prefix" TEXT NOT NULL,
-          "scopes" TEXT NOT NULL,
-          "createdByUserId" TEXT,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "lastUsedAt" TIMESTAMP,
-          "revokedAt" TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS "DevApiKey" (
-          "id" TEXT PRIMARY KEY,
-          "clientId" TEXT UNIQUE NOT NULL,
-          "clientSecret" TEXT NOT NULL,
-          "name" TEXT NOT NULL,
-          "createdBy" TEXT NOT NULL REFERENCES "GlobalUser"("id"),
-          "tenantId" TEXT REFERENCES "Tenant"("id"),
-          "permissions" TEXT DEFAULT 'plugin:push,plugin:reload',
-          "isActive" BOOLEAN NOT NULL DEFAULT TRUE,
-          "lastUsedAt" TIMESTAMP,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS "UserModule" (
-          "id" TEXT PRIMARY KEY,
-          "tenantId" TEXT NOT NULL,
-          "label" TEXT NOT NULL,
-          "iconName" TEXT NOT NULL DEFAULT 'Folder',
-          "moduleOrder" INTEGER NOT NULL DEFAULT 100,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "userModuleId" TEXT;
-        CREATE TABLE IF NOT EXISTS "Automation" (
-          "id" TEXT PRIMARY KEY,
-          "tenantId" TEXT NOT NULL,
-          "name" TEXT NOT NULL,
-          "description" TEXT,
-          "enabled" BOOLEAN NOT NULL DEFAULT TRUE,
-          "triggerType" TEXT NOT NULL,
-          "triggerConfig" JSONB,
-          "actionType" TEXT NOT NULL,
-          "actionConfig" JSONB,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS "AutomationRun" (
-          "id" TEXT PRIMARY KEY,
-          "automationId" TEXT NOT NULL,
-          "tenantId" TEXT NOT NULL,
-          "status" TEXT NOT NULL,
-          "startedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "finishedAt" TIMESTAMP,
-          "durationMs" INTEGER,
-          "outputText" TEXT,
-          "errorText" TEXT,
-          "triggerSource" TEXT,
-          "contextJson" JSONB
-        );
-        CREATE TABLE IF NOT EXISTS "UserDashboardWidget" (
-          "id" TEXT PRIMARY KEY,
-          "tenantId" TEXT NOT NULL,
-          "title" TEXT NOT NULL,
-          "subtitle" TEXT,
-          "metricKey" TEXT,
-          "size" TEXT NOT NULL DEFAULT 'md',
-          "displayOrder" INTEGER NOT NULL DEFAULT 100,
-          "createdBy" TEXT,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        ALTER TABLE "UserDashboardWidget" ALTER COLUMN "metricKey" DROP NOT NULL;
-        ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "kind" TEXT NOT NULL DEFAULT 'metric';
-        ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "sourceCode" TEXT;
-        ALTER TABLE "UserDashboardWidget" ADD COLUMN IF NOT EXISTS "queryConfig" JSONB;
-        CREATE TABLE IF NOT EXISTS "AiConversation" (
-          "id" TEXT PRIMARY KEY,
-          "tenantId" TEXT NOT NULL,
-          "userId" TEXT NOT NULL,
-          "title" TEXT,
-          "messages" JSONB NOT NULL DEFAULT '[]',
-          "model" TEXT,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE INDEX IF NOT EXISTS "AiConversation_tenant_user_idx" ON "AiConversation" ("tenantId", "userId");
-        CREATE TABLE IF NOT EXISTS "WebsiteHost" (
-          "id" TEXT PRIMARY KEY,
-          "kind" TEXT NOT NULL,
-          "value" TEXT UNIQUE NOT NULL,
-          "tenantId" TEXT NOT NULL REFERENCES "Tenant"("id") ON DELETE CASCADE,
-          "siteId" TEXT NOT NULL,
-          "verified" BOOLEAN NOT NULL DEFAULT FALSE,
-          "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          "updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-        );
-      `),
-      );
+      await aplicarEsquemaPublico();
       console.log('[Bootstrap] Tablas del schema publico verificadas.');
     } catch (err: any) {
       console.warn('[Bootstrap] No se pudieron verificar tablas publicas:', err.message);
