@@ -15,25 +15,38 @@
 //   node scripts/generate-public-schema.mjs
 
 import { execSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const raizServidor = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const CONFIG = path.join(raizServidor, 'drizzle.config.ts');
 const SALIDA = path.join(raizServidor, 'sql', 'public-schema.sql');
 
-/** Tablas del esquema público, según la configuración de Drizzle. */
-function tablasPublicas(configTs) {
-  const bloque = configTs.match(/tablesFilter\s*:\s*\[([\s\S]*?)\]/);
-  if (!bloque) {
-    throw new Error(
-      'drizzle.config.ts no declara «tablesFilter»: sin esa lista no se sabe qué tablas van al ' +
-        'esquema público, y generar uno vacío dejaría el ERP sin tablas',
-    );
-  }
-  return [...bloque[1].matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]);
-}
+/**
+ * Tablas que viven en el schema `public`.
+ *
+ * No sirve el `tablesFilter` de `drizzle.config.ts`: ésa es la lista que
+ * gestiona `drizzle-kit push`, más corta. El schema `public` tiene además las
+ * de plugins, tokens, automatizaciones y website, que son globales y no de
+ * empresa. Todo lo que no esté aquí vive en el schema de cada tenant.
+ */
+const TABLAS_PUBLICAS = [
+  'Tenant',
+  'GlobalUser',
+  'UserTenantMembership',
+  'AuditLog',
+  'PluginField',
+  'PluginTable',
+  'TenantPlugin',
+  'ApiToken',
+  'DevApiKey',
+  'UserModule',
+  'UserDashboardWidget',
+  'Automation',
+  'AutomationRun',
+  'AiConversation',
+  'WebsiteHost',
+];
 
 /** Tabla sobre la que actúa una sentencia, si se puede saber. */
 function tablaDe(sentencia) {
@@ -59,6 +72,13 @@ function referencias(sentencia) {
  * admite en un ADD COLUMN.
  */
 function idempotente(sentencia, tabla) {
+  // `ADD CONSTRAINT` no admite IF NOT EXISTS y este SQL se aplica más de una
+  // vez —al instalar y en cada arranque—, así que la segunda reventaba con
+  // «constraint already exists» y se llevaba por delante el resto del fichero.
+  if (/ADD CONSTRAINT/i.test(sentencia)) {
+    return [`DO $$ BEGIN\n  ${sentencia};\nEXCEPTION WHEN duplicate_object THEN NULL;\nEND $$`];
+  }
+
   const cuerpo = sentencia.match(/CREATE TABLE "[^"]+" \(([\s\S]*)\)\s*$/);
   const creacion = sentencia.replace(/^CREATE TABLE\s+"/i, 'CREATE TABLE IF NOT EXISTS "');
   if (!cuerpo) return [creacion];
@@ -72,13 +92,20 @@ function idempotente(sentencia, tabla) {
     // Las claves primarias no se añaden después: si la tabla existe, ya la
     // tiene, y si no existe la crea el CREATE de arriba.
     .filter((c) => !/PRIMARY KEY/i.test(c))
-    .map((c) => `ALTER TABLE "${tabla}" ADD COLUMN IF NOT EXISTS ${c}`);
+    .map((c) => {
+      // Una columna NOT NULL sin valor por defecto no se puede añadir a una
+      // tabla que ya tenga filas. Al crearla desde cero sí lleva su NOT NULL
+      // —está en el CREATE de arriba—; al añadirla después entra admitiendo
+      // nulos, que es justo lo que hacía el SQL a mano que esto sustituye.
+      const definicion = /\bDEFAULT\b/i.test(c) ? c : c.replace(/\s+NOT NULL\b/i, '');
+      return `ALTER TABLE "${tabla}" ADD COLUMN IF NOT EXISTS ${definicion}`;
+    });
 
   return [creacion, ...alteraciones];
 }
 
 function main() {
-  const tablas = new Set(tablasPublicas(readFileSync(CONFIG, 'utf8')));
+  const tablas = new Set(TABLAS_PUBLICAS);
 
   // `drizzle-kit export` saca el DDL del esquema actual sin tocar ninguna base
   // de datos. Trae todas las tablas, también las de empresa: se filtran aquí.
