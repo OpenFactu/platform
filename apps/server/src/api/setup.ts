@@ -33,7 +33,6 @@ function nombreDeLaBase(): string {
   return 'openfactudb';
 }
 
-
 /**
  * GET /api/setup/status
  */
@@ -124,7 +123,9 @@ router.post('/check-db', async (req, res) => {
         // así que su sola existencia no implica que haya un setup previo real.
         // Solo hay "setup existente" si además hay al menos un Tenant creado.
         if (tablesResult.rowCount >= 2) {
-          const tenantCountResult = await targetPool.query('SELECT COUNT(*)::int AS count FROM "Tenant"');
+          const tenantCountResult = await targetPool.query(
+            'SELECT COUNT(*)::int AS count FROM "Tenant"',
+          );
           hasExistingSetup = tenantCountResult.rows[0].count > 0;
         }
         console.log(
