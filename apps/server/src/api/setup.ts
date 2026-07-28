@@ -14,6 +14,27 @@ import crypto from 'crypto';
 const router = Router();
 
 /**
+ * Nombre de la base de datos que usa este servidor.
+ *
+ * No se puede dar por hecho «openfactudb»: la instalación nativa de Windows
+ * deja que quien instala elija el nombre, y con el valor fijo el asistente
+ * intentaba conectarse a una base inexistente y fallaba con un
+ * «database does not exist» disfrazado de error al insertar el usuario.
+ */
+function nombreDeLaBase(): string {
+  try {
+    const url = new URL(process.env.DATABASE_URL ?? '');
+    const nombre = url.pathname.replace(/^\//, '');
+    if (nombre) return nombre;
+  } catch {
+    // Sin DATABASE_URL legible queda el nombre histórico, que es el que usa
+    // el despliegue con Docker.
+  }
+  return 'openfactudb';
+}
+
+
+/**
  * GET /api/setup/status
  */
 /**
@@ -70,7 +91,10 @@ router.post('/check-db', async (req, res) => {
     await pool.query('SELECT 1');
 
     // Verificar si openfactudb existe
-    const dbResult = await pool.query("SELECT 1 FROM pg_database WHERE datname = 'openfactudb'");
+    const baseDeDatos = nombreDeLaBase();
+    const dbResult = await pool.query('SELECT 1 FROM pg_database WHERE datname = $1', [
+      baseDeDatos,
+    ]);
     const databaseExists = dbResult.rowCount > 0;
 
     await pool.end();
@@ -80,7 +104,7 @@ router.post('/check-db', async (req, res) => {
 
     if (databaseExists) {
       // Conectar a openfactudb para verificar el schema public
-      const targetUrl = `postgresql://${user}:${password}@${host}:${port}/openfactudb`;
+      const targetUrl = `postgresql://${user}:${password}@${host}:${port}/${baseDeDatos}`;
       targetPool = new Pool({ connectionString: targetUrl, connectionTimeoutMillis: 5000 });
 
       // Verificar si existe el schema public
@@ -236,8 +260,11 @@ router.post('/init', async (req, res) => {
     // Si no, usar la conexion existente (ya configurada por DATABASE_URL)
     if (dbConfig?.host && dbConfig.host !== 'db') {
       const { host, port, user: dbUser, password } = dbConfig;
-      const dynamicUrl = `postgresql://${dbUser}:${password}@${host}:${port}/openfactudb`;
-      console.log(`[Setup] Conectando a: postgresql://${dbUser}:****@${host}:${port}/openfactudb`);
+      const baseDeDatos = nombreDeLaBase();
+      const dynamicUrl = `postgresql://${dbUser}:${password}@${host}:${port}/${baseDeDatos}`;
+      console.log(
+        `[Setup] Conectando a: postgresql://${dbUser}:****@${host}:${port}/${baseDeDatos}`,
+      );
       await ClientFactory.setBaseUrl(dynamicUrl);
     } else {
       console.log('[Setup] Usando conexion existente (DATABASE_URL)');
