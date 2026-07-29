@@ -71,22 +71,38 @@ function referencias(sentencia) {
  * Drizzle —con su tipo, su NOT NULL y su DEFAULT—, que es lo que PostgreSQL
  * admite en un ADD COLUMN.
  */
+/**
+ * Envuelve una sentencia para que no proteste si lo suyo ya está puesto.
+ *
+ * Se miran dos códigos porque una restricción `UNIQUE` crea además un índice
+ * con su nombre: si sobrevive el índice pero no la restricción, el error que
+ * sale es el del índice y no el de la restricción.
+ */
+function protegida(sentencia) {
+  return `DO $$ BEGIN\n  ${sentencia};\nEXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;\nEND $$`;
+}
+
 function idempotente(sentencia, tabla) {
   // `ADD CONSTRAINT` no admite IF NOT EXISTS y este SQL se aplica más de una
   // vez —al instalar y en cada arranque—, así que la segunda reventaba con
   // «constraint already exists» y se llevaba por delante el resto del fichero.
   if (/ADD CONSTRAINT/i.test(sentencia)) {
-    return [`DO $$ BEGIN\n  ${sentencia};\nEXCEPTION WHEN duplicate_object THEN NULL;\nEND $$`];
+    return [protegida(sentencia)];
   }
 
   const cuerpo = sentencia.match(/CREATE TABLE "[^"]+" \(([\s\S]*)\)\s*$/);
   const creacion = sentencia.replace(/^CREATE TABLE\s+"/i, 'CREATE TABLE IF NOT EXISTS "');
   if (!cuerpo) return [creacion];
 
-  const columnas = cuerpo[1]
-    .split('\n')
-    .map((l) => l.trim().replace(/,$/, ''))
-    .filter((l) => l.startsWith('"'));
+  const lineas = cuerpo[1].split('\n').map((l) => l.trim().replace(/,$/, ''));
+  const columnas = lineas.filter((l) => l.startsWith('"'));
+
+  // Las restricciones escritas dentro del CREATE sólo se aplican al crear la
+  // tabla. Sobre una que ya existe de una versión anterior no entrarían nunca,
+  // así que se repiten aparte igual que las columnas.
+  const restricciones = lineas
+    .filter((l) => /^CONSTRAINT\s+"/i.test(l))
+    .map((l) => protegida(`ALTER TABLE "${tabla}" ADD ${l}`));
 
   const alteraciones = columnas
     // Las claves primarias no se añaden después: si la tabla existe, ya la
@@ -101,7 +117,7 @@ function idempotente(sentencia, tabla) {
       return `ALTER TABLE "${tabla}" ADD COLUMN IF NOT EXISTS ${definicion}`;
     });
 
-  return [creacion, ...alteraciones];
+  return [creacion, ...alteraciones, ...restricciones];
 }
 
 function main() {
