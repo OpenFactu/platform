@@ -37,3 +37,25 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </I18nProvider>
   </React.StrictMode>,
 );
+
+// Recargar cuando entre una versión nueva.
+//
+// El service worker se instala y toma el control solo (`skipWaiting` +
+// `clientsClaim`), pero la página que ya está abierta sigue con los ficheros
+// que cargó: hasta que alguien recarga, Keirost enseña la versión anterior.
+// Sin esto, actualizar y seguir viendo lo viejo es el comportamiento normal, y
+// la única salida es vaciar la caché a mano — un incidente de soporte por cada
+// actualización.
+//
+// Sólo cuando ya había un service worker mandando: en la primera visita el
+// control cambia también, y recargar ahí sería un parpadeo sin motivo.
+if ('serviceWorker' in navigator) {
+  const habiaControlador = Boolean(navigator.serviceWorker.controller);
+  let recargando = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!habiaControlador || recargando) return;
+    recargando = true;
+    window.location.reload();
+  });
+}
