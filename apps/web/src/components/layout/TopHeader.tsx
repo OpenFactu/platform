@@ -46,8 +46,12 @@ export const TopHeader: React.FC = () => {
         </span>
       </div>
 
-      {/* Búsqueda global */}
-      <div className="flex-1 max-w-xl">
+      {/* Búsqueda global.
+          «min-w-0» no es decorativo: un elemento flex se niega por defecto a
+          encogerse por debajo de su contenido, así que en un móvil el texto
+          largo del buscador empujaba la cabecera y se llevaba por delante el
+          ancho de la página. */}
+      <div className="min-w-0 flex-1 max-w-xl">
         <GlobalSearch />
       </div>
 
