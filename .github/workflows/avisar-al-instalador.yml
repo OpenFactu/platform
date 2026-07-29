@@ -20,25 +20,32 @@ jobs:
   avisar:
     runs-on: ubuntu-latest
     steps:
+      # El GITHUB_TOKEN de un workflow sólo vale para su propio repositorio, así
+      # que hace falta una credencial que alcance al del instalador. Se usa una
+      # GitHub App de la organización y no un token personal: el token efímero
+      # que emite dura una hora, no caduca «algún día» a media noche y no queda
+      # atado a la cuenta de nadie.
+      - name: Pedir un token a la App
+        id: token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.KEIROST_APP_ID }}
+          private-key: ${{ secrets.KEIROST_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: destokp-program-and-setup
+
       - name: Pedir los artefactos de esta versión
         env:
-          # Un token propio con permiso sobre el otro repositorio: el
-          # GITHUB_TOKEN de este workflow sólo vale para éste.
-          GH_TOKEN: ${{ secrets.INSTALADOR_DISPATCH_TOKEN }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
           ETIQUETA: ${{ inputs.tag || github.event.release.tag_name }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::falta el secreto INSTALADOR_DISPATCH_TOKEN"
-            exit 1
-          fi
-
           # La versión de los artefactos es la etiqueta sin la «v»: así el
           # número de Keirost y el del paquete que se instala son el mismo.
           VERSION="${ETIQUETA#v}"
           echo "Pidiendo artefactos de $ETIQUETA como $VERSION"
 
           gh workflow run artifacts.yml \
-            --repo OpenFactu/destokp-program-and-setup \
+            --repo ${{ github.repository_owner }}/destokp-program-and-setup \
             --ref main \
             -f platform_ref="$ETIQUETA" \
             -f keirost_version="$VERSION" \
@@ -48,4 +55,4 @@ jobs:
             -f publish=true
 
           echo "Lanzado. Tarda unos 40 minutos:"
-          echo "https://github.com/OpenFactu/destokp-program-and-setup/actions/workflows/artifacts.yml"
+          echo "https://github.com/${{ github.repository_owner }}/destokp-program-and-setup/actions/workflows/artifacts.yml"
