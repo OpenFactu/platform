@@ -58,6 +58,11 @@ ALTER TABLE "ApiToken" ADD COLUMN IF NOT EXISTS "lastUsedAt" timestamp;
 
 ALTER TABLE "ApiToken" ADD COLUMN IF NOT EXISTS "revokedAt" timestamp;
 
+DO $$ BEGIN
+  ALTER TABLE "ApiToken" ADD CONSTRAINT "ApiToken_tokenHash_unique" UNIQUE("tokenHash");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS "AuditLog" (
 	"id" text PRIMARY KEY NOT NULL,
 	"tenantId" text NOT NULL,
@@ -186,6 +191,11 @@ ALTER TABLE "DevApiKey" ADD COLUMN IF NOT EXISTS "lastUsedAt" timestamp;
 
 ALTER TABLE "DevApiKey" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
 
+DO $$ BEGIN
+  ALTER TABLE "DevApiKey" ADD CONSTRAINT "DevApiKey_clientId_unique" UNIQUE("clientId");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS "GlobalUser" (
 	"id" text PRIMARY KEY NOT NULL,
 	"email" text NOT NULL,
@@ -242,6 +252,16 @@ ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpBackupCodes" text;
 ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
 
 ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp DEFAULT now() NOT NULL;
+
+DO $$ BEGIN
+  ALTER TABLE "GlobalUser" ADD CONSTRAINT "GlobalUser_email_unique" UNIQUE("email");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "GlobalUser" ADD CONSTRAINT "GlobalUser_username_unique" UNIQUE("username");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS "PluginField" (
 	"id" text PRIMARY KEY NOT NULL,
@@ -382,6 +402,11 @@ ALTER TABLE "TenantPlugin" ADD COLUMN IF NOT EXISTS "activatedAt" timestamp DEFA
 
 ALTER TABLE "TenantPlugin" ADD COLUMN IF NOT EXISTS "deactivatedAt" timestamp;
 
+DO $$ BEGIN
+  ALTER TABLE "TenantPlugin" ADD CONSTRAINT "TenantPlugin_tenantId_pluginId_unique" UNIQUE("tenantId","pluginId");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS "Tenant" (
 	"id" text PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
@@ -402,6 +427,16 @@ ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "config" text;
 ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
 
 ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp DEFAULT now() NOT NULL;
+
+DO $$ BEGIN
+  ALTER TABLE "Tenant" ADD CONSTRAINT "Tenant_name_unique" UNIQUE("name");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "Tenant" ADD CONSTRAINT "Tenant_schemaName_unique" UNIQUE("schemaName");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS "UserDashboardWidget" (
 	"id" text PRIMARY KEY NOT NULL,
@@ -485,6 +520,11 @@ ALTER TABLE "UserTenantMembership" ADD COLUMN IF NOT EXISTS "createdAt" timestam
 
 ALTER TABLE "UserTenantMembership" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp DEFAULT now() NOT NULL;
 
+DO $$ BEGIN
+  ALTER TABLE "UserTenantMembership" ADD CONSTRAINT "UserTenantMembership_userId_tenantId_unique" UNIQUE("userId","tenantId");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS "WebsiteHost" (
 	"id" text PRIMARY KEY NOT NULL,
 	"kind" text NOT NULL,
@@ -512,41 +552,46 @@ ALTER TABLE "WebsiteHost" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT
 ALTER TABLE "WebsiteHost" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp DEFAULT now() NOT NULL;
 
 DO $$ BEGIN
+  ALTER TABLE "WebsiteHost" ADD CONSTRAINT "WebsiteHost_value_unique" UNIQUE("value");
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
   ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_tenantId_Tenant_id_fk" FOREIGN KEY ("tenantId") REFERENCES "public"."Tenant"("id") ON DELETE no action ON UPDATE no action;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_userId_GlobalUser_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."GlobalUser"("id") ON DELETE no action ON UPDATE no action;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "DevApiKey" ADD CONSTRAINT "DevApiKey_createdBy_GlobalUser_id_fk" FOREIGN KEY ("createdBy") REFERENCES "public"."GlobalUser"("id") ON DELETE no action ON UPDATE no action;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "DevApiKey" ADD CONSTRAINT "DevApiKey_tenantId_Tenant_id_fk" FOREIGN KEY ("tenantId") REFERENCES "public"."Tenant"("id") ON DELETE no action ON UPDATE no action;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "GlobalUser" ADD CONSTRAINT "GlobalUser_tenantId_Tenant_id_fk" FOREIGN KEY ("tenantId") REFERENCES "public"."Tenant"("id") ON DELETE no action ON UPDATE no action;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "TenantPlugin" ADD CONSTRAINT "TenantPlugin_tenantId_Tenant_id_fk" FOREIGN KEY ("tenantId") REFERENCES "public"."Tenant"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "UserTenantMembership" ADD CONSTRAINT "UserTenantMembership_userId_GlobalUser_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."GlobalUser"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
   ALTER TABLE "UserTenantMembership" ADD CONSTRAINT "UserTenantMembership_tenantId_Tenant_id_fk" FOREIGN KEY ("tenantId") REFERENCES "public"."Tenant"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION WHEN duplicate_object THEN NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
