@@ -1,0 +1,51 @@
+name: Avisar al instalador
+
+# Al publicar una release de Keirost, pide al repositorio del instalador que
+# compile y publique sus artefactos con esa misma etiqueta.
+#
+# Sin esto son dos pasos manuales —publicar aquí y acordarse de ir allí a lanzar
+# el pipeline— y olvidar el segundo deja una versión publicada que nadie puede
+# instalar, sin ninguna señal de que falta algo.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Etiqueta a empaquetar (por ejemplo v0.0.14)'
+        required: true
+
+jobs:
+  avisar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pedir los artefactos de esta versión
+        env:
+          # Un token propio con permiso sobre el otro repositorio: el
+          # GITHUB_TOKEN de este workflow sólo vale para éste.
+          GH_TOKEN: ${{ secrets.INSTALADOR_DISPATCH_TOKEN }}
+          ETIQUETA: ${{ inputs.tag || github.event.release.tag_name }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::falta el secreto INSTALADOR_DISPATCH_TOKEN"
+            exit 1
+          fi
+
+          # La versión de los artefactos es la etiqueta sin la «v»: así el
+          # número de Keirost y el del paquete que se instala son el mismo.
+          VERSION="${ETIQUETA#v}"
+          echo "Pidiendo artefactos de $ETIQUETA como $VERSION"
+
+          gh workflow run artifacts.yml \
+            --repo OpenFactu/destokp-program-and-setup \
+            --ref main \
+            -f platform_ref="$ETIQUETA" \
+            -f keirost_version="$VERSION" \
+            -f channel=stable \
+            -f node_version=22.23.1 \
+            -f postgres_url='https://get.enterprisedb.com/postgresql/postgresql-15.14-1-windows-x64-binaries.zip' \
+            -f publish=true
+
+          echo "Lanzado. Tarda unos 40 minutos:"
+          echo "https://github.com/OpenFactu/destokp-program-and-setup/actions/workflows/artifacts.yml"
