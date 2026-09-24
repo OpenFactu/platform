@@ -99,12 +99,17 @@ export const PaymentTermsEditor: React.FC = () => {
     );
   };
 
+  // `card` reparte las columnas cuando la Table pasa a tarjetas en pantalla
+  // estrecha: el nombre encabeza, el desglose de vencimientos es lo que se
+  // lee debajo y el activo va al hueco de estado. Sin esto, "30d·50% + 60d…"
+  // se cortaba a media línea.
   const columns: TableColumn<PaymentTerm>[] = [
-    { header: 'Nombre', accessor: 'name', sortable: true },
-    { header: 'Detalle', cell: (t) => renderSummary(t) },
+    { header: 'Nombre', accessor: 'name', sortable: true, card: 'title' },
+    { header: 'Detalle', cell: (t) => renderSummary(t), card: 'subtitle' },
     {
       header: 'Activo',
       align: 'center',
+      card: 'status',
       cell: (t) =>
         t.isActive ? <Badge variant="success">✓</Badge> : <Badge variant="neutral">—</Badge>,
     },
@@ -146,6 +151,7 @@ export const PaymentTermsEditor: React.FC = () => {
         data={rows}
         isLoading={loading}
         rowActions={rowActions}
+        responsive="cards"
         emptyMessage="Sin plazos definidos"
       />
     </div>

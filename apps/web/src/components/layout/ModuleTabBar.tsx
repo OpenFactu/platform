@@ -7,6 +7,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { PluginIcon } from '../PluginIcon';
 import type { SubTab } from '../../modules/registry';
+import { visibleSubTabs } from '../../modules/permissions';
+import { iconNameFor } from '../../modules/routeLookup';
 
 /**
  * Barra horizontal de sub-secciones del módulo activo, entre el TopHeader y las
@@ -23,18 +25,13 @@ export const ModuleTabBar: React.FC = () => {
   const activeTabPath = tabs.find((t) => t.id === activeTabId)?.path?.split('?')[0] || '/';
   const active = useActiveModule(activeTabPath);
   const { flags } = useTheme();
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
 
+  // Mismo criterio que el sidebar (rol, flags y permisos). Antes esta barra
+  // solo miraba rol y flags, así que enseñaba pestañas en las que el usuario
+  // no podía entrar.
   const subTabs: SubTab[] = useMemo(
-    () =>
-      active
-        ? active.subTabs.filter((s) => {
-            if (!isAdmin && s.adminOnly) return false;
-            if (s.featureFlag && !(flags as any)[s.featureFlag]) return false;
-            return true;
-          })
-        : [],
-    [active, isAdmin, flags],
+    () => (active ? visibleSubTabs(active, { user, flags }) : []),
+    [active, user, flags],
   );
 
   const items = useMemo<NavMenuItem[]>(
@@ -44,7 +41,12 @@ export const ModuleTabBar: React.FC = () => {
         label: t.label,
         group: t.group,
         status: (t as any).status as NavStatus | undefined,
-        icon: t.icon ? <PluginIcon iconName={t.icon} size={14} /> : undefined,
+        // Si el sub-tab no declara icono —y ninguno lo hace— se coge el de su
+        // ruta, que sí lo tiene. Antes esta línea no pintaba nunca nada.
+        icon: (() => {
+          const name = iconNameFor(t.path, t.icon);
+          return name ? <PluginIcon iconName={name} size={14} /> : undefined;
+        })(),
       })),
     [subTabs],
   );
@@ -55,7 +57,11 @@ export const ModuleTabBar: React.FC = () => {
 
   return (
     <div className="flex items-center gap-1 px-3 py-1.5 bg-bg-card border-b border-border-default overflow-x-auto overflow-y-visible">
-      <span className="text-xs font-bold uppercase tracking-wider text-fg-subtle mr-3 px-2 whitespace-nowrap">
+      {/* El nombre del módulo se esconde en pantalla estrecha: son ~120 px
+          fijos de información que ya dan el icono resaltado del sidebar y las
+          propias pestañas. Donde sobra sitio, ayuda a orientarse; donde no,
+          se come el ancho de lo que sí hace falta. */}
+      <span className="hidden md:inline text-xs font-bold uppercase tracking-wider text-fg-subtle mr-3 px-2 whitespace-nowrap">
         {active.label}
       </span>
       <NavMenu

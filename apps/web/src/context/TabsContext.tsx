@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { resolveRouteMeta } from '../components/tabs/RouteRegistry';
+import { canRead, type NavUser } from '../modules/permissions';
+import { useAuth } from './AuthContext';
 
 const STORAGE_KEY = 'openfactu_tabs';
 
@@ -54,13 +56,30 @@ function saveStorage(state: TabsState) {
   } catch {}
 }
 
-function computeInitialState(): TabsState {
+/**
+ * ¿Se puede restaurar esta pestaña?
+ *
+ * Las pestañas viven en `localStorage`, así que sobreviven a que a alguien le
+ * quiten un permiso: al volver a entrar seguía con "Facturas Venta" abierta y
+ * al pulsarla la aplicación la echaba. Una ruta sin `permissionPath` no está
+ * bajo control de permisos (la portada, el perfil, la app del repartidor) y se
+ * conserva — mismo criterio que usa `TabsHost` para envolver o no en
+ * `PermittedRoute`.
+ */
+function canRestoreTab(path: string, user: NavUser | null | undefined): boolean {
+  const meta = resolveRouteMeta(pathnameOf(path));
+  if (!meta) return false;
+  if (!meta.permissionPath) return true;
+  return canRead(user, meta.permissionPath);
+}
+
+function computeInitialState(user: NavUser | null | undefined): TabsState {
   const persisted = loadStorage();
   const browserPathname = window.location.pathname;
   const browserSearch = window.location.search;
   const browserPath = browserPathname + browserSearch;
 
-  let tabs = persisted.tabs.filter((t) => resolveRouteMeta(pathnameOf(t.path)) !== null);
+  let tabs = persisted.tabs.filter((t) => canRestoreTab(t.path, user));
   let activeTabId: string | null = persisted.activeTabId;
   if (activeTabId && !tabs.some((t) => t.id === activeTabId)) {
     activeTabId = tabs[0]?.id ?? null;
@@ -76,7 +95,7 @@ function computeInitialState(): TabsState {
 
   if (tabs.length === 0) {
     const initialPath = browserPathname && browserPathname !== '/' ? browserPath : '/';
-    const meta = resolveRouteMeta(pathnameOf(initialPath));
+    const meta = canRestoreTab(initialPath, user) ? resolveRouteMeta(pathnameOf(initialPath)) : null;
     if (meta) {
       const tab: Tab = {
         id: genId(),
@@ -92,7 +111,7 @@ function computeInitialState(): TabsState {
       activeTabId = tab.id;
     }
   } else if (browserPathname !== '/' && !tabs.some((t) => pathnameOf(t.path) === browserPathname)) {
-    const meta = resolveRouteMeta(browserPathname);
+    const meta = canRestoreTab(browserPathname, user) ? resolveRouteMeta(browserPathname) : null;
     if (meta) {
       const tab: Tab = {
         id: genId(),
@@ -111,7 +130,11 @@ function computeInitialState(): TabsState {
 }
 
 export const TabsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<TabsState>(computeInitialState);
+  // El usuario ya está resuelto: `TabsProvider` solo se monta en la rama
+  // autenticada de `App`. Hace falta para no restaurar pestañas guardadas de
+  // pantallas a las que ya no se tiene acceso.
+  const { user } = useAuth();
+  const [state, setState] = useState<TabsState>(() => computeInitialState(user));
 
   useEffect(() => {
     saveStorage(state);

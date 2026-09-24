@@ -88,6 +88,17 @@ import documentTemplatesRouter from './api/documentTemplates';
 import attachmentsRouter from './api/attachments';
 import adminRouter from './api/admin';
 import backupsRouter from './api/backups';
+import dataImportRouter from './api/dataImport';
+import permissionsRouter from './api/permissions';
+import {
+  mountApi,
+  mountApiBySubpath,
+  mountShared,
+  mountPublic,
+  denyUndeclared,
+  mountReport,
+  PUBLIC_SUBPATH,
+} from './core/auth/apiMounts';
 import systemRouter from './api/system';
 import emailRouter from './api/email';
 import notificationsRouter from './api/notifications';
@@ -106,6 +117,9 @@ import { MigrationManager } from './core/tenant/MigrationManager';
 import { startPeriodCloseCron } from './core/cron/periodCloseCron';
 import { startBackupCron } from './core/cron/backupCron';
 import { startEventSocket, broadcastEvent } from './core/realtime/EventSocket';
+import { adminMiddleware } from './api/middleware/adminAuth';
+import { registerImportObjects } from './core/dataimport/registerImportObjects';
+import { UploadStore } from './core/dataimport/UploadStore';
 import { notifyTenant } from './core/realtime/notifyTenant';
 import { HookManager } from './core/plugins/HookManager';
 import { invalidateDashboardCache } from './api/dashboard';
@@ -159,11 +173,17 @@ app.get('/metrics', async (_req, res) => {
   }
 });
 
+// ── Permisos ────────────────────────────────────────────────────────────────
+// A partir de aquí los routers NO se montan con `app.use` a secas. Se usan
+// `mountApi` (exige permiso de módulo), `mountShared` (basta con estar dentro
+// de la empresa) y `mountPublic` (abierto), de modo que el permiso se lee al
+// lado del montaje y `denyUndeclared` —al final del fichero— pueda devolver
+// 403 a lo que se cuele sin declarar nada. Ver core/auth/apiMounts.ts.
+
 // 1. Rutas de Configuración y Auth (Fuera del contexto de tenant obligatorio)
-app.use('/api/setup', setupRouter);
-app.use('/api/auth', authRouter);
-// Endpoint público de tracking — no requiere auth; se identifica por token.
-app.use('/api/logistics', publicTrackRouter);
+mountPublic(app, '/api/setup', 'alta inicial de la instalación', setupRouter);
+mountPublic(app, '/api/auth', 'login y recuperación de contraseña', authRouter);
+mountPublic(app, '/api/logistics', 'seguimiento de envío por token', publicTrackRouter);
 // Webs públicas de tenants (módulo Website) — sin auth; resuelve por slug.
 // El middleware de Host atiende subdominios/dominios propios registrados en
 // WebsiteHost y no toca el resto de peticiones (cache TTL 60s, incl. negativos).
@@ -178,98 +198,159 @@ app.use('/api', apiTokenMiddleware);
 app.use('/api', tenantContextMiddleware);
 
 // 2b. Gestión de tokens de API (solo admins).
-app.use('/api/admin/api-tokens', apiTokensRouter);
+mountApi(app, '/api/admin/api-tokens', '/settings/api-tokens', apiTokensRouter);
 
 // 3. Rutas de Plugins, Dev Keys y Negocio
-app.use('/api/plugins', pluginsRouter);
-app.use('/api/custom-fields', customFieldsRouter);
-app.use('/api/user-tables', userTablesRouter);
-app.use('/api/user-modules', userModulesRouter);
-app.use('/api/automations', automationsRouter);
-app.use('/api/dashboard-widgets', dashboardWidgetsRouter);
-app.use('/api/logistics', logisticsRouter);
-app.use('/api/website', websiteRouter);
-app.use('/api/dev-keys', devKeysRouter);
-// 4. Rustas de creación y gestion de usarios
-app.use('/api/users', usersRouter);
-app.use('/api/items', itemsRouter);
-app.use('/api/categories', categoriesRouter);
-app.use('/api/uom', uomRouter);
-app.use('/api/partners', partnersRouter);
-app.use('/api/pricelists', pricelistsRouter);
-app.use('/api/zones', zonesRouter);
-app.use('/api/warehouses', warehousesRouter);
-app.use('/api/transfer-notes', transferNotesRouter);
-app.use('/api/goods-receipts', goodsReceiptsRouter);
-app.use('/api/goods-issues', goodsIssuesRouter);
-app.use('/api/stock', stockLookupRouter);
-app.use('/api/carriers', carriersRouter);
-app.use('/api/webhooks', webhooksRouter);
-app.use('/api/partnerGroups', partnerGroupsRouter);
-app.use('/api/periods', periodsRouter);
-app.use('/api/chart-of-accounts', chartOfAccountsRouter);
-app.use('/api/cost-centers', costCentersRouter);
-app.use('/api/profit-centers', profitCentersRouter);
-app.use('/api/internal-orders', internalOrdersRouter);
-app.use('/api/journal-entries', journalEntriesRouter);
-app.use('/api/account-mappings', accountMappingsRouter);
-app.use('/api/document-links', documentLinksRouter);
-app.use('/api/company/signature', companySignatureRouter);
+// `/api/plugins` sirve además los componentes de plugin que carga CUALQUIER
+// pantalla contribuida por un plugin, así que no puede exigir el permiso de
+// la tienda de aplicaciones. Sus endpoints de activación ya comprueban rol
+// dentro del propio router.
+mountShared(app, '/api/plugins', 'carga de componentes de plugin en cualquier pantalla', pluginsRouter);
+mountApi(app, '/api/custom-fields', '/custom-fields', customFieldsRouter);
+mountApi(app, '/api/user-tables', '/user-tables', userTablesRouter);
+mountShared(app, '/api/user-modules', 'módulos propios que pintan el menú', userModulesRouter);
+mountApi(app, '/api/automations', '/automations', automationsRouter);
+// Dos motivos para no exigir aquí el permiso de la pantalla de ajustes:
+// `GET /` alimenta el panel de inicio de CUALQUIER usuario, y
+// `/:id/component.js` lo carga el navegador con un `import()` dinámico, que no
+// puede adjuntar cabeceras (por eso ese endpoint acepta el tenant por query).
+// Crear, editar y borrar ya exigen rol admin dentro del propio router.
+mountShared(
+  app,
+  '/api/dashboard-widgets',
+  'widgets del panel y su código, que carga el navegador sin cabeceras',
+  dashboardWidgetsRouter,
+);
+mountApi(app, '/api/logistics', '/logistics', logisticsRouter);
+mountApi(app, '/api/website', '/website/pages', websiteRouter);
+mountApi(app, '/api/dev-keys', '/settings/api-tokens', devKeysRouter);
+// 4. Rutas de creación y gestión de usuarios
+mountApi(app, '/api/users', '/users', usersRouter);
+mountApi(app, '/api/items', '/items', itemsRouter);
+mountApi(app, '/api/categories', '/categories', categoriesRouter);
+mountApi(app, '/api/uom', '/uom', uomRouter);
+mountApi(app, '/api/partners', '/partners', partnersRouter);
+mountApi(app, '/api/pricelists', '/pricelists', pricelistsRouter);
+mountApi(app, '/api/zones', '/logistics/zones', zonesRouter);
+mountApi(app, '/api/warehouses', '/warehouses', warehousesRouter);
+mountApi(app, '/api/transfer-notes', '/logistics/stock-movements', transferNotesRouter);
+mountApi(app, '/api/goods-receipts', '/logistics/stock-movements', goodsReceiptsRouter);
+mountApi(app, '/api/goods-issues', '/logistics/stock-movements', goodsIssuesRouter);
+mountShared(app, '/api/stock', 'consulta de existencias que usan los documentos', stockLookupRouter);
+mountApi(app, '/api/carriers', '/settings/carriers', carriersRouter);
+mountApi(app, '/api/webhooks', '/settings/webhooks', webhooksRouter);
+mountApi(app, '/api/partnerGroups', '/partner-groups', partnerGroupsRouter);
+mountApi(app, '/api/periods', '/accounting-periods', periodsRouter);
+mountApi(app, '/api/chart-of-accounts', '/chart-of-accounts', chartOfAccountsRouter);
+mountApi(app, '/api/cost-centers', '/cost-centers', costCentersRouter);
+mountApi(app, '/api/profit-centers', '/profit-centers', profitCentersRouter);
+mountApi(app, '/api/internal-orders', '/internal-orders', internalOrdersRouter);
+mountApi(app, '/api/journal-entries', '/journal-entries', journalEntriesRouter);
+mountApi(app, '/api/account-mappings', '/chart-of-accounts', accountMappingsRouter);
+mountShared(app, '/api/document-links', 'trazabilidad entre documentos ya visibles', documentLinksRouter);
+mountApi(app, '/api/company/signature', '/settings/company', companySignatureRouter);
 // userProfileRouter va ANTES de usersRouter para que /me capture primero.
 // Pero usersRouter ya está montado arriba, así que usamos otro prefix.
-app.use('/api/profile', userProfileRouter);
-app.use('/api/2fa', twoFactorRouter);
-app.use('/api/reports', reportsRouter);
-app.use('/api/hr/employees', hrEmployeesRouter);
-app.use('/api/hr/departments', hrDepartmentsRouter);
-app.use('/api/hr/payrolls', hrPayrollsRouter);
-app.use('/api/hr/contracts', hrContractsRouter);
-app.use('/api/hr/collective-agreements', hrCollectiveAgreementsRouter);
-app.use('/api/hr/evaluations', hrEvaluationsRouter);
-app.use('/api/hr/commissions', hrCommissionsRouter);
-app.use('/api/hr/tasks', hrTasksRouter);
-app.use('/api/hr/payroll-concepts', hrPayrollConceptsRouter);
-app.use('/api/hr/incident-types', hrIncidentTypesRouter);
-app.use('/api/hr/incidents', hrIncidentsRouter);
-app.use('/api/hr/shift-templates', hrShiftTemplatesRouter);
-app.use('/api/hr/shift-patterns', hrShiftPatternsRouter);
-app.use('/api/hr/shift-assignments', hrShiftAssignmentsRouter);
-app.use('/api/hr/timeclock', hrTimeclockRouter);
-app.use('/api/hr/kiosks', hrKiosksRouter);
-app.use('/api/series', seriesRouter);
-app.use('/api/purchases', purchasesRouter);
-app.use('/api/purchases/delivery-notes', purchaseDeliveryNotesRouter);
-app.use('/api/purchases/invoices', purchaseInvoicesRouter);
-app.use('/api/sales/delivery-notes', salesDeliveryNotesRouter);
-app.use('/api/sales/invoices', salesInvoicesRouter);
-app.use('/api/sales', salesOrdersRouter);
+mountShared(app, '/api/profile', 'perfil del propio usuario', userProfileRouter);
+mountShared(app, '/api/2fa', 'doble factor del propio usuario', twoFactorRouter);
+// Un permiso POR INFORME: el libro de IVA y el coste laboral no son lo mismo
+// que la rotación de stock. Antes este router no pedía ninguno.
+mountApiBySubpath(
+  app,
+  '/api/reports',
+  {
+    '/journal': '/reports/accounting/journal',
+    '/ledger': '/reports/accounting/ledger',
+    '/trial-balance': '/reports/accounting/trial-balance',
+    '/pl': '/reports/accounting/pl',
+    '/balance-sheet': '/reports/accounting/balance-sheet',
+    '/vat': '/reports/accounting/vat',
+    '/profit-customer': '/reports/management/profit-customer',
+    '/profit-item': '/reports/management/profit-item',
+    '/profit-project': '/reports/management/profit-project',
+    '/profit-cost-center': '/reports/management/profit-cost-center',
+    '/executive': '/reports/management/executive',
+    '/aging-receivables': '/reports/management/aging-receivables',
+    '/aging-payables': '/reports/management/aging-payables',
+    '/cashflow': '/reports/management/cashflow',
+    '/payslip': '/reports/hr/payslip',
+    '/labor-cost': '/reports/hr/labor-cost',
+    '/headcount': '/reports/hr/headcount',
+    '/hr/labor-cost': '/reports/hr/labor-cost',
+    '/hr/productivity': '/reports/hr/headcount',
+    '/hr/commissions': '/hr/commissions',
+    '/stock-valuation': '/reports/stock/valuation',
+    '/stock-rotation': '/reports/stock/rotation',
+    '/stock-movements': '/reports/stock/movements',
+  },
+  reportsRouter,
+);
+mountApi(app, '/api/hr/employees', '/hr/employees', hrEmployeesRouter);
+mountApi(app, '/api/hr/departments', '/hr/departments', hrDepartmentsRouter);
+mountApi(app, '/api/hr/payrolls', '/hr/payrolls', hrPayrollsRouter);
+mountApi(app, '/api/hr/contracts', '/hr/contracts', hrContractsRouter);
+mountApi(app, '/api/hr/collective-agreements', '/hr/collective-agreements', hrCollectiveAgreementsRouter);
+mountApi(app, '/api/hr/evaluations', '/hr/evaluations', hrEvaluationsRouter);
+mountApi(app, '/api/hr/commissions', '/hr/commissions', hrCommissionsRouter);
+mountApi(app, '/api/hr/tasks', '/hr/tasks', hrTasksRouter);
+mountApi(app, '/api/hr/payroll-concepts', '/hr/payroll-concepts', hrPayrollConceptsRouter);
+mountApi(app, '/api/hr/incident-types', '/hr/incident-types', hrIncidentTypesRouter);
+mountApi(app, '/api/hr/incidents', '/hr/incidents', hrIncidentsRouter);
+mountApi(app, '/api/hr/shift-templates', '/hr/shift-templates', hrShiftTemplatesRouter);
+mountApi(app, '/api/hr/shift-patterns', '/hr/shift-patterns', hrShiftPatternsRouter);
+mountApi(app, '/api/hr/shift-assignments', '/hr/planning', hrShiftAssignmentsRouter);
+mountApi(app, '/api/hr/timeclock', '/hr/timeclock', hrTimeclockRouter);
+mountApi(app, '/api/hr/kiosks', '/hr/kiosks', hrKiosksRouter);
+mountApi(app, '/api/series', '/document-series', seriesRouter);
+mountApi(app, '/api/purchases', '/purchase-orders', purchasesRouter);
+mountApi(app, '/api/purchases/delivery-notes', '/purchases/delivery-notes', purchaseDeliveryNotesRouter);
+mountApi(app, '/api/purchases/invoices', '/purchases/invoices', purchaseInvoicesRouter);
+mountApi(app, '/api/sales/delivery-notes', '/sales/delivery-notes', salesDeliveryNotesRouter);
+mountApi(app, '/api/sales/invoices', '/sales/invoices', salesInvoicesRouter);
+mountApi(app, '/api/sales', '/sales-orders', salesOrdersRouter);
 // Generic document router (new unified API)
-app.use('/api/documents', documentRouter);
-app.use('/api/taxes', taxesRouter);
-app.use('/api/audit-logs', auditLogsRouter);
-app.use('/api/memberships', membershipsRouter);
-app.use('/api/document-templates', documentTemplatesRouter);
-app.use('/api/attachments', attachmentsRouter);
-app.use('/api/admin', adminRouter);
-app.use('/api/backups', backupsRouter);
-app.use('/api/system', systemRouter);
+mountApi(app, '/api/documents', '/documents', documentRouter);
+mountApi(app, '/api/taxes', '/taxes', taxesRouter);
+mountApi(app, '/api/audit-logs', '/audit-logs', auditLogsRouter);
+// El selector de empresa del login vive aquí y se consulta ANTES de que haya
+// sesión: si se mete entero detrás del permiso de usuarios, no se puede ni
+// entrar en la aplicación. El resto del router sí es de administración.
+mountApiBySubpath(
+  app,
+  '/api/memberships',
+  { '/tenants-for-user': PUBLIC_SUBPATH, '': '/users' },
+  membershipsRouter,
+);
+mountApi(app, '/api/document-templates', '/document-templates', documentTemplatesRouter);
+mountShared(app, '/api/attachments', 'adjuntos de registros que ya se pueden ver', attachmentsRouter);
+mountApi(app, '/api/admin', '/system/cockpit', adminRouter);
+mountApi(app, '/api/backups', '/settings/company', backupsRouter);
+// Importador de datos — herramienta de administración: ADMIN o SUPERUSER.
+// Dentro, el catálogo se filtra además por permiso de módulo y feature flags.
+mountApi(app, '/api/data-import', '/data-import', adminMiddleware, dataImportRouter);
+mountApi(app, '/api/system', '/system/cockpit', systemRouter);
 // Correo saliente por tenant — lee/escribe config SMTP y envía emails.
-app.use('/api/email', emailRouter);
-app.use('/api/notifications', notificationsRouter);
-app.use('/api/company', companyRouter);
-app.use('/api/dashboard', dashboardRouter);
-app.use('/api/tenants', tenantsRouter);
-app.use('/api/config', configRouter);
-app.use('/api/ai', aiRouter);
-app.use('/api/mcp', mcpRouter);
-app.use('/api/search', searchRouter);
-app.use('/api/geo', geoRouter);
-app.use('/api/factuapi', factuApiRouter);
-app.use('/api/payments', paymentsRouter);
-app.use('/api/currencies', currenciesRouter);
-app.use('/api/document-types', documentTypesRouter);
-app.use('/api/payment-methods', paymentMethodsRouter);
-app.use('/api/payment-terms', paymentTermsRouter);
+mountApi(app, '/api/email', '/settings/company', emailRouter);
+mountShared(app, '/api/notifications', 'avisos del propio usuario', notificationsRouter);
+// La ficha de la empresa la LEE cualquier pantalla (logo, nombre, formato de
+// fecha). Escribirla ya exige rol admin dentro del router.
+mountShared(app, '/api/company', 'datos de empresa que pinta toda la interfaz', companyRouter);
+mountShared(app, '/api/dashboard', 'panel de inicio del propio usuario', dashboardRouter);
+mountApi(app, '/api/tenants', '/settings/company', tenantsRouter);
+mountShared(app, '/api/config', 'marca, formato y flags que necesita toda la interfaz', configRouter);
+mountApi(app, '/api/ai', '/ai/chat', aiRouter);
+mountApi(app, '/api/mcp', '/ai/chat', mcpRouter);
+// Mira doce entidades a la vez, así que no puede exigir UN permiso: recorta
+// su propia respuesta a lo que el usuario pueda ver (ver api/search.ts).
+mountShared(app, '/api/search', 'buscador global — filtra sus resultados por permiso', searchRouter);
+mountShared(app, '/api/geo', 'países, provincias y localidades', geoRouter);
+mountApi(app, '/api/factuapi', '/documents', factuApiRouter);
+mountApi(app, '/api/payments', '/payments', paymentsRouter);
+mountShared(app, '/api/currencies', 'catálogo de divisas', currenciesRouter);
+mountShared(app, '/api/document-types', 'catálogo de tipos de documento', documentTypesRouter);
+mountShared(app, '/api/payment-methods', 'catálogo de formas de pago', paymentMethodsRouter);
+mountShared(app, '/api/payment-terms', 'catálogo de plazos de pago', paymentTermsRouter);
+mountApi(app, '/api/permissions', '/users', permissionsRouter);
 
 // Health check para el instalador y Docker
 app.get('/health', (req, res) => {
@@ -370,6 +451,17 @@ const start = async () => {
 
     await loadPlugins(app);
 
+    // Cierre por defecto. Va DESPUÉS de los plugins a propósito: ellos también
+    // montan rutas y hacerlo antes las dejaría inalcanzables. Cualquier
+    // petición a /api que llegue hasta aquí sin haber pasado por un gate se
+    // deniega — es lo que impide que el próximo router montado a mano quede
+    // abierto sin que nadie se entere.
+    //
+    // Contrapartida: un plugin que registre rutas nuevas en un hot-reload
+    // queda por detrás de este middleware hasta que se reinicie el servidor.
+    app.use(denyUndeclared());
+    console.log(mountReport());
+
     // Cron de cierre de período — notifica a los admins cuando un periodo
     // vence pero NO cierra automáticamente (requiere confirmación UI).
     startPeriodCloseCron();
@@ -377,6 +469,18 @@ const start = async () => {
     // Cron de backups automáticos — ejecuta los backups programados por
     // tenant (sección `backup` de SystemConfig) y aplica retención.
     startBackupCron();
+
+    // Catálogo de objetos importables (ver core/dataimport/ImportRegistry).
+    registerImportObjects();
+
+    // Ficheros que alguien subió al importador y nunca llegó a procesar.
+    // Al arrancar y una vez por hora, para que el temporal no crezca sin fin.
+    const sweepUploads = () => {
+      const removed = UploadStore.sweepExpired();
+      if (removed > 0) console.log(`[DataImport] ${removed} fichero(s) temporal(es) caducado(s).`);
+    };
+    sweepUploads();
+    setInterval(sweepUploads, 60 * 60 * 1000).unref();
 
     const server = app.listen(PORT, () => {
       console.log(`[Server] Keirost escuchando en puerto ${PORT}`);

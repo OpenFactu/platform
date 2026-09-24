@@ -1,4 +1,4 @@
-import type { ModuleManifest } from '../types';
+import { withPermissionFromPattern, type ModuleManifest } from '../types';
 import { ReportsHub } from './pages/ReportsHub';
 import { ReportJournal } from './pages/ReportJournal';
 import { ReportLedger } from './pages/ReportLedger';
@@ -35,7 +35,10 @@ export const reportsModule: ModuleManifest = {
       { id: 'stock-reports', label: 'Stock', path: '/reports/stock' },
     ],
   },
-  routes: [
+  // Cada informe con su permiso: el libro de IVA y la rotación de stock no
+  // son el mismo dato. Antes ninguna de estas rutas pedía permiso, así que
+  // las veía cualquier usuario autenticado.
+  routes: withPermissionFromPattern([
     // Hubs por categoría
     {
       pattern: '/reports/accounting',
@@ -117,5 +120,5 @@ export const reportsModule: ModuleManifest = {
     { pattern: '/reports/stock/valuation', Component: ReportStockValuation, title: 'Valoración' },
     { pattern: '/reports/stock/rotation', Component: ReportStockRotation, title: 'Rotación' },
     { pattern: '/reports/stock/movements', Component: ReportStockMovements, title: 'Movimientos' },
-  ],
+  ]),
 };

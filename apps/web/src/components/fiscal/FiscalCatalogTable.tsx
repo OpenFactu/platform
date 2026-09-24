@@ -195,10 +195,15 @@ export const FiscalCatalogTable: React.FC<Props> = ({
   const data: any[] = creating ? [...rows, { id: NEW_ROW_ID }] : rows;
 
   const tableColumns: TableColumn<any>[] = [
-    ...columns.map<TableColumn<any>>((c) => ({
+    ...columns.map<TableColumn<any>>((c, i) => ({
       id: c.key,
       header: c.label,
       width: c.width,
+      // En pantalla estrecha la Table pinta una tarjeta por fila: la primera
+      // columna hace de título y la segunda de subtítulo. En estos catálogos
+      // eso es siempre código y nombre, que es justo lo que identifica la
+      // fila; el resto va al cuerpo con su etiqueta delante.
+      card: i === 0 ? 'title' : i === 1 ? 'subtitle' : 'body',
       // En la fila de alta el valor sale de `draft`, no de la fila.
       cell: (row) => renderCell(c, row, row.id === NEW_ROW_ID || editingId === row.id),
     })),
@@ -256,11 +261,16 @@ export const FiscalCatalogTable: React.FC<Props> = ({
       {/* La Table trae cabecera, esqueleto de carga y estado vacío: el <table>
           a mano y sus filas especiales sobraban. */}
       <div className="border border-border-default rounded-sm overflow-hidden">
+        {/* En móvil una tabla de tres o cuatro columnas se estruja hasta
+            partir palabras ("Dólar / americano" en dos líneas). Por debajo de
+            640 px se pinta una tarjeta por fila, que es legible y además deja
+            sitio a los campos de edición en línea. */}
         <Table
           columns={tableColumns}
           data={data}
           isLoading={loading}
           rowActions={rowActions}
+          responsive="cards"
           emptyMessage={'Sin datos — pulsa "Añadir" para crear.'}
         />
       </div>

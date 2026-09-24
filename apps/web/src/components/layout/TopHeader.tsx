@@ -29,7 +29,7 @@ export const TopHeader: React.FC = () => {
       </button>
 
       {/* Logo + nombre */}
-      <div className="flex items-center gap-2 mr-2 md:mr-4">
+      <div className="flex items-center gap-2 mr-2 md:mr-4 shrink-0">
         {branding.logoUrl ? (
           <img
             src={branding.logoUrl}
@@ -46,13 +46,23 @@ export const TopHeader: React.FC = () => {
         </span>
       </div>
 
-      {/* Búsqueda global */}
-      <div className="flex-1 max-w-xl">
+      {/*
+        Búsqueda global.
+
+        `min-w-0` no es decorativo: un hijo de un flex tiene `min-width: auto`,
+        así que se niega a encogerse por debajo del ancho de su contenido — y
+        aquí el contenido es un texto largo ("Buscar interlocutores, artículos
+        o documentos…"). Sin esto, al estrechar la ventana la caja no cede y
+        empuja fuera del header el idioma y el cambio de tema.
+      */}
+      <div className="flex-1 min-w-0 max-w-xl">
         <GlobalSearch />
       </div>
 
-      {/* Controles al final del header, agrupados */}
-      <div className="flex items-center gap-0.5 ml-auto">
+      {/* Controles al final del header, agrupados. `shrink-0` para que sea la
+          búsqueda la que ceda ancho y no estos, que son iconos y no admiten
+          recorte. */}
+      <div className="flex items-center gap-0.5 ml-auto shrink-0">
         <NotificationBell />
         <LocaleToggle />
         <button

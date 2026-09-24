@@ -28,6 +28,53 @@ export interface AiProviderDef {
   defaultModel: string;
   /** Construye el LanguageModel. `apiKey` llega ya resuelta (config o env). */
   create(modelId: string, apiKey: string, cfg: AiConfig): LanguageModel;
+  /**
+   * Modelos que ofrece el proveedor AHORA MISMO, preguntándoselo a él.
+   *
+   * Deliberadamente no hay lista escrita a mano: un catálogo horneado en el
+   * código envejece con cada release del proveedor y acaba ofreciendo modelos
+   * retirados mientras oculta los nuevos. Lo que no se puede preguntar (un
+   * endpoint OpenAI-compatible que no implemente /v1/models) se queda sin
+   * lista y la UI cae al campo de texto.
+   */
+  listModels?(apiKey: string, cfg: AiConfig): Promise<AiModelOption[]>;
+}
+
+/** Una entrada del desplegable de modelos. */
+export interface AiModelOption {
+  id: string;
+  label: string;
+  /** Detalle secundario (fecha, ventana de contexto…) si el proveedor lo da. */
+  note?: string;
+}
+
+async function fetchJson(url: string, headers: Record<string, string> = {}): Promise<any> {
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`${res.status} ${res.statusText}${body ? ` — ${body.slice(0, 200)}` : ''}`);
+  }
+  return res.json();
+}
+
+/**
+ * Lo que devuelve `/v1/models` de OpenAI incluye embeddings, voz e imagen,
+ * que no valen para `generateText`. Se filtran por nombre porque la API no
+ * marca de ninguna otra forma para qué sirve cada uno.
+ */
+const NO_SIRVEN_PARA_CHAT =
+  /(embedding|moderation|tts|whisper|transcribe|speech|audio|dall-e|image|sora|realtime)/i;
+
+/** Listado para todo lo OpenAI-compatible (custom, Ollama, vLLM). */
+async function openAICompatibleModels(apiKey: string, cfg: AiConfig): Promise<AiModelOption[]> {
+  const baseUrl = (cfg.baseUrl || '').replace(/\/+$/, '');
+  if (!baseUrl) throw new Error('Falta la base URL');
+  const headers: Record<string, string> = {};
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+  const data = await fetchJson(`${baseUrl}/v1/models`, headers);
+  return (Array.isArray(data?.data) ? data.data : [])
+    .map((m: any) => ({ id: String(m?.id || ''), label: String(m?.id || '') }))
+    .filter((m: AiModelOption) => m.id);
 }
 
 /**
@@ -59,6 +106,17 @@ export const AI_PROVIDERS: Record<AiProviderId, AiProviderDef> = {
     needsBaseUrl: false,
     defaultModel: 'claude-sonnet-5',
     create: (modelId, apiKey) => createAnthropic({ apiKey })(modelId),
+    listModels: async (apiKey) => {
+      const data = await fetchJson('https://api.anthropic.com/v1/models?limit=1000', {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      });
+      return (Array.isArray(data?.data) ? data.data : []).map((m: any) => ({
+        id: String(m?.id || ''),
+        label: String(m?.display_name || m?.id || ''),
+        note: m?.created_at ? String(m.created_at).slice(0, 10) : undefined,
+      }));
+    },
   },
   openai: {
     id: 'openai',
@@ -67,6 +125,16 @@ export const AI_PROVIDERS: Record<AiProviderId, AiProviderDef> = {
     needsBaseUrl: false,
     defaultModel: 'gpt-5.1',
     create: (modelId, apiKey) => createOpenAI({ apiKey })(modelId),
+    listModels: async (apiKey) => {
+      const data = await fetchJson('https://api.openai.com/v1/models', {
+        Authorization: `Bearer ${apiKey}`,
+      });
+      return (Array.isArray(data?.data) ? data.data : [])
+        .map((m: any) => String(m?.id || ''))
+        .filter((id: string) => id && !NO_SIRVEN_PARA_CHAT.test(id))
+        .sort()
+        .map((id: string) => ({ id, label: id }));
+    },
   },
   google: {
     id: 'google',
@@ -75,6 +143,26 @@ export const AI_PROVIDERS: Record<AiProviderId, AiProviderDef> = {
     needsBaseUrl: false,
     defaultModel: 'gemini-2.5-flash',
     create: (modelId, apiKey) => createGoogleGenerativeAI({ apiKey })(modelId),
+    listModels: async (apiKey) => {
+      const data = await fetchJson(
+        `https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000&key=${encodeURIComponent(apiKey)}`,
+      );
+      return (
+        (Array.isArray(data?.models) ? data.models : [])
+          // Gemini publica en el mismo listado los modelos de embeddings; solo
+          // sirven los que declaran `generateContent`.
+          .filter((m: any) => (m?.supportedGenerationMethods || []).includes('generateContent'))
+          .map((m: any) => {
+            const id = String(m?.name || '').replace(/^models\//, '');
+            return {
+              id,
+              label: String(m?.displayName || id),
+              note: m?.inputTokenLimit ? `${Math.round(m.inputTokenLimit / 1000)}k ctx` : undefined,
+            };
+          })
+          .filter((m: AiModelOption) => m.id)
+      );
+    },
   },
   custom: {
     id: 'custom',
@@ -86,6 +174,7 @@ export const AI_PROVIDERS: Record<AiProviderId, AiProviderDef> = {
     needsBaseUrl: true,
     defaultModel: '',
     create: openAICompatible,
+    listModels: openAICompatibleModels,
   },
   local: {
     id: 'local',
@@ -94,6 +183,7 @@ export const AI_PROVIDERS: Record<AiProviderId, AiProviderDef> = {
     needsBaseUrl: true,
     defaultModel: '',
     create: openAICompatible,
+    listModels: openAICompatibleModels,
   },
 };
 
@@ -134,6 +224,57 @@ export function getLanguageModel(config: AiConfig): LanguageModel {
     model,
     middleware: extractReasoningMiddleware({ tagName: 'think' }),
   }) as LanguageModel;
+}
+
+/**
+ * Modelos del proveedor activo, para el selector de Ajustes → IA.
+ *
+ * Nunca lanza: si falta la key, el endpoint no responde o el proveedor no
+ * publica catálogo, devuelve la lista vacía con el motivo escrito, y la UI
+ * deja escribir el id a mano. Un desplegable que revienta la pantalla cuando
+ * el proveedor está caído sería peor que el campo de texto que sustituye.
+ */
+const CACHE_MODELOS_MS = 5 * 60 * 1000;
+const cacheModelos = new Map<string, { at: number; models: AiModelOption[] }>();
+
+export async function listProviderModels(
+  cfg: AiConfig,
+  opts: { force?: boolean } = {},
+): Promise<{ models: AiModelOption[]; error?: string }> {
+  const def = AI_PROVIDERS[cfg.provider];
+  if (!def) return { models: [], error: `Proveedor de IA desconocido: ${cfg.provider}` };
+
+  const apiKey = cfg.apiKey || process.env.AI_API_KEY || '';
+  if (def.needsApiKey && !apiKey) {
+    return { models: [], error: `Guarda antes la API key de ${def.label} para ver sus modelos.` };
+  }
+  if (def.needsBaseUrl && !cfg.baseUrl) {
+    return { models: [], error: `Guarda antes la base URL de ${def.label} para ver sus modelos.` };
+  }
+  if (!def.listModels) {
+    return { models: [], error: `${def.label} no publica un listado de modelos.` };
+  }
+
+  // La key entra en la clave por su cola: dos tenants del mismo proveedor con
+  // keys distintas ven catálogos distintos (organizaciones y fine-tunes).
+  const clave = `${cfg.provider}|${cfg.baseUrl}|${apiKey.slice(-6)}`;
+  const cacheado = cacheModelos.get(clave);
+  if (cacheado && !opts.force && Date.now() - cacheado.at < CACHE_MODELOS_MS) {
+    return { models: cacheado.models };
+  }
+
+  try {
+    const models = await def.listModels(apiKey, cfg);
+    cacheModelos.set(clave, { at: Date.now(), models });
+    return { models };
+  } catch (e: any) {
+    // Con lista vieja en mano se devuelve esa: mejor un catálogo de hace unos
+    // minutos que dejar al usuario sin opciones porque hubo un timeout.
+    return {
+      models: cacheado?.models || [],
+      error: e?.message || 'No se pudo consultar el catálogo del proveedor',
+    };
+  }
 }
 
 /** Versión serializable del registro (sin factories) para la UI. */

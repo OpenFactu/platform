@@ -150,13 +150,20 @@ router.post('/login', async (req, res) => {
       tenantName = t?.name;
     }
 
-    // ADMIN y SUPERUSER ignoran siempre permissions granulares — tienen acceso total
+    // ADMIN y SUPERUSER ignoran siempre permissions granulares — tienen acceso
+    // total, y eso es lo que significa `null`.
+    //
+    // Un usuario normal SIN permisos configurados recibe `{}`, no `null`: son
+    // dos cosas distintas y confundirlas es peligroso. Antes ambos casos
+    // devolvían `null`, y bastaba con que alguien escribiera
+    // `if (permissions === null) → acceso total` para regalarle la empresa
+    // entera a un usuario recién creado.
     const effectivePermissions =
       finalRole === 'SUPERUSER' || finalRole === 'ADMIN'
         ? null
         : finalPermissions
           ? JSON.parse(finalPermissions)
-          : null;
+          : {};
 
     const token = AuthService.generateToken({
       userId: user.id,
@@ -244,13 +251,14 @@ router.post('/switch-tenant', async (req, res) => {
       tenantId,
     });
 
-    // ADMIN y SUPERUSER ignoran siempre permissions granulares
+    // Igual que en el login: `null` es "admin, acceso total"; un usuario sin
+    // permisos configurados es `{}`.
     const effectivePermissions =
       finalRole === 'SUPERUSER' || finalRole === 'ADMIN'
         ? null
         : finalPermissions
           ? JSON.parse(finalPermissions)
-          : null;
+          : {};
 
     res.json({
       token: newToken,
@@ -327,9 +335,12 @@ router.get('/me', async (req, res) => {
       tenantName = t?.name;
     }
 
-    // ADMIN y SUPERUSER ignoran siempre permissions granulares
+    // `null` solo para admins. Un usuario normal sin nada configurado va con
+    // `{}`, que es "no puede nada" y no "puede todo".
     const effectivePermissions =
-      resolvedRole === 'SUPERUSER' || resolvedRole === 'ADMIN' ? null : resolvedPermissions;
+      resolvedRole === 'SUPERUSER' || resolvedRole === 'ADMIN'
+        ? null
+        : (resolvedPermissions ?? {});
 
     res.json({
       id: user.id,
