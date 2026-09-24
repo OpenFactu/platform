@@ -35,6 +35,12 @@ export const settingsModule: ModuleManifest = {
       { id: 'webhooks', label: 'Webhooks', path: '/settings/webhooks', adminOnly: true },
       { id: 'api-tokens', label: 'Tokens de API', path: '/settings/api-tokens', adminOnly: true },
       { id: 'automations', label: 'Automatizaciones', path: '/automations', adminOnly: true },
+      {
+        id: 'data-import',
+        label: 'Importación de datos',
+        path: '/data-import',
+        adminOnly: true,
+      },
       { id: 'audit', label: 'Auditoría', path: '/audit-logs' },
       { id: 'tasks', label: 'Tareas', path: '/background-tasks' },
       { id: 'styleguide', label: 'Style Guide', path: '/ui' },

@@ -2557,3 +2557,69 @@ export const websiteFormSubmissions = pgTable('WebsiteFormSubmission', {
   read: boolean('read').default(false).notNull(),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
 });
+
+// ============================================================
+// IMPORTADOR DE DATOS (Mig 071)
+// ============================================================
+
+/** Un fichero procesado por el importador. */
+export const dataImportJobs = pgTable('DataImportJob', {
+  id: text('id').primaryKey(),
+  /** Id del objeto del ImportRegistry: 'partner', 'item', 'salesInvoice'... */
+  objectId: text('objectId').notNull(),
+  /** insert | update | upsert */
+  mode: text('mode').default('insert').notNull(),
+  /** Simulación: recorre y valida todo, pero no escribe. */
+  dryRun: boolean('dryRun').default(false).notNull(),
+  fileName: text('fileName').notNull(),
+  sheetName: text('sheetName'),
+  /** { columnaDelFichero: campoDelObjeto } */
+  mapping: jsonb('mapping').default({}).notNull(),
+  /** Clave natural con la que se busca la fila existente en update/upsert. */
+  matchBy: text('matchBy'),
+  /** pending | running | done | cancelled | error | undone */
+  status: text('status').default('pending').notNull(),
+  totalRows: integer('totalRows').default(0).notNull(),
+  processedRows: integer('processedRows').default(0).notNull(),
+  okRows: integer('okRows').default(0).notNull(),
+  errorRows: integer('errorRows').default(0).notNull(),
+  skippedRows: integer('skippedRows').default(0).notNull(),
+  /** Solo se rellena si el trabajo entero se cayó, no por errores de fila. */
+  error: text('error'),
+  createdBy: text('createdBy'),
+  createdAt: timestamp('createdAt').defaultNow(),
+  startedAt: timestamp('startedAt'),
+  finishedAt: timestamp('finishedAt'),
+  undoneAt: timestamp('undoneAt'),
+});
+
+/** Una fila del fichero y cómo acabó. */
+export const dataImportJobRows = pgTable('DataImportJobRow', {
+  id: text('id').primaryKey(),
+  jobId: text('jobId')
+    .notNull()
+    .references(() => dataImportJobs.id, { onDelete: 'cascade' }),
+  /** Número de fila en el fichero, contando la cabecera como 1. */
+  rowNum: integer('rowNum').notNull(),
+  /** ok | error | skipped | undone */
+  status: text('status').notNull(),
+  /** created | updated — qué hizo realmente, que en upsert no se sabe de antemano. */
+  action: text('action'),
+  entityId: text('entityId'),
+  entityCode: text('entityCode'),
+  message: text('message'),
+  /** La fila tal y como venía: alimenta el CSV de errores y el deshacer. */
+  raw: jsonb('raw'),
+});
+
+/** Mapeo columna→campo guardado con nombre, reutilizable. */
+export const dataImportMappings = pgTable('DataImportMapping', {
+  id: text('id').primaryKey(),
+  objectId: text('objectId').notNull(),
+  name: text('name').notNull(),
+  mapping: jsonb('mapping').default({}).notNull(),
+  mode: text('mode'),
+  matchBy: text('matchBy'),
+  createdBy: text('createdBy'),
+  createdAt: timestamp('createdAt').defaultNow(),
+});

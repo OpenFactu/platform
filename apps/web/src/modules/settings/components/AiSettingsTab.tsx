@@ -11,7 +11,7 @@
 
 import { apiClient } from '@/shared/http';
 import { coreApi } from '@/shared/api';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Card,
   Button,
@@ -43,6 +43,13 @@ interface AiProviderDTO {
   needsApiKey: boolean;
   needsBaseUrl: boolean;
   defaultModel: string;
+}
+
+/** Una entrada del catálogo que sirve `/api/ai/models`. */
+interface AiModelOption {
+  id: string;
+  label: string;
+  note?: string;
 }
 
 interface AiConfigDTO {
@@ -176,6 +183,11 @@ export const AiSettingsTab: React.FC = () => {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; detail: string } | null>(null);
 
+  // ── Catálogo de modelos del proveedor ──
+  const [models, setModels] = useState<AiModelOption[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelsError, setModelsError] = useState('');
+
   // ── Modelos locales ──
   const [local, setLocal] = useState<LocalModelsDTO | null>(null);
   const [loadingLocal, setLoadingLocal] = useState(false);
@@ -208,6 +220,51 @@ export const AiSettingsTab: React.FC = () => {
   }, []);
 
   const activeProvider = providers.find((p) => p.id === cfg.provider);
+
+  /**
+   * Pregunta al proveedor qué modelos ofrece.
+   *
+   * Va contra la config GUARDADA (igual que "Probar"), así que después de
+   * cambiar de proveedor o de escribir una key hay que guardar para que la
+   * lista se rellene. Es la misma regla que ya rige el botón de probar, y
+   * evita mandar la key por una segunda ruta.
+   */
+  const loadModels = async (force = false) => {
+    setLoadingModels(true);
+    try {
+      const res = await coreApi.raw('GET', `/api/ai/models${force ? '?refresh=1' : ''}`);
+      if (!res.ok) throw new Error(res.data?.error || 'No se pudo consultar el catálogo');
+      setModels(Array.isArray(res.data?.models) ? res.data.models : []);
+      setModelsError(res.data?.error || '');
+    } catch (e) {
+      setModels([]);
+      setModelsError(e instanceof Error ? e.message : 'No se pudo consultar el catálogo');
+    } finally {
+      setLoadingModels(false);
+    }
+  };
+
+  useEffect(() => {
+    if (loading) return;
+    (async () => {
+      await loadModels();
+    })();
+  }, [loading, cfg.provider, cfg.baseUrl, cfg.apiKeySet]);
+
+  const modelOptions = useMemo(() => {
+    const opts = models.map((m) => ({
+      value: m.id,
+      label: m.label || m.id,
+      secondaryLabel: m.note,
+    }));
+    // El modelo guardado puede no salir en el catálogo: un fine-tune, uno
+    // retirado, o un proveedor que no publica lista. Se añade igualmente para
+    // que abrir el desplegable no lo pierda.
+    if (cfg.model && !opts.some((o) => o.value === cfg.model)) {
+      opts.unshift({ value: cfg.model, label: cfg.model, secondaryLabel: 'configurado' });
+    }
+    return opts;
+  }, [models, cfg.model]);
 
   const loadLocalModels = async () => {
     setLoadingLocal(true);
@@ -248,6 +305,8 @@ export const AiSettingsTab: React.FC = () => {
       setCfg({ ...EMPTY, ...res.data });
       setNewApiKey('');
       toast.success('Configuración guardada');
+      // La key puede ser nueva, así que el catálogo se pide otra vez sin caché.
+      void loadModels(true);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al guardar');
     } finally {
@@ -463,10 +522,25 @@ export const AiSettingsTab: React.FC = () => {
               />
             </Field>
             <Field label="Modelo" hint={activeProvider?.defaultModel ? undefined : 'obligatorio'}>
-              <Input
+              {/* Desplegable con lo que el proveedor dice tener, pero
+                  `creatable`: un id que no esté en la lista (un fine-tune, o
+                  uno recién publicado) se sigue pudiendo escribir. Vaciarlo
+                  significa "usa el modelo por defecto del proveedor". */}
+              <SearchableSelect
+                options={modelOptions}
                 value={cfg.model}
-                onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
+                onChange={(model) => {
+                  setCfg({ ...cfg, model });
+                  setTestResult(null);
+                }}
+                loading={loadingModels}
+                clearable
+                creatable
+                onCreate={(term) => term.trim()}
+                createLabel={'Usar "{term}"'}
                 placeholder={activeProvider?.defaultModel || 'id del modelo'}
+                emptyMessage={modelsError || 'El proveedor no devolvió modelos'}
+                helperText={modelsError || undefined}
               />
             </Field>
           </div>

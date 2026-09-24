@@ -10,6 +10,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { PluginIcon } from '../PluginIcon';
 import { NavIconChip } from './NavIconChip';
+import { visibleModules, visibleSubTabs, canSeeSubTab } from '@/modules/permissions';
+import { iconNameFor } from '@/modules/routeLookup';
 import { TenantSwitcher } from '../TenantSwitcher';
 import type { Module } from '../../modules/registry';
 
@@ -55,16 +57,10 @@ export const IconSidebar: React.FC = () => {
         } as Module,
       ];
     }
-    const logisticsOnly = !!(flags as any).logisticsOnly;
-    const isAdminRole = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
-    return allModules.filter((m) => {
-      if (m.superuserOnly && user?.role !== 'SUPERUSER') return false;
-      if (m.adminOnly && !isAdminRole) return false;
-      if (m.featureFlag && !(flags as any)[m.featureFlag]) return false;
-      // Modo "sólo logística": ocultamos los módulos marcados como no-logísticos.
-      if (logisticsOnly && (m as any).hiddenInLogisticsOnly) return false;
-      return true;
-    });
+    // Rol, flags Y permisos. Lo último faltaba: el icono se pintaba igual
+    // aunque el usuario no pudiera entrar en ninguna de sus pantallas, y solo
+    // al pulsarlo `PermittedRoute` lo devolvía al inicio.
+    return visibleModules(allModules, { user, flags });
   })();
 
   const [version, setVersion] = useState<string | null>(null);
@@ -125,17 +121,13 @@ export const IconSidebar: React.FC = () => {
       modIcon: string;
       sub: any;
     }[] = [];
-    for (const mod of allModules) {
-      // Saltamos sólo los de SUPERUSER si el user no lo es.
-      if (mod.superuserOnly && user?.role !== 'SUPERUSER') continue;
-      if (mod.adminOnly && user?.role !== 'ADMIN' && user?.role !== 'SUPERUSER') continue;
-      for (const sub of mod.subTabs as any[]) {
-        if (!isAdmin && sub.adminOnly) continue;
+    // El buscador ofrece exactamente lo mismo que el menú: si no lo puedes
+    // ver en el sidebar, tampoco debe salirte al escribir su nombre.
+    const navCtx = { user, flags };
+    for (const mod of visibleModules(allModules, navCtx)) {
+      for (const sub of visibleSubTabs(mod, navCtx) as any[]) {
         const hay = norm(`${mod.label} ${sub.label} ${sub.group || ''} ${sub.id}`);
         if (!tokens.every((t) => hay.includes(t))) continue;
-        const flagOff = sub.featureFlag && !(flags as any)[sub.featureFlag];
-        const modOff = mod.featureFlag && !(flags as any)[mod.featureFlag];
-        if (flagOff || modOff) continue;
         out.push({ modLabel: mod.label, modIcon: mod.icon, sub });
       }
     }
@@ -159,10 +151,18 @@ export const IconSidebar: React.FC = () => {
 
   const handleClick = (modId: string) => {
     const mod = modules.find((m) => m.id === modId);
-    if (!mod || mod.subTabs.length === 0) return;
+    if (!mod) return;
+
+    // La PRIMERA QUE PUEDA ABRIR, no la primera a secas. Un usuario con permiso
+    // solo sobre "Series de numeración" ve el icono de Documentos —y hace bien,
+    // algo tiene ahí dentro—, pero llevarlo a Presupuestos, que es el primer
+    // sub-tab, lo devolvía al inicio nada más pulsar.
+    const destino = visibleSubTabs(mod, { user, flags })[0];
+    if (!destino) return;
+
     // Siempre cerramos el drawer al navegar (también en desktop)
     setMobileOpen(false);
-    openTab(mod.subTabs[0].path);
+    openTab(destino.path);
   };
 
   // ───────────── DRAWER (común móvil + desktop al pulsar hamburguesa) ─────────────
@@ -531,15 +531,12 @@ const MobileModuleAccordion: React.FC<{
 
   const { user } = useAuth();
   const { flags } = useTheme();
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
-  // Ocultamos los subtabs desactivados por flag (y los que el usuario no puede
-  // ver por rol).
-  const visibleSubTabs = mod.subTabs.filter((s: any) => {
-    if (!isAdmin && s.adminOnly) return false;
-    if (s.featureFlag && !(flags as any)[s.featureFlag]) return false;
-    return true;
-  });
-  const hasSubs = visibleSubTabs.length > 0;
+  // Rol, flags y permisos — el mismo criterio que decide si se pinta el icono
+  // del módulo, para que no puedan discrepar.
+  const subTabs = mod.subTabs.filter((s: any) =>
+    canSeeSubTab(s, { user, flags }),
+  );
+  const hasSubs = subTabs.length > 0;
 
   return (
     <div>
@@ -566,7 +563,7 @@ const MobileModuleAccordion: React.FC<{
       </button>
       {open && hasSubs && (
         <div className="bg-bg-muted border-l-4 border-accent/20">
-          {visibleSubTabs.map((sub: any) => {
+          {subTabs.map((sub: any) => {
             const subActive = sub.path === currentPath;
             return (
               <button
@@ -579,7 +576,12 @@ const MobileModuleAccordion: React.FC<{
                     : 'text-fg-body hover:text-accent hover:bg-bg-hover font-medium',
                 )}
               >
-                {sub.icon && <PluginIcon iconName={sub.icon} size={14} />}
+                {/* El sub-tab casi nunca declara icono; el de su ruta sí existe.
+                    Se comprueba antes de pintar porque `PluginIcon` sin nombre
+                    dibuja una pieza de puzle, y eso es peor que nada. */}
+                {iconNameFor(sub.path, sub.icon) && (
+                  <PluginIcon iconName={iconNameFor(sub.path, sub.icon)} size={14} />
+                )}
                 <span className="flex-1 truncate">{sub.label}</span>
                 <StatusBadge status={sub.status} />
               </button>

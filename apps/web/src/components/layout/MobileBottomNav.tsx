@@ -3,6 +3,8 @@ import { LayoutDashboard, ShoppingCart, Truck, Menu, ScanLine } from 'lucide-rea
 import { cn } from '@openfactu/ui';
 import { useMobileNav } from '../../context/MobileNavContext';
 import { useTabs } from '../../context/TabsContext';
+import { useAuth } from '../../context/AuthContext';
+import { canRead, permissionPathFor } from '../../modules/permissions';
 import { BarcodeCameraModal } from '../scanner/BarcodeCameraModal';
 
 interface SlotDef {
@@ -30,6 +32,7 @@ const SLOTS: SlotDef[] = [
 export const MobileBottomNav: React.FC = () => {
   const { toggle } = useMobileNav();
   const { openTab, tabs, activeTabId } = useTabs();
+  const { user } = useAuth();
   const activePath = tabs.find((t) => t.id === activeTabId)?.path?.split('?')[0] || '/';
   const [scanOpen, setScanOpen] = useState(false);
 
@@ -38,9 +41,18 @@ export const MobileBottomNav: React.FC = () => {
     else if (s.path) openTab(s.path);
   };
 
+  /**
+   * Estos accesos van a rutas fijas, así que hay que comprobarlas: quien no
+   * pueda ver las facturas de venta no debe tener un botón que le lleve a que
+   * lo echen de vuelta. El de inicio y el del menú siempre están.
+   */
   const renderSlot = (s: SlotDef) => {
     const Icon = s.icon;
     const isActive = s.path && s.path === activePath;
+    if (s.path && !canRead(user, permissionPathFor(s.path) ?? s.path)) {
+      // Hueco vacío para no descolocar el botón central del escáner.
+      return <div key={s.id} className="flex-1" aria-hidden />;
+    }
     return (
       <button
         key={s.id}

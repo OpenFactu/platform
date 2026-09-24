@@ -6,6 +6,7 @@ import { TopHeader } from './layout/TopHeader';
 import { ModuleTabBar } from './layout/ModuleTabBar';
 import { MobileBottomNav } from './layout/MobileBottomNav';
 import { DriverLayout } from '@/modules/logistics/components/DriverLayout';
+import { ImportProgressWatcher } from '@/modules/data-import/components/ImportProgressWatcher';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -34,6 +35,10 @@ export const MainLayout: React.FC = () => {
         </main>
       </div>
       <MobileBottomNav />
+      {/* Sigue las importaciones en curso y las pinta en un aviso con barra de
+          progreso. Va aquí y no en su pantalla: una carga de miles de filas
+          tarda, y quien la lanza se va a trabajar a otro sitio. */}
+      <ImportProgressWatcher />
     </div>
   );
 };

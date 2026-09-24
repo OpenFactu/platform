@@ -13,6 +13,19 @@ export interface RouteEntry extends RouteMeta {
 }
 
 /**
+ * Rellena `permissionPath` con el propio `pattern` en las rutas que no lo
+ * traigan.
+ *
+ * Para módulos donde la pantalla y su permiso se llaman igual —Informes, con
+ * sus veinticuatro rutas— escribirlo a mano en cada una era repetir el mismo
+ * dato dos veces por línea, y así fue como acabaron las veinticuatro sin
+ * permiso: ninguna llamaba la atención por su ausencia.
+ */
+export function withPermissionFromPattern(routes: RouteEntry[]): RouteEntry[] {
+  return routes.map((r) => (r.permissionPath ? r : { ...r, permissionPath: r.pattern }));
+}
+
+/**
  * Manifiesto de un módulo de la aplicación (estilo addon de Odoo).
  *
  * Cada módulo (src/modules/<nombre>/module.ts) declara aquí su presencia en el

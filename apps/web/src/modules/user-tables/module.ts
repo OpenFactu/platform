@@ -6,13 +6,26 @@ import { UserTableDetail } from './pages/UserTableDetail';
 export const userTablesModule: ModuleManifest = {
   nav: [],
   routes: [
-    { pattern: '/u/:name', Component: UserTableList, title: 'Tabla', iconName: 'Table' },
+    {
+      pattern: '/u/:name',
+      Component: UserTableList,
+      title: 'Tabla',
+      iconName: 'Table',
+      permissionPath: '/user-tables',
+    },
     {
       pattern: '/u/:name/new',
       Component: UserTableDetail,
       title: 'Nuevo registro',
       iconName: 'Table',
+      permissionPath: '/user-tables',
     },
-    { pattern: '/u/:name/:id', Component: UserTableDetail, title: 'Registro', iconName: 'Table' },
+    {
+      pattern: '/u/:name/:id',
+      Component: UserTableDetail,
+      title: 'Registro',
+      iconName: 'Table',
+      permissionPath: '/user-tables',
+    },
   ],
 };

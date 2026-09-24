@@ -27,7 +27,7 @@ export const systemModule: ModuleManifest = {
       Component: BackgroundTasks,
       title: 'Tareas',
       iconName: 'Activity',
-      permissionPath: '/audit-logs',
+      permissionPath: '/background-tasks',
     },
     {
       pattern: '/audit-logs',

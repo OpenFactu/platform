@@ -16,6 +16,7 @@ import { appsModule } from './plugins/module';
 import { systemModule } from './system/module';
 import { settingsModule } from './settings/module';
 import { userTablesModule } from './user-tables/module';
+import { dataImportModule } from './data-import/module';
 
 /**
  * Agregador de módulos (estilo Odoo): compone CORE_MODULES (navbar) y las
@@ -41,6 +42,7 @@ export const moduleManifests: ModuleManifest[] = [
   settingsModule,
   systemModule,
   userTablesModule,
+  dataImportModule,
 ];
 
 /** Orden canónico del navbar (ids de Module). */

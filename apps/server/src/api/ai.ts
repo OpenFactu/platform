@@ -2,6 +2,7 @@
  * Endpoints de IA por tenant (Fase 0 — fundación del proveedor).
  *
  *   GET    /api/ai/providers            — registro de proveedores para la UI
+ *   GET    /api/ai/models               — catálogo de modelos del proveedor activo (?refresh=1 salta la caché)
  *   GET    /api/ai/config               — config de IA (API key nunca en claro)
  *   PUT    /api/ai/config               — actualiza la config
  *   POST   /api/ai/test                 — generateText() de prueba contra el proveedor activo
@@ -32,7 +33,13 @@ import fs from 'fs';
 import { adminMiddleware } from './middleware/adminAuth';
 import { getConfigSection, setConfigSection } from '../core/config/systemConfigSection';
 import { AI_DEFAULTS, AiConfig } from '../core/ai/types';
-import { AI_PROVIDERS, getAiConfig, getLanguageModel, listProviders } from '../core/ai';
+import {
+  AI_PROVIDERS,
+  getAiConfig,
+  getLanguageModel,
+  listProviders,
+  listProviderModels,
+} from '../core/ai';
 import { LOCAL_MODEL_CATALOG } from '../core/ai/localCatalog';
 import { streamChat, AiDisabledError } from '../core/ai/chat/chatEngine';
 import { extractTextFromFile } from '../core/ai/fileProcessing';
@@ -76,7 +83,8 @@ router.post('/chat', async (req: any, res) => {
     // tokens (el de Ollama es distinto al de un proveedor cloud) — barato,
     // ya es una lectura cacheable de systemConfigs.
     const cfgForMeta = await getAiConfig(req.tenantClient);
-    const effectiveModel = modelOverride || cfgForMeta.model || AI_PROVIDERS[cfgForMeta.provider]?.defaultModel;
+    const effectiveModel =
+      modelOverride || cfgForMeta.model || AI_PROVIDERS[cfgForMeta.provider]?.defaultModel;
 
     // Permisos granulares reales del usuario (null = ADMIN/SUPERUSER, acceso
     // total) — sin esto, buildChatTools no puede filtrar qué tools de
@@ -137,7 +145,8 @@ router.post('/chat', async (req: any, res) => {
  * sin tener acceso al resto de la config (key, baseUrl...).
  */
 router.get('/capabilities', async (req: any, res) => {
-  if (!req.tenantClient) return res.json({ enabled: false, supportsImages: false, contextWindow: null });
+  if (!req.tenantClient)
+    return res.json({ enabled: false, supportsImages: false, contextWindow: null });
   try {
     const cfg = await getAiConfig(req.tenantClient);
     res.json({
@@ -145,7 +154,8 @@ router.get('/capabilities', async (req: any, res) => {
       supportsImages: cfg.supportsImages,
       // Solo tiene sentido mostrarla para local/Ollama — en cloud el contexto
       // real del modelo no lo gestionamos nosotros.
-      contextWindow: cfg.provider === 'local' && cfg.localBackend === 'ollama' ? cfg.contextWindow : null,
+      contextWindow:
+        cfg.provider === 'local' && cfg.localBackend === 'ollama' ? cfg.contextWindow : null,
     });
   } catch {
     res.json({ enabled: false, supportsImages: false, contextWindow: null });
@@ -362,6 +372,23 @@ function redactApiKey(cfg: AiConfig): Omit<AiConfig, 'apiKey'> & { apiKeySet: bo
 
 router.get('/providers', (_req, res) => {
   res.json(listProviders());
+});
+
+/**
+ * GET /models — modelos que ofrece el proveedor ya configurado.
+ *
+ * Usa la config GUARDADA, igual que "Probar": la key recién tecleada y sin
+ * guardar no viaja por aquí, así no hay una segunda ruta por la que un
+ * secreto pueda salir del navegador.
+ */
+router.get('/models', async (req: any, res) => {
+  try {
+    const cfg = await getAiConfig(req.tenantClient);
+    res.json(await listProviderModels(cfg, { force: req.query.refresh === '1' }));
+  } catch (e: any) {
+    console.error('[Ai.listModels]', e);
+    res.status(500).json({ error: e?.message || 'Error' });
+  }
 });
 
 router.get('/config', async (req: any, res) => {

@@ -2,6 +2,7 @@ import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import {
   Card,
+  Badge,
   Button,
   Input,
   PasswordInput,
@@ -35,9 +36,15 @@ import {
   AlertTriangle,
   UsersRound,
   Route,
+  FileText,
+  FileBarChart,
+  PieChart,
+  Globe,
+  type LucideIcon,
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { UsersTable } from '../components/UsersTable';
+import { permissionsApi, type PermissionGroup } from '../api/permissionsApi';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -56,106 +63,31 @@ type MembershipEntry = {
 };
 
 // ─── Grupos de permisos ───────────────────────────────────────────────────────
+//
+// La lista NO vive aquí: se pide a GET /api/permissions/catalog, que es la
+// misma que usa el gate de la API. Cuando estuvo escrita en este fichero se
+// desincronizó — 27 pantallas exigían permisos que no salían en esta pantalla
+// y por tanto nadie podía concederlos.
+//
+// Lo único local es el icono de cada grupo, que es decoración y no cabe en un
+// JSON.
+const GROUP_ICONS: Record<string, LucideIcon> = {
+  Catálogos: BookOpen,
+  Terceros: UsersIcon,
+  Ventas: TrendingUp,
+  Compras: ShoppingCart,
+  Documentos: FileText,
+  Contabilidad: Calendar,
+  Analítica: PieChart,
+  Informes: FileBarChart,
+  'Recursos humanos': UsersRound,
+  'RRHH avanzado': UsersRound,
+  Logística: Route,
+  Website: Globe,
+  Configuración: Settings,
+};
 
-const PERMISSION_GROUPS = [
-  {
-    group: 'Sistema',
-    icon: Settings,
-    items: [
-      { label: 'Dashboard', path: '/dashboard' },
-      { label: 'Usuarios', path: '/users' },
-      { label: 'Auditoría', path: '/audit-logs' },
-    ],
-  },
-  {
-    group: 'Catálogos',
-    icon: BookOpen,
-    items: [
-      { label: 'Artículos', path: '/items' },
-      { label: 'Categorías', path: '/categories' },
-      { label: 'Unidades', path: '/uom' },
-      { label: 'Tarifas', path: '/pricelists' },
-      { label: 'Almacenes', path: '/warehouses' },
-      { label: 'Impuestos', path: '/taxes' },
-    ],
-  },
-  {
-    group: 'Terceros',
-    icon: UsersIcon,
-    items: [
-      { label: 'Grupos', path: '/partner-groups' },
-      { label: 'Directorio', path: '/partners' },
-    ],
-  },
-  {
-    group: 'Compras',
-    icon: ShoppingCart,
-    items: [
-      { label: 'Pedidos', path: '/purchase-orders' },
-      { label: 'Albaranes', path: '/purchases/delivery-notes' },
-      { label: 'Facturas', path: '/purchases/invoices' },
-    ],
-  },
-  {
-    group: 'Ventas',
-    icon: TrendingUp,
-    items: [
-      { label: 'Pedidos', path: '/sales-orders' },
-      { label: 'Albaranes', path: '/sales/delivery-notes' },
-      { label: 'Facturas', path: '/sales/invoices' },
-    ],
-  },
-  {
-    group: 'Contabilidad',
-    icon: Calendar,
-    items: [
-      { label: 'Periodos', path: '/accounting-periods' },
-      { label: 'Series Doc.', path: '/document-series' },
-    ],
-  },
-  {
-    group: 'Recursos Humanos',
-    icon: UsersRound,
-    items: [
-      { label: 'Empleados', path: '/hr/employees' },
-      { label: 'Departamentos', path: '/hr/departments' },
-      { label: 'Nóminas', path: '/hr/payrolls' },
-      { label: 'Conceptos nómina', path: '/hr/payroll-concepts' },
-      { label: 'Tipos de incidencia', path: '/hr/incident-types' },
-      { label: 'Incidencias', path: '/hr/incidents' },
-      { label: 'Plantillas de turno', path: '/hr/shift-templates' },
-      { label: 'Patrones de turno', path: '/hr/shift-patterns' },
-      { label: 'Planificación', path: '/hr/planning' },
-      { label: 'Fichajes', path: '/hr/timeclock' },
-      { label: 'Kioskos de fichaje', path: '/hr/kiosks' },
-    ],
-  },
-  {
-    group: 'RRHH avanzado+',
-    icon: UsersRound,
-    items: [
-      { label: 'Convenios colectivos', path: '/hr/collective-agreements' },
-      { label: 'Evaluaciones', path: '/hr/evaluations' },
-      { label: 'Objetivos', path: '/hr/objectives' },
-      { label: 'Comisiones', path: '/hr/commissions' },
-      { label: 'Rendimiento', path: '/hr/performance' },
-      { label: 'Coste laboral', path: '/hr/labor-cost' },
-      { label: 'Tareas', path: '/hr/tasks' },
-      { label: 'Gantt', path: '/hr/gantt' },
-    ],
-  },
-  {
-    group: 'Logística',
-    icon: Route,
-    items: [
-      { label: 'Envíos', path: '/logistics/shipments' },
-      { label: 'Rutas', path: '/logistics/routes' },
-      { label: 'Transportistas', path: '/logistics/carriers' },
-      { label: 'Zonas de almacén', path: '/logistics/zones' },
-      { label: 'Movimientos de stock', path: '/logistics/stock-movements' },
-    ],
-  },
-];
+const iconForGroup = (group: string): LucideIcon => GROUP_ICONS[group] || Settings;
 
 const EMPTY_PERM: PermSet = { read: false, write: false, delete: false };
 
@@ -177,9 +109,18 @@ const MEMBERSHIP_ROLE_OPTIONS = [
   { value: 'DRIVER', label: 'DRIVER' },
 ];
 
+/**
+ * Catálogo cargado del servidor.
+ *
+ * Se guarda a nivel de módulo y no en el estado de un componente porque
+ * `defaultPermissions()` lo necesita desde media docena de sitios que no son
+ * componentes. Se rellena una vez, al montar la pantalla.
+ */
+let catalogGroups: PermissionGroup[] = [];
+
 const defaultPermissions = (): Permissions => {
   const perms: Permissions = {};
-  PERMISSION_GROUPS.forEach((g) =>
+  catalogGroups.forEach((g) =>
     g.items.forEach((i) => {
       perms[i.path] = { ...EMPTY_PERM };
     }),
@@ -187,22 +128,53 @@ const defaultPermissions = (): Permissions => {
   return perms;
 };
 
+/** Trae el catálogo una vez y lo deja disponible para toda la pantalla. */
+function usePermissionCatalog(): { groups: PermissionGroup[]; loading: boolean } {
+  const [groups, setGroups] = useState<PermissionGroup[]>(catalogGroups);
+  const [loading, setLoading] = useState(catalogGroups.length === 0);
+
+  useEffect(() => {
+    if (catalogGroups.length > 0) return;
+    permissionsApi
+      .catalog()
+      .then((res) => {
+        catalogGroups = res.groups || [];
+        setGroups(catalogGroups);
+      })
+      .catch(() => setGroups([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { groups, loading };
+}
+
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
 const PermToggle: React.FC<{
   active: boolean;
-  color: 'emerald' | 'blue' | 'rose';
+  /**
+   * El tono es semántico, no un color: leer va en `success`, escribir en el
+   * acento de la marca y borrar en `danger`. Así el chip sigue al tema del
+   * tenant en vez de quedarse verde-esmeralda pase lo que pase.
+   */
+  tone: 'success' | 'accent' | 'danger';
   label: string;
   icon: React.ReactNode;
   disabled?: boolean;
   onChange: (v: boolean) => void;
-}> = ({ active, color, label, icon, disabled, onChange }) => {
+}> = ({ active, tone, label, icon, disabled, onChange }) => {
+  // Los `-bg`/`-fg` semánticos ya traen su versión oscura puesta (en modo
+  // oscuro el fondo pasa a un 12% de la tinta y el texto se aclara), así que
+  // aquí no hace falta ningún `dark:`.
+  //
+  // El anillo va con el triplete `--k-*-rgb` y no con `ring-success/45`:
+  // `success` es un `var()` plano, sin `<alpha-value>`, y ante eso Tailwind
+  // NO genera la clase — ni error ni aviso, simplemente no habría anillo.
   const activeClass = {
-    emerald:
-      'bg-emerald-100 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-200 ring-1 ring-emerald-300 dark:ring-emerald-500/50',
-    blue: 'bg-accent/15 dark:bg-accent/30 text-accent dark:text-accent ring-1 ring-accent/40 dark:ring-accent/60',
-    rose: 'bg-rose-100 dark:bg-rose-500/25 text-rose-700 dark:text-rose-200 ring-1 ring-rose-300 dark:ring-rose-500/50',
-  }[color];
+    success: 'bg-success-bg text-success-fg ring-1 ring-[rgb(var(--k-success-rgb)/0.45)]',
+    accent: 'bg-accent/15 text-accent ring-1 ring-accent/40',
+    danger: 'bg-danger-bg text-danger-fg ring-1 ring-[rgb(var(--k-danger-rgb)/0.45)]',
+  }[tone];
 
   return (
     <button
@@ -210,12 +182,10 @@ const PermToggle: React.FC<{
       disabled={disabled}
       onClick={() => onChange(!active)}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xs text-[10px] font-bold uppercase tracking-wide transition-all
- ${active ? activeClass : 'bg-line-2 dark:bg-ink-800 text-ink-500 dark:text-slate-300 ring-1 ring-line dark:ring-ink-700 hover:text-accent dark:hover:text-accent'}
+ ${active ? activeClass : 'bg-bg-muted text-fg-muted ring-1 ring-border-default hover:text-accent'}
  ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:opacity-90 active:scale-95'}`}
     >
-      <span
-        className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-current' : 'bg-ink-400 dark:bg-ink-500'}`}
-      />
+      <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-current' : 'bg-border-strong'}`} />
       {icon}
       {label}
     </button>
@@ -227,15 +197,13 @@ const PermissionsEditor: React.FC<{
   disabled?: boolean;
   onChange: (p: Permissions) => void;
 }> = ({ permissions, disabled, onChange }) => {
+  const { groups, loading } = usePermissionCatalog();
+
   const togglePerm = (path: string, key: keyof PermSet, value: boolean) => {
     onChange({ ...permissions, [path]: { ...(permissions[path] || EMPTY_PERM), [key]: value } });
   };
 
-  const toggleGroup = (
-    group: (typeof PERMISSION_GROUPS)[0],
-    key: keyof PermSet,
-    value: boolean,
-  ) => {
+  const toggleGroup = (group: PermissionGroup, key: keyof PermSet, value: boolean) => {
     const next = { ...permissions };
     group.items.forEach((i) => {
       next[i.path] = { ...(next[i.path] || EMPTY_PERM), [key]: value };
@@ -243,21 +211,25 @@ const PermissionsEditor: React.FC<{
     onChange(next);
   };
 
-  const allGroupActive = (group: (typeof PERMISSION_GROUPS)[0], key: keyof PermSet) =>
+  const allGroupActive = (group: PermissionGroup, key: keyof PermSet) =>
     group.items.every((i) => permissions[i.path]?.[key]);
+
+  if (loading) {
+    return <p className="pt-2 text-xs text-fg-muted">Cargando el catálogo de permisos…</p>;
+  }
 
   return (
     <div className="space-y-3 pt-2">
-      {PERMISSION_GROUPS.map((group) => {
-        const Icon = group.icon;
+      {groups.map((group) => {
+        const Icon = iconForGroup(group.group);
         return (
           <div
             key={group.group}
-            className="border border-line dark:border-ink-700 rounded-sm overflow-hidden"
+            className="border border-border-default rounded-sm overflow-hidden"
           >
             {/* Header del grupo */}
-            <div className="flex items-center justify-between px-3 py-2 bg-line-2 dark:bg-ink-800">
-              <span className="flex items-center gap-1.5 text-[10px] font-bold text-ink-700 dark:text-slate-200 uppercase tracking-widest">
+            <div className="flex items-center justify-between px-3 py-2 bg-bg-muted">
+              <span className="flex items-center gap-1.5 text-[10px] font-bold text-fg-muted uppercase tracking-widest">
                 <Icon size={11} />
                 {group.group}
               </span>
@@ -274,11 +246,11 @@ const PermissionsEditor: React.FC<{
  ${
    all
      ? {
-         read: 'bg-emerald-500 text-white shadow-sm',
-         write: 'bg-accent text-white shadow-sm',
-         delete: 'bg-rose-500 text-white shadow-sm',
+         read: 'bg-success text-[var(--k-success-on)] shadow-sm',
+         write: 'bg-accent text-accent-fg shadow-sm',
+         delete: 'bg-danger text-[var(--k-danger-on)] shadow-sm',
        }[key]
-     : 'bg-white dark:bg-ink-900 text-ink-500 dark:text-slate-300 border border-line dark:border-ink-700 hover:text-accent hover:border-accent/40'
+     : 'bg-bg-card text-fg-muted border border-border-default hover:text-accent hover:border-accent/40'
  }
  ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
                     >
@@ -289,18 +261,16 @@ const PermissionsEditor: React.FC<{
               </div>
             </div>
             {/* Filas de ítems */}
-            <div className="divide-y divide-line dark:divide-ink-700 bg-white dark:bg-ink-900">
+            <div className="divide-y divide-border-subtle bg-bg-card">
               {group.items.map((item) => {
                 const p = permissions[item.path] || EMPTY_PERM;
                 return (
                   <div key={item.path} className="flex items-center justify-between px-3 py-1.5">
-                    <span className="text-xs text-ink-700 dark:text-slate-200 font-medium">
-                      {item.label}
-                    </span>
+                    <span className="text-xs text-fg-body font-medium">{item.label}</span>
                     <div className="flex gap-1.5">
                       <PermToggle
                         active={p.read}
-                        color="emerald"
+                        tone="success"
                         label="Ver"
                         icon={<Eye size={18} />}
                         disabled={disabled}
@@ -308,7 +278,7 @@ const PermissionsEditor: React.FC<{
                       />
                       <PermToggle
                         active={p.write}
-                        color="blue"
+                        tone="accent"
                         label="Crear"
                         icon={<Pencil size={18} />}
                         disabled={disabled}
@@ -316,7 +286,7 @@ const PermissionsEditor: React.FC<{
                       />
                       <PermToggle
                         active={p.delete}
-                        color="rose"
+                        tone="danger"
                         label="Borrar"
                         icon={<AlertTriangle size={18} />}
                         disabled={disabled}
@@ -641,9 +611,9 @@ export const Users: React.FC = () => {
                 <label className="text-[10px] font-black text-fg-subtle uppercase tracking-widest flex items-center gap-1.5">
                   <ShieldCheck
                     size={11}
-                    className={isPrivileged ? 'text-blue-500 dark:text-blue-300' : 'text-fg-subtle'}
+                    className={isPrivileged ? 'text-accent' : 'text-fg-subtle'}
                   />
-                  Rol Global {!isPrivileged && <Lock size={9} className="text-rose-400" />}
+                  Rol Global {!isPrivileged && <Lock size={9} className="text-fg-subtle" />}
                 </label>
                 {isPrivileged ? (
                   // 2–3 opciones fijas → Select. La etiqueta con iconos se queda
@@ -703,7 +673,7 @@ export const Users: React.FC = () => {
               </div>
 
               {globalRole === 'SUPERUSER' && (
-                <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/30 rounded-lg text-amber-700 dark:text-amber-200">
+                <div className="flex items-center gap-3 p-4 bg-warning-bg border border-[rgb(var(--k-warning-rgb)/0.35)] rounded-lg text-warning-fg">
                   <ShieldCheck size={18} className="shrink-0" />
                   <p className="text-sm font-bold">
                     Los SUPERUSER tienen acceso global a todas las empresas sin necesidad de
@@ -728,12 +698,12 @@ export const Users: React.FC = () => {
                     return (
                       <div
                         key={idx}
-                        className="flex items-center gap-3 p-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/30 rounded-lg opacity-60"
+                        className="flex items-center gap-3 p-3 bg-danger-bg border border-[rgb(var(--k-danger-rgb)/0.35)] rounded-lg opacity-60"
                       >
-                        <span className="text-xs text-rose-600 dark:text-rose-300 font-bold line-through">
+                        <span className="text-xs text-danger-fg font-bold line-through">
                           {m.tenantName}
                         </span>
-                        <span className="text-[10px] text-rose-500 font-black uppercase">
+                        <span className="text-[10px] text-danger font-black uppercase">
                           Se eliminará al guardar
                         </span>
                         <Button
@@ -756,12 +726,12 @@ export const Users: React.FC = () => {
                   return (
                     <div
                       key={idx}
-                      className={`border rounded-sm overflow-hidden transition-all ${m.isNew ? 'border-accent/40 bg-accent/5' : 'border-line dark:border-ink-700 bg-white dark:bg-ink-900'}`}
+                      className={`border rounded-sm overflow-hidden transition-all ${m.isNew ? 'border-accent/40 bg-accent/5' : 'border-border-default bg-bg-card'}`}
                     >
                       {/* Cabecera de la membership */}
                       <div className="flex items-center gap-3 p-4">
                         <div
-                          className={`w-9 h-9 rounded-xs flex items-center justify-center ${m.isNew ? 'bg-accent/15 text-accent' : 'bg-line-2 dark:bg-ink-800 text-ink-700 dark:text-slate-200'}`}
+                          className={`w-9 h-9 rounded-xs flex items-center justify-center ${m.isNew ? 'bg-accent/15 text-accent' : 'bg-bg-muted text-fg-body'}`}
                         >
                           <Building2 size={18} />
                         </div>
@@ -803,11 +773,7 @@ export const Users: React.FC = () => {
                             {m.expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                           </Button>
                         )}
-                        {m.role === 'ADMIN' && (
-                          <span className="text-[10px] font-black text-blue-600 dark:text-blue-300 uppercase bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-lg">
-                            Acceso Total
-                          </span>
-                        )}
+                        {m.role === 'ADMIN' && <Badge variant="info">Acceso Total</Badge>}
 
                         {/* Eliminar — sigue siendo solo para roles privilegiados */}
                         {isPrivileged && (
