@@ -1,14 +1,34 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { SalesQuotes } from './pages/SalesQuotes';
-import { SalesOrders } from './pages/SalesOrders';
-import { SalesDeliveryNotes } from './pages/SalesDeliveryNotes';
-import { SalesInvoices } from './pages/SalesInvoices';
-import { PurchaseOrders } from './pages/PurchaseOrders';
-import { PurchaseDeliveryNotes } from './pages/PurchaseDeliveryNotes';
-import { PurchaseInvoices } from './pages/PurchaseInvoices';
-import Documents from './pages/Documents';
-import { DocumentSeries } from './pages/DocumentSeries';
-import { PriceLists } from './pages/PriceLists';
+
+const SalesQuotes = lazy(() =>
+  import('./pages/SalesQuotes').then((m) => ({ default: m.SalesQuotes })),
+);
+const SalesOrders = lazy(() =>
+  import('./pages/SalesOrders').then((m) => ({ default: m.SalesOrders })),
+);
+const SalesDeliveryNotes = lazy(() =>
+  import('./pages/SalesDeliveryNotes').then((m) => ({ default: m.SalesDeliveryNotes })),
+);
+const SalesInvoices = lazy(() =>
+  import('./pages/SalesInvoices').then((m) => ({ default: m.SalesInvoices })),
+);
+const PurchaseOrders = lazy(() =>
+  import('./pages/PurchaseOrders').then((m) => ({ default: m.PurchaseOrders })),
+);
+const PurchaseDeliveryNotes = lazy(() =>
+  import('./pages/PurchaseDeliveryNotes').then((m) => ({ default: m.PurchaseDeliveryNotes })),
+);
+const PurchaseInvoices = lazy(() =>
+  import('./pages/PurchaseInvoices').then((m) => ({ default: m.PurchaseInvoices })),
+);
+const Documents = lazy(() => import('./pages/Documents'));
+const DocumentSeries = lazy(() =>
+  import('./pages/DocumentSeries').then((m) => ({ default: m.DocumentSeries })),
+);
+const PriceLists = lazy(() =>
+  import('./pages/PriceLists').then((m) => ({ default: m.PriceLists })),
+);
 
 /**
  * Motor de documentos (ventas + compras). Un solo módulo es dueño de las

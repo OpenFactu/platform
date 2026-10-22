@@ -1,7 +1,15 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { CostCenters } from './pages/CostCenters';
-import { ProfitCenters } from './pages/ProfitCenters';
-import { InternalOrders } from './pages/InternalOrders';
+
+const CostCenters = lazy(() =>
+  import('./pages/CostCenters').then((m) => ({ default: m.CostCenters })),
+);
+const ProfitCenters = lazy(() =>
+  import('./pages/ProfitCenters').then((m) => ({ default: m.ProfitCenters })),
+);
+const InternalOrders = lazy(() =>
+  import('./pages/InternalOrders').then((m) => ({ default: m.InternalOrders })),
+);
 
 export const analyticsModule: ModuleManifest = {
   nav: {

@@ -1,7 +1,13 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { ServerCockpit } from './pages/ServerCockpit';
-import { BackgroundTasks } from './pages/BackgroundTasks';
-import { AuditLogs } from './pages/AuditLogs';
+
+const ServerCockpit = lazy(() =>
+  import('./pages/ServerCockpit').then((m) => ({ default: m.ServerCockpit })),
+);
+const BackgroundTasks = lazy(() =>
+  import('./pages/BackgroundTasks').then((m) => ({ default: m.BackgroundTasks })),
+);
+const AuditLogs = lazy(() => import('./pages/AuditLogs').then((m) => ({ default: m.AuditLogs })));
 
 export const systemModule: ModuleManifest = {
   nav: {

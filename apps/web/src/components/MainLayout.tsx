@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { TabBar } from './tabs/TabBar';
 import { TabsHost } from './tabs/TabsHost';
 import { IconSidebar } from './layout/IconSidebar';
 import { TopHeader } from './layout/TopHeader';
 import { ModuleTabBar } from './layout/ModuleTabBar';
 import { MobileBottomNav } from './layout/MobileBottomNav';
-import { DriverLayout } from '@/modules/logistics/components/DriverLayout';
+import { PageLoading } from './PageLoading';
 import { ImportProgressWatcher } from '@/modules/data-import/components/ImportProgressWatcher';
 import { useAuth } from '../context/AuthContext';
+
+const DriverLayout = lazy(() =>
+  import('@/modules/logistics/components/DriverLayout').then((m) => ({ default: m.DriverLayout })),
+);
 
 /**
  * Layout principal. Si el usuario tiene rol `DRIVER`, se pinta la
@@ -17,7 +21,11 @@ export const MainLayout: React.FC = () => {
   const { user } = useAuth();
 
   if (user?.role === 'DRIVER') {
-    return <DriverLayout />;
+    return (
+      <Suspense fallback={<PageLoading />}>
+        <DriverLayout />
+      </Suspense>
+    );
   }
 
   // bg-bg-app y no bg-slate-*: es el fondo del shell y tiene que seguir al tema del

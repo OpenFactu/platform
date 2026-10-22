@@ -2,195 +2,61 @@ import { Router } from 'express';
 import { and, eq, asc, gte, lte, desc } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import crypto from 'crypto';
-
+import { createPunch } from '../../core/hr/timeclockService';
+import { allowedActions, getWorkState } from '../../core/hr/timeclockState';
+import { employeeQr } from '../../core/hr/timeclockCredentials';
+import { sendTimeclockError } from '../../core/hr/timeclockTerminals';
+import { fail } from '../../core/hr/timeclockTypes';
 const router = Router();
 
-const VALID_KIND = new Set(['in', 'out', 'break_start', 'break_end']);
-
-// Estados del fichador (state machine):
-//   - 'closed'   → último evento fue 'out' o no hay eventos hoy.
-//   - 'working'  → entrada activa, no en pausa.
-//   - 'on_break' → entrada activa y en pausa.
-type WorkState = 'closed' | 'working' | 'on_break';
-
-// Transiciones permitidas para cada kind. Si el último evento del día deja
-// el fichador en `state`, sólo se permiten ciertas acciones.
-const ALLOWED: Record<WorkState, Record<string, true>> = {
-  closed: { in: true },
-  working: { out: true, break_start: true },
-  on_break: { break_end: true },
-};
-
-const STATE_LABEL: Record<WorkState, string> = {
-  closed: 'sin entrada activa',
-  working: 'trabajando',
-  on_break: 'en pausa',
-};
-
-const KIND_LABEL: Record<string, string> = {
-  in: 'entrada',
-  out: 'salida',
-  break_start: 'inicio de pausa',
-  break_end: 'fin de pausa',
-};
-
-/**
- * Reconstruye el estado actual del fichador a partir de los eventos del día
- * (intervalo de 24h hacia atrás desde `now`). Recorre en orden cronológico y
- * aplica la máquina de estados ignorando entradas inválidas históricas para
- * que un PIN incorrecto pasado no bloquee al empleado para siempre.
- */
-async function getWorkState(client: any, employeeId: string, now: Date): Promise<WorkState> {
-  const since = new Date(now.getTime() - 24 * 3_600_000);
-  const entries: any[] = await client
-    .select()
-    .from(schema.timeclockEntries)
-    .where(
-      and(
-        eq(schema.timeclockEntries.employeeId, employeeId),
-        gte(schema.timeclockEntries.at, since),
-        lte(schema.timeclockEntries.at, now),
-      ),
-    )
-    .orderBy(asc(schema.timeclockEntries.at));
-  let state: WorkState = 'closed';
-  for (const e of entries) {
-    if (state === 'closed' && e.kind === 'in') state = 'working';
-    else if (state === 'working' && e.kind === 'out') state = 'closed';
-    else if (state === 'working' && e.kind === 'break_start') state = 'on_break';
-    else if (state === 'on_break' && e.kind === 'break_end') state = 'working';
-    // Cualquier otra transición se ignora (corrupción histórica).
-  }
-  return state;
-}
-
-/**
- * Crea un fichaje validando que la transición sea legal. Devuelve el row
- * insertado, o lanza con un mensaje claro si la transición es inválida.
- * Encapsula la lógica común a `/punch` y `/kiosk/punch`.
- */
-async function createPunchValidated(
-  client: any,
-  values: {
-    employeeId: string;
-    userId: string | null;
-    kind: string;
-    source: 'web' | 'kiosk' | 'admin';
-    latitude?: any;
-    longitude?: any;
-    device?: string | null;
-    notes?: string | null;
-  },
-): Promise<any> {
-  const now = new Date();
-  const state = await getWorkState(client, values.employeeId, now);
-  if (!ALLOWED[state][values.kind]) {
-    const err: any = new Error(
-      `No puedes registrar "${KIND_LABEL[values.kind]}" estando ${STATE_LABEL[state]}.`,
-    );
-    err.statusCode = 409;
-    throw err;
-  }
-  // Anti-rebote: bloqueamos dos fichajes del mismo empleado a < 5 segundos.
-  const recent = await client
-    .select()
-    .from(schema.timeclockEntries)
-    .where(
-      and(
-        eq(schema.timeclockEntries.employeeId, values.employeeId),
-        gte(schema.timeclockEntries.at, new Date(now.getTime() - 5_000)),
-      ),
-    )
-    .limit(1);
-  if (recent.length > 0) {
-    const err: any = new Error('Has fichado hace menos de 5 segundos. Espera un momento.');
-    err.statusCode = 429;
-    throw err;
-  }
-  const id = crypto.randomUUID();
-  const [row] = await client
-    .insert(schema.timeclockEntries)
-    .values({
-      id,
-      employeeId: values.employeeId,
-      userId: values.userId,
-      kind: values.kind,
-      at: now,
-      source: values.source,
-      latitude: values.latitude != null ? String(values.latitude) : null,
-      longitude: values.longitude != null ? String(values.longitude) : null,
-      device: values.device || null,
-      notes: values.notes || null,
-    })
-    .returning();
-  return row;
-}
-
-/** POST /punch — el usuario autenticado ficha lo suyo. */
 router.post('/punch', async (req: any, res) => {
   try {
     const { kind, latitude, longitude, device, notes } = req.body;
-    if (!VALID_KIND.has(kind)) return res.status(400).json({ error: 'kind inválido' });
+    if (!['in', 'out', 'break_start', 'break_end'].includes(kind))
+      fail(400, 'INVALID_INPUT', 'Acción inválida.');
     const [emp] = await req.tenantClient
-      .select()
+      .select({ id: schema.employees.id, status: schema.employees.status })
       .from(schema.employees)
       .where(eq(schema.employees.userId, req.user?.id || ''));
-    if (!emp) return res.status(403).json({ error: 'No hay empleado vinculado a tu usuario' });
-    if (emp.status !== 'active')
-      return res.status(403).json({ error: 'El empleado no está activo' });
-
-    const row = await createPunchValidated(req.tenantClient, {
+    if (!emp || emp.status !== 'active')
+      fail(403, 'EMPLOYEE_INACTIVE', 'No hay un empleado activo vinculado a tu usuario.');
+    const result = await createPunch(req.tenantClient, {
+      tenantId: req.tenantId,
+      actorKey: 'user:' + req.user.id,
+      requestId: req.body.requestId || crypto.randomUUID(),
       employeeId: emp.id,
-      userId: req.user?.id || null,
+      userId: req.user.id,
       kind,
       source: 'web',
+      method: 'account',
       latitude,
       longitude,
       device,
       notes,
     });
-    res.json(row);
-  } catch (err: any) {
-    res.status(err.statusCode || 500).json({ error: err.message });
+    res.json({
+      ...result.entry,
+      state: result.state,
+      allowedActions: result.allowedActions,
+      replayed: result.replayed,
+    });
+  } catch (e) {
+    sendTimeclockError(res, e);
   }
 });
-
-/**
- * POST /kiosk/punch — fichaje desde kiosko compartido.
- *  Headers: x-kiosk-token: <token>
- *  Body: { pin: string, kind: 'in'|'out'|... }
- */
-router.post('/kiosk/punch', async (req: any, res) => {
+router.get('/me/qr', async (req: any, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   try {
-    const token = req.headers['x-kiosk-token'];
-    if (!token) return res.status(401).json({ error: 'Falta x-kiosk-token' });
-    const [kiosk] = await req.tenantClient
-      .select()
-      .from(schema.timeclockKiosks)
-      .where(eq(schema.timeclockKiosks.token, String(token)));
-    if (!kiosk || !kiosk.isActive) return res.status(401).json({ error: 'Kiosko no autorizado' });
-
-    const { pin, kind } = req.body;
-    if (!pin || !VALID_KIND.has(kind))
-      return res.status(400).json({ error: 'pin y kind válidos requeridos' });
     const [emp] = await req.tenantClient
-      .select()
+      .select({ id: schema.employees.id })
       .from(schema.employees)
       .where(
-        and(eq(schema.employees.kioskPin, String(pin)), eq(schema.employees.status, 'active')),
+        and(eq(schema.employees.userId, req.user?.id || ''), eq(schema.employees.status, 'active')),
       );
-    if (!emp) return res.status(404).json({ error: 'PIN no reconocido' });
-
-    const row = await createPunchValidated(req.tenantClient, {
-      employeeId: emp.id,
-      userId: null,
-      kind,
-      source: 'kiosk',
-      device: kiosk.name,
-    });
-    res.json({ ...row, employeeName: `${emp.firstName} ${emp.lastName}` });
-  } catch (err: any) {
-    res.status(err.statusCode || 500).json({ error: err.message });
+    if (!emp) fail(403, 'EMPLOYEE_INACTIVE', 'No hay un empleado activo vinculado.');
+    res.json(await employeeQr(req.tenantClient, emp.id));
+  } catch (e) {
+    sendTimeclockError(res, e);
   }
 });
 
@@ -230,7 +96,19 @@ router.get('/me', async (req: any, res) => {
         and(eq(schema.timeclockEntries.employeeId, emp.id), gte(schema.timeclockEntries.at, since)),
       )
       .orderBy(desc(schema.timeclockEntries.at));
-    res.json({ employee: emp, entries: rows });
+    const state = await getWorkState(req.tenantClient, emp.id);
+    res.json({
+      employee: {
+        id: emp.id,
+        firstName: emp.firstName,
+        lastName: emp.lastName,
+        code: emp.code,
+        status: emp.status,
+      },
+      entries: rows,
+      state,
+      allowedActions: emp.status === 'active' ? allowedActions(state) : [],
+    });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -363,6 +241,9 @@ router.get('/export', async (req: any, res) => {
         empleadoNombre: e ? `${e.firstName} ${e.lastName}` : '',
         tipo: r.kind,
         origen: r.source || '',
+        metodo: r.method || '',
+        kiosco: r.kioskId || '',
+        lector: r.deviceId || '',
         notas: (r.notes || '').replace(/[\r\n;]/g, ' '),
       };
     });
@@ -379,9 +260,24 @@ router.get('/export', async (req: any, res) => {
       'Tipo',
       'Origen',
       'Notas',
+      'Metodo',
+      'Kiosco',
+      'Lector',
     ].join(';');
     const lines = enriched.map((r) =>
-      [r.fecha, r.hora, r.empleadoId, r.empleadoCodigo, r.empleadoNombre, r.tipo, r.origen, r.notas]
+      [
+        r.fecha,
+        r.hora,
+        r.empleadoId,
+        r.empleadoCodigo,
+        r.empleadoNombre,
+        r.tipo,
+        r.origen,
+        r.notas,
+        r.metodo,
+        r.kiosco,
+        r.lector,
+      ]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         .join(';'),
     );

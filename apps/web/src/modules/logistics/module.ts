@@ -1,8 +1,16 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { LogisticsHub } from './pages/LogisticsHub';
-import { ShipmentDetail } from './pages/ShipmentDetail';
-import { DriverApp } from './pages/DriverApp';
-import { CarriersSettings } from './pages/CarriersSettings';
+
+const LogisticsHub = lazy(() =>
+  import('./pages/LogisticsHub').then((m) => ({ default: m.LogisticsHub })),
+);
+const ShipmentDetail = lazy(() =>
+  import('./pages/ShipmentDetail').then((m) => ({ default: m.ShipmentDetail })),
+);
+const DriverApp = lazy(() => import('./pages/DriverApp').then((m) => ({ default: m.DriverApp })));
+const CarriersSettings = lazy(() =>
+  import('./pages/CarriersSettings').then((m) => ({ default: m.CarriersSettings })),
+);
 
 export const logisticsModule: ModuleManifest = {
   nav: {

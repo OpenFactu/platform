@@ -1,23 +1,48 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { Employees } from './pages/Employees';
-import { Departments } from './pages/Departments';
-import { Payrolls } from './pages/Payrolls';
-import { PayrollConcepts } from './pages/PayrollConcepts';
-import { IncidentTypes } from './pages/IncidentTypes';
-import { Incidents } from './pages/Incidents';
-import { ShiftTemplates } from './pages/ShiftTemplates';
-import { ShiftPatterns } from './pages/ShiftPatterns';
-import { Planning } from './pages/Planning';
-import { Timeclock } from './pages/Timeclock';
-import { Kiosks } from './pages/Kiosks';
-import { CollectiveAgreements } from './pages/CollectiveAgreements';
-import { Evaluations } from './pages/Evaluations';
-import { Objectives } from './pages/Objectives';
-import { Commissions } from './pages/Commissions';
-import { Performance } from './pages/Performance';
-import { LaborCost } from './pages/LaborCost';
-import { Tasks } from './pages/Tasks';
-import { Gantt } from './pages/Gantt';
+
+const Employees = lazy(() => import('./pages/Employees').then((m) => ({ default: m.Employees })));
+const EmployeeDetail = lazy(() =>
+  import('./pages/EmployeeDetail').then((m) => ({ default: m.EmployeeDetail })),
+);
+const Departments = lazy(() =>
+  import('./pages/Departments').then((m) => ({ default: m.Departments })),
+);
+const Payrolls = lazy(() => import('./pages/Payrolls').then((m) => ({ default: m.Payrolls })));
+const PayrollConcepts = lazy(() =>
+  import('./pages/PayrollConcepts').then((m) => ({ default: m.PayrollConcepts })),
+);
+const IncidentTypes = lazy(() =>
+  import('./pages/IncidentTypes').then((m) => ({ default: m.IncidentTypes })),
+);
+const Incidents = lazy(() => import('./pages/Incidents').then((m) => ({ default: m.Incidents })));
+const ShiftTemplates = lazy(() =>
+  import('./pages/ShiftTemplates').then((m) => ({ default: m.ShiftTemplates })),
+);
+const ShiftPatterns = lazy(() =>
+  import('./pages/ShiftPatterns').then((m) => ({ default: m.ShiftPatterns })),
+);
+const Planning = lazy(() => import('./pages/Planning').then((m) => ({ default: m.Planning })));
+const Timeclock = lazy(() => import('./pages/Timeclock').then((m) => ({ default: m.Timeclock })));
+const Kiosks = lazy(() => import('./pages/Kiosks').then((m) => ({ default: m.Kiosks })));
+const CollectiveAgreements = lazy(() =>
+  import('./pages/CollectiveAgreements').then((m) => ({ default: m.CollectiveAgreements })),
+);
+const Evaluations = lazy(() =>
+  import('./pages/Evaluations').then((m) => ({ default: m.Evaluations })),
+);
+const Objectives = lazy(() =>
+  import('./pages/Objectives').then((m) => ({ default: m.Objectives })),
+);
+const Commissions = lazy(() =>
+  import('./pages/Commissions').then((m) => ({ default: m.Commissions })),
+);
+const Performance = lazy(() =>
+  import('./pages/Performance').then((m) => ({ default: m.Performance })),
+);
+const LaborCost = lazy(() => import('./pages/LaborCost').then((m) => ({ default: m.LaborCost })));
+const Tasks = lazy(() => import('./pages/Tasks').then((m) => ({ default: m.Tasks })));
+const Gantt = lazy(() => import('./pages/Gantt').then((m) => ({ default: m.Gantt })));
 
 export const hrModule: ModuleManifest = {
   nav: {
@@ -167,6 +192,13 @@ export const hrModule: ModuleManifest = {
     ],
   },
   routes: [
+    {
+      pattern: '/hr/employees/:employeeId',
+      Component: EmployeeDetail,
+      title: 'Ficha de empleado',
+      iconName: 'UserRound',
+      permissionPath: '/hr/employees',
+    },
     {
       pattern: '/hr/employees',
       Component: Employees,

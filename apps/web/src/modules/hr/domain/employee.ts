@@ -1,3 +1,8 @@
+export const EMPLOYEE_STATUS_LABEL = {
+  active: 'Activo',
+  leave: 'Baja temporal',
+  terminated: 'Baja definitiva',
+};
 export interface Employee {
   id: string;
   code: string;

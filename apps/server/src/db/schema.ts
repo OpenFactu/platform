@@ -820,6 +820,9 @@ export const timeclockEntries = pgTable('TimeclockEntry', {
   notes: text('notes'),
   // Tarea opcional a la que se imputa el fichaje (para sumar a actualHours).
   taskId: text('taskId'),
+  method: text('method'),
+  kioskId: text('kioskId'),
+  deviceId: text('deviceId'),
 });
 
 // Kioskos físicos compartidos. Cada kiosko se autentica con su token y
@@ -832,6 +835,61 @@ export const timeclockKiosks = pgTable('TimeclockKiosk', {
   isActive: boolean('isActive').default(true).notNull(),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
 });
+
+export const timeclockCredentials = pgTable('TimeclockCredential', {
+  id: text('id').primaryKey(),
+  employeeId: text('employeeId')
+    .notNull()
+    .references(() => employees.id, { onDelete: 'cascade' }),
+  kind: text('kind').notNull(),
+  secretHash: text('secretHash').notNull(),
+  secretEncrypted: text('secretEncrypted'),
+  label: text('label').notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  revokedAt: timestamp('revokedAt'),
+});
+
+export const timeclockDevices = pgTable('TimeclockDevice', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  location: text('location'),
+  tokenHash: text('tokenHash').notNull().unique(),
+  mode: text('mode').notNull(),
+  kioskId: text('kioskId').references(() => timeclockKiosks.id),
+  isActive: boolean('isActive').default(true).notNull(),
+  lastSeenAt: timestamp('lastSeenAt'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const timeclockIdentifications = pgTable('TimeclockIdentification', {
+  id: text('id').primaryKey(),
+  kioskId: text('kioskId')
+    .notNull()
+    .references(() => timeclockKiosks.id, { onDelete: 'cascade' }),
+  deviceId: text('deviceId').references(() => timeclockDevices.id),
+  employeeId: text('employeeId')
+    .notNull()
+    .references(() => employees.id, { onDelete: 'cascade' }),
+  credentialId: text('credentialId').references(() => timeclockCredentials.id),
+  method: text('method').notNull(),
+  expiresAt: timestamp('expiresAt').notNull(),
+  consumedAt: timestamp('consumedAt'),
+  cancelledAt: timestamp('cancelledAt'),
+});
+
+export const timeclockRequests = pgTable(
+  'TimeclockRequest',
+  {
+    id: text('id').primaryKey(),
+    actorKey: text('actorKey').notNull(),
+    requestId: text('requestId').notNull(),
+    payloadHash: text('payloadHash').notNull(),
+    responseJson: jsonb('responseJson').notNull(),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    expiresAt: timestamp('expiresAt').notNull(),
+  },
+  (t) => [unique().on(t.actorKey, t.requestId)],
+);
 
 export const leaves = pgTable('Leave', {
   id: text('id').primaryKey(),

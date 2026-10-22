@@ -17,20 +17,24 @@
  * (arrastre real, no solo click) — al soltar, se ancla a la esquina más
  * cercana y esa elección se recuerda entre sesiones (localStorage).
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@openfactu/ui';
 import { Bot, Loader2, Maximize2, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAiChatContext } from '@/modules/ai/AiChatContext';
 import { useTabs } from '@/context/TabsContext';
 import { ASSISTANT_NAME } from '../domain/constants';
-import { MessageBubble } from './MessageBubble';
-import { Composer } from './Composer';
+import { PageLoading } from '@/components/PageLoading';
 import { useComposerState } from '../hooks/useComposerState';
 import { useFileDropZone } from '../hooks/useFileDropZone';
 import { DropOverlay } from './DropOverlay';
 import { PendingQuestionBar } from './PendingQuestionBar';
 import { findPendingQuestion } from '../domain/pendingQuestion';
+
+const MessageBubble = lazy(() =>
+  import('./MessageBubble').then((m) => ({ default: m.MessageBubble })),
+);
+const Composer = lazy(() => import('./Composer').then((m) => ({ default: m.Composer })));
 
 type Corner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
 const CORNER_STORAGE_KEY = 'keirost:chatBubbleCorner';
@@ -81,6 +85,12 @@ export const ChatLauncherPanel: React.FC = () => {
   // Igual que en la pestaña dedicada: se puede soltar sobre todo el panel.
   const drop = useFileDropZone(composer.addDropped, busy || composer.extractingDocs);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Al abrir por primera vez, Suspense puede montar el historial después del
+  // efecto de scroll. Llevarlo al último mensaje también cuando aparece el ancla.
+  const attachBottom = useCallback((node: HTMLDivElement | null) => {
+    bottomRef.current = node;
+    node?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
   const btnRef = useRef<HTMLButtonElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; dragging: boolean } | null>(null);
 
@@ -233,68 +243,70 @@ export const ChatLauncherPanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 p-3 min-h-0">
-            {messages.length === 0 && (
-              <p className="text-xs text-slate-400 text-center py-6">
-                Pregúntame sobre los datos de tu empresa.
-              </p>
-            )}
-            {messages.map((m, mi) => (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                userAvatarUrl={user?.avatarImageUrl}
-                estimate={
-                  messageTimings[m.id] !== undefined
-                    ? { tokens: estimateTokens(m), elapsedMs: messageTimings[m.id] }
-                    : null
-                }
-                addToolApprovalResponse={addToolApprovalResponse}
-                onQuoteText={composer.quoteText}
-                onAnswerQuestion={composer.send}
+          <Suspense fallback={<PageLoading />}>
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 p-3 min-h-0">
+              {messages.length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-6">
+                  Pregúntame sobre los datos de tu empresa.
+                </p>
+              )}
+              {messages.map((m, mi) => (
+                <MessageBubble
+                  key={m.id}
+                  message={m}
+                  userAvatarUrl={user?.avatarImageUrl}
+                  estimate={
+                    messageTimings[m.id] !== undefined
+                      ? { tokens: estimateTokens(m), elapsedMs: messageTimings[m.id] }
+                      : null
+                  }
+                  addToolApprovalResponse={addToolApprovalResponse}
+                  onQuoteText={composer.quoteText}
+                  onAnswerQuestion={composer.send}
+                  busy={busy}
+                  isLastMessage={mi === messages.length - 1}
+                />
+              ))}
+
+              {status === 'submitted' && (
+                <div className="px-1 text-xs text-slate-400 inline-flex items-center gap-2">
+                  <Loader2 size={12} className="animate-spin text-accent" /> Pensando…
+                </div>
+              )}
+
+              {error && (
+                <div className="text-xs p-2 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
+                  {error.message || 'Error en el chat'}
+                </div>
+              )}
+
+              <div ref={attachBottom} />
+            </div>
+
+            <div className="p-3 pt-0 shrink-0">
+              {pendingQuestion && (
+                <PendingQuestionBar
+                  key={pendingQuestion.step?.current ?? pendingQuestion.question}
+                  question={pendingQuestion}
+                  disabled={busy}
+                  onAnswer={composer.send}
+                />
+              )}
+              <Composer
+                {...composer}
+                dragOver={drop.dragOver}
+                supportsImages={supportsImages}
                 busy={busy}
-                isLastMessage={mi === messages.length - 1}
+                stop={() => void stop()}
+                contextUsed={contextUsed}
+                contextLimit={contextLimit}
+                contextApprox
+                modelOptions={availableModels.options}
+                selectedModel={selectedModel || availableModels.current}
+                onSelectModel={setSelectedModel}
               />
-            ))}
-
-            {status === 'submitted' && (
-              <div className="px-1 text-xs text-slate-400 inline-flex items-center gap-2">
-                <Loader2 size={12} className="animate-spin text-accent" /> Pensando…
-              </div>
-            )}
-
-            {error && (
-              <div className="text-xs p-2 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
-                {error.message || 'Error en el chat'}
-              </div>
-            )}
-
-            <div ref={bottomRef} />
-          </div>
-
-          <div className="p-3 pt-0 shrink-0">
-            {pendingQuestion && (
-              <PendingQuestionBar
-                key={pendingQuestion.step?.current ?? pendingQuestion.question}
-                question={pendingQuestion}
-                disabled={busy}
-                onAnswer={composer.send}
-              />
-            )}
-            <Composer
-              {...composer}
-              dragOver={drop.dragOver}
-              supportsImages={supportsImages}
-              busy={busy}
-              stop={() => void stop()}
-              contextUsed={contextUsed}
-              contextLimit={contextLimit}
-              contextApprox
-              modelOptions={availableModels.options}
-              selectedModel={selectedModel || availableModels.current}
-              onSelectModel={setSelectedModel}
-            />
-          </div>
+            </div>
+          </Suspense>
         </div>
       )}
     </>

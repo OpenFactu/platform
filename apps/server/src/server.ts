@@ -66,6 +66,9 @@ import hrShiftTemplatesRouter from './api/hr/shiftTemplates';
 import hrShiftPatternsRouter from './api/hr/shiftPatterns';
 import hrShiftAssignmentsRouter from './api/hr/shiftAssignments';
 import hrTimeclockRouter from './api/hr/timeclock';
+import { mountTimeclockTerminals } from './api/hr/timeclockTerminal';
+import timeclockDevicesRouter from './api/hr/timeclockDevices';
+import timeclockCredentialsRouter from './api/hr/timeclockCredentials';
 import hrKiosksRouter from './api/hr/kiosks';
 import seriesRouter from './api/series';
 import purchasesRouter from './api/documentos/purchases';
@@ -205,7 +208,12 @@ mountApi(app, '/api/admin/api-tokens', '/settings/api-tokens', apiTokensRouter);
 // pantalla contribuida por un plugin, así que no puede exigir el permiso de
 // la tienda de aplicaciones. Sus endpoints de activación ya comprueban rol
 // dentro del propio router.
-mountShared(app, '/api/plugins', 'carga de componentes de plugin en cualquier pantalla', pluginsRouter);
+mountShared(
+  app,
+  '/api/plugins',
+  'carga de componentes de plugin en cualquier pantalla',
+  pluginsRouter,
+);
 mountApi(app, '/api/custom-fields', '/custom-fields', customFieldsRouter);
 mountApi(app, '/api/user-tables', '/user-tables', userTablesRouter);
 mountShared(app, '/api/user-modules', 'módulos propios que pintan el menú', userModulesRouter);
@@ -236,7 +244,12 @@ mountApi(app, '/api/warehouses', '/warehouses', warehousesRouter);
 mountApi(app, '/api/transfer-notes', '/logistics/stock-movements', transferNotesRouter);
 mountApi(app, '/api/goods-receipts', '/logistics/stock-movements', goodsReceiptsRouter);
 mountApi(app, '/api/goods-issues', '/logistics/stock-movements', goodsIssuesRouter);
-mountShared(app, '/api/stock', 'consulta de existencias que usan los documentos', stockLookupRouter);
+mountShared(
+  app,
+  '/api/stock',
+  'consulta de existencias que usan los documentos',
+  stockLookupRouter,
+);
 mountApi(app, '/api/carriers', '/settings/carriers', carriersRouter);
 mountApi(app, '/api/webhooks', '/settings/webhooks', webhooksRouter);
 mountApi(app, '/api/partnerGroups', '/partner-groups', partnerGroupsRouter);
@@ -247,7 +260,12 @@ mountApi(app, '/api/profit-centers', '/profit-centers', profitCentersRouter);
 mountApi(app, '/api/internal-orders', '/internal-orders', internalOrdersRouter);
 mountApi(app, '/api/journal-entries', '/journal-entries', journalEntriesRouter);
 mountApi(app, '/api/account-mappings', '/chart-of-accounts', accountMappingsRouter);
-mountShared(app, '/api/document-links', 'trazabilidad entre documentos ya visibles', documentLinksRouter);
+mountShared(
+  app,
+  '/api/document-links',
+  'trazabilidad entre documentos ya visibles',
+  documentLinksRouter,
+);
 mountApi(app, '/api/company/signature', '/settings/company', companySignatureRouter);
 // userProfileRouter va ANTES de usersRouter para que /me capture primero.
 // Pero usersRouter ya está montado arriba, así que usamos otro prefix.
@@ -289,7 +307,12 @@ mountApi(app, '/api/hr/employees', '/hr/employees', hrEmployeesRouter);
 mountApi(app, '/api/hr/departments', '/hr/departments', hrDepartmentsRouter);
 mountApi(app, '/api/hr/payrolls', '/hr/payrolls', hrPayrollsRouter);
 mountApi(app, '/api/hr/contracts', '/hr/contracts', hrContractsRouter);
-mountApi(app, '/api/hr/collective-agreements', '/hr/collective-agreements', hrCollectiveAgreementsRouter);
+mountApi(
+  app,
+  '/api/hr/collective-agreements',
+  '/hr/collective-agreements',
+  hrCollectiveAgreementsRouter,
+);
 mountApi(app, '/api/hr/evaluations', '/hr/evaluations', hrEvaluationsRouter);
 mountApi(app, '/api/hr/commissions', '/hr/commissions', hrCommissionsRouter);
 mountApi(app, '/api/hr/tasks', '/hr/tasks', hrTasksRouter);
@@ -299,11 +322,19 @@ mountApi(app, '/api/hr/incidents', '/hr/incidents', hrIncidentsRouter);
 mountApi(app, '/api/hr/shift-templates', '/hr/shift-templates', hrShiftTemplatesRouter);
 mountApi(app, '/api/hr/shift-patterns', '/hr/shift-patterns', hrShiftPatternsRouter);
 mountApi(app, '/api/hr/shift-assignments', '/hr/planning', hrShiftAssignmentsRouter);
+mountTimeclockTerminals(app);
+mountApi(app, '/api/hr/timeclock-devices', '/hr/kiosks', timeclockDevicesRouter);
+mountApi(app, '/api/hr/timeclock-credentials', '/hr/employees', timeclockCredentialsRouter);
 mountApi(app, '/api/hr/timeclock', '/hr/timeclock', hrTimeclockRouter);
 mountApi(app, '/api/hr/kiosks', '/hr/kiosks', hrKiosksRouter);
 mountApi(app, '/api/series', '/document-series', seriesRouter);
 mountApi(app, '/api/purchases', '/purchase-orders', purchasesRouter);
-mountApi(app, '/api/purchases/delivery-notes', '/purchases/delivery-notes', purchaseDeliveryNotesRouter);
+mountApi(
+  app,
+  '/api/purchases/delivery-notes',
+  '/purchases/delivery-notes',
+  purchaseDeliveryNotesRouter,
+);
 mountApi(app, '/api/purchases/invoices', '/purchases/invoices', purchaseInvoicesRouter);
 mountApi(app, '/api/sales/delivery-notes', '/sales/delivery-notes', salesDeliveryNotesRouter);
 mountApi(app, '/api/sales/invoices', '/sales/invoices', salesInvoicesRouter);
@@ -322,7 +353,12 @@ mountApiBySubpath(
   membershipsRouter,
 );
 mountApi(app, '/api/document-templates', '/document-templates', documentTemplatesRouter);
-mountShared(app, '/api/attachments', 'adjuntos de registros que ya se pueden ver', attachmentsRouter);
+mountShared(
+  app,
+  '/api/attachments',
+  'adjuntos de registros que ya se pueden ver',
+  attachmentsRouter,
+);
 mountApi(app, '/api/admin', '/system/cockpit', adminRouter);
 mountApi(app, '/api/backups', '/settings/company', backupsRouter);
 // Importador de datos — herramienta de administración: ADMIN o SUPERUSER.
@@ -337,12 +373,22 @@ mountShared(app, '/api/notifications', 'avisos del propio usuario', notification
 mountShared(app, '/api/company', 'datos de empresa que pinta toda la interfaz', companyRouter);
 mountShared(app, '/api/dashboard', 'panel de inicio del propio usuario', dashboardRouter);
 mountApi(app, '/api/tenants', '/settings/company', tenantsRouter);
-mountShared(app, '/api/config', 'marca, formato y flags que necesita toda la interfaz', configRouter);
+mountShared(
+  app,
+  '/api/config',
+  'marca, formato y flags que necesita toda la interfaz',
+  configRouter,
+);
 mountApi(app, '/api/ai', '/ai/chat', aiRouter);
 mountApi(app, '/api/mcp', '/ai/chat', mcpRouter);
 // Mira doce entidades a la vez, así que no puede exigir UN permiso: recorta
 // su propia respuesta a lo que el usuario pueda ver (ver api/search.ts).
-mountShared(app, '/api/search', 'buscador global — filtra sus resultados por permiso', searchRouter);
+mountShared(
+  app,
+  '/api/search',
+  'buscador global — filtra sus resultados por permiso',
+  searchRouter,
+);
 mountShared(app, '/api/geo', 'países, provincias y localidades', geoRouter);
 mountApi(app, '/api/factuapi', '/documents', factuApiRouter);
 mountApi(app, '/api/payments', '/payments', paymentsRouter);

@@ -1,21 +1,35 @@
 import { apiClient } from '@/shared/http';
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GlobalLoader, PopupProvider } from '@openfactu/ui';
-import { SetupWizard } from './pages/SetupWizard';
-import { Login } from './pages/Login';
-import { ForgotPassword } from './pages/ForgotPassword';
-import { ResetPassword } from './pages/ResetPassword';
-import { TrackingPage } from './pages/public/TrackingPage';
-import { KioskMode } from '@/modules/hr/pages/KioskMode';
 import { useAuth } from './context/AuthContext';
-import { MainLayout } from './components/MainLayout';
+import { PageLoading } from './components/PageLoading';
 import { TabsProvider } from './context/TabsContext';
 import { MobileNavProvider } from './context/MobileNavContext';
 import { ScannerProvider } from './context/ScannerContext';
 import { AiChatProvider } from '@/modules/ai/AiChatContext';
 import { ChatLauncherPanel } from '@/modules/ai/components/ChatLauncherPanel';
 import { DebugPanel } from './components/DebugPanel';
+
+const SetupWizard = lazy(() =>
+  import('./pages/SetupWizard').then((m) => ({ default: m.SetupWizard })),
+);
+const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })));
+const ForgotPassword = lazy(() =>
+  import('./pages/ForgotPassword').then((m) => ({ default: m.ForgotPassword })),
+);
+const ResetPassword = lazy(() =>
+  import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword })),
+);
+const TrackingPage = lazy(() =>
+  import('./pages/public/TrackingPage').then((m) => ({ default: m.TrackingPage })),
+);
+const KioskMode = lazy(() =>
+  import('@/modules/hr/pages/KioskMode').then((m) => ({ default: m.KioskMode })),
+);
+const MainLayout = lazy(() =>
+  import('./components/MainLayout').then((m) => ({ default: m.MainLayout })),
+);
 
 function App() {
   const [setupChecked, setSetupChecked] = useState(false);
@@ -138,4 +152,10 @@ function App() {
   );
 }
 
-export default App;
+export default function AppWithSuspense() {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <App />
+    </Suspense>
+  );
+}

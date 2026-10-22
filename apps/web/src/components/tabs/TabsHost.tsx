@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useTabs, CurrentTabProvider } from '../../context/TabsContext';
 import { getStaticRoutes } from './RouteRegistry';
@@ -6,6 +6,7 @@ import { TabBridge } from './TabBridge';
 import { PermittedRoute } from './PermittedRoute';
 import { usePlugins } from '../../context/PluginContext';
 import { PluginViewRenderer } from '@/modules/plugins/components/PluginViewRenderer';
+import { PageLoading } from '../PageLoading';
 
 const MAX_MOUNTED_TABS = 3;
 
@@ -48,39 +49,43 @@ export const TabsHost: React.FC = () => {
             <MemoryRouter initialEntries={[tab.path]}>
               <CurrentTabProvider tabId={tab.id}>
                 <TabBridge tabId={tab.id} />
-                <Routes>
-                  {staticRoutes.map((r) => {
-                    const element = r.permissionPath ? (
-                      <PermittedRoute path={r.permissionPath}>
+                <Suspense fallback={<PageLoading />}>
+                  <Routes>
+                    {staticRoutes.map((r) => {
+                      const element = r.permissionPath ? (
+                        <PermittedRoute path={r.permissionPath}>
+                          <r.Component />
+                        </PermittedRoute>
+                      ) : (
                         <r.Component />
-                      </PermittedRoute>
-                    ) : (
-                      <r.Component />
-                    );
-                    return <Route key={r.pattern} path={r.pattern} element={element} />;
-                  })}
-                  {manifests.map((m) =>
-                    (m.ui?.routes ?? []).map((route) => {
-                      const routePath = route.path.startsWith('/') ? route.path : `/${route.path}`;
-                      return (
-                        <Route
-                          key={`${m.id}-${route.path}`}
-                          path={routePath}
-                          element={
-                            <PluginViewRenderer
-                              pluginId={m.id}
-                              type={route.type}
-                              config={route.config}
-                              title={route.title}
-                            />
-                          }
-                        />
                       );
-                    }),
-                  )}
-                  <Route path="/setup" element={<Navigate to="/" replace />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
+                      return <Route key={r.pattern} path={r.pattern} element={element} />;
+                    })}
+                    {manifests.map((m) =>
+                      (m.ui?.routes ?? []).map((route) => {
+                        const routePath = route.path.startsWith('/')
+                          ? route.path
+                          : `/${route.path}`;
+                        return (
+                          <Route
+                            key={`${m.id}-${route.path}`}
+                            path={routePath}
+                            element={
+                              <PluginViewRenderer
+                                pluginId={m.id}
+                                type={route.type}
+                                config={route.config}
+                                title={route.title}
+                              />
+                            }
+                          />
+                        );
+                      }),
+                    )}
+                    <Route path="/setup" element={<Navigate to="/" replace />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
               </CurrentTabProvider>
             </MemoryRouter>
           </div>

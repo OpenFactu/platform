@@ -1,5 +1,7 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { Dashboard } from './pages/Dashboard';
+
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 
 export const homeModule: ModuleManifest = {
   nav: {

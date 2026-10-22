@@ -1,24 +1,62 @@
+import { lazy } from 'react';
 import { withPermissionFromPattern, type ModuleManifest } from '../types';
-import { ReportsHub } from './pages/ReportsHub';
-import { ReportJournal } from './pages/ReportJournal';
-import { ReportLedger } from './pages/ReportLedger';
-import { ReportTrialBalance } from './pages/ReportTrialBalance';
-import { ReportPL } from './pages/ReportPL';
-import { ReportBalanceSheet } from './pages/ReportBalanceSheet';
-import { ReportVAT } from './pages/ReportVAT';
-import { ReportProfitCustomer } from './pages/ReportProfitCustomer';
-import { ReportProfitItem } from './pages/ReportProfitItem';
-import { ReportProfitProject } from './pages/ReportProfitProject';
-import { ReportProfitCostCenter } from './pages/ReportProfitCostCenter';
-import { ReportExecutive } from './pages/ReportExecutive';
-import { ReportAging } from './pages/ReportAging';
-import { ReportCashflow } from './pages/ReportCashflow';
-import { ReportPayslip } from './pages/ReportPayslip';
-import { ReportLaborCost } from './pages/ReportLaborCost';
-import { ReportHeadcount } from './pages/ReportHeadcount';
-import { ReportStockValuation } from './pages/ReportStockValuation';
-import { ReportStockRotation } from './pages/ReportStockRotation';
-import { ReportStockMovements } from './pages/ReportStockMovements';
+
+const ReportsHub = lazy(() =>
+  import('./pages/ReportsHub').then((m) => ({ default: m.ReportsHub })),
+);
+const ReportJournal = lazy(() =>
+  import('./pages/ReportJournal').then((m) => ({ default: m.ReportJournal })),
+);
+const ReportLedger = lazy(() =>
+  import('./pages/ReportLedger').then((m) => ({ default: m.ReportLedger })),
+);
+const ReportTrialBalance = lazy(() =>
+  import('./pages/ReportTrialBalance').then((m) => ({ default: m.ReportTrialBalance })),
+);
+const ReportPL = lazy(() => import('./pages/ReportPL').then((m) => ({ default: m.ReportPL })));
+const ReportBalanceSheet = lazy(() =>
+  import('./pages/ReportBalanceSheet').then((m) => ({ default: m.ReportBalanceSheet })),
+);
+const ReportVAT = lazy(() => import('./pages/ReportVAT').then((m) => ({ default: m.ReportVAT })));
+const ReportProfitCustomer = lazy(() =>
+  import('./pages/ReportProfitCustomer').then((m) => ({ default: m.ReportProfitCustomer })),
+);
+const ReportProfitItem = lazy(() =>
+  import('./pages/ReportProfitItem').then((m) => ({ default: m.ReportProfitItem })),
+);
+const ReportProfitProject = lazy(() =>
+  import('./pages/ReportProfitProject').then((m) => ({ default: m.ReportProfitProject })),
+);
+const ReportProfitCostCenter = lazy(() =>
+  import('./pages/ReportProfitCostCenter').then((m) => ({ default: m.ReportProfitCostCenter })),
+);
+const ReportExecutive = lazy(() =>
+  import('./pages/ReportExecutive').then((m) => ({ default: m.ReportExecutive })),
+);
+const ReportAging = lazy(() =>
+  import('./pages/ReportAging').then((m) => ({ default: m.ReportAging })),
+);
+const ReportCashflow = lazy(() =>
+  import('./pages/ReportCashflow').then((m) => ({ default: m.ReportCashflow })),
+);
+const ReportPayslip = lazy(() =>
+  import('./pages/ReportPayslip').then((m) => ({ default: m.ReportPayslip })),
+);
+const ReportLaborCost = lazy(() =>
+  import('./pages/ReportLaborCost').then((m) => ({ default: m.ReportLaborCost })),
+);
+const ReportHeadcount = lazy(() =>
+  import('./pages/ReportHeadcount').then((m) => ({ default: m.ReportHeadcount })),
+);
+const ReportStockValuation = lazy(() =>
+  import('./pages/ReportStockValuation').then((m) => ({ default: m.ReportStockValuation })),
+);
+const ReportStockRotation = lazy(() =>
+  import('./pages/ReportStockRotation').then((m) => ({ default: m.ReportStockRotation })),
+);
+const ReportStockMovements = lazy(() =>
+  import('./pages/ReportStockMovements').then((m) => ({ default: m.ReportStockMovements })),
+);
 
 export const reportsModule: ModuleManifest = {
   nav: {

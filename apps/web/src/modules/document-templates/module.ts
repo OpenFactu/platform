@@ -1,6 +1,12 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { DocumentTemplates } from './pages/DocumentTemplates';
-import { DocumentTemplateDesigner } from './pages/DocumentTemplateDesigner';
+
+const DocumentTemplates = lazy(() =>
+  import('./pages/DocumentTemplates').then((m) => ({ default: m.DocumentTemplates })),
+);
+const DocumentTemplateDesigner = lazy(() =>
+  import('./pages/DocumentTemplateDesigner').then((m) => ({ default: m.DocumentTemplateDesigner })),
+);
 
 /**
  * Plantillas PDF (editor visual, diseñador canvas, generación con IA).
