@@ -13,6 +13,7 @@ import {
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Hash, Plus, Trash2, ArrowRightLeft, Save, X, Settings2, Pencil } from 'lucide-react';
 import { uomApi } from '../api';
 import type { Uom as UomEntity } from '../domain/uom';
@@ -102,8 +103,16 @@ export const Uom: React.FC = () => {
       .filter((x) => !excludeId || x.id !== excludeId)
       .map((x) => ({ value: x.id, label: x.name, secondaryLabel: x.code }));
 
+  // En un móvil, la fila de alta no cabe: son cuatro campos repartidos en las
+  // columnas de una tabla, y cada uno acaba con un ancho en el que no se lee
+  // ni el texto de ejemplo. Ahí se da de alta en un formulario aparte, con los
+  // campos uno debajo de otro; en pantalla grande sigue siendo la fila, que es
+  // más rápida para dar de alta varias seguidas.
+  const esMovil = useIsMobile();
+
   /** Filas de la tabla: las unidades más, si se está creando, la fila de alta. */
-  const rows: any[] = newRow ? [...uoms, { id: NEW_ROW_ID, ...newRow }] : uoms;
+  const rows: any[] =
+    newRow && !esMovil ? [...uoms, { id: NEW_ROW_ID, ...newRow }] : uoms;
 
   const columns: TableColumn<any>[] = [
     {
@@ -315,6 +324,56 @@ export const Uom: React.FC = () => {
           </Button>
         }
       />
+
+      {esMovil && newRow && (
+        <Card title="Nueva unidad">
+          <div className="grid gap-4">
+            <Input
+              label="Código"
+              placeholder="Ej: CAJA"
+              value={newRow.code ?? ''}
+              onChange={(e) => setNewRow({ ...newRow, code: e.target.value })}
+              className="font-mono uppercase"
+            />
+            <Input
+              label="Nombre"
+              placeholder="Ej: Paquete"
+              value={newRow.name ?? ''}
+              onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
+            />
+            <Input
+              label="Cuántas unidades equivale"
+              type="number"
+              step="0.0001"
+              value={newRow.baseValue ?? ''}
+              onChange={(e) => setNewRow({ ...newRow, baseValue: e.target.value })}
+              helperText="Cuántas de la unidad de abajo entran en ésta."
+            />
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-fg-default">
+                De qué unidad
+              </label>
+              <SearchableSelect
+                options={uomOptions()}
+                value={newRow.baseUomId || ''}
+                onChange={(v) => setNewRow({ ...newRow, baseUomId: v || null })}
+                clearable
+                placeholder="(Unidad Primaria)"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button type="button" onClick={handleCreate} className="flex-1">
+                <Save size={16} className="mr-2" />
+                Guardar
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => setNewRow(null)}>
+                <X size={16} />
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card className="overflow-hidden border-0" noPadding>
         {/* La Table trae cabecera, esqueleto de carga y estado vacío: el
