@@ -1,5 +1,9 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { DataImport } from './pages/DataImport';
+
+const DataImport = lazy(() =>
+  import('./pages/DataImport').then((m) => ({ default: m.DataImport })),
+);
 
 /**
  * Importación de datos (el "DTW" de Keirost).

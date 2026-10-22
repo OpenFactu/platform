@@ -1,5 +1,9 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { appsPluginManager } from './pages/PluginManager';
+
+const appsPluginManager = lazy(() =>
+  import('./pages/PluginManager').then((m) => ({ default: m.appsPluginManager })),
+);
 
 export const appsModule: ModuleManifest = {
   nav: {

@@ -1,0 +1,125 @@
+/* Waiting is an ambient cue, not a claim that the hardware is reading.
+   Recognition appears only when the server supplies an identification. */
+.kiosk-card-signal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 112px;
+  color: #34d399;
+}
+
+.kiosk-card-halo {
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgb(52 211 153 / 24%);
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.kiosk-card-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+  overflow: hidden;
+  border: 1px solid rgb(52 211 153 / 20%);
+  border-radius: 24px;
+  background: rgb(52 211 153 / 7%);
+}
+
+.kiosk-card-scan {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6ee7b7, transparent);
+  box-shadow: 0 0 12px rgb(52 211 153 / 40%);
+  opacity: 0;
+}
+
+/* Slow ambient cycles, separate from the brief recognition feedback. */
+.kiosk-card-signal[data-state='waiting'] .kiosk-card-halo,
+.kiosk-card-signal[data-state='checking'] .kiosk-card-halo {
+  animation: kiosk-card-breathe 2400ms cubic-bezier(0.77, 0, 0.175, 1) infinite;
+}
+
+.kiosk-card-signal[data-state='waiting'] .kiosk-card-scan,
+.kiosk-card-signal[data-state='checking'] .kiosk-card-scan {
+  animation: kiosk-card-scan 2400ms linear infinite;
+}
+
+.kiosk-card-signal[data-state='checking'] .kiosk-card-scan {
+  animation-duration: 1200ms;
+}
+
+.kiosk-recognized-icon {
+  animation: kiosk-card-recognized 240ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes kiosk-card-breathe {
+  0%,
+  100% {
+    transform: scale(0.96);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.8;
+  }
+}
+
+@keyframes kiosk-card-scan {
+  0%,
+  100% {
+    transform: translateY(-24px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateY(24px);
+    opacity: 0.8;
+  }
+  85%,
+  99% {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@keyframes kiosk-card-recognized {
+  from {
+    transform: scale(0.94);
+    opacity: 0.35;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-card-signal[data-state] .kiosk-card-halo,
+  .kiosk-card-signal[data-state] .kiosk-card-scan {
+    animation: none;
+  }
+  .kiosk-card-halo {
+    opacity: 0.6;
+  }
+  .kiosk-recognized-icon {
+    animation-name: kiosk-card-recognized-fade;
+  }
+}
+
+@keyframes kiosk-card-recognized-fade {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}

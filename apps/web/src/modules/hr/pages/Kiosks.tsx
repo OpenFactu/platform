@@ -1,3 +1,5 @@
+import { TimeclockDevices } from '../components/TimeclockDevices';
+import { KioskAppearanceEditor } from '../components/KioskAppearanceEditor';
 import { kiosksApi } from '../api';
 import type { Kiosk } from '../domain/kiosk';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -13,6 +15,7 @@ import {
   Copy,
   Link as LinkIcon,
   ExternalLink,
+  Palette,
 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
@@ -21,6 +24,7 @@ export const Kiosks: React.FC = () => {
   const { canWrite, canDelete } = usePagePermissions();
   const [rows, setRows] = useState<Kiosk[]>([]);
   const [editing, setEditing] = useState<Partial<Kiosk> | null>(null);
+  const [appearanceKiosk, setAppearanceKiosk] = useState<Kiosk | null>(null);
   const [loading, setLoading] = useState(true);
   const toast = useToast();
   const popup = usePopup();
@@ -138,6 +142,12 @@ export const Kiosks: React.FC = () => {
   ];
 
   const rowActions = (k: Kiosk): RowAction[] => [
+    {
+      label: 'Personalizar pantalla',
+      icon: <Palette size={14} />,
+      disabled: !canWrite,
+      onClick: () => setAppearanceKiosk(k),
+    },
     { label: 'Copiar enlace', icon: <LinkIcon size={14} />, onClick: () => copyLink(k) },
     { label: 'Abrir kiosko', icon: <ExternalLink size={14} />, onClick: () => openKiosk(k) },
     {
@@ -159,7 +169,7 @@ export const Kiosks: React.FC = () => {
     <div className="p-4 w-full space-y-6">
       <PageHeader
         title="Kioskos de fichaje"
-        subtitle="Terminales compartidos donde los empleados fichan introduciendo su PIN personal."
+        subtitle="Terminales compartidos para fichar con PIN, tarjeta o QR personal."
         icon={<Tablet size={18} />}
         size="lg"
         actions={
@@ -171,6 +181,13 @@ export const Kiosks: React.FC = () => {
         }
       />
 
+      {appearanceKiosk && canWrite && (
+        <KioskAppearanceEditor
+          key={appearanceKiosk.id}
+          kiosk={appearanceKiosk}
+          onClose={() => setAppearanceKiosk(null)}
+        />
+      )}
       {editing && (
         <Card noPadding>
           <form onSubmit={save} className="p-6 grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -207,9 +224,15 @@ export const Kiosks: React.FC = () => {
         />
       </Card>
 
+      <TimeclockDevices
+        key={user?.tenantId}
+        kiosks={rows}
+        canWrite={!!canWrite}
+        tenantId={user?.tenantId || ''}
+      />
       <p className="text-xs text-slate-400 italic">
-        Para usar un kiosko: navega a <code>/kiosk?token=&lt;TOKEN&gt;</code> en el terminal y los
-        empleados introducirán su PIN para fichar.
+        Abre el enlace del kiosco en el terminal. Los empleados pueden identificarse con su PIN, QR
+        personal o una tarjeta leída por un lector vinculado y elegir la acción en pantalla.
       </p>
     </div>
   );

@@ -1,8 +1,12 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { Pages } from './pages/Pages';
-import { PageEditor } from './pages/PageEditor';
-import { Settings } from './pages/Settings';
-import { Messages } from './pages/Messages';
+
+const Pages = lazy(() => import('./pages/Pages').then((m) => ({ default: m.Pages })));
+const PageEditor = lazy(() =>
+  import('./pages/PageEditor').then((m) => ({ default: m.PageEditor })),
+);
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const Messages = lazy(() => import('./pages/Messages').then((m) => ({ default: m.Messages })));
 
 export const websiteModule: ModuleManifest = {
   nav: {

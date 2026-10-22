@@ -1,10 +1,20 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { Items } from './pages/Items';
-import { ItemDetail } from './pages/ItemDetail';
-import { Categories } from './pages/Categories';
-import { Uom } from './pages/Uom';
-import { Warehouses } from './pages/Warehouses';
-import { StockMovements } from './pages/StockMovements';
+
+const Items = lazy(() => import('./pages/Items').then((m) => ({ default: m.Items })));
+const ItemDetail = lazy(() =>
+  import('./pages/ItemDetail').then((m) => ({ default: m.ItemDetail })),
+);
+const Categories = lazy(() =>
+  import('./pages/Categories').then((m) => ({ default: m.Categories })),
+);
+const Uom = lazy(() => import('./pages/Uom').then((m) => ({ default: m.Uom })));
+const Warehouses = lazy(() =>
+  import('./pages/Warehouses').then((m) => ({ default: m.Warehouses })),
+);
+const StockMovements = lazy(() =>
+  import('./pages/StockMovements').then((m) => ({ default: m.StockMovements })),
+);
 
 export const inventoryModule: ModuleManifest = {
   nav: {

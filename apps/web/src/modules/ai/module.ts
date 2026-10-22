@@ -1,5 +1,7 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { AiChat } from './pages';
+
+const AiChat = lazy(() => import('./pages').then((m) => ({ default: m.AiChat })));
 
 export const aiModule: ModuleManifest = {
   nav: {

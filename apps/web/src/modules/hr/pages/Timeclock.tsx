@@ -1,7 +1,10 @@
+import { newTimeclockRequestId } from '../domain/timeclockRequestId';
+import { TimeclockActions } from '../components/TimeclockActions';
+import { WORK_STATE_LABEL } from '../domain/timeclock';
 import { timeclockApi, employeesApi } from '../api';
 import type { TimeclockEntry as Entry } from '../domain/timeclock';
 import type { Employee } from '../domain/employee';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Card,
   Button,
@@ -15,7 +18,7 @@ import {
 } from '@openfactu/ui';
 import type { BadgeProps, TableColumn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
-import { Timer, LogIn, LogOut, Coffee, RotateCcw, Download } from 'lucide-react';
+import { Timer, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
 import { ApiError } from '@/shared/http';
 
@@ -49,6 +52,21 @@ export const Timeclock: React.FC = () => {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [employee, setEmployee] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [workState, setWorkState] = useState<'closed' | 'working' | 'on_break'>('closed');
+  const [actions, setActions] = useState<Entry['kind'][]>([]);
+  const [punchBusy, setPunchBusy] = useState(false);
+  const [qr, setQr] = useState('');
+  const pendingPunch = useRef<{
+    kind: Entry['kind'];
+    id: string;
+    latitude?: number;
+    longitude?: number;
+  } | null>(null);
+  const punchLock = useRef(false);
+  const accountRef = useRef('');
+  useEffect(() => {
+    accountRef.current = `${user?.tenantId}:${user?.id}`;
+  }, [user?.tenantId, user?.id]);
   // Vista admin: todos los fichajes con filtros.
   const [allEntries, setAllEntries] = useState<Entry[]>([]);
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
@@ -87,6 +105,9 @@ export const Timeclock: React.FC = () => {
         { key: 'tipo', label: 'Tipo', width: 14, format: (v) => KIND_LABEL[v] || v },
         { key: 'origen', label: 'Origen', width: 10 },
         { key: 'notas', label: 'Notas', width: 40 },
+        { key: 'metodo', label: 'Método', width: 14 },
+        { key: 'kiosco', label: 'Kiosco', width: 24 },
+        { key: 'lector', label: 'Lector', width: 24 },
       ],
       rows: data,
     });
@@ -97,6 +118,8 @@ export const Timeclock: React.FC = () => {
     try {
       const d = await timeclockApi.me();
       setEmployee(d.employee);
+      setWorkState(d.state);
+      setActions(d.allowedActions);
       setEntries(Array.isArray(d.entries) ? d.entries : []);
     } catch (err) {
       toast.error(
@@ -109,6 +132,9 @@ export const Timeclock: React.FC = () => {
     }
   };
   useEffect(() => {
+    setQr('');
+    setActions([]);
+    pendingPunch.current = null;
     if (user?.tenantId) fetchAll();
   }, [user?.tenantId]);
 
@@ -143,26 +169,51 @@ export const Timeclock: React.FC = () => {
   );
 
   const punch = async (kind: Entry['kind']) => {
-    let coords: { latitude?: number; longitude?: number } = {};
-    if (navigator.geolocation) {
-      try {
-        coords = await new Promise<any>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            (p) => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude }),
-            reject,
-            { timeout: 3000 },
-          );
-        });
-      } catch {
-        // sin geo
-      }
-    }
+    if (punchLock.current) return;
+    punchLock.current = true;
+    setPunchBusy(true);
+    const account = accountRef.current;
     try {
-      await timeclockApi.punch({ kind, ...coords, device: navigator.userAgent });
+      const newIntent = pendingPunch.current?.kind !== kind;
+      if (newIntent) pendingPunch.current = { kind, id: newTimeclockRequestId() };
+      let coords: { latitude?: number; longitude?: number } = {};
+      if (navigator.geolocation && newIntent) {
+        try {
+          coords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+              (p) => resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude }),
+              reject,
+              { timeout: 3000 },
+            );
+          });
+        } catch {
+          // sin geo
+        }
+      }
+      if (accountRef.current !== account) return;
+      if (pendingPunch.current!.latitude === undefined)
+        Object.assign(pendingPunch.current!, coords);
+      await timeclockApi.punch({
+        kind,
+        requestId: pendingPunch.current!.id,
+        latitude: pendingPunch.current!.latitude,
+        longitude: pendingPunch.current!.longitude,
+        device: navigator.userAgent,
+      });
+      if (accountRef.current !== account) return;
+      pendingPunch.current = null;
       toast.success(`Fichaje "${KIND_LABEL[kind]}" registrado`);
-      fetchAll();
+      await fetchAll();
     } catch (err) {
+      if (accountRef.current !== account) return;
+      if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+        pendingPunch.current = null;
+        if (err.status === 409) await fetchAll();
+      }
       toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+    } finally {
+      punchLock.current = false;
+      setPunchBusy(false);
     }
   };
 
@@ -308,20 +359,41 @@ export const Timeclock: React.FC = () => {
                   <span className="italic">aún no has fichado en los últimos 31 días</span>
                 )}
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Button onClick={() => punch('in')} className="flex items-center gap-2">
-                  <LogIn size={18} /> Entrada
-                </Button>
-                <Button onClick={() => punch('break_start')} variant="secondary">
-                  <Coffee size={18} /> Inicio pausa
-                </Button>
-                <Button onClick={() => punch('break_end')} variant="secondary">
-                  <RotateCcw size={18} /> Fin pausa
-                </Button>
-                <Button onClick={() => punch('out')} className="flex items-center gap-2">
-                  <LogOut size={18} /> Salida
-                </Button>
-              </div>
+              <p className="font-semibold">{WORK_STATE_LABEL[workState]}</p>
+              <TimeclockActions
+                allowedActions={actions}
+                busy={punchBusy || loading}
+                onPunch={punch}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={async () => {
+                  if (qr) {
+                    setQr('');
+                    return;
+                  }
+                  try {
+                    setQr((await timeclockApi.qr()).qrDataUrl);
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : 'No se pudo mostrar tu QR.');
+                  }
+                }}
+              >
+                {qr ? 'Ocultar mi QR' : 'Mi QR de fichaje'}
+              </Button>
+              {qr && (
+                <div>
+                  <img
+                    src={qr}
+                    alt="Mi QR personal para identificarme en el kiosco"
+                    className="w-64 max-w-full bg-white"
+                  />
+                  <p className="text-sm text-fg-muted mt-2">
+                    Muestra este QR a la cámara del kiosco.
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
 

@@ -1,3 +1,4 @@
+import { writeEmployeeWithPin } from '../../core/hr/timeclockCredentials';
 import { Router } from 'express';
 import { eq, asc, desc, like } from 'drizzle-orm';
 import * as schema from '../../db/schema';
@@ -6,6 +7,11 @@ import { logAudit } from '../../utils/audit';
 import { validateIban, normalizeIban } from '../../utils/ibanValidation';
 
 const router = Router();
+const auditEmployee = (row: any) => {
+  if (!row) return row;
+  const { kioskPin, ...safe } = row;
+  return safe;
+};
 
 const ALLOWED_STATUS = new Set(['active', 'leave', 'terminated']);
 const ALLOWED_FIELDS = [
@@ -45,7 +51,7 @@ router.get('/', async (req: any, res) => {
       .orderBy(asc(schema.employees.code));
     res.json(rows);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
@@ -58,7 +64,7 @@ router.get('/:id', async (req: any, res) => {
     if (!row) return res.status(404).json({ error: 'Empleado no encontrado' });
     res.json(row);
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
@@ -98,10 +104,12 @@ router.post('/', async (req: any, res) => {
       payload.code = await nextEmployeeCode(req.tenantClient);
     }
     const id = crypto.randomUUID();
-    const [row] = await req.tenantClient
-      .insert(schema.employees)
-      .values({ id, status: 'active', ...payload })
-      .returning();
+    const [row] = await writeEmployeeWithPin(req.tenantClient, id, payload, (tx) =>
+      tx
+        .insert(schema.employees)
+        .values({ id, status: 'active', ...payload })
+        .returning(),
+    );
     res.json(row);
     logAudit({
       tenantClient: req.tenantClient,
@@ -110,10 +118,10 @@ router.post('/', async (req: any, res) => {
       entityType: 'Employee',
       entityId: id,
       action: 'CREATE',
-      newValue: row,
+      newValue: auditEmployee(row),
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
@@ -135,11 +143,9 @@ router.patch('/:id', async (req: any, res) => {
       payload.iban = normalizeIban(payload.iban);
     }
     payload.updatedAt = new Date();
-    const [row] = await req.tenantClient
-      .update(schema.employees)
-      .set(payload)
-      .where(eq(schema.employees.id, id))
-      .returning();
+    const [row] = await writeEmployeeWithPin(req.tenantClient, id, payload, (tx) =>
+      tx.update(schema.employees).set(payload).where(eq(schema.employees.id, id)).returning(),
+    );
     res.json(row);
     logAudit({
       tenantClient: req.tenantClient,
@@ -148,11 +154,11 @@ router.patch('/:id', async (req: any, res) => {
       entityType: 'Employee',
       entityId: id,
       action: 'UPDATE',
-      oldValue: old,
-      newValue: row,
+      oldValue: auditEmployee(old),
+      newValue: auditEmployee(row),
     });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
@@ -173,10 +179,10 @@ router.delete('/:id', async (req: any, res) => {
         entityType: 'Employee',
         entityId: id,
         action: 'DELETE',
-        oldValue: old,
+        oldValue: auditEmployee(old),
       });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 

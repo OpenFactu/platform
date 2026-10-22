@@ -1,14 +1,35 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { UserProfile } from './pages/UserProfile';
-import { CompanySettings } from './pages/CompanySettings';
-import { Users } from './pages/Users';
-import { CustomFields } from './pages/CustomFields';
-import { DashboardWidgets } from './pages/DashboardWidgets';
-import { WebhooksSettings } from './pages/WebhooksSettings';
-import { ApiTokens } from './pages/ApiTokens';
-import { Automations } from './pages/Automations';
-import { NewCompany } from './pages/NewCompany';
-import { StyleGuide } from './pages/StyleGuide';
+
+const UserProfile = lazy(() =>
+  import('./pages/UserProfile').then((m) => ({ default: m.UserProfile })),
+);
+const PhysicalDevices = lazy(() =>
+  import('./pages/PhysicalDevices').then((m) => ({ default: m.PhysicalDevices })),
+);
+const CompanySettings = lazy(() =>
+  import('./pages/CompanySettings').then((m) => ({ default: m.CompanySettings })),
+);
+const Users = lazy(() => import('./pages/Users').then((m) => ({ default: m.Users })));
+const CustomFields = lazy(() =>
+  import('./pages/CustomFields').then((m) => ({ default: m.CustomFields })),
+);
+const DashboardWidgets = lazy(() =>
+  import('./pages/DashboardWidgets').then((m) => ({ default: m.DashboardWidgets })),
+);
+const WebhooksSettings = lazy(() =>
+  import('./pages/WebhooksSettings').then((m) => ({ default: m.WebhooksSettings })),
+);
+const ApiTokens = lazy(() => import('./pages/ApiTokens').then((m) => ({ default: m.ApiTokens })));
+const Automations = lazy(() =>
+  import('./pages/Automations').then((m) => ({ default: m.Automations })),
+);
+const NewCompany = lazy(() =>
+  import('./pages/NewCompany').then((m) => ({ default: m.NewCompany })),
+);
+const StyleGuide = lazy(() =>
+  import('./pages/StyleGuide').then((m) => ({ default: m.StyleGuide })),
+);
 
 export const settingsModule: ModuleManifest = {
   nav: {
@@ -18,6 +39,13 @@ export const settingsModule: ModuleManifest = {
     subTabs: [
       { id: 'profile', label: 'Mi perfil', path: '/profile' },
       { id: 'company', label: 'Empresa', path: '/settings/company' },
+      {
+        id: 'physical-devices',
+        label: 'Dispositivos físicos',
+        path: '/settings/devices',
+        adminOnly: true,
+        featureFlag: 'hrTimeclockEnabled',
+      },
       { id: 'templates', label: 'Plantillas PDF', path: '/document-templates' },
       { id: 'users', label: 'Usuarios', path: '/users' },
       {
@@ -47,6 +75,13 @@ export const settingsModule: ModuleManifest = {
     ],
   },
   routes: [
+    {
+      pattern: '/settings/devices',
+      Component: PhysicalDevices,
+      title: 'Dispositivos físicos',
+      iconName: 'Usb',
+      permissionPath: '/hr/kiosks',
+    },
     { pattern: '/profile', Component: UserProfile, title: 'Mi perfil', iconName: 'UserCircle' },
     {
       pattern: '/settings/company',

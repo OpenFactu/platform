@@ -29,7 +29,10 @@ interface TabsContextValue extends TabsState {
   resetTabs: (path?: string) => void;
 }
 
-const TabsContext = createContext<TabsContextValue | null>(null);
+// Lazy screens can retain a previous module instance during a hot update.
+// Keep both context identities so mounted providers and refreshed hooks agree.
+const TabsContext: React.Context<TabsContextValue | null> =
+  import.meta.hot?.data.tabsContext ?? createContext<TabsContextValue | null>(null);
 
 const genId = () => `tab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
@@ -95,7 +98,9 @@ function computeInitialState(user: NavUser | null | undefined): TabsState {
 
   if (tabs.length === 0) {
     const initialPath = browserPathname && browserPathname !== '/' ? browserPath : '/';
-    const meta = canRestoreTab(initialPath, user) ? resolveRouteMeta(pathnameOf(initialPath)) : null;
+    const meta = canRestoreTab(initialPath, user)
+      ? resolveRouteMeta(pathnameOf(initialPath))
+      : null;
     if (meta) {
       const tab: Tab = {
         id: genId(),
@@ -265,7 +270,15 @@ export const useTabs = (): TabsContextValue => {
   return ctx;
 };
 
-const CurrentTabContext = createContext<string | null>(null);
+const CurrentTabContext: React.Context<string | null> =
+  import.meta.hot?.data.currentTabContext ?? createContext<string | null>(null);
+
+if (import.meta.hot) {
+  import.meta.hot.dispose((data) => {
+    data.tabsContext = TabsContext;
+    data.currentTabContext = CurrentTabContext;
+  });
+}
 
 export const CurrentTabProvider: React.FC<{ tabId: string; children: React.ReactNode }> = ({
   tabId,

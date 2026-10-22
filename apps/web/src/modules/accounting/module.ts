@@ -1,9 +1,17 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { ChartOfAccounts } from './pages/ChartOfAccounts';
-import { JournalEntries } from './pages/JournalEntries';
-import { Ledger } from './pages/Ledger';
-import { AccountingPeriods } from './pages/AccountingPeriods';
-import { Taxes } from './pages/Taxes';
+
+const ChartOfAccounts = lazy(() =>
+  import('./pages/ChartOfAccounts').then((m) => ({ default: m.ChartOfAccounts })),
+);
+const JournalEntries = lazy(() =>
+  import('./pages/JournalEntries').then((m) => ({ default: m.JournalEntries })),
+);
+const Ledger = lazy(() => import('./pages/Ledger').then((m) => ({ default: m.Ledger })));
+const AccountingPeriods = lazy(() =>
+  import('./pages/AccountingPeriods').then((m) => ({ default: m.AccountingPeriods })),
+);
+const Taxes = lazy(() => import('./pages/Taxes').then((m) => ({ default: m.Taxes })));
 
 export const accountingModule: ModuleManifest = {
   nav: {

@@ -1,6 +1,12 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { UserTableList } from './pages/UserTableList';
-import { UserTableDetail } from './pages/UserTableDetail';
+
+const UserTableList = lazy(() =>
+  import('./pages/UserTableList').then((m) => ({ default: m.UserTableList })),
+);
+const UserTableDetail = lazy(() =>
+  import('./pages/UserTableDetail').then((m) => ({ default: m.UserTableDetail })),
+);
 
 /** Tablas definidas por el usuario/plugins (rutas /u/:name). Sin navbar propio. */
 export const userTablesModule: ModuleManifest = {

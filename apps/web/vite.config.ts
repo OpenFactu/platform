@@ -2,11 +2,21 @@ import path from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { collectShellScripts } from './scripts/pwa-shell.ts';
+
+let shellScripts = new Set<string>();
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    {
+      name: 'pwa-shell-scripts',
+      apply: 'build',
+      generateBundle(_, bundle) {
+        shellScripts = collectShellScripts(bundle);
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       // El service worker en dev cachea el propio bundle de la app (mismo
@@ -49,12 +59,34 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Las pantallas lazy se guardan al visitarlas. Precargar todo el JS
+        // anularía la carga bajo demanda al instalar/actualizar la PWA.
+        manifestTransforms: [
+          async (entries) => ({
+            manifest: entries.filter(
+              (entry) =>
+                !entry.url.endsWith('.js') ||
+                entry.url === 'registerSW.js' ||
+                shellScripts.has(entry.url),
+            ),
+            warnings: [],
+          }),
+        ],
         // Cachea la shell de la SPA y los assets. /api/ nunca se cachea —
         // siempre debe ir a red para datos frescos.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/track\//],
         runtimeCaching: [
+          {
+            urlPattern: ({ url, sameOrigin }) =>
+              sameOrigin && url.pathname.startsWith('/assets/') && url.pathname.endsWith('.js'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'page-code',
+              expiration: { maxEntries: 200, maxAgeSeconds: 30 * 24 * 3600 },
+            },
+          },
           {
             // Tiles de MapLibre (Carto Positron) — cachea 7 días.
             urlPattern: ({ url }) =>

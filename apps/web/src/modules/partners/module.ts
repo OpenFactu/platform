@@ -1,6 +1,10 @@
+import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
-import { Partners } from './pages/Partners';
-import { PartnerGroups } from './pages/PartnerGroups';
+
+const Partners = lazy(() => import('./pages/Partners').then((m) => ({ default: m.Partners })));
+const PartnerGroups = lazy(() =>
+  import('./pages/PartnerGroups').then((m) => ({ default: m.PartnerGroups })),
+);
 
 export const partnersModule: ModuleManifest = {
   nav: {
