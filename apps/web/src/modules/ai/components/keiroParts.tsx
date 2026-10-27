@@ -1,6 +1,6 @@
 import React from 'react';
-import { registerMessagePart } from '@openfactu/ui/ai';
-import { AlertTriangle, Loader2, ShieldQuestion } from 'lucide-react';
+import { AITrace, registerMessagePart } from '@openfactu/ui/ai';
+import { AlertTriangle, Loader2, ShieldQuestion, Table2 } from 'lucide-react';
 import { TOOL_LABELS } from '../domain/constants';
 import type { PendingQuestionOutput } from '../domain/pendingQuestion';
 import { AttachedDocumentChip } from './AttachedDocumentChip';
@@ -123,7 +123,23 @@ export function registerKeiroParts(): void {
 
   registerMessagePart(
     'keiro-tool-result',
-    ({ data }) => <ToolResultView output={(data as { output: unknown }).output} />,
+    ({ data }) => {
+      const { outputs } = data as { outputs: unknown[] };
+      return (
+        <AITrace
+          status="done"
+          title={`Ver resultados (${outputs.length})`}
+          icon={<Table2 size={14} />}
+        >
+          {/* Tablas anchas: scroll propio, sin partir las celdas letra a letra. */}
+          <div className="max-h-80 max-w-full space-y-3 overflow-auto [&_table]:w-max [&_td]:whitespace-nowrap">
+            {outputs.map((output, i) => (
+              <ToolResultView key={i} output={output} />
+            ))}
+          </div>
+        </AITrace>
+      );
+    },
     { source: SOURCE },
   );
 

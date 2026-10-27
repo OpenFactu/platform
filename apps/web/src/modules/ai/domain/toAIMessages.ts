@@ -63,6 +63,7 @@ function toParts(message: ChatMessage, isLast: boolean): AIMessagePart[] {
   // Todas las tools de lectura (qué consultó, qué vio) se resumen en un único
   // bloque "Investigó en N pasos", en la posición de la primera.
   let steps: Extract<AIMessagePart, { type: 'steps' }> | null = null;
+  let results: { outputs: unknown[] } | null = null;
 
   (message.parts as ChatMessagePart[]).forEach((part, i) => {
     if (part.type === 'text') {
@@ -175,7 +176,12 @@ function toParts(message: ChatMessage, isLast: boolean): AIMessagePart[] {
       status: status === 'completed' ? 'done' : status === 'error' ? 'error' : 'running',
     });
     if (p.state === 'output-available') {
-      parts.push(custom('keiro-tool-result', { output: p.output }));
+      // Todos los resultados de lectura van en un único bloque plegado.
+      if (!results) {
+        results = { outputs: [] };
+        parts.push(custom('keiro-tool-result', results));
+      }
+      results.outputs.push(p.output);
     }
   });
 
