@@ -1,52 +1,37 @@
+/**
+ * Inicio de sesión.
+ *
+ * Dos zonas: el formulario (siempre) y, en pantallas anchas, un panel de marca
+ * con el campo isométrico animado. Todo con controles de @openfactu/ui y
+ * tokens del tema, para que respete el branding guardado de la última empresa
+ * (ThemeContext lo aplica antes de iniciar sesión desde la caché local).
+ *
+ * Flujo: usuario/email → al salir del campo se piden sus empresas y su foto →
+ * contraseña → si la cuenta tiene 2FA, el servidor lo pide y se muestra el
+ * paso del código.
+ */
 import { apiClient, ApiError } from '@/shared/http';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Alert, Avatar, Badge, Button, Input, PasswordInput, Select } from '@openfactu/ui';
+import { ArrowLeft, ArrowRight, Building, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  Loader2,
-  ArrowRight,
-  Building,
-  ChevronDown,
-  CheckCircle2,
-  ShieldCheck,
-  Zap,
-  Globe,
-  Check,
-} from 'lucide-react';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { IsoField } from '../components/login/IsoField';
-import { LiveFeed } from '../components/login/LiveFeed';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tenants, setTenants] = useState<{ id: string; name: string }[]>([]);
   const [selectedTenant, setSelectedTenant] = useState('');
   const [loginAvatarUrl, setLoginAvatarUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [tenantOpen, setTenantOpen] = useState(false);
   const [twoFactorRequired, setTwoFactorRequired] = useState(false);
   const [totpCode, setTotpCode] = useState('');
-  const tenantWrapperRef = useRef<HTMLDivElement>(null);
 
   const { login } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (tenantWrapperRef.current && !tenantWrapperRef.current.contains(e.target as Node)) {
-        setTenantOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, []);
 
   const fetchTenantsForUser = async (emailOrUsername: string) => {
     if (!emailOrUsername.trim()) {
@@ -83,6 +68,10 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (tenants.length > 1 && !selectedTenant) {
+      setError('Elige la empresa a la que quieres entrar');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
 
@@ -123,345 +112,173 @@ export const Login: React.FC = () => {
     }
   };
 
+  const tenantName = tenants.length === 1 ? tenants[0].name : null;
+
   return (
-    <div className="min-h-screen w-full flex flex-col md:flex-row bg-[#0A1628] font-sans relative md:overflow-hidden">
-      {/* Fondo isométrico animado global — siempre visible */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0A1628] via-[#0A1628] to-[#08524A]" />
-        <IsoField />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1628]/80 via-transparent to-[#0A1628]/40" />
-      </div>
+    <div className="min-h-dvh w-full flex bg-bg-app">
+      {/* ── Formulario ── */}
+      <main className="flex-1 lg:flex-none lg:w-[480px] flex flex-col bg-bg-card lg:border-r border-border-default">
+        <header className="flex items-center gap-2.5 px-6 pt-6 sm:px-10 sm:pt-8">
+          <KeirostLogo size={32} variant="dark" />
+          <span className="font-display text-base font-bold tracking-tight text-fg-default">
+            Keirost
+          </span>
+        </header>
 
-      {/* SECTION IZQUIERDA: Brand & Visual (solo en pantallas anchas) */}
-      <div className="hidden md:flex md:w-2/5 relative overflow-hidden z-10">
-        {/* Content Overlay */}
-        <div className="relative z-10 w-full flex flex-col p-12 justify-between">
-          <div className="flex items-center gap-3">
-            <KeirostLogo size={48} variant="accent" />
-            <span
-              className="text-2xl font-bold text-white tracking-tight"
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              Keirost <span className="k-shimmer-text">ERP</span>
-            </span>
-          </div>
-
-          <div className="space-y-8 animate-in fade-in slide-in-from-left-8 duration-700">
-            <div className="space-y-4">
-              <h2
-                className="text-5xl font-bold text-white leading-[1.1] tracking-tighter"
-                style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-              >
-                Gestión centralizada <br />
-                <span className="k-shimmer-text">para empresas</span> inteligentes.
-              </h2>
-              <p className="text-lg text-slate-300 max-w-sm leading-relaxed font-medium">
-                Optimiza tus compras, ventas y logística en una única plataforma Open Source de alto
-                rendimiento.
+        <div className="flex-1 flex items-center px-6 py-10 sm:px-10">
+          <form
+            onSubmit={handleSubmit}
+            className="w-full max-w-sm mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500"
+          >
+            <div className="space-y-1.5">
+              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-fg-default">
+                {twoFactorRequired ? 'Verificación en dos pasos' : 'Inicia sesión'}
+              </h1>
+              <p className="text-sm text-fg-muted">
+                {twoFactorRequired
+                  ? 'Introduce el código de tu app de autenticación o uno de respaldo.'
+                  : 'Accede con tu usuario o tu email de trabajo.'}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 pt-4">
-              <div className="flex items-start gap-4 group">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 border border-blue-500/20 group-hover:bg-blue-500 group-hover:text-white transition-all">
-                  <Zap size={20} />
-                </div>
-                <div>
-                  <h4 className="text-white font-bold text-sm">Rendimiento Real</h4>
-                  <p className="text-slate-300 text-xs mt-1">
-                    Lógica compartida y reactividad instantánea en todas tus operaciones.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4 group">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                  <ShieldCheck size={20} />
-                </div>
-                <div>
-                  <h4 className="text-white font-bold text-sm">Seguridad Multi-inquilino</h4>
-                  <p className="text-slate-300 text-xs mt-1">
-                    Aislamiento total de datos en esquemas dedicados de base de datos.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-3 pt-10">
-            <div className="flex items-center gap-2 text-[10px] font-mono tracking-[2px] uppercase text-white/50">
-              <span className="w-8 h-px bg-white/30" />
-              Actividad del sistema
-            </div>
-            <LiveFeed />
-            <div className="flex items-center justify-between text-slate-400 text-[10px] font-black uppercase tracking-widest pt-4 border-t border-white/10">
-              <span>v0.1.0-alpha</span>
-              <div className="flex gap-4">
-                <span className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer">
-                  <Globe size={10} /> ES
-                </span>
-                <a
-                  href="https://docs.keirost.es"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white transition-colors cursor-pointer"
-                >
-                  Documentación
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION DERECHA: Login Form */}
-      <div className="flex-1 flex flex-col items-center justify-center md:justify-center px-4 py-8 md:p-8 relative z-10 min-h-screen md:min-h-0">
-        <div className="w-full max-w-md space-y-6 md:space-y-8 animate-in fade-in zoom-in-95 duration-500 bg-white/95 dark:bg-[#1A2535]/90 backdrop-blur-md border border-white/40 dark:border-white/10 rounded-[4px] p-6 md:p-8 shadow-2xl my-auto">
-          <div className="lg:hidden flex flex-col items-center mb-8">
-            <KeirostLogo size={56} variant="dark" className="mb-4" />
-            <h1
-              className="text-2xl font-extrabold text-fg-default tracking-tight"
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              Keirost <span className="text-teal-600">ERP</span>
-            </h1>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-3xl font-black text-fg-default tracking-tight">Iniciar Sesión</h3>
-            <p className="text-fg-muted font-medium">
-              Introduce tus credenciales para acceder al ERP.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="p-4 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/30 rounded-[4px] text-rose-600 dark:text-rose-300 text-sm font-bold flex items-center gap-3 animate-in shake duration-300">
-                <ShieldCheck size={18} />
+              <Alert tone="danger" role="alert">
                 {error}
-              </div>
+              </Alert>
             )}
 
-            <div className={`space-y-5 ${twoFactorRequired ? 'hidden' : ''}`}>
-              {/* Input Email / Username — primero */}
-              <div className="space-y-1.5 focus-within:translate-y-[-2px] transition-transform">
-                <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
-                  Usuario / Email
-                </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] dark:group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
-                    {loginAvatarUrl ? (
-                      <img
-                        src={loginAvatarUrl}
-                        alt=""
-                        className="w-5 h-5 rounded-full object-cover"
-                      />
-                    ) : (
-                      <Mail size={18} />
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onBlur={(e) => fetchTenantsForUser(e.target.value)}
-                    placeholder="admin o usuario@empresa.com"
-                    className="w-full bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
-                  />
-                </div>
+            {twoFactorRequired ? (
+              <div className="space-y-4">
+                <Input
+                  label="Código de verificación"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value)}
+                  placeholder="123456"
+                  prefix={<ShieldCheck size={16} />}
+                  className="tracking-widest"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 -ml-2"
+                  onClick={() => {
+                    setTwoFactorRequired(false);
+                    setTotpCode('');
+                    setError(null);
+                  }}
+                >
+                  <ArrowLeft size={14} /> Volver
+                </Button>
               </div>
+            ) : (
+              <div className="space-y-4">
+                <Input
+                  label="Usuario o email"
+                  required
+                  autoComplete="username"
+                  autoFocus
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={(e) => fetchTenantsForUser(e.target.value)}
+                  placeholder="admin o tu@empresa.com"
+                  prefix={
+                    loginAvatarUrl ? (
+                      <Avatar src={loginAvatarUrl} name={email} size="xs" />
+                    ) : (
+                      <Mail size={16} />
+                    )
+                  }
+                />
 
-              {/* Selector de Empresa — aparece después de introducir el usuario */}
-              {tenants.length > 1 && (
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
-                    Empresa
-                  </label>
-                  <div ref={tenantWrapperRef} className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setTenantOpen((o) => !o)}
-                      aria-haspopup="listbox"
-                      aria-expanded={tenantOpen}
-                      className="w-full flex items-center bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-10 text-left text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all hover:border-[#94A3B8]"
-                    >
-                      <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle">
-                        <Building className="w-4 h-4" />
-                      </div>
-                      <span
-                        className={selectedTenant ? 'text-fg-default truncate' : 'text-fg-subtle'}
-                      >
-                        {selectedTenant
-                          ? tenants.find((t) => t.id === selectedTenant)?.name
-                          : 'Seleccionar empresa...'}
-                      </span>
-                      <div className="absolute inset-y-0 right-4 flex items-center text-fg-subtle">
-                        <ChevronDown
-                          size={18}
-                          className={`transition-transform ${tenantOpen ? 'rotate-180' : ''}`}
-                        />
-                      </div>
-                    </button>
-
-                    {tenantOpen && (
-                      <div
-                        role="listbox"
-                        className="absolute left-0 right-0 top-full mt-2 bg-white dark:bg-[#1A2535] border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150"
-                      >
-                        <ul className="max-h-64 overflow-auto py-1">
-                          {tenants.map((t) => {
-                            const isActive = t.id === selectedTenant;
-                            return (
-                              <li key={t.id}>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedTenant(t.id);
-                                    setTenantOpen(false);
-                                  }}
-                                  className={`w-full flex items-center gap-3 px-4 py-3 text-left text-sm font-medium transition-colors ${
-                                    isActive
-                                      ? 'bg-[#0D9488]/10 text-[#0D9488]'
-                                      : 'text-fg-body hover:bg-bg-hover'
-                                  }`}
-                                >
-                                  <Building
-                                    size={14}
-                                    className={isActive ? 'text-[#0D9488]' : 'text-fg-subtle'}
-                                  />
-                                  <span className="flex-1 truncate">{t.name}</span>
-                                  {isActive && <Check size={14} className="text-[#0D9488]" />}
-                                </button>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      </div>
-                    )}
+                {tenants.length > 1 && (
+                  <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                    <Select
+                      label="Empresa"
+                      required
+                      value={selectedTenant}
+                      onChange={setSelectedTenant}
+                      placeholder="Elige una empresa"
+                      options={tenants.map((t) => ({ value: t.id, label: t.name }))}
+                    />
                   </div>
-                </div>
-              )}
-              {tenants.length === 1 && (
-                <div className="flex items-center gap-2 px-4 py-3 bg-[#0D9488]/10 border border-[#0D9488]/30 rounded-[4px] animate-in fade-in duration-300">
-                  <Building size={14} className="text-[#0D9488] shrink-0" />
-                  <span className="text-sm font-bold text-[#0D9488]">{tenants[0].name}</span>
-                </div>
-              )}
+                )}
+                {tenantName && (
+                  <Badge variant="neutral" className="gap-1.5">
+                    <Building size={12} /> {tenantName}
+                  </Badge>
+                )}
 
-              {/* Input Password */}
-              <div className="space-y-1.5 focus-within:translate-y-[-2px] transition-transform">
-                <div className="flex justify-between items-center ml-1">
-                  <label className="text-xs font-black text-fg-muted uppercase tracking-widest">
-                    Contraseña
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/forgot-password')}
-                    className="text-[11px] font-bold text-[#0D9488] hover:text-[#0A6E63] hover:underline transition"
-                  >
-                    ¿Olvidó su contraseña?
-                  </button>
-                </div>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] dark:group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
-                    <Lock size={18} />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
+                <div className="space-y-1.5">
+                  <PasswordInput
+                    label="Contraseña"
                     required
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-12 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-4 flex items-center text-fg-subtle hover:text-[#0D9488] dark:hover:text-[#0D9488] transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Paso 2FA — se muestra cuando la contraseña es correcta y el usuario tiene 2FA */}
-            {twoFactorRequired && (
-              <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
-                  Código de verificación
-                </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
-                    <ShieldCheck size={18} />
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      onClick={() => navigate('/forgot-password')}
+                    >
+                      ¿Has olvidado tu contraseña?
+                    </Button>
                   </div>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    autoFocus
-                    value={totpCode}
-                    onChange={(e) => setTotpCode(e.target.value)}
-                    placeholder="123456 o código de respaldo"
-                    className="w-full bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium tracking-widest"
-                  />
                 </div>
-                <p className="text-[11px] text-fg-subtle ml-1 pt-1">
-                  Introduce el código de tu app de autenticación.
-                </p>
               </div>
             )}
 
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-[#0D9488] hover:bg-[#0A6E63] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-[4px] active:scale-[0.98] transition-all flex items-center justify-center gap-2 group tracking-tight shadow-lg shadow-[#0D9488]/20"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="animate-spin" size={20} />
-                ) : (
-                  <>
-                    {twoFactorRequired ? 'Verificar código' : 'Entrar al Sistema'}
-                    <ArrowRight
-                      size={18}
-                      className="group-hover:translate-x-1 transition-transform"
-                    />
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="text-center pt-4">
-              <p className="text-fg-muted text-xs font-bold">
-                ¿Dudas con tu acceso?{' '}
-                <button
-                  type="button"
-                  className="text-[#0D9488] hover:text-[#0A6E63] hover:underline"
-                >
-                  Contactar soporte
-                </button>
-              </p>
-            </div>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full gap-2"
+              isLoading={isSubmitting}
+              disabled={isSubmitting}
+            >
+              {twoFactorRequired ? 'Verificar' : 'Entrar'}
+              {!isSubmitting && <ArrowRight size={16} />}
+            </Button>
           </form>
-
-          {/* Trusted Badges */}
-          <div className="pt-12 flex items-center justify-center gap-8 opacity-40 grayscale hover:grayscale-0 transition-all">
-            <div className="flex items-center gap-2 text-[10px] font-black text-fg-default tracking-tighter">
-              <CheckCircle2 size={16} />
-              <span>SECURED DB</span>
-            </div>
-            <div className="flex items-center gap-2 text-[10px] font-black text-fg-default tracking-tighter">
-              <Zap size={16} />
-              <span>TURBO CORE</span>
-            </div>
-          </div>
         </div>
 
-        <p className="absolute bottom-8 text-fg-muted text-[10px] font-black uppercase tracking-[0.2em] pointer-events-none">
-          Open Source ERP Platform &bull; 2026
-        </p>
-      </div>
+        <footer className="flex items-center justify-between gap-4 px-6 pb-6 sm:px-10 sm:pb-8 text-xs text-fg-subtle">
+          <span>ERP de código abierto</span>
+          <a
+            href="https://docs.keirost.es"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-accent transition-colors"
+          >
+            Documentación
+          </a>
+        </footer>
+      </main>
+
+      {/* ── Panel de marca (solo pantallas anchas) ── */}
+      <aside
+        className="hidden lg:flex relative flex-1 overflow-hidden bg-primary text-primary-fg"
+        aria-hidden="true"
+      >
+        <div className="absolute inset-0 opacity-60">
+          <IsoField />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/40 to-transparent" />
+        <div className="relative mt-auto p-12 xl:p-16 max-w-xl space-y-4">
+          <h2 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight">
+            Compras, ventas, stock y personas, en un solo sitio.
+          </h2>
+          <p className="text-base opacity-75 leading-relaxed">
+            Cada empresa en su propio espacio, con sus datos aislados y su propia marca.
+          </p>
+        </div>
+      </aside>
     </div>
   );
 };
