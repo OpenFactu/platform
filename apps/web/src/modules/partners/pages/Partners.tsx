@@ -507,6 +507,7 @@ export const Partners: React.FC = () => {
           data={visiblePartners}
           responsive="cards"
           cardsBreakpoint={768}
+          className="max-md:p-3"
           isLoading={loading}
           rowActions={rowActions}
           onRowClick={(p: any) => openModal(p)}
