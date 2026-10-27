@@ -1,6 +1,7 @@
 import React from 'react';
-import { Button, Badge } from '@openfactu/ui';
-import { Wrench, Loader2, ShieldQuestion, Check, X, AlertTriangle } from 'lucide-react';
+import { Badge } from '@openfactu/ui';
+import { AIAttachments, AIToolCall } from '@openfactu/ui/ai';
+import { Wrench, Loader2, ShieldQuestion, Check, AlertTriangle } from 'lucide-react';
 import { Markdown } from '@/modules/ai/components/Markdown';
 import { ToolResultView } from '@/modules/ai/components/ToolResultView';
 import { ComponentRenderer } from './ComponentRenderer';
@@ -10,7 +11,6 @@ import { AttachedDocumentChip } from './AttachedDocumentChip';
 import { splitAttachedDocuments } from '../domain/splitAttachedDocuments';
 import { ACTION_LABELS, TOOL_LABELS } from '../domain/constants';
 import { ReasoningText } from './ReasoningText';
-import { AttachmentThumb } from './AttachmentThumb';
 import type { AddToolApprovalResponse, ChatMessage, ChatMessagePart } from '../domain/types';
 
 export const isActionPart = (part: ChatMessagePart): boolean =>
@@ -93,9 +93,17 @@ export function renderMessagePart(
 
   if (part.type === 'file') {
     return (
-      <div key={i} className="pt-1">
-        <AttachmentThumb file={part} />
-      </div>
+      <AIAttachments
+        key={i}
+        attachments={[
+          {
+            id: `${i}-${part.url}`,
+            name: part.filename || 'archivo adjunto',
+            mediaType: part.mediaType || 'application/octet-stream',
+            url: part.url,
+          },
+        ]}
+      />
     );
   }
 
@@ -112,38 +120,22 @@ export function renderMessagePart(
     if (p.state === 'approval-requested' && p.approval?.id) {
       const approvalId = p.approval.id;
       return (
-        <div
+        <AIToolCall
           key={i}
-          className="border-2 border-amber-300 dark:border-amber-600 rounded-md p-3 space-y-2 bg-amber-50/60 dark:bg-amber-900/20"
-        >
-          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-xs font-bold">
-            <ShieldQuestion size={14} />
-            Confirmación requerida: {ACTION_LABELS[toolName] || toolName}
-          </div>
-          <pre className="text-[11px] text-fg-body whitespace-pre-wrap break-all max-h-48 overflow-y-auto custom-scrollbar bg-bg-card rounded p-2">
-            {JSON.stringify(p.input, null, 2)}
-          </pre>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => void addToolApprovalResponse({ id: approvalId, approved: true })}
-            >
-              <span className="inline-flex items-center gap-2">
-                <Check size={14} /> Confirmar
-              </span>
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => void addToolApprovalResponse({ id: approvalId, approved: false })}
-            >
-              <span className="inline-flex items-center gap-2">
-                <X size={14} /> Rechazar
-              </span>
-            </Button>
-          </div>
-          <p className="text-[10px] text-amber-700/70 dark:text-amber-300/60">
-            Nada se ejecuta hasta que confirmes.
-          </p>
-        </div>
+          tool={{
+            id: approvalId,
+            name: `Confirmación requerida: ${ACTION_LABELS[toolName] || toolName}`,
+            description: 'Nada se ejecuta hasta que confirmes.',
+            status: 'approval-required',
+            input: p.input,
+          }}
+          onApprove={async (id) => {
+            await addToolApprovalResponse({ id, approved: true });
+          }}
+          onReject={async (id) => {
+            await addToolApprovalResponse({ id, approved: false });
+          }}
+        />
       );
     }
 
