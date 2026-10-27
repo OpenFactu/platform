@@ -2,7 +2,7 @@
  * Inicio de sesión.
  *
  * Dos zonas: el formulario (siempre) y, en pantallas anchas, un panel de marca
- * con el campo isométrico animado. Todo con controles de @openfactu/ui y
+ * con la aurora animada de `AuroraBackdrop`. Todo con controles de @openfactu/ui y
  * tokens del tema, para que respete el branding guardado de la última empresa
  * (ThemeContext lo aplica antes de iniciar sesión desde la caché local).
  *
@@ -17,7 +17,7 @@ import { Alert, Avatar, Badge, Button, Input, PasswordInput, Select } from '@ope
 import { ArrowLeft, ArrowRight, Building, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
-import { IsoField } from '../components/login/IsoField';
+import { AuroraBackdrop } from '../components/login/AuroraBackdrop';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -266,15 +266,12 @@ export const Login: React.FC = () => {
         className="hidden lg:flex relative flex-1 overflow-hidden bg-primary text-primary-fg"
         aria-hidden="true"
       >
-        <div className="absolute inset-0 opacity-60">
-          <IsoField />
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/40 to-transparent" />
+        <AuroraBackdrop />
         <div className="relative mt-auto p-12 xl:p-16 max-w-xl space-y-4">
-          <h2 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight">
+          <h2 className="font-display text-4xl xl:text-5xl font-bold leading-[1.1] tracking-tight !text-primary-fg">
             Compras, ventas, stock y personas, en un solo sitio.
           </h2>
-          <p className="text-base opacity-75 leading-relaxed">
+          <p className="text-base text-primary-fg/75 leading-relaxed">
             Cada empresa en su propio espacio, con sus datos aislados y su propia marca.
           </p>
         </div>

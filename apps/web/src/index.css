@@ -354,3 +354,24 @@ html.dark *::-webkit-scrollbar-thumb:hover {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Aurora del fondo de acceso (AuroraBackdrop): deriva lenta, solo transform. */
+@keyframes k-aurora-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(8%, 6%, 0) scale(1.12); }
+}
+@keyframes k-aurora-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-10%, 4%, 0) scale(0.92); }
+}
+@keyframes k-aurora-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
+  50% { transform: translate3d(6%, -8%, 0) scale(1.1); }
+}
+.k-aurora { will-change: transform; }
+.k-aurora-1 { animation: k-aurora-a 22s ease-in-out infinite; }
+.k-aurora-2 { animation: k-aurora-b 28s ease-in-out infinite; }
+.k-aurora-3 { animation: k-aurora-c 34s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .k-aurora { animation: none; }
+}
