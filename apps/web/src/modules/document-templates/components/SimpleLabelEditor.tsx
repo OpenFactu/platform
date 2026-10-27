@@ -91,7 +91,7 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
           />
         </Field>
         {settings.pageSize === 'Custom' && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Field label="Ancho (mm)">
               <input
                 type="number"

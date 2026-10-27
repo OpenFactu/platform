@@ -859,7 +859,7 @@ export const Partners: React.FC = () => {
                             />
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                             <div>
                               <label className={labelCls}>País</label>
                               <SearchableSelect
@@ -896,7 +896,7 @@ export const Partners: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <MunicipalitySearch
                                 subRegionId={String(addr.subRegionId || '')}

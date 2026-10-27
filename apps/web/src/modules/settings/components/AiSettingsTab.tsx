@@ -510,7 +510,7 @@ export const AiSettingsTab: React.FC = () => {
             <span>Activar el asistente de IA en este tenant</span>
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Proveedor">
               <SearchableSelect
                 options={providers.map((p) => ({ value: p.id, label: p.label }))}
@@ -545,7 +545,7 @@ export const AiSettingsTab: React.FC = () => {
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {activeProvider?.needsApiKey !== false && (
               <Field label="API key" hint={cfg.apiKeySet ? 'guardada' : undefined}>
                 {/* Sin showStrength ni generator: la key la emite el proveedor. */}

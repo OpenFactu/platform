@@ -163,7 +163,7 @@ export const TwoFactorSettings: React.FC = () => {
               Guarda estos <strong>códigos de respaldo</strong> en un lugar seguro. Cada uno sirve
               una sola vez para iniciar sesión si pierdes acceso a tu app. No volverán a mostrarse.
             </p>
-            <div className="grid grid-cols-2 gap-2 p-4 bg-bg-muted border border-border-default rounded-lg font-mono text-sm text-fg-default">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-4 bg-bg-muted border border-border-default rounded-lg font-mono text-sm text-fg-default">
               {backupCodes.map((c) => (
                 <span key={c} className="tracking-widest">
                   {c}

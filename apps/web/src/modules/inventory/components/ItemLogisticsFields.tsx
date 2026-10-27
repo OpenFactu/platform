@@ -62,7 +62,7 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
             <p className="text-[10px] font-bold uppercase tracking-wider text-fg-muted">
               Dimensiones de la caja (opcional)
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {BOX_MM_FIELDS.map(([key, label]) => (
                 <NumberInput
                   key={key}
@@ -74,7 +74,7 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
                 />
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {BOX_KG_FIELDS.map(([key, label]) => (
                 <NumberInput
                   key={key}

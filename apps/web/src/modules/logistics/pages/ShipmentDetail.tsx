@@ -546,7 +546,7 @@ export const ShipmentDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-subtle">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border-subtle">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
                   <Warehouse className="inline mr-1" size={11} /> Punto de recepción

@@ -236,7 +236,7 @@ export const RoutesTab: React.FC = () => {
         maxWidth={editing ? 'lg' : '5xl'}
       >
         <div className="space-y-3 pt-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Nombre"
               requiredMark
@@ -287,7 +287,7 @@ export const RoutesTab: React.FC = () => {
               no podrán loguearse en la app del repartidor.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               {/* Vehículos del servidor → SearchableSelect (sin prop `label`). */}
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">

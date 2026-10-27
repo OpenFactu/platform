@@ -1106,7 +1106,7 @@ export const StockMovements: React.FC = () => {
                               placeholder="— artículo —"
                             />
                           </div>
-                          <div className="col-span-4 md:col-span-2">
+                          <div className="sm:col-span-4 md:col-span-2">
                             <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
                               Cantidad
                             </label>
@@ -1122,7 +1122,7 @@ export const StockMovements: React.FC = () => {
                               }
                             />
                           </div>
-                          <div className="col-span-4 md:col-span-2">
+                          <div className="sm:col-span-4 md:col-span-2">
                             <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
                               UoM
                             </label>
@@ -1134,7 +1134,7 @@ export const StockMovements: React.FC = () => {
                             </div>
                           </div>
                           {batchRequired && (
-                            <div className="col-span-4 md:col-span-3">
+                            <div className="sm:col-span-4 md:col-span-3">
                               <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
                                 {batchLabel}
                                 <span className="ml-1 text-rose-500">*</span>

@@ -153,7 +153,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* ── Columna izquierda: formulario ── */}
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
                 Tipo de documento

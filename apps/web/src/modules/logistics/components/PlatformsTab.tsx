@@ -201,7 +201,7 @@ export const PlatformsTab: React.FC = () => {
             placeholder="Av. de Madrid s/n, 28053 Madrid"
             helperText="Se geolocaliza automáticamente al guardar."
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* `lat`/`lng` son doublePrecision en el servidor, así que llegan ya
                 numéricas: NumberInput trabaja con ellas sin conversión, y el
                 campo vacío se envía como null (emptyValue por defecto). */}
@@ -230,7 +230,7 @@ export const PlatformsTab: React.FC = () => {
             onChange={(e) => setForm({ ...form, openingHours: e.target.value })}
             placeholder="L-V 8-18, S 8-14"
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Contacto"
               value={form.contactName || ''}

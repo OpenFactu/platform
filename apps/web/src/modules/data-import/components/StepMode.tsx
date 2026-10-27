@@ -84,7 +84,7 @@ export const StepMode: React.FC<Props> = ({
           <h3 className="text-[11px] font-bold uppercase tracking-widest text-fg-subtle">
             Resumen
           </h3>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
             <dt className="text-fg-muted">Objeto</dt>
             <dd className="text-fg-default font-medium">{object.label}</dd>
             <dt className="text-fg-muted">Hoja</dt>

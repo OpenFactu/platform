@@ -210,7 +210,7 @@ export const ShiftTemplates: React.FC = () => {
                 )}
               </div>
               {(editing.secondStartTime || editing.secondEndTime) && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
                     label="Inicio 2º tramo"
                     type="time"

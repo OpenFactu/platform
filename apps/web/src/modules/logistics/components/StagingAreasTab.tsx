@@ -626,7 +626,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
               Si lo dejas vacío, se generará <b>Acopio &lt;cliente&gt;</b> automáticamente.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               {/* Almacenes y plataformas vienen del servidor →
                   SearchableSelect (sin prop `label`). */}
@@ -682,7 +682,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             placeholder="Calle Ejemplo 1, 28013 Madrid"
             helperText="Se geolocaliza automáticamente al guardar para mostrarla en el mapa de repartos."
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* `lat`/`lng` son doublePrecision en el servidor: llegan y se
                 envían numéricas, y el campo vacío queda en null. */}
             <NumberInput

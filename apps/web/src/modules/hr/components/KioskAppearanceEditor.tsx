@@ -200,7 +200,7 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
                   <p className="text-sm text-slate-300">
                     Identifícate para registrar tu entrada, salida o pausa.
                   </p>
-                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-center text-xs">
                     <span className="rounded border border-slate-600 bg-slate-800 p-3">
                       Usar mi QR
                     </span>

@@ -390,7 +390,7 @@ export const DashboardWidgets: React.FC = () => {
               </div>
             </div>
           ) : null}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* 4 opciones fijas: Select, no SearchableSelect. */}
             <Select
               label="Tamaño"

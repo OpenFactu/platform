@@ -419,7 +419,7 @@ const POForm: React.FC<{
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 md:col-span-2 space-y-6 border-t-4 border-t-blue-500">
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Proveedor / Acreedor *
@@ -444,7 +444,7 @@ const POForm: React.FC<{
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Dirección Facturación
@@ -468,7 +468,7 @@ const POForm: React.FC<{
               />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-6 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-fg-subtle uppercase">
                 Fec. Contabilización
@@ -696,7 +696,7 @@ const PODetail: React.FC<{
             )}
           </div>
           {(order.billToAddress || order.shipToAddress) && (
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-subtle">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border-subtle">
               <div>
                 <span className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
                   Facturar a
