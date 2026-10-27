@@ -5,8 +5,8 @@
  * turno en curso a la vez) y `useKeiroChat` + `KeiroChatBody`, que pintan la
  * conversación y el compositor con @openfactu/ui/ai igual que la página.
  *
- * El panel es no modal a propósito (no un `Drawer`): el asistente se consulta
- * mientras se sigue trabajando en la pantalla de al lado.
+ * El panel es un `Drawer` de @openfactu/ui (modal: tapa la pantalla con un velo
+ * y se cierra con Escape o pulsando fuera).
  *
  * Se oculta a sí mismo cuando la pestaña activa YA es /ai/chat — mostrar el
  * lanzador ahí sería redundante con la página que ya está abierta.
@@ -21,8 +21,8 @@
  * cercana y esa elección se recuerda entre sesiones (localStorage).
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Button } from '@openfactu/ui';
-import { Bot, Maximize2, Sparkles, X } from 'lucide-react';
+import { Button, Drawer } from '@openfactu/ui';
+import { Bot, Maximize2, Sparkles } from 'lucide-react';
 import { useTabs } from '@/context/TabsContext';
 import { ASSISTANT_NAME } from '../domain/constants';
 import { useKeiroChat } from '../hooks/useKeiroChat';
@@ -153,48 +153,42 @@ export const ChatLauncherPanel: React.FC = () => {
         </button>
       )}
 
-      {open && (
+      <Drawer
+        open={open}
+        onClose={() => setOpen(false)}
+        side="right"
+        size="md"
+        ariaLabel={ASSISTANT_NAME}
+        title={
+          <span className="inline-flex items-center gap-2">
+            <Bot size={18} className="text-accent" />
+            {ASSISTANT_NAME}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                openTab('/ai/chat');
+                setOpen(false);
+              }}
+              title="Abrir a pantalla completa"
+              className="text-fg-subtle hover:text-accent"
+            >
+              <Maximize2 size={16} />
+            </Button>
+          </span>
+        }
+      >
+        {/* El cuerpo del Drawer trae padding y scroll propios; el chat necesita
+            todo el alto y scrollea por dentro, así que se compensa el padding. */}
         <div
-          className="fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] h-full flex flex-col bg-bg-card sm:border-l border-border-default shadow-k-overlay animate-in fade-in slide-in-from-right duration-300 overflow-hidden"
+          className="ai-workspace-chat relative -m-4 h-[calc(100%+2rem)]"
           {...drop.dropZoneProps}
         >
           <DropOverlay visible={drop.dragOver} acceptImages={chat.supportsImages} />
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
-            <div className="flex items-center gap-2 font-bold">
-              <Bot size={18} className="text-accent" />
-              <span>{ASSISTANT_NAME}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  openTab('/ai/chat');
-                  setOpen(false);
-                }}
-                title="Abrir a pantalla completa"
-                className="text-fg-subtle hover:text-accent"
-              >
-                <Maximize2 size={16} />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setOpen(false)}
-                title="Cerrar"
-                className="text-fg-subtle hover:text-danger-fg"
-              >
-                <X size={16} />
-              </Button>
-            </div>
-          </div>
-          <div className="ai-workspace-chat">
-            <KeiroChatBody chat={chat} />
-          </div>
+          <KeiroChatBody chat={chat} />
         </div>
-      )}
+      </Drawer>
     </>
   );
 };
