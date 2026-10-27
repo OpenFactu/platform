@@ -541,6 +541,7 @@ export const Partners: React.FC = () => {
             value={activeTab}
             onChange={(key) => setActiveTab(key as typeof activeTab)}
             scrollable
+            className="scrollbar-hide"
           />
 
           <div className="min-h-[300px]">
