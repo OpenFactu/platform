@@ -34,6 +34,10 @@ interface TabsContextValue extends TabsState {
 const TabsContext: React.Context<TabsContextValue | null> =
   import.meta.hot?.data.tabsContext ?? createContext<TabsContextValue | null>(null);
 
+/** Debajo del breakpoint `md`, donde la barra de pestañas no se muestra. */
+const MOBILE_QUERY = '(max-width: 767px)';
+const MOBILE_MAX_TABS = 5;
+
 const genId = () => `tab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 function pathnameOf(url: string): string {
@@ -177,7 +181,17 @@ export const TabsProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const id = genId();
       resultId = id;
       const newTab: Tab = { id, path, title, iconName };
-      return { tabs: [...prev.tabs, newTab], activeTabId: id };
+      let tabs = [...prev.tabs, newTab];
+      // En móvil la barra de pestañas está oculta y no hay forma de cerrarlas:
+      // se acota el número y se descartan las más antiguas que no están activas.
+      if (window.matchMedia(MOBILE_QUERY).matches) {
+        while (tabs.length > MOBILE_MAX_TABS) {
+          const oldest = tabs.findIndex((t) => t.id !== id && t.id !== prev.activeTabId);
+          if (oldest === -1) break;
+          tabs = tabs.filter((_, i) => i !== oldest);
+        }
+      }
+      return { tabs, activeTabId: id };
     });
     return resultId;
   }, []);
