@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PageHeader } from '@openfactu/ui';
+import { PageHeader, Alert } from '@openfactu/ui';
 import { Usb } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { kiosksApi } from '@/modules/hr/api';
@@ -44,9 +44,9 @@ export function PhysicalDevices() {
         size="lg"
       />
       {error && (
-        <p role="alert" className="text-danger">
+        <Alert tone="danger" role="alert">
           {error}
-        </p>
+        </Alert>
       )}
       {loading ? (
         <p role="status">Cargando dispositivos…</p>

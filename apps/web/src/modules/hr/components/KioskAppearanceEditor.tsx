@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Card, Input } from '@openfactu/ui';
+import { Button, Card, Input, Alert } from '@openfactu/ui';
 import { CreditCard, Image, Palette } from 'lucide-react';
 import { kiosksApi } from '../api/kiosksApi';
 import {
@@ -219,9 +219,9 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
         </form>
       ) : null}
       {error && (
-        <p role="alert" className="mt-4 text-sm text-danger">
+        <Alert tone="danger" role="alert" className="mt-4">
           {error}
-        </p>
+        </Alert>
       )}
       {saved && (
         <p role="status" className="mt-4 text-sm text-success">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Input } from '@openfactu/ui';
+import { Button, Input, Alert } from '@openfactu/ui';
 import { CheckCircle2, Eye, EyeOff, Usb, Wifi } from 'lucide-react';
 import { timeclockManagementApi as api, type Reader } from '../api/timeclockManagementApi';
 import {
@@ -206,10 +206,10 @@ export function ReaderUsbSetup({
         </Button>
       </div>
       {!supported ? (
-        <p role="alert" className="text-sm">
+        <Alert tone="warning" role="alert">
           Abre Keirost en Chrome o Edge de escritorio mediante HTTPS (o localhost en desarrollo)
           para configurar el lector por USB.
-        </p>
+        </Alert>
       ) : !connected ? (
         <div className="space-y-3">
           <p className="text-sm">
@@ -357,9 +357,9 @@ export function ReaderUsbSetup({
         </p>
       )}
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <Alert tone="danger" role="alert">
           {error}
-        </p>
+        </Alert>
       )}
     </section>
   );

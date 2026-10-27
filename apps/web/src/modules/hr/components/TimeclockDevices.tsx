@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Input, Select, usePopup } from '@openfactu/ui';
+import { Button, Card, Input, Select, usePopup, Alert } from '@openfactu/ui';
 import { timeclockManagementApi as api, type Reader } from '../api/timeclockManagementApi';
 import type { Kiosk } from '../domain/kiosk';
 import { ReaderUsbSetup } from './ReaderUsbSetup';
@@ -91,9 +91,9 @@ export function TimeclockDevices({
         )}
       </div>
       {error && (
-        <p role="alert" className="text-danger">
+        <Alert tone="danger" role="alert">
           {error}
-        </p>
+        </Alert>
       )}
       {provisioning && canWrite && (
         <ReaderUsbSetup
