@@ -6,6 +6,8 @@ export interface BrandingConfig {
   /** Id del catálogo de fuentes de la web (FONT_OPTIONS); 'sans' es el default. */
   fontFamily: string;
   themeMode: 'light' | 'dark';
+  /** Id de un preset de @openfactu/ui (vacío = colores a medida). */
+  themePreset: string;
 }
 
 export interface FormatConfig {
@@ -73,6 +75,7 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   appName: 'Keirost',
   fontFamily: 'sans',
   themeMode: 'light',
+  themePreset: '',
 };
 
 export const FORMAT_DEFAULTS: FormatConfig = {

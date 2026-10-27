@@ -1,4 +1,4 @@
-import { resolveTheme } from '@openfactu/ui';
+import { applyTheme, getThemePreset, type ThemeInput } from '@openfactu/ui';
 import { coreApi } from '@/shared/api';
 import React, {
   createContext,
@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
 } from 'react';
 import { useAuth } from './AuthContext';
@@ -18,6 +19,8 @@ export interface BrandingConfig {
   /** Id de una entrada de FONT_OPTIONS; valores desconocidos caen a 'sans'. */
   fontFamily: string;
   themeMode: 'light' | 'dark';
+  /** Id de un preset de @openfactu/ui (vacío = colores a medida). */
+  themePreset: string;
 }
 
 export interface FormatConfig {
@@ -74,6 +77,7 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   appName: 'Keirost',
   fontFamily: 'sans',
   themeMode: 'light',
+  themePreset: '',
 };
 
 export const FORMAT_DEFAULTS: FormatConfig = {
@@ -110,101 +114,18 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   assistantEnabled: true,
 };
 
-export interface ThemePreset {
-  id: string;
-  label: string;
-  description: string;
-  colorPrimary: string;
-  colorAccent: string;
-  themeMode: 'light' | 'dark';
+/** Colores y modo con los que se muestra un preset en los selectores. */
+export function presetSwatch(preset: { theme: ThemeInput }) {
+  return {
+    colorPrimary: preset.theme.colors?.primary ?? BRANDING_DEFAULTS.colorPrimary,
+    colorAccent: preset.theme.colors?.accent ?? BRANDING_DEFAULTS.colorAccent,
+    themeMode: (preset.theme.mode ?? 'light') as 'light' | 'dark',
+  };
 }
 
-// Presets de tema inspirados en las variantes del logo del brand guide v1.0.
-// "custom" se asigna automáticamente cuando el usuario edita un color a mano.
-export const THEME_PRESETS: ThemePreset[] = [
-  {
-    id: 'keirost-classic',
-    label: 'Keirost Clásico',
-    description: 'Ink + Teal — el predeterminado del brand guide.',
-    colorPrimary: '#0A1628',
-    colorAccent: '#0D9488',
-    themeMode: 'light',
-  },
-  {
-    id: 'keirost-teal',
-    label: 'Teal Fuerte',
-    description: 'Teal protagonista, ink secundario. Para marcas activas.',
-    colorPrimary: '#0D9488',
-    colorAccent: '#0A6E63',
-    themeMode: 'light',
-  },
-  {
-    id: 'keirost-slate',
-    label: 'Slate Monocromo',
-    description: 'Gris neutro, sin acento de marca. Look discreto.',
-    colorPrimary: '#1E293B',
-    colorAccent: '#64748B',
-    themeMode: 'light',
-  },
-  {
-    id: 'keirost-midnight',
-    label: 'Midnight',
-    description: 'Base oscura con acento teal. Ideal para salas de control.',
-    colorPrimary: '#0A1628',
-    colorAccent: '#0D9488',
-    themeMode: 'dark',
-  },
-  {
-    id: 'keirost-carbon',
-    label: 'Carbon',
-    description: 'Grafito profundo con acento ámbar. Sobrio, industrial.',
-    colorPrimary: '#18181B',
-    colorAccent: '#F59E0B',
-    themeMode: 'dark',
-  },
-  {
-    id: 'keirost-deep-ocean',
-    label: 'Deep Ocean',
-    description: 'Azul abisal con acento cyan. Fresco y tecnológico.',
-    colorPrimary: '#0C1E3A',
-    colorAccent: '#22D3EE',
-    themeMode: 'dark',
-  },
-  {
-    id: 'keirost-forest',
-    label: 'Forest',
-    description: 'Verde bosque con acento lima. Natural, calmado.',
-    colorPrimary: '#0F1F1A',
-    colorAccent: '#84CC16',
-    themeMode: 'dark',
-  },
-  {
-    id: 'keirost-plum',
-    label: 'Plum',
-    description: 'Ciruela oscuro con acento rosa. Elegante y contrastado.',
-    colorPrimary: '#1E102C',
-    colorAccent: '#EC4899',
-    themeMode: 'dark',
-  },
-  {
-    id: 'keirost-nebula',
-    label: 'Nebula',
-    description: 'Azul noche con acento violeta. Inmersivo, premium.',
-    colorPrimary: '#0F1430',
-    colorAccent: '#8B5CF6',
-    themeMode: 'dark',
-  },
-];
-
-/** Devuelve el id del preset que coincide con branding actual, o 'custom'. */
+/** Id del preset activo, o 'custom' si los colores se ajustaron a mano. */
 export function detectPreset(b: BrandingConfig): string {
-  const match = THEME_PRESETS.find(
-    (p) =>
-      p.colorPrimary.toLowerCase() === b.colorPrimary.toLowerCase() &&
-      p.colorAccent.toLowerCase() === b.colorAccent.toLowerCase() &&
-      p.themeMode === b.themeMode,
-  );
-  return match?.id ?? 'custom';
+  return b.themePreset && getThemePreset(b.themePreset) ? b.themePreset : 'custom';
 }
 
 interface ThemeContextType {
@@ -442,6 +363,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     reload();
   }, [reload]);
 
+  const themeAppliedOnce = useRef(false);
+
   // Aplicar branding a :root SÍNCRONAMENTE antes del paint para evitar flashes
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -496,42 +419,24 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // así que todo lo que usara --bg-muted, --bg-hover, --fg-body, --fg-subtle,
     // --border-subtle/-strong o la escala --k-teal-* se quedaba con el azul y el
     // verde de fábrica: en un preset morado o grafito se veía fuera de sitio.
-    const resolved = resolveTheme({
-      mode: branding.themeMode,
-      colors: { primary: branding.colorPrimary, accent: branding.colorAccent },
+    const preset = branding.themePreset ? getThemePreset(branding.themePreset) : undefined;
+    const themeInput: ThemeInput = preset
+      ? preset.theme
+      : {
+          mode: branding.themeMode,
+          colors: { primary: branding.colorPrimary, accent: branding.colorAccent },
+        };
+    const resolved = applyTheme(themeInput, undefined, {
+      // La fuente de la empresa la gestiona el bloque de arriba; el preset solo
+      // la cambia si trae la suya.
+      injectFontLink: !!preset?.theme.typography?.fontFamily,
+      transition: themeAppliedOnce.current,
     });
+    themeAppliedOnce.current = true;
     const c = resolved.colors;
-    const surfaceVars: Record<string, string> = {
-      '--bg-app': c.bgApp,
-      '--bg-card': c.bgCard,
-      '--bg-sidebar': c.bgSidebar,
-      '--bg-muted': c.bgMuted,
-      '--bg-hover': c.bgHover,
-      '--fg-default': c.fgDefault,
-      '--fg-body': c.fgBody,
-      '--fg-muted': c.fgMuted,
-      '--fg-subtle': c.fgSubtle,
-      '--border-default': c.borderDefault,
-      '--border-subtle': c.borderSubtle,
-      '--border-strong': c.borderStrong,
-      // La escala del acento: --k-accent-* es el nombre semántico y --k-teal-* el
-      // histórico. Los componentes usan ambos, así que se escriben los dos.
-      '--k-accent-50': c.accentScale[50],
-      '--k-accent-100': c.accentScale[100],
-      '--k-accent-500': c.accentScale[500],
-      '--k-accent-600': c.accentScale[600],
-      '--k-accent-900': c.accentScale[900],
-      '--k-teal-50': c.accentScale[50],
-      '--k-teal-100': c.accentScale[100],
-      '--k-teal-500': c.accentScale[500],
-      '--k-teal-600': c.accentScale[600],
-      '--k-teal-900': c.accentScale[900],
-    };
-    for (const [name, value] of Object.entries(surfaceVars)) {
-      root.style.setProperty(name, value);
-    }
+    root.classList.toggle('dark', resolved.mode === 'dark');
 
-    if (branding.themeMode === 'dark') {
+    if (resolved.mode === 'dark' && resolved.backdrop === 'none') {
       // Que <html> vea el fondo correcto antes del siguiente pintado, para no
       // enseñar el #0A1628 del anti-FOUC de index.css.
       root.style.background = c.bgApp;
@@ -571,13 +476,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const applyPreset = useCallback(
     async (presetId: string) => {
-      const preset = THEME_PRESETS.find((p) => p.id === presetId);
+      const preset = getThemePreset(presetId);
       if (!preset) return;
-      await update('branding', {
-        colorPrimary: preset.colorPrimary,
-        colorAccent: preset.colorAccent,
-        themeMode: preset.themeMode,
-      });
+      await update('branding', { ...presetSwatch(preset), themePreset: preset.id });
     },
     [update],
   );

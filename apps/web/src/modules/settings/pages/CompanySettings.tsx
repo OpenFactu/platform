@@ -12,6 +12,7 @@ import {
   Tabs,
   Loader,
   useToast,
+  useThemePresets,
 } from '@openfactu/ui';
 import {
   Building,
@@ -37,7 +38,7 @@ import { AiSettingsTab } from '../components/AiSettingsTab';
 import { useAuth } from '@/context/AuthContext';
 import {
   useTheme,
-  THEME_PRESETS,
+  presetSwatch,
   FONT_OPTIONS,
   fontOptionFor,
   googleFontsUrl,
@@ -121,10 +122,6 @@ const WAREHOUSE_LOCATION_OPTIONS = [
   { value: 'line', label: 'En cada línea' },
 ];
 
-/** Paletas de acceso rápido para los ColorInput: los colores de los presets de marca. */
-const PRESET_PRIMARY_COLORS = Array.from(new Set(THEME_PRESETS.map((p) => p.colorPrimary)));
-const PRESET_ACCENT_COLORS = Array.from(new Set(THEME_PRESETS.map((p) => p.colorAccent)));
-
 type TabId =
   | 'fiscal'
   | 'branding'
@@ -180,6 +177,13 @@ export const CompanySettings: React.FC = () => {
     activePresetId,
   } = useTheme();
   const toast = useToast();
+  const themePresets = useThemePresets();
+  const presetPrimaryColors = Array.from(
+    new Set(themePresets.map((p) => presetSwatch(p).colorPrimary)),
+  );
+  const presetAccentColors = Array.from(
+    new Set(themePresets.map((p) => presetSwatch(p).colorAccent)),
+  );
   // Soporta deep-link al tab vía `?tab=storage|data|...` para enlazar directamente
   // a una pestaña concreta de Empresa desde otras partes de la app.
   const initialTab: TabId = (() => {
@@ -538,7 +542,13 @@ export const CompanySettings: React.FC = () => {
                 )}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {THEME_PRESETS.map((preset) => {
+                {themePresets.map((p) => {
+                  const preset = {
+                    id: p.id,
+                    label: p.label,
+                    description: p.description,
+                    ...presetSwatch(p),
+                  };
                   const selected = activePresetId === preset.id;
                   const isDark = preset.themeMode === 'dark';
                   const logoVariant =
@@ -613,14 +623,18 @@ export const CompanySettings: React.FC = () => {
                 <ColorInput
                   label="Color primario"
                   value={brandingDraft.colorPrimary}
-                  onChange={(v) => setBrandingDraft({ ...brandingDraft, colorPrimary: v })}
-                  presets={PRESET_PRIMARY_COLORS}
+                  onChange={(v) =>
+                    setBrandingDraft({ ...brandingDraft, colorPrimary: v, themePreset: '' })
+                  }
+                  presets={presetPrimaryColors}
                 />
                 <ColorInput
                   label="Color acento"
                   value={brandingDraft.colorAccent}
-                  onChange={(v) => setBrandingDraft({ ...brandingDraft, colorAccent: v })}
-                  presets={PRESET_ACCENT_COLORS}
+                  onChange={(v) =>
+                    setBrandingDraft({ ...brandingDraft, colorAccent: v, themePreset: '' })
+                  }
+                  presets={presetAccentColors}
                 />
               </div>
             </div>
@@ -675,7 +689,9 @@ export const CompanySettings: React.FC = () => {
                   label="Modo"
                   options={THEME_MODE_OPTIONS}
                   value={brandingDraft.themeMode}
-                  onChange={(v) => setBrandingDraft({ ...brandingDraft, themeMode: v as any })}
+                  onChange={(v) =>
+                    setBrandingDraft({ ...brandingDraft, themeMode: v as any, themePreset: '' })
+                  }
                 />
               </div>
             </div>
