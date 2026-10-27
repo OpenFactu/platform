@@ -24,7 +24,6 @@ import {
   AIWorkspace,
   type AIAttachment,
   type AIDraft,
-  type AIModel,
   type AIRun,
 } from '@openfactu/ui/ai';
 import {
@@ -96,7 +95,6 @@ export const AiChat: React.FC = () => {
     contextWindow,
     availableModels,
     selectedModel,
-    setSelectedModel,
     conversationId,
     messageTimings,
     headers,
@@ -196,11 +194,6 @@ export const AiChat: React.FC = () => {
   };
 
   // ── Modelo y contexto ──
-  const models: AIModel[] = availableModels.options.map((id) => ({
-    id,
-    label: id,
-    capabilities: { images: supportsImages, audio: false },
-  }));
   const modelId = selectedModel || availableModels.current;
   const contextUsed =
     messages.reduce((sum, m) => sum + estimateTokens(m), 0) +
@@ -268,7 +261,7 @@ export const AiChat: React.FC = () => {
             conversationId: conversationId ?? undefined,
             messages: aiMessages,
             draft,
-            models,
+            models: [],
             modelId,
             run,
             artifacts: [],
@@ -288,7 +281,6 @@ export const AiChat: React.FC = () => {
             onSelectConversation: (id) => void loadConversation(id),
             onNewConversation: handleNewConversation,
             onDeleteConversation: (id) => void history.remove(id),
-            onSelectModel: setSelectedModel,
             onFiles: (files) => composer.addDropped(files),
             onApproveTool: async (id) => {
               await addToolApprovalResponse({ id, approved: true });
@@ -346,9 +338,6 @@ export const AiChat: React.FC = () => {
               onSubmit={(d) => composer.send(d.text)}
               run={run}
               onStop={() => void stop()}
-              models={models}
-              modelId={modelId}
-              onSelectModel={setSelectedModel}
               onFiles={(files) => composer.addDropped(files)}
               maxFiles={MAX_ATTACHMENTS + 3}
               maxSizeMb={15}
