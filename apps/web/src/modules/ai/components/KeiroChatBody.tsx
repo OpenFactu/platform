@@ -10,6 +10,7 @@ import { X } from 'lucide-react';
 import { MAX_ATTACHMENTS } from '../domain/constants';
 import { KEIRO_LABELS } from '../domain/keiroLabels';
 import type { KeiroChat } from '../hooks/useKeiroChat';
+import { AuroraBackdrop } from '@/components/login/AuroraBackdrop';
 import { PendingQuestionBar } from './PendingQuestionBar';
 import { SelectionToolbar } from './SelectionToolbar';
 
@@ -26,8 +27,17 @@ export const KeiroChatBody: React.FC<{
   const empty = chat.aiMessages.length === 0;
 
   return (
-    <>
+    // Contenedor posicionado para la aurora del estado vacío; mantiene la
+    // columna flexible que esperan la conversación y el compositor.
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      {empty && (
+        <AuroraBackdrop
+          variant="subtle"
+          className="pointer-events-none z-0 animate-in fade-in duration-700"
+        />
+      )}
       <AIConversation
+        className="relative z-10"
         messages={chat.aiMessages}
         conversationId={chat.conversationId ?? undefined}
         run={chat.run}
@@ -40,7 +50,7 @@ export const KeiroChatBody: React.FC<{
         suggestions={empty ? suggestions : undefined}
         onSelectPrompt={(text) => composer.send(text)}
       />
-      <div className="ai-workspace-composer">
+      <div className="ai-workspace-composer relative z-10">
         {pendingQuestion && (
           <PendingQuestionBar
             key={pendingQuestion.step?.current ?? pendingQuestion.question}
@@ -101,6 +111,6 @@ export const KeiroChatBody: React.FC<{
           }}
         />
       )}
-    </>
+    </div>
   );
 };
