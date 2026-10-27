@@ -3,7 +3,16 @@ import { KioskAppearanceEditor } from '../components/KioskAppearanceEditor';
 import { kiosksApi } from '../api';
 import type { Kiosk } from '../domain/kiosk';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Table, useToast, usePopup, PageHeader } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Input,
+  Table,
+  useToast,
+  usePopup,
+  PageHeader,
+  CopyButton,
+} from '@openfactu/ui';
 import type { TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
@@ -12,7 +21,6 @@ import {
   Plus,
   RefreshCw,
   Trash2,
-  Copy,
   Link as LinkIcon,
   ExternalLink,
   Palette,
@@ -87,11 +95,6 @@ export const Kiosks: React.FC = () => {
     fetchAll();
   };
 
-  const copy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success('Copiado al portapapeles');
-  };
-
   const kioskUrl = (k: Kiosk) => {
     const tenant = user?.tenantId || '';
     const params = new URLSearchParams({ token: k.token, tenant });
@@ -121,15 +124,7 @@ export const Kiosks: React.FC = () => {
       cell: (k) => (
         <div className="flex items-center gap-2 font-mono text-xs">
           {k.token.slice(0, 8)}…
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => copy(k.token)}
-            title="Copiar token completo"
-          >
-            <Copy size={14} />
-          </Button>
+          <CopyButton value={k.token} variant="ghost" iconOnly label="Copiar token completo" />
         </div>
       ),
     },

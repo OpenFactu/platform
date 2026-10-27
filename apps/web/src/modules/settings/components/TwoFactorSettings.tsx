@@ -1,7 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Modal, useToast } from '@openfactu/ui';
-import { ShieldCheck, ShieldOff, Loader2, Copy, Check } from 'lucide-react';
+import { Card, Button, Input, Modal, useToast, CopyButton } from '@openfactu/ui';
+import { ShieldCheck, ShieldOff, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 /**
@@ -22,7 +22,6 @@ export const TwoFactorSettings: React.FC = () => {
   const [secret, setSecret] = useState('');
   const [code, setCode] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null);
-  const [copied, setCopied] = useState(false);
 
   // Baja
   const [disableOpen, setDisableOpen] = useState(false);
@@ -93,14 +92,6 @@ export const TwoFactorSettings: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const copyBackupCodes = () => {
-    if (!backupCodes) return;
-    navigator.clipboard.writeText(backupCodes.join('\n')).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
   };
 
   const closeSetup = () => {
@@ -180,16 +171,11 @@ export const TwoFactorSettings: React.FC = () => {
               ))}
             </div>
             <div className="flex justify-between items-center">
-              <Button
-                type="button"
+              <CopyButton
+                value={(backupCodes ?? []).join('\n')}
                 variant="ghost"
-                size="sm"
-                onClick={copyBackupCodes}
-                className="flex items-center gap-1.5"
-              >
-                {copied ? <Check size={15} /> : <Copy size={15} />}
-                {copied ? 'Copiado' : 'Copiar códigos'}
-              </Button>
+                label="Copiar códigos"
+              />
               <Button onClick={closeSetup}>Hecho</Button>
             </div>
           </div>
