@@ -2,8 +2,11 @@
  * Botón flotante + panel lateral para acceder a Keiro desde cualquier
  * pantalla de la app, sin tener que abrir su pestaña dedicada. Reutiliza
  * `AiChatContext` (misma sesión de chat que la pestaña /ai/chat — un solo
- * turno en curso a la vez) y las piezas de UI de `pages/AiChat/*` para no
- * duplicar la lógica de mensajes/compositor.
+ * turno en curso a la vez) y `useKeiroChat` + `KeiroChatBody`, que pintan la
+ * conversación y el compositor con @openfactu/ui/ai igual que la página.
+ *
+ * El panel es no modal a propósito (no un `Drawer`): el asistente se consulta
+ * mientras se sigue trabajando en la pantalla de al lado.
  *
  * Se oculta a sí mismo cuando la pestaña activa YA es /ai/chat — mostrar el
  * lanzador ahí sería redundante con la página que ya está abierta.
@@ -17,24 +20,17 @@
  * (arrastre real, no solo click) — al soltar, se ancla a la esquina más
  * cercana y esa elección se recuerda entre sesiones (localStorage).
  */
-import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@openfactu/ui';
-import { Bot, Loader2, Maximize2, Sparkles, X } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
-import { useAiChatContext } from '@/modules/ai/AiChatContext';
+import { Bot, Maximize2, Sparkles, X } from 'lucide-react';
 import { useTabs } from '@/context/TabsContext';
 import { ASSISTANT_NAME } from '../domain/constants';
-import { PageLoading } from '@/components/PageLoading';
-import { useComposerState } from '../hooks/useComposerState';
-import { useFileDropZone } from '../hooks/useFileDropZone';
+import { useKeiroChat } from '../hooks/useKeiroChat';
 import { DropOverlay } from './DropOverlay';
-import { PendingQuestionBar } from './PendingQuestionBar';
-import { findPendingQuestion } from '../domain/pendingQuestion';
+import { KeiroChatBody } from './KeiroChatBody';
+import { registerKeiroParts } from './keiroParts';
 
-const MessageBubble = lazy(() =>
-  import('./MessageBubble').then((m) => ({ default: m.MessageBubble })),
-);
-const Composer = lazy(() => import('./Composer').then((m) => ({ default: m.Composer })));
+registerKeiroParts();
 
 type Corner = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
 const CORNER_STORAGE_KEY = 'keirost:chatBubbleCorner';
@@ -62,35 +58,12 @@ function loadCorner(): Corner {
 }
 
 export const ChatLauncherPanel: React.FC = () => {
-  const { user } = useAuth();
   const { tabs, activeTabId, openTab } = useTabs();
-  const {
-    chat: { messages, error, stop, addToolApprovalResponse },
-    status,
-    busy,
-    supportsImages,
-    contextWindow,
-    availableModels,
-    selectedModel,
-    setSelectedModel,
-    messageTimings,
-    headers,
-    send: sendToContext,
-    setChatVisible,
-  } = useAiChatContext();
+  const chat = useKeiroChat();
+  const { drop, setChatVisible } = chat;
 
   const [open, setOpen] = useState(false);
   const [corner, setCorner] = useState<Corner>(loadCorner);
-  const composer = useComposerState(sendToContext, headers, supportsImages);
-  // Igual que en la pestaña dedicada: se puede soltar sobre todo el panel.
-  const drop = useFileDropZone(composer.addDropped, busy || composer.extractingDocs);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  // Al abrir por primera vez, Suspense puede montar el historial después del
-  // efecto de scroll. Llevarlo al último mensaje también cuando aparece el ancla.
-  const attachBottom = useCallback((node: HTMLDivElement | null) => {
-    bottomRef.current = node;
-    node?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
   const btnRef = useRef<HTMLButtonElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; dragging: boolean } | null>(null);
 
@@ -159,26 +132,7 @@ export const ChatLauncherPanel: React.FC = () => {
     return () => setChatVisible(false);
   }, [open, onChatTab, setChatVisible]);
 
-  useEffect(() => {
-    if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, busy, open]);
-
   if (onChatTab) return null;
-
-  const CONTEXT_LIMIT_FALLBACK = 128000;
-  const contextLimit = contextWindow ?? CONTEXT_LIMIT_FALLBACK;
-  const estimateTokens = (m: (typeof messages)[number]) => {
-    const chars = m.parts.reduce((sum, p) => {
-      if (p.type === 'text' || p.type === 'reasoning') return sum + p.text.length;
-      return sum;
-    }, 0);
-    return Math.max(1, Math.round(chars / 4));
-  };
-  const contextUsed =
-    messages.reduce((sum, m) => sum + estimateTokens(m), 0) +
-    Math.max(0, Math.round(composer.input.length / 4));
-  // Pregunta de Keiro pendiente de responder — ver comentario en index.tsx.
-  const pendingQuestion = findPendingQuestion(messages);
 
   return (
     <>
@@ -201,20 +155,14 @@ export const ChatLauncherPanel: React.FC = () => {
 
       {open && (
         <div
-          className="fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] h-full flex flex-col bg-bg-card sm:border-l border-border-default shadow-2xl animate-in fade-in slide-in-from-right duration-300 overflow-hidden"
+          className="fixed inset-y-0 right-0 z-40 w-full sm:w-[420px] h-full flex flex-col bg-bg-card sm:border-l border-border-default shadow-k-overlay animate-in fade-in slide-in-from-right duration-300 overflow-hidden"
           {...drop.dropZoneProps}
         >
-          <DropOverlay visible={drop.dragOver} acceptImages={supportsImages} />
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0 bg-gradient-to-r from-accent/10 via-transparent to-transparent">
+          <DropOverlay visible={drop.dragOver} acceptImages={chat.supportsImages} />
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
             <div className="flex items-center gap-2 font-bold">
-              <span className="relative shrink-0">
-                <Bot size={18} className="text-accent" />
-                <Sparkles
-                  size={9}
-                  className="absolute -top-1.5 -right-1.5 text-accent animate-pulse"
-                />
-              </span>
-              <span className="k-shimmer-text">{ASSISTANT_NAME}</span>
+              <Bot size={18} className="text-accent" />
+              <span>{ASSISTANT_NAME}</span>
             </div>
             <div className="flex items-center gap-1">
               <Button
@@ -226,7 +174,7 @@ export const ChatLauncherPanel: React.FC = () => {
                   setOpen(false);
                 }}
                 title="Abrir a pantalla completa"
-                className="text-slate-400 hover:text-accent"
+                className="text-fg-subtle hover:text-accent"
               >
                 <Maximize2 size={16} />
               </Button>
@@ -236,77 +184,15 @@ export const ChatLauncherPanel: React.FC = () => {
                 size="sm"
                 onClick={() => setOpen(false)}
                 title="Cerrar"
-                className="text-slate-400 hover:text-rose-500"
+                className="text-fg-subtle hover:text-danger-fg"
               >
                 <X size={16} />
               </Button>
             </div>
           </div>
-
-          <Suspense fallback={<PageLoading />}>
-            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 p-3 min-h-0">
-              {messages.length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-6">
-                  Pregúntame sobre los datos de tu empresa.
-                </p>
-              )}
-              {messages.map((m, mi) => (
-                <MessageBubble
-                  key={m.id}
-                  message={m}
-                  userAvatarUrl={user?.avatarImageUrl}
-                  estimate={
-                    messageTimings[m.id] !== undefined
-                      ? { tokens: estimateTokens(m), elapsedMs: messageTimings[m.id] }
-                      : null
-                  }
-                  addToolApprovalResponse={addToolApprovalResponse}
-                  onQuoteText={composer.quoteText}
-                  onAnswerQuestion={composer.send}
-                  busy={busy}
-                  isLastMessage={mi === messages.length - 1}
-                />
-              ))}
-
-              {status === 'submitted' && (
-                <div className="px-1 text-xs text-slate-400 inline-flex items-center gap-2">
-                  <Loader2 size={12} className="animate-spin text-accent" /> Pensando…
-                </div>
-              )}
-
-              {error && (
-                <div className="text-xs p-2 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
-                  {error.message || 'Error en el chat'}
-                </div>
-              )}
-
-              <div ref={attachBottom} />
-            </div>
-
-            <div className="p-3 pt-0 shrink-0">
-              {pendingQuestion && (
-                <PendingQuestionBar
-                  key={pendingQuestion.step?.current ?? pendingQuestion.question}
-                  question={pendingQuestion}
-                  disabled={busy}
-                  onAnswer={composer.send}
-                />
-              )}
-              <Composer
-                {...composer}
-                dragOver={drop.dragOver}
-                supportsImages={supportsImages}
-                busy={busy}
-                stop={() => void stop()}
-                contextUsed={contextUsed}
-                contextLimit={contextLimit}
-                contextApprox
-                modelOptions={availableModels.options}
-                selectedModel={selectedModel || availableModels.current}
-                onSelectModel={setSelectedModel}
-              />
-            </div>
-          </Suspense>
+          <div className="ai-workspace-chat">
+            <KeiroChatBody chat={chat} />
+          </div>
         </div>
       )}
     </>

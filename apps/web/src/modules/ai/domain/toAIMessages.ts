@@ -13,7 +13,7 @@ import type { ChatMessage, ChatMessagePart } from './types';
  * como parte `custom` con un `kind` que registra `registerKeiroParts`.
  */
 
-/** Tools que son el resultado real, no "proceso" (ver renderMessagePart). */
+/** Tools que son el resultado real, no "proceso". */
 const DISPLAY_TOOLS = new Set([
   'render_component',
   'create_excel',
