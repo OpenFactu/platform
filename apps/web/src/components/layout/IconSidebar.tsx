@@ -180,9 +180,11 @@ export const IconSidebar: React.FC = () => {
       <aside
         className={cn(
           'fixed top-0 left-0 bottom-0 z-40 flex flex-col bg-bg-card',
-          'w-full md:w-[360px] md:border-r md:border-border-default md:shadow-k-overlay',
+          'w-full md:w-[360px] md:border-r md:border-border-default',
           'transition-transform duration-250 ease-out',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          // La sombra solo con el menú abierto: con una sombra dura desplazada
+          // (tema Blanco y Negro) asomaba una franja gris por el borde izquierdo.
+          mobileOpen ? 'translate-x-0 md:shadow-k-overlay' : '-translate-x-full',
         )}
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',
