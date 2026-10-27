@@ -40,7 +40,6 @@ import { InternalOrderHeaderField } from '@/modules/analytics/components/Interna
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
-import { DocumentCardList } from '../components/DocumentCardList';
 import { MobileLineCards } from '../components/MobileLineCards';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
@@ -87,7 +86,6 @@ const PDNList: React.FC<{
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
-  const isMobile = useIsMobile();
   const { flags } = useTheme();
   const tabs = (() => {
     try {
@@ -149,12 +147,14 @@ const PDNList: React.FC<{
     },
     {
       header: 'Fecha',
+      card: 'meta' as const,
       sortable: true,
       sortAccessor: (item: any) => new Date(item.date).getTime(),
       accessor: (item: any) => fmt.date(item.date),
     },
     {
       header: 'Proveedor',
+      card: 'subtitle' as const,
       sortable: true,
       sortAccessor: (item: any) => item.partnerName || '',
       accessor: (item: any) =>
@@ -182,6 +182,7 @@ const PDNList: React.FC<{
     },
     {
       header: 'Estado',
+      card: 'status' as const,
       align: 'center' as const,
       sortable: true,
       sortAccessor: (item: any) => item.status || '',
@@ -317,63 +318,19 @@ const PDNList: React.FC<{
           onClear={() => setSelectedKeys(new Set())}
           onSent={() => setSelectedKeys(new Set())}
         />
-        {isMobile ? (
-          <DocumentCardList
-            data={filteredData || []}
-            isLoading={loading}
-            onClick={onDetail}
-            emptyMessage="No hay albaranes."
-            title={(item: any) => formatDocCode(item)}
-            subtitle={(item: any) =>
-              item.partnerName || partners.find((p) => p.id === item.partnerId)?.name || '...'
-            }
-            status={(item: any) => (
-              <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
-                {item.status === 'C' && <Badge variant="success">Facturado</Badge>}
-                {item.status === 'X' && <Badge variant="error">Cancelado</Badge>}
-                {item.hasActiveShipment && <Badge variant="info">En recepción</Badge>}
-              </div>
-            )}
-            fields={[
-              { label: 'Fecha', value: (item: any) => fmt.date(item.date) },
-              {
-                label: 'Total',
-                value: (item: any) => (
-                  <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
-                ),
-              },
-              {
-                label: 'Pedido origen',
-                hidden: (item: any) => !item.orderDocNum,
-                value: (item: any) =>
-                  `${item.orderPrefix}-${item.periodCode}-${String(item.orderDocNum).padStart(6, '0')}`,
-              },
-            ]}
-            actions={(item: any) => (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleQuickPdf(item.id)}
-                isLoading={downloadingId === item.id}
-                className="h-8 gap-2 text-ink-500 dark:text-ink-400"
-              >
-                <Download size={14} /> PDF
-              </Button>
-            )}
-          />
-        ) : (
-          <Table
-            columns={columns}
-            data={filteredData || []}
-            isLoading={loading}
-            rowActions={rowActions}
-            onRowClick={onDetail}
-            selectable
-            selectedKeys={selectedKeys}
-            onSelectionChange={setSelectedKeys}
-          />
-        )}
+        <Table
+          responsive="cards"
+          cardsBreakpoint={768}
+          className="max-md:p-3"
+          columns={columns}
+          data={filteredData || []}
+          isLoading={loading}
+          rowActions={rowActions}
+          onRowClick={onDetail}
+          selectable
+          selectedKeys={selectedKeys}
+          onSelectionChange={setSelectedKeys}
+        />
       </Card>
     </div>
   );
