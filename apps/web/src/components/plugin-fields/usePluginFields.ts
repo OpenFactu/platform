@@ -54,7 +54,8 @@ export function usePluginFields(
     if (cache[tableName]) return;
     if (inflight.has(tableName)) return;
     inflight.add(tableName);
-    coreApi.get(`/api/plugins/fields/${tableName}`)
+    coreApi
+      .get(`/api/plugins/fields/${tableName}`)
       .then((data) => {
         cache[tableName] = Array.isArray(data) ? data : [];
         notify();

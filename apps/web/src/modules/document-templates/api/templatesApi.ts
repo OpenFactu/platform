@@ -17,8 +17,7 @@ export const templatesApi = {
   update: (id: string, data: Record<string, unknown>) =>
     apiClient.put<DocumentTemplate>(`/api/document-templates/${id}`, data),
   remove: (id: string) => apiClient.delete<void>(`/api/document-templates/${id}`),
-  setDefault: (id: string) =>
-    apiClient.post<unknown>(`/api/document-templates/${id}/set-default`),
+  setDefault: (id: string) => apiClient.post<unknown>(`/api/document-templates/${id}/set-default`),
   preview: (data: Record<string, unknown>) =>
     apiClient.post<unknown>('/api/document-templates/preview', data),
   /** Preview renderizada como PDF (blob). */

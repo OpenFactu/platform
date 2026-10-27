@@ -10,7 +10,7 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
-import { Button, Input, SearchableSelect } from '@openfactu/ui';
+import { Button, Input, SearchableSelect, Select } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { DocKind, DocSide, DocStatus } from '@openfactu/common';
 import { LabelPrintButton } from '@/modules/document-templates/components/LabelPrintButton';
@@ -691,19 +691,14 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
             className={`flex-1 min-w-0 text-right font-bold tabular-nums h-9 ${locked ? disabledInputCls : ''}`}
           />
           {hasAlternatives ? (
-            <select
-              value={currentUomId}
+            <Select
+              options={availUoms.map((u) => ({ value: String(u.uomId), label: u.code }))}
+              value={String(currentUomId)}
               disabled={locked}
-              onChange={(e) => handleUomChange(e.target.value)}
-              className={`h-9 w-[70px] shrink-0 border border-border-default rounded-lg text-[10px] font-black uppercase tracking-wider text-fg-body bg-bg-card px-1 ${locked ? disabledInputCls : ''}`}
-              title="Unidad de medida"
-            >
-              {availUoms.map((u) => (
-                <option key={u.uomId} value={u.uomId}>
-                  {u.code}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => handleUomChange(v)}
+              className="w-[70px] shrink-0 text-[10px] font-black uppercase"
+              ariaLabel="Unidad de medida"
+            />
           ) : uomCode ? (
             <span className="text-[10px] font-black uppercase tracking-wider text-fg-subtle shrink-0 w-[46px] text-left">
               {uomCode}

@@ -413,9 +413,7 @@ function renderSummary(el: SummaryElement): string {
   const iter = iterSource(el.source);
   // Subexpresión del agregado. `count` no usa path.
   const agg =
-    el.op === 'count'
-      ? `(count ${iter})`
-      : `(${el.op} ${iter} "${sanitizePath(el.path ?? '')}")`;
+    el.op === 'count' ? `(count ${iter})` : `(${el.op} ${iter} "${sanitizePath(el.path ?? '')}")`;
   // Envolvemos con el helper de formato si corresponde (reutilizando los mismos
   // helpers que buildFieldExpression: formatCurrency/formatNumber/formatDate...).
   let expr: string;

@@ -1,3 +1,4 @@
+import { Select } from '@openfactu/ui';
 /**
  * Editor "tonto" de etiquetas FREE: formulario con toggles que produce el
  * `CanvasLayout` automáticamente sin que el usuario tenga que tocar el
@@ -73,26 +74,21 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
 
       <FormSection title="Tamaño">
         <Field label="Tamaño de página">
-          <select
+          <Select
+            options={[
+              { value: 'Ticket80', label: `${PAGE_SIZE_LABELS.Ticket80}` },
+              { value: 'Ticket58', label: `${PAGE_SIZE_LABELS.Ticket58}` },
+              { value: 'Label100x62', label: `${PAGE_SIZE_LABELS.Label100x62}` },
+              { value: 'Label70x37', label: `${PAGE_SIZE_LABELS.Label70x37}` },
+              { value: 'Label50x25', label: `${PAGE_SIZE_LABELS.Label50x25}` },
+              { value: 'A4', label: `${PAGE_SIZE_LABELS.A4}` },
+              { value: 'Letter', label: `${PAGE_SIZE_LABELS.Letter}` },
+              { value: 'Custom', label: `${PAGE_SIZE_LABELS.Custom}` },
+            ]}
             value={settings.pageSize}
-            onChange={(e) => update({ pageSize: e.target.value as PageSize })}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <optgroup label="Tiquets / Recibos">
-              <option value="Ticket80">{PAGE_SIZE_LABELS.Ticket80}</option>
-              <option value="Ticket58">{PAGE_SIZE_LABELS.Ticket58}</option>
-            </optgroup>
-            <optgroup label="Etiquetas">
-              <option value="Label100x62">{PAGE_SIZE_LABELS.Label100x62}</option>
-              <option value="Label70x37">{PAGE_SIZE_LABELS.Label70x37}</option>
-              <option value="Label50x25">{PAGE_SIZE_LABELS.Label50x25}</option>
-            </optgroup>
-            <optgroup label="Otros">
-              <option value="A4">{PAGE_SIZE_LABELS.A4}</option>
-              <option value="Letter">{PAGE_SIZE_LABELS.Letter}</option>
-              <option value="Custom">{PAGE_SIZE_LABELS.Custom}</option>
-            </optgroup>
-          </select>
+            onChange={(v) => update({ pageSize: v as PageSize })}
+            ariaLabel="Opción"
+          />
         </Field>
         {settings.pageSize === 'Custom' && (
           <div className="grid grid-cols-2 gap-2">
@@ -165,21 +161,22 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
         />
         {settings.showBarcode && (
           <Field label="Simbología">
-            <select
+            <Select
+              options={[
+                { value: 'auto', label: 'Auto (detectar EAN-13/UPC-A/EAN-8/Code128)' },
+                { value: 'code128', label: 'Code 128' },
+                { value: 'ean13', label: 'EAN-13' },
+                { value: 'ean8', label: 'EAN-8' },
+                { value: 'upca', label: 'UPC-A' },
+                { value: 'code39', label: 'Code 39' },
+                { value: 'itf14', label: 'ITF-14' },
+                { value: 'datamatrix', label: 'Data Matrix' },
+                { value: 'pdf417', label: 'PDF417' },
+              ]}
               value={settings.barcodeSymbology ?? 'auto'}
-              onChange={(e) => update({ barcodeSymbology: e.target.value as BarcodeSymbology })}
-              className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-            >
-              <option value="auto">Auto (detectar EAN-13/UPC-A/EAN-8/Code128)</option>
-              <option value="code128">Code 128</option>
-              <option value="ean13">EAN-13</option>
-              <option value="ean8">EAN-8</option>
-              <option value="upca">UPC-A</option>
-              <option value="code39">Code 39</option>
-              <option value="itf14">ITF-14</option>
-              <option value="datamatrix">Data Matrix</option>
-              <option value="pdf417">PDF417</option>
-            </select>
+              onChange={(v) => update({ barcodeSymbology: v as BarcodeSymbology })}
+              ariaLabel="Opción"
+            />
           </Field>
         )}
         <ToggleRow

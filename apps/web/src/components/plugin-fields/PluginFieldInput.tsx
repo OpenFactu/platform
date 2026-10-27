@@ -1,5 +1,5 @@
 import React from 'react';
-import { DatePicker, Input, cn } from '@openfactu/ui';
+import { DatePicker, Input, Select, cn, Textarea } from '@openfactu/ui';
 import type { PluginFieldDef } from './types';
 import { ReferenceSelect } from './ReferenceSelect';
 
@@ -80,22 +80,17 @@ export const PluginFieldInput: React.FC<Props> = ({
 
     case 'ENUM':
       return (
-        <select
+        <Select
+          options={[
+            { value: '', label: '—' },
+            ...(def.options ?? []).map((opt) => ({ value: String(opt.value), label: opt.label })),
+          ]}
           value={value ?? ''}
-          onChange={(e) => onChange(e.target.value || null)}
+          onChange={(v) => onChange(v || null)}
           disabled={isDisabled}
-          className={cn(
-            'w-full h-9 rounded-lg border border-border-default bg-bg-card text-sm px-3 disabled:opacity-50',
-            className,
-          )}
-        >
-          <option value="">—</option>
-          {(def.options ?? []).map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
+          className={className}
+          ariaLabel={def.label ?? 'Opción'}
+        />
       );
 
     case 'MULTISELECT': {
@@ -193,7 +188,7 @@ export const PluginFieldInput: React.FC<Props> = ({
 
     case 'JSONB':
       return (
-        <textarea
+        <Textarea
           value={typeof value === 'object' ? JSON.stringify(value, null, 2) : value || ''}
           onChange={(e) => {
             try {
@@ -204,10 +199,7 @@ export const PluginFieldInput: React.FC<Props> = ({
           }}
           disabled={isDisabled}
           rows={3}
-          className={cn(
-            'w-full rounded-lg border border-border-default bg-bg-card text-sm px-3 py-2 font-mono disabled:opacity-50',
-            className,
-          )}
+          className={cn('font-mono', className)}
         />
       );
 

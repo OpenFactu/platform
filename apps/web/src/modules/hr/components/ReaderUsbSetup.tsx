@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Input, Alert } from '@openfactu/ui';
+import { Button, Input, Alert, Textarea } from '@openfactu/ui';
 import { CheckCircle2, Eye, EyeOff, Usb, Wifi } from 'lucide-react';
 import { timeclockManagementApi as api, type Reader } from '../api/timeclockManagementApi';
 import {
@@ -300,8 +300,8 @@ export function ReaderUsbSetup({
                 </summary>
                 <label className="block text-sm mt-3">
                   Certificado raíz de confianza (opcional)
-                  <textarea
-                    className="mt-1 w-full rounded-lg border border-border-subtle bg-transparent p-3 text-xs"
+                  <Textarea
+                    className="mt-1 text-xs"
                     rows={4}
                     value={setup.caCert}
                     disabled={busy}
