@@ -522,7 +522,7 @@ export const Partners: React.FC = () => {
         title={editingId ? 'Editar Interlocutor' : 'Nuevo Interlocutor'}
         maxWidth="5xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5 min-w-0">
           {/* Tabs variant="underline" reproduce el subrayado que se pintaba a mano
               y añade la navegación con flechas del patrón WAI-ARIA tablist. */}
           <Tabs
@@ -539,12 +539,13 @@ export const Partners: React.FC = () => {
             }))}
             value={activeTab}
             onChange={(key) => setActiveTab(key as typeof activeTab)}
+            scrollable
           />
 
           <div className="min-h-[300px]">
             {activeTab === 'general' && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className={labelCls}>Grupo de Socios *</label>
                     <SearchableSelect
@@ -567,7 +568,7 @@ export const Partners: React.FC = () => {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className={labelCls}>País</label>
                     <SearchableSelect
@@ -586,7 +587,7 @@ export const Partners: React.FC = () => {
                       placeholder="Nombre Legal"
                     />
                   </div>
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <TaxIdInput
                       countryCode={formData.countryCode}
                       value={formData.nif}
@@ -628,7 +629,7 @@ export const Partners: React.FC = () => {
                     Se sugieren automáticamente al crear una factura. Puedes sobreescribirlos en
                     cada factura.
                   </p>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className={labelCls}>Tipo de documento</label>
                       <SearchableSelect
@@ -710,7 +711,7 @@ export const Partners: React.FC = () => {
                           );
                         })()}
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className={labelCls}>Banco</label>
                         <Input
@@ -749,7 +750,7 @@ export const Partners: React.FC = () => {
 
             {activeTab === 'contact' && (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <PhoneInput
                     countryCode={formData.countryCode}
                     value={formData.phone}
@@ -817,7 +818,7 @@ export const Partners: React.FC = () => {
                             <Trash2 size={15} />
                           </Button>
 
-                          <div className="grid grid-cols-3 gap-3 mb-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                             <div>
                               <label className={labelCls}>Nombre</label>
                               <Input
