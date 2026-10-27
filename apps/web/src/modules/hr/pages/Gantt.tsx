@@ -16,13 +16,14 @@ import React, { useState } from 'react';
 import {
   Button,
   Calendar,
-  Card,
+  DescriptionList,
   Input,
+  Modal,
   PageHeader,
   SearchableSelect,
   useToast,
 } from '@openfactu/ui';
-import { CalendarRange, Plus, X } from 'lucide-react';
+import { CalendarRange, Plus } from 'lucide-react';
 import { useTabs } from '@/context/TabsContext';
 import type { Task } from '../domain/task';
 import type { Employee } from '../domain/employee';
@@ -108,91 +109,62 @@ export const Gantt: React.FC = () => {
         ))}
       </div>
 
-      {editing && (
-        <TaskQuickView
-          task={editing}
-          employees={cal.employees}
-          onClose={() => setEditing(null)}
-          onEditFull={() => {
-            openTab('/hr/tasks');
-            setEditing(null);
-          }}
-        />
-      )}
+      <TaskQuickView
+        task={editing}
+        employees={cal.employees}
+        onClose={() => setEditing(null)}
+        onEditFull={() => {
+          openTab('/hr/tasks');
+          setEditing(null);
+        }}
+      />
 
-      {quickCreate && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={() => setQuickCreate(null)}
-        >
-          <Card className="max-w-md w-full" noPadding>
-            <form
-              onClick={(e) => e.stopPropagation()}
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!quickCreate.title.trim()) {
-                  toast.error('Título obligatorio');
-                  return;
-                }
-                const ok = await cal.crearTarea(quickCreate.title, quickCreate.assigneeId);
-                if (ok) setQuickCreate(null);
-              }}
-              className="p-4 space-y-3"
-            >
-              <div className="flex items-center justify-between border-b border-border-default pb-2">
-                <h3 className="text-base font-bold text-fg-default">Nueva tarea</h3>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setQuickCreate(null)}
-                  title="Cerrar"
-                >
-                  <X size={16} />
-                </Button>
-              </div>
-              <Input
-                label="Título"
-                value={quickCreate.title}
-                onChange={(e) => setQuickCreate({ ...quickCreate, title: e.target.value })}
-                autoFocus
-                required
+      <Modal
+        isOpen={!!quickCreate}
+        onClose={() => setQuickCreate(null)}
+        title="Nueva tarea"
+        size="md"
+        onSubmit={async () => {
+          if (!quickCreate) return;
+          if (!quickCreate.title.trim()) {
+            toast.error('Título obligatorio');
+            return;
+          }
+          const ok = await cal.crearTarea(quickCreate.title, quickCreate.assigneeId);
+          if (ok) setQuickCreate(null);
+        }}
+        primaryAction={{ label: 'Crear' }}
+      >
+        {quickCreate && (
+          <div className="space-y-3">
+            <Input
+              label="Título"
+              value={quickCreate.title}
+              onChange={(e) => setQuickCreate({ ...quickCreate, title: e.target.value })}
+              autoFocus
+              required
+            />
+            <div>
+              {/* SearchableSelect no tiene prop `label` → se conserva el
+                  <label> suelto. El vacío es válido → clearable. */}
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-1">
+                Asignada a (opcional)
+              </label>
+              <SearchableSelect
+                options={cal.employeeOptions}
+                value={quickCreate.assigneeId}
+                onChange={(v) => setQuickCreate({ ...quickCreate, assigneeId: v })}
+                placeholder="— sin asignar —"
+                clearable
               />
-              <div>
-                {/* SearchableSelect no tiene prop `label` → se conserva el
-                    <label> suelto. El vacío es válido → clearable. */}
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-1">
-                  Asignada a (opcional)
-                </label>
-                <SearchableSelect
-                  options={cal.employeeOptions}
-                  value={quickCreate.assigneeId}
-                  onChange={(v) => setQuickCreate({ ...quickCreate, assigneeId: v })}
-                  placeholder="— sin asignar —"
-                  clearable
-                />
-              </div>
-              <p className="text-[11px] text-fg-muted">
-                Se creará sin fechas. Arrástrala desde "Sin programar" a un día del calendario para
-                programarla.
-              </p>
-              <div className="flex justify-end gap-2 pt-2 border-t border-border-default">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setQuickCreate(null)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" size="sm">
-                  Crear
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
+            </div>
+            <p className="text-[11px] text-fg-muted">
+              Se creará sin fechas. Arrástrala desde "Sin programar" a un día del calendario para
+              programarla.
+            </p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
@@ -202,61 +174,42 @@ export default Gantt;
 // ────────────────────────── Ficha rápida de la tarea ──────────────────────────
 
 const TaskQuickView: React.FC<{
-  task: Task;
+  task: Task | null;
   employees: Employee[];
   onClose: () => void;
   onEditFull: () => void;
 }> = ({ task, employees, onClose, onEditFull }) => {
-  const emp = employees.find((e) => e.id === task.assigneeId);
+  const emp = task ? employees.find((e) => e.id === task.assigneeId) : undefined;
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onClick={onClose}
+    <Modal
+      isOpen={!!task}
+      onClose={onClose}
+      eyebrow={task?.code}
+      title={task?.title}
+      size="md"
+      primaryAction={{ label: 'Editar en Tareas', onClick: onEditFull }}
+      cancelLabel="Cerrar"
     >
-      <Card className="max-w-md w-full" noPadding>
-        <div className="p-4 space-y-2" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <div className="text-[10px] font-mono text-fg-subtle">{task.code}</div>
-              <h3 className="text-base font-bold text-fg-default">{task.title}</h3>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs text-fg-body">
-            <div>
-              <div className="text-[10px] uppercase font-bold text-fg-muted">Estado</div>
-              {task.status}
-            </div>
-            <div>
-              <div className="text-[10px] uppercase font-bold text-fg-muted">Prioridad</div>
-              {task.priority}
-            </div>
-            <div>
-              <div className="text-[10px] uppercase font-bold text-fg-muted">Inicio</div>
-              {task.startDate?.slice(0, 10) || '—'}
-            </div>
-            <div>
-              <div className="text-[10px] uppercase font-bold text-fg-muted">Fin</div>
-              {task.dueDate?.slice(0, 10) || '—'}
-            </div>
-            <div>
-              <div className="text-[10px] uppercase font-bold text-fg-muted">Estimadas</div>
-              {task.estimatedHours ? `${Number(task.estimatedHours).toFixed(1)}h` : '—'}
-            </div>
-            <div>
-              <div className="text-[10px] uppercase font-bold text-fg-muted">Asignada</div>
-              {emp ? `${emp.firstName} ${emp.lastName}` : '—'}
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-border-default">
-            <Button type="button" size="sm" variant="secondary" onClick={onClose}>
-              Cerrar
-            </Button>
-            <Button type="button" size="sm" onClick={onEditFull}>
-              Editar en Tareas
-            </Button>
-          </div>
-        </div>
-      </Card>
-    </div>
+      {task && (
+        <DescriptionList
+          items={[
+            { key: 'status', label: 'Estado', value: task.status },
+            { key: 'priority', label: 'Prioridad', value: task.priority },
+            { key: 'start', label: 'Inicio', value: task.startDate?.slice(0, 10) },
+            { key: 'end', label: 'Fin', value: task.dueDate?.slice(0, 10) },
+            {
+              key: 'hours',
+              label: 'Estimadas',
+              value: task.estimatedHours ? `${Number(task.estimatedHours).toFixed(1)}h` : null,
+            },
+            {
+              key: 'assignee',
+              label: 'Asignada',
+              value: emp ? `${emp.firstName} ${emp.lastName}` : null,
+            },
+          ]}
+        />
+      )}
+    </Modal>
   );
 };
