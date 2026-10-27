@@ -1,13 +1,8 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { NavMenu } from '@openfactu/ui';
 import type { NavMenuItem, NavStatus } from '@openfactu/ui';
-import { useActiveModule } from '../../context/PluginContext';
-import { useTabs } from '../../context/TabsContext';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 import { PluginIcon } from '../PluginIcon';
-import type { SubTab } from '../../modules/registry';
-import { visibleSubTabs } from '../../modules/permissions';
+import { useModuleSubTabs } from './useModuleSubTabs';
 import { iconNameFor } from '../../modules/routeLookup';
 
 /**
@@ -20,19 +15,7 @@ import { iconNameFor } from '../../modules/routeLookup';
  * `subTabs` a sus ítems y se resuelve el id de vuelta a una ruta.
  */
 export const ModuleTabBar: React.FC = () => {
-  const { openTab, tabs, activeTabId } = useTabs();
-  const { user } = useAuth();
-  const activeTabPath = tabs.find((t) => t.id === activeTabId)?.path?.split('?')[0] || '/';
-  const active = useActiveModule(activeTabPath);
-  const { flags } = useTheme();
-
-  // Mismo criterio que el sidebar (rol, flags y permisos). Antes esta barra
-  // solo miraba rol y flags, así que enseñaba pestañas en las que el usuario
-  // no podía entrar.
-  const subTabs: SubTab[] = useMemo(
-    () => (active ? visibleSubTabs(active, { user, flags }) : []),
-    [active, user, flags],
-  );
+  const { active, subTabs, activeId, openTab } = useModuleSubTabs();
 
   const items = useMemo<NavMenuItem[]>(
     () =>
@@ -54,7 +37,7 @@ export const ModuleTabBar: React.FC = () => {
   // En pantalla estrecha la barra scrollea; al cambiar de sección la activa se
   // centra para no quedar fuera de vista (p. ej. «Movimientos de stock»).
   const barRef = useRef<HTMLDivElement>(null);
-  const activeKey = subTabs.find((t) => t.path === activeTabPath)?.id;
+  const activeKey = activeId;
   useEffect(() => {
     const el = barRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
     el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
@@ -62,12 +45,10 @@ export const ModuleTabBar: React.FC = () => {
 
   if (!active || subTabs.length === 0) return null;
 
-  const activeId = subTabs.find((t) => t.path === activeTabPath)?.id;
-
   return (
     <div
       ref={barRef}
-      className="flex items-center gap-1 px-3 py-1.5 bg-bg-card border-b border-border-default overflow-x-auto overflow-y-visible scrollbar-hide"
+      className="hidden md:flex items-center gap-1 px-3 py-1.5 bg-bg-card border-b border-border-default overflow-x-auto overflow-y-visible scrollbar-hide"
     >
       {/* El nombre del módulo se esconde en pantalla estrecha: son ~120 px
           fijos de información que ya dan el icono resaltado del sidebar y las

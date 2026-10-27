@@ -1,9 +1,11 @@
 import React from 'react';
-import { Boxes, Menu } from 'lucide-react';
+import { ArrowLeft, Boxes, Menu } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useMobileNav } from '../../context/MobileNavContext';
+import { useTabs } from '../../context/TabsContext';
 import { GlobalSearch } from '../GlobalSearch';
 import { NotificationBell } from './NotificationBell';
+import { MobileModuleSwitcher } from './MobileModuleSwitcher';
 
 /**
  * Header superior compacto: logo + branding, búsqueda global y notificaciones. El modo claro/oscuro se cambia en
@@ -14,6 +16,7 @@ import { NotificationBell } from './NotificationBell';
 export const TopHeader: React.FC = () => {
   const { branding } = useTheme();
   const { toggle: toggleMobileNav } = useMobileNav();
+  const { tabs, activeTabId, closeTab } = useTabs();
 
   return (
     <header className="h-14 bg-bg-card border-b border-border-default flex items-center px-3 md:px-4 gap-2 md:gap-4 z-10">
@@ -26,8 +29,24 @@ export const TopHeader: React.FC = () => {
         <Menu size={20} />
       </button>
 
+      {/* Móvil: volver a la pantalla anterior (la barra de pestañas no se ve) */}
+      {tabs.length > 1 && (
+        <button
+          onClick={() => activeTabId && closeTab(activeTabId)}
+          className="md:hidden p-2 -ml-1 rounded-xs text-fg-muted hover:text-accent hover:bg-bg-hover transition-colors"
+          aria-label="Volver"
+        >
+          <ArrowLeft size={20} />
+        </button>
+      )}
+
+      {/* Móvil: módulo y sección actual; al pulsar, cambia de sección */}
+      <div className="md:hidden flex-1 min-w-0">
+        <MobileModuleSwitcher fallbackLabel={branding.appName} />
+      </div>
+
       {/* Logo + nombre */}
-      <div className="flex items-center gap-2 mr-2 md:mr-4 shrink-0">
+      <div className="hidden md:flex items-center gap-2 mr-4 shrink-0">
         {branding.logoUrl ? (
           <img
             src={branding.logoUrl}
@@ -53,7 +72,7 @@ export const TopHeader: React.FC = () => {
         o documentos…"). Sin esto, al estrechar la ventana la caja no cede y
         empuja fuera del header las notificaciones.
       */}
-      <div className="flex-1 min-w-0 max-w-xl">
+      <div className="md:flex-1 min-w-0 md:max-w-xl max-md:ml-auto">
         <GlobalSearch />
       </div>
 

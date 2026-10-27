@@ -6,6 +6,7 @@ import { useTabs } from '../../context/TabsContext';
 import { useAuth } from '../../context/AuthContext';
 import { canRead, permissionPathFor } from '../../modules/permissions';
 import { BarcodeCameraModal } from '../scanner/BarcodeCameraModal';
+import { useModuleSubTabs } from './useModuleSubTabs';
 
 interface SlotDef {
   id: string;
@@ -18,16 +19,15 @@ interface SlotDef {
 const SLOTS: SlotDef[] = [
   { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard, path: '/' },
   { id: 'sales', label: 'Ventas', icon: ShoppingCart, path: '/sales/invoices' },
-  // slot central (scan) se inserta aparte para destacarlo
   { id: 'purchases', label: 'Compras', icon: Truck, path: '/purchases/invoices' },
-  { id: 'menu', label: 'Menú', icon: Menu, action: 'menu' },
+  { id: 'menu', label: 'Más', icon: Menu, action: 'menu' },
 ];
 
 /**
- * Barra inferior fija, sólo en móvil. 4 accesos rápidos + botón central
- * destacado (teal, elevado) para escanear. El slot "Menú" abre el drawer
- * con el `IconSidebar` completo (vía `MobileNavContext`). Respeta
- * safe-area-inset-bottom para iPhone con home bar.
+ * Barra inferior fija, sólo en móvil, con 4 accesos rápidos. "Más" abre el
+ * drawer con el `IconSidebar` completo (vía `MobileNavContext`). El escáner ya
+ * no ocupa el centro: es un botón flotante que solo sale en inventario y
+ * documentos. Respeta safe-area-inset-bottom para iPhone con home bar.
  */
 export const MobileBottomNav: React.FC = () => {
   const { toggle } = useMobileNav();
@@ -35,6 +35,9 @@ export const MobileBottomNav: React.FC = () => {
   const { user } = useAuth();
   const activePath = tabs.find((t) => t.id === activeTabId)?.path?.split('?')[0] || '/';
   const [scanOpen, setScanOpen] = useState(false);
+  const { active } = useModuleSubTabs();
+  const canScan =
+    active?.id === 'inventory' || /^\/(sales|purchases|documents)(\/|$)/.test(activePath);
 
   const handleSlot = (s: SlotDef) => {
     if (s.action === 'menu') toggle();
@@ -79,20 +82,22 @@ export const MobileBottomNav: React.FC = () => {
         <div className="relative flex items-stretch h-16">
           {renderSlot(SLOTS[0])}
           {renderSlot(SLOTS[1])}
-          {/* Slot central — escáner */}
-          <div className="flex-1 flex items-start justify-center relative">
-            <button
-              onClick={() => setScanOpen(true)}
-              aria-label="Escanear código de barras"
-              className="absolute -top-5 w-14 h-14 rounded-full bg-accent text-accent-fg flex items-center justify-center shadow-lg shadow-accent/40 border-4 border-bg-card active:scale-95 transition-transform"
-            >
-              <ScanLine size={24} />
-            </button>
-          </div>
           {renderSlot(SLOTS[2])}
           {renderSlot(SLOTS[3])}
         </div>
       </nav>
+      {/* El escáner solo sirve donde hay códigos de artículos o documentos: ahí
+          aparece como botón flotante; en el resto de pantallas no ocupa sitio. */}
+      {canScan && (
+        <button
+          onClick={() => setScanOpen(true)}
+          aria-label="Escanear código de barras"
+          className="md:hidden fixed right-4 bottom-20 z-30 w-12 h-12 rounded-full bg-accent text-accent-fg flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+          style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
+          <ScanLine size={22} />
+        </button>
+      )}
       <BarcodeCameraModal open={scanOpen} onClose={() => setScanOpen(false)} />
     </>
   );

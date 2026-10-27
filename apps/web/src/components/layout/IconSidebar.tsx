@@ -535,9 +535,7 @@ const MobileModuleAccordion: React.FC<{
   const { flags } = useTheme();
   // Rol, flags y permisos — el mismo criterio que decide si se pinta el icono
   // del módulo, para que no puedan discrepar.
-  const subTabs = mod.subTabs.filter((s: any) =>
-    canSeeSubTab(s, { user, flags }),
-  );
+  const subTabs = mod.subTabs.filter((s: any) => canSeeSubTab(s, { user, flags }));
   const hasSubs = subTabs.length > 0;
 
   return (

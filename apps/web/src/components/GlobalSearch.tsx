@@ -459,12 +459,13 @@ export const GlobalSearch: React.FC = () => {
       <button
         type="button"
         onClick={openPalette}
-        className="group flex min-w-0 items-center gap-2 w-full max-w-md h-9 px-3 rounded-xs border border-border-default bg-bg-muted text-fg-subtle hover:border-border-strong hover:text-fg-muted transition-colors"
+        className="group flex min-w-0 items-center gap-2 w-full max-w-md h-9 px-3 rounded-xs border border-border-default bg-bg-muted text-fg-subtle hover:border-border-strong hover:text-fg-muted transition-colors max-sm:w-9 max-sm:justify-center max-sm:border-transparent max-sm:bg-transparent max-sm:px-0"
+        aria-label="Buscar"
       >
         <Search size={14} className="shrink-0" />
         {/* Dos rótulos y no uno recortado: en un móvil, «Buscar interlocutores,
             artícu…» ocupa lo mismo y dice menos que «Buscar». */}
-        <span className="flex-1 min-w-0 text-left text-sm truncate sm:hidden">Buscar…</span>
+        <span className="sr-only">Buscar</span>
         <span className="hidden flex-1 min-w-0 text-left text-sm truncate sm:block">
           Buscar interlocutores, artículos o documentos…
         </span>
