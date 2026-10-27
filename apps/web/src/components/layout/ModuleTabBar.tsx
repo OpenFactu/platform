@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { NavMenu } from '@openfactu/ui';
 import type { NavMenuItem, NavStatus } from '@openfactu/ui';
 import { useActiveModule } from '../../context/PluginContext';
@@ -51,12 +51,24 @@ export const ModuleTabBar: React.FC = () => {
     [subTabs],
   );
 
+  // En pantalla estrecha la barra scrollea; al cambiar de sección la activa se
+  // centra para no quedar fuera de vista (p. ej. «Movimientos de stock»).
+  const barRef = useRef<HTMLDivElement>(null);
+  const activeKey = subTabs.find((t) => t.path === activeTabPath)?.id;
+  useEffect(() => {
+    const el = barRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    el?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }, [activeKey, active?.id]);
+
   if (!active || subTabs.length === 0) return null;
 
   const activeId = subTabs.find((t) => t.path === activeTabPath)?.id;
 
   return (
-    <div className="flex items-center gap-1 px-3 py-1.5 bg-bg-card border-b border-border-default overflow-x-auto overflow-y-visible">
+    <div
+      ref={barRef}
+      className="flex items-center gap-1 px-3 py-1.5 bg-bg-card border-b border-border-default overflow-x-auto overflow-y-visible scrollbar-hide"
+    >
       {/* El nombre del módulo se esconde en pantalla estrecha: son ~120 px
           fijos de información que ya dan el icono resaltado del sidebar y las
           propias pestañas. Donde sobra sitio, ayuda a orientarse; donde no,

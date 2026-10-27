@@ -84,7 +84,7 @@ export const MobileBottomNav: React.FC = () => {
             <button
               onClick={() => setScanOpen(true)}
               aria-label="Escanear código de barras"
-              className="absolute -top-5 w-14 h-14 rounded-full bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/40 border-4 border-bg-card active:scale-95 transition-transform"
+              className="absolute -top-5 w-14 h-14 rounded-full bg-accent text-accent-fg flex items-center justify-center shadow-lg shadow-accent/40 border-4 border-bg-card active:scale-95 transition-transform"
             >
               <ScanLine size={24} />
             </button>
