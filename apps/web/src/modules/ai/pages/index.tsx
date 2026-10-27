@@ -347,8 +347,8 @@ export const AiChat: React.FC = () => {
                   modelLabel={modelId || undefined}
                   placement="top"
                   align="start"
-                  className="[&_.ai-context-trigger]:!border-transparent [&_.ai-context-trigger]:!bg-transparent [&_.ai-context-trigger:hover]:!bg-bg-hover"
-                  details={[{ label: 'Cálculo', value: 'Estimado (~4 caracteres por token)' }]}
+                  className="[&_.ai-context-trigger]:select-none [&_.ai-context-trigger]:!border-transparent [&_.ai-context-trigger]:!bg-transparent [&_.ai-context-trigger:hover]:!bg-bg-hover"
+                  details={[{ label: 'Cálculo', value: 'Estimado' }]}
                   labels={LABELS}
                 />
               </AIComposer.Tools>
