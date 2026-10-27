@@ -399,6 +399,7 @@ export const Partners: React.FC = () => {
   const columns = [
     {
       header: 'Código',
+      card: 'status' as const,
       sortable: true,
       sortAccessor: (i: any) => i.code ?? '',
       cell: (p: any) => (
@@ -409,6 +410,7 @@ export const Partners: React.FC = () => {
     },
     {
       header: 'Razón Social',
+      card: 'title' as const,
       cell: (p: any) => (
         <span className="font-bold">
           {p.name}
@@ -418,16 +420,18 @@ export const Partners: React.FC = () => {
         </span>
       ),
     },
-    { header: 'NIF/VAT', cell: (p: any) => p.nif },
+    { header: 'NIF/VAT', card: 'subtitle' as const, cell: (p: any) => p.nif },
     {
       header: 'Grupo',
+      card: 'meta' as const,
       sortable: true,
       sortAccessor: (i: any) => i.groupName ?? '',
       cell: (p: any) => groups.find((g) => g.id === p.groupId)?.name || '-',
     },
-    { header: 'Contacto', cell: (p: any) => p.email || p.phone || '-' },
+    { header: 'Contacto', card: 'body' as const, cell: (p: any) => p.email || p.phone || '-' },
     {
       header: 'Direcciones',
+      card: 'hidden' as const,
       cell: (p: any) => <Badge variant="info">{p.addresses?.length || 0}</Badge>,
     },
   ];
@@ -501,6 +505,8 @@ export const Partners: React.FC = () => {
         <Table
           columns={allColumns}
           data={visiblePartners}
+          responsive="cards"
+          cardsBreakpoint={768}
           isLoading={loading}
           rowActions={rowActions}
           onRowClick={(p: any) => openModal(p)}
