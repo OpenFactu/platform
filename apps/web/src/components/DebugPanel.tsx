@@ -89,7 +89,7 @@ export const DebugPanel: React.FC = () => {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 max-md:bottom-20 max-md:left-4 max-md:right-auto z-40">
+      <div className="fixed bottom-4 left-[76px] max-md:bottom-20 max-md:left-4 z-40">
         <Button
           type="button"
           variant="accent"
