@@ -44,6 +44,19 @@ const CORNER_CLASSES: Record<Corner, string> = {
   'top-right': 'top-[70px] right-6',
   'top-left': 'top-[70px] left-[76px]',
 };
+const WIDTH_STORAGE_KEY = 'keirost:chatDrawerWidth';
+const DEFAULT_WIDTH = 520;
+const MIN_WIDTH = 380;
+
+function loadWidth(): number {
+  try {
+    const v = Number(localStorage.getItem(WIDTH_STORAGE_KEY));
+    if (Number.isFinite(v) && v >= MIN_WIDTH) return v;
+  } catch {
+    /* localStorage puede fallar en modo privado — usamos el default */
+  }
+  return DEFAULT_WIDTH;
+}
 /** Umbral en px para distinguir un click de un arrastre. */
 const DRAG_THRESHOLD = 8;
 
@@ -64,6 +77,46 @@ export const ChatLauncherPanel: React.FC = () => {
 
   const [open, setOpen] = useState(false);
   const [corner, setCorner] = useState<Corner>(loadCorner);
+  const [width, setWidth] = useState(loadWidth);
+  const maxWidth = () => Math.max(MIN_WIDTH, Math.round(window.innerWidth * 0.9));
+
+  // El Drawer no admite `style`: el ancho llega por una variable CSS en :root.
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--keiro-drawer-w',
+      `${Math.min(width, Math.max(MIN_WIDTH, Math.round(window.innerWidth * 0.9)))}px`,
+    );
+  }, [width]);
+
+  const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const moveResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+    setWidth(Math.min(maxWidth(), Math.max(MIN_WIDTH, window.innerWidth - e.clientX)));
+  };
+  const endResize = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    try {
+      localStorage.setItem(WIDTH_STORAGE_KEY, String(width));
+    } catch {
+      /* no crítico si no se puede persistir */
+    }
+  };
+  const resizeByKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const next = Math.min(
+      maxWidth(),
+      Math.max(MIN_WIDTH, width + (e.key === 'ArrowLeft' ? 24 : -24)),
+    );
+    setWidth(next);
+    try {
+      localStorage.setItem(WIDTH_STORAGE_KEY, String(next));
+    } catch {
+      /* no crítico */
+    }
+  };
   const btnRef = useRef<HTMLButtonElement>(null);
   const dragRef = useRef<{ startX: number; startY: number; dragging: boolean } | null>(null);
 
@@ -159,6 +212,7 @@ export const ChatLauncherPanel: React.FC = () => {
         side="right"
         size="md"
         ariaLabel={ASSISTANT_NAME}
+        className="sm:!w-[var(--keiro-drawer-w)]"
         title={
           <span className="inline-flex items-center gap-2">
             <Bot size={18} className="text-accent" />
@@ -185,6 +239,21 @@ export const ChatLauncherPanel: React.FC = () => {
           className="ai-workspace-chat relative -m-4 h-[calc(100%+2rem)]"
           {...drop.dropZoneProps}
         >
+          {/* Asa para cambiar el ancho del panel arrastrando su borde izquierdo. */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Cambiar ancho del panel"
+            aria-valuemin={MIN_WIDTH}
+            aria-valuenow={width}
+            tabIndex={0}
+            onPointerDown={startResize}
+            onPointerMove={moveResize}
+            onPointerUp={endResize}
+            onPointerCancel={endResize}
+            onKeyDown={resizeByKey}
+            className="absolute inset-y-0 left-0 z-20 hidden w-1.5 cursor-col-resize touch-none bg-transparent transition-colors hover:bg-accent/40 focus-visible:bg-accent/40 sm:block"
+          />
           <DropOverlay visible={drop.dragOver} acceptImages={chat.supportsImages} />
           <KeiroChatBody chat={chat} />
         </div>
