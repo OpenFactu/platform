@@ -125,7 +125,7 @@ export function useKeiroChat() {
   // ── Citar un fragmento de una respuesta ("Preguntar sobre esto") ──
   const [selection, setSelection] = useState<{ text: string; x: number; y: number } | null>(null);
   useEffect(() => {
-    const onMouseUp = () => {
+    const onMouseUp = (event: MouseEvent) => {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || sel.rangeCount === 0) return setSelection(null);
       const range = sel.getRangeAt(0);
@@ -139,8 +139,14 @@ export function useKeiroChat() {
         .replace(/\n{2,}/g, '\n')
         .trim();
       if (!text) return setSelection(null);
+      // Junto al puntero (donde acabó el arrastre) y dentro de la ventana: el
+      // centro de la selección queda lejos o fuera de pantalla si abarca una
+      // tabla ancha.
       const rect = range.getBoundingClientRect();
-      setSelection({ text, x: rect.left + rect.width / 2, y: rect.top });
+      const half = 90;
+      const x = Math.min(window.innerWidth - half, Math.max(half, event.clientX));
+      const y = Math.max(48, Math.min(event.clientY, rect.bottom));
+      setSelection({ text, x, y });
     };
     document.addEventListener('mouseup', onMouseUp);
     return () => document.removeEventListener('mouseup', onMouseUp);
