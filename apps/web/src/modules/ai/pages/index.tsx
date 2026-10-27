@@ -1,70 +1,95 @@
 /**
- * Chat interno del asistente de IA (Fases 2-3 + mejoras de UX).
+ * Chat interno del asistente de IA.
  *
- * Consume el UI message stream de `POST /api/ai/chat` con `useChat` del
- * Vercel AI SDK: streaming token a token, razonamiento (si el modelo lo
- * expone) en un bloque colapsable "Pensando…", resultados de tools como
- * componentes reales (tabla, mini-gráfico — ver ToolResultView), adjuntar
- * imágenes (si el proveedor las soporta) y el flujo de confirmación de
- * ACCIONES: las tools con `needsApproval` llegan como `approval-requested`,
- * se muestra la tarjeta Confirmar/Rechazar y `addToolApprovalResponse` +
- * `sendAutomaticallyWhen` reanudan la conversación — nada se ejecuta sin
- * click.
+ * La interfaz es el espacio de trabajo de `@openfactu/ui/ai`: historial,
+ * conversación, compositor, confirmaciones de herramientas y razonamiento los
+ * pinta la librería. Esta página solo la conecta con lo de Keirost:
  *
- * La sesión de chat en sí (useChat, modelo elegido, conversación guardada)
- * vive en `AiChatContext` — montado a nivel de App, no dentro de esta
- * pestaña — así el turno en curso NUNCA se aborta al cambiar de pestaña.
- * Esta página es solo la vista: composición visual + estado de borrador
- * (input/adjuntos sin enviar — ver `useComposerState`, compartido con el
- * lanzador flotante `ChatLauncherPanel`). Las piezas de UI viven en los
- * demás archivos de esta carpeta.
+ * - La sesión (`useChat`, modelo, conversación guardada) vive en
+ *   `AiChatContext`, montado a nivel de App, para que el turno en curso no se
+ *   aborte al cambiar de pestaña.
+ * - `toAIMessages` traduce los mensajes del SDK al modelo de la librería; lo
+ *   propio de Keirost (widgets, descargas, vista previa PDF, preguntas
+ *   guiadas, documentos adjuntos, pie con tokens) son partes `custom` que
+ *   registra `registerKeiroParts`.
+ * - El borrador (texto, imágenes, documentos leídos) sigue en
+ *   `useComposerState`, compartido con el lanzador flotante.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@openfactu/ui';
 import {
-  Bot,
-  Loader2,
-  Maximize2,
-  Minimize2,
-  Sparkles,
-  FileText,
-  Users,
-  Package,
-  LayoutDashboard,
+  AIComposer,
+  AIConversation,
+  AIWorkspace,
+  type AIAttachment,
+  type AIDraft,
+  type AIModel,
+  type AIRun,
+} from '@openfactu/ui/ai';
+import {
   AlertTriangle,
   FileSpreadsheet,
+  FileText,
+  LayoutDashboard,
+  Maximize2,
+  Minimize2,
+  Package,
+  Users,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useAiChatContext } from '@/modules/ai/AiChatContext';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
-import { ASSISTANT_NAME } from '../domain/constants';
-import { MessageBubble } from '../components/MessageBubble';
-import { Composer } from '../components/Composer';
-import { ConversationSidebar } from '../components/ConversationSidebar';
+import { ASSISTANT_NAME, MAX_ATTACHMENTS } from '../domain/constants';
+import { toAIMessages } from '../domain/toAIMessages';
+import { findPendingQuestion } from '../domain/pendingQuestion';
 import { useComposerState } from '../hooks/useComposerState';
+import { useConversationList } from '../hooks/useConversationList';
 import { useFileDropZone } from '../hooks/useFileDropZone';
 import { DropOverlay } from '../components/DropOverlay';
 import { PendingQuestionBar } from '../components/PendingQuestionBar';
-import { findPendingQuestion } from '../domain/pendingQuestion';
+import { SelectionToolbar } from '../components/SelectionToolbar';
+import { registerKeiroParts } from '../components/keiroParts';
 
-/** Sugerencias iniciales del estado vacío — texto + icono representativo. */
-const HERO_SUGGESTIONS: Array<{
-  text: string;
-  icon: React.ComponentType<{ size?: number }>;
-}> = [
-  { text: '¿Cuáles son las últimas facturas de venta?', icon: FileText },
-  { text: '¿Qué clientes tenemos dados de alta?', icon: Users },
-  { text: 'Busca el artículo con más líneas vendidas este año', icon: Package },
-  { text: 'Añade un widget de ventas mensuales al Dashboard', icon: LayoutDashboard },
-  { text: '¿Qué artículos tienen poco stock?', icon: AlertTriangle },
-  { text: 'Genera un Excel con el listado de proveedores', icon: FileSpreadsheet },
+registerKeiroParts();
+
+/** Sugerencias iniciales del estado vacío. */
+const HERO_SUGGESTIONS = [
+  { id: 'facturas', label: '¿Cuáles son las últimas facturas de venta?', icon: FileText },
+  { id: 'clientes', label: '¿Qué clientes tenemos dados de alta?', icon: Users },
+  { id: 'articulo', label: 'Busca el artículo con más líneas vendidas este año', icon: Package },
+  {
+    id: 'widget',
+    label: 'Añade un widget de ventas mensuales al Dashboard',
+    icon: LayoutDashboard,
+  },
+  { id: 'stock', label: '¿Qué artículos tienen poco stock?', icon: AlertTriangle },
+  { id: 'excel', label: 'Genera un Excel con el listado de proveedores', icon: FileSpreadsheet },
 ];
+
+const LABELS = {
+  emptyTitle: `Hola, soy ${ASSISTANT_NAME}`,
+  emptyHint:
+    'Pregúntame sobre los datos de tu empresa, adjunta un Excel/PDF/Word para que lo lea, o pídeme crear un borrador o un widget para el Dashboard — cualquier acción te pedirá confirmación antes de ejecutarse.',
+  assistant: ASSISTANT_NAME,
+};
+
+/** ~4 caracteres/token — heurística estándar, solo como fallback visible con "~". */
+const estimateTokens = (m: { parts: Array<{ type: string; text?: string }> }) => {
+  const chars = m.parts.reduce(
+    (sum, p) => (p.type === 'text' || p.type === 'reasoning' ? sum + (p.text?.length ?? 0) : sum),
+    0,
+  );
+  return Math.max(1, Math.round(chars / 4));
+};
+
+const CONTEXT_LIMIT_FALLBACK = 128000;
 
 export const AiChat: React.FC = () => {
   const { user } = useAuth();
   const {
-    chat: { messages, error, stop, addToolApprovalResponse },
+    chat: { messages, error, stop, regenerate, addToolApprovalResponse },
     status,
     busy,
     supportsImages,
@@ -90,66 +115,127 @@ export const AiChat: React.FC = () => {
   useEffect(() => {
     const visible = activeTabId === tabId;
     setChatVisible(visible);
-    // Al volver a esta pestaña, refresca el proveedor/modelo activo — si
-    // cambiaste de proveedor en Ajustes → IA mientras estabas en otra
-    // pestaña, el chat lo recoge aquí en vez de seguir mandando el modelo
-    // viejo (causaba "model X not found" contra el proveedor nuevo).
+    // Al volver a esta pestaña, refresca el proveedor/modelo activo (si
+    // cambiaste de proveedor en Ajustes → IA mientras estabas en otra).
     if (visible) void refreshModels();
     return () => setChatVisible(false);
   }, [activeTabId, tabId, setChatVisible, refreshModels]);
 
   const [fullscreen, setFullscreen] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
   const composer = useComposerState(sendToContext, headers, supportsImages);
-  // Toda la superficie del chat acepta archivos, no solo la caja de escribir:
-  // lo natural es soltar el Excel "sobre la conversación".
+  const history = useConversationList(conversationId);
+  // Toda la superficie del chat acepta archivos, no solo la caja de escribir.
   const drop = useFileDropZone(composer.addDropped, busy || composer.extractingDocs);
 
+  // ── Mensajes ──
+  const aiMessages = useMemo(
+    () =>
+      toAIMessages(messages, {
+        timings: messageTimings,
+        userAvatarUrl: user?.avatarImageUrl,
+        estimateTokens,
+      }),
+    [messages, messageTimings, user?.avatarImageUrl],
+  );
+  const pendingQuestion = findPendingQuestion(messages);
+
+  const run: AIRun = error
+    ? {
+        status: 'error',
+        error: `${error.message || 'Error en el chat'}${
+          error.message?.includes('desactivado') ? ' — actívalo en Ajustes → Empresa → IA.' : ''
+        }`,
+      }
+    : status === 'submitted'
+      ? { status: 'submitting', label: 'Pensando…' }
+      : status === 'streaming'
+        ? { status: 'streaming' }
+        : { status: 'idle' };
+
+  // ── Borrador: texto + imágenes + documentos leídos ──
+  const draftAttachments = useMemo<AIAttachment[]>(
+    () => [
+      ...composer.attachments.map((a, i) => ({
+        id: `img-${i}`,
+        name: a.filename || 'imagen adjunta',
+        mediaType: a.mediaType || 'image/png',
+        url: a.url,
+      })),
+      ...composer.documents.map((d, i) => ({
+        id: `doc-${i}`,
+        name: d.filename,
+        mediaType: 'text/plain',
+      })),
+      ...(composer.extractingDocs
+        ? [
+            {
+              id: 'extracting',
+              name: 'Leyendo documento…',
+              mediaType: 'text/plain',
+              status: 'uploading' as const,
+            },
+          ]
+        : []),
+    ],
+    [composer.attachments, composer.documents, composer.extractingDocs],
+  );
+  const draft: AIDraft = { text: composer.input, attachments: draftAttachments };
+
+  const onDraftChange = (next: AIDraft) => {
+    if (next.text !== composer.input) composer.setInput(next.text);
+    const keep = new Set(next.attachments.map((a) => a.id));
+    // De mayor a menor índice, para que quitar uno no desplace los demás.
+    [...draftAttachments]
+      .reverse()
+      .filter((a) => a.id !== 'extracting' && !keep.has(a.id))
+      .forEach((a) => {
+        const index = Number(a.id.split('-')[1]);
+        if (a.id.startsWith('img-')) composer.removeAttachment(index);
+        else composer.removeDocument(index);
+      });
+  };
+
+  // ── Modelo y contexto ──
+  const models: AIModel[] = availableModels.options.map((id) => ({
+    id,
+    label: id,
+    capabilities: { images: supportsImages, audio: false },
+  }));
+  const modelId = selectedModel || availableModels.current;
+  const contextUsed =
+    messages.reduce((sum, m) => sum + estimateTokens(m), 0) +
+    Math.max(0, Math.round(composer.input.length / 4));
+
+  // ── Citar un fragmento de una respuesta ("Preguntar sobre esto") ──
+  const [selection, setSelection] = useState<{ text: string; x: number; y: number } | null>(null);
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, busy]);
+    const onMouseUp = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) return setSelection(null);
+      const range = sel.getRangeAt(0);
+      const node =
+        range.commonAncestorContainer instanceof Element
+          ? range.commonAncestorContainer
+          : range.commonAncestorContainer.parentElement;
+      if (!node?.closest('.ai-message[data-role="assistant"]')) return setSelection(null);
+      const text = sel
+        .toString()
+        .replace(/\n{2,}/g, '\n')
+        .trim();
+      if (!text) return setSelection(null);
+      const rect = range.getBoundingClientRect();
+      setSelection({ text, x: rect.left + rect.width / 2, y: rect.top });
+    };
+    document.addEventListener('mouseup', onMouseUp);
+    return () => document.removeEventListener('mouseup', onMouseUp);
+  }, []);
 
   const handleNewConversation = () => {
     newConversation();
     composer.resetDraft();
   };
 
-  /** ~4 caracteres/token — heurística estándar, solo como fallback visible con "~". */
-  const estimateTokens = (m: (typeof messages)[number]) => {
-    const chars = m.parts.reduce((sum, p) => {
-      if (p.type === 'text' || p.type === 'reasoning') return sum + p.text.length;
-      return sum;
-    }, 0);
-    return Math.max(1, Math.round(chars / 4));
-  };
-
-  // "Contexto usado" del anillo del compositor: estimación (mismo ~4
-  // car./token) sobre TODO el historial + el borrador actual. El límite es el
-  // num_ctx real si el proveedor es local/Ollama, o un techo genérico en
-  // proveedores cloud donde no gestionamos ese dato.
-  const CONTEXT_LIMIT_FALLBACK = 128000;
-  const contextLimit = contextWindow ?? CONTEXT_LIMIT_FALLBACK;
-  const historyTokens = messages.reduce((sum, m) => sum + estimateTokens(m), 0);
-  const contextUsed = historyTokens + Math.max(0, Math.round(composer.input.length / 4));
-
-  // Pregunta de Keiro pendiente de responder (ask_user_question del último
-  // mensaje) — se fija encima del compositor en vez de quedar enterrada en
-  // el hilo. Ver PendingQuestionBar.
-  const pendingQuestion = findPendingQuestion(messages);
-
-  const composerProps = {
-    ...composer,
-    dragOver: drop.dragOver,
-    supportsImages,
-    busy,
-    stop: () => void stop(),
-    contextUsed,
-    contextLimit,
-    contextApprox: true,
-    modelOptions: availableModels.options,
-    selectedModel: selectedModel || availableModels.current,
-    onSelectModel: setSelectedModel,
-  };
+  const emptyChat = messages.length === 0;
 
   return (
     <div
@@ -159,126 +245,126 @@ export const AiChat: React.FC = () => {
           : 'h-full flex animate-in fade-in duration-500'
       }
     >
-      <div className="hidden md:block py-4 pl-4 h-full">
-        <ConversationSidebar
-          headers={headers}
-          currentId={conversationId}
-          onSelect={(id) => void loadConversation(id)}
-          onNew={handleNewConversation}
-        />
-      </div>
-      <div className="relative flex-1 min-w-0 flex flex-col min-h-0 p-4" {...drop.dropZoneProps}>
+      <div className="relative flex-1 min-w-0 min-h-0 p-4" {...drop.dropZoneProps}>
         <DropOverlay visible={drop.dragOver} acceptImages={supportsImages} />
-        {/* La pestaña de arriba ya muestra el icono + "Keiro" — repetirlo aquí
-            sobraba. Solo queda el toggle de pantalla completa, pegado a la
-            esquina en vez de en su propia fila (dejaba un hueco vacío raro
-            cuando no hay nada más en esa fila). */}
         <Button
           type="button"
           variant="ghost"
           size="sm"
           onClick={() => setFullscreen((v) => !v)}
           title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-          className="absolute top-3 right-3 z-10 text-slate-400 hover:text-accent"
+          className="absolute top-3 right-3 z-10 text-fg-subtle hover:text-accent"
         >
           {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
         </Button>
-        <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full">
-          {messages.length === 0 ? (
-            // ── Estado vacío: hero centrado + compositor, estilo ChatGPT ──
-            <div className="flex-1 flex flex-col items-center justify-center gap-7 px-2">
-              <div className="text-center space-y-3">
-                <div className="k-ai-glow relative mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/20 flex items-center justify-center text-accent">
-                  <Bot size={32} />
-                  <Sparkles
-                    size={14}
-                    className="absolute -top-1 -right-1 text-amber-400 fill-amber-300/50 animate-pulse"
-                  />
-                </div>
-                <h2 className="text-2xl font-bold text-ink-900 dark:text-slate-100">
-                  Hola, soy <span className="k-shimmer-text">{ASSISTANT_NAME}</span>
-                </h2>
-                <p className="text-sm text-fg-muted max-w-md mx-auto leading-relaxed">
-                  Pregúntame sobre los datos de tu empresa, adjunta un Excel/PDF/Word para que lo
-                  lea, o pídeme crear un borrador o un widget para el Dashboard — cualquier acción
-                  te pedirá confirmación antes de ejecutarse.
-                </p>
+        <AIWorkspace
+          className="h-full"
+          labels={LABELS}
+          title={ASSISTANT_NAME}
+          state={{
+            conversations: history.conversations,
+            conversationId: conversationId ?? undefined,
+            messages: aiMessages,
+            draft,
+            models,
+            modelId,
+            run,
+            artifacts: [],
+            historyLoading: history.loading,
+            usage: {
+              usedTokens: contextUsed,
+              maxTokens: contextWindow ?? CONTEXT_LIMIT_FALLBACK,
+              modelLabel: modelId || undefined,
+              details: [{ label: 'Cálculo', value: 'Estimado (~4 caracteres por token)' }],
+            },
+          }}
+          actions={{
+            onDraftChange,
+            onSubmit: (d) => composer.send(d.text),
+            onStop: () => void stop(),
+            onRetry: () => void regenerate(),
+            onSelectConversation: (id) => void loadConversation(id),
+            onNewConversation: handleNewConversation,
+            onDeleteConversation: (id) => void history.remove(id),
+            onSelectModel: setSelectedModel,
+            onFiles: (files) => composer.addDropped(files),
+            onApproveTool: async (id) => {
+              await addToolApprovalResponse({ id, approved: true });
+            },
+            onRejectTool: async (id) => {
+              await addToolApprovalResponse({ id, approved: false });
+            },
+          }}
+        >
+          <AIConversation
+            messages={aiMessages}
+            conversationId={conversationId ?? undefined}
+            run={run}
+            actions={{
+              onRetry: () => void regenerate(),
+              onApproveTool: async (id) => {
+                await addToolApprovalResponse({ id, approved: true });
+              },
+              onRejectTool: async (id) => {
+                await addToolApprovalResponse({ id, approved: false });
+              },
+            }}
+            labels={LABELS}
+            suggestions={emptyChat ? HERO_SUGGESTIONS : undefined}
+            onSelectPrompt={(text) => composer.send(text)}
+          />
+          <div className="ai-workspace-composer">
+            {pendingQuestion && (
+              <PendingQuestionBar
+                key={pendingQuestion.step?.current ?? pendingQuestion.question}
+                question={pendingQuestion}
+                disabled={busy}
+                onAnswer={composer.send}
+              />
+            )}
+            {composer.quotedText && (
+              <div className="mb-2 flex items-start gap-2 rounded-md border-l-2 border-accent bg-bg-muted px-3 py-2 text-xs text-fg-body">
+                <span className="line-clamp-3 flex-1 whitespace-pre-wrap">
+                  {composer.quotedText}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={composer.clearQuote}
+                  title="Quitar cita"
+                >
+                  <X size={14} />
+                </Button>
               </div>
-              <div className="w-full max-w-2xl">
-                <Composer {...composerProps} />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full max-w-2xl">
-                {HERO_SUGGESTIONS.map(({ text, icon: Icon }) => (
-                  <button
-                    key={text}
-                    type="button"
-                    onClick={() => composer.send(text)}
-                    className="group flex items-start gap-3 text-left p-3.5 rounded-lg border border-border-default bg-bg-card hover:border-accent/40 hover:bg-accent/5 dark:hover:bg-accent/10 hover:-translate-y-0.5 transition-all shadow-sm"
-                  >
-                    <span className="shrink-0 w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center group-hover:bg-accent group-hover:text-white transition-colors">
-                      <Icon size={16} />
-                    </span>
-                    <span className="text-xs font-medium text-fg-body leading-snug pt-1.5">
-                      {text}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* ── Mensajes ── */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
-                {messages.map((m, mi) => (
-                  <MessageBubble
-                    key={m.id}
-                    message={m}
-                    userAvatarUrl={user?.avatarImageUrl}
-                    estimate={
-                      messageTimings[m.id] !== undefined
-                        ? { tokens: estimateTokens(m), elapsedMs: messageTimings[m.id] }
-                        : null
-                    }
-                    addToolApprovalResponse={addToolApprovalResponse}
-                    onQuoteText={composer.quoteText}
-                    onAnswerQuestion={composer.send}
-                    busy={busy}
-                    isLastMessage={mi === messages.length - 1}
-                  />
-                ))}
-
-                {status === 'submitted' && (
-                  <div className="flex justify-start">
-                    <div className="px-1 text-sm text-fg-subtle inline-flex items-center gap-2">
-                      <Loader2 size={14} className="animate-spin text-accent" /> Pensando…
-                    </div>
-                  </div>
-                )}
-
-                {error && (
-                  <div className="text-xs p-3 rounded-md bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
-                    {error.message || 'Error en el chat'}
-                    {error.message?.includes('desactivado') && (
-                      <span> — actívalo en Ajustes → Empresa → IA.</span>
-                    )}
-                  </div>
-                )}
-
-                <div ref={bottomRef} />
-              </div>
-
-              {pendingQuestion && (
-                <PendingQuestionBar
-                  key={pendingQuestion.step?.current ?? pendingQuestion.question}
-                  question={pendingQuestion}
-                  disabled={busy}
-                  onAnswer={composer.send}
-                />
-              )}
-              <Composer {...composerProps} />
-            </>
-          )}
-        </div>
+            )}
+            <AIComposer
+              draft={draft}
+              onDraftChange={onDraftChange}
+              onSubmit={(d) => composer.send(d.text)}
+              run={run}
+              onStop={() => void stop()}
+              models={models}
+              modelId={modelId}
+              onSelectModel={setSelectedModel}
+              onFiles={(files) => composer.addDropped(files)}
+              maxFiles={MAX_ATTACHMENTS + 3}
+              maxSizeMb={15}
+              labels={LABELS}
+            />
+          </div>
+        </AIWorkspace>
+        {selection && (
+          <SelectionToolbar
+            x={selection.x}
+            y={selection.y}
+            onClick={() => {
+              composer.quoteText(selection.text);
+              setSelection(null);
+              window.getSelection()?.removeAllRanges();
+            }}
+          />
+        )}
       </div>
     </div>
   );
