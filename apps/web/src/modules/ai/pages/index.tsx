@@ -245,22 +245,24 @@ export const AiChat: React.FC = () => {
           : 'h-full flex animate-in fade-in duration-500'
       }
     >
-      <div className="relative flex-1 min-w-0 min-h-0 p-4" {...drop.dropZoneProps}>
+      <div className="relative flex-1 min-w-0 min-h-0" {...drop.dropZoneProps}>
         <DropOverlay visible={drop.dragOver} acceptImages={supportsImages} />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setFullscreen((v) => !v)}
-          title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-          className="absolute top-3 right-3 z-10 text-fg-subtle hover:text-accent"
-        >
-          {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-        </Button>
         <AIWorkspace
           className="h-full"
           labels={LABELS}
           title={ASSISTANT_NAME}
+          header={
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setFullscreen((v) => !v)}
+              title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+              className="ml-auto text-fg-subtle hover:text-accent"
+            >
+              {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </Button>
+          }
           state={{
             conversations: history.conversations,
             conversationId: conversationId ?? undefined,
