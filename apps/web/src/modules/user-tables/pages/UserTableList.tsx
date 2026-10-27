@@ -189,6 +189,9 @@ export const UserTableList: React.FC = () => {
       ) : (
         <Card noPadding>
           <Table
+            responsive="cards"
+            cardsBreakpoint={768}
+            className="max-md:p-3"
             columns={allColumns}
             data={rows}
             rowActions={rowActions}

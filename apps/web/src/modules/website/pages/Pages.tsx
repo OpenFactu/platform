@@ -329,6 +329,8 @@ export const Pages: React.FC = () => {
 
       <Card className="overflow-hidden border-0" noPadding>
         <Table
+          responsive="cards"
+          cardsBreakpoint={768}
           columns={columns}
           data={pages}
           rowActions={rowActions}

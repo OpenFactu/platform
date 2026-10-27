@@ -475,7 +475,14 @@ export const BackupsTab: React.FC = () => {
               hint="Activa la programación o lanza uno con «Backup ahora»."
             />
           ) : (
-            <Table columns={historyColumns} data={runs} rowActions={historyActions} />
+            <Table
+              responsive="cards"
+              cardsBreakpoint={768}
+              className="max-md:p-3"
+              columns={historyColumns}
+              data={runs}
+              rowActions={historyActions}
+            />
           )}
         </div>
       </Card>

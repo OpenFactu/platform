@@ -257,7 +257,14 @@ export const appsPluginManager: React.FC = () => {
                 <Database size={16} />
                 <span>Solo se muestran campos de plugins activos para esta empresa.</span>
               </div>
-              <Table columns={FIELD_COLUMNS} data={fields} rowKey={(_f, i) => i} />
+              <Table
+                responsive="cards"
+                cardsBreakpoint={768}
+                className="max-md:p-3"
+                columns={FIELD_COLUMNS}
+                data={fields}
+                rowKey={(_f, i) => i}
+              />
             </Card>
           )}
 
@@ -267,7 +274,14 @@ export const appsPluginManager: React.FC = () => {
               subtitle="Tablas creadas por extensiones activas."
               className="mt-6"
             >
-              <Table columns={TABLE_COLUMNS} data={tables} rowKey={(_t, i) => i} />
+              <Table
+                responsive="cards"
+                cardsBreakpoint={768}
+                className="max-md:p-3"
+                columns={TABLE_COLUMNS}
+                data={tables}
+                rowKey={(_t, i) => i}
+              />
             </Card>
           )}
         </>

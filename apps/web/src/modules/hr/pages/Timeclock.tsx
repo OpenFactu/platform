@@ -399,6 +399,9 @@ export const Timeclock: React.FC = () => {
 
           <Card className="overflow-hidden" noPadding>
             <Table
+              responsive="cards"
+              cardsBreakpoint={768}
+              className="max-md:p-3"
               columns={myColumns}
               data={entries}
               isLoading={loading}
@@ -446,7 +449,14 @@ export const Timeclock: React.FC = () => {
           </Card>
 
           <Card className="overflow-hidden" noPadding>
-            <Table columns={allColumns} data={allEntries} emptyMessage="Sin fichajes en el rango" />
+            <Table
+              responsive="cards"
+              cardsBreakpoint={768}
+              className="max-md:p-3"
+              columns={allColumns}
+              data={allEntries}
+              emptyMessage="Sin fichajes en el rango"
+            />
           </Card>
         </>
       )}

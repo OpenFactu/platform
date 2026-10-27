@@ -262,6 +262,8 @@ export const PriceLists: React.FC = () => {
             }
           >
             <Table
+              responsive="cards"
+              cardsBreakpoint={768}
               columns={listColumns}
               data={lists}
               isLoading={loading}

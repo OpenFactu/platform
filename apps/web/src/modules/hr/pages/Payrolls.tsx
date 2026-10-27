@@ -574,7 +574,15 @@ export const Payrolls: React.FC = () => {
       </Modal>
 
       <Card className="overflow-hidden border-border-subtle" noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
+        <Table
+          responsive="cards"
+          cardsBreakpoint={768}
+          className="max-md:p-3"
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          rowActions={rowActions}
+        />
       </Card>
 
       <Modal

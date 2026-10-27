@@ -360,7 +360,15 @@ export const DocumentSeries: React.FC = () => {
             },
           ]}
         />
-        <Table columns={columns} data={filteredData} isLoading={loading} rowActions={rowActions} />
+        <Table
+          responsive="cards"
+          cardsBreakpoint={768}
+          className="max-md:p-3"
+          columns={columns}
+          data={filteredData}
+          isLoading={loading}
+          rowActions={rowActions}
+        />
       </Card>
     </div>
   );
