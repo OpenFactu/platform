@@ -20,6 +20,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@openfactu/ui';
 import {
   AIComposer,
+  AIContextUsage,
   AIConversation,
   AIWorkspace,
   type AIAttachment,
@@ -266,12 +267,6 @@ export const AiChat: React.FC = () => {
             run,
             artifacts: [],
             historyLoading: history.loading,
-            usage: {
-              usedTokens: contextUsed,
-              maxTokens: contextWindow ?? CONTEXT_LIMIT_FALLBACK,
-              modelLabel: modelId || undefined,
-              details: [{ label: 'Cálculo', value: 'Estimado (~4 caracteres por token)' }],
-            },
           }}
           actions={{
             onDraftChange,
@@ -342,7 +337,21 @@ export const AiChat: React.FC = () => {
               maxFiles={MAX_ATTACHMENTS + 3}
               maxSizeMb={15}
               labels={LABELS}
-            />
+            >
+              <AIComposer.Attachments />
+              <AIComposer.Input />
+              <AIComposer.Tools>
+                <AIContextUsage
+                  usedTokens={contextUsed}
+                  maxTokens={contextWindow ?? CONTEXT_LIMIT_FALLBACK}
+                  modelLabel={modelId || undefined}
+                  placement="top"
+                  align="start"
+                  details={[{ label: 'Cálculo', value: 'Estimado (~4 caracteres por token)' }]}
+                  labels={LABELS}
+                />
+              </AIComposer.Tools>
+            </AIComposer>
           </div>
         </AIWorkspace>
         {selection && (
