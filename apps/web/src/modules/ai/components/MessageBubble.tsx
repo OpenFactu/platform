@@ -96,7 +96,7 @@ export const MessageBubble: React.FC<{
       <div
         className={
           isUser
-            ? 'max-w-[85%] rounded-lg px-4 py-3 text-sm shadow-sm bg-accent text-white'
+            ? 'max-w-[85%] rounded-lg px-4 py-3 text-sm shadow-sm bg-accent text-accent-fg'
             : 'max-w-full w-full px-1 text-sm text-fg-default'
         }
       >
@@ -105,7 +105,7 @@ export const MessageBubble: React.FC<{
         >
           <span
             className={`inline-flex items-center justify-center w-8 h-8 rounded-full overflow-hidden shrink-0 ${
-              isUser ? 'bg-white/20' : 'bg-accent/10 text-accent'
+              isUser ? 'bg-accent-fg/20' : 'bg-accent/10 text-accent'
             }`}
           >
             {isUser ? (

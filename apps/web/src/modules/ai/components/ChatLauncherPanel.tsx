@@ -187,7 +187,7 @@ export const ChatLauncherPanel: React.FC = () => {
           ref={btnRef}
           type="button"
           onPointerDown={handlePointerDown}
-          className={`k-ai-glow hidden md:flex fixed ${CORNER_CLASSES[corner]} z-40 w-14 h-14 rounded-full bg-accent text-white shadow-lg hover:scale-105 active:scale-95 transition-transform items-center justify-center cursor-grab active:cursor-grabbing`}
+          className={`k-ai-glow hidden md:flex fixed ${CORNER_CLASSES[corner]} z-40 w-14 h-14 rounded-full bg-accent text-accent-fg shadow-lg hover:scale-105 active:scale-95 transition-transform items-center justify-center cursor-grab active:cursor-grabbing`}
           style={{ touchAction: 'none' }}
           title={`Abrir ${ASSISTANT_NAME} (arrastra para mover)`}
         >
