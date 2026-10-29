@@ -3,6 +3,7 @@ import { and, asc, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import * as schema from '../../db/schema';
 import { pick, errorDetail } from './shared';
+import { emitCrmEvent } from '../../core/crm/events';
 
 const router = Router();
 
@@ -25,12 +26,13 @@ const TYPES = ['call', 'meeting', 'email', 'note', 'task'];
  */
 router.get('/', async (req: any, res) => {
   try {
-    const { partnerId, opportunityId, contactId, status } = req.query;
+    const { partnerId, opportunityId, contactId, status, ownerUserId } = req.query;
     const a = schema.crmActivities;
     const conds: any[] = [];
     if (partnerId) conds.push(eq(a.partnerId, String(partnerId)));
     if (opportunityId) conds.push(eq(a.opportunityId, String(opportunityId)));
     if (contactId) conds.push(eq(a.contactId, String(contactId)));
+    if (ownerUserId) conds.push(eq(a.ownerUserId, String(ownerUserId)));
     if (status === 'pending') conds.push(isNull(a.doneAt));
     if (status === 'done') conds.push(isNotNull(a.doneAt));
     const rows = await req.tenantClient
@@ -65,11 +67,9 @@ router.post('/', async (req: any, res) => {
     if (!payload.subject?.trim())
       return res.status(400).json({ error: 'El asunto es obligatorio' });
     if (!payload.partnerId && !payload.contactId && !payload.opportunityId)
-      return res
-        .status(400)
-        .json({
-          error: 'La actividad tiene que ir ligada a un interlocutor, contacto u oportunidad',
-        });
+      return res.status(400).json({
+        error: 'La actividad tiene que ir ligada a un interlocutor, contacto u oportunidad',
+      });
 
     // Si viene de una oportunidad o de un contacto, heredar el interlocutor para que
     // salga también en su ficha.
@@ -98,7 +98,17 @@ router.post('/', async (req: any, res) => {
         doneAt: done ? new Date() : null,
       })
       .returning();
+    if (row.opportunityId)
+      await req.tenantClient
+        .update(schema.opportunities)
+        .set({ lastActivityAt: new Date() })
+        .where(eq(schema.opportunities.id, row.opportunityId));
     res.json(row);
+    emitCrmEvent(
+      'crm.activity.created',
+      { tenantId: req.tenantId, db: req.tenantClient, user: req.user },
+      row,
+    );
   } catch (error: any) {
     res.status(500).json({ error: errorDetail(error) });
   }

@@ -1,5 +1,12 @@
 import { apiClient, buildQuery } from '@/shared/http';
-import type { Activity, Contact, Opportunity, OpportunityStage } from '../domain/crm';
+import type {
+  Activity,
+  Contact,
+  CrmSettings,
+  Member,
+  Opportunity,
+  OpportunityStage,
+} from '../domain/crm';
 
 export type CrmInput = Record<string, unknown>;
 
@@ -34,7 +41,17 @@ export interface ActivityFilter {
   opportunityId?: string;
   contactId?: string;
   status?: 'pending' | 'done';
+  ownerUserId?: string;
 }
+
+export const crmSettingsApi = {
+  get: () => apiClient.get<CrmSettings>('/api/crm/settings'),
+  update: (data: Partial<CrmSettings>) => apiClient.put<CrmSettings>('/api/crm/settings', data),
+};
+
+export const membersApi = {
+  list: () => apiClient.get<Member[]>('/api/members'),
+};
 
 export const activitiesApi = {
   list: (params: ActivityFilter = {}) =>

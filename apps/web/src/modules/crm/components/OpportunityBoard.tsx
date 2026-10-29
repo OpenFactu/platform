@@ -1,8 +1,15 @@
 import React from 'react';
-import { Select, cn } from '@openfactu/ui';
+import { Badge, Select, cn } from '@openfactu/ui';
 import { Calendar, User } from 'lucide-react';
 import { useFormat } from '@/hooks/useFormat';
-import type { Opportunity, OpportunityStage, StageColumn } from '../domain/crm';
+import {
+  isStale,
+  type Member,
+  type Opportunity,
+  type OpportunityStage,
+  type StageColumn,
+} from '../domain/crm';
+import { OwnerAvatar } from './OwnerAvatar';
 
 interface Props {
   columns: StageColumn[];
@@ -16,6 +23,9 @@ interface Props {
   };
   onOpen: (o: Opportunity) => void;
   onMove: (o: Opportunity, stageId: string) => void;
+  members: Map<string, Member>;
+  /** Días sin actividad para marcar una oportunidad como parada. */
+  staleDays: number;
 }
 
 const KIND_DOT: Record<string, string> = {
@@ -35,6 +45,8 @@ export const OpportunityBoard: React.FC<Props> = ({
   drag,
   onOpen,
   onMove,
+  members,
+  staleDays,
 }) => {
   const fmt = useFormat();
   const stageOptions = stages.map((s) => ({ value: s.id, label: s.name }));
@@ -79,8 +91,11 @@ export const OpportunityBoard: React.FC<Props> = ({
                 )}
               >
                 <button type="button" onClick={() => onOpen(o)} className="block w-full text-left">
-                  <div className="text-sm font-semibold text-fg-default leading-snug">
-                    {o.title}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-sm font-semibold text-fg-default leading-snug">
+                      {o.title}
+                    </div>
+                    <OwnerAvatar member={o.ownerUserId ? members.get(o.ownerUserId) : null} />
                   </div>
                   <div className="text-xs text-fg-muted truncate">{o.partnerName}</div>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fg-muted">
@@ -98,6 +113,14 @@ export const OpportunityBoard: React.FC<Props> = ({
                       </span>
                     )}
                   </div>
+                  {(isStale(o, staleDays) || (o.stageKind === 'lost' && o.lostReason)) && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {isStale(o, staleDays) && <Badge variant="warning">Parada</Badge>}
+                      {o.stageKind === 'lost' && o.lostReason && (
+                        <Badge variant="neutral">{o.lostReason}</Badge>
+                      )}
+                    </div>
+                  )}
                 </button>
                 {canWrite && (
                   <div className="mt-2">

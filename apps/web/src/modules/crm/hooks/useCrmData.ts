@@ -2,9 +2,23 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { partnersApi } from '@/modules/partners/api';
 import type { Partner } from '@/modules/partners/domain/partner';
-import { activitiesApi, contactsApi, opportunitiesApi, stagesApi } from '../api';
+import {
+  activitiesApi,
+  contactsApi,
+  crmSettingsApi,
+  membersApi,
+  opportunitiesApi,
+  stagesApi,
+} from '../api';
 import type { ActivityFilter } from '../api';
-import type { Activity, Contact, Opportunity, OpportunityStage } from '../domain/crm';
+import type {
+  Activity,
+  Contact,
+  CrmSettings,
+  Member,
+  Opportunity,
+  OpportunityStage,
+} from '../domain/crm';
 
 /**
  * Carga genérica con recarga manual. `key` resume los parámetros de la
@@ -73,11 +87,11 @@ export function useContacts(partnerId?: string) {
 }
 
 export function useActivities(filter: ActivityFilter) {
-  const { partnerId, opportunityId, contactId, status } = filter;
+  const { partnerId, opportunityId, contactId, status, ownerUserId } = filter;
   const { data, loading, error, refresh } = useLoad<Activity[]>(
-    () => activitiesApi.list({ partnerId, opportunityId, contactId, status }),
+    () => activitiesApi.list({ partnerId, opportunityId, contactId, status, ownerUserId }),
     [],
-    JSON.stringify([partnerId, opportunityId, contactId, status]),
+    JSON.stringify([partnerId, opportunityId, contactId, status, ownerUserId]),
   );
   return { activities: data, loading, error, refresh };
 }
@@ -103,4 +117,30 @@ export function usePartnerOptions() {
     [data],
   );
   return { options, loading, refresh };
+}
+
+const SETTINGS_FALLBACK: CrmSettings = {
+  lostReasons: [],
+  sources: [],
+  sourceRequired: false,
+  defaultOwnerUserId: '',
+  staleDays: 14,
+  dormantEnabled: false,
+  dormantDays: 90,
+};
+
+export function useCrmSettings() {
+  const { data, setData, loading, refresh } = useLoad<CrmSettings>(
+    () => crmSettingsApi.get(),
+    SETTINGS_FALLBACK,
+    '',
+  );
+  return { settings: data, setSettings: setData, loading, refresh };
+}
+
+/** Miembros de la empresa, para elegir y mostrar responsables. */
+export function useMembers() {
+  const { data } = useLoad<Member[]>(() => membersApi.list().catch(() => []), [], '');
+  const byId = useMemo(() => new Map(data.map((m) => [m.id, m])), [data]);
+  return { members: data, byId };
 }

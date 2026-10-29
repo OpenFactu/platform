@@ -5,6 +5,7 @@ import {
   KpiCard,
   PageHeader,
   SearchInput,
+  Switch,
   Table,
   Tabs,
   usePopup,
@@ -13,10 +14,13 @@ import {
 } from '@openfactu/ui';
 import { Columns3, List, Plus, Target } from 'lucide-react';
 import { useFormat } from '@/hooks/useFormat';
+import { useAuth } from '@/context/AuthContext';
 import { opportunitiesApi } from '../api';
 import { STAGE_KIND_VARIANT, type Opportunity } from '../domain/crm';
 import { usePipeline } from '../hooks/usePipeline';
 import { useCrmPermissions } from '../hooks/useCrmPermissions';
+import { useCrmSettings, useMembers } from '../hooks/useCrmData';
+import { LostReasonModal } from '../components/LostReasonModal';
 import { OpportunityBoard } from '../components/OpportunityBoard';
 import { OpportunityForm, type OpportunityDraft } from '../components/OpportunityForm';
 
@@ -31,16 +35,21 @@ export const Opportunities: React.FC = () => {
   const [view, setView] = useState<View>('board');
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState<OpportunityDraft | null>(null);
+  const [onlyMine, setOnlyMine] = useState(false);
+  const { user } = useAuth();
+  const { byId: members } = useMembers();
+  const { settings } = useCrmSettings();
 
   const term = search.trim().toLowerCase();
   const filtered = useMemo(
     () =>
-      term
-        ? pipeline.opportunities.filter((o) =>
-            [o.title, o.partnerName, o.contactName].some((v) => v?.toLowerCase().includes(term)),
-          )
-        : pipeline.opportunities,
-    [pipeline.opportunities, term],
+      pipeline.opportunities.filter(
+        (o) =>
+          (!onlyMine || o.ownerUserId === user?.id) &&
+          (!term ||
+            [o.title, o.partnerName, o.contactName].some((v) => v?.toLowerCase().includes(term))),
+      ),
+    [pipeline.opportunities, term, onlyMine, user?.id],
   );
   const columns = useMemo(
     () =>
@@ -95,6 +104,12 @@ export const Opportunities: React.FC = () => {
       card: 'meta',
     },
     { header: 'Contacto', accessor: (o) => o.contactName ?? '—' },
+    {
+      header: 'Responsable',
+      id: 'owner',
+      accessor: (o) => (o.ownerUserId ? (members.get(o.ownerUserId)?.name ?? '—') : '—'),
+    },
+    { header: 'Origen', id: 'source', accessor: (o) => o.source ?? '—' },
   ];
 
   return (
@@ -126,6 +141,7 @@ export const Opportunities: React.FC = () => {
           placeholder="Buscar por título, interlocutor o contacto"
           className="w-full sm:max-w-sm sm:flex-1 min-w-0"
         />
+        <Switch label="Solo las mías" checked={onlyMine} onChange={setOnlyMine} />
         {/* shrink-0: la variante segmented recorta (overflow-hidden) y, si se
             deja encoger junto al buscador, se come «Lista». */}
         <Tabs
@@ -149,6 +165,8 @@ export const Opportunities: React.FC = () => {
           drag={pipeline.drag}
           onOpen={setDraft}
           onMove={pipeline.moveTo}
+          members={members}
+          staleDays={settings.staleDays}
         />
       ) : (
         <Table
@@ -176,6 +194,15 @@ export const Opportunities: React.FC = () => {
         onClose={() => setDraft(null)}
         onSaved={pipeline.refresh}
       />
+
+      {pipeline.pendingLost && (
+        <LostReasonModal
+          open
+          reasons={settings.lostReasons}
+          onCancel={pipeline.cancelLost}
+          onConfirm={pipeline.confirmLost}
+        />
+      )}
     </div>
   );
 };

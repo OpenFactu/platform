@@ -9,6 +9,9 @@ const Activities = lazy(() =>
   import('./pages/Activities').then((m) => ({ default: m.Activities })),
 );
 const Stages = lazy(() => import('./pages/Stages').then((m) => ({ default: m.Stages })));
+const CrmSettings = lazy(() =>
+  import('./pages/CrmSettings').then((m) => ({ default: m.CrmSettings })),
+);
 
 export const crmModule: ModuleManifest = {
   nav: {
@@ -23,6 +26,7 @@ export const crmModule: ModuleManifest = {
       { id: 'crm-activities', label: 'Actividades', path: '/crm/activities' },
       { id: 'crm-contacts', label: 'Contactos', path: '/crm/contacts' },
       { id: 'crm-stages', label: 'Etapas', path: '/crm/stages', adminOnly: true },
+      { id: 'crm-settings', label: 'Ajustes', path: '/crm/settings' },
     ],
   },
   routes: [
@@ -53,6 +57,13 @@ export const crmModule: ModuleManifest = {
       title: 'Etapas del embudo',
       iconName: 'Workflow',
       permissionPath: '/crm/opportunities',
+    },
+    {
+      pattern: '/crm/settings',
+      Component: CrmSettings,
+      title: 'Ajustes del CRM',
+      iconName: 'Settings',
+      permissionPath: '/crm/settings',
     },
   ],
 };

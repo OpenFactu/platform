@@ -30,6 +30,8 @@ import crmContactsRouter from './api/crm/contacts';
 import crmOpportunitiesRouter from './api/crm/opportunities';
 import crmStagesRouter from './api/crm/stages';
 import crmActivitiesRouter from './api/crm/activities';
+import crmSettingsRouter from './api/crm/settings';
+import membersRouter from './api/members';
 import pricelistsRouter from './api/pricelists';
 import zonesRouter from './api/zones';
 import warehousesRouter from './api/warehouses';
@@ -262,6 +264,10 @@ mountApi(app, '/api/crm/opportunities', '/crm/opportunities', crmOpportunitiesRo
 // Las etapas van con el embudo: quien ve oportunidades necesita leerlas para pintar el tablero.
 mountApi(app, '/api/crm/stages', '/crm/opportunities', crmStagesRouter);
 mountApi(app, '/api/crm/activities', '/crm/activities', crmActivitiesRouter);
+// Leer los ajustes lo necesita cualquier formulario del CRM (motivos, orígenes);
+// el PUT exige /crm/settings dentro del router.
+mountShared(app, '/api/crm/settings', 'catálogos del CRM que usan sus formularios', crmSettingsRouter);
+mountShared(app, '/api/members', 'nombres de los miembros para elegir responsable', membersRouter);
 mountApi(app, '/api/periods', '/accounting-periods', periodsRouter);
 mountApi(app, '/api/chart-of-accounts', '/chart-of-accounts', chartOfAccountsRouter);
 mountApi(app, '/api/cost-centers', '/cost-centers', costCentersRouter);

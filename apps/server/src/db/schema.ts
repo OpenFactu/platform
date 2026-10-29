@@ -2087,8 +2087,25 @@ export const opportunities = pgTable('Opportunity', {
   ownerUserId: text('ownerUserId'),
   notes: text('notes'),
   closedAt: timestamp('closedAt'),
+  // Mig 074
+  source: text('source'),
+  lostReason: text('lostReason'),
+  /** Fecha de la última actividad registrada: alimenta «oportunidades paradas». */
+  lastActivityAt: timestamp('lastActivityAt'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+/** Cada cambio de etapa, para medir conversión y tiempos del embudo (mig 074). */
+export const opportunityStageHistory = pgTable('OpportunityStageHistory', {
+  id: text('id').primaryKey(),
+  opportunityId: text('opportunityId')
+    .references(() => opportunities.id, { onDelete: 'cascade' })
+    .notNull(),
+  fromStageId: text('fromStageId').references(() => opportunityStages.id, { onDelete: 'set null' }),
+  toStageId: text('toStageId').references(() => opportunityStages.id, { onDelete: 'set null' }),
+  userId: text('userId'),
+  changedAt: timestamp('changedAt').defaultNow().notNull(),
 });
 
 export const crmActivities = pgTable('CrmActivity', {

@@ -13,6 +13,8 @@ import { contactsApi, opportunitiesApi } from '../api';
 import { PartnerSelect } from './PartnerSelect';
 import type { Contact, Opportunity, OpportunityStage } from '../domain/crm';
 import { ActivityList } from './ActivityList';
+import { OwnerSelect } from './OwnerSelect';
+import { useCrmSettings } from '../hooks/useCrmData';
 
 export type OpportunityDraft = Partial<Opportunity>;
 
@@ -38,6 +40,7 @@ export const OpportunityForm: React.FC<Props> = ({
   const [form, setForm] = useState<OpportunityDraft>({});
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [saving, setSaving] = useState(false);
+  const { settings } = useCrmSettings();
 
   // Al abrir con otro borrador se reinicia el formulario (ajuste en render, sin efecto).
   const [seen, setSeen] = useState<OpportunityDraft | null>(null);
@@ -70,10 +73,27 @@ export const OpportunityForm: React.FC<Props> = ({
 
   const set = (patch: OpportunityDraft) => setForm((f) => ({ ...f, ...patch }));
 
+  const stageId = form.stageId ?? stages.find((s) => s.kind === 'open')?.id ?? '';
+  const isLost = stages.find((s) => s.id === stageId)?.kind === 'lost';
+  // Conserva un motivo u origen que ya no esté en el catálogo de la empresa.
+  const withCurrent = (list: string[], current?: string | null) =>
+    (current && !list.includes(current) ? [current, ...list] : list).map((v) => ({
+      value: v,
+      label: v,
+    }));
+
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title?.trim() || !form.partnerId) {
       toast.error('El título y el interlocutor son obligatorios');
+      return;
+    }
+    if (isLost && !form.lostReason) {
+      toast.error('Indica el motivo de pérdida');
+      return;
+    }
+    if (settings.sourceRequired && !form.source) {
+      toast.error('Indica el origen de la oportunidad');
       return;
     }
     setSaving(true);
@@ -85,6 +105,9 @@ export const OpportunityForm: React.FC<Props> = ({
       amount: form.amount ?? '0',
       expectedCloseDate: form.expectedCloseDate || null,
       notes: form.notes || null,
+      ownerUserId: form.ownerUserId || null,
+      source: form.source || null,
+      lostReason: isLost ? form.lostReason : undefined,
     };
     try {
       if (form.id) await opportunitiesApi.update(form.id, payload);
@@ -135,7 +158,7 @@ export const OpportunityForm: React.FC<Props> = ({
           <Select
             label="Etapa"
             options={stageOptions}
-            value={form.stageId ?? stages.find((s) => s.kind === 'open')?.id ?? ''}
+            value={stageId}
             onChange={(v) => set({ stageId: v })}
             disabled={!canWrite}
           />
@@ -151,6 +174,38 @@ export const OpportunityForm: React.FC<Props> = ({
             onChange={(v) => set({ expectedCloseDate: v ?? null })}
             disabled={!canWrite}
           />
+          <OwnerSelect
+            value={form.ownerUserId}
+            onChange={(v) => set({ ownerUserId: v })}
+            disabled={!canWrite}
+          />
+          <SearchableSelect
+            label="Origen"
+            options={withCurrent(settings.sources, form.source)}
+            value={form.source ?? ''}
+            onChange={(v) => set({ source: v || null })}
+            placeholder="¿De dónde viene?"
+            clearable={!settings.sourceRequired}
+            required={settings.sourceRequired}
+            disabled={!canWrite}
+          />
+          {isLost && (
+            <SearchableSelect
+              label="Motivo de pérdida"
+              options={withCurrent(settings.lostReasons, form.lostReason)}
+              value={form.lostReason ?? ''}
+              onChange={(v) => set({ lostReason: v || null })}
+              placeholder="Elige el motivo"
+              creatable
+              onCreate={(term) => {
+                set({ lostReason: term });
+                return term;
+              }}
+              createLabel="Usar «{term}»"
+              required
+              disabled={!canWrite}
+            />
+          )}
         </div>
         <Textarea
           label="Notas"

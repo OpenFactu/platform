@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DatePicker, Input, Modal, Select, Switch, Textarea, useToast } from '@openfactu/ui';
 import { PartnerSelect } from './PartnerSelect';
+import { OwnerSelect } from './OwnerSelect';
 import { activitiesApi } from '../api';
 import { ACTIVITY_TYPE_OPTIONS, type Activity, type ActivityType } from '../domain/crm';
 
@@ -48,6 +49,7 @@ export const ActivityForm: React.FC<Props> = ({ draft, askPartner, onClose, onSa
       contactId: form.contactId || null,
       opportunityId: form.opportunityId || null,
       dueAt: form.dueAt ? form.dueAt.slice(0, 10) : null,
+      ownerUserId: form.ownerUserId || undefined,
       done: !!form.done,
     };
     try {
@@ -101,6 +103,7 @@ export const ActivityForm: React.FC<Props> = ({ draft, askPartner, onClose, onSa
             value={form.dueAt ? form.dueAt.slice(0, 10) : null}
             onChange={(v) => set({ dueAt: v ?? null })}
           />
+          <OwnerSelect value={form.ownerUserId} onChange={(v) => set({ ownerUserId: v })} />
           <Switch
             label="Ya está hecha"
             checked={!!form.done}

@@ -5,6 +5,7 @@ export type CrmPermissionPath =
   | '/crm/opportunities'
   | '/crm/contacts'
   | '/crm/activities'
+  | '/crm/settings'
   /** Para el alta rápida de clientes desde los formularios del CRM. */
   | '/partners';
 

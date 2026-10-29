@@ -62,6 +62,12 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   },
   { path: '/crm/contacts', label: 'Contactos', group: 'CRM' },
   { path: '/crm/activities', label: 'Actividades comerciales', group: 'CRM' },
+  {
+    path: '/crm/settings',
+    label: 'Ajustes del CRM',
+    group: 'CRM',
+    hint: 'Motivos de pérdida, orígenes, responsable por defecto y avisos.',
+  },
 
   // ── Ventas ────────────────────────────────────────────────────────────────
   { path: '/sales/quotes', label: 'Presupuestos', group: 'Ventas' },

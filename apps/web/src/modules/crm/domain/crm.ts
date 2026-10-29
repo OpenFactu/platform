@@ -23,6 +23,9 @@ export interface Opportunity {
   ownerUserId: string | null;
   notes: string | null;
   closedAt: string | null;
+  source: string | null;
+  lostReason: string | null;
+  lastActivityAt: string | null;
   createdAt: string;
   updatedAt: string;
   partnerName?: string;
@@ -64,6 +67,22 @@ export interface Activity {
   opportunityTitle?: string | null;
 }
 
+export interface Member {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+}
+
+export interface CrmSettings {
+  lostReasons: string[];
+  sources: string[];
+  sourceRequired: boolean;
+  defaultOwnerUserId: string;
+  staleDays: number;
+  dormantEnabled: boolean;
+  dormantDays: number;
+}
+
 export const STAGE_KIND_LABEL: Record<StageKind, string> = {
   open: 'Abierta',
   won: 'Ganada',
@@ -93,6 +112,13 @@ export function isOverdue(a: Pick<Activity, 'dueAt' | 'doneAt'>, now = new Date(
   if (a.doneAt || !a.dueAt) return false;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   return new Date(a.dueAt.slice(0, 10) + 'T23:59:59') < today;
+}
+
+/** Oportunidad abierta sin actividad (ni cambios) desde hace `days` días. */
+export function isStale(o: Opportunity, days: number, now = new Date()): boolean {
+  if ((o.stageKind ?? 'open') !== 'open') return false;
+  const last = new Date(o.lastActivityAt ?? o.updatedAt ?? o.createdAt);
+  return now.getTime() - last.getTime() > days * 86_400_000;
 }
 
 /** Importe ponderado por la probabilidad de la etapa. */

@@ -4,6 +4,9 @@ import crypto from 'crypto';
 import * as schema from '../../db/schema';
 import { logAudit } from '../../utils/audit';
 import { pick, errorDetail } from './shared';
+import { emitCrmEvent } from '../../core/crm/events';
+import { closedAtFor, moveOpportunityToStage } from '../../core/crm/opportunityStage';
+import { getCrmSettings } from '../../core/crm/settings';
 
 const router = Router();
 
@@ -16,6 +19,8 @@ const ALLOWED = [
   'expectedCloseDate',
   'ownerUserId',
   'notes',
+  'source',
+  'lostReason',
 ];
 
 async function findStage(tenantClient: any, stageId: string) {
@@ -24,12 +29,6 @@ async function findStage(tenantClient: any, stageId: string) {
     .from(schema.opportunityStages)
     .where(eq(schema.opportunityStages.id, stageId));
   return stage;
-}
-
-/** closedAt sigue a la etapa: se fija al entrar en ganada/perdida y se limpia al reabrir. */
-function closedAtFor(stage: any, current: Date | null): Date | null {
-  if (stage.kind === 'open') return null;
-  return current ?? new Date();
 }
 
 /** Select con interlocutor, contacto y etapa ya resueltos. */
@@ -107,6 +106,13 @@ router.post('/', async (req: any, res) => {
     const stage = await findStage(req.tenantClient, payload.stageId);
     if (!stage) return res.status(400).json({ error: 'Etapa no encontrada' });
     if (payload.amount === null) payload.amount = '0';
+    if (stage.kind === 'lost' && !payload.lostReason?.trim())
+      return res.status(400).json({ error: 'Indica el motivo de pérdida' });
+    if (!payload.source) {
+      const settings = await getCrmSettings(req.tenantClient);
+      if (settings.sourceRequired)
+        return res.status(400).json({ error: 'Indica el origen de la oportunidad' });
+    }
 
     const id = crypto.randomUUID();
     const [row] = await req.tenantClient
@@ -119,6 +125,11 @@ router.post('/', async (req: any, res) => {
       })
       .returning();
     res.json(row);
+    emitCrmEvent(
+      'crm.opportunity.created',
+      { tenantId: req.tenantId, db: req.tenantClient, user: req.user },
+      { ...row, stageName: stage.name, stageKind: stage.kind },
+    );
     logAudit({
       tenantClient: req.tenantClient,
       tenantId: req.tenantId || '',
@@ -147,18 +158,28 @@ router.patch('/:id', async (req: any, res) => {
     if ('partnerId' in patch && !patch.partnerId)
       return res.status(400).json({ error: 'El interlocutor es obligatorio' });
     if ('amount' in patch && patch.amount === null) patch.amount = '0';
+    let row: any;
     if (patch.stageId && patch.stageId !== old.stageId) {
       const stage = await findStage(req.tenantClient, patch.stageId);
       if (!stage) return res.status(400).json({ error: 'Etapa no encontrada' });
-      patch.closedAt = closedAtFor(stage, old.closedAt);
+      if (stage.kind === 'lost' && !(patch.lostReason ?? old.lostReason)?.trim?.())
+        return res.status(400).json({ error: 'Indica el motivo de pérdida' });
+      const { stageId: _stageId, ...rest } = patch;
+      row = await moveOpportunityToStage(
+        req.tenantClient,
+        { tenantId: req.tenantId, user: req.user },
+        old,
+        stage,
+        rest,
+      );
     } else {
       delete patch.stageId;
+      [row] = await req.tenantClient
+        .update(schema.opportunities)
+        .set({ ...patch, updatedAt: new Date() })
+        .where(eq(schema.opportunities.id, id))
+        .returning();
     }
-    const [row] = await req.tenantClient
-      .update(schema.opportunities)
-      .set({ ...patch, updatedAt: new Date() })
-      .where(eq(schema.opportunities.id, id))
-      .returning();
     res.json(row);
     logAudit({
       tenantClient: req.tenantClient,
