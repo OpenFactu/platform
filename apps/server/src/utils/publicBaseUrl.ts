@@ -14,8 +14,22 @@ import * as schema from '../db/schema';
  *   6. `req.protocol + host` (último recurso).
  */
 export async function publicBaseUrl(req: any): Promise<string> {
-  const configured = await configuredPublicBaseUrl(req.tenantClient);
-  if (configured) return configured;
+  // 1. SystemConfig del tenant.
+  try {
+    if (req.tenantClient) {
+      const [row] = await req.tenantClient
+        .select({ value: schema.systemConfigs.value })
+        .from(schema.systemConfigs)
+        .where(eq(schema.systemConfigs.key, 'app_public_base_url'));
+      const v = row?.value?.toString().trim();
+      if (v && /^https?:\/\//.test(v)) return v.replace(/\/$/, '');
+    }
+  } catch {
+    /* ignore, cae al siguiente */
+  }
+
+  const envUrl = process.env.PUBLIC_BASE_URL?.trim();
+  if (envUrl) return envUrl.replace(/\/$/, '');
 
   const origin = (req.headers?.origin as string | undefined)?.trim();
   if (origin && /^https?:\/\//.test(origin)) return origin.replace(/\/$/, '');
@@ -35,26 +49,4 @@ export async function publicBaseUrl(req: any): Promise<string> {
   if (xfProto && xfHost) return `${xfProto}://${xfHost}`;
 
   return `${req.protocol}://${req.get('host')}`;
-}
-
-/**
- * Los pasos 1 y 2 de `publicBaseUrl`, sin request: para lo que se genera fuera
- * de una petición del ERP (la web pública, los cron). '' si no hay ninguna
- * configurada.
- */
-export async function configuredPublicBaseUrl(tenantDb: any): Promise<string> {
-  try {
-    if (tenantDb) {
-      const [row] = await tenantDb
-        .select({ value: schema.systemConfigs.value })
-        .from(schema.systemConfigs)
-        .where(eq(schema.systemConfigs.key, 'app_public_base_url'));
-      const v = row?.value?.toString().trim();
-      if (v && /^https?:\/\//.test(v)) return v.replace(/\/$/, '');
-    }
-  } catch {
-    /* ignore, cae al entorno */
-  }
-  const envUrl = process.env.PUBLIC_BASE_URL?.trim();
-  return envUrl ? envUrl.replace(/\/$/, '') : '';
 }

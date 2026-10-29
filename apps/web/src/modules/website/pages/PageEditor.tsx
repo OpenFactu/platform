@@ -8,7 +8,6 @@ import type { WebsitePage, WebsiteSite } from '../domain/website';
 import { useSiteTheme } from '../hooks/useSiteTheme';
 import { MediaLibraryModal } from '../components/MediaLibraryModal';
 import { ThemeModal } from '../components/ThemeModal';
-import { useCrmFormsForSite } from '@/modules/crm/hooks/useCrmFormsForSite';
 
 const AUTOSAVE_MS = 1500;
 
@@ -139,16 +138,12 @@ export const PageEditor: React.FC = () => {
     libraryResolver.current = null;
   };
 
-  // Hooks antes del return temprano: el bloque «Formulario del CRM» lee la lista de aquí.
-  const crmForms = useCrmFormsForSite();
-
   if (!site || !page || !doc) return <Loader />;
 
   const ctx: RenderContext = {
     basePath: `/site/${site.slug}`,
     contactEndpoint: `/site/${site.slug}/contact`,
     pages: pages.map((p) => ({ path: p.path, title: p.title })),
-    crmForms,
   };
 
   return (
