@@ -16,10 +16,11 @@ interface Props {
  *
  * En escritorio deja libre la esquina del lanzador del asistente
  * (ChatLauncherPanel: `bottom-6 right-6`, 56px); en móvil ese lanzador no se
- * pinta y lo que hay que esquivar es la barra de navegación inferior.
+ * pinta y lo que hay que esquivar es la barra de navegación inferior (80px,
+ * MobileBottomNav) con algo de aire y el margen seguro del dispositivo.
  */
 export const FloatingSaveButton: React.FC<Props> = ({ isNew, label, saving }) => (
-  <div className="fixed z-30 bottom-6 right-[6.5rem] max-md:right-4 max-md:bottom-20">
+  <div className="fixed z-30 bottom-6 right-[6.5rem] max-md:right-4 max-md:bottom-[calc(80px+1.25rem+env(safe-area-inset-bottom))]">
     <Tooltip content={label} side="left">
       <Button
         type="submit"

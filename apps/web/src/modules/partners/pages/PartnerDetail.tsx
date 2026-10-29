@@ -110,7 +110,7 @@ export const PartnerDetail: React.FC = () => {
   return (
     <form
       // pb-24: hueco para que el botón flotante no tape el final de la ficha.
-      className="p-4 pb-24 max-md:pb-36 space-y-6 animate-in fade-in duration-500"
+      className="p-4 pb-24 max-md:pb-48 space-y-6 animate-in fade-in duration-500"
       onSubmit={(e) => {
         e.preventDefault();
         handleSave();
