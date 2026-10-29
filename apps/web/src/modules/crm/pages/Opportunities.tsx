@@ -144,40 +144,46 @@ export const Opportunities: React.FC = () => {
         <KpiCard label="Previsión ponderada" value={fmt.money(pipeline.summary.weighted)} />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+      {/* Buscador a la izquierda; los filtros a la derecha y, si no caben, en la
+          línea siguiente. Ningún control se encoge: los segmentados recortan
+          (overflow-hidden) y se comerían su última opción. */}
+      <div className="flex flex-wrap items-center gap-3">
         <SearchInput
           value={search}
           onChange={setSearch}
           placeholder="Buscar por título, interlocutor o contacto"
-          className="w-full sm:max-w-sm sm:flex-1 min-w-0"
+          className="w-full sm:w-auto sm:flex-1 sm:min-w-[16rem] sm:max-w-sm"
         />
-        {view === 'list' && (
-          <SegmentedControl
+        <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
+          {view === 'list' && (
+            <SegmentedControl
+              size="sm"
+              className="shrink-0"
+              aria-label="Qué oportunidades ver"
+              value={listScope}
+              onChange={(v) => setListScope(v as ListScope)}
+              options={[
+                { value: 'open', label: 'Abiertas' },
+                { value: 'closed', label: 'Cerradas' },
+                { value: 'all', label: 'Todas' },
+              ]}
+            />
+          )}
+          <div className="shrink-0 whitespace-nowrap">
+            <Switch label="Solo las mías" checked={onlyMine} onChange={setOnlyMine} />
+          </div>
+          <Tabs
+            variant="segmented"
             size="sm"
-            aria-label="Qué oportunidades ver"
-            value={listScope}
-            onChange={(v) => setListScope(v as ListScope)}
-            options={[
-              { value: 'open', label: 'Abiertas' },
-              { value: 'closed', label: 'Cerradas' },
-              { value: 'all', label: 'Todas' },
+            className="shrink-0"
+            value={view}
+            onChange={(k) => setView(k as View)}
+            items={[
+              { key: 'board', label: 'Tablero', icon: <Columns3 size={14} /> },
+              { key: 'list', label: 'Lista', icon: <List size={14} /> },
             ]}
           />
-        )}
-        <Switch label="Solo las mías" checked={onlyMine} onChange={setOnlyMine} />
-        {/* shrink-0: la variante segmented recorta (overflow-hidden) y, si se
-            deja encoger junto al buscador, se come «Lista». */}
-        <Tabs
-          variant="segmented"
-          size="sm"
-          className="shrink-0"
-          value={view}
-          onChange={(k) => setView(k as View)}
-          items={[
-            { key: 'board', label: 'Tablero', icon: <Columns3 size={14} /> },
-            { key: 'list', label: 'Lista', icon: <List size={14} /> },
-          ]}
-        />
+        </div>
       </div>
 
       {view === 'board' ? (

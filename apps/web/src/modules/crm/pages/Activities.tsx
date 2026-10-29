@@ -28,7 +28,9 @@ export const Activities: React.FC = () => {
             { key: 'done', label: 'Hechas' },
           ]}
         />
-        <Switch label="Solo las mías" checked={onlyMine} onChange={setOnlyMine} />
+        <div className="shrink-0 whitespace-nowrap">
+          <Switch label="Solo las mías" checked={onlyMine} onChange={setOnlyMine} />
+        </div>
       </div>
       <ActivityList filter={{ status, ownerUserId: onlyMine ? user?.id : undefined }} askPartner />
     </div>
