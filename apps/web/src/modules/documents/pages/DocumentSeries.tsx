@@ -330,6 +330,7 @@ export const DocumentSeries: React.FC = () => {
 
       <Card className="overflow-hidden border-border-subtle" noPadding>
         <FilterBar
+          shortcut={false}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           activeFilters={activeFilters}

@@ -266,6 +266,7 @@ const SOList: React.FC<{
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
+          shortcut={false}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           activeFilters={activeFilters}
