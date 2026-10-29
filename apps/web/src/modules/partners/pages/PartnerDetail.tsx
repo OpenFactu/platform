@@ -17,6 +17,7 @@ import {
   PartnerGeneralFields,
 } from '../components/PartnerSections';
 import { FloatingSaveButton, HeaderSaveButton } from '@/components/FloatingSaveButton';
+import { PartnerCreateWizard } from '../components/PartnerCreateWizard';
 
 /**
  * Ficha completa de un interlocutor (/partners/:partnerId, o /partners/new
@@ -105,6 +106,10 @@ export const PartnerDetail: React.FC = () => {
       </div>
     );
   }
+
+  // El alta va paso a paso; la ficha de uno existente sigue siendo de tarjetas.
+  if (isNew && canWrite)
+    return <PartnerCreateWizard form={form} onCreate={handleSave} onCancel={back} />;
 
   const group = form.lookups.groups.find((g) => g.id === form.data.groupId);
   const disabled = !canWrite;

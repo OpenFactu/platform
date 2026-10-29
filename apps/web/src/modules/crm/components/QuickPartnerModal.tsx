@@ -1,8 +1,9 @@
 import React from 'react';
-import { Alert, Button, DescriptionList, Input, Modal, Select, useToast } from '@openfactu/ui';
+import { DescriptionList, Input, Modal, Select, useToast } from '@openfactu/ui';
 import { ArrowLeft, ArrowRight, UserPlus } from 'lucide-react';
 import { CountrySelect } from '@/components/geo/CountrySelect';
 import type { Partner } from '@/modules/partners/domain/partner';
+import { PartnerDuplicatesAlert } from '@/modules/partners/components/PartnerDuplicatesAlert';
 import {
   QUICK_PARTNER_STEPS,
   useQuickPartnerForm,
@@ -21,36 +22,6 @@ interface Props {
 }
 
 type Form = ReturnType<typeof useQuickPartnerForm>;
-
-const REASON = {
-  nif: 'el mismo NIF',
-  email: 'el mismo correo',
-  name: 'el mismo nombre',
-} as const;
-
-/** Clientes que ya existen y casan: «Usar este» en lugar de crear un duplicado. */
-const Duplicates: React.FC<{ f: Form; onUse: (p: Partner) => void }> = ({ f, onUse }) =>
-  f.duplicates.length ? (
-    <Alert
-      tone={f.duplicates.some((d) => d.reason === 'nif') ? 'danger' : 'warning'}
-      title="Puede que este cliente ya exista"
-    >
-      <ul className="mt-1 space-y-1">
-        {f.duplicates.map(({ partner, reason }) => (
-          <li key={partner.id} className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm">
-              <strong>{partner.name}</strong>
-              {partner.code && <span className="text-fg-muted"> · {partner.code}</span>}
-              <span className="text-fg-muted"> — {REASON[reason]}</span>
-            </span>
-            <Button type="button" size="sm" variant="secondary" onClick={() => onUse(partner)}>
-              Usar este
-            </Button>
-          </li>
-        ))}
-      </ul>
-    </Alert>
-  ) : null;
 
 const CompanyStep: React.FC<{ f: Form }> = ({ f }) => {
   const { draft, errors, country } = f;
@@ -230,7 +201,7 @@ export const QuickPartnerModal: React.FC<Props> = ({
       error={f.serverError ?? f.errors.groupId}
     >
       <div className="space-y-4">
-        <Duplicates f={f} onUse={(p) => finish(p, true)} />
+        <PartnerDuplicatesAlert duplicates={f.duplicates} onUse={(p) => finish(p, true)} />
         {f.step === 0 && <CompanyStep f={f} />}
         {f.step === 1 && <ContactStep f={f} />}
         {f.step === 2 && <ReviewStep f={f} />}
