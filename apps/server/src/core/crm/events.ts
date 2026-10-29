@@ -14,6 +14,7 @@ export const CRM_EVENTS = [
   'crm.opportunity.won',
   'crm.opportunity.lost',
   'crm.activity.created',
+  'crm.form.submitted',
 ] as const;
 
 export type CrmEvent = (typeof CRM_EVENTS)[number];

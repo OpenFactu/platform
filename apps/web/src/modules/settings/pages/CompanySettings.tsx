@@ -832,6 +832,12 @@ export const CompanySettings: React.FC = () => {
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, confirmBeforeCancel: v })}
               />
               <FlagRow
+                label="CRM · Formularios y encuestas"
+                hint="Formularios de captación con enlace público (cada respuesta crea un prospecto) y encuestas con enlace personal a tus contactos. Necesita el CRM activo."
+                checked={!!flagsDraft.crmFormsEnabled}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, crmFormsEnabled: v })}
+              />
+              <FlagRow
                 label="Permitir facturar presupuestos directamente"
                 hint="Muestra «Crear Factura» en los presupuestos, para facturarlos sin pasar por pedido. Desactívalo si en tu empresa siempre se va de presupuesto a pedido y luego a factura."
                 checked={flagsDraft.quoteDirectInvoiceEnabled !== false}

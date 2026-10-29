@@ -27,6 +27,11 @@ export interface IncomingLead {
   source?: string;
   /** Para el texto de la nota: «formulario de contacto», «encuesta X»… */
   via?: string;
+  /** Etapa y responsable concretos (formularios del CRM); si no, los por defecto. */
+  stageId?: string;
+  ownerUserId?: string;
+  /** Prefijo del título de la oportunidad; por defecto «Contacto web». */
+  titlePrefix?: string;
 }
 
 /** Busca en los campos extra el primero cuyo nombre case con el patrón. */
@@ -87,20 +92,27 @@ export async function createLeadFromSubmission(
     opportunityId = existing.id;
     ownerUserId = existing.ownerUserId;
   } else {
-    const [stage] = await db
-      .select()
-      .from(schema.opportunityStages)
-      .where(eq(schema.opportunityStages.kind, 'open'))
-      .orderBy(asc(schema.opportunityStages.sortOrder))
-      .limit(1);
+    let [stage] = lead.stageId
+      ? await db
+          .select()
+          .from(schema.opportunityStages)
+          .where(eq(schema.opportunityStages.id, lead.stageId))
+      : [];
+    if (!stage)
+      [stage] = await db
+        .select()
+        .from(schema.opportunityStages)
+        .where(eq(schema.opportunityStages.kind, 'open'))
+        .orderBy(asc(schema.opportunityStages.sortOrder))
+        .limit(1);
     if (!stage) return null;
     opportunityId = crypto.randomUUID();
-    ownerUserId = settings.defaultOwnerUserId || null;
+    ownerUserId = lead.ownerUserId || settings.defaultOwnerUserId || null;
     const [opp] = await db
       .insert(schema.opportunities)
       .values({
         id: opportunityId,
-        title: `Contacto web: ${company || name || email}`.slice(0, 200),
+        title: `${lead.titlePrefix ?? 'Contacto web'}: ${company || name || email}`.slice(0, 200),
         stageId: stage.id,
         prospectName: name,
         prospectCompany: company,

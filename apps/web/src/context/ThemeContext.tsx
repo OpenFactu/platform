@@ -66,6 +66,8 @@ export interface FlagsConfig {
   assistantEnabled: boolean;
   /** CRM: oportunidades, contactos y actividades. Opcional, off por defecto. */
   crmEnabled: boolean;
+  /** CRM · formularios y encuestas con enlace público. */
+  crmFormsEnabled: boolean;
   /** Ofrecer «Crear Factura» en el presupuesto (facturarlo sin pasar por pedido). */
   quoteDirectInvoiceEnabled: boolean;
 }
@@ -117,6 +119,7 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   hrEnabled: true,
   assistantEnabled: true,
   crmEnabled: false,
+  crmFormsEnabled: false,
   quoteDirectInvoiceEnabled: true,
 };
 

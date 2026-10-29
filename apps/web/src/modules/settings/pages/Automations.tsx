@@ -59,6 +59,7 @@ const EVENT_OPTIONS = [
   { value: 'crm.opportunity.won', label: 'CRM · Oportunidad ganada' },
   { value: 'crm.opportunity.lost', label: 'CRM · Oportunidad perdida' },
   { value: 'crm.activity.created', label: 'CRM · Actividad registrada' },
+  { value: 'crm.form.submitted', label: 'CRM · Formulario o encuesta respondidos' },
 ];
 
 const TRIGGER_TYPE_OPTIONS = [

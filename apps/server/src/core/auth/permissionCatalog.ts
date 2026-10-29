@@ -63,6 +63,12 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   { path: '/crm/contacts', label: 'Contactos', group: 'CRM' },
   { path: '/crm/activities', label: 'Actividades comerciales', group: 'CRM' },
   {
+    path: '/crm/forms',
+    label: 'Formularios y encuestas',
+    group: 'CRM',
+    hint: 'Crearlos, ver sus respuestas y mandar encuestas a los contactos.',
+  },
+  {
     path: '/crm/settings',
     label: 'Ajustes del CRM',
     group: 'CRM',

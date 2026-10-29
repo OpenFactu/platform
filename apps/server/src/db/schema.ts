@@ -2122,6 +2122,58 @@ export const opportunityLines = pgTable('OpportunityLine', {
   sortOrder: integer('sortOrder').default(0).notNull(),
 });
 
+// ════════════════════════════════════════════════════════════════════
+// Mig 078 — Formularios y encuestas del CRM
+// ════════════════════════════════════════════════════════════════════
+
+export const crmForms = pgTable('CrmForm', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  /** 'form' (captación) | 'survey' (encuesta). */
+  kind: text('kind').default('form').notNull(),
+  /** Parte final del enlace público /f/:tenantId/:slug. */
+  slug: text('slug').notNull().unique(),
+  title: text('title'),
+  intro: text('intro'),
+  /** Definición de campos (ver core/crm/forms.ts → FormField). */
+  fields: jsonb('fields').$type<any[]>().default([]).notNull(),
+  /** Textos y acciones al enviar (ver core/crm/forms.ts → FormSettings). */
+  settings: jsonb('settings').$type<Record<string, any>>().default({}).notNull(),
+  isActive: boolean('isActive').default(true).notNull(),
+  createdBy: text('createdBy'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+export const crmFormInvites = pgTable('CrmFormInvite', {
+  id: text('id').primaryKey(),
+  formId: text('formId')
+    .references(() => crmForms.id, { onDelete: 'cascade' })
+    .notNull(),
+  contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
+  partnerId: text('partnerId').references(() => businessPartners.id, { onDelete: 'set null' }),
+  token: text('token').notNull().unique(),
+  sentAt: timestamp('sentAt'),
+  respondedAt: timestamp('respondedAt'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const crmFormResponses = pgTable('CrmFormResponse', {
+  id: text('id').primaryKey(),
+  formId: text('formId')
+    .references(() => crmForms.id, { onDelete: 'cascade' })
+    .notNull(),
+  inviteId: text('inviteId').references(() => crmFormInvites.id, { onDelete: 'set null' }),
+  answers: jsonb('answers').$type<Record<string, any>>().default({}).notNull(),
+  partnerId: text('partnerId').references(() => businessPartners.id, { onDelete: 'set null' }),
+  contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
+  opportunityId: text('opportunityId').references(() => opportunities.id, {
+    onDelete: 'set null',
+  }),
+  meta: jsonb('meta').$type<Record<string, any>>().default({}).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
 /** Cada cambio de etapa, para medir conversión y tiempos del embudo (mig 074). */
 export const opportunityStageHistory = pgTable('OpportunityStageHistory', {
   id: text('id').primaryKey(),

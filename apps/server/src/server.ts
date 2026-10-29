@@ -32,6 +32,8 @@ import crmStagesRouter from './api/crm/stages';
 import crmActivitiesRouter from './api/crm/activities';
 import crmSettingsRouter from './api/crm/settings';
 import crmPartnersRouter from './api/crm/partners';
+import crmFormsRouter from './api/crm/forms';
+import publicFormsRouter from './api/publicForms';
 import membersRouter from './api/members';
 import { registerCrmQuoteListener } from './core/crm/quoteListener';
 import { registerCrmLeadListener } from './core/crm/leads';
@@ -197,6 +199,7 @@ app.get('/metrics', async (_req, res) => {
 mountPublic(app, '/api/setup', 'alta inicial de la instalación', setupRouter);
 mountPublic(app, '/api/auth', 'login y recuperación de contraseña', authRouter);
 mountPublic(app, '/api/logistics', 'seguimiento de envío por token', publicTrackRouter);
+mountPublic(app, '/api/public/forms', 'formularios y encuestas públicos del CRM', publicFormsRouter);
 // Webs públicas de tenants (módulo Website) — sin auth; resuelve por slug.
 // El middleware de Host atiende subdominios/dominios propios registrados en
 // WebsiteHost y no toca el resto de peticiones (cache TTL 60s, incl. negativos).
@@ -270,6 +273,7 @@ mountApi(app, '/api/crm/stages', '/crm/opportunities', crmStagesRouter);
 mountApi(app, '/api/crm/activities', '/crm/activities', crmActivitiesRouter);
 // Ficha 360: cifras y línea de tiempo; dentro se recorta por permiso de cada documento.
 mountApi(app, '/api/crm/partners', '/crm/activities', crmPartnersRouter);
+mountApi(app, '/api/crm/forms', '/crm/forms', crmFormsRouter);
 // Leer los ajustes lo necesita cualquier formulario del CRM (motivos, orígenes);
 // el PUT exige /crm/settings dentro del router.
 mountShared(

@@ -24,6 +24,9 @@ const ResetPassword = lazy(() =>
 const TrackingPage = lazy(() =>
   import('./pages/public/TrackingPage').then((m) => ({ default: m.TrackingPage })),
 );
+const PublicFormPage = lazy(() =>
+  import('./pages/public/PublicFormPage').then((m) => ({ default: m.PublicFormPage })),
+);
 const KioskMode = lazy(() =>
   import('@/modules/hr/pages/KioskMode').then((m) => ({ default: m.KioskMode })),
 );
@@ -62,7 +65,8 @@ function App() {
   // Rutas públicas que deben funcionar sin auth ni wizard — `/track/:token`.
   // El `BrowserRouter` se remonta dentro de cada rama, así que duplicamos el
   // check aquí para el caso "cargando".
-  const publicPath = window.location.pathname.startsWith('/track/');
+  const publicPath =
+    window.location.pathname.startsWith('/track/') || window.location.pathname.startsWith('/f/');
   const kioskPath = window.location.pathname.startsWith('/kiosk');
 
   if (publicPath) {
@@ -71,6 +75,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/track/:token" element={<TrackingPage />} />
+            <Route path="/f/:tenantId/:slug" element={<PublicFormPage />} />
           </Routes>
         </BrowserRouter>
         <DebugPanel />
