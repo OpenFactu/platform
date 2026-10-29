@@ -16,7 +16,7 @@ import {
   PartnerFiscalFields,
   PartnerGeneralFields,
 } from '../components/PartnerSections';
-import { FloatingSaveButton } from '@/components/FloatingSaveButton';
+import { FloatingSaveButton, HeaderSaveButton } from '@/components/FloatingSaveButton';
 
 /**
  * Ficha completa de un interlocutor (/partners/:partnerId, o /partners/new
@@ -118,6 +118,15 @@ export const PartnerDetail: React.FC = () => {
     >
       <PageHeader
         size="md"
+        actions={
+          canWrite && (
+            <HeaderSaveButton
+              isNew={isNew}
+              label={isNew ? 'Crear interlocutor' : 'Guardar'}
+              saving={form.saving}
+            />
+          )
+        }
         breadcrumbs={
           <Button
             type="button"

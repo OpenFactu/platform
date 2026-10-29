@@ -1,25 +1,27 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Input, Modal, Select, useToast } from '@openfactu/ui';
-import { partnerGroupsApi, partnersApi } from '@/modules/partners/api';
-import type { Partner, PartnerGroup } from '@/modules/partners/domain/partner';
+import React from 'react';
+import { Alert, Button, Input, Modal, Select, useToast } from '@openfactu/ui';
+import { CountrySelect } from '@/components/geo/CountrySelect';
+import type { Partner } from '@/modules/partners/domain/partner';
+import { useQuickPartnerForm, type QuickPartnerInitial } from '../hooks/useQuickPartnerForm';
 
-export interface QuickPartnerInitial {
-  name: string;
-  email?: string | null;
-  phone?: string | null;
-}
+export type { QuickPartnerInitial };
 
 interface Props {
   /** Datos con los que se abre (lo tecleado, o el prospecto); `null` = cerrado. */
   initial: QuickPartnerInitial | null;
   title?: string;
   onClose: () => void;
+  /** El cliente creado, o uno que ya existía y se eligió en lugar de duplicarlo. */
   onCreated: (partner: Partner) => void;
 }
 
+const REASON = { nif: 'el mismo NIF', email: 'el mismo correo', name: 'el mismo nombre' } as const;
+
 /**
  * Alta rápida de un cliente sin salir del CRM: lo justo para poder seguir
- * (nombre y, si se tienen, NIF, correo y teléfono). El resto de la ficha se
+ * (nombre y, si se tienen, país, NIF, correo y teléfono), validado campo a
+ * campo. Si ya hay un cliente con el mismo NIF, correo o nombre, lo avisa y
+ * deja usar ese en lugar de crear un duplicado. El resto de la ficha se
  * completa luego en Interlocutores.
  *
  * Solo se ofrecen grupos de cliente con prefijo: el código del interlocutor es
@@ -32,117 +34,122 @@ export const QuickPartnerModal: React.FC<Props> = ({
   onCreated,
 }) => {
   const toast = useToast();
-  const [groups, setGroups] = useState<PartnerGroup[]>([]);
-  const [form, setForm] = useState({ name: '', nif: '', email: '', phone: '', groupId: '' });
-  const [saving, setSaving] = useState(false);
+  const f = useQuickPartnerForm(initial);
+  const { draft, errors, country } = f;
 
-  const [seen, setSeen] = useState<QuickPartnerInitial | null>(null);
-  if (initial !== seen) {
-    setSeen(initial);
-    if (initial)
-      setForm((f) => ({
-        ...f,
-        name: initial.name,
-        nif: '',
-        email: initial.email ?? '',
-        phone: initial.phone ?? '',
-      }));
-  }
-
-  const open = initial !== null;
-  useEffect(() => {
-    if (!open) return;
-    partnerGroupsApi
-      .list()
-      .then(setGroups)
-      .catch(() => setGroups([]));
-  }, [open]);
-
-  const groupOptions = useMemo(
-    () =>
-      groups
-        .filter((g) => g.isCustomer && g.codePrefix)
-        .map((g) => ({ value: g.id, label: g.name })),
-    [groups],
-  );
-  const groupId = form.groupId || groupOptions[0]?.value || '';
+  const finish = (partner: Partner, existed: boolean) => {
+    toast.success(existed ? `Usando el cliente ${partner.name}` : `Cliente ${partner.name} creado`);
+    onCreated(partner);
+    onClose();
+  };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) {
-      toast.error('El nombre es obligatorio');
-      return;
-    }
-    if (!groupId) {
-      toast.error(
-        'No hay ningún grupo de clientes con prefijo de código. Créalo en Interlocutores → Grupos.',
-      );
-      return;
-    }
-    setSaving(true);
-    try {
-      const partner = await partnersApi.create({
-        name: form.name.trim(),
-        nif: form.nif.trim() || null,
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
-        groupId,
-        countryCode: 'ES',
-      });
-      toast.success(`Cliente ${partner.name} creado`);
-      onCreated(partner);
-      onClose();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo crear el cliente');
-    } finally {
-      setSaving(false);
-    }
+    const partner = await f.create();
+    if (partner) finish(partner, false);
   };
 
   return (
     <Modal
-      isOpen={open}
+      isOpen={initial !== null}
       onClose={onClose}
       title={title}
       subtitle="Lo básico para seguir; el resto de la ficha se completa en Interlocutores"
       size="md"
       onSubmit={save}
-      primaryAction={{ label: 'Crear cliente', type: 'submit', isLoading: saving }}
+      primaryAction={{ label: 'Crear cliente', type: 'submit', isLoading: f.saving }}
+      error={f.serverError ?? errors.groupId}
     >
       <div className="space-y-4">
+        {f.duplicates.length > 0 && (
+          <Alert
+            tone={f.duplicates.some((d) => d.reason === 'nif') ? 'danger' : 'warning'}
+            title="Puede que este cliente ya exista"
+          >
+            <ul className="mt-1 space-y-1">
+              {f.duplicates.map(({ partner, reason }) => (
+                <li key={partner.id} className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm">
+                    <strong>{partner.name}</strong>
+                    {partner.code && <span className="text-fg-muted"> · {partner.code}</span>}
+                    <span className="text-fg-muted"> — {REASON[reason]}</span>
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => finish(partner, true)}
+                  >
+                    Usar este
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </Alert>
+        )}
+
         <Input
-          label="Nombre"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          label="Nombre o razón social"
+          value={draft.name}
+          onChange={(e) => f.set({ name: e.target.value })}
+          onBlur={() => f.blur('name')}
+          error={errors.name}
           required
           autoFocus
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Input
-            label="NIF"
-            value={form.nif}
-            onChange={(e) => setForm({ ...form, nif: e.target.value })}
+          <CountrySelect
+            label="País"
+            value={draft.countryCode}
+            onChange={(countryCode) => f.set({ countryCode })}
           />
-          {groupOptions.length > 1 && (
-            <Select
-              label="Grupo"
-              options={groupOptions}
-              value={groupId}
-              onChange={(v) => setForm({ ...form, groupId: v })}
-            />
-          )}
+          <Input
+            label={
+              <>
+                {country?.taxIdLabel || 'NIF'}
+                {country?.taxIdExample && (
+                  <span className="ml-2 font-normal text-fg-subtle">
+                    ej.: {country.taxIdExample}
+                  </span>
+                )}
+              </>
+            }
+            value={draft.nif}
+            onChange={(e) => f.set({ nif: e.target.value.toUpperCase() })}
+            onBlur={() => f.blur('nif')}
+            error={errors.nif}
+            status={draft.nif && !errors.nif && !f.duplicates.length ? 'success' : 'default'}
+            autoComplete="off"
+          />
           <Input
             label="Correo"
             type="email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            inputMode="email"
+            value={draft.email}
+            onChange={(e) => f.set({ email: e.target.value })}
+            onBlur={() => f.blur('email')}
+            error={errors.email}
+            autoComplete="email"
           />
           <Input
             label="Teléfono"
             type="tel"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            inputMode="tel"
+            prefix={country?.phonePrefix || undefined}
+            value={draft.phone}
+            onChange={(e) => f.set({ phone: e.target.value })}
+            onBlur={() => f.blur('phone')}
+            error={errors.phone}
+            autoComplete="tel"
           />
+          {f.groupOptions.length > 1 && (
+            <Select
+              label="Grupo"
+              options={f.groupOptions}
+              value={draft.groupId}
+              onChange={(groupId) => f.set({ groupId })}
+            />
+          )}
         </div>
       </div>
     </Modal>

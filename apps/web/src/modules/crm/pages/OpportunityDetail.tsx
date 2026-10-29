@@ -13,7 +13,7 @@ import { OpportunityLinesEditor } from '../components/OpportunityLinesEditor';
 import { OpportunityDocuments } from '../components/OpportunityDocuments';
 import { ActivityList } from '../components/ActivityList';
 import { QuickPartnerModal, type QuickPartnerInitial } from '../components/QuickPartnerModal';
-import { FloatingSaveButton } from '@/components/FloatingSaveButton';
+import { FloatingSaveButton, HeaderSaveButton } from '@/components/FloatingSaveButton';
 
 /**
  * Ficha de una oportunidad (/crm/opportunities/:id, o /new; `?partnerId=`
@@ -151,17 +151,26 @@ export const OpportunityDetail: React.FC = () => {
           )
         }
         actions={
-          canConvert && (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={convert}
-              // En móvil va dentro del botón flotante.
-              className="max-md:hidden"
-            >
-              <UserPlus size={14} /> Convertir en cliente
-            </Button>
-          )
+          <>
+            {canConvert && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={convert}
+                // En móvil va dentro del botón flotante.
+                className="max-md:hidden"
+              >
+                <UserPlus size={14} /> Convertir en cliente
+              </Button>
+            )}
+            {canWrite && (
+              <HeaderSaveButton
+                isNew={isNew}
+                label={isNew ? 'Crear oportunidad' : 'Guardar'}
+                saving={detail.saving}
+              />
+            )}
+          </>
         }
       />
 
