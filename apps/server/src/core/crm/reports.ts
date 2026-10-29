@@ -6,7 +6,7 @@
 import { and, asc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { ClientFactory } from '../tenant/ClientFactory';
-import { summarizeResponses, type FormField } from './forms';
+import { allQuestions, normalizeDefinition, summarize } from '../forms/engine';
 
 export interface Period {
   from: Date;
@@ -292,25 +292,30 @@ export async function activityByOwnerReport(db: any, tenantId: string, period: P
 
 // ── Encuestas ──────────────────────────────────────────────────────────
 
-/** Por cada encuesta: respuestas y NPS (de su primera pregunta NPS) por mes. */
+/**
+ * Por cada formulario con una pregunta de recomendación (escala 0–10):
+ * respuestas y NPS por mes. Los formularios son del módulo Formularios.
+ */
 export async function surveysReport(db: any, period: Period) {
-  const forms = await db.select().from(schema.crmForms).where(eq(schema.crmForms.kind, 'survey'));
+  const all = await db.select().from(schema.forms);
   const out = [];
-  for (const f of forms) {
-    const npsField = (f.fields as FormField[]).find((x) => x.type === 'nps');
+  for (const f of all) {
+    const def = normalizeDefinition(f.definition, f.fields);
+    const npsQ = allQuestions(def).find(
+      (q) => q.type === 'scale' && q.scale?.min === 0 && q.scale?.max === 10,
+    );
+    if (!npsQ) continue;
     const responses = await db
-      .select({
-        answers: schema.crmFormResponses.answers,
-        createdAt: schema.crmFormResponses.createdAt,
-      })
-      .from(schema.crmFormResponses)
+      .select({ answers: schema.formResponses.answers, createdAt: schema.formResponses.createdAt })
+      .from(schema.formResponses)
       .where(
         and(
-          eq(schema.crmFormResponses.formId, f.id),
-          gte(schema.crmFormResponses.createdAt, period.from),
-          lte(schema.crmFormResponses.createdAt, period.to),
+          eq(schema.formResponses.formId, f.id),
+          gte(schema.formResponses.createdAt, period.from),
+          lte(schema.formResponses.createdAt, period.to),
         ),
       );
+    const npsDef = { version: 2 as const, sections: [{ id: 's', items: [npsQ] }] };
     const byMonth = new Map<string, any[]>();
     for (const r of responses) {
       const m = new Date(r.createdAt).toISOString().slice(0, 7);
@@ -318,11 +323,15 @@ export async function surveysReport(db: any, period: Period) {
     }
     const months = [...byMonth.keys()].sort().map((m) => {
       const list = byMonth.get(m)!;
-      const nps = npsField ? (summarizeResponses([npsField], list)[0]?.nps ?? null) : null;
-      return { month: m, responses: list.length, nps };
+      return { month: m, responses: list.length, nps: summarize(npsDef, list)[0]?.nps ?? null };
     });
-    const overall = npsField ? (summarizeResponses([npsField], responses)[0]?.nps ?? null) : null;
-    out.push({ formId: f.id, name: f.name, responses: responses.length, nps: overall, months });
+    out.push({
+      formId: f.id,
+      name: f.name,
+      responses: responses.length,
+      nps: summarize(npsDef, responses)[0]?.nps ?? null,
+      months,
+    });
   }
   return out;
 }

@@ -77,8 +77,8 @@ export interface FlagsConfig {
   /** Activa el CRM (oportunidades, contactos y actividades comerciales). Off
    *  por defecto, como el resto de módulos opcionales. */
   crmEnabled: boolean;
-  /** CRM · formularios y encuestas propios con enlace público. Off por defecto. */
-  crmFormsEnabled: boolean;
+  /** Módulo Formularios (formularios y encuestas con enlace público). Off por defecto. */
+  formsEnabled: boolean;
   /** Ofrecer «Crear Factura» en el presupuesto (facturarlo sin pasar por
    *  pedido). On por defecto: es como funcionaba hasta ahora. */
   quoteDirectInvoiceEnabled: boolean;
@@ -133,7 +133,7 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   assistantEnabled: true,
   websiteEnabled: false,
   crmEnabled: false,
-  crmFormsEnabled: false,
+  formsEnabled: false,
   quoteDirectInvoiceEnabled: true,
 };
 

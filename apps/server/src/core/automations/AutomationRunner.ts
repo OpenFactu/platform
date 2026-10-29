@@ -36,6 +36,7 @@ const WHITELIST_EVENTS = [
   'partner.afterCreate',
   'item.afterCreate',
   ...CRM_EVENTS,
+  'forms.response.created',
 ] as const;
 
 class AutomationRunnerImpl {

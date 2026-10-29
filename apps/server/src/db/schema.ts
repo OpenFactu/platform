@@ -2127,55 +2127,76 @@ export const opportunityLines = pgTable('OpportunityLine', {
 });
 
 // ════════════════════════════════════════════════════════════════════
-// Mig 078 — Formularios y encuestas del CRM
+// Mig 078 / 080 — Formularios y encuestas (módulo propio desde la 080;
+// antes eran CrmForm, CrmFormInvite y CrmFormResponse)
 // ════════════════════════════════════════════════════════════════════
 
-export const crmForms = pgTable('CrmForm', {
+export const forms = pgTable('Form', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  /** 'form' (captación) | 'survey' (encuesta). */
+  /** 'form' | 'survey' (solo cambia la plantilla de partida y las pestañas). */
   kind: text('kind').default('form').notNull(),
   /** Parte final del enlace público /f/:tenantId/:slug. */
   slug: text('slug').notNull().unique(),
   title: text('title'),
   intro: text('intro'),
-  /** Definición de campos (ver core/crm/forms.ts → FormField). */
+  /** v1 (lista plana de campos). Solo se lee: la v2 vive en `definition`. */
   fields: jsonb('fields').$type<any[]>().default([]).notNull(),
-  /** Textos y acciones al enviar (ver core/crm/forms.ts → FormSettings). */
+  /** Secciones, preguntas y lógica (core/forms/engine.ts → FormDefinition). */
+  definition: jsonb('definition').$type<any>(),
+  /** Ajustes de respuestas, cuestionario y CRM (core/forms/settings.ts). */
   settings: jsonb('settings').$type<Record<string, any>>().default({}).notNull(),
+  /** Color de acento, fondo e imagen de cabecera. */
+  theme: jsonb('theme').$type<Record<string, any>>().default({}).notNull(),
+  /** Acepta respuestas. */
   isActive: boolean('isActive').default(true).notNull(),
+  ownerUserId: text('ownerUserId'),
   createdBy: text('createdBy'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
-export const crmFormInvites = pgTable('CrmFormInvite', {
+export const formInvites = pgTable('FormInvite', {
   id: text('id').primaryKey(),
   formId: text('formId')
-    .references(() => crmForms.id, { onDelete: 'cascade' })
+    .references(() => forms.id, { onDelete: 'cascade' })
     .notNull(),
+  /** Con CRM: contacto y cliente; sin él, solo la dirección. */
   contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
   partnerId: text('partnerId').references(() => businessPartners.id, { onDelete: 'set null' }),
+  email: text('email'),
   token: text('token').notNull().unique(),
   sentAt: timestamp('sentAt'),
   respondedAt: timestamp('respondedAt'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
 });
 
-export const crmFormResponses = pgTable('CrmFormResponse', {
+export const formResponses = pgTable('FormResponse', {
   id: text('id').primaryKey(),
   formId: text('formId')
-    .references(() => crmForms.id, { onDelete: 'cascade' })
+    .references(() => forms.id, { onDelete: 'cascade' })
     .notNull(),
-  inviteId: text('inviteId').references(() => crmFormInvites.id, { onDelete: 'set null' }),
+  inviteId: text('inviteId').references(() => formInvites.id, { onDelete: 'set null' }),
   answers: jsonb('answers').$type<Record<string, any>>().default({}).notNull(),
+  respondentEmail: text('respondentEmail'),
   partnerId: text('partnerId').references(() => businessPartners.id, { onDelete: 'set null' }),
   contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
   opportunityId: text('opportunityId').references(() => opportunities.id, {
     onDelete: 'set null',
   }),
+  // Cuestionario: nota y puntos puestos a mano por pregunta.
+  score: decimal('score', { precision: 10, scale: 2 }),
+  maxScore: decimal('maxScore', { precision: 10, scale: 2 }),
+  grades: jsonb('grades').$type<Record<string, number>>().default({}).notNull(),
+  gradedAt: timestamp('gradedAt'),
+  /** Enlace para que quien respondió edite su respuesta. */
+  editToken: text('editToken'),
+  /** Marca del navegador, para «una respuesta por persona» sin pedir correo. */
+  browserKey: text('browserKey'),
+  status: text('status').default('complete').notNull(),
   meta: jsonb('meta').$type<Record<string, any>>().default({}).notNull(),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt'),
 });
 
 /** Cada cambio de etapa, para medir conversión y tiempos del embudo (mig 074). */
