@@ -146,10 +146,10 @@ export const NotificationBell: React.FC = () => {
       onActivate={(item) => {
         void markRead(item.id);
         const link = notifs.find((n) => n.id === item.id)?.link;
-        if (link) openTab(link);
-      }}
-      onReadChange={(item, read) => {
-        if (read) void markRead(item.id);
+        // La bandeja se cierra con una animación (en móvil es una modal a
+        // pantalla completa con el scroll bloqueado): abrir la pestaña a la
+        // vez dejaba la pantalla nueva medio cargada. Se espera a que termine.
+        if (link) window.setTimeout(() => openTab(link), 250);
       }}
       onMarkAllRead={() => void markAll()}
       trigger={<Bell size={16} className={shake ? 'k-bell-shake' : ''} />}
