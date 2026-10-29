@@ -3,6 +3,7 @@ import type { ModuleManifest, RouteEntry } from './types';
 import { inventoryModule } from './inventory/module';
 import { partnersModule } from './partners/module';
 import { crmModule } from './crm/module';
+import { formsModule } from './forms/module';
 import { analyticsModule } from './analytics/module';
 import { accountingModule } from './accounting/module';
 import { reportsModule } from './reports/module';
@@ -30,6 +31,7 @@ export const moduleManifests: ModuleManifest[] = [
   inventoryModule,
   partnersModule,
   crmModule,
+  formsModule,
   accountingModule,
   analyticsModule,
   reportsModule,
@@ -55,6 +57,7 @@ const NAV_ORDER = [
   'purchases',
   'partners',
   'crm',
+  'forms',
   'accounting',
   'analytics',
   'reports',

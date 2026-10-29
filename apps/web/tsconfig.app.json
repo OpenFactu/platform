@@ -18,7 +18,8 @@
     /* Alias de paths — @/ apunta a src/ (ver también resolve.alias en vite.config.ts).
        Sin baseUrl: las entradas se resuelven relativas a este tsconfig. */
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@forms-engine": ["../server/src/core/forms/engine.ts"]
     },
 
     /* Linting — relaxed for build tolerance */

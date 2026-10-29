@@ -55,7 +55,7 @@ export const Reports: React.FC = () => {
     { key: 'lost', label: 'Pérdidas' },
     { key: 'sources', label: 'Orígenes' },
     { key: 'activity', label: 'Comerciales' },
-    ...(flags.crmFormsEnabled ? [{ key: 'surveys', label: 'Encuestas' }] : []),
+    ...(flags.formsEnabled ? [{ key: 'surveys', label: 'Encuestas' }] : []),
   ];
 
   return (

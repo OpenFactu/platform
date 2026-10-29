@@ -8,4 +8,3 @@ export {
   crmPartnersApi,
 } from './crmApi';
 export type { CrmInput, ActivityFilter, OpportunityScope } from './crmApi';
-export { formsApi } from './formsApi';

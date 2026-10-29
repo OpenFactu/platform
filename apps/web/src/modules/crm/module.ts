@@ -13,10 +13,6 @@ const OpportunityDetail = lazy(() =>
   import('./pages/OpportunityDetail').then((m) => ({ default: m.OpportunityDetail })),
 );
 const Today = lazy(() => import('./pages/Today').then((m) => ({ default: m.Today })));
-const Forms = lazy(() => import('./pages/Forms').then((m) => ({ default: m.Forms })));
-const FormDetail = lazy(() =>
-  import('./pages/FormDetail').then((m) => ({ default: m.FormDetail })),
-);
 const Reports = lazy(() => import('./pages/Reports').then((m) => ({ default: m.Reports })));
 const CrmSettings = lazy(() =>
   import('./pages/CrmSettings').then((m) => ({ default: m.CrmSettings })),
@@ -35,12 +31,6 @@ export const crmModule: ModuleManifest = {
       { id: 'crm-opportunities', label: 'Oportunidades', path: '/crm/opportunities' },
       { id: 'crm-activities', label: 'Actividades', path: '/crm/activities' },
       { id: 'crm-contacts', label: 'Contactos', path: '/crm/contacts' },
-      {
-        id: 'crm-forms',
-        label: 'Formularios',
-        path: '/crm/forms',
-        featureFlag: 'crmFormsEnabled',
-      },
       { id: 'crm-reports', label: 'Informes', path: '/crm/reports' },
       { id: 'crm-stages', label: 'Etapas', path: '/crm/stages', adminOnly: true },
       { id: 'crm-settings', label: 'Ajustes', path: '/crm/settings' },
@@ -88,20 +78,6 @@ export const crmModule: ModuleManifest = {
       title: 'Etapas del embudo',
       iconName: 'Workflow',
       permissionPath: '/crm/opportunities',
-    },
-    {
-      pattern: '/crm/forms',
-      Component: Forms,
-      title: 'Formularios y encuestas',
-      iconName: 'ClipboardList',
-      permissionPath: '/crm/forms',
-    },
-    {
-      pattern: '/crm/forms/:formId',
-      Component: FormDetail,
-      title: 'Formulario',
-      iconName: 'ClipboardList',
-      permissionPath: '/crm/forms',
     },
     {
       pattern: '/crm/reports',

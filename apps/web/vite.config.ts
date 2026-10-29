@@ -119,6 +119,8 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      // Motor de formularios: el mismo fichero que usa el servidor (sin dependencias).
+      '@forms-engine': path.resolve(__dirname, '../server/src/core/forms/engine.ts'),
     },
   },
   server: {
