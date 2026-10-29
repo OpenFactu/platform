@@ -70,13 +70,15 @@ export const documentsModule: ModuleManifest = {
   ],
   routes: [
     // Ventas
-    ...['/sales/quotes', '/sales/quotes/new', '/sales/quotes/:id'].map((pattern, i) => ({
-      pattern,
-      Component: SalesQuotes,
-      title: i === 1 ? 'Nuevo Presupuesto' : i === 2 ? 'Presupuesto' : 'Presupuestos',
-      iconName: 'FileSignature',
-      permissionPath: '/sales/quotes',
-    })),
+    ...['/sales/quotes', '/sales/quotes/new', '/sales/quotes/:id', '/sales/quotes/:id/edit'].map(
+      (pattern, i) => ({
+        pattern,
+        Component: SalesQuotes,
+        title: ['Presupuestos', 'Nuevo Presupuesto', 'Presupuesto', 'Editar Presupuesto'][i],
+        iconName: 'FileSignature',
+        permissionPath: '/sales/quotes',
+      }),
+    ),
     ...['/sales-orders', '/sales-orders/new', '/sales-orders/:id'].map((pattern, i) => ({
       pattern,
       Component: SalesOrders,

@@ -261,6 +261,103 @@ export class DocumentEngine {
   }
 
   /**
+   * Edición de un documento que aún no ha tenido efectos: cabecera y líneas se
+   * reescriben y los totales se recalculan con el mismo cálculo que el alta.
+   * Conserva id, número, serie, periodo, estado y autor.
+   *
+   * Solo para tipos sin movimiento de stock y en los estados que su
+   * `editableStatuses` declare; quien llama comprueba además que no tenga ya
+   * documentos derivados (un presupuesto convertido no se toca).
+   */
+  public static async update(
+    tenantId: string,
+    db: any,
+    user: any,
+    def: DocumentDefinition,
+    documentId: string,
+    request: DocumentCreateRequest,
+  ): Promise<{ id: string; docNum: number }> {
+    const config = DocumentRegistry.getByTableName(def.tableName);
+    if (!config) throw new Error(`Tipo de documento no registrado para tabla ${def.tableName}`);
+    if (def.stockAction !== 'NONE' || !config.editableStatuses?.length)
+      throw new Error('Este tipo de documento no se puede editar una vez creado.');
+    if (!Array.isArray(request.lines) || request.lines.length === 0)
+      throw new Error('El documento no tiene líneas.');
+
+    const pluginFields = await PluginFieldManager.validateAndExtract(
+      def.eventPrefix.charAt(0).toUpperCase() + def.eventPrefix.slice(1),
+      request,
+      tenantId,
+      user?.role,
+    );
+    const flags = await getConfigSection(db, 'flags', FLAGS_DEFAULTS);
+
+    return db.transaction(async (tx: any) => {
+      const [header] = await tx
+        .select()
+        .from(def.schemaTable)
+        .where(eq(def.schemaTable.id, documentId));
+      if (!header) throw new Error('Documento no encontrado');
+      if (!config.editableStatuses!.includes(header.status))
+        throw new Error('Solo se puede editar el documento mientras está abierto.');
+
+      // Se conserva lo que identifica al documento; el resto viene del request.
+      const fullRequest = {
+        ...request,
+        seriesId: header.seriesId,
+        periodId: header.periodId,
+      } as DocumentCreateRequest;
+      const taxRateMap = await this.buildTaxRateMap(tx);
+      const { docWhRate, docWithholding } = this.computePreliminaryTotals(fullRequest, taxRateMap);
+
+      const values = this.buildHeaderValues(
+        def,
+        fullRequest,
+        pluginFields,
+        header.docNum,
+        documentId,
+        user,
+      );
+      for (const k of ['id', 'docNum', 'seriesId', 'periodId', 'status', 'createdBy', 'createdAt'])
+        delete values[k];
+      await tx.update(def.schemaTable).set(values).where(eq(def.schemaTable.id, documentId));
+
+      await tx
+        .delete(def.lineSchemaTable)
+        .where(eq(def.lineSchemaTable[config.lineFk], documentId));
+      const { calculatedSubtotal, calculatedTaxTotal, breakdownMap } = await this.processLines(
+        tx,
+        tenantId,
+        user,
+        def,
+        fullRequest,
+        taxRateMap,
+        documentId,
+        flags,
+      );
+      await this.applyFinalTotals(
+        tx,
+        def,
+        fullRequest,
+        documentId,
+        calculatedSubtotal,
+        calculatedTaxTotal,
+        breakdownMap,
+        docWithholding,
+        docWhRate,
+      );
+
+      await HookManager.trigger(`${def.eventPrefix}.afterUpdate`, {
+        tenantId,
+        db: tx,
+        data: { ...fullRequest, id: documentId, docNum: header.docNum },
+        user,
+      });
+      return { id: documentId, docNum: header.docNum };
+    });
+  }
+
+  /**
    * Motor Universal de Cancelación de Documentos — espejo de `create()`: revierte
    * stock línea a línea (respetando la misma regla `baseAlreadyMovedStock` que usa
    * la creación), reabre documentos base si el tipo cierra base docs al crear

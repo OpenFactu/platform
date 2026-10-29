@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { eq, sql, desc } from 'drizzle-orm';
+import { and, eq, ne, sql, desc } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { DocumentEngine } from '../../core/documents/DocumentEngine';
 import {
@@ -324,6 +324,84 @@ router.post('/:docType', async (req: any, res) => {
   } catch (error: any) {
     console.error('[Document Create] Error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * ¿Ha salido ya algún documento de este? (un pedido con su quoteId, o líneas de
+ * cualquier tipo con baseType/baseId apuntando a él). Si es así, editarlo
+ * descuadraría lo que ya se copió.
+ */
+async function hasDerivedDocuments(db: any, docType: DocType, id: string): Promise<boolean> {
+  for (const other of DocumentRegistry.getAll()) {
+    if (other.headerBaseRef?.baseDocType === docType) {
+      const col = (other.schemaTable as any)[other.headerBaseRef.column];
+      const [row] = await db
+        .select({ id: other.schemaTable.id })
+        .from(other.schemaTable)
+        .where(and(eq(col, id), ne(other.schemaTable.status, 'X')))
+        .limit(1);
+      if (row) return true;
+    }
+    const lines = other.lineSchemaTable as any;
+    if (lines?.baseType && lines?.baseId) {
+      const [row] = await db
+        .select({ id: lines.id })
+        .from(lines)
+        .where(and(eq(lines.baseType, docType), eq(lines.baseId, id)))
+        .limit(1);
+      if (row) return true;
+    }
+  }
+  return false;
+}
+
+/** PUT /:docType/:id — Editar (solo tipos con `editableStatuses`, p. ej. presupuestos abiertos) */
+router.put('/:docType/:id', async (req: any, res) => {
+  try {
+    const docType = req.params.docType as DocType;
+    if (!DocumentRegistry.has(docType)) {
+      return res.status(400).json({ error: `Tipo de documento no válido: ${docType}` });
+    }
+    const config = DocumentRegistry.get(docType);
+    if (!config.editableStatuses?.length) {
+      return res.status(405).json({ error: 'Este tipo de documento no se puede editar.' });
+    }
+    if (await hasDerivedDocuments(req.tenantClient, docType, req.params.id)) {
+      return res.status(409).json({
+        error: 'Ya se ha creado un documento a partir de este; no se puede editar.',
+      });
+    }
+    const result = await DocumentEngine.update(
+      req.tenantId,
+      req.tenantClient,
+      req.user,
+      {
+        tableName: config.tableName,
+        schemaTable: config.schemaTable,
+        lineSchemaTable: config.lineSchemaTable,
+        batchSchemaTable: config.batchSchemaTable,
+        eventPrefix: config.eventPrefix,
+        stockAction: config.stockAction,
+        closeBaseDocuments: config.closeBaseDocuments,
+        initialStatus: config.initialStatus,
+        hooks: config.hooks,
+      },
+      req.params.id,
+      req.body,
+    );
+    res.json(result);
+    logAudit({
+      tenantClient: req.tenantClient,
+      tenantId: req.tenantId || '',
+      userId: req.user?.id,
+      entityType: config.headerPgName,
+      entityId: req.params.id,
+      action: 'UPDATE',
+      newValue: { partnerId: req.body?.partnerId, lines: req.body?.lines?.length },
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
   }
 });
 
