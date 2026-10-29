@@ -1,4 +1,4 @@
-import { applyTheme, getThemePreset, type ThemeInput } from '@openfactu/ui';
+import { applyTheme, contrastRatio, getThemePreset, type ThemeInput } from '@openfactu/ui';
 import { coreApi } from '@/shared/api';
 import React, {
   createContext,
@@ -435,6 +435,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     themeAppliedOnce.current = true;
     const c = resolved.colors;
     root.classList.toggle('dark', resolved.mode === 'dark');
+
+    // En oscuro, un color principal casi igual que las superficies (Carbon,
+    // Midnight, Forest, Plum…) deja los botones `bg-primary` invisibles sobre
+    // las tarjetas. Si no contrasta (< 3:1), esos botones pasan al acento.
+    // Va después de `applyTheme`, que es quien escribe estas variables.
+    if (resolved.mode === 'dark') {
+      const primary = hexToRgb(c.primary);
+      if (contrastRatio(primary, hexToRgb(c.bgCard)) < 3) {
+        const accent = hexToRgb(c.accent);
+        root.style.setProperty('--color-primary-rgb', rgbToSpaceString(accent));
+        root.style.setProperty(
+          '--color-primary-hover-rgb',
+          rgbToSpaceString(darkenRgb(accent, 0.1)),
+        );
+        root.style.setProperty(
+          '--color-primary-fg-rgb',
+          rgbToSpaceString(contrastingFgRgb(accent)),
+        );
+      }
+    }
 
     if (resolved.mode === 'dark' && resolved.backdrop === 'none') {
       // Que <html> vea el fondo correcto antes del siguiente pintado, para no
