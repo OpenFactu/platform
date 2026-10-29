@@ -36,6 +36,9 @@ export const PublicFormPage: React.FC = () => {
   const { tenantId = '', slug = '' } = useParams();
   const [search] = useSearchParams();
   const token = search.get('t') ?? undefined;
+  // Incrustado en la web de la empresa (bloque «Formulario del CRM»): sin
+  // cabecera ni fondo propios, y avisando del alto para que el iframe no tenga scroll.
+  const embed = search.get('embed') === '1';
   const [data, setData] = useState<PublicForm | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [answers, setAnswers] = useState<Answers>({});
@@ -67,6 +70,20 @@ export const PublicFormPage: React.FC = () => {
       .catch(() => setNotFound(true));
   }, [tenantId, slug, token]);
 
+  useEffect(() => {
+    if (!embed) return;
+    document.body.style.background = 'transparent';
+    const notify = () =>
+      window.parent?.postMessage(
+        { type: 'keirost-form-height', height: document.documentElement.scrollHeight },
+        '*',
+      );
+    const observer = new ResizeObserver(notify);
+    observer.observe(document.body);
+    notify();
+    return () => observer.disconnect();
+  }, [embed]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!data) return;
@@ -92,21 +109,24 @@ export const PublicFormPage: React.FC = () => {
     }
   };
 
-  const shell = (children: React.ReactNode) => (
-    <div className="min-h-screen bg-bg-app text-fg-body py-10 px-4">
-      <div className="mx-auto w-full max-w-2xl space-y-6">
-        {data && (
-          <div className="flex items-center gap-3">
-            {data.branding.logoUrl && (
-              <img src={data.branding.logoUrl} alt="" className="h-9 w-auto object-contain" />
-            )}
-            <span className="text-sm font-semibold text-fg-muted">{data.branding.appName}</span>
-          </div>
-        )}
-        {children}
+  const shell = (children: React.ReactNode) =>
+    embed ? (
+      <div className="text-fg-body p-1">{children}</div>
+    ) : (
+      <div className="min-h-screen bg-bg-app text-fg-body py-10 px-4">
+        <div className="mx-auto w-full max-w-2xl space-y-6">
+          {data && (
+            <div className="flex items-center gap-3">
+              {data.branding.logoUrl && (
+                <img src={data.branding.logoUrl} alt="" className="h-9 w-auto object-contain" />
+              )}
+              <span className="text-sm font-semibold text-fg-muted">{data.branding.appName}</span>
+            </div>
+          )}
+          {children}
+        </div>
       </div>
-    </div>
-  );
+    );
 
   if (notFound)
     return shell(

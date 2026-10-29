@@ -7,7 +7,8 @@ import { loadShopData } from './shop';
 import { ClientFactory } from '../tenant/ClientFactory';
 import * as schema from '../../db/schema';
 import { getConfigSection } from '../config/systemConfigSection';
-import { BRANDING_DEFAULTS } from '../config/appConfig';
+import { BRANDING_DEFAULTS, FLAGS_DEFAULTS } from '../config/appConfig';
+import { configuredPublicBaseUrl } from '../../utils/publicBaseUrl';
 
 /**
  * URL pública de un asset con la extensión real del archivo (p.ej.
@@ -189,6 +190,19 @@ export async function listPublishedPaths(
   return rows.filter((r: any) => r.path !== PRODUCT_TEMPLATE_PATH);
 }
 
+/**
+ * Formularios del CRM para el bloque crmForm: solo con el CRM y los
+ * formularios activos. Se incrustan desde la URL pública del ERP; sin ella
+ * configurada se usa una ruta relativa, que solo funciona si la web se sirve
+ * desde el mismo dominio que el ERP.
+ */
+async function crmFormsContext(db: any, tenantId: string): Promise<RenderContext['crmForms']> {
+  const flags = await getConfigSection(db, 'flags', FLAGS_DEFAULTS);
+  if (!flags.crmEnabled || !flags.crmFormsEnabled) return undefined;
+  const base = await configuredPublicBaseUrl(db);
+  return { embedBase: `${base}/f/${tenantId}`, forms: [] };
+}
+
 export interface RenderOptions {
   /** Prefijo de URLs internas: '/site/acme' en modo slug, '' bajo dominio propio. */
   basePath: string;
@@ -254,6 +268,7 @@ export async function renderSitePage(
     pages: publishedPages,
     sent: opts.sent,
     shop,
+    crmForms: await crmFormsContext(db, tenantId),
   };
 
   let html = renderPageToHtml(
@@ -322,6 +337,7 @@ export async function renderProductPage(
     contactEndpoint: opts.basePath ? `${opts.basePath}/contact` : '/__contact',
     pages: publishedPages,
     shop: { ...shop, product },
+    crmForms: await crmFormsContext(db, tenantId),
   };
 
   // Plantilla editable: si el site tiene publicada la página reservada
