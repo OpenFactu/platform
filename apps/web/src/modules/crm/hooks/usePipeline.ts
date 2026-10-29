@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useToast } from '@openfactu/ui';
 import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
-import { opportunitiesApi } from '../api';
+import { opportunitiesApi, type OpportunityScope } from '../api';
 import { groupByStage, weightedAmount, type Opportunity } from '../domain/crm';
 import { useOpportunities, useStages } from './useCrmData';
 
@@ -12,10 +12,13 @@ import { useOpportunities, useStages } from './useCrmData';
  * Llevar una oportunidad a una etapa «perdida» no se aplica enseguida: queda en
  * `pendingLost` hasta que se confirme el motivo (`confirmLost`).
  */
-export function usePipeline(partnerId?: string) {
+export function usePipeline(partnerId?: string, scope?: OpportunityScope) {
   const toast = useToast();
   const { stages, refresh: refreshStages } = useStages();
-  const { opportunities, setOpportunities, loading, error, refresh } = useOpportunities(partnerId);
+  const { opportunities, setOpportunities, loading, error, refresh } = useOpportunities(
+    partnerId,
+    scope,
+  );
   const [dragId, setDragId] = useState<string | null>(null);
   const [pendingLost, setPendingLost] = useState<{ opp: Opportunity; stageId: string } | null>(
     null,

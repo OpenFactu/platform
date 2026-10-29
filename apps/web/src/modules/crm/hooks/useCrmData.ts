@@ -10,7 +10,7 @@ import {
   opportunitiesApi,
   stagesApi,
 } from '../api';
-import type { ActivityFilter } from '../api';
+import type { ActivityFilter, OpportunityScope } from '../api';
 import type {
   Activity,
   Contact,
@@ -68,11 +68,11 @@ export function useStages() {
   return { stages: data, loading, error, refresh };
 }
 
-export function useOpportunities(partnerId?: string) {
+export function useOpportunities(partnerId?: string, scope?: OpportunityScope) {
   const { data, setData, loading, error, refresh } = useLoad<Opportunity[]>(
-    () => opportunitiesApi.list({ partnerId }),
+    () => opportunitiesApi.list({ partnerId, scope }),
     [],
-    partnerId ?? '',
+    `${partnerId ?? ''}|${scope ?? ''}`,
   );
   return { opportunities: data, setOpportunities: setData, loading, error, refresh };
 }
@@ -127,6 +127,7 @@ const SETTINGS_FALLBACK: CrmSettings = {
   staleDays: 14,
   dormantEnabled: false,
   dormantDays: 90,
+  boardClosedDays: 30,
 };
 
 export function useCrmSettings() {

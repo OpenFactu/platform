@@ -14,8 +14,11 @@ import type {
 
 export type CrmInput = Record<string, unknown>;
 
+/** board = abiertas + cerradas recientes; open / closed; sin valor = todas. */
+export type OpportunityScope = 'board' | 'open' | 'closed';
+
 export const opportunitiesApi = {
-  list: (params: { partnerId?: string; stageId?: string } = {}) =>
+  list: (params: { partnerId?: string; stageId?: string; scope?: OpportunityScope } = {}) =>
     apiClient.get<Opportunity[]>(`/api/crm/opportunities${buildQuery(params)}`),
   create: (data: CrmInput) => apiClient.post<Opportunity>('/api/crm/opportunities', data),
   update: (id: string, data: CrmInput) =>

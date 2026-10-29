@@ -158,6 +158,8 @@ export interface CrmSettings {
   staleDays: number;
   dormantEnabled: boolean;
   dormantDays: number;
+  /** Días que una oportunidad cerrada sigue en el tablero. */
+  boardClosedDays: number;
 }
 
 export const STAGE_KIND_LABEL: Record<StageKind, string> = {

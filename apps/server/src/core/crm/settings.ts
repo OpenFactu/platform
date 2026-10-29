@@ -13,6 +13,7 @@ interface StoredCrmSettings {
   staleDays: number;
   dormantEnabled: boolean;
   dormantDays: number;
+  boardClosedDays: number;
 }
 
 export interface CrmSettings {
@@ -27,6 +28,8 @@ export interface CrmSettings {
   dormantEnabled: boolean;
   /** Días sin comprar para considerar «dormido» a un cliente habitual. */
   dormantDays: number;
+  /** Días que una oportunidad ganada o perdida sigue a la vista en el tablero. */
+  boardClosedDays: number;
 }
 
 const DEFAULT_LOST_REASONS = ['Precio', 'Competencia', 'Sin respuesta', 'Sin presupuesto', 'Otro'];
@@ -40,6 +43,7 @@ const STORED_DEFAULTS: StoredCrmSettings = {
   staleDays: 14,
   dormantEnabled: false,
   dormantDays: 90,
+  boardClosedDays: 30,
 };
 
 function parseList(raw: string, fallback: string[]): string[] {
@@ -72,6 +76,8 @@ export async function setCrmSettings(db: any, patch: Partial<CrmSettings>): Prom
   if (typeof patch.dormantEnabled === 'boolean') stored.dormantEnabled = patch.dormantEnabled;
   if (Number.isFinite(Number(patch.dormantDays)))
     stored.dormantDays = Math.max(7, Math.round(Number(patch.dormantDays)));
+  if (Number.isFinite(Number(patch.boardClosedDays)))
+    stored.boardClosedDays = Math.max(0, Math.round(Number(patch.boardClosedDays)));
   await setConfigSection(db, 'crm', STORED_DEFAULTS, stored);
   return getCrmSettings(db);
 }

@@ -26,6 +26,8 @@ interface Props {
   members: Map<string, Member>;
   /** Días sin actividad para marcar una oportunidad como parada. */
   staleDays: number;
+  /** Las columnas cerradas solo enseñan lo de estos últimos días. */
+  closedDays: number;
 }
 
 const KIND_DOT: Record<string, string> = {
@@ -47,6 +49,7 @@ export const OpportunityBoard: React.FC<Props> = ({
   onMove,
   members,
   staleDays,
+  closedDays,
 }) => {
   const fmt = useFormat();
   const stageOptions = stages.map((s) => ({ value: s.id, label: s.name }));
@@ -74,6 +77,7 @@ export const OpportunityBoard: React.FC<Props> = ({
             </div>
             <div className="mt-0.5 text-xs text-fg-muted tabular-nums">
               {fmt.money(total)} · {stage.probability}%
+              {stage.kind !== 'open' && ` · últimos ${closedDays} días`}
             </div>
           </header>
           <div className="flex-1 p-2 space-y-2">

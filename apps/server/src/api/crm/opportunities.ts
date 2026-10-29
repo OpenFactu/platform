@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ne, or, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import * as schema from '../../db/schema';
 import { logAudit } from '../../utils/audit';
@@ -79,13 +79,32 @@ function flatten(r: any) {
   };
 }
 
-/** GET /api/crm/opportunities?partnerId=&stageId= */
+/**
+ * GET /api/crm/opportunities?partnerId=&stageId=&scope=
+ *   scope=board  → abiertas + cerradas en los últimos `boardClosedDays` días (Ajustes del CRM)
+ *   scope=open | closed → solo abiertas / solo cerradas
+ *   sin scope    → todas
+ */
 router.get('/', async (req: any, res) => {
   try {
-    const { partnerId, stageId } = req.query;
+    const { partnerId, stageId, scope } = req.query;
+    const o = schema.opportunities;
     const conds: any[] = [];
-    if (partnerId) conds.push(eq(schema.opportunities.partnerId, String(partnerId)));
-    if (stageId) conds.push(eq(schema.opportunities.stageId, String(stageId)));
+    if (partnerId) conds.push(eq(o.partnerId, String(partnerId)));
+    if (stageId) conds.push(eq(o.stageId, String(stageId)));
+    if (scope === 'open') conds.push(eq(schema.opportunityStages.kind, 'open'));
+    if (scope === 'closed') conds.push(ne(schema.opportunityStages.kind, 'open'));
+    if (scope === 'board') {
+      const { boardClosedDays } = await getCrmSettings(req.tenantClient);
+      const since = new Date(Date.now() - boardClosedDays * 86_400_000);
+      // Sin closedAt (datos anteriores) cuenta la última modificación.
+      conds.push(
+        or(
+          eq(schema.opportunityStages.kind, 'open'),
+          gte(sql`coalesce(${o.closedAt}, ${o.updatedAt})`, since),
+        ),
+      );
+    }
     const rows = await selectJoined(req.tenantClient)
       .where(conds.length ? and(...conds) : undefined)
       .orderBy(asc(schema.opportunities.expectedCloseDate), desc(schema.opportunities.createdAt));
@@ -113,11 +132,9 @@ router.post('/', async (req: any, res) => {
     if ('tags' in payload) payload.tags = normalizeTags(payload.tags);
     if (!payload.title?.trim()) return res.status(400).json({ error: 'El título es obligatorio' });
     if (!hasCounterpart(payload))
-      return res
-        .status(400)
-        .json({
-          error: 'Indica el cliente o, si aún no lo es, el nombre o la empresa del prospecto',
-        });
+      return res.status(400).json({
+        error: 'Indica el cliente o, si aún no lo es, el nombre o la empresa del prospecto',
+      });
     if (!payload.stageId) {
       const [first] = await req.tenantClient
         .select()
@@ -182,11 +199,9 @@ router.patch('/:id', async (req: any, res) => {
     if ('title' in patch && !patch.title?.trim())
       return res.status(400).json({ error: 'El título es obligatorio' });
     if (!hasCounterpart({ ...old, ...patch }))
-      return res
-        .status(400)
-        .json({
-          error: 'Indica el cliente o, si aún no lo es, el nombre o la empresa del prospecto',
-        });
+      return res.status(400).json({
+        error: 'Indica el cliente o, si aún no lo es, el nombre o la empresa del prospecto',
+      });
     if ('amount' in patch && patch.amount === null) patch.amount = '0';
     let row: any;
     if (patch.stageId && patch.stageId !== old.stageId) {

@@ -98,6 +98,14 @@ export const CrmSettings: React.FC = () => {
                 min={1}
                 disabled={disabled}
               />
+              <NumberInput
+                label="Días que una oportunidad ganada o perdida sigue en el tablero"
+                helperText="Después solo se ve en la lista, filtrando por cerradas."
+                value={form.boardClosedDays}
+                onChange={(v) => set({ boardClosedDays: v ?? 30 })}
+                min={0}
+                disabled={disabled}
+              />
               <Switch
                 label="Avisar de clientes habituales que dejan de comprar"
                 checked={form.dormantEnabled}

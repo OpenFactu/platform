@@ -6,6 +6,7 @@ import {
   KpiCard,
   PageHeader,
   SearchInput,
+  SegmentedControl,
   Switch,
   Table,
   Tabs,
@@ -25,14 +26,20 @@ import { LostReasonModal } from '../components/LostReasonModal';
 import { OpportunityBoard } from '../components/OpportunityBoard';
 
 type View = 'board' | 'list';
+type ListScope = 'open' | 'closed' | 'all';
 
 export const Opportunities: React.FC = () => {
   const fmt = useFormat();
   const toast = useToast();
   const popup = usePopup();
   const { canWrite, canDelete } = useCrmPermissions('/crm/opportunities');
-  const pipeline = usePipeline();
   const [view, setView] = useState<View>('board');
+  const [listScope, setListScope] = useState<ListScope>('open');
+  // El tablero solo trae las cerradas recientes; la lista, lo que se filtre.
+  const pipeline = usePipeline(
+    undefined,
+    view === 'board' ? 'board' : listScope === 'all' ? undefined : listScope,
+  );
   const [search, setSearch] = useState('');
   const navigate = useNavigate();
   const open = (o: Opportunity) => navigate(`/crm/opportunities/${o.id}`);
@@ -144,6 +151,19 @@ export const Opportunities: React.FC = () => {
           placeholder="Buscar por título, interlocutor o contacto"
           className="w-full sm:max-w-sm sm:flex-1 min-w-0"
         />
+        {view === 'list' && (
+          <SegmentedControl
+            size="sm"
+            aria-label="Qué oportunidades ver"
+            value={listScope}
+            onChange={(v) => setListScope(v as ListScope)}
+            options={[
+              { value: 'open', label: 'Abiertas' },
+              { value: 'closed', label: 'Cerradas' },
+              { value: 'all', label: 'Todas' },
+            ]}
+          />
+        )}
         <Switch label="Solo las mías" checked={onlyMine} onChange={setOnlyMine} />
         {/* shrink-0: la variante segmented recorta (overflow-hidden) y, si se
             deja encoger junto al buscador, se come «Lista». */}
@@ -170,6 +190,7 @@ export const Opportunities: React.FC = () => {
           onMove={pipeline.moveTo}
           members={members}
           staleDays={settings.staleDays}
+          closedDays={settings.boardClosedDays}
         />
       ) : (
         <Table

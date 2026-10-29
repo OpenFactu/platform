@@ -7,4 +7,4 @@ export {
   membersApi,
   crmPartnersApi,
 } from './crmApi';
-export type { CrmInput, ActivityFilter } from './crmApi';
+export type { CrmInput, ActivityFilter, OpportunityScope } from './crmApi';
