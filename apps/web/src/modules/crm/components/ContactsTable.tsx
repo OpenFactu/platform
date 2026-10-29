@@ -150,12 +150,13 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         {standalone ? (
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Buscar por nombre, interlocutor, correo…"
-            className="sm:max-w-sm w-full"
-          />
+          <div className="w-full sm:max-w-sm">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Buscar por nombre, interlocutor, correo…"
+            />
+          </div>
         ) : (
           <h3 className="text-xs font-bold uppercase tracking-wider text-fg-muted">Contactos</h3>
         )}

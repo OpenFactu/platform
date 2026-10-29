@@ -148,12 +148,15 @@ export const Opportunities: React.FC = () => {
           línea siguiente. Ningún control se encoge: los segmentados recortan
           (overflow-hidden) y se comerían su última opción. */}
       <div className="flex flex-wrap items-center gap-3">
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder="Buscar por título, interlocutor o contacto"
-          className="w-full sm:w-auto sm:flex-1 sm:min-w-[16rem] sm:max-w-sm"
-        />
+        {/* El ancho va en un contenedor: el className de SearchInput llega al
+            <input>, no a su envoltorio, que se quedaría a todo el ancho. */}
+        <div className="w-full sm:w-auto sm:flex-1 sm:min-w-[16rem] sm:max-w-sm">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Buscar por título, interlocutor o contacto"
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
           {view === 'list' && (
             <SegmentedControl
