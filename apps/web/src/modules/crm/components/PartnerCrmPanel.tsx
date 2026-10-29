@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Badge, Button, EmptyState } from '@openfactu/ui';
 import { Plus, Target } from 'lucide-react';
 import { useFormat } from '@/hooks/useFormat';
@@ -7,7 +8,6 @@ import { usePipeline } from '../hooks/usePipeline';
 import { useCrmPermissions } from '../hooks/useCrmPermissions';
 import { ActivityList } from './ActivityList';
 import { ContactsTable } from './ContactsTable';
-import { OpportunityForm, type OpportunityDraft } from './OpportunityForm';
 
 /**
  * Lo comercial de un interlocutor, para su ficha: contactos, oportunidades y
@@ -18,7 +18,7 @@ export const PartnerCrmPanel: React.FC<{ partnerId: string }> = ({ partnerId }) 
   const contactsPerm = useCrmPermissions('/crm/contacts');
   const oppPerm = useCrmPermissions('/crm/opportunities');
   const pipeline = usePipeline(partnerId);
-  const [draft, setDraft] = useState<OpportunityDraft | null>(null);
+  const navigate = useNavigate();
 
   return (
     <div className="space-y-6">
@@ -31,7 +31,12 @@ export const PartnerCrmPanel: React.FC<{ partnerId: string }> = ({ partnerId }) 
               Oportunidades
             </h3>
             {oppPerm.canWrite && (
-              <Button type="button" size="sm" variant="ghost" onClick={() => setDraft({})}>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => navigate(`/crm/opportunities/new?partnerId=${partnerId}`)}
+              >
                 <Plus size={14} /> Nueva oportunidad
               </Button>
             )}
@@ -44,7 +49,7 @@ export const PartnerCrmPanel: React.FC<{ partnerId: string }> = ({ partnerId }) 
                 <li key={o.id}>
                   <button
                     type="button"
-                    onClick={() => setDraft(o)}
+                    onClick={() => navigate(`/crm/opportunities/${o.id}`)}
                     className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-bg-hover"
                   >
                     <span className="flex-1 min-w-0 text-sm text-fg-default truncate">
@@ -57,14 +62,6 @@ export const PartnerCrmPanel: React.FC<{ partnerId: string }> = ({ partnerId }) 
               ))}
             </ul>
           )}
-          <OpportunityForm
-            draft={draft}
-            stages={pipeline.stages}
-            fixedPartnerId={partnerId}
-            canWrite={oppPerm.canWrite}
-            onClose={() => setDraft(null)}
-            onSaved={pipeline.refresh}
-          />
         </div>
       )}
 

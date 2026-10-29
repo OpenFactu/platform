@@ -32,6 +32,8 @@ import crmStagesRouter from './api/crm/stages';
 import crmActivitiesRouter from './api/crm/activities';
 import crmSettingsRouter from './api/crm/settings';
 import membersRouter from './api/members';
+import { registerCrmQuoteListener } from './core/crm/quoteListener';
+import { startCrmCron } from './core/crm/crmCron';
 import pricelistsRouter from './api/pricelists';
 import zonesRouter from './api/zones';
 import warehousesRouter from './api/warehouses';
@@ -266,8 +268,14 @@ mountApi(app, '/api/crm/stages', '/crm/opportunities', crmStagesRouter);
 mountApi(app, '/api/crm/activities', '/crm/activities', crmActivitiesRouter);
 // Leer los ajustes lo necesita cualquier formulario del CRM (motivos, orígenes);
 // el PUT exige /crm/settings dentro del router.
-mountShared(app, '/api/crm/settings', 'catálogos del CRM que usan sus formularios', crmSettingsRouter);
+mountShared(
+  app,
+  '/api/crm/settings',
+  'catálogos del CRM que usan sus formularios',
+  crmSettingsRouter,
+);
 mountShared(app, '/api/members', 'nombres de los miembros para elegir responsable', membersRouter);
+registerCrmQuoteListener();
 mountApi(app, '/api/periods', '/accounting-periods', periodsRouter);
 mountApi(app, '/api/chart-of-accounts', '/chart-of-accounts', chartOfAccountsRouter);
 mountApi(app, '/api/cost-centers', '/cost-centers', costCentersRouter);
@@ -526,6 +534,9 @@ const start = async () => {
     // Cron de cierre de período — notifica a los admins cuando un periodo
     // vence pero NO cierra automáticamente (requiere confirmación UI).
     startPeriodCloseCron();
+
+    // Avisos del CRM (presupuestos caducados, recordatorios…) — solo empresas con el CRM activo.
+    startCrmCron();
 
     // Cron de backups automáticos — ejecuta los backups programados por
     // tenant (sección `backup` de SystemConfig) y aplica retención.

@@ -5,6 +5,8 @@ import type {
   CrmSettings,
   Member,
   Opportunity,
+  OpportunityDocument,
+  OpportunityLine,
   OpportunityStage,
 } from '../domain/crm';
 
@@ -17,6 +19,20 @@ export const opportunitiesApi = {
   update: (id: string, data: CrmInput) =>
     apiClient.patch<Opportunity>(`/api/crm/opportunities/${id}`, data),
   remove: (id: string) => apiClient.delete<void>(`/api/crm/opportunities/${id}`),
+  get: (id: string) => apiClient.get<Opportunity>(`/api/crm/opportunities/${id}`),
+  lines: (id: string) => apiClient.get<OpportunityLine[]>(`/api/crm/opportunities/${id}/lines`),
+  saveLines: (id: string, lines: OpportunityLine[]) =>
+    apiClient.put<OpportunityLine[]>(`/api/crm/opportunities/${id}/lines`, { lines }),
+  documents: (id: string) =>
+    apiClient.get<OpportunityDocument[]>(`/api/crm/opportunities/${id}/documents`),
+  createQuote: (id: string, validDays?: number) =>
+    apiClient.post<{ id: string; docNum: number }>(`/api/crm/opportunities/${id}/quote`, {
+      validDays,
+    }),
+  prices: (partnerId: string | null, itemIds: string[]) =>
+    apiClient.get<Record<string, number>>(
+      `/api/crm/opportunities/prices${buildQuery({ partnerId: partnerId ?? undefined, itemIds: itemIds.join(',') })}`,
+    ),
 };
 
 export const stagesApi = {

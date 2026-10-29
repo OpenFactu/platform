@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import * as schema from '../../../../db/schema';
 import type { DocumentHooks } from '../../DocumentEngine';
 import { assertStockAvailable, resolveBatchDetailsFifo } from '../shared';
+import { emitQuoteStatusChanged } from '../../../crm/quoteListener';
 
 /**
  * Factura de Venta directa: mismas salvaguardas de salida de stock que el
@@ -15,7 +16,7 @@ export const salesInvoiceHooks: DocumentHooks = {
   resolveBatchDetails: resolveBatchDetailsFifo,
   // Facturar directamente un presupuesto (líneas con baseType 'SQ') lo marca
   // como Aceptado — misma semántica que al convertirlo en pedido.
-  afterLinesProcessed: async ({ tx, request }) => {
+  afterLinesProcessed: async ({ tx, request, tenantId, user }) => {
     const quoteIds = Array.from(
       new Set(
         (request.lines ?? [])
@@ -28,6 +29,7 @@ export const salesInvoiceHooks: DocumentHooks = {
         .update(schema.salesQuotes)
         .set({ status: 'A' })
         .where(eq(schema.salesQuotes.id, quoteId));
+      await emitQuoteStatusChanged({ tenantId, db: tx, user }, quoteId, 'A');
     }
   },
 };

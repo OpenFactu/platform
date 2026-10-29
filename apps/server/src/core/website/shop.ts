@@ -6,6 +6,7 @@ import { ClientFactory } from '../tenant/ClientFactory';
 import { FactuApi } from '../plugins/FactuApi';
 import { notifyTenant } from '../realtime/notifyTenant';
 import type { ResolvedHost } from './renderSite';
+import { resolveEffectivePrices } from '../pricing/effectivePrices';
 
 /**
  * Ecommerce del módulo Website: datos de la tienda para el render público y
@@ -190,25 +191,6 @@ async function resolveOrCreatePartner(
     })
     .returning();
   return created;
-}
-
-/** Precio efectivo SIN IVA: tarifa del partner → ItemPrice, si no basePrice. */
-async function resolveEffectivePrices(
-  db: any,
-  itemRows: any[],
-  priceListId: string | null,
-): Promise<Map<string, number>> {
-  const prices = new Map<string, number>();
-  for (const item of itemRows) prices.set(item.id, Number(item.basePrice) || 0);
-  if (!priceListId) return prices;
-  const listPrices = await db
-    .select()
-    .from(schema.itemPrices)
-    .where(eq(schema.itemPrices.priceListId, priceListId));
-  for (const lp of listPrices) {
-    if (prices.has(lp.itemId)) prices.set(lp.itemId, Number(lp.price) || 0);
-  }
-  return prices;
 }
 
 /**

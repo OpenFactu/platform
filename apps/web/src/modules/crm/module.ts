@@ -9,6 +9,9 @@ const Activities = lazy(() =>
   import('./pages/Activities').then((m) => ({ default: m.Activities })),
 );
 const Stages = lazy(() => import('./pages/Stages').then((m) => ({ default: m.Stages })));
+const OpportunityDetail = lazy(() =>
+  import('./pages/OpportunityDetail').then((m) => ({ default: m.OpportunityDetail })),
+);
 const CrmSettings = lazy(() =>
   import('./pages/CrmSettings').then((m) => ({ default: m.CrmSettings })),
 );
@@ -34,6 +37,13 @@ export const crmModule: ModuleManifest = {
       pattern: '/crm/opportunities',
       Component: Opportunities,
       title: 'Oportunidades',
+      iconName: 'Target',
+      permissionPath: '/crm/opportunities',
+    },
+    {
+      pattern: '/crm/opportunities/:opportunityId',
+      Component: OpportunityDetail,
+      title: 'Oportunidad',
       iconName: 'Target',
       permissionPath: '/crm/opportunities',
     },

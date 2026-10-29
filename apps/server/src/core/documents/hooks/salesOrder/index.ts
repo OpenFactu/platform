@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import * as schema from '../../../../db/schema';
 import type { DocumentHooks } from '../../DocumentEngine';
+import { emitQuoteStatusChanged } from '../../../crm/quoteListener';
 
 /**
  * Pedido de Venta: si el pedido nace de un presupuesto (request.quoteId,
@@ -8,12 +9,13 @@ import type { DocumentHooks } from '../../DocumentEngine';
  * Dentro de la misma transacción de creación del pedido.
  */
 export const salesOrderHooks: DocumentHooks = {
-  afterLinesProcessed: async ({ tx, request }) => {
+  afterLinesProcessed: async ({ tx, request, tenantId, user }) => {
     const quoteId = (request as any).quoteId;
     if (!quoteId) return;
     await tx
       .update(schema.salesQuotes)
       .set({ status: 'A' })
       .where(eq(schema.salesQuotes.id, quoteId));
+    await emitQuoteStatusChanged({ tenantId, db: tx, user }, quoteId, 'A');
   },
 };

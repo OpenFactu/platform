@@ -7,8 +7,11 @@ import { pick, errorDetail } from './shared';
 import { emitCrmEvent } from '../../core/crm/events';
 import { closedAtFor, moveOpportunityToStage } from '../../core/crm/opportunityStage';
 import { getCrmSettings } from '../../core/crm/settings';
+import opportunitySalesRouter from './opportunitySales';
 
 const router = Router();
+// Líneas, presupuesto, precios y documentos (antes de `/:id`).
+router.use(opportunitySalesRouter);
 
 const ALLOWED = [
   'title',

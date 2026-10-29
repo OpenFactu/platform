@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -22,7 +23,6 @@ import { useCrmPermissions } from '../hooks/useCrmPermissions';
 import { useCrmSettings, useMembers } from '../hooks/useCrmData';
 import { LostReasonModal } from '../components/LostReasonModal';
 import { OpportunityBoard } from '../components/OpportunityBoard';
-import { OpportunityForm, type OpportunityDraft } from '../components/OpportunityForm';
 
 type View = 'board' | 'list';
 
@@ -34,7 +34,8 @@ export const Opportunities: React.FC = () => {
   const pipeline = usePipeline();
   const [view, setView] = useState<View>('board');
   const [search, setSearch] = useState('');
-  const [draft, setDraft] = useState<OpportunityDraft | null>(null);
+  const navigate = useNavigate();
+  const open = (o: Opportunity) => navigate(`/crm/opportunities/${o.id}`);
   const [onlyMine, setOnlyMine] = useState(false);
   const { user } = useAuth();
   const { byId: members } = useMembers();
@@ -121,7 +122,7 @@ export const Opportunities: React.FC = () => {
         size="sm"
         actions={
           canWrite && (
-            <Button type="button" size="sm" onClick={() => setDraft({})}>
+            <Button type="button" size="sm" onClick={() => navigate('/crm/opportunities/new')}>
               <Plus size={14} /> Nueva oportunidad
             </Button>
           )
@@ -163,7 +164,7 @@ export const Opportunities: React.FC = () => {
           stages={pipeline.stages}
           canWrite={canWrite}
           drag={pipeline.drag}
-          onOpen={setDraft}
+          onOpen={open}
           onMove={pipeline.moveTo}
           members={members}
           staleDays={settings.staleDays}
@@ -175,7 +176,7 @@ export const Opportunities: React.FC = () => {
           isLoading={pipeline.loading}
           errorMessage={pipeline.error ?? undefined}
           onRetry={pipeline.refresh}
-          onRowClick={setDraft}
+          onRowClick={open}
           emptyMessage="Todavía no hay oportunidades."
           ariaLabel="Oportunidades"
           rowActions={(o) =>
@@ -186,14 +187,6 @@ export const Opportunities: React.FC = () => {
           })}
         />
       )}
-
-      <OpportunityForm
-        draft={draft}
-        stages={pipeline.stages}
-        canWrite={canWrite}
-        onClose={() => setDraft(null)}
-        onSaved={pipeline.refresh}
-      />
 
       {pipeline.pendingLost && (
         <LostReasonModal

@@ -1428,6 +1428,10 @@ export const salesQuotes = pgTable('SalesQuote', {
   date: timestamp('date').notNull(),
   documentDate: timestamp('documentDate'),
   validUntil: timestamp('validUntil'),
+  // Mig 075 — oportunidad del CRM de la que sale, y aviso de caducidad ya enviado.
+  // Sin .references(): Opportunity se declara más abajo en este fichero.
+  opportunityId: text('opportunityId'),
+  expiryNotifiedAt: timestamp('expiryNotifiedAt'),
   status: text('status').default('O').notNull(),
   billToAddress: text('billToAddress'),
   shipToAddress: text('shipToAddress'),
@@ -2094,6 +2098,20 @@ export const opportunities = pgTable('Opportunity', {
   lastActivityAt: timestamp('lastActivityAt'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+/** Productos de interés de una oportunidad (mig 075). */
+export const opportunityLines = pgTable('OpportunityLine', {
+  id: text('id').primaryKey(),
+  opportunityId: text('opportunityId')
+    .references(() => opportunities.id, { onDelete: 'cascade' })
+    .notNull(),
+  itemId: text('itemId').references(() => items.id, { onDelete: 'set null' }),
+  description: text('description'),
+  quantity: decimal('quantity', { precision: 15, scale: 4 }).default('1').notNull(),
+  price: decimal('price', { precision: 15, scale: 4 }).default('0').notNull(),
+  discount: decimal('discount', { precision: 5, scale: 2 }).default('0').notNull(),
+  sortOrder: integer('sortOrder').default(0).notNull(),
 });
 
 /** Cada cambio de etapa, para medir conversión y tiempos del embudo (mig 074). */

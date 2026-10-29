@@ -1,0 +1,214 @@
+import React from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Badge, Button, Card, Loader, PageHeader, useToast } from '@openfactu/ui';
+import { ArrowLeft, FileSignature, Plus, Save } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { useFormat } from '@/hooks/useFormat';
+import { STAGE_KIND_VARIANT } from '../domain/crm';
+import { useCrmSettings, useStages } from '../hooks/useCrmData';
+import { useCrmPermissions } from '../hooks/useCrmPermissions';
+import { useOpportunityDetail, validateOpportunity } from '../hooks/useOpportunityDetail';
+import { OpportunityFields } from '../components/OpportunityFields';
+import { OpportunityLinesEditor } from '../components/OpportunityLinesEditor';
+import { OpportunityDocuments } from '../components/OpportunityDocuments';
+import { ActivityList } from '../components/ActivityList';
+
+/**
+ * Ficha de una oportunidad (/crm/opportunities/:id, o /new; `?partnerId=`
+ * preselecciona el cliente). Datos, productos, documentos y actividad.
+ */
+export const OpportunityDetail: React.FC = () => {
+  const { opportunityId = 'new' } = useParams<{ opportunityId: string }>();
+  const [search] = useSearchParams();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const fmt = useFormat();
+  const { user } = useAuth();
+  const { canWrite } = useCrmPermissions('/crm/opportunities');
+  const canQuote =
+    user?.role === 'SUPERUSER' ||
+    user?.role === 'ADMIN' ||
+    !!user?.permissions?.['/sales/quotes']?.write;
+  const { stages } = useStages();
+  const { settings } = useCrmSettings();
+  const detail = useOpportunityDetail(opportunityId, {
+    partnerId: search.get('partnerId') ?? undefined,
+  });
+  const { form, isNew } = detail;
+
+  const back = () => navigate('/crm/opportunities');
+
+  const handleSave = async () => {
+    const error = validateOpportunity(
+      { ...form, stageId: form.stageId ?? stages.find((s) => s.kind === 'open')?.id },
+      stages,
+      settings,
+    );
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    try {
+      const id = await detail.save();
+      toast.success(isNew ? 'Oportunidad creada' : 'Oportunidad guardada');
+      if (isNew) navigate(`/crm/opportunities/${id}`, { replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo guardar');
+    }
+  };
+
+  const handleQuote = async () => {
+    try {
+      if (detail.linesDirty) await detail.save();
+      const quote = await detail.createQuote();
+      toast.success(`Presupuesto ${quote.docNum} creado`);
+      navigate(`/sales/quotes/${quote.id}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo crear el presupuesto');
+    }
+  };
+
+  if (detail.loading) {
+    return (
+      <div className="p-12 flex justify-center">
+        <Loader />
+      </div>
+    );
+  }
+  if (detail.notFound) {
+    return (
+      <div className="p-12 text-center text-fg-muted">
+        Oportunidad no encontrada.
+        <div className="mt-4">
+          <Button variant="secondary" onClick={back}>
+            <ArrowLeft size={14} /> Volver a oportunidades
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const stage = stages.find((s) => s.id === form.stageId);
+  const hasItemLines = detail.lines.some((l) => l.itemId);
+
+  return (
+    <form
+      // pb-24: hueco para que el botón flotante no tape el final de la ficha.
+      className="p-4 pb-24 max-md:pb-36 space-y-6 animate-in fade-in duration-500"
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleSave();
+      }}
+    >
+      <PageHeader
+        size="md"
+        breadcrumbs={
+          <Button type="button" variant="ghost" size="sm" onClick={back} className="w-fit gap-1">
+            <ArrowLeft size={12} /> Oportunidades
+          </Button>
+        }
+        title={
+          <>
+            {form.title || (isNew ? 'Nueva oportunidad' : '')}
+            {stage && (
+              <span className="flex flex-wrap items-center gap-2">
+                <Badge variant={STAGE_KIND_VARIANT[stage.kind]}>{stage.name}</Badge>
+              </span>
+            )}
+          </>
+        }
+        subtitle={
+          !isNew && (
+            <span className="text-sm text-fg-muted">
+              {form.partnerName} · {fmt.money(form.amount)}
+            </span>
+          )
+        }
+      />
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        <Card title="Datos">
+          <OpportunityFields
+            form={form}
+            set={detail.set}
+            stages={stages}
+            settings={settings}
+            amountFromLines={detail.lines.length > 0}
+            disabled={!canWrite}
+          />
+        </Card>
+        <div className="space-y-6">
+          <Card
+            title="Documentos"
+            subtitle="Presupuestos, pedidos y facturas de esta oportunidad."
+            headerAction={
+              !isNew &&
+              canQuote && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleQuote}
+                  disabled={!hasItemLines || detail.saving}
+                  title={hasItemLines ? undefined : 'Añade productos con artículo'}
+                >
+                  <FileSignature size={14} /> Crear presupuesto
+                </Button>
+              )
+            }
+          >
+            {isNew ? (
+              <p className="text-sm text-fg-muted">Guarda la oportunidad para presupuestarla.</p>
+            ) : (
+              <OpportunityDocuments documents={detail.documents} />
+            )}
+          </Card>
+          {!isNew && (
+            // Los formularios de actividad viven en modales (portal) y su submit
+            // sintético subiría hasta el <form> de la ficha.
+            <div onSubmit={(e) => e.stopPropagation()}>
+              <Card title="Actividad">
+                <ActivityList
+                  filter={{ opportunityId }}
+                  defaults={{ opportunityId, partnerId: form.partnerId }}
+                  compact
+                />
+              </Card>
+            </div>
+          )}
+        </div>
+        <Card
+          title="Productos de interés"
+          subtitle="El precio sale de la tarifa del cliente. El importe de la oportunidad es su suma."
+          className="xl:col-span-2"
+          noPadding
+        >
+          <OpportunityLinesEditor
+            lines={detail.lines}
+            onAdd={detail.addLine}
+            onChange={detail.updateLine}
+            onRemove={detail.removeLine}
+            disabled={!canWrite}
+          />
+        </Card>
+      </div>
+
+      {canWrite && (
+        <div className="fixed right-6 bottom-6 max-md:right-4 max-md:bottom-20 z-30">
+          <Button
+            type="submit"
+            size="lg"
+            isLoading={detail.saving}
+            disabled={detail.saving}
+            className="shadow-xl"
+          >
+            {isNew ? <Plus size={16} /> : <Save size={16} />}
+            {isNew ? 'Crear oportunidad' : 'Guardar'}
+          </Button>
+        </div>
+      )}
+    </form>
+  );
+};
+
+export default OpportunityDetail;

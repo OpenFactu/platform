@@ -14,6 +14,7 @@ import {
   computeWithholding,
   latestDueDate,
 } from '../../core/documents/invoiceLock';
+import { emitQuoteStatusChanged } from '../../core/crm/quoteListener';
 
 const router = Router();
 
@@ -554,6 +555,15 @@ router.post('/:docType/:id/status', async (req: any, res) => {
       .returning();
 
     res.json(updated);
+
+    // El CRM (y quien escuche) reacciona a aceptar/rechazar un presupuesto.
+    if (docType === 'SQ') {
+      await emitQuoteStatusChanged(
+        { tenantId: req.tenantId, db: req.tenantClient, user: req.user },
+        req.params.id,
+        newStatus,
+      );
+    }
 
     logAudit({
       tenantClient: req.tenantClient,

@@ -67,6 +67,50 @@ export interface Activity {
   opportunityTitle?: string | null;
 }
 
+export interface OpportunityLine {
+  id?: string;
+  /** Clave estable en pantalla (las líneas nuevas aún no tienen id). */
+  _key?: string;
+  itemId: string | null;
+  itemCode?: string | null;
+  itemName?: string | null;
+  description: string | null;
+  quantity: number;
+  price: number;
+  /** Descuento en %. */
+  discount: number;
+}
+
+/** Importe neto de una línea (cantidad × precio − descuento %). */
+export function lineNet(l: Pick<OpportunityLine, 'quantity' | 'price' | 'discount'>): number {
+  return (Number(l.quantity) || 0) * (Number(l.price) || 0) * (1 - (Number(l.discount) || 0) / 100);
+}
+
+export type OpportunityDocType = 'SQ' | 'SO' | 'SINV';
+
+export interface OpportunityDocument {
+  id: string;
+  docType: OpportunityDocType;
+  code: string;
+  date: string;
+  status: string;
+  total: string;
+  validUntil?: string | null;
+}
+
+export const DOC_TYPE_LABEL: Record<OpportunityDocType, string> = {
+  SQ: 'Presupuesto',
+  SO: 'Pedido',
+  SINV: 'Factura',
+};
+
+/** Ruta de la ficha de cada tipo de documento. */
+export const DOC_ROUTE: Record<OpportunityDocType, (id: string) => string> = {
+  SQ: (id) => `/sales/quotes/${id}`,
+  SO: (id) => `/sales-orders/${id}`,
+  SINV: (id) => `/sales/invoices/${id}`,
+};
+
 export interface Member {
   id: string;
   name: string;
