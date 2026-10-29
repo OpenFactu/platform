@@ -49,6 +49,8 @@ export async function moveOpportunityToStage(
     userId: ctx.user?.id ?? null,
   });
 
+  await createStageFollowUp(db, ctx, row, stage);
+
   const evCtx = { tenantId: ctx.tenantId, db, user: ctx.user };
   const data = {
     ...row,
@@ -60,4 +62,36 @@ export async function moveOpportunityToStage(
   if (stage.kind === 'won') await emitCrmEvent('crm.opportunity.won', evCtx, data);
   if (stage.kind === 'lost') await emitCrmEvent('crm.opportunity.lost', evCtx, data);
   return row;
+}
+
+/**
+ * Seguimiento de la etapa: «al entrar en Propuesta, llamar a los 3 días». Se
+ * crea para el responsable de la oportunidad al entrar en la etapa (también
+ * al crearla directamente en ella).
+ */
+export async function createStageFollowUp(
+  db: any,
+  ctx: { tenantId?: string; user?: any },
+  opportunity: any,
+  stage: any,
+): Promise<void> {
+  if (!stage.followUpType || stage.followUpDays == null) return;
+  const [activity] = await db
+    .insert(schema.crmActivities)
+    .values({
+      id: crypto.randomUUID(),
+      type: stage.followUpType,
+      subject: stage.followUpSubject || `Seguimiento: ${opportunity.title}`,
+      partnerId: opportunity.partnerId,
+      contactId: opportunity.contactId,
+      opportunityId: opportunity.id,
+      ownerUserId: opportunity.ownerUserId,
+      dueAt: new Date(Date.now() + stage.followUpDays * 86_400_000),
+    })
+    .returning();
+  await emitCrmEvent(
+    'crm.activity.created',
+    { tenantId: ctx.tenantId, db, user: ctx.user },
+    activity,
+  );
 }

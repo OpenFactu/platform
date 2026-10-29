@@ -82,6 +82,7 @@ export const DOC_TYPE_PERMISSION_PATH: Record<string, string> = {
   PO: '/purchase-orders',
   SDN: '/sales/delivery-notes',
   PDN: '/purchases/delivery-notes',
+  SQ: '/sales/quotes',
 };
 
 /**

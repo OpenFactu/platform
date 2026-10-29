@@ -5,7 +5,11 @@ import * as schema from '../../db/schema';
 import { logAudit } from '../../utils/audit';
 import { pick, errorDetail, normalizeTags } from './shared';
 import { emitCrmEvent } from '../../core/crm/events';
-import { closedAtFor, moveOpportunityToStage } from '../../core/crm/opportunityStage';
+import {
+  closedAtFor,
+  createStageFollowUp,
+  moveOpportunityToStage,
+} from '../../core/crm/opportunityStage';
 import { getCrmSettings } from '../../core/crm/settings';
 import opportunitySalesRouter from './opportunitySales';
 
@@ -166,6 +170,12 @@ router.post('/', async (req: any, res) => {
         closedAt: closedAtFor(stage, null),
       })
       .returning();
+    await createStageFollowUp(
+      req.tenantClient,
+      { tenantId: req.tenantId, user: req.user },
+      row,
+      stage,
+    );
     res.json(row);
     emitCrmEvent(
       'crm.opportunity.created',

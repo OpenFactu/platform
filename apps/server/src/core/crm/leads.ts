@@ -14,6 +14,7 @@ import { FLAGS_DEFAULTS } from '../config/appConfig';
 import { notifyTenant } from '../realtime/notifyTenant';
 import { getCrmSettings } from './settings';
 import { emitCrmEvent } from './events';
+import { createStageFollowUp } from './opportunityStage';
 
 export const WEBSITE_FORM_EVENT = 'website.formSubmitted';
 
@@ -128,6 +129,7 @@ export async function createLeadFromSubmission(
       { tenantId, db },
       { ...opp, stageName: stage.name, stageKind: stage.kind },
     );
+    await createStageFollowUp(db, { tenantId }, opp, stage);
   }
 
   const [activity] = await db

@@ -6,12 +6,27 @@ import { pick, errorDetail } from './shared';
 
 const router = Router();
 
-const ALLOWED = ['name', 'sortOrder', 'probability', 'kind'];
+const ALLOWED = [
+  'name',
+  'sortOrder',
+  'probability',
+  'kind',
+  'followUpType',
+  'followUpDays',
+  'followUpSubject',
+];
+const FOLLOW_UP_TYPES = ['call', 'meeting', 'email', 'note', 'task'];
 const KINDS = ['open', 'won', 'lost'];
 
 function validate(payload: Record<string, any>, partial: boolean): string | null {
   if ((!partial || 'name' in payload) && !payload.name?.trim()) return 'El nombre es obligatorio';
   if ('kind' in payload && !KINDS.includes(payload.kind)) return 'Tipo de etapa no válido';
+  if (payload.followUpType && !FOLLOW_UP_TYPES.includes(payload.followUpType))
+    return 'Tipo de seguimiento no válido';
+  if (payload.followUpDays != null) {
+    const d = Number(payload.followUpDays);
+    if (!Number.isInteger(d) || d < 0 || d > 365) return 'Los días de seguimiento van de 0 a 365';
+  }
   if ('probability' in payload) {
     const p = Number(payload.probability);
     if (!Number.isInteger(p) || p < 0 || p > 100)

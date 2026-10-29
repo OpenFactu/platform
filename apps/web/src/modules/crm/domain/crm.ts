@@ -9,6 +9,10 @@ export interface OpportunityStage {
   probability: number;
   kind: StageKind;
   opportunityCount?: number;
+  /** Actividad que se crea sola al entrar en la etapa, a los `followUpDays` días. */
+  followUpType?: ActivityType | null;
+  followUpDays?: number | null;
+  followUpSubject?: string | null;
 }
 
 export interface Opportunity {

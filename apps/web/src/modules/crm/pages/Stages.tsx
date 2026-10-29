@@ -5,6 +5,7 @@ import {
   Input,
   Modal,
   PageHeader,
+  NumberInput,
   PercentInput,
   Select,
   Table,
@@ -15,6 +16,9 @@ import {
 import { ArrowDown, ArrowUp, Plus, Workflow } from 'lucide-react';
 import { stagesApi } from '../api';
 import {
+  ACTIVITY_TYPE_LABEL,
+  ACTIVITY_TYPE_OPTIONS,
+  type ActivityType,
   STAGE_KIND_LABEL,
   STAGE_KIND_VARIANT,
   type OpportunityStage,
@@ -63,6 +67,9 @@ export const Stages: React.FC = () => {
       name: draft.name,
       probability: draft.probability ?? 0,
       kind: draft.kind ?? 'open',
+      followUpType: draft.followUpType || null,
+      followUpDays: draft.followUpType ? (draft.followUpDays ?? 0) : null,
+      followUpSubject: draft.followUpType ? draft.followUpSubject || null : null,
     };
     try {
       if (draft.id) await stagesApi.update(draft.id, payload);
@@ -99,6 +106,14 @@ export const Stages: React.FC = () => {
       card: 'status',
     },
     { header: 'Probabilidad', id: 'prob', cell: (s) => `${s.probability}%`, align: 'right' },
+    {
+      header: 'Seguimiento',
+      id: 'follow',
+      cell: (s) =>
+        s.followUpType
+          ? `${ACTIVITY_TYPE_LABEL[s.followUpType]} a los ${s.followUpDays ?? 0} días`
+          : '—',
+    },
     {
       header: 'Oportunidades',
       id: 'count',
@@ -196,6 +211,36 @@ export const Stages: React.FC = () => {
                 value={draft.probability ?? 0}
                 onChange={(v) => setDraft({ ...draft, probability: Math.round(v ?? 0) })}
               />
+            </div>
+            <div className="space-y-3 pt-3 border-t border-border-subtle">
+              <Select
+                label="Seguimiento al entrar en la etapa"
+                options={[{ value: '', label: 'Ninguno' }, ...ACTIVITY_TYPE_OPTIONS]}
+                value={draft.followUpType ?? ''}
+                onChange={(v) =>
+                  setDraft({ ...draft, followUpType: (v || null) as ActivityType | null })
+                }
+              />
+              {draft.followUpType && (
+                <div className="grid grid-cols-[8rem_1fr] gap-3">
+                  <NumberInput
+                    label="A los (días)"
+                    value={draft.followUpDays ?? 0}
+                    onChange={(v) => setDraft({ ...draft, followUpDays: Math.round(v ?? 0) })}
+                    min={0}
+                    max={365}
+                  />
+                  <Input
+                    label="Asunto"
+                    value={draft.followUpSubject ?? ''}
+                    placeholder="Seguimiento: <título de la oportunidad>"
+                    onChange={(e) => setDraft({ ...draft, followUpSubject: e.target.value })}
+                  />
+                </div>
+              )}
+              <p className="text-xs text-fg-muted">
+                Se crea para el responsable de la oportunidad cada vez que entra en esta etapa.
+              </p>
             </div>
             <p className="text-xs text-fg-muted">
               Las etapas «Ganada» y «Perdida» cierran la oportunidad; volver a una abierta la

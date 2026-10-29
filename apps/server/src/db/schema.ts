@@ -2075,6 +2075,10 @@ export const opportunityStages = pgTable('OpportunityStage', {
   probability: integer('probability').default(0).notNull(),
   /** 'open' | 'won' | 'lost' — las etapas cerradas fijan closedAt en la oportunidad. */
   kind: text('kind').default('open').notNull(),
+  // Mig 079 — al entrar en la etapa se crea esta actividad para el responsable.
+  followUpType: text('followUpType'),
+  followUpDays: integer('followUpDays'),
+  followUpSubject: text('followUpSubject'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
 });
 
