@@ -8,6 +8,8 @@ import * as schema from '../../db/schema';
 import { DocumentEngine } from '../documents/DocumentEngine';
 import { DocumentRegistry } from '../documents/DocumentRegistry';
 import { pricesForPartner } from '../pricing/effectivePrices';
+import { hydrate, walkChain, type DocRef } from '../documents/documentChain';
+import type { DocType } from '@openfactu/common';
 
 export interface OpportunityLineInput {
   itemId?: string | null;
@@ -190,75 +192,35 @@ export async function createQuoteFromOpportunity(
   return result;
 }
 
-const seriesCode = (prefix: string | null, docNum: number) => `${prefix ?? ''}${docNum}`;
-
 /**
- * Documentos que han salido de la oportunidad: sus presupuestos, los pedidos
- * que vienen de ellos y las facturas que los referencian en sus líneas.
+ * Documentos que han salido de la oportunidad: sus presupuestos y todo lo que
+ * cuelga de ellos (pedidos, albaranes, facturas), con la misma cadena que la
+ * pantalla de trazabilidad.
  */
 export async function opportunityDocuments(db: any, opportunityId: string) {
   const quotes = await db
-    .select({
-      id: schema.salesQuotes.id,
-      docNum: schema.salesQuotes.docNum,
-      prefix: schema.documentSeries.prefix,
-      date: schema.salesQuotes.date,
-      status: schema.salesQuotes.status,
-      total: schema.salesQuotes.total,
-      validUntil: schema.salesQuotes.validUntil,
-    })
+    .select({ id: schema.salesQuotes.id, validUntil: schema.salesQuotes.validUntil })
     .from(schema.salesQuotes)
-    .leftJoin(schema.documentSeries, eq(schema.salesQuotes.seriesId, schema.documentSeries.id))
-    .where(eq(schema.salesQuotes.opportunityId, opportunityId))
-    .orderBy(desc(schema.salesQuotes.date));
-  const quoteIds = quotes.map((q: any) => q.id);
+    .where(eq(schema.salesQuotes.opportunityId, opportunityId));
+  if (quotes.length === 0) return [];
+  const quoteIds: string[] = quotes.map((q: any) => q.id);
+  const validUntil = new Map(quotes.map((q: any) => [q.id, q.validUntil]));
 
-  const orders = quoteIds.length
-    ? await db
-        .select({
-          id: schema.salesOrders.id,
-          docNum: schema.salesOrders.docNum,
-          prefix: schema.documentSeries.prefix,
-          date: schema.salesOrders.date,
-          status: schema.salesOrders.status,
-          total: schema.salesOrders.total,
-        })
-        .from(schema.salesOrders)
-        .leftJoin(schema.documentSeries, eq(schema.salesOrders.seriesId, schema.documentSeries.id))
-        .where(inArray(schema.salesOrders.quoteId, quoteIds))
-    : [];
-  const baseIds = [...quoteIds, ...orders.map((o: any) => o.id)];
+  // Dos presupuestos pueden acabar en la misma factura: se deduplica por tipo+id.
+  const docs = new Map<string, DocRef>();
+  const add = (list: DocRef[]) => list.forEach((d) => docs.set(`${d.type}:${d.id}`, d));
+  add(await hydrate(db, 'SQ' as DocType, quoteIds));
+  for (const id of quoteIds) add(await walkChain(db, 'SQ' as DocType, id, 'forward'));
 
-  const invoiceIds = baseIds.length
-    ? (
-        await db
-          .selectDistinct({ id: schema.salesInvoiceLines.invoiceId })
-          .from(schema.salesInvoiceLines)
-          .where(inArray(schema.salesInvoiceLines.baseId, baseIds))
-      ).map((r: any) => r.id)
-    : [];
-  const invoices = invoiceIds.length
-    ? await db
-        .select({
-          id: schema.salesInvoices.id,
-          docNum: schema.salesInvoices.docNum,
-          prefix: schema.documentSeries.prefix,
-          date: schema.salesInvoices.date,
-          status: schema.salesInvoices.status,
-          total: schema.salesInvoices.total,
-        })
-        .from(schema.salesInvoices)
-        .leftJoin(
-          schema.documentSeries,
-          eq(schema.salesInvoices.seriesId, schema.documentSeries.id),
-        )
-        .where(inArray(schema.salesInvoices.id, invoiceIds))
-    : [];
-
-  const tag = (docType: string) => (d: any) => ({
-    ...d,
-    docType,
-    code: seriesCode(d.prefix, d.docNum),
-  });
-  return [...quotes.map(tag('SQ')), ...orders.map(tag('SO')), ...invoices.map(tag('SINV'))];
+  return Array.from(docs.values())
+    .map((d) => ({
+      id: d.id,
+      docType: d.type,
+      code: d.code,
+      date: d.date,
+      status: d.status,
+      total: d.total,
+      validUntil: d.type === 'SQ' ? (validUntil.get(d.id) ?? null) : undefined,
+    }))
+    .sort((a, b) => (String(a.date) < String(b.date) ? -1 : 1));
 }

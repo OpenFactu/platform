@@ -43,6 +43,7 @@ async function onQuoteStatusChanged({ tenantId, db, user, data }: QuoteStatusCon
     .select({
       opportunityId: schema.salesQuotes.opportunityId,
       docNum: schema.salesQuotes.docNum,
+      subtotal: schema.salesQuotes.subtotal,
     })
     .from(schema.salesQuotes)
     .where(eq(schema.salesQuotes.id, data.quoteId));
@@ -58,14 +59,23 @@ async function onQuoteStatusChanged({ tenantId, db, user, data }: QuoteStatusCon
       .select({ kind: schema.opportunityStages.kind })
       .from(schema.opportunityStages)
       .where(eq(schema.opportunityStages.id, opp.stageId));
-    if (current?.kind === 'won') return;
+    // Lo vendido es lo del presupuesto aceptado (sin IVA, como el resto de
+    // importes del embudo), no la estimación de los productos de interés.
+    const amount = String(quote.subtotal ?? opp.amount);
+    if (current?.kind === 'won') {
+      await db
+        .update(schema.opportunities)
+        .set({ amount, updatedAt: new Date() })
+        .where(eq(schema.opportunities.id, opp.id));
+      return;
+    }
     const [won] = await db
       .select()
       .from(schema.opportunityStages)
       .where(eq(schema.opportunityStages.kind, 'won'))
       .orderBy(asc(schema.opportunityStages.sortOrder))
       .limit(1);
-    if (won) await moveOpportunityToStage(db, { tenantId, user }, opp, won);
+    if (won) await moveOpportunityToStage(db, { tenantId, user }, opp, won, { amount });
     return;
   }
 

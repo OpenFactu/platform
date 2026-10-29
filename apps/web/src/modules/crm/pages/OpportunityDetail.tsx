@@ -161,7 +161,9 @@ export const OpportunityDetail: React.FC = () => {
             set={detail.set}
             stages={stages}
             settings={settings}
-            amountFromLines={detail.lines.length > 0}
+            // Abierta: el importe sale de los productos. Ganada: es el del presupuesto aceptado.
+            amountFromLines={detail.lines.length > 0 && stage?.kind === 'open'}
+            amountHint={stage?.kind === 'won' ? 'Importe del presupuesto aceptado.' : undefined}
             disabled={!canWrite}
           />
         </Card>
@@ -171,7 +173,8 @@ export const OpportunityDetail: React.FC = () => {
             subtitle="Presupuestos, pedidos y facturas de esta oportunidad."
             headerAction={
               !isNew &&
-              canQuote && (
+              canQuote &&
+              stage?.kind === 'open' && (
                 <Button
                   type="button"
                   size="sm"

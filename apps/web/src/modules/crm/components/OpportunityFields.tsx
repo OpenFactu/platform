@@ -23,6 +23,8 @@ interface Props {
   settings: CrmSettings;
   /** Hay líneas de producto: el importe sale de ellas y no se teclea. */
   amountFromLines: boolean;
+  /** Texto bajo el importe cuando no lo dan los productos. */
+  amountHint?: string;
   disabled?: boolean;
 }
 
@@ -40,6 +42,7 @@ export const OpportunityFields: React.FC<Props> = ({
   stages,
   settings,
   amountFromLines,
+  amountHint,
   disabled,
 }) => {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -154,7 +157,7 @@ export const OpportunityFields: React.FC<Props> = ({
           label="Importe estimado"
           value={form.amount != null && form.amount !== '' ? Number(form.amount) : null}
           onChange={(v) => set({ amount: v == null ? '0' : String(v) })}
-          helperText={amountFromLines ? 'Se calcula con los productos.' : undefined}
+          helperText={amountFromLines ? 'Se calcula con los productos.' : amountHint}
           disabled={disabled || amountFromLines}
         />
         <DatePicker

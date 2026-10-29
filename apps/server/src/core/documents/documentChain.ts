@@ -1,0 +1,224 @@
+/**
+ * Cadena de documentos relacionados (presupuesto → pedido → albarán → factura).
+ * La usan la trazabilidad (`/api/document-links`) y el CRM (documentos de una
+ * oportunidad). Ver la cabecera de `api/documentLinks.ts` para las reglas de
+ * enlace (headerBaseRef / linesCarryBaseRef).
+ */
+import { and, eq, inArray } from 'drizzle-orm';
+import * as schema from '../../db/schema';
+import { DocType } from '@openfactu/common';
+import { DocumentRegistry } from './DocumentRegistry';
+
+export interface DocRef {
+  type: DocType;
+  id: string;
+  code: string;
+  date: string;
+  partnerId: string;
+  total: number;
+  status: string;
+}
+
+function headerTableFor(type: DocType) {
+  return DocumentRegistry.get(type).schemaTable;
+}
+
+export async function hydrate(tenantClient: any, type: DocType, ids: string[]): Promise<DocRef[]> {
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  if (unique.length === 0) return [];
+  const table = headerTableFor(type);
+  // JOIN con DocumentSeries + AccountingPeriod para obtener prefix y periodCode.
+  const rows = await tenantClient
+    .select({
+      id: (table as any).id,
+      docNum: (table as any).docNum,
+      date: (table as any).date,
+      partnerId: (table as any).partnerId,
+      total: (table as any).total,
+      status: (table as any).status,
+      seriesPrefix: schema.documentSeries.prefix,
+      periodCode: schema.accountingPeriods.code,
+    })
+    .from(table)
+    .leftJoin(schema.documentSeries, eq((table as any).seriesId, schema.documentSeries.id))
+    .leftJoin(schema.accountingPeriods, eq((table as any).periodId, schema.accountingPeriods.id))
+    .where(inArray((table as any).id, unique));
+  return rows.map((r: any) => {
+    const parts = [r.seriesPrefix, r.periodCode, String(r.docNum).padStart(6, '0')].filter(Boolean);
+    return {
+      type,
+      id: r.id,
+      code: parts.join('-'),
+      date: r.date,
+      partnerId: r.partnerId,
+      total: Number(r.total || 0),
+      status: r.status,
+    };
+  });
+}
+
+async function parentsOf(tenantClient: any, type: DocType, id: string): Promise<DocRef[]> {
+  if (!DocumentRegistry.has(type)) return [];
+  const config = DocumentRegistry.get(type);
+  const parents: DocRef[] = [];
+
+  // 1) FK de cabecera hacia el padre (albarán → pedido, pedido → presupuesto).
+  if (config.headerBaseRef) {
+    const { column, baseDocType } = config.headerBaseRef;
+    const [h] = await tenantClient
+      .select()
+      .from(config.schemaTable)
+      .where(eq((config.schemaTable as any).id, id));
+    if (h?.[column]) {
+      parents.push(...(await hydrate(tenantClient, baseDocType, [h[column]])));
+    }
+  }
+
+  // 2) Líneas con baseType/baseId (factura → albarán, factura → presupuesto).
+  if (config.linesCarryBaseRef) {
+    const lines = await tenantClient
+      .select()
+      .from(config.lineSchemaTable)
+      .where(eq((config.lineSchemaTable as any)[config.lineFk], id));
+
+    const byType = new Map<string, string[]>();
+    for (const l of lines) {
+      if (!l.baseId || !l.baseType) continue;
+      const set = byType.get(l.baseType) || [];
+      set.push(l.baseId);
+      byType.set(l.baseType, set);
+    }
+
+    for (const [btype, baseIds] of byType.entries()) {
+      if (!DocumentRegistry.has(btype)) continue;
+      const baseConfig = DocumentRegistry.get(btype);
+
+      // Sonda 1: baseIds = ids de CABECERA del documento base.
+      const headerRows = await tenantClient
+        .select({ id: (baseConfig.schemaTable as any).id })
+        .from(baseConfig.schemaTable)
+        .where(inArray((baseConfig.schemaTable as any).id, baseIds));
+      let docIds = headerRows.map((r: any) => r.id);
+
+      // Sonda 2 (datos antiguos): baseIds = ids de LÍNEA del base → mapear a
+      // su cabecera vía el FK de líneas del base.
+      if (docIds.length === 0) {
+        const parentLines = await tenantClient
+          .select({ headerId: (baseConfig.lineSchemaTable as any)[baseConfig.lineFk] })
+          .from(baseConfig.lineSchemaTable)
+          .where(inArray((baseConfig.lineSchemaTable as any).id, baseIds));
+        docIds = parentLines.map((l: any) => l.headerId);
+      }
+      parents.push(...(await hydrate(tenantClient, btype as DocType, docIds)));
+    }
+  }
+
+  return parents;
+}
+
+async function childrenOf(tenantClient: any, type: DocType, id: string): Promise<DocRef[]> {
+  if (!DocumentRegistry.has(type)) return [];
+  const config = DocumentRegistry.get(type);
+  const children: DocRef[] = [];
+
+  for (const child of DocumentRegistry.getAll()) {
+    // 1) Hijos que referencian por FK de cabecera (pedido → albaranes).
+    if (child.headerBaseRef?.baseDocType === type) {
+      const rows = await tenantClient
+        .select({ id: (child.schemaTable as any).id })
+        .from(child.schemaTable)
+        .where(eq((child.schemaTable as any)[child.headerBaseRef.column], id));
+      children.push(
+        ...(await hydrate(
+          tenantClient,
+          child.docType,
+          rows.map((r: any) => r.id),
+        )),
+      );
+    }
+
+    // 2) Hijos cuyas líneas llevan baseType/baseId (albarán → facturas).
+    if (child.linesCarryBaseRef) {
+      const byHeader = await tenantClient
+        .select({ headerId: (child.lineSchemaTable as any)[child.lineFk] })
+        .from(child.lineSchemaTable)
+        .where(
+          and(
+            eq((child.lineSchemaTable as any).baseType, type),
+            eq((child.lineSchemaTable as any).baseId, id),
+          ),
+        );
+      let childIds = byHeader.map((l: any) => l.headerId);
+
+      // Fallback histórico: baseId apuntando a nuestras LÍNEAS.
+      if (childIds.length === 0) {
+        const ourLines = await tenantClient
+          .select({ id: (config.lineSchemaTable as any).id })
+          .from(config.lineSchemaTable)
+          .where(eq((config.lineSchemaTable as any)[config.lineFk], id));
+        const ids = ourLines.map((l: any) => l.id);
+        if (ids.length > 0) {
+          const byLine = await tenantClient
+            .select({ headerId: (child.lineSchemaTable as any)[child.lineFk] })
+            .from(child.lineSchemaTable)
+            .where(
+              and(
+                eq((child.lineSchemaTable as any).baseType, type),
+                inArray((child.lineSchemaTable as any).baseId, ids),
+              ),
+            );
+          childIds = byLine.map((l: any) => l.headerId);
+        }
+      }
+      children.push(...(await hydrate(tenantClient, child.docType, childIds)));
+    }
+  }
+
+  return children;
+}
+
+/** Documento del grafo, con a qué distancia está del que se consultó. */
+export interface ChainRef extends DocRef {
+  /** Saltos hasta el documento consultado: negativo hacia atrás, positivo hacia delante. */
+  depth: number;
+}
+
+/**
+ * Recorre la cadena entera en un sentido, no solo el salto inmediato.
+ *
+ * Un presupuesto → pedido → albarán → factura son cuatro documentos, y desde la
+ * factura solo se veía el albarán. Se camina por niveles (BFS) llevando un
+ * conjunto de visitados: el grafo puede converger (dos albaranes facturados
+ * juntos) y sin esa marca se recorrería lo mismo varias veces. `MAX_DEPTH`
+ * corta cadenas patológicas; en la práctica la más larga del ERP son 4 saltos.
+ */
+const MAX_DEPTH = 10;
+
+export async function walkChain(
+  tenantClient: any,
+  type: DocType,
+  id: string,
+  direction: 'back' | 'forward',
+): Promise<ChainRef[]> {
+  const step = direction === 'back' ? parentsOf : childrenOf;
+  const sign = direction === 'back' ? -1 : 1;
+  const seen = new Set<string>([`${type}:${id}`]);
+  const out: ChainRef[] = [];
+
+  let frontier: Array<{ type: DocType; id: string }> = [{ type, id }];
+  for (let depth = 1; depth <= MAX_DEPTH && frontier.length > 0; depth++) {
+    const next: Array<{ type: DocType; id: string }> = [];
+    for (const node of frontier) {
+      const found = await step(tenantClient, node.type, node.id);
+      for (const doc of found) {
+        const key = `${doc.type}:${doc.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ ...doc, depth: depth * sign });
+        next.push({ type: doc.type, id: doc.id });
+      }
+    }
+    frontier = next;
+  }
+  return out;
+}

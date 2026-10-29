@@ -94,7 +94,7 @@ export function lineNet(l: Pick<OpportunityLine, 'quantity' | 'price' | 'discoun
   return (Number(l.quantity) || 0) * (Number(l.price) || 0) * (1 - (Number(l.discount) || 0) / 100);
 }
 
-export type OpportunityDocType = 'SQ' | 'SO' | 'SINV';
+export type OpportunityDocType = 'SQ' | 'SO' | 'SDN' | 'SINV';
 
 export interface OpportunityDocument {
   id: string;
@@ -102,13 +102,14 @@ export interface OpportunityDocument {
   code: string;
   date: string;
   status: string;
-  total: string;
+  total: string | number;
   validUntil?: string | null;
 }
 
 export const DOC_TYPE_LABEL: Record<OpportunityDocType, string> = {
   SQ: 'Presupuesto',
   SO: 'Pedido',
+  SDN: 'Albarán',
   SINV: 'Factura',
 };
 
@@ -116,6 +117,7 @@ export const DOC_TYPE_LABEL: Record<OpportunityDocType, string> = {
 export const DOC_ROUTE: Record<OpportunityDocType, (id: string) => string> = {
   SQ: (id) => `/sales/quotes/${id}`,
   SO: (id) => `/sales-orders/${id}`,
+  SDN: (id) => `/sales/delivery-notes/${id}`,
   SINV: (id) => `/sales/invoices/${id}`,
 };
 
