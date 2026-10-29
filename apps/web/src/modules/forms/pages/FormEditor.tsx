@@ -51,7 +51,14 @@ export const FormEditor: React.FC = () => {
         size="sm"
         icon={<ClipboardList size={18} />}
         breadcrumbs={
-          <Button type="button" variant="link" size="sm" onClick={() => navigate('/forms')}>
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            onClick={() => navigate('/forms')}
+            // En móvil ya está la flecha de volver de la barra superior.
+            className="max-md:hidden"
+          >
             <ArrowLeft size={14} /> Formularios
           </Button>
         }

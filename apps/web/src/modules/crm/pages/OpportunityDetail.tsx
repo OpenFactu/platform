@@ -101,6 +101,14 @@ export const OpportunityDetail: React.FC = () => {
   // Ganada o perdida: lo vendido es lo del presupuesto y los productos ya no se tocan.
   const linesLocked = !isNew && !!stage && stage.kind !== 'open';
 
+  const canConvert = isProspect && canWrite && canCreatePartner;
+  const convert = () =>
+    setConverting({
+      name: form.prospectCompany || form.prospectName || '',
+      email: form.prospectEmail,
+      phone: form.prospectPhone,
+    });
+
   return (
     <form
       // pb-24: hueco para que el botón flotante no tape el final de la ficha.
@@ -113,7 +121,14 @@ export const OpportunityDetail: React.FC = () => {
       <PageHeader
         size="md"
         breadcrumbs={
-          <Button type="button" variant="ghost" size="sm" onClick={back} className="w-fit gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={back}
+            // En móvil ya está la flecha de volver de la barra superior.
+            className="w-fit gap-1 max-md:hidden"
+          >
             <ArrowLeft size={12} /> Oportunidades
           </Button>
         }
@@ -136,19 +151,13 @@ export const OpportunityDetail: React.FC = () => {
           )
         }
         actions={
-          isProspect &&
-          canWrite &&
-          canCreatePartner && (
+          canConvert && (
             <Button
               type="button"
               variant="secondary"
-              onClick={() =>
-                setConverting({
-                  name: form.prospectCompany || form.prospectName || '',
-                  email: form.prospectEmail,
-                  phone: form.prospectPhone,
-                })
-              }
+              onClick={convert}
+              // En móvil va dentro del botón flotante.
+              className="max-md:hidden"
             >
               <UserPlus size={14} /> Convertir en cliente
             </Button>
@@ -251,6 +260,18 @@ export const OpportunityDetail: React.FC = () => {
           isNew={isNew}
           label={isNew ? 'Crear oportunidad' : 'Guardar'}
           saving={detail.saving}
+          actions={
+            canConvert
+              ? [
+                  {
+                    id: 'convert',
+                    label: 'Convertir en cliente',
+                    icon: <UserPlus size={18} />,
+                    onClick: convert,
+                  },
+                ]
+              : undefined
+          }
         />
       )}
     </form>

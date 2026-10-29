@@ -119,7 +119,14 @@ export const PartnerDetail: React.FC = () => {
       <PageHeader
         size="md"
         breadcrumbs={
-          <Button type="button" variant="ghost" size="sm" onClick={back} className="w-fit gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={back}
+            // En móvil ya está la flecha de volver de la barra superior.
+            className="w-fit gap-1 max-md:hidden"
+          >
             <ArrowLeft size={12} /> Interlocutores
           </Button>
         }
