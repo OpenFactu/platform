@@ -2,6 +2,7 @@ import { LEGACY_NAV, type Module } from './registry';
 import type { ModuleManifest, RouteEntry } from './types';
 import { inventoryModule } from './inventory/module';
 import { partnersModule } from './partners/module';
+import { crmModule } from './crm/module';
 import { analyticsModule } from './analytics/module';
 import { accountingModule } from './accounting/module';
 import { reportsModule } from './reports/module';
@@ -28,6 +29,7 @@ export const moduleManifests: ModuleManifest[] = [
   // Se rellena por fases: reportsModule, documentsModule, hrModule, ...
   inventoryModule,
   partnersModule,
+  crmModule,
   accountingModule,
   analyticsModule,
   reportsModule,
@@ -52,6 +54,7 @@ const NAV_ORDER = [
   'sales',
   'purchases',
   'partners',
+  'crm',
   'accounting',
   'analytics',
   'reports',

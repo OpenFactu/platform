@@ -150,6 +150,29 @@ router.get('/', requireScope('read:maestros'), async (req: any, res) => {
 });
 
 /**
+ * GET /api/partners/:id — un interlocutor con sus direcciones y campos p_*,
+ * para la ficha completa (/partners/:id).
+ */
+router.get('/:id', requireScope('read:maestros'), async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const [partner] = await req.tenantClient
+      .select()
+      .from(schema.businessPartners)
+      .where(eq(schema.businessPartners.id, id));
+    if (!partner) return res.status(404).json({ error: 'Interlocutor no encontrado' });
+    const addresses = await req.tenantClient
+      .select()
+      .from(schema.partnerAddresses)
+      .where(eq(schema.partnerAddresses.partnerId, id));
+    const pluginValues = await fetchPluginValues(req);
+    res.json({ ...partner, ...(pluginValues?.get(String(id)) || {}), addresses });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/partners
  */
 router.post('/', requireScope('write:maestros'), async (req: any, res) => {

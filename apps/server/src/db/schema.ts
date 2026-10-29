@@ -2058,6 +2058,57 @@ export const contacts = pgTable('Contact', {
   updatedAt: timestamp('updatedAt').defaultNow(),
 });
 
+// ════════════════════════════════════════════════════════════════════
+// Mig 073 — CRM básico (los contactos son la tabla "Contact" de arriba)
+// ════════════════════════════════════════════════════════════════════
+
+export const opportunityStages = pgTable('OpportunityStage', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  sortOrder: integer('sortOrder').default(0).notNull(),
+  probability: integer('probability').default(0).notNull(),
+  /** 'open' | 'won' | 'lost' — las etapas cerradas fijan closedAt en la oportunidad. */
+  kind: text('kind').default('open').notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const opportunities = pgTable('Opportunity', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  partnerId: text('partnerId')
+    .references(() => businessPartners.id, { onDelete: 'cascade' })
+    .notNull(),
+  contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
+  stageId: text('stageId')
+    .references(() => opportunityStages.id)
+    .notNull(),
+  amount: decimal('amount', { precision: 15, scale: 4 }).default('0').notNull(),
+  expectedCloseDate: date('expectedCloseDate'),
+  ownerUserId: text('ownerUserId'),
+  notes: text('notes'),
+  closedAt: timestamp('closedAt'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+export const crmActivities = pgTable('CrmActivity', {
+  id: text('id').primaryKey(),
+  /** 'call' | 'meeting' | 'email' | 'note' | 'task' */
+  type: text('type').notNull(),
+  subject: text('subject').notNull(),
+  body: text('body'),
+  partnerId: text('partnerId').references(() => businessPartners.id, { onDelete: 'cascade' }),
+  contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
+  opportunityId: text('opportunityId').references(() => opportunities.id, {
+    onDelete: 'cascade',
+  }),
+  dueAt: timestamp('dueAt'),
+  doneAt: timestamp('doneAt'),
+  ownerUserId: text('ownerUserId'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
 export const payments = pgTable('Payment', {
   id: text('id').primaryKey(),
   salesInvoiceId: text('salesInvoiceId').references(() => salesInvoices.id, {

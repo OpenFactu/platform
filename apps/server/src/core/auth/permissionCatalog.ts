@@ -53,6 +53,16 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   { path: '/partners', label: 'Interlocutores', group: 'Terceros' },
   { path: '/partner-groups', label: 'Grupos de interlocutores', group: 'Terceros' },
 
+  // ── CRM ───────────────────────────────────────────────────────────────────
+  {
+    path: '/crm/opportunities',
+    label: 'Oportunidades',
+    group: 'CRM',
+    hint: 'El embudo de ventas y sus etapas.',
+  },
+  { path: '/crm/contacts', label: 'Contactos', group: 'CRM' },
+  { path: '/crm/activities', label: 'Actividades comerciales', group: 'CRM' },
+
   // ── Ventas ────────────────────────────────────────────────────────────────
   { path: '/sales/quotes', label: 'Presupuestos', group: 'Ventas' },
   { path: '/sales-orders', label: 'Pedidos de venta', group: 'Ventas' },

@@ -273,7 +273,7 @@ export const GlobalSearch: React.FC = () => {
         label: 'Interlocutores',
         icon: <Users size={14} />,
         route: '/partners',
-        perItemRoute: false,
+        perItemRoute: true,
         rows: results.partners.map((p) => ({
           id: p.id,
           label: p.name,

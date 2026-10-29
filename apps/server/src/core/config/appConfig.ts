@@ -66,6 +66,9 @@ export interface FlagsConfig {
    *  tenant (landing builder). Off por defecto — cada empresa lo activa desde
    *  /apps cuando quiera tener web. */
   websiteEnabled: boolean;
+  /** Activa el CRM (oportunidades, contactos y actividades comerciales). Off
+   *  por defecto, como el resto de módulos opcionales. */
+  crmEnabled: boolean;
 }
 
 export const BRANDING_DEFAULTS: BrandingConfig = {
@@ -111,6 +114,7 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   hrEnabled: true,
   assistantEnabled: true,
   websiteEnabled: false,
+  crmEnabled: false,
 };
 
 /**

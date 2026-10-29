@@ -42,5 +42,9 @@ export interface PartnerGroup {
   id: string;
   name: string;
   code?: string | null;
+  /** Prefijo del código que el servidor genera al dar de alta (CLI → CLI-00001). */
+  codePrefix?: string | null;
+  isCustomer?: boolean;
+  isVendor?: boolean;
   [key: string]: unknown;
 }

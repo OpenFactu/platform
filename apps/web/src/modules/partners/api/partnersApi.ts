@@ -5,6 +5,7 @@ export type PartnerInput = Record<string, unknown>;
 
 export const partnersApi = {
   list: () => apiClient.get<Partner[]>('/api/partners'),
+  get: (id: string) => apiClient.get<Partner>(`/api/partners/${id}`),
   create: (data: PartnerInput) => apiClient.post<Partner>('/api/partners', data),
   update: (id: string, data: PartnerInput) => apiClient.patch<Partner>(`/api/partners/${id}`, data),
 };

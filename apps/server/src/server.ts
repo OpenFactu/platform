@@ -26,6 +26,10 @@ import itemsRouter from './api/items';
 import categoriesRouter from './api/categories';
 import uomRouter from './api/uom';
 import partnersRouter from './api/partners';
+import crmContactsRouter from './api/crm/contacts';
+import crmOpportunitiesRouter from './api/crm/opportunities';
+import crmStagesRouter from './api/crm/stages';
+import crmActivitiesRouter from './api/crm/activities';
 import pricelistsRouter from './api/pricelists';
 import zonesRouter from './api/zones';
 import warehousesRouter from './api/warehouses';
@@ -253,6 +257,11 @@ mountShared(
 mountApi(app, '/api/carriers', '/settings/carriers', carriersRouter);
 mountApi(app, '/api/webhooks', '/settings/webhooks', webhooksRouter);
 mountApi(app, '/api/partnerGroups', '/partner-groups', partnerGroupsRouter);
+mountApi(app, '/api/crm/contacts', '/crm/contacts', crmContactsRouter);
+mountApi(app, '/api/crm/opportunities', '/crm/opportunities', crmOpportunitiesRouter);
+// Las etapas van con el embudo: quien ve oportunidades necesita leerlas para pintar el tablero.
+mountApi(app, '/api/crm/stages', '/crm/opportunities', crmStagesRouter);
+mountApi(app, '/api/crm/activities', '/crm/activities', crmActivitiesRouter);
 mountApi(app, '/api/periods', '/accounting-periods', periodsRouter);
 mountApi(app, '/api/chart-of-accounts', '/chart-of-accounts', chartOfAccountsRouter);
 mountApi(app, '/api/cost-centers', '/cost-centers', costCentersRouter);
