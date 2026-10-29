@@ -258,8 +258,6 @@ export const appsPluginManager: React.FC = () => {
                 <span>Solo se muestran campos de plugins activos para esta empresa.</span>
               </div>
               <Table
-                responsive="cards"
-                cardsBreakpoint={768}
                 className="max-md:p-3"
                 columns={FIELD_COLUMNS}
                 data={fields}
@@ -275,8 +273,6 @@ export const appsPluginManager: React.FC = () => {
               className="mt-6"
             >
               <Table
-                responsive="cards"
-                cardsBreakpoint={768}
                 className="max-md:p-3"
                 columns={TABLE_COLUMNS}
                 data={tables}

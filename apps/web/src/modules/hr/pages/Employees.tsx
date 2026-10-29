@@ -126,8 +126,6 @@ function EmployeeList() {
           </span>
         </div>
         <Table
-          responsive="cards"
-          cardsBreakpoint={768}
           isLoading={loading}
           data={filtered}
           onRowClick={open}

@@ -270,7 +270,6 @@ export const FiscalCatalogTable: React.FC<Props> = ({
           data={data}
           isLoading={loading}
           rowActions={rowActions}
-          responsive="cards"
           emptyMessage={'Sin datos — pulsa "Añadir" para crear.'}
         />
       </div>

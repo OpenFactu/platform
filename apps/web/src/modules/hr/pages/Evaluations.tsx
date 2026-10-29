@@ -412,8 +412,6 @@ export const Evaluations: React.FC = () => {
           )}
           <Card className="overflow-hidden" noPadding>
             <Table
-              responsive="cards"
-              cardsBreakpoint={768}
               className="max-md:p-3"
               columns={cycleColumns}
               data={cycles}
@@ -456,8 +454,6 @@ export const Evaluations: React.FC = () => {
               />
             </div>
             <Table
-              responsive="cards"
-              cardsBreakpoint={768}
               className="max-md:p-3"
               columns={evaluationColumns}
               data={evaluations}
@@ -524,8 +520,6 @@ export const Evaluations: React.FC = () => {
           )}
           <Card className="overflow-hidden" noPadding>
             <Table
-              responsive="cards"
-              cardsBreakpoint={768}
               className="max-md:p-3"
               columns={competencyColumns}
               data={competencies}

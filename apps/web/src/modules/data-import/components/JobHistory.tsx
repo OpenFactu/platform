@@ -69,8 +69,6 @@ export const JobHistory: React.FC<Props> = ({ objects, onOpen }) => {
   return (
     <Card>
       <Table
-        responsive="cards"
-        cardsBreakpoint={768}
         density="compact"
         data={jobs}
         onRowClick={(job) => onOpen(job.id)}

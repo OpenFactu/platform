@@ -141,8 +141,6 @@ export function ReportPage<T extends Record<string, any>>({
 
       <Card className="overflow-hidden" noPadding>
         <Table
-          responsive="cards"
-          cardsBreakpoint={768}
           className="max-md:p-3"
           columns={tableColumns}
           data={rows}

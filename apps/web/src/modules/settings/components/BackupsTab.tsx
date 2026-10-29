@@ -476,8 +476,6 @@ export const BackupsTab: React.FC = () => {
             />
           ) : (
             <Table
-              responsive="cards"
-              cardsBreakpoint={768}
               className="max-md:p-3"
               columns={historyColumns}
               data={runs}

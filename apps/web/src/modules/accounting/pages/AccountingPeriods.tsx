@@ -222,8 +222,6 @@ export const AccountingPeriods: React.FC = () => {
 
       <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table
-          responsive="cards"
-          cardsBreakpoint={768}
           className="max-md:p-3"
           columns={columns}
           data={periods}
@@ -288,8 +286,6 @@ const ClosePreviewBody: React.FC<ClosePreviewBodyProps> = ({ preview, onCancel, 
             párrafo de "sin resultados" sobraban. */}
         <Card className="overflow-hidden" noPadding>
           <Table
-            responsive="cards"
-            cardsBreakpoint={768}
             className="max-md:p-3"
             columns={previewColumns}
             data={preview.regularizationLines || []}

@@ -934,8 +934,6 @@ export const StockMovements: React.FC = () => {
             {/* La Table trae cabecera, scroll horizontal y estado vacío: el
                 <table> a mano y la rama de "Sin líneas." sobraban. */}
             <Table
-              responsive="cards"
-              cardsBreakpoint={768}
               className="max-md:p-3"
               columns={lineColumns}
               data={viewing.lines || []}

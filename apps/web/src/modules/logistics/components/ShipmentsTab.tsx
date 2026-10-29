@@ -481,8 +481,6 @@ export const ShipmentsTab: React.FC = () => {
           {/* Paginación de servidor: `rows` es solo la página actual, así que
               se le pasa el `total` real para que calcule las páginas. */}
           <Table
-            responsive="cards"
-            cardsBreakpoint={768}
             className="max-md:p-3"
             columns={columns}
             data={rows}

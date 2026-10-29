@@ -238,8 +238,6 @@ export const ShiftTemplates: React.FC = () => {
 
       <Card noPadding>
         <Table
-          responsive="cards"
-          cardsBreakpoint={768}
           className="max-md:p-3"
           columns={columns}
           data={rows}

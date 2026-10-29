@@ -505,8 +505,6 @@ export const Partners: React.FC = () => {
         <Table
           columns={allColumns}
           data={visiblePartners}
-          responsive="cards"
-          cardsBreakpoint={768}
           className="max-md:p-3"
           isLoading={loading}
           rowActions={rowActions}

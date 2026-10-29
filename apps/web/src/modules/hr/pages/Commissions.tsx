@@ -491,8 +491,6 @@ export const Commissions: React.FC = () => {
           )}
           <Card className="overflow-hidden" noPadding>
             <Table
-              responsive="cards"
-              cardsBreakpoint={768}
               className="max-md:p-3"
               columns={ruleColumns}
               data={rules}
@@ -550,8 +548,6 @@ export const Commissions: React.FC = () => {
           </Card>
           <Card className="overflow-hidden" noPadding>
             <Table
-              responsive="cards"
-              cardsBreakpoint={768}
               className="max-md:p-3"
               columns={accrualColumns}
               data={accruals}

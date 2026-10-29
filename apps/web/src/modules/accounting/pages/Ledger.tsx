@@ -107,14 +107,7 @@ export const Ledger: React.FC = () => {
       </Card>
 
       <Card className="overflow-hidden border-border-subtle" noPadding>
-        <Table
-          responsive="cards"
-          cardsBreakpoint={768}
-          className="max-md:p-3"
-          columns={columns}
-          data={rows}
-          isLoading={loading}
-        />
+        <Table className="max-md:p-3" columns={columns} data={rows} isLoading={loading} />
       </Card>
     </div>
   );

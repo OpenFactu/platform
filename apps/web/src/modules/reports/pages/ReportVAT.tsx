@@ -70,8 +70,6 @@ export const ReportVAT: React.FC = () => {
     <Card className="p-5 space-y-3">
       <h3 className={`text-xs font-black uppercase tracking-wider ${color}`}>{title}</h3>
       <Table
-        responsive="cards"
-        cardsBreakpoint={768}
         columns={columns}
         data={rows}
         rowKey={(_r, i) => i}

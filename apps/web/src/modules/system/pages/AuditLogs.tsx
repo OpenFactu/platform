@@ -132,8 +132,6 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
     >
       {log.action === 'UPDATE' && old && next ? (
         <Table
-          responsive="cards"
-          cardsBreakpoint={768}
           className="max-md:p-3"
           columns={diffColumns}
           data={diffRows}
@@ -360,8 +358,6 @@ export const AuditLogs: React.FC = () => {
           {/* La Table trae cabecera, esqueleto de carga y paginación; la de
               servidor se le pasa con `total` porque `logs` es solo la página. */}
           <Table
-            responsive="cards"
-            cardsBreakpoint={768}
             className="max-md:p-3"
             columns={columns}
             data={logs}

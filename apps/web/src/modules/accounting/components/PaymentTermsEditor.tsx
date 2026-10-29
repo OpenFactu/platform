@@ -151,7 +151,6 @@ export const PaymentTermsEditor: React.FC = () => {
         data={rows}
         isLoading={loading}
         rowActions={rowActions}
-        responsive="cards"
         emptyMessage="Sin plazos definidos"
       />
     </div>
