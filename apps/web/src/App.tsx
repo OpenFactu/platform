@@ -1,9 +1,10 @@
 import { apiClient } from '@/shared/http';
 import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { GlobalLoader, PopupProvider } from '@openfactu/ui';
+import { PopupProvider } from '@openfactu/ui';
 import { useAuth } from './context/AuthContext';
 import { PageLoading } from './components/PageLoading';
+import { BootLoader } from './components/BootLoader';
 import { TabsProvider } from './context/TabsContext';
 import { MobileNavProvider } from './context/MobileNavContext';
 import { ScannerProvider } from './context/ScannerContext';
@@ -100,9 +101,7 @@ function App() {
 
   if (!setupChecked || authLoading) {
     return (
-      <div className="min-h-screen bg-bg-app relative">
-        <GlobalLoader isLoading={true} message="Keirost ERP | Cargando Sistema…" />
-      </div>
+      <BootLoader />
     );
   }
 

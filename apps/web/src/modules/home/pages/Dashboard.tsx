@@ -8,12 +8,14 @@ import {
   Card,
   Badge,
   PageHeader,
-  SkeletonPage,
+  CountUp,
+  RollingNumber,
   SegmentedControl,
   EmptyState as UiEmptyState,
 } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
+import { DashboardLoading } from '../components/DashboardLoading';
 import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
 import {
   TrendingUp,
@@ -227,16 +229,8 @@ export const Dashboard: React.FC = () => {
     });
   }, [data]);
 
-  // DashboardSkeleton está deprecado (se va en la v0.5) y además traía su propio
-  // `p-8 max-w-7xl mx-auto`, que no es el contenedor de esta página. SkeletonPage
-  // se ajusta al layout real: cabecera, las 8 tarjetas KPI de las dos filas y los
-  // bloques de contenido.
-  if (loading)
-    return (
-      <div className="p-4 w-full space-y-6">
-        <SkeletonPage header kpis={8} columns={12} blocks={4} />
-      </div>
-    );
+  // Esqueleto con la forma real de la página (cabecera, KPI, gráfico, listas).
+  if (loading) return <DashboardLoading />;
 
   if (error || !data) {
     return <div className="p-12 text-center text-fg-muted">{error || 'Sin datos disponibles'}</div>;
@@ -289,18 +283,25 @@ export const Dashboard: React.FC = () => {
             >
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="hidden sm:inline">En vivo</span>
-              {liveEvents > 0 && <span className="opacity-70">{liveEvents}</span>}
+              {liveEvents > 0 && <RollingNumber value={liveEvents} className="opacity-70" />}
             </Badge>
           </div>
         }
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-up animate-duration-500 animate-fill-both"
+        style={{ animationDelay: '80ms' }}
+      >
         <KpiCard
           label="Ventas del periodo"
-          value={fmt.money(data.sales.total)}
-          subtitle={`${data.sales.count} facturas`}
+          value={data.sales.total}
+          subtitle={
+            <>
+              <CountUp value={data.sales.count} /> facturas
+            </>
+          }
           delta={salesDelta}
           icon={TrendingUp}
           color="text-emerald-600 dark:text-emerald-300"
@@ -308,8 +309,12 @@ export const Dashboard: React.FC = () => {
         />
         <KpiCard
           label="Compras del periodo"
-          value={fmt.money(data.purchases.total)}
-          subtitle={`${data.purchases.count} facturas`}
+          value={data.purchases.total}
+          subtitle={
+            <>
+              <CountUp value={data.purchases.count} /> facturas
+            </>
+          }
           delta={purchasesDelta}
           icon={TrendingDown}
           color="text-blue-600 dark:text-blue-300"
@@ -317,16 +322,24 @@ export const Dashboard: React.FC = () => {
         />
         <KpiCard
           label="Cobros pendientes"
-          value={fmt.money(data.receivables.open)}
-          subtitle={`${data.receivables.openCount} facturas abiertas`}
+          value={data.receivables.open}
+          subtitle={
+            <>
+              <CountUp value={data.receivables.openCount} /> facturas abiertas
+            </>
+          }
           icon={ArrowDownLeft}
           color="text-indigo-600 dark:text-indigo-300"
           bg="bg-indigo-50 dark:bg-indigo-500/10"
         />
         <KpiCard
           label="Pagos pendientes"
-          value={fmt.money(data.payables.open)}
-          subtitle={`${data.payables.openCount} facturas abiertas`}
+          value={data.payables.open}
+          subtitle={
+            <>
+              <CountUp value={data.payables.openCount} /> facturas abiertas
+            </>
+          }
           icon={ArrowUpRight}
           color="text-rose-600 dark:text-rose-300"
           bg="bg-rose-50 dark:bg-rose-500/10"
@@ -334,35 +347,38 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* KPIs secundarios: pedidos y albaranes */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div
+        className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-up animate-duration-500 animate-fill-both"
+        style={{ animationDelay: '160ms' }}
+      >
         <KpiCard
           label="Pedidos venta"
-          value={fmt.money(data.salesOrders.total)}
-          subtitle={`${data.salesOrders.count}`}
+          value={data.salesOrders.total}
+          subtitle={<CountUp value={data.salesOrders.count} />}
           icon={ShoppingCart}
           color="text-emerald-600 dark:text-emerald-300"
           bg="bg-emerald-50 dark:bg-emerald-500/10"
         />
         <KpiCard
           label="Pedidos compra"
-          value={fmt.money(data.purchaseOrders.total)}
-          subtitle={`${data.purchaseOrders.count}`}
+          value={data.purchaseOrders.total}
+          subtitle={<CountUp value={data.purchaseOrders.count} />}
           icon={ShoppingCart}
           color="text-amber-600 dark:text-amber-300"
           bg="bg-amber-50 dark:bg-amber-500/10"
         />
         <KpiCard
           label="Albaranes venta"
-          value={fmt.money(data.salesDeliveryNotes.total)}
-          subtitle={`${data.salesDeliveryNotes.count}`}
+          value={data.salesDeliveryNotes.total}
+          subtitle={<CountUp value={data.salesDeliveryNotes.count} />}
           icon={PackageCheck}
           color="text-teal-600 dark:text-teal-300"
           bg="bg-teal-50 dark:bg-teal-500/10"
         />
         <KpiCard
           label="Albaranes compra"
-          value={fmt.money(data.purchaseDeliveryNotes.total)}
-          subtitle={`${data.purchaseDeliveryNotes.count}`}
+          value={data.purchaseDeliveryNotes.total}
+          subtitle={<CountUp value={data.purchaseDeliveryNotes.count} />}
           icon={Inbox}
           color="text-orange-600 dark:text-orange-300"
           bg="bg-orange-50 dark:bg-orange-500/10"
@@ -370,7 +386,10 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Línea: tendencia mensual + Donut: estado de facturas */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-up animate-duration-500 animate-fill-both"
+        style={{ animationDelay: '240ms' }}
+      >
         <Card
           className="lg:col-span-2"
           title="Tendencia 12 meses"
@@ -420,7 +439,10 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Barras: top clientes y proveedores */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-up animate-duration-500 animate-fill-both"
+        style={{ animationDelay: '320ms' }}
+      >
         <Card title="Top clientes" subtitle="Mayor facturación del periodo.">
           <div className="h-64">
             {topCustomersBars.length === 0 ? (
@@ -469,7 +491,10 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Documentos recientes + alertas de stock */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-up animate-duration-500 animate-fill-both"
+        style={{ animationDelay: '400ms' }}
+      >
         <Card
           className="lg:col-span-2"
           title="Documentos recientes"
@@ -576,7 +601,10 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Top artículos + Feed actividad en vivo */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-up animate-duration-500 animate-fill-both"
+        style={{ animationDelay: '480ms' }}
+      >
         <Card title="Top artículos" subtitle="Más vendidos del periodo." className="lg:col-span-1">
           {!data.topItems || data.topItems.length === 0 ? (
             <EmptyState icon={Package} title="Sin ventas" hint="Aún no hay líneas facturadas." />
@@ -672,8 +700,9 @@ export const Dashboard: React.FC = () => {
 
 interface KpiCardProps {
   label: string;
-  value: string;
-  subtitle: string;
+  /** Importe: se anima contando hasta su valor. */
+  value: number;
+  subtitle: React.ReactNode;
   delta?: number | null;
   icon: any;
   color: string;
@@ -689,6 +718,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
   color,
   bg,
 }) => {
+  const fmt = useFormat();
   const deltaColor =
     delta == null
       ? 'text-fg-subtle'
@@ -704,7 +734,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
             {label}
           </p>
           <p className="text-lg sm:text-2xl font-black text-fg-default tracking-tight truncate tabular-nums">
-            {value}
+            <CountUp value={value} format={(v) => fmt.money(v)} />
           </p>
           <p className="text-[10px] sm:text-[11px] text-fg-muted mt-0.5 truncate">{subtitle}</p>
           <p
@@ -715,7 +745,14 @@ const KpiCard: React.FC<KpiCardProps> = ({
           >
             <DeltaIcon size={11} className="shrink-0" />
             <span className="truncate">
-              {delta == null ? 'sin comparativa' : `${delta > 0 ? '+' : ''}${delta}%`}
+              {delta == null ? (
+                'sin comparativa'
+              ) : (
+                <CountUp
+                  value={delta}
+                  format={(v) => `${v > 0 ? '+' : ''}${Math.round(v * 10) / 10}%`}
+                />
+              )}
             </span>
           </p>
         </div>
