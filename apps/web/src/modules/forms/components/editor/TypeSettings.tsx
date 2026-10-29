@@ -1,5 +1,5 @@
 import React from 'react';
-import { Input, NumberInput, Select } from '@openfactu/ui';
+import { Input, Select, Slider } from '@openfactu/ui';
 import type { Question } from '@forms-engine';
 import { LabelList } from './LabelList';
 
@@ -9,11 +9,11 @@ interface Props {
   disabled?: boolean;
 }
 
-const range = (from: number, to: number) =>
-  Array.from({ length: to - from + 1 }, (_, i) => ({
-    value: String(from + i),
-    label: String(from + i),
-  }));
+/** Marcas en los extremos de un deslizador. */
+const ends = (min: number, max: number) => [
+  { value: min, label: String(min) },
+  { value: max, label: String(max) },
+];
 
 /** Escala lineal: de dónde a dónde y qué significa cada extremo. */
 export const ScaleSettings: React.FC<Props> = ({ question: q, onChange, disabled }) => {
@@ -21,25 +21,19 @@ export const ScaleSettings: React.FC<Props> = ({ question: q, onChange, disabled
   const set = (patch: Partial<typeof scale>) => onChange({ scale: { ...scale, ...patch } });
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="w-24">
-          <Select
-            label="Desde"
-            options={range(0, 1)}
-            value={String(scale.min)}
-            onChange={(v) => set({ min: Number(v) })}
-            disabled={disabled}
-          />
-        </div>
-        <div className="w-24">
-          <Select
-            label="Hasta"
-            options={range(2, 10)}
-            value={String(scale.max)}
-            onChange={(v) => set({ max: Number(v) })}
-            disabled={disabled}
-          />
-        </div>
+      <div className="sm:max-w-sm">
+        <Slider
+          label={`De ${scale.min} a ${scale.max}`}
+          helperText="De 0 a 10 es la recomendación (NPS) y el resumen calcula su índice."
+          value={[scale.min, scale.max] as [number, number]}
+          onChange={([min, max]) => set({ min, max })}
+          min={0}
+          max={10}
+          minGap={1}
+          marks
+          thumbLabels={['Desde', 'Hasta']}
+          disabled={disabled}
+        />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Input
@@ -62,12 +56,14 @@ export const ScaleSettings: React.FC<Props> = ({ question: q, onChange, disabled
 };
 
 export const RatingSettings: React.FC<Props> = ({ question: q, onChange, disabled }) => (
-  <div className="w-32">
-    <Select
-      label="Estrellas"
-      options={range(3, 10)}
-      value={String(q.ratingMax ?? 5)}
-      onChange={(v) => onChange({ ratingMax: Number(v) })}
+  <div className="sm:max-w-sm">
+    <Slider
+      label={`${q.ratingMax ?? 5} estrellas`}
+      value={q.ratingMax ?? 5}
+      onChange={(ratingMax) => onChange({ ratingMax })}
+      min={3}
+      max={10}
+      marks={ends(3, 10)}
       disabled={disabled}
     />
   </div>
@@ -110,7 +106,7 @@ export const FileSettings: React.FC<Props> = ({ question: q, onChange, disabled 
   const set = (patch: Partial<typeof file>) => onChange({ file: { ...file, ...patch } });
   const accept = file.accept.join(',');
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid gap-4 sm:grid-cols-3">
       <Select
         label="Tipos permitidos"
         options={FILE_KINDS}
@@ -118,20 +114,23 @@ export const FileSettings: React.FC<Props> = ({ question: q, onChange, disabled 
         onChange={(v) => set({ accept: v ? v.split(',') : [] })}
         disabled={disabled}
       />
-      <Select
-        label="Número de archivos"
-        options={range(1, 10)}
-        value={String(file.maxFiles)}
-        onChange={(v) => set({ maxFiles: Number(v) })}
-        disabled={disabled}
-      />
-      <NumberInput
-        label="Tamaño máximo (MB)"
-        value={file.maxSizeMb}
-        onChange={(v) => set({ maxSizeMb: Math.max(1, Math.min(10, v ?? 10)) })}
+      <Slider
+        label={`Hasta ${file.maxFiles} archivo${file.maxFiles === 1 ? '' : 's'}`}
+        value={file.maxFiles}
+        onChange={(maxFiles) => set({ maxFiles })}
         min={1}
         max={10}
-        precision={0}
+        marks={ends(1, 10)}
+        disabled={disabled}
+      />
+      <Slider
+        label={`Hasta ${file.maxSizeMb} MB cada uno`}
+        value={file.maxSizeMb}
+        onChange={(maxSizeMb) => set({ maxSizeMb })}
+        min={1}
+        max={10}
+        marks={ends(1, 10)}
+        formatValue={(v) => `${v} MB`}
         disabled={disabled}
       />
     </div>
