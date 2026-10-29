@@ -16,6 +16,17 @@ export interface QuickPartnerInitial {
   phone?: string | null;
 }
 
+/** Pasos del asistente y los campos que valida cada uno. */
+export const QUICK_PARTNER_STEPS: Array<{
+  key: string;
+  label: string;
+  fields: QuickPartnerField[];
+}> = [
+  { key: 'company', label: 'Empresa', fields: ['name', 'nif', 'groupId'] },
+  { key: 'contact', label: 'Contacto', fields: ['email', 'phone'] },
+  { key: 'review', label: 'Revisar', fields: [] },
+];
+
 const EMPTY: QuickPartnerDraft = {
   name: '',
   nif: '',
@@ -26,15 +37,17 @@ const EMPTY: QuickPartnerDraft = {
 };
 
 /**
- * Estado del alta rápida de cliente: borrador, validación por campo (al salir
- * de él o al intentar crear), clientes parecidos que ya existen y el alta.
+ * Estado del alta rápida de cliente, como asistente: paso actual, borrador,
+ * validación por campo (al salir de él o al pasar de paso), clientes
+ * parecidos que ya existen y el alta.
  */
 export function useQuickPartnerForm(initial: QuickPartnerInitial | null) {
   const { getCountry } = useGeo();
   const [draft, setDraft] = useState<QuickPartnerDraft>(EMPTY);
   const [touched, setTouched] = useState<Set<QuickPartnerField>>(new Set());
   const [submitted, setSubmitted] = useState(false);
-  const [groups, setGroups] = useState<PartnerGroup[]>([]);
+  const [step, setStep] = useState(0);
+  const [groups, setGroups] = useState<PartnerGroup[] | null>(null);
   const [partners, setPartners] = useState<Partner[]>([]);
   const [saving, setSaving] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -52,6 +65,7 @@ export function useQuickPartnerForm(initial: QuickPartnerInitial | null) {
       });
       setTouched(new Set());
       setSubmitted(false);
+      setStep(0);
       setServerError(null);
     }
   }
@@ -71,7 +85,7 @@ export function useQuickPartnerForm(initial: QuickPartnerInitial | null) {
 
   const groupOptions = useMemo(
     () =>
-      groups
+      (groups ?? [])
         .filter((g) => g.isCustomer && g.codePrefix)
         .map((g) => ({ value: g.id, label: g.name })),
     [groups],
@@ -90,8 +104,8 @@ export function useQuickPartnerForm(initial: QuickPartnerInitial | null) {
       ([k]) => submitted || touched.has(k as QuickPartnerField) || k === 'groupId',
     ),
   ) as typeof allErrors;
-  // Mientras no se haya cargado la lista de grupos, no se avisa de que falta.
-  if (!groups.length) delete errors.groupId;
+  // Mientras se carga la lista de grupos, no se avisa de que falta.
+  if (groups === null) delete errors.groupId;
 
   const set = (patch: Partial<QuickPartnerDraft>) => {
     setDraft((d) => ({ ...d, ...patch }));
@@ -99,10 +113,33 @@ export function useQuickPartnerForm(initial: QuickPartnerInitial | null) {
   };
   const blur = (field: QuickPartnerField) => setTouched((t) => new Set(t).add(field));
 
+  const isLast = step === QUICK_PARTNER_STEPS.length - 1;
+  /** Primer paso con errores (o -1): adonde volver si algo no cuadra. */
+  const firstStepWithErrors = QUICK_PARTNER_STEPS.findIndex((st) =>
+    st.fields.some((k) => allErrors[k]),
+  );
+
+  /** Valida los campos del paso actual y, si están bien, pasa al siguiente. */
+  const next = () => {
+    const fields = QUICK_PARTNER_STEPS[step].fields;
+    setTouched((t) => new Set([...t, ...fields]));
+    if (fields.some((k) => allErrors[k])) return false;
+    setStep((n) => Math.min(n + 1, QUICK_PARTNER_STEPS.length - 1));
+    return true;
+  };
+  const back = () => setStep((n) => Math.max(n - 1, 0));
+  /** Solo se puede ir a pasos anteriores (los de delante exigen validar). */
+  const goTo = (index: number) => {
+    if (index < step) setStep(index);
+  };
+
   /** Crea el cliente; devuelve el creado, o null si hay errores. */
   const create = async (): Promise<Partner | null> => {
     setSubmitted(true);
-    if (Object.keys(allErrors).length) return null;
+    if (Object.keys(allErrors).length) {
+      if (firstStepWithErrors >= 0) setStep(firstStepWithErrors);
+      return null;
+    }
     setSaving(true);
     try {
       return await partnersApi.create({
@@ -124,6 +161,11 @@ export function useQuickPartnerForm(initial: QuickPartnerInitial | null) {
   };
 
   return {
+    step,
+    isLast,
+    next,
+    back,
+    goTo,
     draft: effective,
     set,
     blur,

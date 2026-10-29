@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Badge, Button, Card, Loader, PageHeader, useToast } from '@openfactu/ui';
+import { Badge, Button, Card, Loader, PageHeader, useIsMobile, useToast } from '@openfactu/ui';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -28,6 +28,8 @@ export const PartnerDetail: React.FC = () => {
   const isNew = partnerId === 'new';
   const navigate = useNavigate();
   const toast = useToast();
+  // En móvil guardar (y convertir) van en el botón flotante: la cabecera no lleva acciones.
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const { flags } = useTheme();
   const canWrite =
@@ -119,7 +121,8 @@ export const PartnerDetail: React.FC = () => {
       <PageHeader
         size="md"
         actions={
-          canWrite && (
+          canWrite &&
+          !isMobile && (
             <HeaderSaveButton
               isNew={isNew}
               label={isNew ? 'Crear interlocutor' : 'Guardar'}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Badge, Button, Card, Loader, PageHeader, useToast } from '@openfactu/ui';
+import { Badge, Button, Card, Loader, PageHeader, useIsMobile, useToast } from '@openfactu/ui';
 import { ArrowLeft, FileSignature, UserPlus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
@@ -24,6 +24,8 @@ export const OpportunityDetail: React.FC = () => {
   const [search] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
+  // En móvil guardar (y convertir) van en el botón flotante: la cabecera no lleva acciones.
+  const isMobile = useIsMobile();
   const fmt = useFormat();
   const { user } = useAuth();
   const { canWrite } = useCrmPermissions('/crm/opportunities');
@@ -151,26 +153,28 @@ export const OpportunityDetail: React.FC = () => {
           )
         }
         actions={
-          <>
-            {canConvert && (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={convert}
-                // En móvil va dentro del botón flotante.
-                className="max-md:hidden"
-              >
-                <UserPlus size={14} /> Convertir en cliente
-              </Button>
-            )}
-            {canWrite && (
-              <HeaderSaveButton
-                isNew={isNew}
-                label={isNew ? 'Crear oportunidad' : 'Guardar'}
-                saving={detail.saving}
-              />
-            )}
-          </>
+          !isMobile && (
+            <>
+              {canConvert && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={convert}
+                  // En móvil va dentro del botón flotante.
+                  className="max-md:hidden"
+                >
+                  <UserPlus size={14} /> Convertir en cliente
+                </Button>
+              )}
+              {canWrite && (
+                <HeaderSaveButton
+                  isNew={isNew}
+                  label={isNew ? 'Crear oportunidad' : 'Guardar'}
+                  saving={detail.saving}
+                />
+              )}
+            </>
+          )
         }
       />
 
