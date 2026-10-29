@@ -832,6 +832,12 @@ export const CompanySettings: React.FC = () => {
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, confirmBeforeCancel: v })}
               />
               <FlagRow
+                label="Permitir facturar presupuestos directamente"
+                hint="Muestra «Crear Factura» en los presupuestos, para facturarlos sin pasar por pedido. Desactívalo si en tu empresa siempre se va de presupuesto a pedido y luego a factura."
+                checked={flagsDraft.quoteDirectInvoiceEnabled !== false}
+                onChange={(v) => setFlagsDraft({ ...flagsDraft, quoteDirectInvoiceEnabled: v })}
+              />
+              <FlagRow
                 label="Forzar zonas de almacén"
                 hint="Exige especificar una zona (warehouseZone) en las líneas de documentos."
                 checked={flagsDraft.enforceWarehouseZones}

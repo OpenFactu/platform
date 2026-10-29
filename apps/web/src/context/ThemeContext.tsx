@@ -66,6 +66,8 @@ export interface FlagsConfig {
   assistantEnabled: boolean;
   /** CRM: oportunidades, contactos y actividades. Opcional, off por defecto. */
   crmEnabled: boolean;
+  /** Ofrecer «Crear Factura» en el presupuesto (facturarlo sin pasar por pedido). */
+  quoteDirectInvoiceEnabled: boolean;
 }
 
 // Defaults de la marca Keirost — paleta teal + ink (brand guide v1.0).
@@ -115,6 +117,7 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   hrEnabled: true,
   assistantEnabled: true,
   crmEnabled: false,
+  quoteDirectInvoiceEnabled: true,
 };
 
 /** Colores y modo con los que se muestra un preset en los selectores. */

@@ -15,6 +15,7 @@ import {
 import { SearchableSelect } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
 import {
   FileSignature,
@@ -499,6 +500,9 @@ const QuoteDetail: React.FC<{
   const isAccepted = quote.status === 'A';
   const isRejected = quote.status === 'R';
   const convertible = (isOpen || isAccepted) && canWrite;
+  // Facturar el presupuesto sin pedido se puede desactivar por empresa (Ajustes → Flags).
+  const { flags } = useTheme();
+  const canInvoiceDirectly = convertible && flags.quoteDirectInvoiceEnabled !== false;
 
   return (
     <DocumentDetailLayout
@@ -552,7 +556,7 @@ const QuoteDetail: React.FC<{
             <RotateCcw size={14} /> Reabrir
           </Button>
         )}
-        {convertible && (
+        {canInvoiceDirectly && (
           <Button variant="secondary" size="sm" onClick={onCreateInvoice} className="h-9 gap-2">
             <FileText size={14} /> Crear Factura
           </Button>
