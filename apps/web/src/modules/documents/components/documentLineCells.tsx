@@ -342,8 +342,13 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
         <LabelPrintButton
           params={{ itemId: l.itemId }}
           title="Imprimir etiqueta del artículo"
-          className="p-1.5 text-fg-subtle hover:text-purple-600 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all inline-flex"
-          triggerLabel={<Tag size={13} />}
+          className="inline-flex h-8 w-8 items-center justify-center gap-1.5 p-0 border-transparent bg-transparent text-fg-subtle hover:bg-bg-hover hover:text-accent max-md:h-10 max-md:w-auto max-md:px-3"
+          triggerLabel={
+            <>
+              <Tag size={13} />
+              <span className="md:hidden">Etiqueta</span>
+            </>
+          }
         />
       ) : null,
   });
@@ -842,20 +847,22 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
               variant="ghost"
               size="sm"
               onClick={() => onDuplicateLine(idx)}
-              className="h-7 w-7 p-0 text-fg-subtle hover:text-primary"
+              className="h-7 w-7 gap-1.5 p-0 border-transparent bg-transparent text-fg-subtle hover:bg-bg-hover hover:text-accent max-md:h-10 max-md:w-auto max-md:px-3"
               title="Duplicar línea"
             >
               <CopyIcon size={14} />
+              <span className="md:hidden">Duplicar</span>
             </Button>
           )}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => actions.removeLine(idx)}
-            className="h-7 w-7 p-0 text-fg-subtle hover:text-rose-500"
+            className="h-7 w-7 gap-1.5 p-0 border-transparent bg-transparent text-fg-subtle hover:bg-[var(--k-danger-bg)] hover:text-[var(--k-danger-fg)] max-md:h-10 max-md:w-auto max-md:px-3"
             title="Eliminar línea"
           >
             <Trash2 size={14} />
+            <span className="md:hidden">Eliminar</span>
           </Button>
         </div>
       );

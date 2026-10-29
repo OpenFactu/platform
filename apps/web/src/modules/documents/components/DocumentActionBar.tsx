@@ -73,7 +73,7 @@ export const DocumentActionBar: React.FC<Props> = ({
               <span>Etiqueta</span>
             </>
           }
-          className="inline-flex items-center gap-1.5 h-10 px-3 text-xs font-bold rounded-lg border border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-900/50"
+          className="h-10 gap-2"
         />
       )}
       <PrintTemplateButton docType={docType} pdfUrl={pdfUrl} variant="secondary" />
