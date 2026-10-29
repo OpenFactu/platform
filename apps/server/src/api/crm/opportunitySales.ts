@@ -59,6 +59,15 @@ router.put('/:id/lines', async (req: any, res) => {
   try {
     const opp = await loadOpportunity(req, res);
     if (!opp) return;
+    // Cerrada (ganada o perdida) ya no se retoca: lo vendido es lo del presupuesto.
+    const [stage] = await req.tenantClient
+      .select({ kind: schema.opportunityStages.kind })
+      .from(schema.opportunityStages)
+      .where(eq(schema.opportunityStages.id, opp.stageId));
+    if (stage && stage.kind !== 'open')
+      return res
+        .status(409)
+        .json({ error: 'La oportunidad está cerrada: sus productos ya no se pueden cambiar' });
     const lines = Array.isArray(req.body?.lines) ? req.body.lines : null;
     if (!lines) return res.status(400).json({ error: 'Se esperaba una lista de líneas' });
     res.json(await replaceLines(req.tenantClient, opp, lines));

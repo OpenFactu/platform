@@ -56,14 +56,14 @@ export const Today: React.FC = () => {
               <OpportunityMiniList
                 items={closingSoon}
                 empty="Nada cierra esta semana"
-                dateOf={(o) => o.expectedCloseDate}
+                date={{ header: 'Cierre previsto', of: (o) => o.expectedCloseDate }}
               />
             </Card>
             <Card title="Paradas" subtitle={`Sin actividad en ${settings.staleDays} días o más.`}>
               <OpportunityMiniList
                 items={stale}
                 empty="Ninguna parada"
-                dateOf={(o) => o.lastActivityAt ?? o.updatedAt}
+                date={{ header: 'Última actividad', of: (o) => o.lastActivityAt ?? o.updatedAt }}
               />
             </Card>
           </div>

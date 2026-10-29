@@ -147,24 +147,25 @@ export function useOpportunityDetail(id: string, preset: OpportunityDraft = {}) 
         prospectEmail: form.prospectEmail || null,
         prospectPhone: form.prospectPhone || null,
       };
+      const cleanLines = lines
+        .filter((l) => l.itemId || l.description)
+        .map((l) => ({
+          itemId: l.itemId,
+          description: l.description,
+          quantity: l.quantity,
+          price: l.price,
+          discount: l.discount,
+        }));
+      // Productos antes que la etapa: si este guardado la cierra (ganada o
+      // perdida), el servidor ya no aceptaría cambios en los productos.
+      if (!isNew && linesDirty) {
+        await opportunitiesApi.saveLines(id, cleanLines);
+        setLinesDirty(false);
+      }
       const saved: Opportunity = isNew
         ? await opportunitiesApi.create(payload)
         : await opportunitiesApi.update(id, payload);
-      if (linesDirty || (isNew && lines.length > 0)) {
-        await opportunitiesApi.saveLines(
-          saved.id,
-          lines
-            .filter((l) => l.itemId || l.description)
-            .map((l) => ({
-              itemId: l.itemId,
-              description: l.description,
-              quantity: l.quantity,
-              price: l.price,
-              discount: l.discount,
-            })),
-        );
-        setLinesDirty(false);
-      }
+      if (isNew && cleanLines.length > 0) await opportunitiesApi.saveLines(saved.id, cleanLines);
       if (!isNew) await load();
       return saved.id;
     } finally {

@@ -1,13 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Button, EmptyState } from '@openfactu/ui';
-import { Plus, Target } from 'lucide-react';
-import { useFormat } from '@/hooks/useFormat';
-import { STAGE_KIND_VARIANT } from '../domain/crm';
+import { Button } from '@openfactu/ui';
+import { Plus } from 'lucide-react';
 import { usePipeline } from '../hooks/usePipeline';
 import { useCrmPermissions } from '../hooks/useCrmPermissions';
 import { ActivityList } from './ActivityList';
 import { ContactsTable } from './ContactsTable';
+import { OpportunityMiniList } from './OpportunityMiniList';
 import { PartnerSummaryKpis } from './PartnerSummaryKpis';
 import { PartnerTimeline } from './PartnerTimeline';
 
@@ -16,7 +15,6 @@ import { PartnerTimeline } from './PartnerTimeline';
  * actividad. Cada bloque respeta su propio permiso del CRM.
  */
 export const PartnerCrmPanel: React.FC<{ partnerId: string }> = ({ partnerId }) => {
-  const fmt = useFormat();
   const contactsPerm = useCrmPermissions('/crm/contacts');
   const oppPerm = useCrmPermissions('/crm/opportunities');
   const pipeline = usePipeline(partnerId);
@@ -44,27 +42,12 @@ export const PartnerCrmPanel: React.FC<{ partnerId: string }> = ({ partnerId }) 
               </Button>
             )}
           </div>
-          {pipeline.opportunities.length === 0 ? (
-            <EmptyState variant="compact" icon={<Target size={18} />} title="Sin oportunidades" />
-          ) : (
-            <ul className="divide-y divide-border-subtle rounded-xs border border-border-default bg-bg-card">
-              {pipeline.opportunities.map((o) => (
-                <li key={o.id}>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/crm/opportunities/${o.id}`)}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-bg-hover"
-                  >
-                    <span className="flex-1 min-w-0 text-sm text-fg-default truncate">
-                      {o.title}
-                    </span>
-                    <Badge variant={STAGE_KIND_VARIANT[o.stageKind ?? 'open']}>{o.stageName}</Badge>
-                    <span className="text-sm tabular-nums text-fg-body">{fmt.money(o.amount)}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+          <OpportunityMiniList
+            items={pipeline.opportunities}
+            empty="Sin oportunidades"
+            date={{ header: 'Cierre previsto', of: (o) => o.closedAt ?? o.expectedCloseDate }}
+            hideClient
+          />
         </div>
       )}
 

@@ -98,6 +98,8 @@ export const OpportunityDetail: React.FC = () => {
 
   const stage = stages.find((s) => s.id === form.stageId);
   const hasItemLines = detail.lines.some((l) => l.itemId);
+  // Ganada o perdida: lo vendido es lo del presupuesto y los productos ya no se tocan.
+  const linesLocked = !isNew && !!stage && stage.kind !== 'open';
 
   return (
     <form
@@ -210,7 +212,11 @@ export const OpportunityDetail: React.FC = () => {
         </div>
         <Card
           title="Productos de interés"
-          subtitle="El precio sale de la tarifa del cliente. El importe de la oportunidad es su suma."
+          subtitle={
+            linesLocked
+              ? 'La oportunidad está cerrada: los productos quedan como estaban.'
+              : 'El precio sale de la tarifa del cliente. El importe de la oportunidad es su suma.'
+          }
           className="xl:col-span-2"
         >
           <OpportunityLinesEditor
@@ -218,7 +224,7 @@ export const OpportunityDetail: React.FC = () => {
             onAdd={detail.addLine}
             onChange={detail.updateLine}
             onRemove={detail.removeLine}
-            disabled={!canWrite}
+            disabled={!canWrite || linesLocked}
           />
         </Card>
       </div>
