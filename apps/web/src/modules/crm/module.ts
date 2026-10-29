@@ -17,6 +17,7 @@ const Forms = lazy(() => import('./pages/Forms').then((m) => ({ default: m.Forms
 const FormDetail = lazy(() =>
   import('./pages/FormDetail').then((m) => ({ default: m.FormDetail })),
 );
+const Reports = lazy(() => import('./pages/Reports').then((m) => ({ default: m.Reports })));
 const CrmSettings = lazy(() =>
   import('./pages/CrmSettings').then((m) => ({ default: m.CrmSettings })),
 );
@@ -40,6 +41,7 @@ export const crmModule: ModuleManifest = {
         path: '/crm/forms',
         featureFlag: 'crmFormsEnabled',
       },
+      { id: 'crm-reports', label: 'Informes', path: '/crm/reports' },
       { id: 'crm-stages', label: 'Etapas', path: '/crm/stages', adminOnly: true },
       { id: 'crm-settings', label: 'Ajustes', path: '/crm/settings' },
     ],
@@ -100,6 +102,13 @@ export const crmModule: ModuleManifest = {
       title: 'Formulario',
       iconName: 'ClipboardList',
       permissionPath: '/crm/forms',
+    },
+    {
+      pattern: '/crm/reports',
+      Component: Reports,
+      title: 'Informes del CRM',
+      iconName: 'BarChart3',
+      permissionPath: '/crm/reports',
     },
     {
       pattern: '/crm/settings',

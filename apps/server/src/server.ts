@@ -33,6 +33,7 @@ import crmActivitiesRouter from './api/crm/activities';
 import crmSettingsRouter from './api/crm/settings';
 import crmPartnersRouter from './api/crm/partners';
 import crmFormsRouter from './api/crm/forms';
+import crmReportsRouter from './api/crm/reports';
 import publicFormsRouter from './api/publicForms';
 import membersRouter from './api/members';
 import { registerCrmQuoteListener } from './core/crm/quoteListener';
@@ -274,6 +275,7 @@ mountApi(app, '/api/crm/activities', '/crm/activities', crmActivitiesRouter);
 // Ficha 360: cifras y línea de tiempo; dentro se recorta por permiso de cada documento.
 mountApi(app, '/api/crm/partners', '/crm/activities', crmPartnersRouter);
 mountApi(app, '/api/crm/forms', '/crm/forms', crmFormsRouter);
+mountApi(app, '/api/crm/reports', '/crm/reports', crmReportsRouter);
 // Leer los ajustes lo necesita cualquier formulario del CRM (motivos, orígenes);
 // el PUT exige /crm/settings dentro del router.
 mountShared(

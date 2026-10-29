@@ -69,6 +69,12 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
     hint: 'Crearlos, ver sus respuestas y mandar encuestas a los contactos.',
   },
   {
+    path: '/crm/reports',
+    label: 'Informes del CRM',
+    group: 'CRM',
+    hint: 'Previsión, embudo, motivos de pérdida, orígenes, actividad por comercial y encuestas.',
+  },
+  {
     path: '/crm/settings',
     label: 'Ajustes del CRM',
     group: 'CRM',
