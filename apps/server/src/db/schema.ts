@@ -2081,10 +2081,14 @@ export const opportunityStages = pgTable('OpportunityStage', {
 export const opportunities = pgTable('Opportunity', {
   id: text('id').primaryKey(),
   title: text('title').notNull(),
-  partnerId: text('partnerId')
-    .references(() => businessPartners.id, { onDelete: 'cascade' })
-    .notNull(),
+  /** Null mientras sea un prospecto sin ficha de cliente (mig 077). */
+  partnerId: text('partnerId').references(() => businessPartners.id, { onDelete: 'cascade' }),
   contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
+  // Datos del prospecto (mig 077): se conservan tras convertirlo en cliente.
+  prospectName: text('prospectName'),
+  prospectCompany: text('prospectCompany'),
+  prospectEmail: text('prospectEmail'),
+  prospectPhone: text('prospectPhone'),
   stageId: text('stageId')
     .references(() => opportunityStages.id)
     .notNull(),

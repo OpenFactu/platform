@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { opportunitiesApi } from '../api';
+import { contactsApi, opportunitiesApi } from '../api';
 import {
   lineNet,
   type CrmSettings,
@@ -18,7 +18,8 @@ export function validateOpportunity(
   settings: CrmSettings,
 ): string | null {
   if (!form.title?.trim()) return 'El título es obligatorio';
-  if (!form.partnerId) return 'El interlocutor es obligatorio';
+  if (!form.partnerId && !form.prospectName?.trim() && !form.prospectCompany?.trim())
+    return 'Elige el cliente o indica el nombre o la empresa del prospecto';
   const stage = stages.find((s) => s.id === form.stageId);
   if (stage?.kind === 'lost' && !form.lostReason) return 'Indica el motivo de pérdida';
   if (settings.sourceRequired && !form.source) return 'Indica el origen de la oportunidad';
@@ -141,6 +142,10 @@ export function useOpportunityDetail(id: string, preset: OpportunityDraft = {}) 
         source: form.source || null,
         lostReason: form.lostReason || undefined,
         tags: form.tags ?? [],
+        prospectName: form.prospectName || null,
+        prospectCompany: form.prospectCompany || null,
+        prospectEmail: form.prospectEmail || null,
+        prospectPhone: form.prospectPhone || null,
       };
       const saved: Opportunity = isNew
         ? await opportunitiesApi.create(payload)
@@ -167,6 +172,28 @@ export function useOpportunityDetail(id: string, preset: OpportunityDraft = {}) 
     }
   };
 
+  /**
+   * El prospecto pasa a cliente: se enlaza el interlocutor recién creado y, si
+   * había persona de contacto distinta de la empresa, se crea como contacto
+   * principal. Los datos del prospecto se conservan como histórico.
+   */
+  const convertToClient = async (partnerId: string) => {
+    let contactId: string | null = null;
+    const person = form.prospectName?.trim();
+    if (person && person !== form.prospectCompany?.trim()) {
+      const contact = await contactsApi.create({
+        partnerId,
+        name: person,
+        email: form.prospectEmail || null,
+        phone: form.prospectPhone || null,
+        isMain: true,
+      });
+      contactId = contact.id;
+    }
+    await opportunitiesApi.update(id, { partnerId, contactId });
+    await load();
+  };
+
   const createQuote = async (validDays?: number) => {
     const res = await opportunitiesApi.createQuote(id, validDays);
     await load();
@@ -189,6 +216,7 @@ export function useOpportunityDetail(id: string, preset: OpportunityDraft = {}) 
     saving,
     save,
     createQuote,
+    convertToClient,
     reload: load,
   };
 }

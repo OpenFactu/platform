@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { SearchableSelect, type SearchableSelectOption } from '@openfactu/ui';
 import { usePartnerOptions } from '../hooks/useCrmData';
 import { useCrmPermissions } from '../hooks/useCrmPermissions';
-import { QuickPartnerModal } from './QuickPartnerModal';
+import { QuickPartnerModal, type QuickPartnerInitial } from './QuickPartnerModal';
 
 interface Props {
   value: string;
@@ -19,7 +19,7 @@ interface Props {
 export const PartnerSelect: React.FC<Props> = ({ value, onChange, disabled }) => {
   const { canWrite } = useCrmPermissions('/partners');
   const { options, loading, refresh } = usePartnerOptions();
-  const [newName, setNewName] = useState<string | null>(null);
+  const [newPartner, setNewPartner] = useState<QuickPartnerInitial | null>(null);
   // El recién creado se enseña ya, sin esperar a que vuelva la lista.
   const [created, setCreated] = useState<SearchableSelectOption | null>(null);
   const allOptions = useMemo(
@@ -44,12 +44,12 @@ export const PartnerSelect: React.FC<Props> = ({ value, onChange, disabled }) =>
         creatable={canWrite}
         createLabel='Crear cliente "{term}"'
         onCreate={(term) => {
-          setNewName(term);
+          setNewPartner({ name: term });
         }}
       />
       <QuickPartnerModal
-        initialName={newName}
-        onClose={() => setNewName(null)}
+        initial={newPartner}
+        onClose={() => setNewPartner(null)}
         onCreated={(p) => {
           setCreated({ value: p.id, label: p.name, secondaryLabel: p.code ?? undefined });
           onChange(p.id);

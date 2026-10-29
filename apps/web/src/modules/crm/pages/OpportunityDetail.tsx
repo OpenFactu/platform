@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Badge, Button, Card, Loader, PageHeader, useToast } from '@openfactu/ui';
-import { ArrowLeft, FileSignature, Plus, Save } from 'lucide-react';
+import { ArrowLeft, FileSignature, Plus, Save, UserPlus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
 import { STAGE_KIND_VARIANT } from '../domain/crm';
@@ -12,6 +12,7 @@ import { OpportunityFields } from '../components/OpportunityFields';
 import { OpportunityLinesEditor } from '../components/OpportunityLinesEditor';
 import { OpportunityDocuments } from '../components/OpportunityDocuments';
 import { ActivityList } from '../components/ActivityList';
+import { QuickPartnerModal, type QuickPartnerInitial } from '../components/QuickPartnerModal';
 
 /**
  * Ficha de una oportunidad (/crm/opportunities/:id, o /new; `?partnerId=`
@@ -35,6 +36,12 @@ export const OpportunityDetail: React.FC = () => {
     partnerId: search.get('partnerId') ?? undefined,
   });
   const { form, isNew } = detail;
+  const [converting, setConverting] = useState<QuickPartnerInitial | null>(null);
+  const canCreatePartner =
+    user?.role === 'SUPERUSER' ||
+    user?.role === 'ADMIN' ||
+    !!user?.permissions?.['/partners']?.write;
+  const isProspect = !isNew && !form.partnerId;
 
   const back = () => navigate('/crm/opportunities');
 
@@ -110,9 +117,10 @@ export const OpportunityDetail: React.FC = () => {
         title={
           <>
             {form.title || (isNew ? 'Nueva oportunidad' : '')}
-            {stage && (
+            {(stage || isProspect) && (
               <span className="flex flex-wrap items-center gap-2">
-                <Badge variant={STAGE_KIND_VARIANT[stage.kind]}>{stage.name}</Badge>
+                {stage && <Badge variant={STAGE_KIND_VARIANT[stage.kind]}>{stage.name}</Badge>}
+                {isProspect && <Badge variant="warning">Prospecto</Badge>}
               </span>
             )}
           </>
@@ -122,6 +130,25 @@ export const OpportunityDetail: React.FC = () => {
             <span className="text-sm text-fg-muted">
               {form.partnerName} · {fmt.money(form.amount)}
             </span>
+          )
+        }
+        actions={
+          isProspect &&
+          canWrite &&
+          canCreatePartner && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() =>
+                setConverting({
+                  name: form.prospectCompany || form.prospectName || '',
+                  email: form.prospectEmail,
+                  phone: form.prospectPhone,
+                })
+              }
+            >
+              <UserPlus size={14} /> Convertir en cliente
+            </Button>
           )
         }
       />
@@ -191,6 +218,23 @@ export const OpportunityDetail: React.FC = () => {
             disabled={!canWrite}
           />
         </Card>
+      </div>
+
+      {/* Modal en portal: su submit no debe llegar al <form> de la ficha. */}
+      <div onSubmit={(e) => e.stopPropagation()}>
+        <QuickPartnerModal
+          initial={converting}
+          title="Convertir en cliente"
+          onClose={() => setConverting(null)}
+          onCreated={async (partner) => {
+            try {
+              await detail.convertToClient(partner.id);
+              toast.success('El prospecto ya es cliente');
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : 'No se pudo enlazar el cliente');
+            }
+          }}
+        />
       </div>
 
       {canWrite && (

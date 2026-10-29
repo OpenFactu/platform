@@ -14,8 +14,14 @@ export interface OpportunityStage {
 export interface Opportunity {
   id: string;
   title: string;
-  partnerId: string;
+  /** Null mientras sea un prospecto sin ficha de cliente. */
+  partnerId: string | null;
   contactId: string | null;
+  prospectName?: string | null;
+  prospectCompany?: string | null;
+  prospectEmail?: string | null;
+  prospectPhone?: string | null;
+  isProspect?: boolean;
   stageId: string;
   /** NUMERIC: llega como string. */
   amount: string;

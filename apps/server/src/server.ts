@@ -34,6 +34,7 @@ import crmSettingsRouter from './api/crm/settings';
 import crmPartnersRouter from './api/crm/partners';
 import membersRouter from './api/members';
 import { registerCrmQuoteListener } from './core/crm/quoteListener';
+import { registerCrmLeadListener } from './core/crm/leads';
 import { startCrmCron } from './core/crm/crmCron';
 import pricelistsRouter from './api/pricelists';
 import zonesRouter from './api/zones';
@@ -279,6 +280,7 @@ mountShared(
 );
 mountShared(app, '/api/members', 'nombres de los miembros para elegir responsable', membersRouter);
 registerCrmQuoteListener();
+registerCrmLeadListener();
 mountApi(app, '/api/periods', '/accounting-periods', periodsRouter);
 mountApi(app, '/api/chart-of-accounts', '/chart-of-accounts', chartOfAccountsRouter);
 mountApi(app, '/api/cost-centers', '/cost-centers', costCentersRouter);

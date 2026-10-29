@@ -22,7 +22,7 @@ export interface ImportNaturalKey {
   unique?: boolean;
 }
 
-export type ImportGroup = 'maestros' | 'stock' | 'documentos' | 'contabilidad' | 'rrhh';
+export type ImportGroup = 'maestros' | 'stock' | 'documentos' | 'contabilidad' | 'rrhh' | 'crm';
 
 export interface ImportObject {
   id: string;

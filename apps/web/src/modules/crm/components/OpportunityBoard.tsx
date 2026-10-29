@@ -113,10 +113,12 @@ export const OpportunityBoard: React.FC<Props> = ({
                       </span>
                     )}
                   </div>
-                  {(isStale(o, staleDays) ||
+                  {(o.isProspect ||
+                    isStale(o, staleDays) ||
                     (o.stageKind === 'lost' && o.lostReason) ||
                     !!o.tags?.length) && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
+                      {o.isProspect && <Badge variant="warning">Prospecto</Badge>}
                       {o.tags?.map((t) => (
                         <Badge key={t} variant="accent">
                           {t}

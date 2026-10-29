@@ -3,9 +3,16 @@ import { Input, Modal, Select, useToast } from '@openfactu/ui';
 import { partnerGroupsApi, partnersApi } from '@/modules/partners/api';
 import type { Partner, PartnerGroup } from '@/modules/partners/domain/partner';
 
+export interface QuickPartnerInitial {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+}
+
 interface Props {
-  /** Nombre tecleado en el selector; `null` = cerrado. */
-  initialName: string | null;
+  /** Datos con los que se abre (lo tecleado, o el prospecto); `null` = cerrado. */
+  initial: QuickPartnerInitial | null;
+  title?: string;
   onClose: () => void;
   onCreated: (partner: Partner) => void;
 }
@@ -18,20 +25,31 @@ interface Props {
  * Solo se ofrecen grupos de cliente con prefijo: el código del interlocutor es
  * obligatorio y el servidor solo lo genera a partir de ese prefijo.
  */
-export const QuickPartnerModal: React.FC<Props> = ({ initialName, onClose, onCreated }) => {
+export const QuickPartnerModal: React.FC<Props> = ({
+  initial,
+  title = 'Nuevo cliente',
+  onClose,
+  onCreated,
+}) => {
   const toast = useToast();
   const [groups, setGroups] = useState<PartnerGroup[]>([]);
   const [form, setForm] = useState({ name: '', nif: '', email: '', phone: '', groupId: '' });
   const [saving, setSaving] = useState(false);
 
-  const [seen, setSeen] = useState<string | null>(null);
-  if (initialName !== seen) {
-    setSeen(initialName);
-    if (initialName !== null)
-      setForm((f) => ({ ...f, name: initialName, nif: '', email: '', phone: '' }));
+  const [seen, setSeen] = useState<QuickPartnerInitial | null>(null);
+  if (initial !== seen) {
+    setSeen(initial);
+    if (initial)
+      setForm((f) => ({
+        ...f,
+        name: initial.name,
+        nif: '',
+        email: initial.email ?? '',
+        phone: initial.phone ?? '',
+      }));
   }
 
-  const open = initialName !== null;
+  const open = initial !== null;
   useEffect(() => {
     if (!open) return;
     partnerGroupsApi
@@ -85,7 +103,7 @@ export const QuickPartnerModal: React.FC<Props> = ({ initialName, onClose, onCre
     <Modal
       isOpen={open}
       onClose={onClose}
-      title="Nuevo cliente"
+      title={title}
       subtitle="Lo básico para seguir; el resto de la ficha se completa en Interlocutores"
       size="md"
       onSubmit={save}

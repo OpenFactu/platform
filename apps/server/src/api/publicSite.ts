@@ -15,6 +15,8 @@ import {
   type ResolvedHost,
 } from '../core/website/renderSite';
 import { handleShopCheckout, listWebProductPaths } from '../core/website/shop';
+import { HookManager } from '../core/plugins/HookManager';
+import { WEBSITE_FORM_EVENT } from '../core/crm/leads';
 
 /**
  * Serving público de sitios web (módulo Website) — SIN autenticación.
@@ -143,6 +145,18 @@ async function handleContactSubmission(
       ...(Object.keys(extraFields).length > 0 ? { fields: extraFields } : {}),
     },
   });
+
+  // Quien escuche (el CRM: crea el lead) — nunca rompe la respuesta al visitante.
+  HookManager.trigger(WEBSITE_FORM_EVENT, {
+    tenantId: resolved.tenantId,
+    db,
+    data: {
+      name: name ?? null,
+      email: email ?? null,
+      message: message ?? null,
+      fields: extraFields,
+    },
+  }).catch(() => {});
 
   notifyTenant({
     tenantId: resolved.tenantId,

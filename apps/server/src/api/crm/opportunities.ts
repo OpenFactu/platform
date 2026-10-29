@@ -25,7 +25,16 @@ const ALLOWED = [
   'tags',
   'source',
   'lostReason',
+  'prospectName',
+  'prospectCompany',
+  'prospectEmail',
+  'prospectPhone',
 ];
+
+/** Una oportunidad es de un cliente o de un prospecto con al menos nombre o empresa. */
+function hasCounterpart(o: Record<string, any>): boolean {
+  return !!(o.partnerId || o.prospectName?.trim?.() || o.prospectCompany?.trim?.());
+}
 
 async function findStage(tenantClient: any, stageId: string) {
   const [stage] = await tenantClient
@@ -47,7 +56,7 @@ function selectJoined(tenantClient: any) {
       stageProbability: schema.opportunityStages.probability,
     })
     .from(schema.opportunities)
-    .innerJoin(
+    .leftJoin(
       schema.businessPartners,
       eq(schema.opportunities.partnerId, schema.businessPartners.id),
     )
@@ -58,9 +67,16 @@ function selectJoined(tenantClient: any) {
     .leftJoin(schema.contacts, eq(schema.opportunities.contactId, schema.contacts.id));
 }
 
+/** Sin cliente aún, el «nombre del cliente» es el del prospecto. */
 function flatten(r: any) {
   const { opportunity, ...rest } = r;
-  return { ...opportunity, ...rest };
+  return {
+    ...opportunity,
+    ...rest,
+    isProspect: !opportunity.partnerId,
+    partnerName:
+      rest.partnerName ?? (opportunity.prospectCompany || opportunity.prospectName || null),
+  };
 }
 
 /** GET /api/crm/opportunities?partnerId=&stageId= */
@@ -96,8 +112,12 @@ router.post('/', async (req: any, res) => {
     const payload = pick(req.body, ALLOWED);
     if ('tags' in payload) payload.tags = normalizeTags(payload.tags);
     if (!payload.title?.trim()) return res.status(400).json({ error: 'El título es obligatorio' });
-    if (!payload.partnerId)
-      return res.status(400).json({ error: 'El interlocutor es obligatorio' });
+    if (!hasCounterpart(payload))
+      return res
+        .status(400)
+        .json({
+          error: 'Indica el cliente o, si aún no lo es, el nombre o la empresa del prospecto',
+        });
     if (!payload.stageId) {
       const [first] = await req.tenantClient
         .select()
@@ -161,8 +181,12 @@ router.patch('/:id', async (req: any, res) => {
     if ('tags' in patch) patch.tags = normalizeTags(patch.tags);
     if ('title' in patch && !patch.title?.trim())
       return res.status(400).json({ error: 'El título es obligatorio' });
-    if ('partnerId' in patch && !patch.partnerId)
-      return res.status(400).json({ error: 'El interlocutor es obligatorio' });
+    if (!hasCounterpart({ ...old, ...patch }))
+      return res
+        .status(400)
+        .json({
+          error: 'Indica el cliente o, si aún no lo es, el nombre o la empresa del prospecto',
+        });
     if ('amount' in patch && patch.amount === null) patch.amount = '0';
     let row: any;
     if (patch.stageId && patch.stageId !== old.stageId) {

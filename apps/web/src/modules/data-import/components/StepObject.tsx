@@ -9,9 +9,17 @@ const GROUP_LABELS: Record<ImportGroup, string> = {
   documentos: 'Documentos',
   contabilidad: 'Contabilidad',
   rrhh: 'Recursos humanos',
+  crm: 'CRM',
 };
 
-const GROUP_ORDER: ImportGroup[] = ['maestros', 'stock', 'documentos', 'contabilidad', 'rrhh'];
+const GROUP_ORDER: ImportGroup[] = [
+  'maestros',
+  'stock',
+  'documentos',
+  'contabilidad',
+  'rrhh',
+  'crm',
+];
 
 interface Props {
   objects: ImportObject[];

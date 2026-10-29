@@ -4,6 +4,7 @@ import {
   DatePicker,
   Input,
   SearchableSelect,
+  SegmentedControl,
   Select,
   Textarea,
 } from '@openfactu/ui';
@@ -42,6 +43,12 @@ export const OpportunityFields: React.FC<Props> = ({
   disabled,
 }) => {
   const [contacts, setContacts] = useState<Contact[]>([]);
+  // Prospecto: sin cliente aún, con sus datos sueltos. Se deduce de lo guardado
+  // y el usuario puede cambiarlo mientras no haya cliente elegido.
+  const [prospectChosen, setProspectChosen] = useState(false);
+  const isProspect =
+    !form.partnerId &&
+    (prospectChosen || !!(form.isProspect || form.prospectName || form.prospectCompany));
 
   // Los contactos dependen del interlocutor elegido.
   useEffect(() => {
@@ -76,21 +83,66 @@ export const OpportunityFields: React.FC<Props> = ({
         required
         disabled={disabled}
       />
+      {!form.partnerId && !disabled && (
+        <SegmentedControl
+          size="sm"
+          aria-label="¿Cliente o prospecto?"
+          value={isProspect ? 'prospect' : 'client'}
+          onChange={(v) => setProspectChosen(v === 'prospect')}
+          options={[
+            { value: 'client', label: 'Cliente existente' },
+            { value: 'prospect', label: 'Prospecto (aún no es cliente)' },
+          ]}
+        />
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <PartnerSelect
-          value={form.partnerId ?? ''}
-          onChange={(v) => set({ partnerId: v, contactId: null })}
-          disabled={disabled}
-        />
-        <SearchableSelect
-          label="Contacto"
-          options={contactOptions}
-          value={form.contactId ?? ''}
-          onChange={(v) => set({ contactId: v || null })}
-          placeholder={form.partnerId ? '— ninguno —' : 'Elige antes el interlocutor'}
-          clearable
-          disabled={disabled || !form.partnerId}
-        />
+        {isProspect ? (
+          <>
+            <Input
+              label="Empresa"
+              value={form.prospectCompany ?? ''}
+              onChange={(e) => set({ prospectCompany: e.target.value })}
+              disabled={disabled}
+            />
+            <Input
+              label="Persona de contacto"
+              value={form.prospectName ?? ''}
+              onChange={(e) => set({ prospectName: e.target.value })}
+              disabled={disabled}
+            />
+            <Input
+              label="Correo"
+              type="email"
+              value={form.prospectEmail ?? ''}
+              onChange={(e) => set({ prospectEmail: e.target.value })}
+              disabled={disabled}
+            />
+            <Input
+              label="Teléfono"
+              type="tel"
+              value={form.prospectPhone ?? ''}
+              onChange={(e) => set({ prospectPhone: e.target.value })}
+              disabled={disabled}
+            />
+          </>
+        ) : (
+          <>
+            <PartnerSelect
+              value={form.partnerId ?? ''}
+              onChange={(v) => set({ partnerId: v, contactId: null })}
+              disabled={disabled}
+            />
+            <SearchableSelect
+              label="Contacto"
+              options={contactOptions}
+              value={form.contactId ?? ''}
+              onChange={(v) => set({ contactId: v || null })}
+              placeholder={form.partnerId ? '— ninguno —' : 'Elige antes el interlocutor'}
+              clearable
+              disabled={disabled || !form.partnerId}
+            />
+          </>
+        )}
         <Select
           label="Etapa"
           options={stageOptions}
