@@ -148,6 +148,7 @@ const QueryWidgetRenderer: React.FC<{ result?: QueryResult }> = ({ result }) => 
   return (
     <div className="max-h-56 overflow-y-auto">
       <Table
+        responsive="scroll"
         columns={columns}
         data={result.rows}
         rowKey={(_row, i) => i}

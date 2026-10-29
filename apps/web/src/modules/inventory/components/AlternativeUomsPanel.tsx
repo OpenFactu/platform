@@ -97,6 +97,7 @@ export const AlternativeUomsPanel: React.FC<{
       {/* La Table trae cabecera, esqueleto de carga y estado vacío: el <table>
           a mano, el Loader y el div de "sin unidades" sobraban. */}
       <Table
+        responsive="scroll"
         columns={columns}
         data={alternatives}
         isLoading={loading}

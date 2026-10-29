@@ -584,7 +584,7 @@ const SDNForm: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={columns} lines={state.lines || []} />
         ) : (
-          <Table columns={columns} data={state.lines || []} />
+          <Table responsive="scroll" columns={columns} data={state.lines || []} />
         )}
         <div className="p-6 bg-bg-muted flex flex-col md:flex-row justify-between items-start md:items-center border-t border-border-default gap-6">
           <div className="flex flex-wrap items-center gap-3">
@@ -809,7 +809,7 @@ const SDNDetail: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={columns} lines={sdn.lines || []} />
         ) : (
-          <Table columns={columns} data={sdn.lines || []} />
+          <Table responsive="scroll" columns={columns} data={sdn.lines || []} />
         )}
         <DocumentTotalsBlock
           subtotal={sdn.subtotal}

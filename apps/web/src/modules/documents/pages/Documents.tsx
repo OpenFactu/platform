@@ -327,7 +327,7 @@ const DocumentForm: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={formColumns} lines={state.lines || []} />
         ) : (
-          <Table columns={formColumns} data={state.lines} />
+          <Table responsive="scroll" columns={formColumns} data={state.lines} />
         )}
         <div className="mt-4 flex justify-end gap-6 text-sm">
           <div>
@@ -403,7 +403,7 @@ const DocumentDetail: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={detailColumns} lines={doc.lines || []} />
         ) : (
-          <Table columns={detailColumns} data={doc.lines || []} />
+          <Table responsive="scroll" columns={detailColumns} data={doc.lines || []} />
         )}
       </Card>
     </div>

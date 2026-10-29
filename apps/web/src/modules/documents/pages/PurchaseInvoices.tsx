@@ -524,6 +524,7 @@ const InvoiceForm: React.FC<{
           />
         ) : (
           <Table
+            responsive="scroll"
             columns={columns}
             data={state.lines || []}
             emptyMessage="No hay líneas en la factura."
@@ -844,7 +845,7 @@ const InvoiceDetail: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={columns} lines={invoice.lines || []} />
         ) : (
-          <Table columns={columns} data={invoice.lines || []} />
+          <Table responsive="scroll" columns={columns} data={invoice.lines || []} />
         )}
         <DocumentTotalsBlock
           subtotal={invoice.subtotal || 0}

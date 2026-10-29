@@ -412,6 +412,7 @@ const QuoteForm: React.FC<{
           />
         ) : (
           <Table
+            responsive="scroll"
             columns={columns}
             data={state.lines || []}
             emptyMessage="No hay líneas en el presupuesto."
@@ -631,7 +632,7 @@ const QuoteDetail: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={columns} lines={quote.lines || []} />
         ) : (
-          <Table columns={columns} data={quote.lines || []} />
+          <Table responsive="scroll" columns={columns} data={quote.lines || []} />
         )}
         <DocumentTotalsBlock
           subtotal={quote.subtotal}

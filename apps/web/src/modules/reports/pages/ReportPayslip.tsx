@@ -104,6 +104,7 @@ export const ReportPayslip: React.FC = () => {
 
       <Card className="overflow-hidden" noPadding>
         <Table
+          responsive="scroll"
           columns={columns}
           data={payrolls}
           isLoading={loading}

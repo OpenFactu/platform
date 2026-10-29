@@ -622,7 +622,7 @@ const SOForm: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={columns} lines={state.lines || []} />
         ) : (
-          <Table columns={columns} data={state.lines} />
+          <Table responsive="scroll" columns={columns} data={state.lines} />
         )}
         <div className="p-4 bg-bg-muted flex justify-between items-center border-t border-border-default">
           <Button
@@ -804,7 +804,7 @@ const SODetail: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={columns} lines={order.lines || []} />
         ) : (
-          <Table columns={columns} data={order.lines || []} />
+          <Table responsive="scroll" columns={columns} data={order.lines || []} />
         )}
         <DocumentTotalsBlock
           subtotal={order.subtotal}
