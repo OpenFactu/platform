@@ -209,7 +209,6 @@ export const OpportunityDetail: React.FC = () => {
           title="Productos de interés"
           subtitle="El precio sale de la tarifa del cliente. El importe de la oportunidad es su suma."
           className="xl:col-span-2"
-          noPadding
         >
           <OpportunityLinesEditor
             lines={detail.lines}
