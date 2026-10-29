@@ -3,7 +3,7 @@ import { and, asc, desc, eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import * as schema from '../../db/schema';
 import { logAudit } from '../../utils/audit';
-import { pick, errorDetail } from './shared';
+import { pick, errorDetail, normalizeTags } from './shared';
 import { emitCrmEvent } from '../../core/crm/events';
 import { closedAtFor, moveOpportunityToStage } from '../../core/crm/opportunityStage';
 import { getCrmSettings } from '../../core/crm/settings';
@@ -22,6 +22,7 @@ const ALLOWED = [
   'expectedCloseDate',
   'ownerUserId',
   'notes',
+  'tags',
   'source',
   'lostReason',
 ];
@@ -93,6 +94,7 @@ router.get('/:id', async (req: any, res) => {
 router.post('/', async (req: any, res) => {
   try {
     const payload = pick(req.body, ALLOWED);
+    if ('tags' in payload) payload.tags = normalizeTags(payload.tags);
     if (!payload.title?.trim()) return res.status(400).json({ error: 'El título es obligatorio' });
     if (!payload.partnerId)
       return res.status(400).json({ error: 'El interlocutor es obligatorio' });
@@ -156,6 +158,7 @@ router.patch('/:id', async (req: any, res) => {
       .where(eq(schema.opportunities.id, id));
     if (!old) return res.status(404).json({ error: 'Oportunidad no encontrada' });
     const patch = pick(req.body, ALLOWED);
+    if ('tags' in patch) patch.tags = normalizeTags(patch.tags);
     if ('title' in patch && !patch.title?.trim())
       return res.status(400).json({ error: 'El título es obligatorio' });
     if ('partnerId' in patch && !patch.partnerId)

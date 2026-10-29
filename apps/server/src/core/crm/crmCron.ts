@@ -6,12 +6,15 @@
  * Cada tarea apunta lo que ya avisó (expiryNotifiedAt, notifiedAt…) para no
  * repetir el aviso en la siguiente vuelta.
  */
-import { and, eq, isNotNull, isNull, lt } from 'drizzle-orm';
+import crypto from 'crypto';
+import { and, desc, eq, gte, isNotNull, isNull, like, lt, lte } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { ClientFactory } from '../tenant/ClientFactory';
 import { getConfigSection } from '../config/systemConfigSection';
 import { FLAGS_DEFAULTS } from '../config/appConfig';
 import { notifyTenant } from '../realtime/notifyTenant';
+import { getCrmSettings } from './settings';
+import { findDormantPartners } from './partner360';
 
 const INTERVAL_MS = 15 * 60 * 1000;
 const WARMUP_MS = 45 * 1000;
@@ -63,8 +66,88 @@ async function notifyExpiredQuotes({ tenantId, db }: CrmCronContext) {
   }
 }
 
+/** Actividades pendientes que ya han vencido: un aviso al responsable, una sola vez. */
+async function notifyDueActivities({ tenantId, db }: CrmCronContext) {
+  const a = schema.crmActivities;
+  const rows = await db
+    .select()
+    .from(a)
+    .where(
+      and(
+        isNull(a.doneAt),
+        isNull(a.notifiedAt),
+        isNotNull(a.ownerUserId),
+        isNotNull(a.dueAt),
+        lte(a.dueAt, new Date()),
+      ),
+    )
+    .limit(200);
+  for (const act of rows) {
+    await notifyTenant({
+      tenantId,
+      tenantClient: db,
+      userIds: [act.ownerUserId],
+      title: `Pendiente: ${act.subject}`,
+      body: 'Actividad comercial con fecha de hoy o anterior.',
+      link: act.opportunityId ? `/crm/opportunities/${act.opportunityId}` : '/crm/today',
+    });
+    await db.update(a).set({ notifiedAt: new Date() }).where(eq(a.id, act.id));
+  }
+}
+
+const DORMANT_PREFIX = 'Reactivar cliente';
+
+/**
+ * Clientes habituales que han dejado de comprar: una tarea de reactivación
+ * para el responsable de su última oportunidad (o el responsable por defecto).
+ * No se repite mientras haya una creada en el mismo plazo.
+ */
+async function createDormantTasks({ db }: CrmCronContext) {
+  const settings = await getCrmSettings(db);
+  if (!settings.dormantEnabled) return;
+  const dormant = await findDormantPartners(db, settings.dormantDays);
+  const since = new Date(Date.now() - settings.dormantDays * 86_400_000);
+  for (const d of dormant) {
+    const [recent] = await db
+      .select({ id: schema.crmActivities.id })
+      .from(schema.crmActivities)
+      .where(
+        and(
+          eq(schema.crmActivities.partnerId, d.partnerId),
+          like(schema.crmActivities.subject, `${DORMANT_PREFIX}%`),
+          gte(schema.crmActivities.createdAt, since),
+        ),
+      )
+      .limit(1);
+    if (recent) continue;
+    const [lastOpp] = await db
+      .select({ ownerUserId: schema.opportunities.ownerUserId })
+      .from(schema.opportunities)
+      .where(eq(schema.opportunities.partnerId, d.partnerId))
+      .orderBy(desc(schema.opportunities.createdAt))
+      .limit(1);
+    const [partner] = await db
+      .select({ name: schema.businessPartners.name })
+      .from(schema.businessPartners)
+      .where(eq(schema.businessPartners.id, d.partnerId));
+    const days = Math.round((Date.now() - d.lastAt.getTime()) / 86_400_000);
+    await db.insert(schema.crmActivities).values({
+      id: crypto.randomUUID(),
+      type: 'task',
+      subject: `${DORMANT_PREFIX}: ${partner?.name ?? ''}`.trim(),
+      body: `Compraba con regularidad (${d.count} facturas) y lleva ${days} días sin comprar.`,
+      partnerId: d.partnerId,
+      ownerUserId: lastOpp?.ownerUserId || settings.defaultOwnerUserId || null,
+      dueAt: new Date(),
+    });
+  }
+  if (dormant.length) console.log(`[crmCron] ${dormant.length} cliente(s) dormido(s) revisados`);
+}
+
 const jobs: Array<{ name: string; run: CrmJob }> = [
   { name: 'presupuestos caducados', run: notifyExpiredQuotes },
+  { name: 'actividades vencidas', run: notifyDueActivities },
+  { name: 'clientes dormidos', run: createDormantTasks },
 ];
 
 /** Para que otras fases añadan sus tareas sin tocar el bucle. */

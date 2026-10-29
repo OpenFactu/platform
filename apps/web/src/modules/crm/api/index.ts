@@ -5,5 +5,6 @@ export {
   activitiesApi,
   crmSettingsApi,
   membersApi,
+  crmPartnersApi,
 } from './crmApi';
 export type { CrmInput, ActivityFilter } from './crmApi';

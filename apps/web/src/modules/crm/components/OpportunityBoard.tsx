@@ -113,8 +113,15 @@ export const OpportunityBoard: React.FC<Props> = ({
                       </span>
                     )}
                   </div>
-                  {(isStale(o, staleDays) || (o.stageKind === 'lost' && o.lostReason)) && (
+                  {(isStale(o, staleDays) ||
+                    (o.stageKind === 'lost' && o.lostReason) ||
+                    !!o.tags?.length) && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
+                      {o.tags?.map((t) => (
+                        <Badge key={t} variant="accent">
+                          {t}
+                        </Badge>
+                      ))}
                       {isStale(o, staleDays) && <Badge variant="warning">Parada</Badge>}
                       {o.stageKind === 'lost' && o.lostReason && (
                         <Badge variant="neutral">{o.lostReason}</Badge>

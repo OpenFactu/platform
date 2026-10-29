@@ -8,6 +8,8 @@ import { usePipeline } from '../hooks/usePipeline';
 import { useCrmPermissions } from '../hooks/useCrmPermissions';
 import { ActivityList } from './ActivityList';
 import { ContactsTable } from './ContactsTable';
+import { PartnerSummaryKpis } from './PartnerSummaryKpis';
+import { PartnerTimeline } from './PartnerTimeline';
 
 /**
  * Lo comercial de un interlocutor, para su ficha: contactos, oportunidades y
@@ -22,6 +24,7 @@ export const PartnerCrmPanel: React.FC<{ partnerId: string }> = ({ partnerId }) 
 
   return (
     <div className="space-y-6">
+      <PartnerSummaryKpis partnerId={partnerId} />
       {contactsPerm.canRead && <ContactsTable partnerId={partnerId} />}
 
       {oppPerm.canRead && (
@@ -65,7 +68,16 @@ export const PartnerCrmPanel: React.FC<{ partnerId: string }> = ({ partnerId }) 
         </div>
       )}
 
-      <ActivityList title="Actividad" filter={{ partnerId }} defaults={{ partnerId }} compact />
+      <ActivityList
+        title="Pendiente"
+        filter={{ partnerId, status: 'pending' }}
+        defaults={{ partnerId }}
+        compact
+      />
+      <div className="space-y-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-fg-muted">Historial</h3>
+        <PartnerTimeline partnerId={partnerId} />
+      </div>
     </div>
   );
 };

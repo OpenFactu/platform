@@ -140,6 +140,7 @@ export function useOpportunityDetail(id: string, preset: OpportunityDraft = {}) 
         ownerUserId: form.ownerUserId || null,
         source: form.source || null,
         lostReason: form.lostReason || undefined,
+        tags: form.tags ?? [],
       };
       const saved: Opportunity = isNew
         ? await opportunitiesApi.create(payload)

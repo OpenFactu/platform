@@ -8,6 +8,8 @@ import type {
   OpportunityDocument,
   OpportunityLine,
   OpportunityStage,
+  PartnerSummary,
+  TimelineEntry,
 } from '../domain/crm';
 
 export type CrmInput = Record<string, unknown>;
@@ -63,6 +65,15 @@ export interface ActivityFilter {
 export const crmSettingsApi = {
   get: () => apiClient.get<CrmSettings>('/api/crm/settings'),
   update: (data: Partial<CrmSettings>) => apiClient.put<CrmSettings>('/api/crm/settings', data),
+};
+
+export const crmPartnersApi = {
+  summary: (partnerId: string) =>
+    apiClient.get<PartnerSummary>(`/api/crm/partners/${partnerId}/summary`),
+  timeline: (partnerId: string, before?: string) =>
+    apiClient.get<TimelineEntry[]>(
+      `/api/crm/partners/${partnerId}/timeline${buildQuery({ before, limit: 30 })}`,
+    ),
 };
 
 export const membersApi = {

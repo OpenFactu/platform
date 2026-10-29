@@ -11,6 +11,7 @@ import { contactsApi } from '../api';
 import type { Contact, CrmSettings, Opportunity, OpportunityStage } from '../domain/crm';
 import { PartnerSelect } from './PartnerSelect';
 import { OwnerSelect } from './OwnerSelect';
+import { TagsInput } from './TagsInput';
 
 export type OpportunityDraft = Partial<Opportunity>;
 
@@ -143,6 +144,7 @@ export const OpportunityFields: React.FC<Props> = ({
           />
         )}
       </div>
+      <TagsInput value={form.tags ?? []} onChange={(tags) => set({ tags })} disabled={disabled} />
       <Textarea
         label="Notas"
         rows={3}

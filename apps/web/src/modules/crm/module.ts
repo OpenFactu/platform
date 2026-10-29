@@ -12,6 +12,7 @@ const Stages = lazy(() => import('./pages/Stages').then((m) => ({ default: m.Sta
 const OpportunityDetail = lazy(() =>
   import('./pages/OpportunityDetail').then((m) => ({ default: m.OpportunityDetail })),
 );
+const Today = lazy(() => import('./pages/Today').then((m) => ({ default: m.Today })));
 const CrmSettings = lazy(() =>
   import('./pages/CrmSettings').then((m) => ({ default: m.CrmSettings })),
 );
@@ -25,6 +26,7 @@ export const crmModule: ModuleManifest = {
     description: 'Seguimiento comercial: oportunidades en un embudo, contactos y actividades.',
     category: 'Operaciones',
     subTabs: [
+      { id: 'crm-today', label: 'Hoy', path: '/crm/today' },
       { id: 'crm-opportunities', label: 'Oportunidades', path: '/crm/opportunities' },
       { id: 'crm-activities', label: 'Actividades', path: '/crm/activities' },
       { id: 'crm-contacts', label: 'Contactos', path: '/crm/contacts' },
@@ -33,6 +35,13 @@ export const crmModule: ModuleManifest = {
     ],
   },
   routes: [
+    {
+      pattern: '/crm/today',
+      Component: Today,
+      title: 'Hoy',
+      iconName: 'Sun',
+      permissionPath: '/crm/activities',
+    },
     {
       pattern: '/crm/opportunities',
       Component: Opportunities,

@@ -3,11 +3,21 @@ import { and, asc, eq, ne } from 'drizzle-orm';
 import crypto from 'crypto';
 import * as schema from '../../db/schema';
 import { logAudit } from '../../utils/audit';
-import { pick, errorDetail } from './shared';
+import { pick, errorDetail, normalizeTags } from './shared';
 
 const router = Router();
 
-const ALLOWED = ['partnerId', 'name', 'role', 'email', 'phone', 'mobile', 'isMain', 'notes'];
+const ALLOWED = [
+  'partnerId',
+  'name',
+  'role',
+  'email',
+  'phone',
+  'mobile',
+  'isMain',
+  'notes',
+  'tags',
+];
 
 /** Solo puede haber un contacto principal por interlocutor. */
 async function clearOtherMain(tenantClient: any, partnerId: string, keepId: string) {
@@ -42,6 +52,7 @@ router.get('/', async (req: any, res) => {
 router.post('/', async (req: any, res) => {
   try {
     const payload = pick(req.body, ALLOWED);
+    if ('tags' in payload) payload.tags = normalizeTags(payload.tags);
     if (!payload.partnerId)
       return res.status(400).json({ error: 'El interlocutor es obligatorio' });
     if (!payload.name?.trim()) return res.status(400).json({ error: 'El nombre es obligatorio' });
@@ -75,6 +86,7 @@ router.patch('/:id', async (req: any, res) => {
       .where(eq(schema.contacts.id, id));
     if (!old) return res.status(404).json({ error: 'Contacto no encontrado' });
     const patch = pick(req.body, ALLOWED);
+    if ('tags' in patch) patch.tags = normalizeTags(patch.tags);
     if ('name' in patch && !patch.name?.trim())
       return res.status(400).json({ error: 'El nombre es obligatorio' });
     const [row] = await req.tenantClient

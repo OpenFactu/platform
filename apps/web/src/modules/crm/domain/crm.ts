@@ -26,6 +26,7 @@ export interface Opportunity {
   source: string | null;
   lostReason: string | null;
   lastActivityAt: string | null;
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
   partnerName?: string;
@@ -45,6 +46,7 @@ export interface Contact {
   mobile: string | null;
   isMain: boolean;
   notes: string | null;
+  tags?: string[];
   partnerName?: string;
 }
 
@@ -110,6 +112,29 @@ export const DOC_ROUTE: Record<OpportunityDocType, (id: string) => string> = {
   SO: (id) => `/sales-orders/${id}`,
   SINV: (id) => `/sales/invoices/${id}`,
 };
+
+export interface PartnerSummary {
+  /** null = sin permiso para verlo. */
+  revenue12m: number | null;
+  pendingReceivable: number | null;
+  lastPurchaseAt: string | null;
+  openQuotes: { count: number; amount: number } | null;
+  openOpportunities: { count: number; amount: number };
+}
+
+export type TimelineKind = 'activity' | 'opportunity' | 'SQ' | 'SO' | 'SINV';
+
+export interface TimelineEntry {
+  kind: TimelineKind;
+  id: string;
+  at: string;
+  title: string;
+  detail?: string | null;
+  status?: string | null;
+  amount?: number | null;
+  activityType?: ActivityType;
+  done?: boolean;
+}
 
 export interface Member {
   id: string;

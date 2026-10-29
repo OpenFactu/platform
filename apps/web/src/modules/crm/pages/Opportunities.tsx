@@ -48,7 +48,9 @@ export const Opportunities: React.FC = () => {
         (o) =>
           (!onlyMine || o.ownerUserId === user?.id) &&
           (!term ||
-            [o.title, o.partnerName, o.contactName].some((v) => v?.toLowerCase().includes(term))),
+            [o.title, o.partnerName, o.contactName, ...(o.tags ?? [])].some((v) =>
+              v?.toLowerCase().includes(term),
+            )),
       ),
     [pipeline.opportunities, term, onlyMine, user?.id],
   );

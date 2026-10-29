@@ -14,6 +14,8 @@ import type { Contact } from '../domain/crm';
 import { useContacts } from '../hooks/useCrmData';
 import { useCrmPermissions } from '../hooks/useCrmPermissions';
 import { ContactForm, type ContactDraft } from './ContactForm';
+import { ActivityForm, type ActivityDraft } from './ActivityForm';
+import { useCallFollowUp } from '../hooks/useCallFollowUp';
 
 interface Props {
   /** Limita a los contactos de un interlocutor (ficha del interlocutor). */
@@ -29,14 +31,30 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
   const { contacts, loading, error, refresh } = useContacts(partnerId);
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState<ContactDraft | null>(null);
+  const call = useCallFollowUp();
+  // Memoizado: ActivityForm reinicia el formulario cuando cambia la identidad del borrador.
+  const callDraft = useMemo<ActivityDraft | null>(
+    () =>
+      call.followUp
+        ? {
+            type: 'call',
+            subject: `Llamada con ${call.followUp.name}`,
+            partnerId: call.followUp.partnerId,
+            contactId: call.followUp.id,
+            dueAt: new Date().toISOString().slice(0, 10),
+            doneAt: new Date().toISOString(),
+          }
+        : null,
+    [call.followUp],
+  );
 
   const term = search.trim().toLowerCase();
   const rows = useMemo(
     () =>
       term
         ? contacts.filter((c) =>
-            [c.name, c.partnerName, c.email, c.role, c.phone, c.mobile].some((v) =>
-              v?.toLowerCase().includes(term),
+            [c.name, c.partnerName, c.email, c.role, c.phone, c.mobile, ...(c.tags ?? [])].some(
+              (v) => v?.toLowerCase().includes(term),
             ),
           )
         : contacts,
@@ -67,6 +85,11 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
         <span className="inline-flex items-center gap-2">
           {c.name}
           {c.isMain && <Badge variant="accent">Principal</Badge>}
+          {c.tags?.map((t) => (
+            <Badge key={t} variant="neutral">
+              {t}
+            </Badge>
+          ))}
         </span>
       ),
       sortAccessor: (c) => c.name,
@@ -108,7 +131,10 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
         return tel ? (
           <a
             href={`tel:${tel}`}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              call.startCall(c);
+            }}
             className="text-accent hover:underline"
           >
             {tel}
@@ -158,6 +184,7 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
           canDelete ? [{ label: 'Borrar', onClick: () => remove(c), destructive: true }] : []
         }
       />
+      <ActivityForm draft={callDraft} onClose={call.clear} onSaved={() => {}} />
       <ContactForm
         draft={draft}
         fixedPartnerId={partnerId}

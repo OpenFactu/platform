@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Input, Modal, Switch, Textarea, useToast } from '@openfactu/ui';
 import { contactsApi } from '../api';
 import { PartnerSelect } from './PartnerSelect';
+import { TagsInput } from './TagsInput';
 import type { Contact } from '../domain/crm';
 
 export type ContactDraft = Partial<Contact>;
@@ -43,6 +44,7 @@ export const ContactForm: React.FC<Props> = ({ draft, fixedPartnerId, onClose, o
       mobile: form.mobile || null,
       isMain: !!form.isMain,
       notes: form.notes || null,
+      tags: form.tags ?? [],
     };
     try {
       if (form.id) await contactsApi.update(form.id, payload);
@@ -108,6 +110,7 @@ export const ContactForm: React.FC<Props> = ({ draft, fixedPartnerId, onClose, o
           value={form.notes ?? ''}
           onChange={(e) => set({ notes: e.target.value })}
         />
+        <TagsInput value={form.tags ?? []} onChange={(tags) => set({ tags })} />
         <Switch
           label="Contacto principal del interlocutor"
           checked={!!form.isMain}

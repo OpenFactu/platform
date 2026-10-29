@@ -2058,6 +2058,8 @@ export const contacts = pgTable('Contact', {
   mobile: text('mobile'),
   isMain: boolean('isMain').default(false).notNull(),
   notes: text('notes'),
+  /** Etiquetas libres del CRM (mig 076). */
+  tags: jsonb('tags').$type<string[]>().default([]).notNull(),
   createdAt: timestamp('createdAt').defaultNow(),
   updatedAt: timestamp('updatedAt').defaultNow(),
 });
@@ -2096,6 +2098,8 @@ export const opportunities = pgTable('Opportunity', {
   lostReason: text('lostReason'),
   /** Fecha de la última actividad registrada: alimenta «oportunidades paradas». */
   lastActivityAt: timestamp('lastActivityAt'),
+  /** Etiquetas libres (mig 076). */
+  tags: jsonb('tags').$type<string[]>().default([]).notNull(),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
@@ -2139,6 +2143,8 @@ export const crmActivities = pgTable('CrmActivity', {
   }),
   dueAt: timestamp('dueAt'),
   doneAt: timestamp('doneAt'),
+  /** Aviso de vencimiento ya enviado al responsable (mig 076). */
+  notifiedAt: timestamp('notifiedAt'),
   ownerUserId: text('ownerUserId'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),

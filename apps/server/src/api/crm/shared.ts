@@ -13,6 +13,23 @@ export function pick(body: any, allowed: string[], dateKeys: string[] = []): Rec
   return out;
 }
 
+/** Etiquetas limpias: texto, sin vacíos ni repetidas (sin distinguir mayúsculas). */
+export function normalizeTags(v: unknown): string[] {
+  if (!Array.isArray(v)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of v) {
+    const t = String(raw ?? '')
+      .trim()
+      .slice(0, 40);
+    if (t && !seen.has(t.toLowerCase())) {
+      seen.add(t.toLowerCase());
+      out.push(t);
+    }
+  }
+  return out.slice(0, 20);
+}
+
 /** Mensaje útil a partir de un error de Drizzle (que esconde la causa de pg en `cause`). */
 export function errorDetail(error: any): string {
   return error?.cause?.detail || error?.cause?.message || error?.message || 'Error desconocido';

@@ -31,6 +31,7 @@ import crmOpportunitiesRouter from './api/crm/opportunities';
 import crmStagesRouter from './api/crm/stages';
 import crmActivitiesRouter from './api/crm/activities';
 import crmSettingsRouter from './api/crm/settings';
+import crmPartnersRouter from './api/crm/partners';
 import membersRouter from './api/members';
 import { registerCrmQuoteListener } from './core/crm/quoteListener';
 import { startCrmCron } from './core/crm/crmCron';
@@ -266,6 +267,8 @@ mountApi(app, '/api/crm/opportunities', '/crm/opportunities', crmOpportunitiesRo
 // Las etapas van con el embudo: quien ve oportunidades necesita leerlas para pintar el tablero.
 mountApi(app, '/api/crm/stages', '/crm/opportunities', crmStagesRouter);
 mountApi(app, '/api/crm/activities', '/crm/activities', crmActivitiesRouter);
+// Ficha 360: cifras y línea de tiempo; dentro se recorta por permiso de cada documento.
+mountApi(app, '/api/crm/partners', '/crm/activities', crmPartnersRouter);
 // Leer los ajustes lo necesita cualquier formulario del CRM (motivos, orígenes);
 // el PUT exige /crm/settings dentro del router.
 mountShared(

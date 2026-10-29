@@ -66,6 +66,47 @@ export const DASHBOARD_METRICS: DashboardMetricDef[] = [
   },
 ];
 
+// ── CRM ───────────────────────────────────────────────────────────────────
+const openOpportunities = (weighted: boolean) => async (db: any) => {
+  const o = schema.opportunities;
+  const s = schema.opportunityStages;
+  const [row] = await db
+    .select({
+      v: weighted
+        ? sql<string>`coalesce(sum(${o.amount} * ${s.probability} / 100.0), 0)`
+        : sql<string>`coalesce(sum(${o.amount}), 0)`,
+    })
+    .from(o)
+    .innerJoin(s, eq(o.stageId, s.id))
+    .where(eq(s.kind, 'open'));
+  return Math.round(Number(row?.v ?? 0) * 100) / 100;
+};
+
+DASHBOARD_METRICS.push(
+  {
+    key: 'crm.openPipeline',
+    label: 'CRM · Importe abierto en el embudo',
+    compute: openOpportunities(false),
+  },
+  {
+    key: 'crm.weightedForecast',
+    label: 'CRM · Previsión ponderada',
+    compute: openOpportunities(true),
+  },
+  {
+    key: 'crm.overdueActivities',
+    label: 'CRM · Actividades vencidas',
+    compute: async (db: any) => {
+      const a = schema.crmActivities;
+      const [row] = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(a)
+        .where(sql`${a.doneAt} is null and ${a.dueAt} < now()`);
+      return row?.n ?? 0;
+    },
+  },
+);
+
 export function getMetric(key: string): DashboardMetricDef | undefined {
   return DASHBOARD_METRICS.find((m) => m.key === key);
 }
