@@ -1,6 +1,7 @@
-import React from 'react';
-import { Button } from '@openfactu/ui';
-import { Trash2, Tag, Mail, type LucideIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { Button, Modal } from '@openfactu/ui';
+import { MoreHorizontal, Trash2, Tag, Mail, type LucideIcon } from 'lucide-react';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { PrintTemplateButton } from '@/modules/document-templates/components/PrintTemplateButton';
 import { LabelPrintButton } from '@/modules/document-templates/components/LabelPrintButton';
 
@@ -49,15 +50,26 @@ export const DocumentActionBar: React.FC<Props> = ({
   onSendEmail,
 }) => {
   const PrimaryIcon = primary?.icon;
-  return (
-    <div className="flex flex-wrap items-center gap-2">
+  const mobile = useIsMobile();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const primaryButton = (className: string) =>
+    primary && PrimaryIcon ? (
+      <Button
+        onClick={primary.onClick}
+        disabled={primary.disabled}
+        isLoading={primary.isLoading}
+        className={className}
+      >
+        <PrimaryIcon size={16} />
+        <span>{primary.label}</span>
+      </Button>
+    ) : null;
+
+  const others = (
+    <>
       {onCancel && showCancel && (
-        <Button
-          variant="outline"
-          onClick={onCancel}
-          isLoading={isCancelling}
-          className="h-10 gap-2 border-rose-200 dark:border-rose-500/30 text-rose-600 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:border-rose-300 dark:hover:border-rose-500/50"
-        >
+        <Button variant="danger" onClick={onCancel} isLoading={isCancelling} className="h-10 gap-2">
           <Trash2 size={16} />
           <span>{cancelLabel}</span>
         </Button>
@@ -88,17 +100,43 @@ export const DocumentActionBar: React.FC<Props> = ({
           <span>Enviar</span>
         </Button>
       )}
-      {primary && PrimaryIcon && (
+    </>
+  );
+
+  // Móvil: la acción principal a ancho completo y el resto tras «Más», en una
+  // hoja inferior, en vez de dos filas de botones bajo el título.
+  if (mobile) {
+    return (
+      <div className="flex w-full items-center gap-2">
+        {primaryButton('h-11 flex-1 gap-2')}
         <Button
-          onClick={primary.onClick}
-          disabled={primary.disabled}
-          isLoading={primary.isLoading}
-          className="h-10 gap-2"
+          type="button"
+          variant="secondary"
+          className={primary ? 'h-11 gap-2' : 'h-11 flex-1 gap-2'}
+          onClick={() => setMoreOpen(true)}
         >
-          <PrimaryIcon size={16} />
-          <span>{primary.label}</span>
+          <MoreHorizontal size={16} />
+          <span>{primary ? 'Más' : 'Acciones'}</span>
         </Button>
-      )}
+        <Modal
+          isOpen={moreOpen}
+          onClose={() => setMoreOpen(false)}
+          title="Acciones"
+          size="sm"
+          hideCancel
+        >
+          <div className="flex flex-col gap-2 [&_button]:h-11 [&_button]:w-full [&_button]:justify-start">
+            {others}
+          </div>
+        </Modal>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {others}
+      {primaryButton('h-10 gap-2')}
     </div>
   );
 };
