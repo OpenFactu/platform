@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Badge, Button, Card, Loader, PageHeader, useToast } from '@openfactu/ui';
-import { ArrowLeft, FileSignature, Plus, Save, UserPlus } from 'lucide-react';
+import { ArrowLeft, FileSignature, UserPlus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
 import { STAGE_KIND_VARIANT } from '../domain/crm';
@@ -13,6 +13,7 @@ import { OpportunityLinesEditor } from '../components/OpportunityLinesEditor';
 import { OpportunityDocuments } from '../components/OpportunityDocuments';
 import { ActivityList } from '../components/ActivityList';
 import { QuickPartnerModal, type QuickPartnerInitial } from '../components/QuickPartnerModal';
+import { FloatingSaveButton } from '@/components/FloatingSaveButton';
 
 /**
  * Ficha de una oportunidad (/crm/opportunities/:id, o /new; `?partnerId=`
@@ -238,18 +239,11 @@ export const OpportunityDetail: React.FC = () => {
       </div>
 
       {canWrite && (
-        <div className="fixed right-6 bottom-6 max-md:right-4 max-md:bottom-20 z-30">
-          <Button
-            type="submit"
-            size="lg"
-            isLoading={detail.saving}
-            disabled={detail.saving}
-            className="shadow-xl"
-          >
-            {isNew ? <Plus size={16} /> : <Save size={16} />}
-            {isNew ? 'Crear oportunidad' : 'Guardar'}
-          </Button>
-        </div>
+        <FloatingSaveButton
+          isNew={isNew}
+          label={isNew ? 'Crear oportunidad' : 'Guardar'}
+          saving={detail.saving}
+        />
       )}
     </form>
   );

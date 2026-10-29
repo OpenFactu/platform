@@ -103,7 +103,17 @@ export const OpportunityLinesEditor: React.FC<Props> = ({
         onChange(row._key, patch);
       }}
       onDelete={disabled ? undefined : (row) => row._key && onRemove(row._key)}
-      emptyMessage="Sin productos: el importe se teclea a mano."
+      // Sin filas la tabla pinta el vacío y no la fila de añadir: el botón va aquí también.
+      emptyMessage={
+        <div className="flex flex-col items-center gap-2">
+          <span>Sin productos: el importe se teclea a mano.</span>
+          {!disabled && (
+            <Button type="button" variant="secondary" size="sm" onClick={onAdd}>
+              <Plus size={14} /> Añadir producto
+            </Button>
+          )}
+        </div>
+      }
       summaryByColumn={(rows) => ({
         net: fmt.money(rows.reduce((s, l) => s + lineNet(l), 0)),
       })}

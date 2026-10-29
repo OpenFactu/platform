@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Card, Loader, PageHeader, useToast } from '@openfactu/ui';
-import { ArrowLeft, Plus, Save } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
@@ -16,6 +16,7 @@ import {
   PartnerFiscalFields,
   PartnerGeneralFields,
 } from '../components/PartnerSections';
+import { FloatingSaveButton } from '@/components/FloatingSaveButton';
 
 /**
  * Ficha completa de un interlocutor (/partners/:partnerId, o /partners/new
@@ -194,21 +195,12 @@ export const PartnerDetail: React.FC = () => {
         )}
       </div>
 
-      {/* Guardar flotante: la ficha es larga y así está a mano en cualquier
-          sección. En móvil sube por encima de la barra de navegación inferior. */}
       {canWrite && (
-        <div className="fixed right-6 bottom-6 max-md:right-4 max-md:bottom-20 z-30">
-          <Button
-            type="submit"
-            size="lg"
-            isLoading={form.saving}
-            disabled={form.saving}
-            className="shadow-xl"
-          >
-            {isNew ? <Plus size={16} /> : <Save size={16} />}
-            {isNew ? 'Crear interlocutor' : 'Guardar'}
-          </Button>
-        </div>
+        <FloatingSaveButton
+          isNew={isNew}
+          label={isNew ? 'Crear interlocutor' : 'Guardar'}
+          saving={form.saving}
+        />
       )}
     </form>
   );
