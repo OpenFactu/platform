@@ -189,6 +189,22 @@ export const aiConversations = pgTable('AiConversation', {
   messages: jsonb('messages').notNull().default([]),
   /** Último modelo usado en esta conversación — informativo, para el historial. */
   model: text('model'),
+  /** Proyecto (carpeta) al que pertenece, o null si va suelta. */
+  projectId: text('projectId'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+/**
+ * Proyectos del chat: carpetas con las que cada usuario agrupa sus
+ * conversaciones. Como las conversaciones, van acotadas por tenantId + userId.
+ * Borrar un proyecto no borra sus conversaciones: quedan sin proyecto.
+ */
+export const aiConversationProjects = pgTable('AiConversationProject', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenantId').notNull(),
+  userId: text('userId').notNull(),
+  title: text('title').notNull(),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });

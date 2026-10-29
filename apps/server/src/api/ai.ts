@@ -21,13 +21,16 @@
  *   GET    /api/ai/conversations/:id         — una conversación completa (dueño únicamente)
  *   PUT    /api/ai/conversations/:id         — crea o actualiza (el cliente decide el id)
  *   DELETE /api/ai/conversations/:id         — borra (dueño únicamente)
+ *   PATCH  /api/ai/conversations/:id         — renombra y/o mueve a un proyecto
+ *   GET|POST /api/ai/conversation-projects   — proyectos del usuario (carpetas del historial)
+ *   PATCH|DELETE /api/ai/conversation-projects/:id — renombra / borra (las conversaciones se conservan)
  *   POST   /api/ai/extract-file              — extrae texto de un Excel/PDF/Word/CSV adjuntado al chat
  */
 
 import { Router } from 'express';
 import { Readable } from 'stream';
 import { generateText } from 'ai';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import multer from 'multer';
 import fs from 'fs';
 import { adminMiddleware } from './middleware/adminAuth';
@@ -244,6 +247,7 @@ router.get('/conversations', async (req: any, res) => {
         id: schema.aiConversations.id,
         title: schema.aiConversations.title,
         model: schema.aiConversations.model,
+        projectId: schema.aiConversations.projectId,
         updatedAt: schema.aiConversations.updatedAt,
       })
       .from(schema.aiConversations)
@@ -306,6 +310,14 @@ router.put('/conversations/:id', async (req: any, res) => {
         ? req.body.title.trim()
         : deriveConversationTitle(messages);
     const model = typeof req.body?.model === 'string' ? req.body.model : null;
+    // El proyecto solo se asigna al crear y solo si es del usuario: guardar
+    // tras cada respuesta no debe sacar la conversación de su proyecto.
+    const projectPatch =
+      typeof req.body?.projectId === 'string' &&
+      req.body.projectId &&
+      (await ownedProject(db, req, req.body.projectId))
+        ? { projectId: req.body.projectId as string }
+        : {};
 
     if (existing) {
       await db
@@ -320,6 +332,7 @@ router.put('/conversations/:id', async (req: any, res) => {
         title,
         messages,
         model,
+        ...projectPatch,
       });
     }
     res.json({ ok: true, id, title });
@@ -350,6 +363,160 @@ router.delete('/conversations/:id', async (req: any, res) => {
     res.json({ ok: true });
   } catch (e: any) {
     console.error('[Ai.deleteConversation]', e);
+    res.status(500).json({ error: e?.message || 'Error' });
+  }
+});
+
+/** El proyecto, si existe y es de este usuario en este tenant. */
+async function ownedProject(db: any, req: any, projectId: string) {
+  const [row] = await db
+    .select({ id: schema.aiConversationProjects.id })
+    .from(schema.aiConversationProjects)
+    .where(
+      and(
+        eq(schema.aiConversationProjects.id, projectId),
+        eq(schema.aiConversationProjects.tenantId, req.tenantId),
+        eq(schema.aiConversationProjects.userId, req.user.id),
+      ),
+    );
+  return row ?? null;
+}
+
+/**
+ * Renombra una conversación y/o la mueve a un proyecto.
+ * Body: { title?: string, projectId?: string | null } — `null` la deja sin proyecto.
+ */
+router.patch('/conversations/:id', async (req: any, res) => {
+  if (!req.user?.id || !req.tenantId) return res.status(401).json({ error: 'No autorizado' });
+  try {
+    const db = ClientFactory.getClient('public');
+    const [existing] = await db
+      .select({ userId: schema.aiConversations.userId })
+      .from(schema.aiConversations)
+      .where(
+        and(
+          eq(schema.aiConversations.id, req.params.id),
+          eq(schema.aiConversations.tenantId, req.tenantId),
+        ),
+      );
+    if (!existing) return res.status(404).json({ error: 'Conversación no encontrada' });
+    if (existing.userId !== req.user.id) {
+      return res.status(403).json({ error: 'No es tu conversación' });
+    }
+    const patch: Record<string, unknown> = {};
+    if (typeof req.body?.title === 'string' && req.body.title.trim()) {
+      patch.title = req.body.title.trim().slice(0, 120);
+    }
+    if (req.body && 'projectId' in req.body) {
+      if (req.body.projectId === null) patch.projectId = null;
+      else if (typeof req.body.projectId === 'string') {
+        if (!(await ownedProject(db, req, req.body.projectId))) {
+          return res.status(404).json({ error: 'Proyecto no encontrado' });
+        }
+        patch.projectId = req.body.projectId;
+      }
+    }
+    if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Nada que cambiar' });
+    await db
+      .update(schema.aiConversations)
+      .set(patch)
+      .where(eq(schema.aiConversations.id, req.params.id));
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[Ai.patchConversation]', e);
+    res.status(500).json({ error: e?.message || 'Error' });
+  }
+});
+
+/** Proyectos del chat del usuario actual. */
+router.get('/conversation-projects', async (req: any, res) => {
+  if (!req.user?.id || !req.tenantId) return res.status(401).json({ error: 'No autorizado' });
+  try {
+    const db = ClientFactory.getClient('public');
+    const rows = await db
+      .select({
+        id: schema.aiConversationProjects.id,
+        title: schema.aiConversationProjects.title,
+      })
+      .from(schema.aiConversationProjects)
+      .where(
+        and(
+          eq(schema.aiConversationProjects.tenantId, req.tenantId),
+          eq(schema.aiConversationProjects.userId, req.user.id),
+        ),
+      )
+      .orderBy(asc(schema.aiConversationProjects.createdAt));
+    res.json(rows);
+  } catch (e: any) {
+    console.error('[Ai.listProjects]', e);
+    res.status(500).json({ error: e?.message || 'Error' });
+  }
+});
+
+router.post('/conversation-projects', async (req: any, res) => {
+  if (!req.user?.id || !req.tenantId) return res.status(401).json({ error: 'No autorizado' });
+  const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 80) : '';
+  if (!title) return res.status(400).json({ error: 'Falta el nombre del proyecto' });
+  try {
+    const db = ClientFactory.getClient('public');
+    const id = crypto.randomUUID();
+    await db.insert(schema.aiConversationProjects).values({
+      id,
+      tenantId: req.tenantId,
+      userId: req.user.id,
+      title,
+    });
+    res.status(201).json({ id, title });
+  } catch (e: any) {
+    console.error('[Ai.createProject]', e);
+    res.status(500).json({ error: e?.message || 'Error' });
+  }
+});
+
+router.patch('/conversation-projects/:id', async (req: any, res) => {
+  if (!req.user?.id || !req.tenantId) return res.status(401).json({ error: 'No autorizado' });
+  const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 80) : '';
+  if (!title) return res.status(400).json({ error: 'Falta el nombre del proyecto' });
+  try {
+    const db = ClientFactory.getClient('public');
+    if (!(await ownedProject(db, req, req.params.id))) {
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    await db
+      .update(schema.aiConversationProjects)
+      .set({ title, updatedAt: new Date() })
+      .where(eq(schema.aiConversationProjects.id, req.params.id));
+    res.json({ ok: true, id: req.params.id, title });
+  } catch (e: any) {
+    console.error('[Ai.renameProject]', e);
+    res.status(500).json({ error: e?.message || 'Error' });
+  }
+});
+
+/** Borra el proyecto; sus conversaciones se conservan, sin proyecto. */
+router.delete('/conversation-projects/:id', async (req: any, res) => {
+  if (!req.user?.id || !req.tenantId) return res.status(401).json({ error: 'No autorizado' });
+  try {
+    const db = ClientFactory.getClient('public');
+    if (!(await ownedProject(db, req, req.params.id))) {
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    await db
+      .update(schema.aiConversations)
+      .set({ projectId: null })
+      .where(
+        and(
+          eq(schema.aiConversations.projectId, req.params.id),
+          eq(schema.aiConversations.tenantId, req.tenantId),
+          eq(schema.aiConversations.userId, req.user.id),
+        ),
+      );
+    await db
+      .delete(schema.aiConversationProjects)
+      .where(eq(schema.aiConversationProjects.id, req.params.id));
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error('[Ai.deleteProject]', e);
     res.status(500).json({ error: e?.message || 'Error' });
   }
 });

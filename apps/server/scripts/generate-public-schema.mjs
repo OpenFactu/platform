@@ -45,6 +45,7 @@ const TABLAS_PUBLICAS = [
   'Automation',
   'AutomationRun',
   'AiConversation',
+  'AiConversationProject',
   'WebsiteHost',
 ];
 
