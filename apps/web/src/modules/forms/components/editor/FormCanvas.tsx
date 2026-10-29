@@ -81,6 +81,8 @@ export const FormCanvas: React.FC<Props> = ({ editor, crm, disabled }) => {
           headerImageUrl={headerId ? actions.assetUrl(headerId) : null}
           onTitle={(title) => editor.change({ title })}
           onIntro={(intro) => editor.change({ intro })}
+          titleEffect={form.theme.titleEffect}
+          onTitleEffect={(titleEffect) => editor.change({ theme: { ...form.theme, titleEffect } })}
           onUploadHeader={actions.setHeaderImage}
           onRemoveHeader={actions.removeHeaderImage}
           uploading={actions.uploading === 'header'}

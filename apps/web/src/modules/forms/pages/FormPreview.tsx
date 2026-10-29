@@ -42,6 +42,7 @@ export const FormPreview: React.FC = () => {
         </div>
         <FormRunner
           title={form.title || form.name}
+          titleEffect={form.theme.titleEffect}
           intro={form.intro}
           definition={form.definition}
           settings={form.settings}

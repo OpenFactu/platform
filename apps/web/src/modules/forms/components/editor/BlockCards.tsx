@@ -12,7 +12,10 @@ import {
   type SortableHandleProps,
 } from '@openfactu/ui';
 import { ArrowDown, ArrowUp, Copy, GripHorizontal, MoreVertical, Trash2 } from 'lucide-react';
-import type { ImageBlock, Section, TextBlock } from '@forms-engine';
+import type { ImageBlock, Section, TextBlock, TitleEffect } from '@forms-engine';
+import { TextBlockContent } from '../render/TextBlockView';
+import { TextStyleControls } from './TextStyleControls';
+import { RICH_TEXT_HINT, TITLE_EFFECT_OPTIONS } from '../../domain/types';
 
 const Handle: React.FC<{ handleProps?: SortableHandleProps }> = ({ handleProps }) =>
   handleProps ? (
@@ -118,14 +121,11 @@ export const TextBlockCard: React.FC<BlockProps<TextBlock>> = ({
     label="Editar bloque de texto"
     handleProps={p.handleProps}
     preview={
-      <>
-        <div className="text-base font-semibold text-fg-default">
-          {block.title || <span className="text-fg-subtle">Título</span>}
-        </div>
-        {block.description && (
-          <p className="text-sm text-fg-muted mt-1 whitespace-pre-wrap">{block.description}</p>
-        )}
-      </>
+      block.title || block.description ? (
+        <TextBlockContent block={block} />
+      ) : (
+        <span className="text-fg-subtle">Título</span>
+      )
     }
   >
     <Input
@@ -137,12 +137,22 @@ export const TextBlockCard: React.FC<BlockProps<TextBlock>> = ({
     />
     <Textarea
       aria-label="Texto"
-      rows={3}
+      rows={4}
       value={block.description ?? ''}
       onChange={(e) => onChange({ description: e.target.value || undefined })}
       placeholder="Texto (opcional)"
+      helperText={RICH_TEXT_HINT}
       disabled={disabled}
     />
+    <TextStyleControls block={block} onChange={onChange} disabled={disabled} />
+    {(block.title || block.description) && (
+      <div className="space-y-2 rounded-xs border border-dashed border-border-default p-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
+          Así se verá
+        </div>
+        <TextBlockContent block={block} />
+      </div>
+    )}
     <BlockActions onDuplicate={p.onDuplicate} onRemove={p.onRemove} disabled={disabled} />
   </BlockShell>
 );
@@ -227,8 +237,20 @@ export const SectionHeader: React.FC<{
             value={section.description ?? ''}
             onChange={(e) => onChange({ description: e.target.value || undefined })}
             placeholder="Descripción (opcional)"
+            helperText={RICH_TEXT_HINT}
             disabled={disabled}
           />
+          <div className="sm:w-64">
+            <Select
+              label="Efecto del título"
+              options={TITLE_EFFECT_OPTIONS}
+              value={section.titleEffect ?? 'none'}
+              onChange={(v) =>
+                onChange({ titleEffect: v === 'none' ? undefined : (v as TitleEffect) })
+              }
+              disabled={disabled}
+            />
+          </div>
         </div>
         <DropdownMenu
           align="end"

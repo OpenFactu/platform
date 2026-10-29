@@ -1,6 +1,8 @@
 import React from 'react';
-import { Button, Card, FileDropzone, Input, Textarea } from '@openfactu/ui';
+import { Button, Card, FileDropzone, Input, Select, Textarea } from '@openfactu/ui';
 import { X } from 'lucide-react';
+import type { TitleEffect } from '@forms-engine';
+import { RICH_TEXT_HINT, TITLE_EFFECT_OPTIONS } from '../../domain/types';
 
 interface Props {
   title: string;
@@ -8,6 +10,8 @@ interface Props {
   headerImageUrl: string | null;
   onTitle: (v: string) => void;
   onIntro: (v: string) => void;
+  titleEffect?: TitleEffect;
+  onTitleEffect: (v: TitleEffect | undefined) => void;
   onUploadHeader: (file: File) => Promise<void>;
   onRemoveHeader: () => void;
   uploading: boolean;
@@ -51,8 +55,18 @@ export const FormHeaderCard: React.FC<Props> = (p) => (
         value={p.intro}
         onChange={(e) => p.onIntro(e.target.value)}
         placeholder="Descripción del formulario"
+        helperText={RICH_TEXT_HINT}
         disabled={p.disabled}
       />
+      <div className="sm:w-64">
+        <Select
+          label="Efecto del título"
+          options={TITLE_EFFECT_OPTIONS}
+          value={p.titleEffect ?? 'none'}
+          onChange={(v) => p.onTitleEffect(v === 'none' ? undefined : (v as TitleEffect))}
+          disabled={p.disabled}
+        />
+      </div>
       {!p.disabled && (
         <FileDropzone
           variant="inline"

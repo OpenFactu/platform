@@ -108,11 +108,39 @@ export interface Question {
   mapTo?: MapTarget;
 }
 
+/** Efecto del título (bloques de texto, secciones y cabecera del formulario). */
+export type TitleEffect =
+  | 'none'
+  | 'gradient'
+  | 'gradientAnimated'
+  | 'typewriter'
+  | 'reveal'
+  | 'scramble'
+  | 'shimmer';
+export const TITLE_EFFECTS: TitleEffect[] = [
+  'none',
+  'gradient',
+  'gradientAnimated',
+  'typewriter',
+  'reveal',
+  'scramble',
+  'shimmer',
+];
+
+/** Cómo se presenta el texto de un bloque. */
+export type TextStyle = 'body' | 'lead' | 'small' | 'quote' | 'callout';
+
 export interface TextBlock {
   kind: 'text';
   id: string;
   title: string;
+  /** Admite **negrita**, *cursiva* y ==resaltado==. */
   description?: string;
+  effect?: TitleEffect;
+  textStyle?: TextStyle;
+  /** Letra capital (solo texto normal y entradilla). */
+  dropCap?: boolean;
+  align?: 'left' | 'center';
 }
 
 export interface ImageBlock {
@@ -129,6 +157,7 @@ export interface Section {
   title?: string;
   description?: string;
   items: Item[];
+  titleEffect?: TitleEffect;
   /** Qué viene después: la siguiente, enviar, o una sección concreta. */
   next?: string;
 }

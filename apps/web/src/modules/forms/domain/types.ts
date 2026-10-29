@@ -1,4 +1,11 @@
-import type { FormDefinition, QuestionSummary, QuestionType, Answers } from '@forms-engine';
+import type {
+  FormDefinition,
+  QuestionSummary,
+  QuestionType,
+  Answers,
+  TextStyle,
+  TitleEffect,
+} from '@forms-engine';
 
 export type { FormDefinition, Answers };
 
@@ -29,6 +36,7 @@ export interface FormTheme {
   accent?: string;
   background?: string;
   headerAssetId?: string;
+  titleEffect?: TitleEffect;
 }
 
 export interface FormDoc {
@@ -139,3 +147,30 @@ export const MAP_TARGET_LABEL = {
   prospectPhone: 'Teléfono',
   message: 'Mensaje',
 } as const;
+
+export const TITLE_EFFECT_LABEL: Record<TitleEffect, string> = {
+  none: 'Sin efecto',
+  gradient: 'Degradado',
+  gradientAnimated: 'Degradado en movimiento',
+  typewriter: 'Máquina de escribir',
+  reveal: 'Aparece palabra a palabra',
+  scramble: 'Se descifra',
+  shimmer: 'Brillo',
+};
+
+export const TEXT_STYLE_LABEL: Record<TextStyle, string> = {
+  body: 'Normal',
+  lead: 'Entradilla (más grande)',
+  small: 'Pequeño',
+  quote: 'Cita',
+  callout: 'Destacado',
+};
+
+export const TITLE_EFFECT_OPTIONS = (Object.keys(TITLE_EFFECT_LABEL) as TitleEffect[]).map((k) => ({
+  value: k,
+  label: TITLE_EFFECT_LABEL[k],
+}));
+
+/** Ayuda del formato ligero de los textos (ver domain/richText). */
+export const RICH_TEXT_HINT =
+  '**negrita**, *cursiva* y ==resaltado==. Deja una línea en blanco para empezar otro párrafo.';

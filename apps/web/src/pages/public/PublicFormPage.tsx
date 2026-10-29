@@ -95,6 +95,7 @@ export const PublicFormPage: React.FC = () => {
       <FormRunner
         key={round}
         title={data.form.title}
+        titleEffect={data.form.theme.titleEffect}
         intro={data.form.intro}
         definition={data.form.definition}
         settings={s}

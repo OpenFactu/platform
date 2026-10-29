@@ -1,9 +1,18 @@
 import React, { useState } from 'react';
 import { Button, Card, Input, Progress } from '@openfactu/ui';
 import { ArrowLeft, ArrowRight, Send } from 'lucide-react';
-import { isQuestion, type Answers, type FormDefinition, type Item } from '@forms-engine';
+import {
+  isQuestion,
+  type Answers,
+  type FormDefinition,
+  type Item,
+  type TitleEffect,
+} from '@forms-engine';
 import { useFormRunner } from '../../hooks/useFormRunner';
 import { QuestionField, type UploadedFile } from './QuestionField';
+import { EffectTitle } from './EffectTitle';
+import { RichText } from './RichText';
+import { TextBlockView } from './TextBlockView';
 
 export interface RunnerSettings {
   submitLabel?: string | null;
@@ -14,6 +23,8 @@ export interface RunnerSettings {
 
 interface Props {
   title: string;
+  /** Efecto del título del formulario (tema). */
+  titleEffect?: TitleEffect;
   intro?: string | null;
   definition: FormDefinition;
   settings: RunnerSettings;
@@ -44,15 +55,7 @@ const ItemBlock: React.FC<{
   upload?: Props['upload'];
   disabled?: boolean;
 }> = ({ item, runner, assetUrl, upload, disabled }) => {
-  if (item.kind === 'text')
-    return (
-      <Card>
-        {item.title && <h3 className="text-base font-semibold text-fg-default">{item.title}</h3>}
-        {item.description && (
-          <p className="text-sm text-fg-muted mt-1 whitespace-pre-wrap">{item.description}</p>
-        )}
-      </Card>
-    );
+  if (item.kind === 'text') return <TextBlockView block={item} />;
   if (item.kind === 'image')
     return (
       <Card>
@@ -75,9 +78,7 @@ const ItemBlock: React.FC<{
           {item.title || 'Pregunta'}
           {item.required && <span className="text-danger-fg"> *</span>}
         </legend>
-        {item.description && (
-          <p className="text-sm text-fg-muted -mt-1 whitespace-pre-wrap">{item.description}</p>
-        )}
+        {item.description && <RichText text={item.description} variant="muted" className="-mt-1" />}
         <QuestionField
           question={item}
           answers={runner.answers}
@@ -97,6 +98,7 @@ const ItemBlock: React.FC<{
  */
 export const FormRunner: React.FC<Props> = ({
   title,
+  titleEffect,
   intro,
   definition,
   settings,
@@ -175,10 +177,13 @@ export const FormRunner: React.FC<Props> = ({
         )}
         <div className="h-2 bg-accent" />
         <div className="p-5 space-y-2">
-          <h1 className="text-2xl font-bold text-fg-default">{title}</h1>
-          {intro && runner.isFirst && (
-            <p className="text-sm text-fg-muted whitespace-pre-wrap">{intro}</p>
-          )}
+          <EffectTitle
+            as="h1"
+            text={title}
+            effect={titleEffect}
+            className="text-2xl font-bold text-fg-default"
+          />
+          {intro && runner.isFirst && <RichText text={intro} variant="muted" />}
           <p className="text-xs text-danger-fg">* Obligatorio</p>
         </div>
       </Card>
@@ -195,12 +200,15 @@ export const FormRunner: React.FC<Props> = ({
       {(runner.section.title || runner.section.description) && (
         <Card>
           {runner.section.title && (
-            <h2 className="text-lg font-semibold text-fg-default">{runner.section.title}</h2>
+            <EffectTitle
+              as="h2"
+              text={runner.section.title}
+              effect={runner.section.titleEffect}
+              className="text-lg font-semibold text-fg-default"
+            />
           )}
           {runner.section.description && (
-            <p className="text-sm text-fg-muted mt-1 whitespace-pre-wrap">
-              {runner.section.description}
-            </p>
+            <RichText text={runner.section.description} variant="muted" className="mt-1" />
           )}
         </Card>
       )}

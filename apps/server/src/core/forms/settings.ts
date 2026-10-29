@@ -3,6 +3,7 @@
  * que llega del editor. Los formularios del CRM (v1) guardaban `createLead`,
  * `stageId`… en la raíz de `settings`; `normalizeSettings` los pasa a `crm`.
  */
+import { TITLE_EFFECTS, type TitleEffect } from './engine';
 
 export interface FormSettings {
   submitLabel?: string;
@@ -38,6 +39,8 @@ export interface FormTheme {
   accent?: string;
   background?: string;
   headerAssetId?: string;
+  /** Efecto del título del formulario. */
+  titleEffect?: TitleEffect;
 }
 
 export const DEFAULT_SETTINGS: FormSettings = {
@@ -98,6 +101,7 @@ export function normalizeTheme(raw: unknown): FormTheme {
     accent: HEX.test(t.accent ?? '') ? t.accent : undefined,
     background: HEX.test(t.background ?? '') ? t.background : undefined,
     headerAssetId: str(t.headerAssetId, 100),
+    titleEffect: TITLE_EFFECTS.includes(t.titleEffect) ? t.titleEffect : undefined,
   };
 }
 
