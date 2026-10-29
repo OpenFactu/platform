@@ -28,6 +28,20 @@
   --k-radius-lg: 2px;
 }
 
+/*
+ * Parche de @openfactu/ui 0.6.0 (styles/mobile.css:8): en móvil pinta la pestaña
+ * activa de TODAS las `.k-tabs` con `--fg-default`, también la variante
+ * `segmented`, cuyo fondo activo es el acento. En un tema oscuro con acento
+ * claro (Mono oscuro) el texto sale blanco sobre blanco y la opción desaparece.
+ * Se devuelve el color de encima del acento solo a la segmentada, que es la
+ * única que lleva esa clase. Quitar cuando la librería lo corrija.
+ */
+@media (max-width: 767px) {
+  .k-tabs [aria-selected='true'].text-\[color\:var\(--color-accent-fg\)\] {
+    color: var(--color-accent-fg);
+  }
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -80,7 +80,7 @@
     <style>
       html { color-scheme: light; background: #FAFBFC; }
       html.dark { color-scheme: dark; background: #0A1628; }
-      body { margin: 0; background: inherit; color: #0A1628; font-family: 'DM Sans', system-ui, sans-serif; }
+      body { margin: 0; background: inherit; color: #0A1628; font-family: var(--font-sans, 'DM Sans', system-ui, sans-serif); }
       html.dark body { color: #E2E8F0; }
     </style>
 
@@ -90,39 +90,32 @@
         try {
           var cached = localStorage.getItem('openfactu_theme');
           if (cached) {
+            // Lo deja ThemeContext: las variables y atributos que escribió
+            // applyTheme la última vez, para no pintar el tema de fábrica.
             var parsed = JSON.parse(cached);
+            var root = document.documentElement;
             if (parsed && parsed.themeMode === 'dark') {
-              document.documentElement.classList.add('dark');
+              root.classList.add('dark');
+              root.style.colorScheme = 'dark';
             }
-            if (parsed && parsed.colorPrimaryRgb) {
-              document.documentElement.style.setProperty('--color-primary-rgb', parsed.colorPrimaryRgb);
+            if (parsed && parsed.vars) {
+              for (var name in parsed.vars) root.style.setProperty(name, parsed.vars[name]);
+              if (parsed.themeMode === 'dark' && !(parsed.attrs && 'data-k-backdrop' in parsed.attrs) && parsed.vars['--bg-app']) {
+                root.style.background = parsed.vars['--bg-app'];
+              }
             }
-            if (parsed && parsed.colorPrimaryHoverRgb) {
-              document.documentElement.style.setProperty('--color-primary-hover-rgb', parsed.colorPrimaryHoverRgb);
-            }
-            if (parsed && parsed.colorPrimaryFgRgb) {
-              document.documentElement.style.setProperty('--color-primary-fg-rgb', parsed.colorPrimaryFgRgb);
-            }
-            if (parsed && parsed.colorAccentRgb) {
-              document.documentElement.style.setProperty('--color-accent-rgb', parsed.colorAccentRgb);
-            }
-            if (parsed && parsed.colorAccentFgRgb) {
-              document.documentElement.style.setProperty('--color-accent-fg-rgb', parsed.colorAccentFgRgb);
+            if (parsed && parsed.attrs) {
+              for (var attr in parsed.attrs) root.setAttribute(attr, parsed.attrs[attr]);
             }
             if (parsed && parsed.appName) {
               document.title = parsed.appName;
             }
-            if (parsed && parsed.fontSans) {
-              document.documentElement.style.setProperty('--font-sans', parsed.fontSans);
-            }
-            if (parsed && parsed.fontDisplay) {
-              document.documentElement.style.setProperty('--font-display', parsed.fontDisplay);
-            }
             if (parsed && parsed.fontUrl) {
+              // Mismo atributo que usa applyTheme, que así reutiliza este <link>.
               var fontLink = document.createElement('link');
               fontLink.rel = 'stylesheet';
               fontLink.href = parsed.fontUrl;
-              fontLink.setAttribute('data-tenant-font', '');
+              fontLink.setAttribute('data-openfactu-font', '');
               document.head.appendChild(fontLink);
             }
           }

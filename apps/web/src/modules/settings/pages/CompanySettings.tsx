@@ -13,6 +13,7 @@ import {
   Loader,
   useToast,
   useThemePresets,
+  MOTION_CHARACTERS,
 } from '@openfactu/ui';
 import {
   Building,
@@ -38,12 +39,13 @@ import { AiSettingsTab } from '../components/AiSettingsTab';
 import { useAuth } from '@/context/AuthContext';
 import {
   useTheme,
+  type BrandingConfig,
   presetSwatch,
   FONT_OPTIONS,
   fontOptionFor,
   googleFontsUrl,
 } from '@/context/ThemeContext';
-import { KeirostLogo } from '@/components/branding/KeirostLogo';
+import { ThemePresetCard } from '../components/ThemePresetCard';
 import { formatCurrency, formatDate } from '@openfactu/common';
 import { CountrySelect } from '@/components/geo/CountrySelect';
 import { RegionSelect } from '@/components/geo/RegionSelect';
@@ -98,6 +100,42 @@ const CURRENCY_OPTIONS = [
 const THEME_MODE_OPTIONS = [
   { value: 'light', label: 'Claro' },
   { value: 'dark', label: 'Oscuro' },
+];
+
+// Ajustes finos del tema de @openfactu/ui; '' = lo que diga el preset.
+const RADIUS_OPTIONS = [
+  { value: '', label: 'Del tema' },
+  { value: 'none', label: 'Rectas' },
+  { value: 'sm', label: 'Poco redondeadas' },
+  { value: 'md', label: 'Redondeadas' },
+  { value: 'lg', label: 'Muy redondeadas' },
+];
+
+const DENSITY_OPTIONS = [
+  { value: '', label: 'Del tema' },
+  { value: 'compact', label: 'Compacta' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'comfortable', label: 'Holgada' },
+];
+
+const TEXT_SCALE_OPTIONS = [
+  { value: '0.9', label: 'Pequeño' },
+  { value: '1', label: 'Normal' },
+  { value: '1.1', label: 'Grande' },
+  { value: '1.2', label: 'Muy grande' },
+];
+
+const MOTION_CHARACTER_OPTIONS = [
+  { value: '', label: 'Del tema' },
+  ...Object.entries(MOTION_CHARACTERS).map(([value, c]) => ({ value, label: c.label })),
+];
+
+const MOTION_SPEED_OPTIONS = [
+  { value: '', label: 'Del tema' },
+  { value: 'fast', label: 'Rápida' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'slow', label: 'Lenta' },
+  { value: 'none', label: 'Sin animaciones' },
 ];
 
 const LOCALE_OPTIONS = [
@@ -542,71 +580,14 @@ export const CompanySettings: React.FC = () => {
                 )}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {themePresets.map((p) => {
-                  const preset = {
-                    id: p.id,
-                    label: p.label,
-                    description: p.description,
-                    ...presetSwatch(p),
-                  };
-                  const selected = activePresetId === preset.id;
-                  const isDark = preset.themeMode === 'dark';
-                  const logoVariant =
-                    preset.id === 'keirost-teal'
-                      ? 'accent'
-                      : preset.id === 'keirost-slate'
-                        ? 'mono'
-                        : isDark
-                          ? 'dark'
-                          : 'outline';
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => applyPreset(preset.id)}
-                      className={
-                        'group relative flex flex-col items-start gap-3 p-4 rounded-[4px] border transition-colors text-left ' +
-                        (selected
-                          ? 'border-[var(--k-teal-500)] ring-1 ring-[var(--k-teal-500)]'
-                          : 'border-[var(--k-line)] hover:border-[var(--k-ink-400)]')
-                      }
-                      style={{ background: isDark ? preset.colorPrimary : '#ffffff' }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <KeirostLogo size={36} variant={logoVariant as any} />
-                        <div className="flex gap-1">
-                          <span
-                            className="w-3 h-3 rounded-[2px] border border-black/10"
-                            style={{ background: preset.colorPrimary }}
-                          />
-                          <span
-                            className="w-3 h-3 rounded-[2px] border border-black/10"
-                            style={{ background: preset.colorAccent }}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <div
-                          className="font-display font-semibold text-[14px]"
-                          style={{ color: isDark ? '#fff' : '#0A1628' }}
-                        >
-                          {preset.label}
-                        </div>
-                        <div
-                          className="text-[11px] mt-0.5 leading-snug"
-                          style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#64748B' }}
-                        >
-                          {preset.description}
-                        </div>
-                      </div>
-                      {selected && (
-                        <span className="absolute top-2 right-2 font-mono text-[9px] tracking-[1px] uppercase text-[var(--k-teal-600)] bg-[var(--k-teal-50)] border border-[var(--k-teal-100)] rounded-[2px] px-1.5 py-0.5">
-                          Activo
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                {themePresets.map((p) => (
+                  <ThemePresetCard
+                    key={p.id}
+                    preset={p}
+                    selected={activePresetId === p.id}
+                    onSelect={() => applyPreset(p.id)}
+                  />
+                ))}
               </div>
             </div>
           </Card>
@@ -693,7 +674,50 @@ export const CompanySettings: React.FC = () => {
                     setBrandingDraft({ ...brandingDraft, themeMode: v as any, themePreset: '' })
                   }
                 />
+                <Select
+                  label="Esquinas"
+                  options={RADIUS_OPTIONS}
+                  value={brandingDraft.radius}
+                  onChange={(v) =>
+                    setBrandingDraft({ ...brandingDraft, radius: v as BrandingConfig['radius'] })
+                  }
+                />
+                <Select
+                  label="Densidad"
+                  options={DENSITY_OPTIONS}
+                  value={brandingDraft.density}
+                  onChange={(v) =>
+                    setBrandingDraft({ ...brandingDraft, density: v as BrandingConfig['density'] })
+                  }
+                />
+                <Select
+                  label="Tamaño del texto"
+                  options={TEXT_SCALE_OPTIONS}
+                  value={String(brandingDraft.textScale || 1)}
+                  onChange={(v) => setBrandingDraft({ ...brandingDraft, textScale: Number(v) })}
+                />
+                <Select
+                  label="Movimiento"
+                  options={MOTION_CHARACTER_OPTIONS}
+                  value={brandingDraft.motionCharacter}
+                  onChange={(v) => setBrandingDraft({ ...brandingDraft, motionCharacter: v })}
+                />
+                <Select
+                  label="Velocidad de las animaciones"
+                  options={MOTION_SPEED_OPTIONS}
+                  value={brandingDraft.motionSpeed}
+                  onChange={(v) =>
+                    setBrandingDraft({
+                      ...brandingDraft,
+                      motionSpeed: v as BrandingConfig['motionSpeed'],
+                    })
+                  }
+                />
               </div>
+              <p className="text-xs text-fg-muted">
+                «Del tema» deja el valor del preset elegido. La fuente por defecto también cede a la
+                del preset cuando trae una propia.
+              </p>
             </div>
           </Card>
 

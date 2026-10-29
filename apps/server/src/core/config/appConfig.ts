@@ -8,6 +8,14 @@ export interface BrandingConfig {
   themeMode: 'light' | 'dark';
   /** Id de un preset de @openfactu/ui (vacío = colores a medida). */
   themePreset: string;
+  /** Ajustes finos sobre el tema de @openfactu/ui. Vacío = lo que diga el preset. */
+  radius: '' | 'none' | 'sm' | 'md' | 'lg';
+  density: '' | 'compact' | 'normal' | 'comfortable';
+  /** Escala del texto (0.8–1.4). */
+  textScale: number;
+  /** Id de MOTION_CHARACTERS (sober, smooth, expressive, playful). */
+  motionCharacter: string;
+  motionSpeed: '' | 'none' | 'fast' | 'normal' | 'slow';
 }
 
 export interface FormatConfig {
@@ -84,6 +92,11 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   fontFamily: 'sans',
   themeMode: 'light',
   themePreset: '',
+  radius: '',
+  density: '',
+  textScale: 1,
+  motionCharacter: '',
+  motionSpeed: '',
 };
 
 export const FORMAT_DEFAULTS: FormatConfig = {

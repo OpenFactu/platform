@@ -1,4 +1,11 @@
-import { applyTheme, contrastRatio, getThemePreset, type ThemeInput } from '@openfactu/ui';
+import {
+  applyTheme,
+  contrastRatio,
+  fontOptionFor,
+  getThemePreset,
+  googleFontsUrl,
+  type ThemeInput,
+} from '@openfactu/ui';
 import { coreApi } from '@/shared/api';
 import React, {
   createContext,
@@ -10,6 +17,7 @@ import React, {
   useState,
 } from 'react';
 import { useAuth } from './AuthContext';
+import { brandingToThemeInput } from './brandingTheme';
 
 export interface BrandingConfig {
   colorPrimary: string;
@@ -21,6 +29,14 @@ export interface BrandingConfig {
   themeMode: 'light' | 'dark';
   /** Id de un preset de @openfactu/ui (vacío = colores a medida). */
   themePreset: string;
+  /** Ajustes finos sobre el tema. Vacío = lo que diga el preset (ver brandingTheme.ts). */
+  radius: '' | 'none' | 'sm' | 'md' | 'lg';
+  density: '' | 'compact' | 'normal' | 'comfortable';
+  /** Escala del texto (0.8–1.4). */
+  textScale: number;
+  /** Id de MOTION_CHARACTERS de @openfactu/ui. */
+  motionCharacter: string;
+  motionSpeed: '' | 'none' | 'fast' | 'normal' | 'slow';
 }
 
 export interface FormatConfig {
@@ -84,6 +100,11 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   fontFamily: 'sans',
   themeMode: 'light',
   themePreset: '',
+  radius: '',
+  density: '',
+  textScale: 1,
+  motionCharacter: '',
+  motionSpeed: '',
 };
 
 export const FORMAT_DEFAULTS: FormatConfig = {
@@ -176,74 +197,9 @@ function contrastingFgRgb(rgb: [number, number, number]): [number, number, numbe
   return luminance > 0.6 ? [15, 23, 42] : [255, 255, 255];
 }
 
-export interface FontOption {
-  id: string;
-  label: string;
-  /** Spec `family=` de fonts.googleapis.com/css2. Ausente = fuente ya cargada o del sistema. */
-  google?: string;
-  /** Stack para --font-sans (cuerpo, tablas, formularios). */
-  sans: string;
-  /** Stack para --font-display (títulos, KPIs). */
-  display: string;
-}
-
-/**
- * Catálogo de familias tipográficas del branding. La opción 'sans' es la marca
- * Keirost por defecto (DM Sans + Space Grotesk, definidas en index.css); el
- * resto pisa --font-sans y --font-display a la vez para que el cambio afecte a
- * TODA la app. --font-mono (código) no se toca nunca.
- */
-export const FONT_OPTIONS: FontOption[] = [
-  {
-    id: 'sans',
-    label: 'Keirost — DM Sans (por defecto)',
-    sans: "'DM Sans', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
-    display: "'Space Grotesk', system-ui, sans-serif",
-  },
-  {
-    id: 'roboto',
-    label: 'Roboto',
-    google: 'Roboto:wght@300;400;500;700',
-    sans: "'Roboto', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
-    display: "'Roboto', system-ui, sans-serif",
-  },
-  {
-    id: 'roboto-flex',
-    label: 'Roboto Flex (estilo Google)',
-    google: 'Roboto+Flex:opsz,wght@8..144,300..800',
-    sans: "'Roboto Flex', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
-    display: "'Roboto Flex', system-ui, sans-serif",
-  },
-  {
-    id: 'geist',
-    label: 'Geist',
-    google: 'Geist:wght@300..800',
-    sans: "'Geist', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
-    display: "'Geist', system-ui, sans-serif",
-  },
-  {
-    id: 'serif',
-    label: 'Serif (Georgia)',
-    sans: "Georgia, 'Times New Roman', Times, serif",
-    display: "Georgia, 'Times New Roman', Times, serif",
-  },
-  {
-    id: 'mono',
-    label: 'Monospace',
-    sans: "'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace",
-    display: "'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace",
-  },
-];
-
-export function fontOptionFor(id: string | undefined): FontOption {
-  return FONT_OPTIONS.find((f) => f.id === id) || FONT_OPTIONS[0];
-}
-
-export function googleFontsUrl(font: FontOption): string | null {
-  return font.google
-    ? `https://fonts.googleapis.com/css2?family=${font.google}&display=swap`
-    : null;
-}
+// El catálogo de fuentes es el de la librería: así el id que se guarda es el
+// mismo que entiende `resolveTheme` (typography.fontFamily).
+export { FONT_OPTIONS, fontOptionFor, googleFontsUrl, type FontOption } from '@openfactu/ui';
 
 const CACHE_KEY = 'openfactu_theme';
 
@@ -252,23 +208,18 @@ interface CachedTheme {
   branding?: BrandingConfig;
   format?: FormatConfig;
   flags?: FlagsConfig;
-  colorPrimaryRgb?: string;
-  colorPrimaryHoverRgb?: string;
-  colorPrimaryFgRgb?: string;
-  colorAccentRgb?: string;
-  colorAccentFgRgb?: string;
-  // Legacy flat fields (compat con script inline en index.html)
+  // Lo que lee el script inline de index.html para pintar el tema antes de
+  // montar React: todas las variables y atributos que dejó el último tema.
   themeMode?: BrandingConfig['themeMode'];
   appName?: string;
+  vars?: Record<string, string>;
+  attrs?: Record<string, string>;
+  fontUrl?: string;
+  // Formato anterior (solo para leerlo: readCachedBranding)
   colorPrimary?: string;
   colorAccent?: string;
   fontFamily?: BrandingConfig['fontFamily'];
   logoUrl?: string;
-  // Fuente precomputada (ausente con la opción por defecto) para que el script
-  // inline de index.html la aplique antes de montar React, como los *Rgb.
-  fontSans?: string;
-  fontDisplay?: string;
-  fontUrl?: string;
 }
 
 function readCache(): CachedTheme | null {
@@ -374,81 +325,26 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const themeAppliedOnce = useRef(false);
 
-  // Aplicar branding a :root SÍNCRONAMENTE antes del paint para evitar flashes
+  // Aplicar branding a :root SÍNCRONAMENTE antes del paint para evitar flashes.
+  // Todo el tema lo escribe `applyTheme` de @openfactu/ui: colores, superficies,
+  // fuente (y su <link> de Google Fonts), radios, densidad, movimiento,
+  // cristal… La app solo añade lo que la librería no sabe (abajo).
   useLayoutEffect(() => {
     const root = document.documentElement;
-
-    const primaryRgb = hexToRgb(branding.colorPrimary);
-    const primaryHoverRgb = darkenRgb(primaryRgb, 0.1);
-    const primaryFgRgb = contrastingFgRgb(primaryRgb);
-    const accentRgb = hexToRgb(branding.colorAccent);
-    const accentFgRgb = contrastingFgRgb(accentRgb);
-
-    const primaryRgbStr = rgbToSpaceString(primaryRgb);
-    const primaryHoverRgbStr = rgbToSpaceString(primaryHoverRgb);
-    const primaryFgRgbStr = rgbToSpaceString(primaryFgRgb);
-    const accentRgbStr = rgbToSpaceString(accentRgb);
-    const accentFgRgbStr = rgbToSpaceString(accentFgRgb);
-
-    root.style.setProperty('--color-primary-rgb', primaryRgbStr);
-    root.style.setProperty('--color-primary-hover-rgb', primaryHoverRgbStr);
-    root.style.setProperty('--color-primary-fg-rgb', primaryFgRgbStr);
-    root.style.setProperty('--color-accent-rgb', accentRgbStr);
-    root.style.setProperty('--color-accent-fg-rgb', accentFgRgbStr);
-
-    const font = fontOptionFor(branding.fontFamily);
-    if (font.id === 'sans') {
-      // Defaults de index.css (DM Sans + Space Grotesk)
-      root.style.removeProperty('--font-sans');
-      root.style.removeProperty('--font-display');
-    } else {
-      root.style.setProperty('--font-sans', font.sans);
-      root.style.setProperty('--font-display', font.display);
-    }
-    const fontUrl = googleFontsUrl(font);
-    let fontLink = document.head.querySelector<HTMLLinkElement>('link[data-tenant-font]');
-    if (fontUrl) {
-      if (!fontLink) {
-        fontLink = document.createElement('link');
-        fontLink.rel = 'stylesheet';
-        fontLink.setAttribute('data-tenant-font', '');
-        document.head.appendChild(fontLink);
-      }
-      if (fontLink.href !== fontUrl) fontLink.href = fontUrl;
-    } else if (fontLink) {
-      fontLink.remove();
-    }
-
     document.title = branding.appName;
-    root.classList.toggle('dark', branding.themeMode === 'dark');
 
-    // Superficies, textos, bordes y escala del acento derivados del tema por
-    // `resolveTheme` de @openfactu/ui, que es quien conoce la fórmula. Antes se
-    // derivaban aquí a mano y sólo tres (--bg-app, --bg-card, --border-default),
-    // así que todo lo que usara --bg-muted, --bg-hover, --fg-body, --fg-subtle,
-    // --border-subtle/-strong o la escala --k-teal-* se quedaba con el azul y el
-    // verde de fábrica: en un preset morado o grafito se veía fuera de sitio.
-    const preset = branding.themePreset ? getThemePreset(branding.themePreset) : undefined;
-    const themeInput: ThemeInput = preset
-      ? preset.theme
-      : {
-          mode: branding.themeMode,
-          colors: { primary: branding.colorPrimary, accent: branding.colorAccent },
-        };
-    const resolved = applyTheme(themeInput, undefined, {
-      // La fuente de la empresa la gestiona el bloque de arriba; el preset solo
-      // la cambia si trae la suya.
-      injectFontLink: !!preset?.theme.typography?.fontFamily,
+    const resolved = applyTheme(brandingToThemeInput(branding), undefined, {
       transition: themeAppliedOnce.current,
     });
     themeAppliedOnce.current = true;
-    const c = resolved.colors;
-    root.classList.toggle('dark', resolved.mode === 'dark');
+    // Restos de cuando la app ponía la fuente por su cuenta.
+    document.head.querySelector('link[data-tenant-font]')?.remove();
 
     // En oscuro, un color principal casi igual que las superficies (Carbon,
     // Midnight, Forest, Plum…) deja los botones `bg-primary` invisibles sobre
     // las tarjetas. Si no contrasta (< 3:1), esos botones pasan al acento.
     // Va después de `applyTheme`, que es quien escribe estas variables.
+    const c = resolved.colors;
     if (resolved.mode === 'dark') {
       const primary = hexToRgb(c.primary);
       if (contrastRatio(primary, hexToRgb(c.bgCard)) < 3) {
@@ -465,37 +361,30 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     }
 
-    if (resolved.mode === 'dark' && resolved.backdrop === 'none') {
-      // Que <html> vea el fondo correcto antes del siguiente pintado, para no
-      // enseñar el #0A1628 del anti-FOUC de index.css.
-      root.style.background = c.bgApp;
-    } else {
-      root.style.removeProperty('background');
-    }
-
-    // Persistir cache con las tres secciones completas + RGB precomputados
-    // para que el script inline en index.html aplique el tema antes de React.
+    // Persistir cache con las tres secciones completas + el tema ya escrito,
+    // para que el script inline en index.html lo aplique antes de React.
     try {
+      const vars: Record<string, string> = {};
+      for (let i = 0; i < root.style.length; i++) {
+        const name = root.style[i];
+        if (name.startsWith('--') && name !== '--k-theme-transition') {
+          vars[name] = root.style.getPropertyValue(name);
+        }
+      }
+      const attrs: Record<string, string> = {};
+      for (const attr of Array.from(root.attributes)) {
+        if (attr.name.startsWith('data-k-')) attrs[attr.name] = attr.value;
+      }
       const payload: CachedTheme = {
         tenantId: user?.tenantId,
         branding,
         format,
         flags,
-        // Flat fields (legacy) para el script inline en index.html
-        themeMode: branding.themeMode,
+        themeMode: resolved.mode,
         appName: branding.appName,
-        colorPrimary: branding.colorPrimary,
-        colorAccent: branding.colorAccent,
-        fontFamily: branding.fontFamily,
-        logoUrl: branding.logoUrl,
-        colorPrimaryRgb: primaryRgbStr,
-        colorPrimaryHoverRgb: primaryHoverRgbStr,
-        colorPrimaryFgRgb: primaryFgRgbStr,
-        colorAccentRgb: accentRgbStr,
-        colorAccentFgRgb: accentFgRgbStr,
-        ...(font.id !== 'sans'
-          ? { fontSans: font.sans, fontDisplay: font.display, fontUrl: fontUrl || undefined }
-          : {}),
+        vars,
+        attrs,
+        fontUrl: googleFontsUrl(fontOptionFor(resolved.typography.fontFamily)) || undefined,
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
     } catch {
