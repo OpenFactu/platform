@@ -78,6 +78,7 @@ export function usePartnerWizard(form: PartnerForm) {
       case 'addresses':
         addresses.forEach((a, i) => {
           const n = addresses.length > 1 ? ` (dirección ${i + 1})` : '';
+          if (!String(a.name ?? '').trim()) out.push(`Falta el nombre${n}`);
           if (!String(a.street ?? '').trim()) out.push(`Falta la calle${n}`);
           const z = checkPostalCode(String(a.zipCode ?? ''), getCountry(a.countryCode || 'ES'));
           if (z) out.push(z + n);

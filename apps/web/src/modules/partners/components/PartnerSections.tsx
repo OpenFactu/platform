@@ -268,7 +268,26 @@ export const PartnerAddressesFields: React.FC<SectionProps> = ({ form, disabled 
             key={addr.id ?? `new-${idx}`}
             className="border border-border-default rounded-xs p-4 bg-bg-muted space-y-3"
           >
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_12rem_auto_auto] gap-3 items-end">
+            {/* Cabecera con la papelera a la derecha: en móvil, dentro de la rejilla,
+                caía en una fila propia en medio de los campos. */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-fg-default">
+                {addr.name?.trim() || `Dirección ${idx + 1}`}
+              </span>
+              {!disabled && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeAddress(idx)}
+                  aria-label="Quitar dirección"
+                  title="Quitar dirección"
+                >
+                  <Trash2 size={15} />
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_12rem_auto] gap-3 items-end">
               <Input
                 label="Nombre"
                 required
@@ -292,18 +311,6 @@ export const PartnerAddressesFields: React.FC<SectionProps> = ({ form, disabled 
                   disabled={disabled}
                 />
               </div>
-              {!disabled && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeAddress(idx)}
-                  aria-label="Quitar dirección"
-                  title="Quitar dirección"
-                >
-                  <Trash2 size={15} />
-                </Button>
-              )}
             </div>
             <Input
               label="Calle"
