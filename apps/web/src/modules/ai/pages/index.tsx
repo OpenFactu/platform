@@ -88,6 +88,7 @@ export const AiChat: React.FC = () => {
           }
           state={{
             conversations: history.conversations,
+            projects: history.projects,
             conversationId: conversationId ?? undefined,
             messages: chat.aiMessages,
             draft: chat.draft,
@@ -103,11 +104,16 @@ export const AiChat: React.FC = () => {
             onStop: chat.stop,
             onRetry: chat.retry,
             onSelectConversation: (id) => void chat.loadConversation(id),
-            onNewConversation: () => {
-              chat.newConversation();
+            onNewConversation: (projectId) => {
+              chat.newConversation(projectId);
               composer.resetDraft();
             },
+            onRenameConversation: (id, title) => void history.rename(id, title),
             onDeleteConversation: (id) => void history.remove(id),
+            onCreateProject: (title) => void history.createProject(title),
+            onRenameProject: (id, title) => void history.renameProject(id, title),
+            onDeleteProject: (id) => void history.deleteProject(id),
+            onMoveConversation: (id, projectId) => void history.move(id, projectId),
             onFiles: (files) => composer.addDropped(files),
             onApproveTool: chat.approveTool,
             onRejectTool: chat.rejectTool,
