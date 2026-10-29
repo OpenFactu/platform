@@ -38,7 +38,7 @@ export const MainLayout: React.FC = () => {
         <TopHeader />
         <ModuleTabBar />
         <TabBar />
-        <main className="flex-1 flex flex-col bg-bg-app min-h-0 pb-16 md:pb-0">
+        <main className="flex-1 flex flex-col bg-bg-app min-h-0 pb-20 md:pb-0">
           <TabsHost />
         </main>
       </div>
