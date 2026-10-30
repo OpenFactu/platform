@@ -178,6 +178,8 @@ export const ChatLauncherPanel: React.FC = () => {
 
   const activeTab = tabs.find((t) => t.id === activeTabId);
   const onChatTab = Boolean(activeTab?.path?.startsWith('/ai/chat'));
+  // En Mensajes el botón flotante taparía el de enviar del compositor.
+  const onMessagingTab = Boolean(activeTab?.path?.startsWith('/messaging'));
 
   useEffect(() => {
     // La pestaña dedicada gestiona su propia visibilidad — si está activa,
@@ -191,7 +193,7 @@ export const ChatLauncherPanel: React.FC = () => {
 
   return (
     <>
-      {!open && (
+      {!open && !onMessagingTab && (
         <button
           ref={btnRef}
           type="button"

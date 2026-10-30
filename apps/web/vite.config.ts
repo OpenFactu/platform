@@ -144,6 +144,20 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // Eventos en vivo del ERP (/ws/events). Sin esto la conexión se queda
+      // colgada en el servidor de Vite, y el navegador encola detrás de ella
+      // cualquier otro websocket al mismo host (el de mensajería incluido).
+      '/ws': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        ws: true,
+      },
+      // Mensajería (apps/messaging, servicio Rust): REST y websocket.
+      '/rt': {
+        target: 'http://localhost:3100',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   // Paquetes @openfactu/* se publican como CommonJS. Cuando están linkados

@@ -85,6 +85,8 @@ export interface FlagsConfig {
   crmEnabled: boolean;
   /** Formularios y encuestas con enlace público (módulo propio, se activa en Aplicaciones). */
   formsEnabled: boolean;
+  /** Mensajes: chat del equipo (servicio aparte, se activa en Aplicaciones). */
+  messagingEnabled: boolean;
   /** Ofrecer «Crear Factura» en el presupuesto (facturarlo sin pasar por pedido). */
   quoteDirectInvoiceEnabled: boolean;
 }
@@ -142,6 +144,7 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   assistantEnabled: true,
   crmEnabled: false,
   formsEnabled: false,
+  messagingEnabled: false,
   quoteDirectInvoiceEnabled: true,
 };
 

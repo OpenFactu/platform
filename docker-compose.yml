@@ -11,6 +11,7 @@ services:
       VITE_API_URL: 'http://localhost:${SERVER_PORT:-3000}'
     depends_on:
       - server
+      - messaging
     networks:
       - openfactu_net
 
@@ -31,6 +32,22 @@ services:
       - NODE_ENV=production
       - OPENFACTU_PG_CONTAINER=db
       - OPENFACTU_FORCE_DOCKER=1
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-openfactu}:${POSTGRES_PASSWORD:-openfactu_pass}@db:5432/${POSTGRES_DB:-openfactudb}
+    networks:
+      - openfactu_net
+
+  # Mensajería (apps/messaging, Rust): chat del equipo y canales. La web le
+  # llega por /rt a través del nginx de `web`.
+  messaging:
+    build:
+      context: ./apps/messaging
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - db
+    environment:
+      - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER:-openfactu}:${POSTGRES_PASSWORD:-openfactu_pass}@db:5432/${POSTGRES_DB:-openfactudb}
     networks:
       - openfactu_net

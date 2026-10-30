@@ -10,6 +10,8 @@ import { MobileNavProvider } from './context/MobileNavContext';
 import { ScannerProvider } from './context/ScannerContext';
 import { AiChatProvider } from '@/modules/ai/AiChatContext';
 import { ChatLauncherPanel } from '@/modules/ai/components/ChatLauncherPanel';
+import { MessagingProvider } from '@/modules/messaging/context/MessagingContext';
+import { MessagingHost } from '@/modules/messaging/components/MessagingHost';
 import { DebugPanel } from './components/DebugPanel';
 
 const SetupWizard = lazy(() =>
@@ -144,8 +146,11 @@ function App() {
           <ScannerProvider>
             <PopupProvider>
               <AiChatProvider>
-                <MainLayout />
-                <ChatLauncherPanel />
+                <MessagingProvider>
+                  <MainLayout />
+                  <ChatLauncherPanel />
+                  <MessagingHost />
+                </MessagingProvider>
               </AiChatProvider>
             </PopupProvider>
           </ScannerProvider>

@@ -4,6 +4,7 @@ import { inventoryModule } from './inventory/module';
 import { partnersModule } from './partners/module';
 import { crmModule } from './crm/module';
 import { formsModule } from './forms/module';
+import { messagingModule } from './messaging/module';
 import { analyticsModule } from './analytics/module';
 import { accountingModule } from './accounting/module';
 import { reportsModule } from './reports/module';
@@ -32,6 +33,7 @@ export const moduleManifests: ModuleManifest[] = [
   partnersModule,
   crmModule,
   formsModule,
+  messagingModule,
   accountingModule,
   analyticsModule,
   reportsModule,
@@ -58,6 +60,7 @@ const NAV_ORDER = [
   'partners',
   'crm',
   'forms',
+  'messaging',
   'accounting',
   'analytics',
   'reports',

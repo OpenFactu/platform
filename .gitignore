@@ -18,6 +18,7 @@ plugins/*
 
 # Build
 dist/
+apps/messaging/target/
 dist-ssr/
 *.local
 out/

@@ -1,0 +1,86 @@
+{
+  "messaging": {
+    "nav": {
+      "label": "Messages",
+      "description": "Team chat: direct and group conversations, files and shared documents.",
+      "messages": "Messages"
+    },
+    "open": "Open messages",
+    "openWithUnread": "Open messages ({count} unread)",
+    "openFullPage": "Open full screen",
+    "unknownUser": "User",
+    "emptyGroup": "Group with no participants",
+    "loading": "Loading messages…",
+    "disabled": {
+      "title": "Messages not available",
+      "hint": "Messages are not enabled for this company or your user lacks permission. An administrator can enable them in Apps."
+    },
+    "error": {
+      "title": "Could not connect to messaging",
+      "hint": "The messaging service is not responding. Try again in a few seconds."
+    },
+    "retry": "Retry",
+    "newConversation": {
+      "button": "New conversation",
+      "title": "New conversation",
+      "direct": "With one person",
+      "group": "Group",
+      "person": "Person",
+      "personPlaceholder": "Find someone on the team",
+      "people": "Participants",
+      "peoplePlaceholder": "Choose who to add",
+      "groupTitle": "Group name",
+      "groupTitlePlaceholder": "E.g. Sales team",
+      "create": "Start",
+      "noMembers": "There is nobody else in this company."
+    },
+    "documents": {
+      "types": {
+        "SINV": "Invoice",
+        "PINV": "Purchase invoice",
+        "SO": "Sales order",
+        "PO": "Purchase order",
+        "SDN": "Delivery note",
+        "PDN": "Purchase delivery note"
+      },
+      "shared": "Shared document",
+      "share": "Share document",
+      "shareTitle": "Share a document",
+      "searchPlaceholder": "Number or customer…",
+      "minChars": "Type at least two characters.",
+      "noResults": "No matching documents.",
+      "open": "Open",
+      "restricted": "No access"
+    },
+    "members": {
+      "button": "Participants",
+      "title": "Group participants",
+      "rename": "Group name",
+      "add": "Add people",
+      "addPlaceholder": "Choose who to add",
+      "remove": "Remove",
+      "leave": "Leave group",
+      "save": "Save",
+      "owner": "Owner",
+      "you": "You"
+    },
+    "errors": {
+      "generic": "The action could not be completed.",
+      "message_empty": "The message is empty.",
+      "message_too_long": "The message is too long.",
+      "invalid_payload": "The message content is not valid.",
+      "direct_needs_one_peer": "Choose one person.",
+      "group_needs_peers": "Add at least one other person to the group.",
+      "too_many_participants": "Too many participants.",
+      "title_too_long": "The group name is too long.",
+      "participants_not_in_tenant": "Some of those people are not in this company.",
+      "only_owner_can_remove": "Only the group owner can remove others.",
+      "only_author": "You can only change your own messages.",
+      "not_editable": "This message cannot be edited.",
+      "read_only": "Your user can only read messages.",
+      "reply_not_found": "The message you are replying to is gone.",
+      "conversation_not_found": "That conversation no longer exists or you have left it.",
+      "message_not_found": "That message no longer exists."
+    }
+  }
+}

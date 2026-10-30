@@ -110,6 +110,7 @@ import permissionsRouter from './api/permissions';
 import {
   mountApi,
   mountApiBySubpath,
+  mountApiWithAction,
   mountShared,
   mountPublic,
   denyUndeclared,
@@ -124,6 +125,7 @@ import dashboardRouter from './api/dashboard';
 import tenantsRouter from './api/tenants';
 import configRouter from './api/config';
 import aiRouter from './api/ai';
+import messagingRouter from './api/messaging';
 import mcpRouter from './api/mcp';
 import searchRouter from './api/search';
 import geoRouter from './api/geo';
@@ -418,6 +420,9 @@ mountShared(
   configRouter,
 );
 mountApi(app, '/api/ai', '/ai/chat', aiRouter);
+// El ticket es un POST pero solo da acceso: basta con poder leer Mensajes. Si
+// además puede escribir, va dentro del propio ticket.
+mountApiWithAction(app, '/api/messaging', '/messaging', 'read', messagingRouter);
 mountApi(app, '/api/mcp', '/ai/chat', mcpRouter);
 // Mira doce entidades a la vez, así que no puede exigir UN permiso: recorta
 // su propia respuesta a lo que el usuario pueda ver (ver api/search.ts).

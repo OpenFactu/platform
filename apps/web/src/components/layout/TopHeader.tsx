@@ -5,6 +5,7 @@ import { useMobileNav } from '../../context/MobileNavContext';
 import { useTabs } from '../../context/TabsContext';
 import { GlobalSearch } from '../GlobalSearch';
 import { NotificationBell } from './NotificationBell';
+import { MessagingButton } from '@/modules/messaging/components/MessagingButton';
 import { MobileModuleSwitcher } from './MobileModuleSwitcher';
 import { useI18n } from '@/i18n/I18nContext';
 
@@ -82,6 +83,7 @@ export const TopHeader: React.FC = () => {
           búsqueda la que ceda ancho y no estos, que son iconos y no admiten
           recorte. */}
       <div className="flex items-center gap-0.5 ml-auto shrink-0">
+        <MessagingButton />
         <NotificationBell />
       </div>
     </header>

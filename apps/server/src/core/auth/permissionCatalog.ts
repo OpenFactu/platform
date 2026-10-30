@@ -309,6 +309,14 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   { path: '/background-tasks', label: 'Tareas en segundo plano', group: 'Configuración' },
   { path: '/ai/chat', label: 'Asistente de IA', group: 'Configuración' },
 
+  // ── Mensajes ──────────────────────────────────────────────────────────────
+  {
+    path: '/messaging',
+    label: 'Mensajes',
+    group: 'Mensajes',
+    hint: 'Chat del equipo. Con solo lectura se ven las conversaciones pero no se escribe.',
+  },
+
   // ── Plataforma (no se ofrece: solo SUPERUSER) ─────────────────────────────
   {
     path: '/system/cockpit',

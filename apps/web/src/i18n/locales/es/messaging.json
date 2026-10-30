@@ -1,0 +1,86 @@
+{
+  "messaging": {
+    "nav": {
+      "label": "Mensajes",
+      "description": "Chat del equipo: conversaciones directas y de grupo, ficheros y documentos compartidos.",
+      "messages": "Mensajes"
+    },
+    "open": "Abrir mensajes",
+    "openWithUnread": "Abrir mensajes ({count} sin leer)",
+    "openFullPage": "Abrir en pantalla completa",
+    "unknownUser": "Usuario",
+    "emptyGroup": "Grupo sin participantes",
+    "loading": "Cargando mensajes…",
+    "disabled": {
+      "title": "Mensajes no disponible",
+      "hint": "Los mensajes no están activados en esta empresa o tu usuario no tiene permiso. Un administrador puede activarlos en Aplicaciones."
+    },
+    "error": {
+      "title": "No se pudo conectar con la mensajería",
+      "hint": "El servicio de mensajes no responde. Vuelve a intentarlo en unos segundos."
+    },
+    "retry": "Reintentar",
+    "newConversation": {
+      "button": "Nueva conversación",
+      "title": "Nueva conversación",
+      "direct": "Con una persona",
+      "group": "Grupo",
+      "person": "Persona",
+      "personPlaceholder": "Busca a alguien del equipo",
+      "people": "Participantes",
+      "peoplePlaceholder": "Elige a quién añadir",
+      "groupTitle": "Nombre del grupo",
+      "groupTitlePlaceholder": "Ej. Equipo de ventas",
+      "create": "Empezar",
+      "noMembers": "No hay más personas en la empresa."
+    },
+    "documents": {
+      "types": {
+        "SINV": "Factura",
+        "PINV": "Factura de compra",
+        "SO": "Pedido de venta",
+        "PO": "Pedido de compra",
+        "SDN": "Albarán",
+        "PDN": "Albarán de compra"
+      },
+      "shared": "Documento compartido",
+      "share": "Compartir documento",
+      "shareTitle": "Compartir un documento",
+      "searchPlaceholder": "Número o cliente…",
+      "minChars": "Escribe al menos dos caracteres.",
+      "noResults": "No hay documentos que coincidan.",
+      "open": "Abrir",
+      "restricted": "Sin acceso"
+    },
+    "members": {
+      "button": "Participantes",
+      "title": "Participantes del grupo",
+      "rename": "Nombre del grupo",
+      "add": "Añadir personas",
+      "addPlaceholder": "Elige a quién añadir",
+      "remove": "Quitar",
+      "leave": "Salir del grupo",
+      "save": "Guardar",
+      "owner": "Propietario",
+      "you": "Tú"
+    },
+    "errors": {
+      "generic": "No se pudo completar la acción.",
+      "message_empty": "El mensaje está vacío.",
+      "message_too_long": "El mensaje es demasiado largo.",
+      "invalid_payload": "El contenido del mensaje no es válido.",
+      "direct_needs_one_peer": "Elige a una persona.",
+      "group_needs_peers": "Añade al menos a otra persona al grupo.",
+      "too_many_participants": "Demasiados participantes.",
+      "title_too_long": "El nombre del grupo es demasiado largo.",
+      "participants_not_in_tenant": "Alguna de esas personas no es de esta empresa.",
+      "only_owner_can_remove": "Solo el propietario del grupo puede quitar a otros.",
+      "only_author": "Solo puedes cambiar tus propios mensajes.",
+      "not_editable": "Este mensaje no se puede editar.",
+      "read_only": "Tu usuario solo puede leer los mensajes.",
+      "reply_not_found": "El mensaje al que respondes ya no está.",
+      "conversation_not_found": "Esa conversación ya no existe o has salido de ella.",
+      "message_not_found": "Ese mensaje ya no existe."
+    }
+  }
+}
