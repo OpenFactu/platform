@@ -19,6 +19,7 @@ import { Plus, Trash2, Edit2, CheckCircle2 } from 'lucide-react';
 import { RouteMapPlanner } from '../components/RouteMapPlanner';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 import type { Route, RouteVehicleOption } from '../domain/route';
 import type { Employee } from '@/modules/hr/domain/employee';
 
@@ -31,17 +32,21 @@ const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
 
 // Estados de ruta en un solo sitio: el desplegable deriva sus opciones de aquí.
 const STATUS_LABELS: Record<string, string> = {
-  planned: 'Planeada',
-  active: 'Activa',
-  completed: 'Completada',
-  cancelled: 'Cancelada',
+  planned: 'logistics.routes.status.planned',
+  active: 'logistics.routes.status.active',
+  completed: 'logistics.routes.status.completed',
+  cancelled: 'logistics.routes.status.cancelled',
 };
-const STATUS_OPTIONS = Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }));
 
 export const RoutesTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
+  const STATUS_OPTIONS = Object.entries(STATUS_LABELS).map(([value, label]) => ({
+    value,
+    label: t(label),
+  }));
   const [rows, setRows] = useState<Route[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [vehicles, setVehicles] = useState<RouteVehicleOption[]>([]);
@@ -83,7 +88,7 @@ export const RoutesTab: React.FC = () => {
 
   const save = async () => {
     if (!form.name || !form.plannedDate) {
-      toast.error('Nombre y fecha son obligatorios');
+      toast.error(t('logistics.routes.required'));
       return;
     }
     try {
@@ -110,21 +115,21 @@ export const RoutesTab: React.FC = () => {
         }
       }
 
-      toast.success(editing ? 'Ruta actualizada' : 'Ruta creada');
+      toast.success(editing ? t('logistics.routes.updated') : t('logistics.routes.created'));
       setShowModal(false);
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error');
+      toast.error(msg || t('logistics.common.error'));
     }
   };
 
   const remove = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar ruta',
-      message: '¿Eliminar la ruta? También se borran sus paradas.',
+      title: t('logistics.routes.deleteTitle'),
+      message: t('logistics.routes.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('logistics.common.delete'),
     });
     if (!ok) return;
     await routesApi.remove(id);
@@ -137,7 +142,7 @@ export const RoutesTab: React.FC = () => {
     <div className="space-y-3">
       <div className="flex items-center justify-end">
         <Button onClick={openCreate} className="flex items-center gap-2">
-          <Plus size={14} /> Nueva ruta
+          <Plus size={14} /> {t('logistics.routes.new')}
         </Button>
       </div>
 
@@ -146,7 +151,9 @@ export const RoutesTab: React.FC = () => {
           <Loader />
         </div>
       ) : rows.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">Sin rutas.</Card>
+        <Card bodyClassName="py-10 text-center text-sm text-slate-500">
+          {t('logistics.routes.empty')}
+        </Card>
       ) : (
         <Card bodyClassName="p-0">
           <ul>
@@ -165,11 +172,11 @@ export const RoutesTab: React.FC = () => {
                   {isDone ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[11px] font-bold shadow-sm">
                       <CheckCircle2 size={12} strokeWidth={3} />
-                      Completada
+                      {t('logistics.routes.status.completed')}
                     </span>
                   ) : (
                     <Badge variant={STATUS_BADGE[r.status] || 'neutral'}>
-                      {STATUS_LABELS[r.status] ?? r.status}
+                      {STATUS_LABELS[r.status] ? t(STATUS_LABELS[r.status]) : r.status}
                     </Badge>
                   )}
                   <div className="flex-1 min-w-0">
@@ -197,7 +204,7 @@ export const RoutesTab: React.FC = () => {
                       <span className="text-[11px] text-slate-500">{r.plannedDate}</span>
                     </div>
                     <div className="text-[11px] text-fg-muted mt-0.5">
-                      Conductor:{' '}
+                      {t('logistics.routes.driver')}{' '}
                       {r.driverEmployeeId && empMap.get(r.driverEmployeeId)
                         ? `${empMap.get(r.driverEmployeeId)!.firstName} ${empMap.get(r.driverEmployeeId)!.lastName}`
                         : r.driverName || '—'}
@@ -209,7 +216,7 @@ export const RoutesTab: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => openEdit(r)}
-                    title="Editar"
+                    title={t('logistics.common.edit')}
                   >
                     <Edit2 size={13} />
                   </Button>
@@ -218,7 +225,7 @@ export const RoutesTab: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => remove(r.id)}
-                    title="Eliminar"
+                    title={t('logistics.common.delete')}
                   >
                     <Trash2 size={13} />
                   </Button>
@@ -232,13 +239,13 @@ export const RoutesTab: React.FC = () => {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editing ? 'Editar ruta' : 'Nueva ruta'}
+        title={editing ? t('logistics.routes.editTitle') : t('logistics.routes.new')}
         maxWidth={editing ? 'lg' : '5xl'}
       >
         <div className="space-y-3 pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
-              label="Nombre"
+              label={t('logistics.routes.name')}
               requiredMark
               value={form.name || ''}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -247,7 +254,7 @@ export const RoutesTab: React.FC = () => {
                 null: se normaliza en los dos sentidos. Obligatorio, pero la
                 validación ya vive en `save()` (no hay <form> nativo). */}
             <DatePicker
-              label="Fecha prevista *"
+              label={t('logistics.routes.plannedDate')}
               value={(form.plannedDate || '').slice(0, 10) || null}
               onChange={(v) => setForm({ ...form, plannedDate: v ?? '' })}
               clearable
@@ -257,7 +264,7 @@ export const RoutesTab: React.FC = () => {
             {/* Empleados vienen del servidor y pueden ser muchos →
                 SearchableSelect (no tiene prop `label`). */}
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Conductor (empleado)
+              {t('logistics.routes.driverEmployee')}
             </label>
             <SearchableSelect
               options={employees
@@ -266,8 +273,9 @@ export const RoutesTab: React.FC = () => {
                   value: e.id,
                   label: `${e.firstName} ${e.lastName}`,
                   secondaryLabel:
-                    [e.code, !e.userId ? '⚠ sin usuario' : null].filter(Boolean).join(' · ') ||
-                    undefined,
+                    [e.code, !e.userId ? t('logistics.routes.noUser') : null]
+                      .filter(Boolean)
+                      .join(' · ') || undefined,
                 }))}
               value={form.driverEmployeeId || ''}
               onChange={(v) => {
@@ -279,19 +287,16 @@ export const RoutesTab: React.FC = () => {
                   driverPhone: emp?.phone || null,
                 });
               }}
-              placeholder="— sin asignar —"
+              placeholder={t('logistics.routes.unassigned')}
               clearable
             />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Aparecen todos los empleados activos. Los marcados con ⚠ no tienen cuenta de usuario y
-              no podrán loguearse en la app del repartidor.
-            </p>
+            <p className="text-[11px] text-slate-500 mt-1">{t('logistics.routes.driverHint')}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               {/* Vehículos del servidor → SearchableSelect (sin prop `label`). */}
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Vehículo
+                {t('logistics.routes.vehicle')}
               </label>
               <SearchableSelect
                 options={[
@@ -308,7 +313,7 @@ export const RoutesTab: React.FC = () => {
                         {
                           value: form.vehicleId as string,
                           label: (form.vehiclePlate || form.vehicleId) as string,
-                          secondaryLabel: '(archivado)',
+                          secondaryLabel: t('logistics.routes.archived'),
                         },
                       ]
                     : []),
@@ -332,18 +337,19 @@ export const RoutesTab: React.FC = () => {
                     return next;
                   });
                 }}
-                placeholder="— sin asignar —"
+                placeholder={t('logistics.routes.unassigned')}
                 clearable
               />
               {form.vehiclePlate && (
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Matrícula registrada: <span className="font-mono">{form.vehiclePlate}</span>
+                  {t('logistics.routes.registeredPlate')}{' '}
+                  <span className="font-mono">{form.vehiclePlate}</span>
                 </p>
               )}
             </div>
             {/* Lista estática y corta → Select (sí tiene prop `label`). */}
             <Select
-              label="Estado"
+              label={t('logistics.routes.statusLabel')}
               options={STATUS_OPTIONS}
               value={form.status || 'planned'}
               onChange={(v) => setForm({ ...form, status: v })}
@@ -352,7 +358,7 @@ export const RoutesTab: React.FC = () => {
           {!editing && (
             <div className="pt-4 border-t border-border-subtle">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-                Croquis — envíos sin ruta
+                {t('logistics.routes.sketch')}
               </div>
               <RouteMapPlanner
                 token={token || ''}
@@ -364,9 +370,11 @@ export const RoutesTab: React.FC = () => {
           )}
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Cancelar
+              {t('logistics.common.cancel')}
             </Button>
-            <Button onClick={save}>{editing ? 'Guardar' : 'Crear'}</Button>
+            <Button onClick={save}>
+              {editing ? t('logistics.common.save') : t('logistics.common.create')}
+            </Button>
           </div>
         </div>
       </Modal>

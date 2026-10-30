@@ -11,6 +11,7 @@
  * cada usuario ve y gestiona solo sus propias notificaciones.
  */
 
+import { tr } from '../i18n';
 import { Router } from 'express';
 import { NotificationService } from '../core/notifications/NotificationService';
 
@@ -33,7 +34,16 @@ router.get('/', async (req: any, res) => {
       unreadOnly,
       limit,
     });
-    res.json(list);
+    // Se guardan en español; se traducen al idioma de quien las lee.
+    res.json(
+      Array.isArray(list)
+        ? list.map((n: any) => ({
+            ...n,
+            title: n.title ? tr(req, n.title) : n.title,
+            body: n.body ? tr(req, n.body) : n.body,
+          }))
+        : list,
+    );
   } catch (e: any) {
     console.error('[Notifications.list]', e);
     res.status(500).json({ error: e?.message || 'Error' });

@@ -1,4 +1,5 @@
 import { apiClient } from '@/shared/http';
+import { t } from '@/i18n/i18n';
 import { ReaderUsbSession, selectReaderPort, type ReaderSerialApi } from './timeclockUsb';
 export interface FirmwareAsset {
   name: string;
@@ -51,8 +52,8 @@ export async function installReaderUsb(
     release.board !== 'esp32-devkit-v1-rc522' ||
     !/^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(release.version)
   )
-    throw new Error('Firmware incompatible con este lector.');
-  progress('Descargando y comprobando la versión…', 0);
+    throw new Error(t('hrTime.firmware.incompatible'));
+  progress(t('hrTime.firmware.downloading'), 0);
   const files = new Map<string, { asset: FirmwareAsset; bytes: Uint8Array }>();
   const layout = [
     ['firmware.bin', 65536, 1310720],
@@ -70,11 +71,11 @@ export async function installReaderUsb(
       !/^[a-f0-9]{64}$/.test(asset.sha256) ||
       !/^[a-f0-9]{32}$/.test(asset.md5)
     )
-      throw new Error('La versión publicada no tiene el formato esperado.');
+      throw new Error(t('hrTime.firmware.badFormat'));
     const { blob } = await apiClient.getBlob(`${base}/firmware/${release.version}/${name}`);
     const bytes = new Uint8Array(await blob.arrayBuffer());
     if (bytes.length !== asset.size || (await hash(bytes)) !== asset.sha256)
-      throw new Error('La descarga está incompleta o dañada. Vuelve a intentarlo.');
+      throw new Error(t('hrTime.firmware.badDownload'));
     files.set(name, { asset, bytes });
   }
   const { ESPLoader, Transport } = await import('esptool-js');
@@ -89,17 +90,14 @@ export async function installReaderUsb(
   });
   let flashed = false;
   try {
-    progress('Conectando con el ESP32. Si tarda, mantén BOOT hasta que empiece a escribir.', 0);
+    progress(t('hrTime.firmware.connecting'), 0);
     await loader.main();
-    if (loader.chip?.CHIP_NAME !== 'ESP32')
-      throw new Error('Este firmware solo admite ESP32 DevKit V1.');
-    progress('Comprobando que la configuración se puede conservar…', 0);
+    if (loader.chip?.CHIP_NAME !== 'ESP32') throw new Error(t('hrTime.firmware.onlyEsp32'));
+    progress(t('hrTime.firmware.checkingLayout'), 0);
     const partition = files.get('partitions.bin')!;
     const current = await loader.readFlash(0x8000, partition.asset.size);
     if ((await hash(current)) !== partition.asset.sha256)
-      throw new Error(
-        'La distribución de memoria de esta placa es diferente. No se ha escrito ni borrado nada.',
-      );
+      throw new Error(t('hrTime.firmware.layoutMismatch'));
     const names = ['firmware.bin', 'boot_app0.bin'];
     const total = names.reduce((sum, name) => sum + files.get(name)!.bytes.length, 0);
     let done = 0;
@@ -115,14 +113,14 @@ export async function installReaderUsb(
         calculateMD5Hash: () => asset.md5,
         reportProgress: (_index, written, size) =>
           progress(
-            'Instalando. No desconectes el cable USB.',
+            t('hrTime.firmware.installing'),
             Math.min(99, Math.round(((done + (bytes.length * written) / size) / total) * 100)),
           ),
       });
       done += bytes.length;
     }
     flashed = true;
-    progress('Firmware escrito y verificado. Reiniciando…', 99);
+    progress(t('hrTime.firmware.written'), 99);
     await loader.after('hard_reset');
   } finally {
     if (!flashed) await loader.after('hard_reset').catch(() => {});
@@ -132,11 +130,8 @@ export async function installReaderUsb(
   try {
     await session.open();
     const reply = await session.request('hello');
-    if (reply.firmware !== release.version)
-      throw new Error(
-        'La escritura terminó, pero no se ha confirmado el arranque de la nueva versión. Reinicia y comprueba el lector.',
-      );
-    progress(`Versión ${release.version} instalada y arrancada.`, 100);
+    if (reply.firmware !== release.version) throw new Error(t('hrTime.firmware.notConfirmed'));
+    progress(t('hrTime.firmware.done', { version: release.version }), 100);
   } finally {
     await session.close();
   }

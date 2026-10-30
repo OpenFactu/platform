@@ -1,0 +1,208 @@
+{
+  "settingsFields": {
+    "types": {
+      "text": {
+        "label": "Text",
+        "hint": "Any free text."
+      },
+      "integer": {
+        "label": "Integer",
+        "hint": "Whole numbers without decimals."
+      },
+      "decimal": {
+        "label": "Decimal number",
+        "hint": "Number with decimals (15,4)."
+      },
+      "currency": {
+        "label": "Currency",
+        "hint": "Amount with 4 decimals, formatted."
+      },
+      "percent": {
+        "label": "Percentage",
+        "hint": "Decimal with a % suffix."
+      },
+      "boolean": {
+        "label": "Yes / No",
+        "hint": "Binary checkbox."
+      },
+      "date": {
+        "label": "Date",
+        "hint": "A date (no time)."
+      },
+      "url": {
+        "label": "URL",
+        "hint": "http(s) link."
+      },
+      "email": {
+        "label": "Email",
+        "hint": "Valid email address."
+      },
+      "phone": {
+        "label": "Phone",
+        "hint": "Accepts +, digits, spaces and parentheses."
+      },
+      "color": {
+        "label": "Color",
+        "hint": "Color picker, stored as hex."
+      },
+      "enum": {
+        "label": "List (combobox)",
+        "hint": "Choose from predefined options."
+      },
+      "multiselect": {
+        "label": "Multi-select",
+        "hint": "Several options."
+      },
+      "file": {
+        "label": "File / image",
+        "hint": "URL or attachment id."
+      },
+      "json": {
+        "label": "JSON",
+        "hint": "Arbitrary structured data."
+      },
+      "reference": {
+        "label": "Master data reference",
+        "hint": "Selector that searches another table (e.g. partner, item)."
+      }
+    },
+    "widths": {
+      "full": "Full"
+    },
+    "kinds": {
+      "master": "Master",
+      "document": "Document"
+    },
+    "menu": {
+      "custom": "(Custom — new module at the end)",
+      "home": "Home",
+      "inventory": "Inventory",
+      "sales": "Sales",
+      "purchases": "Purchasing",
+      "accounting": "Accounting",
+      "hr": "Human resources",
+      "reports": "Reports",
+      "configuration": "Settings"
+    },
+    "visibleIn": {
+      "form": "Form",
+      "detail": "Detail",
+      "list": "List",
+      "pdf": "PDF"
+    },
+    "requiredFields": "Table, name and type are required",
+    "optionRequired": "Add at least one option.",
+    "refTableRequired": "Choose the target table for the reference field.",
+    "saveError": "Error saving",
+    "fieldUpdated": "Field updated",
+    "fieldCreated": "Field \"{name}\" created",
+    "deleteFieldTitle": "Delete field",
+    "deleteFieldMessage": "\"{field}\" will be deleted from {table} and the data already stored in that column will be lost.",
+    "delete": "Delete",
+    "deleteError": "Error deleting",
+    "fieldDeleted": "Field deleted",
+    "cloneTitle": "Clone \"{name}\"",
+    "cloneSubtitle": "Choose the target table. The field will be created there with the same definition.",
+    "cloneError": "Error cloning",
+    "cloned": "Field cloned",
+    "exportError": "Error exporting",
+    "importError": "Error importing",
+    "imported": "Imported {created} fields ({skipped} skipped)",
+    "invalidJson": "Invalid JSON",
+    "nameRequired": "Name is required",
+    "saveTableError": "Error saving table",
+    "tableUpdated": "Table updated",
+    "tableCreated": "Table \"{name}\" created",
+    "deleteTable": "Delete table",
+    "deleteTableMessage": "\"{name}\" will be deleted with all its records and fields. This cannot be undone.",
+    "tableDeleted": "Table deleted",
+    "error": "Error",
+    "packInstalled": "{count} fields installed",
+    "title": "Custom fields",
+    "subtitle": "Add your own fields to any table without writing code. They appear in forms, detail views and PDFs.",
+    "newTable": "New table",
+    "packs": "Packs",
+    "export": "Export",
+    "import": "Import",
+    "newField": "New field",
+    "userTables": "User tables",
+    "tableCount_one": "{count} table",
+    "tableCount_other": "{count} tables",
+    "noTablesTitle": "You haven't created any custom tables yet",
+    "noTablesHint": "Create one to get a new entity with a list, a form and a menu entry.",
+    "menuValue": "menu: {module}",
+    "fieldCount_one": "{count} field",
+    "fieldCount_other": "{count} fields",
+    "addField": "Add field",
+    "open": "Open",
+    "edit": "Edit",
+    "filterPlaceholder": "Filter by table, name or label...",
+    "noFieldsTitle": "You haven't created any custom fields yet",
+    "noFieldsHint": "Create a custom one or install a pack of ready-made fields.",
+    "required": "Required",
+    "readOnly": "Read-only",
+    "inList": "In list",
+    "cloneToTable": "Clone to another table",
+    "editField": "Edit field",
+    "newCustomField": "New custom field",
+    "fieldModalSubtitle": "It will be created as a column in the tenant schema.",
+    "sections": {
+      "identity": "Identity",
+      "options": "Options",
+      "reference": "Reference",
+      "appearance": "Appearance",
+      "validation": "Validation",
+      "permissions": "Permissions"
+    },
+    "table": "Table",
+    "chooseOne": "(choose one)",
+    "technicalName": "Technical name",
+    "visibleLabel": "Display label",
+    "type": "Type",
+    "optionsHelp": "One line per option — format ",
+    "optionsPlaceholder": "low|Low\nnormal|Normal\nhigh|High",
+    "targetTable": "Target table",
+    "displayField": "Field to display",
+    "section": "Section (optional)",
+    "sectionPlaceholder": "e.g. Logistics",
+    "width": "Width",
+    "order": "Order",
+    "placeholder": "Placeholder",
+    "defaultValue": "Default value",
+    "optional": "(optional)",
+    "helpText": "Help text",
+    "helpTextPlaceholder": "Short description shown below the input",
+    "visibleInLabel": "Visible in",
+    "requiredOnSave": "Required on save",
+    "listColumn": "List column",
+    "min": "Minimum",
+    "max": "Maximum",
+    "noLimit": "no limit",
+    "minLength": "Min. length",
+    "maxLength": "Max. length",
+    "pattern": "Pattern (regex)",
+    "unique": "Unique per tenant",
+    "canRead": "Can read (CSV of roles: {roles})",
+    "canWrite": "Can write",
+    "permissionsHelp": "Empty = all roles. If you only set \"ADMIN\" for writing, a USER will not be able to modify it (any value they send is discarded).",
+    "saveChanges": "Save changes",
+    "createField": "Create field",
+    "packsTitle": "Predefined field packs",
+    "packsSubtitle": "Add several related fields at once.",
+    "packFields": "{count} fields:",
+    "install": "Install",
+    "editTable": "Edit table",
+    "editTableSubtitle": "You cannot change the technical name. To move it to another name, create a new one and migrate the data.",
+    "newTableSubtitle": "Create a new entity with an auto-generated list and form. Then add its fields from this same page.",
+    "tableNamePlaceholder": "visits",
+    "tableLabelPlaceholder": "Sales visits",
+    "tableType": "Table type",
+    "icon": "Icon (lucide-react)",
+    "menuModule": "Menu module",
+    "description": "Description",
+    "optionalCap": "Optional",
+    "createTable": "Create table",
+    "cancel": "Cancel",
+    "clone": "Clone"
+  }
+}

@@ -17,11 +17,13 @@ import {
   SearchableSelect,
   useToast,
   usePopup,
+  Progress,
 } from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import { Check, X, Layers3, Package, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 import type { PickingTask } from '../domain/prepTask';
 import type { BatchOrSerial, Item } from '@/modules/inventory/domain/item';
 
@@ -43,6 +45,7 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
   const { token, user } = useAuth();
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
   const [tasks, setTasks] = useState<PickingTask[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,15 +93,20 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
     try {
       await prepTasksApi.update(id, patch);
       // Confirmación visible al usuario según la acción.
-      if (patch.status === 'missing') toast.success('Marcada como no disponible');
-      else if (patch.status === 'done') toast.success('Tarea completada');
-      else if ('pickedQty' in patch) toast.success('Cantidad guardada');
+      if (patch.status === 'missing') toast.success(t('logistics.picking.markedMissing'));
+      else if (patch.status === 'done') toast.success(t('logistics.picking.taskDone'));
+      else if ('pickedQty' in patch) toast.success(t('logistics.picking.qtySaved'));
       await load();
     } catch (e) {
       console.error('[PickingTasks] PATCH exception', e);
       const msg = e instanceof ApiError ? (e.body as any)?.error : undefined;
       const status = e instanceof ApiError ? e.status : undefined;
-      toast.error(msg || (status ? `Error ${status} al actualizar la tarea` : 'Error de red'));
+      toast.error(
+        msg ||
+          (status
+            ? t('logistics.picking.updateError', { status })
+            : t('logistics.picking.networkError')),
+      );
       return;
     }
     if (onAllDone) {
@@ -130,21 +138,24 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
 
   const resync = async () => {
     const ok = await popup.confirm({
-      title: 'Resincronizar tareas',
-      message:
-        'Las tareas pendientes se regeneran con los lotes/series actuales del albarán. Las ya pickeadas se conservan.',
-      confirmLabel: 'Resincronizar',
+      title: t('logistics.picking.resyncTitle'),
+      message: t('logistics.picking.resyncMessage'),
+      confirmLabel: t('logistics.picking.resyncConfirm'),
     });
     if (!ok) return;
     try {
       const d = await prepTasksApi.resyncShipment(shipmentId);
       toast.success(
-        `Resincronizado — ${d.added} añadidas, ${d.deleted} eliminadas, ${d.preserved} preservadas`,
+        t('logistics.picking.resynced', {
+          added: d.added,
+          deleted: d.deleted,
+          preserved: d.preserved,
+        }),
       );
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error al resincronizar');
+      toast.error(msg || t('logistics.picking.resyncError'));
     }
   };
 
@@ -153,7 +164,7 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
       <div>
         <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
           <span>
-            Progreso: <b>{done}</b> / {total}
+            {t('logistics.picking.progress')} <b>{done}</b> / {total}
           </span>
           <div className="flex items-center gap-2">
             <Button
@@ -161,37 +172,35 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
               variant="outline"
               size="sm"
               onClick={resync}
-              title="Regenerar tareas pendientes con los lotes/series actuales del albarán"
+              title={t('logistics.picking.syncHint')}
             >
               <RefreshCw size={10} />
-              Sincronizar
+              {t('logistics.picking.sync')}
             </Button>
             <span>{progress}%</span>
           </div>
         </div>
-        <div className="h-2 bg-bg-muted rounded overflow-hidden">
-          <div className="h-full bg-emerald-500 transition-all" style={{ width: `${progress}%` }} />
-        </div>
+        <Progress value={progress} variant="success" size="sm" />
       </div>
 
       {tasks.length === 0 ? (
         <Card bodyClassName="py-8 text-center text-sm text-slate-500">
-          Sin tareas para este envío.
+          {t('logistics.picking.empty')}
         </Card>
       ) : (
         <Card bodyClassName="p-0">
           <ul>
-            {tasks.map((t) => {
-              const it = t.itemId ? itemMap.get(t.itemId) : null;
+            {tasks.map((task) => {
+              const it = task.itemId ? itemMap.get(task.itemId) : null;
               const manageBy = it?.manageBy;
-              const hasBatch = !!t.batchNumber;
+              const hasBatch = !!task.batchNumber;
               const BatchIcon = manageBy === 'S' ? Layers3 : Package;
               return (
-                <li key={t.id} className="px-4 py-2 border-b border-border-subtle last:border-0">
+                <li key={task.id} className="px-4 py-2 border-b border-border-subtle last:border-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant={STATUS_BADGE[t.status] || 'neutral'}>{t.status}</Badge>
+                    <Badge variant={STATUS_BADGE[task.status] || 'neutral'}>{task.status}</Badge>
                     <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
-                      {it?.code || t.itemId || '—'}
+                      {it?.code || task.itemId || '—'}
                     </code>
                     <span className="text-sm font-medium text-fg-default min-w-0 truncate">
                       {it?.name || '—'}
@@ -201,28 +210,28 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                         className="inline-flex items-center gap-1.5 h-6 pl-1.5 pr-2 rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-[10px] font-black uppercase tracking-[0.1em]"
                         title={
                           manageBy === 'S'
-                            ? 'Serie asignada en el albarán'
-                            : 'Lote asignado en el albarán'
+                            ? t('logistics.picking.serialAssigned')
+                            : t('logistics.picking.batchAssigned')
                         }
                       >
                         <BatchIcon size={11} />
                         <span className="font-mono normal-case tracking-normal">
-                          {t.batchNumber}
+                          {task.batchNumber}
                         </span>
                       </span>
                     )}
                     <span className="flex-1" />
                     <span className="text-[11px] text-slate-500">
-                      Pedido: <b>{t.requestedQty}</b>
+                      {t('logistics.picking.requested')} <b>{task.requestedQty}</b>
                     </span>
                     {/* `pickedQty` ya es number en PickingTask (el servidor lo
                         devuelve numérico), así que no hace falta convertir; con
                         emptyValue="zero" vaciar el campo deja 0 en vez de null. */}
                     <NumberInput
-                      value={t.pickedQty}
+                      value={task.pickedQty}
                       onChange={(v) =>
                         setTasks((xs) =>
-                          xs.map((x) => (x.id === t.id ? { ...x, pickedQty: v ?? 0 } : x)),
+                          xs.map((x) => (x.id === task.id ? { ...x, pickedQty: v ?? 0 } : x)),
                         )
                       }
                       precision={2}
@@ -236,17 +245,19 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                       type="button"
                       variant="secondary"
                       size="sm"
-                      onClick={() => patchTask(t.id, { pickedQty: t.pickedQty })}
-                      title="Guardar cantidad"
+                      onClick={() => patchTask(task.id, { pickedQty: task.pickedQty })}
+                      title={t('logistics.picking.saveQty')}
                     >
-                      Guardar
+                      {t('logistics.common.save')}
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => patchTask(t.id, { status: 'done', pickedQty: t.requestedQty })}
-                      title="Completado"
+                      onClick={() =>
+                        patchTask(task.id, { status: 'done', pickedQty: task.requestedQty })
+                      }
+                      title={t('logistics.picking.completed')}
                     >
                       <Check size={14} />
                     </Button>
@@ -254,8 +265,8 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => patchTask(t.id, { status: 'missing' })}
-                      title="No disponible"
+                      onClick={() => patchTask(task.id, { status: 'missing' })}
+                      title={t('logistics.picking.missing')}
                     >
                       <X size={14} />
                     </Button>
@@ -271,48 +282,57 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                     {(manageBy === 'B' || manageBy === 'S') &&
                       (() => {
                         const key =
-                          t.itemId && t.warehouseId ? `${t.itemId}::${t.warehouseId}` : '';
+                          task.itemId && task.warehouseId
+                            ? `${task.itemId}::${task.warehouseId}`
+                            : '';
                         const available = batchOptionsByKey.get(key) || [];
                         const options = available.map((b) => ({
                           value: b.batchNum,
                           label: b.batchNum,
-                          secondaryLabel: `${b.quantity} disp.`,
+                          secondaryLabel: t('logistics.picking.available', { qty: b.quantity }),
                         }));
                         // El lote ya asignado debe seguir siendo seleccionable
                         // aunque su stock "disponible" salga en 0 en la
                         // consulta fresca (ya se descontó al crear el
                         // albarán) — si no, desaparecería del desplegable.
-                        if (t.batchNumber && !options.some((o) => o.value === t.batchNumber)) {
+                        if (
+                          task.batchNumber &&
+                          !options.some((o) => o.value === task.batchNumber)
+                        ) {
                           options.unshift({
-                            value: t.batchNumber,
-                            label: t.batchNumber,
-                            secondaryLabel: 'actual',
+                            value: task.batchNumber,
+                            label: task.batchNumber,
+                            secondaryLabel: t('logistics.picking.current'),
                           });
                         }
                         return (
                           <SearchableSelect
                             options={options}
-                            value={t.batchNumber || ''}
+                            value={task.batchNumber || ''}
                             onChange={(v) => {
                               setTasks((xs) =>
-                                xs.map((x) => (x.id === t.id ? { ...x, batchNumber: v } : x)),
+                                xs.map((x) => (x.id === task.id ? { ...x, batchNumber: v } : x)),
                               );
-                              if (v !== t.batchNumber) patchTask(t.id, { batchNumber: v });
+                              if (v !== task.batchNumber) patchTask(task.id, { batchNumber: v });
                             }}
-                            placeholder={manageBy === 'S' ? 'Nº de serie' : 'Lote'}
+                            placeholder={
+                              manageBy === 'S'
+                                ? t('logistics.picking.serialNumber')
+                                : t('logistics.picking.batch')
+                            }
                             className="w-48 text-xs"
                           />
                         );
                       })()}
                     <Input
-                      placeholder="Notas"
-                      value={t.notes || ''}
+                      placeholder={t('logistics.picking.notes')}
+                      value={task.notes || ''}
                       onChange={(e) =>
                         setTasks((xs) =>
-                          xs.map((x) => (x.id === t.id ? { ...x, notes: e.target.value } : x)),
+                          xs.map((x) => (x.id === task.id ? { ...x, notes: e.target.value } : x)),
                         )
                       }
-                      onBlur={() => patchTask(t.id, { notes: t.notes })}
+                      onBlur={() => patchTask(task.id, { notes: task.notes })}
                       inputSize="sm"
                       containerClassName="flex-1"
                     />

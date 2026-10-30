@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { SearchableSelect } from '@openfactu/ui';
 import { useGeo, type GeoRow } from '../../hooks/useGeo';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   subRegionId: string;
@@ -20,6 +21,7 @@ export const LocalitySelect: React.FC<Props> = ({
   disabled,
 }) => {
   const { searchLocalities } = useGeo();
+  const { t } = useI18n();
   const [rows, setRows] = useState<GeoRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -46,7 +48,9 @@ export const LocalitySelect: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      <label className="text-[12px] font-medium text-fg-body">{label || 'Municipio'}</label>
+      <label className="text-[12px] font-medium text-fg-body">
+        {label || t('app.geo.locality')}
+      </label>
       <SearchableSelect
         options={options}
         value={value}
@@ -56,10 +60,10 @@ export const LocalitySelect: React.FC<Props> = ({
         }}
         placeholder={
           loading
-            ? 'Cargando...'
+            ? t('app.geo.loading')
             : subRegionId
-              ? 'Buscar municipio...'
-              : 'Selecciona antes la provincia'
+              ? t('app.geo.searchLocality')
+              : t('app.geo.selectProvinceFirst')
         }
         disabled={disabled || !subRegionId || loading}
       />

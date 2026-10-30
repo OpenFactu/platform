@@ -18,6 +18,7 @@ import { useAuth } from '@/context/AuthContext';
 import { PickingTasksPanel } from './PickingTasksPanel';
 import { RoutePicker } from './RoutePicker';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 import type { Route } from '../domain/route';
 import type { Shipment } from '../domain/shipment';
 import type { StagingArea } from '../domain/stagingArea';
@@ -37,22 +38,23 @@ const PREP_BADGE: Record<string, BadgeProps['variant']> = {
 };
 
 const PREP_LABEL: Record<string, string> = {
-  draft: 'Borrador',
-  picking: 'Preparando',
-  packed: 'Empaquetado',
-  ready: 'Listo',
-  dispatched: 'Despachado',
-  in_transit: 'En tránsito',
-  delivered: 'Entregado',
-  receiving: 'Recepcionando',
-  received: 'Recibido',
-  cancelled: 'Cancelado',
-  exception: 'Incidencia',
+  draft: 'logistics.status.prep.draft',
+  picking: 'logistics.status.prep.picking',
+  packed: 'logistics.status.prep.packed',
+  ready: 'logistics.status.prep.ready',
+  dispatched: 'logistics.status.prep.dispatched',
+  in_transit: 'logistics.status.prep.in_transit',
+  delivered: 'logistics.status.prep.delivered',
+  receiving: 'logistics.status.prep.receiving',
+  received: 'logistics.status.prep.received',
+  cancelled: 'logistics.status.prep.cancelled',
+  exception: 'logistics.status.prep.exception',
 };
 
 export const PreparationTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [stagingAreas, setStagingAreas] = useState<{ id: string; code: string; name: string }[]>(
@@ -93,22 +95,22 @@ export const PreparationTab: React.FC = () => {
   const markReady = async (sh: Shipment) => {
     try {
       await shipmentsApi.ready(sh.id);
-      toast.success('Marcado como listo');
+      toast.success(t('logistics.preparation.markedReady'));
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error');
+      toast.error(msg || t('logistics.common.error'));
     }
   };
 
   const receive = async (sh: Shipment) => {
     try {
       await shipmentsApi.receive(sh.id);
-      toast.success('Recepción confirmada');
+      toast.success(t('logistics.preparation.received'));
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error');
+      toast.error(msg || t('logistics.common.error'));
     }
   };
 
@@ -116,13 +118,13 @@ export const PreparationTab: React.FC = () => {
     if (!showDispatch) return;
     try {
       await shipmentsApi.dispatch(showDispatch.id, { routeId: dispatchRouteId || null });
-      toast.success('Despachado');
+      toast.success(t('logistics.preparation.dispatched'));
       setShowDispatch(null);
       setDispatchRouteId('');
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error');
+      toast.error(msg || t('logistics.common.error'));
     }
   };
 
@@ -132,14 +134,20 @@ export const PreparationTab: React.FC = () => {
       const d = await shipmentsApi.toStaging(showStaging.id, { stagingAreaId });
       const area = stagingAreas.find((a) => a.id === stagingAreaId);
       toast.success(
-        `Movido a ${area?.name || 'acopio'} · ${d.packagesCreated > 0 ? 'paquete creado' : `${d.packagesAffected} paquete(s)`}`,
+        t('logistics.preparation.movedTo', {
+          name: area?.name || t('logistics.preparation.areaFallback'),
+          detail:
+            d.packagesCreated > 0
+              ? t('logistics.preparation.packageCreated')
+              : t('logistics.preparation.packagesAffected', { count: d.packagesAffected }),
+        }),
       );
       setShowStaging(null);
       setStagingAreaId('');
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error');
+      toast.error(msg || t('logistics.common.error'));
     }
   };
 
@@ -151,8 +159,8 @@ export const PreparationTab: React.FC = () => {
         </div>
       ) : activeShipments.length === 0 ? (
         <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-          Sin envíos en preparación. Desde un albarán de venta o compra pulsa <b>Preparar</b> para
-          empezar.
+          {t('logistics.preparation.emptyBefore')} <b>{t('logistics.preparation.emptyAction')}</b>{' '}
+          {t('logistics.preparation.emptyAfter')}
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -164,16 +172,18 @@ export const PreparationTab: React.FC = () => {
               >
                 <div className="flex items-start gap-2 md:flex-1 md:min-w-0">
                   <Badge variant={PREP_BADGE[sh.preparationStatus] || 'neutral'}>
-                    {PREP_LABEL[sh.preparationStatus] || sh.preparationStatus}
+                    {PREP_LABEL[sh.preparationStatus]
+                      ? t(PREP_LABEL[sh.preparationStatus])
+                      : sh.preparationStatus}
                   </Badge>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm text-fg-default">
                         {sh.sourceDocType === 'SDN'
-                          ? 'Venta'
+                          ? t('logistics.preparation.sale')
                           : sh.sourceDocType === 'PDN'
-                            ? 'Compra'
-                            : 'Envío'}
+                            ? t('logistics.preparation.purchase')
+                            : t('logistics.preparation.shipment')}
                       </span>
                       <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                         {sh.id.slice(0, 8)}
@@ -193,7 +203,7 @@ export const PreparationTab: React.FC = () => {
                     onClick={() => setSelected(sh)}
                     className="!px-2 !py-1 flex items-center gap-1"
                   >
-                    <Box size={13} /> Tareas
+                    <Box size={13} /> {t('logistics.preparation.tasks')}
                     <ChevronRight size={13} />
                   </Button>
 
@@ -202,9 +212,9 @@ export const PreparationTab: React.FC = () => {
                       variant="secondary"
                       onClick={() => setShowStaging(sh)}
                       className="!px-2 !py-1 flex items-center gap-1"
-                      title="Mover a un acopio"
+                      title={t('logistics.preparation.moveToArea')}
                     >
-                      <Warehouse size={13} /> A acopio
+                      <Warehouse size={13} /> {t('logistics.preparation.toArea')}
                     </Button>
                   )}
                   {sh.preparationStatus === 'packed' && (
@@ -212,7 +222,7 @@ export const PreparationTab: React.FC = () => {
                       onClick={() => markReady(sh)}
                       className="!px-2 !py-1 flex items-center gap-1"
                     >
-                      <PackageIcon size={13} /> Listo
+                      <PackageIcon size={13} /> {t('logistics.preparation.ready')}
                     </Button>
                   )}
                   {sh.preparationStatus === 'ready' && (
@@ -220,7 +230,7 @@ export const PreparationTab: React.FC = () => {
                       onClick={() => setShowDispatch(sh)}
                       className="!px-2 !py-1 flex items-center gap-1"
                     >
-                      <Send size={13} /> Despachar
+                      <Send size={13} /> {t('logistics.preparation.dispatch')}
                     </Button>
                   )}
                   {sh.preparationStatus === 'receiving' && (
@@ -228,7 +238,7 @@ export const PreparationTab: React.FC = () => {
                       onClick={() => receive(sh)}
                       className="!px-2 !py-1 flex items-center gap-1"
                     >
-                      <CheckCircle2 size={13} /> Recibir
+                      <CheckCircle2 size={13} /> {t('logistics.preparation.receive')}
                     </Button>
                   )}
                 </div>
@@ -244,10 +254,10 @@ export const PreparationTab: React.FC = () => {
           setSelected(null);
           load();
         }}
-        title="Tareas de preparación"
+        title={t('logistics.preparation.tasksTitle')}
         subtitle={
           selected
-            ? `${selected.sourceDocType || 'Envío'} · ${selected.preparationStatus}`
+            ? `${selected.sourceDocType || t('logistics.preparation.shipment')} · ${selected.preparationStatus}`
             : undefined
         }
         maxWidth="lg"
@@ -257,7 +267,7 @@ export const PreparationTab: React.FC = () => {
             <PickingTasksPanel
               shipmentId={selected.id}
               onAllDone={() => {
-                toast.success('Todas las tareas completadas — el envío pasa a packed');
+                toast.success(t('logistics.preparation.allTasksDone'));
                 load();
               }}
             />
@@ -268,14 +278,14 @@ export const PreparationTab: React.FC = () => {
       <Modal
         isOpen={!!showStaging}
         onClose={() => setShowStaging(null)}
-        title="Mover envío a un acopio"
-        subtitle="Si el envío ya tiene paquetes, se moverán todos. Si no, se crea un paquete nuevo con las tareas completadas."
+        title={t('logistics.preparation.stagingTitle')}
+        subtitle={t('logistics.preparation.stagingSubtitle')}
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Acopio destino
+              {t('logistics.preparation.targetArea')}
             </label>
             {/* Acopios vienen del servidor → SearchableSelect (no tiene prop
                 `label`, se conserva el <label> suelto). */}
@@ -287,21 +297,21 @@ export const PreparationTab: React.FC = () => {
               }))}
               value={stagingAreaId}
               onChange={setStagingAreaId}
-              placeholder="— seleccionar —"
+              placeholder={t('logistics.common.selectPlaceholder')}
               clearable
             />
             {stagingAreas.length === 0 && (
               <p className="text-[11px] text-amber-600 mt-1">
-                No hay acopios. Crea uno primero en Logística → Acopios.
+                {t('logistics.preparation.noAreas')}
               </p>
             )}
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowStaging(null)}>
-              Cancelar
+              {t('logistics.common.cancel')}
             </Button>
             <Button onClick={sendToStaging} disabled={!stagingAreaId}>
-              Mover a acopio
+              {t('logistics.preparation.moveToAreaButton')}
             </Button>
           </div>
         </div>
@@ -310,14 +320,14 @@ export const PreparationTab: React.FC = () => {
       <Modal
         isOpen={!!showDispatch}
         onClose={() => setShowDispatch(null)}
-        title="Despachar envío"
-        subtitle="Se asignará a la ruta elegida como una parada nueva."
+        title={t('logistics.preparation.dispatchTitle')}
+        subtitle={t('logistics.preparation.dispatchSubtitle')}
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Ruta
+              {t('logistics.preparation.route')}
             </label>
             <RoutePicker
               value={dispatchRouteId}
@@ -325,14 +335,14 @@ export const PreparationTab: React.FC = () => {
               routes={routes}
               filterStatuses={['planned', 'active']}
               allowEmpty
-              placeholder="— sin asignar (solo marcar despachado) —"
+              placeholder={t('logistics.preparation.unassignedRoute')}
             />
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowDispatch(null)}>
-              Cancelar
+              {t('logistics.common.cancel')}
             </Button>
-            <Button onClick={dispatch}>Despachar</Button>
+            <Button onClick={dispatch}>{t('logistics.preparation.dispatch')}</Button>
           </div>
         </div>
       </Modal>

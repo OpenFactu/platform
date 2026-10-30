@@ -6,17 +6,20 @@ import type { TableColumn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { PiggyBank, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatNumber } from '@/i18n/format';
 
 // Dimensiones de agrupación, en un solo sitio: las `options` del desplegable se
 // derivan de aquí.
 const GROUP_BY_OPTIONS = [
-  { value: 'employee', label: 'Empleado' },
-  { value: 'department', label: 'Departamento' },
-  { value: 'costCenter', label: 'Centro de coste' },
-  { value: 'project', label: 'Proyecto' },
+  { value: 'employee', label: 'hr.common.employee' },
+  { value: 'department', label: 'hr.common.department' },
+  { value: 'costCenter', label: 'hr.employeeFields.costCenter' },
+  { value: 'project', label: 'hrPayroll.laborCost.project' },
 ];
 
 export const LaborCost: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const today = new Date();
   const [filters, setFilters] = useState({
@@ -51,18 +54,18 @@ export const LaborCost: React.FC = () => {
   const exportExcel = () =>
     exportToXlsx({
       filename: `coste_laboral_${filters.from}_${filters.to}`,
-      sheetName: 'Coste laboral',
-      title: `Coste laboral · ${filters.from} a ${filters.to}`,
+      sheetName: t('hrPayroll.laborCost.title'),
+      title: t('hrPayroll.laborCost.exportTitle', { from: filters.from, to: filters.to }),
       columns: [
-        { key: 'label', label: 'Grupo', width: 32 },
-        { key: 'gross', label: 'Bruto', type: 'currency' },
-        { key: 'ssEr', label: 'SS Empresa', type: 'currency' },
-        { key: 'total', label: 'Total', type: 'currency' },
-        { key: 'count', label: 'Nº nóminas', type: 'integer' },
+        { key: 'label', label: t('hrPayroll.laborCost.group'), width: 32 },
+        { key: 'gross', label: t('hrPayroll.payrolls.gross'), type: 'currency' },
+        { key: 'ssEr', label: t('hrPayroll.payrolls.ssEmployer'), type: 'currency' },
+        { key: 'total', label: t('hr.common.total'), type: 'currency' },
+        { key: 'count', label: t('hrPayroll.laborCost.count'), type: 'integer' },
       ],
       rows,
       totals: {
-        label: 'TOTAL',
+        label: t('hr.common.total').toUpperCase(),
         gross: totals.gross,
         ssEr: totals.ssEr,
         total: totals.total,
@@ -71,45 +74,45 @@ export const LaborCost: React.FC = () => {
     });
 
   const fmt = (n: number) =>
-    n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    formatNumber(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const columns: TableColumn<Row>[] = [
     {
-      header: 'Grupo',
+      header: t('hrPayroll.laborCost.group'),
       accessor: 'label',
       sortable: true,
       primary: true,
     },
     {
-      header: 'Bruto',
+      header: t('hrPayroll.payrolls.gross'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => r.gross,
       cell: (r) => <span className="tabular-nums">{fmt(r.gross)} €</span>,
     },
     {
-      header: 'SS Empresa',
+      header: t('hrPayroll.payrolls.ssEmployer'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => r.ssEr,
       cell: (r) => <span className="tabular-nums">{fmt(r.ssEr)} €</span>,
     },
     {
-      header: 'Coste total',
+      header: t('hrPayroll.laborCost.totalCost'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => r.total,
       cell: (r) => <span className="tabular-nums font-bold">{fmt(r.total)} €</span>,
     },
     {
-      header: 'Nº nóminas',
+      header: t('hrPayroll.laborCost.count'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => r.count,
       cell: (r) => <span className="tabular-nums">{r.count}</span>,
     },
     {
-      header: '% del total',
+      header: t('hrPayroll.laborCost.pctTotal'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => (totals.total > 0 ? r.total / totals.total : 0),
@@ -124,13 +127,13 @@ export const LaborCost: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-5">
       <PageHeader
-        title="Coste laboral"
-        subtitle="Bruto + SS empresa, agrupado por dimensión. Datos provenientes de las nóminas aprobadas y sus líneas en el rango."
+        title={t('hrPayroll.laborCost.title')}
+        subtitle={t('hrPayroll.laborCost.subtitle')}
         icon={<PiggyBank size={18} />}
         size="lg"
         actions={
           <Button type="button" size="sm" variant="secondary" onClick={exportExcel}>
-            <Download size={14} /> Exportar Excel
+            <Download size={14} /> {t('hrTime.timeclock.exportExcel')}
           </Button>
         }
       />
@@ -140,23 +143,24 @@ export const LaborCost: React.FC = () => {
           {/* El rango se guarda como '' cuando se vacía, igual que hacía el
               <input type="date">. */}
           <DatePicker
-            label="Desde"
+            label={t('hr.common.from')}
             value={filters.from || null}
             onChange={(v) => setFilters({ ...filters, from: v ?? '' })}
           />
           <DatePicker
-            label="Hasta"
+            label={t('hr.common.to')}
             value={filters.to || null}
             onChange={(v) => setFilters({ ...filters, to: v ?? '' })}
           />
           <Select
-            label="Agrupar por"
-            options={GROUP_BY_OPTIONS}
+            label={t('hrPayroll.laborCost.groupBy')}
+            options={GROUP_BY_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
             value={filters.groupBy}
             onChange={(v) => setFilters({ ...filters, groupBy: v as typeof filters.groupBy })}
           />
           <div className="text-xs text-slate-500">
-            <span className="font-bold text-fg-body">{rows.length}</span> grupos
+            <span className="font-bold text-fg-body">{rows.length}</span>{' '}
+            {t('hrPayroll.laborCost.groups')}
           </div>
         </div>
       </Card>
@@ -164,19 +168,19 @@ export const LaborCost: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="rounded-lg border-2 border-emerald-300 bg-bg-card p-4">
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
-            Bruto pagado
+            {t('hrPayroll.laborCost.grossPaid')}
           </div>
           <div className="text-2xl font-black tabular-nums mt-1">{fmt(totals.gross)} €</div>
         </div>
         <div className="rounded-lg border-2 border-indigo-300 bg-bg-card p-4">
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
-            SS a cargo empresa
+            {t('hrPayroll.laborCost.ssEmployer')}
           </div>
           <div className="text-2xl font-black tabular-nums mt-1">{fmt(totals.ssEr)} €</div>
         </div>
         <div className="rounded-lg border-2 border-rose-300 bg-bg-card p-4">
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
-            Coste total
+            {t('hrPayroll.laborCost.totalCost')}
           </div>
           <div className="text-2xl font-black tabular-nums mt-1 text-rose-600">
             {fmt(totals.total)} €
@@ -191,7 +195,7 @@ export const LaborCost: React.FC = () => {
           data={rows}
           isLoading={loading}
           rowKey={(r) => r.key}
-          emptyMessage="No hay nóminas aprobadas en el rango seleccionado."
+          emptyMessage={t('hrPayroll.laborCost.empty')}
         />
       </Card>
     </div>

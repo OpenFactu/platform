@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Button, FloatingActionButton, Tooltip, type FloatingAction } from '@openfactu/ui';
 import { Plus, Save } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   /** Alta (icono +) o edición (disquete). */
@@ -46,6 +47,7 @@ export const FloatingSaveButton: React.FC<Props> = ({ isNew, label, saving, acti
   const anchor = useRef<HTMLSpanElement>(null);
   const withMenu = !!actions?.length;
   const SaveIcon = isNew ? Plus : Save;
+  const { t } = useI18n();
 
   return (
     <>
@@ -70,7 +72,7 @@ export const FloatingSaveButton: React.FC<Props> = ({ isNew, label, saving, acti
           <FloatingActionButton
             className="md:hidden"
             style={{ right: '1rem', bottom: 'calc(80px + 1.25rem + env(safe-area-inset-bottom))' }}
-            label="Acciones"
+            label={t('app.common.actions')}
             disabled={saving}
             actions={[
               {

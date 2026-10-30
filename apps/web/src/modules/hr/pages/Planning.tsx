@@ -27,13 +27,24 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate, formatTime } from '@/i18n/format';
 
-const DAY_LABEL = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+// Claves de i18n (lunes primero); se traducen al pintar.
+const DAY_LABEL = [
+  'hrTime.days.mon',
+  'hrTime.days.tue',
+  'hrTime.days.wed',
+  'hrTime.days.thu',
+  'hrTime.days.fri',
+  'hrTime.days.sat',
+  'hrTime.days.sun',
+];
 
 // Amplitud del calendario. Lo que cambia es la vista completa, no un filtro.
 const VIEW_TABS = [
-  { key: 'week', label: 'Semana' },
-  { key: 'month', label: 'Mes (5 sem)' },
+  { key: 'week', label: 'hrTime.planning.viewWeek' },
+  { key: 'month', label: 'hrTime.planning.viewMonth' },
 ];
 
 function startOfWeek(d: Date): Date {
@@ -54,7 +65,7 @@ function ymd(d: Date): string {
 function rangeLabel(start: Date, days: number): string {
   const end = new Date(start);
   end.setDate(end.getDate() + days - 1);
-  const fmt = (d: Date) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  const fmt = (d: Date) => formatDate(d, { day: 'numeric', month: 'short' });
   return `${fmt(start)} – ${fmt(end)} ${end.getFullYear()}`;
 }
 
@@ -65,7 +76,7 @@ function hoursOf(a: ShiftAssignment): number {
 }
 
 function timeOf(iso: string): string {
-  return new Date(iso).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  return formatTime(iso, { hour: '2-digit', minute: '2-digit' });
 }
 
 const STATUS_TINT: Record<string, string> = {
@@ -99,6 +110,7 @@ const EMPTY_FORM: ShiftFormState = {
 };
 
 export const Planning: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const { canWrite, canDelete } = usePagePermissions();
   const [view, setView] = useState<'week' | 'month'>('week');
@@ -270,11 +282,11 @@ export const Planning: React.FC = () => {
   const submitForm = async () => {
     if (!modal) return;
     if (!form.startAt || !form.endAt) {
-      toast.error('Indica hora inicio y fin');
+      toast.error(t('hrTime.planning.timesRequired'));
       return;
     }
     if (new Date(form.endAt) <= new Date(form.startAt)) {
-      toast.error('La hora fin debe ser posterior a la hora inicio');
+      toast.error(t('hrTime.planning.endAfterStart'));
       return;
     }
     const body = {
@@ -296,7 +308,7 @@ export const Planning: React.FC = () => {
       // independiente con las horas que él haya tecleado.
       if (modal.kind === 'create' && form.secondEnabled && form.secondStartAt && form.secondEndAt) {
         if (new Date(form.secondEndAt) <= new Date(form.secondStartAt)) {
-          toast.error('El 2º tramo: la hora fin debe ser posterior al inicio');
+          toast.error(t('hrTime.planning.secondEndAfterStart'));
           return;
         }
         await shiftAssignmentsApi.create({
@@ -309,17 +321,21 @@ export const Planning: React.FC = () => {
           notes: form.notes || null,
         });
       }
-      toast.success(modal.kind === 'edit' ? 'Turno actualizado' : 'Turno creado');
+      toast.success(
+        modal.kind === 'edit' ? t('hrTime.planning.updated') : t('hrTime.planning.created'),
+      );
       setModal(null);
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
   const cancelAssign = async () => {
     if (!modal || modal.kind !== 'edit') return;
-    if (!confirm('¿Cancelar este turno? (queda en histórico tachado)')) return;
+    if (!confirm(t('hrTime.planning.confirmCancel'))) return;
     await shiftAssignmentsApi.update(modal.id, { status: 'cancelled' });
     setModal(null);
     fetchAll();
@@ -327,7 +343,7 @@ export const Planning: React.FC = () => {
 
   const removeAssign = async () => {
     if (!modal || modal.kind !== 'edit') return;
-    if (!confirm('¿Borrar este turno definitivamente?')) return;
+    if (!confirm(t('hrTime.planning.confirmDelete'))) return;
     await shiftAssignmentsApi.remove(modal.id);
     setModal(null);
     fetchAll();
@@ -361,12 +377,14 @@ export const Planning: React.FC = () => {
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-5">
       <PageHeader
-        title="Planificación"
+        title={t('hrTime.planning.title')}
         subtitle={
           <>
             {rangeLabel(rangeStart, days)} ·{' '}
-            {assigns.filter((a) => a.status !== 'cancelled').length} turnos ·{' '}
-            {grandTotal.toFixed(1)} h planificadas
+            {t('hrTime.planning.shiftsCount', {
+              count: assigns.filter((a) => a.status !== 'cancelled').length,
+            })}{' '}
+            · {t('hrTime.planning.plannedHours', { hours: grandTotal.toFixed(1) })}
           </>
         }
         icon={<CalendarDays size={18} />}
@@ -376,7 +394,7 @@ export const Planning: React.FC = () => {
           // derecha: no son pestañas de la página, sino controles del calendario.
           <div className="flex items-center gap-2 flex-wrap">
             <Tabs
-              items={VIEW_TABS}
+              items={VIEW_TABS.map((x) => ({ ...x, label: t(x.label) }))}
               value={view}
               onChange={(k) => setView(k as 'week' | 'month')}
               variant="segmented"
@@ -386,7 +404,7 @@ export const Planning: React.FC = () => {
               <ChevronLeft size={16} />
             </Button>
             <Button type="button" variant="secondary" size="sm" onClick={goToday}>
-              <CalendarCheck size={14} /> Hoy
+              <CalendarCheck size={14} /> {t('hrTime.planning.today')}
             </Button>
             <Button type="button" variant="secondary" size="sm" onClick={() => navigate(1)}>
               <ChevronRight size={16} />
@@ -400,7 +418,7 @@ export const Planning: React.FC = () => {
           <thead>
             <tr>
               <th className="sticky left-0 z-20 bg-bg-muted border-b border-r border-border-default p-3 text-left min-w-[200px]">
-                Empleado
+                {t('hr.common.employee')}
               </th>
               {Array.from({ length: days }).map((_, i) => {
                 const d = new Date(rangeStart);
@@ -421,13 +439,13 @@ export const Planning: React.FC = () => {
                     }
                     style={{ minWidth: view === 'week' ? 180 : 120 }}
                   >
-                    <div className="text-[10px] uppercase tracking-wider">{DAY_LABEL[dow]}</div>
+                    <div className="text-[10px] uppercase tracking-wider">{t(DAY_LABEL[dow])}</div>
                     <div className="text-lg font-black">{d.getDate()}</div>
                   </th>
                 );
               })}
               <th className="sticky right-0 z-20 border-b border-l border-border-default p-3 text-right bg-bg-muted min-w-[120px]">
-                Total
+                {t('hr.common.total')}
               </th>
             </tr>
           </thead>
@@ -435,7 +453,7 @@ export const Planning: React.FC = () => {
             {activeEmployees.length === 0 && (
               <tr>
                 <td colSpan={days + 2} className="p-12 text-center text-slate-400 italic">
-                  No hay empleados activos.
+                  {t('hrTime.planning.noActiveEmployees')}
                 </td>
               </tr>
             )}
@@ -505,7 +523,7 @@ export const Planning: React.FC = () => {
                             return (
                               <div
                                 key={inc.id}
-                                title={`${it?.name || 'Incidencia'} · ${inc.status}${inc.notes ? `\n${inc.notes}` : ''}${overlapsShift && it?.requiresSubstitution ? '\n⚠ Solapa con turno y requiere sustituto' : ''}`}
+                                title={`${it?.name || t('hrTime.planning.incident')} · ${t(`hr.incidentStatus.${inc.status}`)}${inc.notes ? `\n${inc.notes}` : ''}${overlapsShift && it?.requiresSubstitution ? `\n⚠ ${t('hrTime.planning.overlapsNeedsSub')}` : ''}`}
                                 className="flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-bold shadow-sm border-l-4 cursor-help"
                                 style={{
                                   borderLeftColor: color,
@@ -515,10 +533,10 @@ export const Planning: React.FC = () => {
                               >
                                 <AlertTriangle size={10} />
                                 <span className="truncate flex-1">
-                                  {it?.code || it?.name || 'Incidencia'}
+                                  {it?.code || it?.name || t('hrTime.planning.incident')}
                                 </span>
                                 {it?.requiresSubstitution && overlapsShift && (
-                                  <span title="Requiere sustituto">⚑</span>
+                                  <span title={t('hrTime.planning.needsSub')}>⚑</span>
                                 )}
                               </div>
                             );
@@ -531,7 +549,7 @@ export const Planning: React.FC = () => {
                                 key={a.id}
                                 data-shift-card
                                 onClick={() => openEdit(a)}
-                                title={`${tpl?.name || 'Turno'}\n${timeOf(a.startAt)} – ${timeOf(a.endAt)}\n${hoursOf(a).toFixed(2)} h${a.breakMinutes ? ` (pausa ${a.breakMinutes}m)` : ''}${a.notes ? `\n${a.notes}` : ''}\n\nClick: editar`}
+                                title={`${tpl?.name || t('hrTime.planning.shift')}\n${timeOf(a.startAt)} – ${timeOf(a.endAt)}\n${hoursOf(a).toFixed(2)} h${a.breakMinutes ? ` ${t('hrTime.planning.breakShort', { n: a.breakMinutes })}` : ''}${a.notes ? `\n${a.notes}` : ''}\n\n${t('hrTime.planning.clickToEdit')}`}
                                 className={
                                   'cursor-pointer rounded-lg px-2 py-1.5 text-white text-[11px] font-bold leading-tight shadow-sm hover:ring-2 hover:ring-white/30 transition ' +
                                   STATUS_TINT[a.status]
@@ -578,9 +596,9 @@ export const Planning: React.FC = () => {
                                 openCreate(e.id, dateStr, suggestSplitStart(list, dateStr));
                               }}
                               className="mt-1 w-full h-5 rounded text-[10px] font-semibold flex items-center justify-center gap-1 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 opacity-0 group-hover:opacity-100 transition"
-                              title="Añadir 2º turno (partido)"
+                              title={t('hrTime.planning.addSplitTitle')}
                             >
-                              <CopyPlus size={11} /> partido
+                              <CopyPlus size={11} /> {t('hrTime.planning.split')}
                             </button>
                           ))}
                         {isSplit && (
@@ -597,7 +615,7 @@ export const Planning: React.FC = () => {
                       <span className="text-xs text-slate-400 ml-1">h</span>
                     </div>
                     <div className="text-[10px] text-slate-400 tabular-nums">
-                      {tot.shifts} turno{tot.shifts === 1 ? '' : 's'}
+                      {t('hrTime.planning.shiftsCount', { count: tot.shifts })}
                     </div>
                     {contracted > 0 && (
                       <div
@@ -623,26 +641,25 @@ export const Planning: React.FC = () => {
       </Card>
 
       <div className="rounded-lg border border-border-default bg-bg-muted p-3 text-xs text-slate-500 space-y-1.5">
-        {loading && <div>Cargando…</div>}
+        {loading && <div>{t('hr.common.loading')}</div>}
         <div>
-          <b className="text-fg-body">Cómo funciona:</b> click en celda vacía → crear turno. Click
-          en un turno → editar / cancelar / borrar. Hover una celda con turno → "+ partido" para
-          añadir 2º tramo (turno partido).
+          <b className="text-fg-body">{t('hrTime.planning.howTitle')}</b>{' '}
+          {t('hrTime.planning.howText')}
         </div>
         <div className="flex flex-wrap gap-3 items-center pt-1">
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-sm bg-emerald-200 dark:bg-emerald-500/30" />
-            Hoy
+            {t('hrTime.planning.today')}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-sm border-l-4 border-amber-500 bg-amber-100 dark:bg-amber-500/20" />
-            Incidencia (afecta nómina o requiere sustituto)
+            {t('hrTime.planning.legendIncident')}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <CopyPlus size={12} className="text-amber-600" /> Turno partido
+            <CopyPlus size={12} className="text-amber-600" /> {t('hrTime.planning.splitShift')}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            ⚑ <span>Solapa turno y requiere sustituto → flujo en Incidencias</span>
+            ⚑ <span>{t('hrTime.planning.legendOverlap')}</span>
           </span>
         </div>
       </div>
@@ -652,12 +669,14 @@ export const Planning: React.FC = () => {
         isOpen={!!modal}
         onClose={() => setModal(null)}
         icon={modal?.kind === 'edit' ? <Pencil size={18} /> : <Plus size={18} />}
-        title={modal?.kind === 'edit' ? 'Editar turno' : 'Nuevo turno'}
+        title={
+          modal?.kind === 'edit' ? t('hrTime.planning.editShift') : t('hrTime.planning.newShift')
+        }
         subtitle={
           modal
             ? `${employees.find((e) => e.id === modal.employeeId)?.firstName ?? ''} ${
                 employees.find((e) => e.id === modal.employeeId)?.lastName ?? ''
-              } · ${new Date(modal.date).toLocaleDateString('es-ES', {
+              } · ${formatDate(modal.date, {
                 weekday: 'short',
                 day: 'numeric',
                 month: 'short',
@@ -678,20 +697,21 @@ export const Planning: React.FC = () => {
                       onClick={cancelAssign}
                       disabled={!canWrite}
                     >
-                      <Ban size={14} /> Cancelar turno
+                      <Ban size={14} /> {t('hrTime.planning.cancelShift')}
                     </Button>
                     <Button size="sm" variant="danger" onClick={removeAssign} disabled={!canDelete}>
-                      <Trash2 size={14} /> Borrar
+                      <Trash2 size={14} /> {t('hr.common.delete')}
                     </Button>
                   </>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="secondary" onClick={() => setModal(null)}>
-                  Cerrar
+                  {t('hr.common.close')}
                 </Button>
                 <Button size="sm" onClick={submitForm} disabled={!canWrite}>
-                  <Save size={14} /> {modal.kind === 'edit' ? 'Guardar' : 'Crear'}
+                  <Save size={14} />{' '}
+                  {modal.kind === 'edit' ? t('hr.common.save') : t('hr.common.create')}
                 </Button>
               </div>
             </div>
@@ -702,7 +722,7 @@ export const Planning: React.FC = () => {
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">
-                Plantilla
+                {t('hrTime.planning.template')}
               </label>
               <div className="flex flex-wrap gap-2">
                 {/* Muestras de color: el relleno lo manda el color de la
@@ -744,11 +764,11 @@ export const Planning: React.FC = () => {
                       : 'border-dashed border-border-strong hover:border-slate-400')
                   }
                 >
-                  Personalizado
+                  {t('hrTime.planning.custom')}
                 </Button>
                 {templates.length === 0 && (
                   <p className="text-xs text-slate-400 italic">
-                    No hay plantillas. Crea una en Plantillas de turno.
+                    {t('hrTime.planning.noTemplates')}
                   </p>
                 )}
               </div>
@@ -758,8 +778,9 @@ export const Planning: React.FC = () => {
                   if (!tpl?.secondStartTime || !tpl?.secondEndTime) return null;
                   return (
                     <div className="mt-3 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                      <CopyPlus size={14} /> Estás editando un <b>único tramo</b>. El otro tramo es
-                      un turno aparte: ciérralo y haz click sobre él en la planificación.
+                      <CopyPlus size={14} /> {t('hrTime.planning.editingOneBefore')}{' '}
+                      <b>{t('hrTime.planning.editingOneBold')}</b>
+                      {t('hrTime.planning.editingOneAfter')}
                     </div>
                   );
                 })()}
@@ -771,17 +792,19 @@ export const Planning: React.FC = () => {
                 <span className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-black">
                   ①
                 </span>
-                Tramo {modal.kind === 'create' && form.secondEnabled ? '1 (mañana)' : ''}
+                {modal.kind === 'create' && form.secondEnabled
+                  ? t('hrTime.planning.segment1Morning')
+                  : t('hrTime.planning.segment')}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Input
-                  label="Inicio"
+                  label={t('hrTime.shiftTemplates.start')}
                   type="datetime-local"
                   value={form.startAt.slice(0, 16)}
                   onChange={(e) => setForm({ ...form, startAt: e.target.value })}
                 />
                 <Input
-                  label="Fin"
+                  label={t('hrTime.shiftTemplates.end')}
                   type="datetime-local"
                   value={form.endAt.slice(0, 16)}
                   onChange={(e) => setForm({ ...form, endAt: e.target.value })}
@@ -811,7 +834,7 @@ export const Planning: React.FC = () => {
                     }}
                   />
                   <CopyPlus size={14} className="text-amber-600" />
-                  <span className="text-sm font-bold">Turno partido (2º tramo)</span>
+                  <span className="text-sm font-bold">{t('hrTime.planning.splitSecond')}</span>
                 </label>
                 {form.secondEnabled && (
                   <>
@@ -819,17 +842,17 @@ export const Planning: React.FC = () => {
                       <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">
                         ②
                       </span>
-                      Tramo 2 (tarde)
+                      {t('hrTime.planning.segment2Afternoon')}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <Input
-                        label="Inicio 2º"
+                        label={t('hrTime.planning.start2')}
                         type="datetime-local"
                         value={form.secondStartAt.slice(0, 16)}
                         onChange={(e) => setForm({ ...form, secondStartAt: e.target.value })}
                       />
                       <Input
-                        label="Fin 2º"
+                        label={t('hrTime.planning.end2')}
                         type="datetime-local"
                         value={form.secondEndAt.slice(0, 16)}
                         onChange={(e) => setForm({ ...form, secondEndAt: e.target.value })}
@@ -842,7 +865,7 @@ export const Planning: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <Input
-                label="Pausa (min)"
+                label={t('hrTime.shiftTemplates.breakMin')}
                 type="number"
                 min={0}
                 value={form.breakMinutes}
@@ -850,7 +873,7 @@ export const Planning: React.FC = () => {
               />
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">
-                  Horas netas
+                  {t('hrTime.planning.netHours')}
                 </label>
                 {(() => {
                   const split = modal.kind === 'create' && form.secondEnabled;
@@ -887,7 +910,7 @@ export const Planning: React.FC = () => {
               </div>
               <div className="col-span-2">
                 <Input
-                  label="Notas"
+                  label={t('hr.common.notes')}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 />

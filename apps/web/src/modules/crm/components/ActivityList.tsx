@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import {
   Badge,
@@ -30,6 +31,7 @@ interface Props {
 
 export const ActivityList: React.FC<Props> = ({ filter, defaults, askPartner, title, compact }) => {
   const fmt = useFormat();
+  const { t } = useI18n();
   const toast = useToast();
   const popup = usePopup();
   const { canWrite, canDelete, canRead } = useCrmPermissions('/crm/activities');
@@ -43,23 +45,23 @@ export const ActivityList: React.FC<Props> = ({ filter, defaults, askPartner, ti
       await activitiesApi.update(a.id, { done: !a.doneAt });
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo actualizar');
+      toast.error(err instanceof Error ? err.message : t('crm.errors.updateFailed'));
     }
   };
 
   const remove = async (a: Activity) => {
     const ok = await popup.confirm({
-      title: 'Borrar actividad',
-      message: `¿Borrar «${a.subject}»?`,
+      title: t('crm.activityList.deleteTitle'),
+      message: t('crm.activityList.deleteMessage', { subject: a.subject }),
       tone: 'danger',
-      confirmLabel: 'Borrar',
+      confirmLabel: t('crm.common.delete'),
     });
     if (!ok) return;
     try {
       await activitiesApi.remove(a.id);
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo borrar');
+      toast.error(err instanceof Error ? err.message : t('crm.errors.deleteFailed'));
     }
   };
 
@@ -88,7 +90,7 @@ export const ActivityList: React.FC<Props> = ({ filter, defaults, askPartner, ti
               variant={compact ? 'ghost' : 'primary'}
               onClick={() => setDraft({ type: 'call', ...defaults })}
             >
-              <Plus size={14} /> Nueva actividad
+              <Plus size={14} /> {t('crm.activityForm.newTitle')}
             </Button>
           )}
         </div>
@@ -100,8 +102,8 @@ export const ActivityList: React.FC<Props> = ({ filter, defaults, askPartner, ti
         <EmptyState
           variant="compact"
           icon={<CalendarClock size={18} />}
-          title="Sin actividades"
-          hint={compact ? undefined : 'Apunta llamadas, reuniones y tareas de seguimiento.'}
+          title={t('crm.activityList.empty')}
+          hint={compact ? undefined : t('crm.activityList.emptyHint')}
         />
       ) : (
         <ul className="divide-y divide-border-subtle rounded-xs border border-border-default bg-bg-card">
@@ -115,7 +117,9 @@ export const ActivityList: React.FC<Props> = ({ filter, defaults, askPartner, ti
                     checked={!!a.doneAt}
                     onChange={() => toggleDone(a)}
                     disabled={!canWrite}
-                    aria-label={a.doneAt ? 'Marcar como pendiente' : 'Marcar como hecha'}
+                    aria-label={
+                      a.doneAt ? t('crm.activityList.markPending') : t('crm.activityList.markDone')
+                    }
                   />
                 </div>
                 <button
@@ -125,7 +129,7 @@ export const ActivityList: React.FC<Props> = ({ filter, defaults, askPartner, ti
                   disabled={!canWrite}
                 >
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="neutral">{ACTIVITY_TYPE_LABEL[a.type]}</Badge>
+                    <Badge variant="neutral">{t(ACTIVITY_TYPE_LABEL[a.type])}</Badge>
                     <span
                       className={cn(
                         'text-sm font-medium text-fg-default',
@@ -158,8 +162,8 @@ export const ActivityList: React.FC<Props> = ({ filter, defaults, askPartner, ti
                       variant="ghost"
                       size="sm"
                       onClick={() => remove(a)}
-                      title="Borrar"
-                      aria-label="Borrar actividad"
+                      title={t('crm.common.delete')}
+                      aria-label={t('crm.activityList.deleteTitle')}
                       className="opacity-0 group-hover:opacity-100 focus:opacity-100"
                     >
                       <Trash2 size={12} />

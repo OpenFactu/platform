@@ -1,0 +1,32 @@
+{
+  "userTables": {
+    "nav": {
+      "table": "Tabla",
+      "newRecord": "Nuevo registro",
+      "record": "Registro"
+    },
+    "list": {
+      "record": "Registro",
+      "created": "Creado",
+      "deleteTitle": "Eliminar registro",
+      "deleteMessage": "¿Eliminar este registro? Esta acción no se puede deshacer.",
+      "delete": "Eliminar",
+      "deleted": "Eliminado",
+      "deleteError": "Error al eliminar",
+      "viewEdit": "Ver / Editar",
+      "kindDocument": "Documento",
+      "kindMaster": "Maestro",
+      "new": "Nuevo"
+    },
+    "detail": {
+      "saveError": "Error al guardar",
+      "created": "Registro creado",
+      "saved": "Cambios guardados",
+      "newTitle": "Nuevo registro",
+      "editTitle": "Editar registro",
+      "back": "Volver",
+      "saving": "Guardando...",
+      "save": "Guardar"
+    }
+  }
+}

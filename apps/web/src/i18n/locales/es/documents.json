@@ -1,0 +1,69 @@
+{
+  "invoice": {
+    "title": "Factura",
+    "status": {
+      "draft": "Borrador",
+      "open": "Abierta",
+      "cancelled": "Cancelada"
+    },
+    "paymentStatus": {
+      "pending": "Pendiente",
+      "partial": "Parcial",
+      "paid": "Pagada",
+      "overdue": "Vencida"
+    },
+    "locked": "Bloqueada — no editable",
+    "documentType": "Tipo de documento",
+    "dueDate": "Vencimiento",
+    "supplyDate": "Fecha de operación",
+    "paymentMethod": "Método de pago",
+    "paymentTerm": "Condiciones de pago",
+    "withholdingRate": "Retención %",
+    "withholdingAmount": "Retención",
+    "currency": "Divisa",
+    "notes": "Notas",
+    "internalNotes": "Notas internas",
+    "registerPayment": "Registrar cobro",
+    "registerPaymentPurchase": "Registrar pago",
+    "amountPaid": "Pagado",
+    "remaining": "Pendiente"
+  },
+  "line": {
+    "description": "Descripción",
+    "discountRate": "Dto %",
+    "discountAmount": "Dto €",
+    "project": "Proyecto"
+  },
+  "payment": {
+    "date": "Fecha",
+    "amount": "Importe",
+    "method": "Método",
+    "reference": "Referencia",
+    "source": "Origen",
+    "manual": "Manual",
+    "referenceRequired": "El nº de referencia es obligatorio",
+    "referencePlaceholder": "nº transferencia, recibo…",
+    "requiredField": "Campo obligatorio",
+    "editCollection": "Editar cobro",
+    "editPayment": "Editar pago",
+    "editSubtitle": "Solo se pueden editar los campos informativos. El importe {amount} no se puede cambiar — si está mal, elimínalo y créalo de nuevo.",
+    "updated": "Actualizado",
+    "updateError": "Error al actualizar",
+    "deleteCollection": "Eliminar cobro",
+    "deletePayment": "Eliminar pago",
+    "deleteMessage": "{amount} — el estado de la factura se recalculará y el asiento contable (si existe) se reversará automáticamente.",
+    "delete": "Eliminar",
+    "deleted": "Eliminado",
+    "deleteError": "Error al eliminar",
+    "collectionsTitle": "Cobros registrados",
+    "paymentsTitle": "Pagos registrados",
+    "loading": "Cargando…",
+    "noCollections": "Sin cobros aún",
+    "noPayments": "Sin pagos aún",
+    "refShort": "Ref {ref}",
+    "edit": "Editar",
+    "referenceNo": "Nº de referencia",
+    "cancel": "Cancelar",
+    "save": "Guardar"
+  }
+}

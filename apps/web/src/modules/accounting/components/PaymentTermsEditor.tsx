@@ -15,6 +15,7 @@ import {
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X, CalendarClock, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import type { PaymentTerm, PaymentTermLine as SplitLine } from '../domain/accounting';
 
 /**
@@ -24,6 +25,7 @@ import type { PaymentTerm, PaymentTermLine as SplitLine } from '../domain/accoun
  */
 export const PaymentTermsEditor: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const toast = useToast();
   const popup = usePopup();
   const [rows, setRows] = useState<PaymentTerm[]>([]);
@@ -35,7 +37,7 @@ export const PaymentTermsEditor: React.FC = () => {
       const data = await paymentTermsApi.list();
       setRows(Array.isArray(data) ? data : []);
     } catch {
-      toast.error('Error al cargar plazos');
+      toast.error(t('accounting.paymentTerms.loadError'));
     } finally {
       setLoading(false);
     }
@@ -48,8 +50,10 @@ export const PaymentTermsEditor: React.FC = () => {
 
   const openEditor = (term: PaymentTerm | null) => {
     popup.show({
-      title: term ? `Editar plazo · ${term.name}` : 'Nuevo plazo de pago',
-      subtitle: 'Define los splits. La suma de porcentajes debe ser exactamente 100.',
+      title: term
+        ? t('accounting.paymentTerms.editTitle', { name: term.name })
+        : t('accounting.paymentTerms.newTitle'),
+      subtitle: t('accounting.paymentTerms.editorSubtitle'),
       maxWidth: '2xl',
       render: (close) => (
         <PaymentTermForm
@@ -66,26 +70,30 @@ export const PaymentTermsEditor: React.FC = () => {
 
   const handleDelete = async (id: string, name: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar plazo',
-      message: `¿Seguro que quieres eliminar "${name}"? No se podrá usar en nuevos documentos.`,
+      title: t('accounting.paymentTerms.deleteTitle'),
+      message: t('accounting.paymentTerms.deleteMessage', { name }),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('accounting.common.delete'),
     });
     if (!ok) return;
     try {
       await paymentTermsApi.remove(id);
-      toast.success('Eliminado');
+      toast.success(t('accounting.paymentTerms.deleted'));
       await load();
     } catch (e) {
-      toast.error(e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error de red');
+      toast.error(
+        e instanceof ApiError
+          ? ((e.body as any)?.error ?? e.message)
+          : t('accounting.common.networkError'),
+      );
     }
   };
 
-  const renderSummary = (t: PaymentTerm) => {
-    if (!t.lines || t.lines.length === 0)
-      return <span className="text-fg-subtle italic">sin splits</span>;
-    if (t.lines.length === 1) {
-      const l = t.lines[0];
+  const renderSummary = (term: PaymentTerm) => {
+    if (!term.lines || term.lines.length === 0)
+      return <span className="text-fg-subtle italic">{t('accounting.paymentTerms.noSplits')}</span>;
+    if (term.lines.length === 1) {
+      const l = term.lines[0];
       return (
         <span className="font-mono text-xs">
           {l.days}d · {l.percentage}%
@@ -94,7 +102,7 @@ export const PaymentTermsEditor: React.FC = () => {
     }
     return (
       <span className="font-mono text-xs">
-        {t.lines.map((l) => `${l.days}d·${l.percentage}%`).join(' + ')}
+        {term.lines.map((l) => `${l.days}d·${l.percentage}%`).join(' + ')}
       </span>
     );
   };
@@ -104,26 +112,34 @@ export const PaymentTermsEditor: React.FC = () => {
   // lee debajo y el activo va al hueco de estado. Sin esto, "30d·50% + 60d…"
   // se cortaba a media línea.
   const columns: TableColumn<PaymentTerm>[] = [
-    { header: 'Nombre', accessor: 'name', sortable: true, card: 'title' },
-    { header: 'Detalle', cell: (t) => renderSummary(t), card: 'subtitle' },
+    { header: t('accounting.common.name'), accessor: 'name', sortable: true, card: 'title' },
     {
-      header: 'Activo',
+      header: t('accounting.paymentTerms.detail'),
+      cell: (term) => renderSummary(term),
+      card: 'subtitle',
+    },
+    {
+      header: t('accounting.paymentTerms.active'),
       align: 'center',
       card: 'status',
-      cell: (t) =>
-        t.isActive ? <Badge variant="success">✓</Badge> : <Badge variant="neutral">—</Badge>,
+      cell: (term) =>
+        term.isActive ? <Badge variant="success">✓</Badge> : <Badge variant="neutral">—</Badge>,
     },
   ];
 
   // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
   // del hover y en el menú de click derecho.
-  const rowActions = (t: PaymentTerm): RowAction[] => [
-    { label: 'Editar', icon: <Edit3 size={14} />, onClick: () => openEditor(t) },
+  const rowActions = (term: PaymentTerm): RowAction[] => [
     {
-      label: 'Eliminar',
+      label: t('accounting.common.edit'),
+      icon: <Edit3 size={14} />,
+      onClick: () => openEditor(term),
+    },
+    {
+      label: t('accounting.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
-      onClick: () => handleDelete(t.id, t.name),
+      onClick: () => handleDelete(term.id, term.name),
     },
   ];
 
@@ -131,7 +147,7 @@ export const PaymentTermsEditor: React.FC = () => {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-[11px] text-fg-subtle uppercase font-black tracking-wider">
-          Contado, 30 días, 30/60…
+          {t('accounting.paymentTerms.hint')}
         </p>
         <Button
           type="button"
@@ -140,7 +156,7 @@ export const PaymentTermsEditor: React.FC = () => {
           onClick={() => openEditor(null)}
           className="flex items-center gap-1"
         >
-          <Plus size={14} /> Añadir
+          <Plus size={14} /> {t('accounting.common.add')}
         </Button>
       </div>
 
@@ -151,7 +167,7 @@ export const PaymentTermsEditor: React.FC = () => {
         data={rows}
         isLoading={loading}
         rowActions={rowActions}
-        emptyMessage="Sin plazos definidos"
+        emptyMessage={t('accounting.paymentTerms.empty')}
       />
     </div>
   );
@@ -164,6 +180,7 @@ interface FormProps {
 }
 
 const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) => {
+  const { t } = useI18n();
   const toast = useToast();
   const [name, setName] = useState(initial?.name || '');
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
@@ -206,20 +223,20 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      toast.error('Nombre obligatorio');
+      toast.error(t('accounting.paymentTerms.nameRequired'));
       return;
     }
     if (!balanced) {
-      toast.error(`Los porcentajes suman ${totalPct}%, deben sumar 100`);
+      toast.error(t('accounting.paymentTerms.percentSum', { total: totalPct }));
       return;
     }
     for (const l of lines) {
       if (l.days < 0) {
-        toast.error('Los días no pueden ser negativos');
+        toast.error(t('accounting.paymentTerms.negativeDays'));
         return;
       }
       if (l.percentage <= 0) {
-        toast.error('Los porcentajes deben ser mayores que 0');
+        toast.error(t('accounting.paymentTerms.positivePercent'));
         return;
       }
     }
@@ -228,10 +245,16 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
       const payload = { name, lines, isActive };
       if (initial) await paymentTermsApi.update(initial.id, payload);
       else await paymentTermsApi.create(payload);
-      toast.success(initial ? 'Actualizado' : 'Creado');
+      toast.success(
+        initial ? t('accounting.paymentTerms.updated') : t('accounting.paymentTerms.created'),
+      );
       onSaved();
     } catch (e) {
-      toast.error(e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error de red');
+      toast.error(
+        e instanceof ApiError
+          ? ((e.body as any)?.error ?? e.message)
+          : t('accounting.common.networkError'),
+      );
     } finally {
       setSaving(false);
     }
@@ -242,17 +265,17 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="md:col-span-2">
           <Input
-            label="Nombre"
+            label={t('accounting.common.name')}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ej. 30/60/90"
+            placeholder={t('accounting.paymentTerms.namePlaceholder')}
             required
           />
         </div>
         <div className="flex items-end">
           <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
             <Checkbox checked={isActive} onChange={setIsActive} />
-            Activo
+            {t('accounting.paymentTerms.active')}
           </label>
         </div>
       </div>
@@ -260,14 +283,14 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-xs font-black uppercase tracking-wider text-fg-muted flex items-center gap-2">
-            <CalendarClock size={14} /> Splits
+            <CalendarClock size={14} /> {t('accounting.paymentTerms.splits')}
           </label>
           <div className="flex items-center gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={autoBalance}>
-              Repartir al {(100 / lines.length).toFixed(0)}%
+              {t('accounting.paymentTerms.autoBalance', { pct: (100 / lines.length).toFixed(0) })}
             </Button>
             <Button type="button" variant="secondary" size="sm" onClick={addLine}>
-              <Plus size={12} className="mr-1" /> Split
+              <Plus size={12} className="mr-1" /> {t('accounting.paymentTerms.split')}
             </Button>
           </div>
         </div>
@@ -280,8 +303,10 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
             <thead className="bg-bg-muted text-[10px] font-black uppercase tracking-wider text-slate-500">
               <tr>
                 <th className="text-left py-2 px-3 w-12">#</th>
-                <th className="text-left py-2 px-3">Días desde la factura</th>
-                <th className="text-left py-2 px-3">% del total</th>
+                <th className="text-left py-2 px-3">
+                  {t('accounting.paymentTerms.daysFromInvoice')}
+                </th>
+                <th className="text-left py-2 px-3">{t('accounting.paymentTerms.pctOfTotal')}</th>
                 <th className="py-2 px-3 w-10"></th>
               </tr>
             </thead>
@@ -317,7 +342,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
                         variant="ghost"
                         size="sm"
                         onClick={() => removeLine(i)}
-                        title="Quitar plazo"
+                        title={t('accounting.paymentTerms.removeSplit')}
                       >
                         <Trash2 size={13} />
                       </Button>
@@ -329,7 +354,7 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
             <tfoot>
               <tr className="bg-bg-muted font-black">
                 <td colSpan={2} className="py-2 px-3 text-right text-xs uppercase">
-                  Total porcentajes:
+                  {t('accounting.paymentTerms.totalPct')}
                 </td>
                 <td className="py-2 px-3">
                   <span
@@ -350,19 +375,18 @@ const PaymentTermForm: React.FC<FormProps> = ({ initial, onSaved, onCancel }) =>
         {!balanced && (
           <p className="text-xs text-rose-600 dark:text-rose-400 mt-2 flex items-center gap-1">
             <AlertCircle size={12} />
-            La suma de porcentajes debe ser exactamente 100. Faltan{' '}
-            {Math.abs(100 - totalPct).toFixed(2)}%.
+            {t('accounting.paymentTerms.missing', { pct: Math.abs(100 - totalPct).toFixed(2) })}
           </p>
         )}
       </div>
 
       <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
-          <X size={14} className="mr-1" /> Cancelar
+          <X size={14} className="mr-1" /> {t('accounting.common.cancel')}
         </Button>
         <Button type="submit" disabled={saving || !balanced || !name.trim()}>
           <Check size={14} className="mr-1" />
-          {saving ? 'Guardando…' : 'Guardar'}
+          {saving ? t('accounting.common.saving') : t('accounting.common.save')}
         </Button>
       </div>
     </form>

@@ -36,20 +36,37 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatNumber } from '@/i18n/format';
 
 const STATUS_VARIANTS: Record<string, BadgeProps['variant']> = {
   draft: 'neutral',
   approved: 'success',
   paid: 'info',
 };
+// Claves de i18n; se traducen al pintar.
 const STATUS_LABELS: Record<string, string> = {
-  draft: 'Borrador',
-  approved: 'Aprobada',
-  paid: 'Pagada',
+  draft: 'hrPayroll.payrolls.status.draft',
+  approved: 'hrPayroll.payrolls.status.approved',
+  paid: 'hrPayroll.payrolls.status.paid',
 };
-const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const MONTHS = [
+  'hrPayroll.months.jan',
+  'hrPayroll.months.feb',
+  'hrPayroll.months.mar',
+  'hrPayroll.months.apr',
+  'hrPayroll.months.may',
+  'hrPayroll.months.jun',
+  'hrPayroll.months.jul',
+  'hrPayroll.months.aug',
+  'hrPayroll.months.sep',
+  'hrPayroll.months.oct',
+  'hrPayroll.months.nov',
+  'hrPayroll.months.dec',
+];
 
 export const Payrolls: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const { canWrite, canDelete } = usePagePermissions();
   const [rows, setRows] = useState<Payroll[]>([]);
@@ -77,7 +94,7 @@ export const Payrolls: React.FC = () => {
       setRows(Array.isArray(p) ? p : []);
       setEmployees(Array.isArray(e) ? e : []);
     } catch {
-      toast.error('Error al cargar nóminas');
+      toast.error(t('hrPayroll.payrolls.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -114,7 +131,7 @@ export const Payrolls: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.employeeId) {
-      toast.error('Selecciona un empleado');
+      toast.error(t('hrPayroll.payrolls.selectEmployee'));
       return;
     }
     // 1) Crear borrador con totales a 0 — las líneas marcan los importes.
@@ -125,7 +142,7 @@ export const Payrolls: React.FC = () => {
     });
     const created = res.data;
     if (res.status === 409 && created.existingId) {
-      toast.error(created.error || 'Ya existe esa nómina');
+      toast.error(created.error || t('hrPayroll.payrolls.exists'));
       // Abrir directamente la existente para que el usuario la edite.
       const existing = await payrollsApi.get(created.existingId).catch(() => null);
       if (existing) {
@@ -135,7 +152,7 @@ export const Payrolls: React.FC = () => {
       return;
     }
     if (!res.ok) {
-      toast.error(created.error || 'Error al crear');
+      toast.error(created.error || t('hrPayroll.payrolls.createError'));
       return;
     }
     const createdPayroll = created as Payroll;
@@ -176,7 +193,7 @@ export const Payrolls: React.FC = () => {
       await payrollsApi.autoDeductions(createdPayroll.id);
     }
 
-    toast.success('Nómina creada — abre líneas/pluses para ajustar');
+    toast.success(t('hrPayroll.payrolls.created'));
     setCreating(false);
     fetchAll();
     // Abrir directamente el editor de líneas con los datos ya prellenados.
@@ -185,19 +202,20 @@ export const Payrolls: React.FC = () => {
 
   const handleApprove = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Aprobar nómina',
-      message:
-        'Se aprobará y se generará automáticamente el asiento contable asociado. Esta acción no se puede deshacer.',
-      confirmLabel: 'Aprobar y asentar',
+      title: t('hrPayroll.payrolls.approveTitle'),
+      message: t('hrPayroll.payrolls.approveMessage'),
+      confirmLabel: t('hrPayroll.payrolls.approveAndPost'),
     });
     if (!ok) return;
     try {
       await payrollsApi.approve(id);
-      toast.success('Nómina aprobada y asiento contable generado');
+      toast.success(t('hrPayroll.payrolls.approved'));
       fetchAll();
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error al aprobar',
+        err instanceof ApiError
+          ? ((err.body as any)?.error ?? err.message)
+          : t('hrPayroll.payrolls.approveError'),
       );
     }
   };
@@ -249,7 +267,7 @@ export const Payrolls: React.FC = () => {
       toast.error(
         err instanceof ApiError
           ? ((err.body as any)?.error ?? err.message)
-          : 'Error al añadir línea',
+          : t('hrPayroll.payrolls.addLineError'),
       );
     }
   };
@@ -260,7 +278,9 @@ export const Payrolls: React.FC = () => {
       await payrollsApi.updateLine(editLines.id, lineId, patch);
       await refreshLines(editLines.id);
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
@@ -276,49 +296,48 @@ export const Payrolls: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar borrador',
-      message: 'Solo se puede eliminar si está en borrador.',
+      title: t('hrPayroll.payrolls.deleteTitle'),
+      message: t('hrPayroll.payrolls.deleteMessage'),
       tone: 'danger',
     });
     if (!ok) return;
     try {
       await payrollsApi.remove(id);
-      toast.success('Eliminada');
+      toast.success(t('hrPayroll.payrolls.deleted'));
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
   const columns = [
     {
-      header: 'Empleado',
+      header: t('hr.common.employee'),
       cell: (r: Payroll) =>
         empMap[r.employeeId]
           ? `${empMap[r.employeeId].firstName} ${empMap[r.employeeId].lastName}`
           : r.employeeId,
     },
     {
-      header: 'Período',
-      cell: (r: Payroll) => `${MONTHS[r.periodMonth - 1]} ${r.periodYear}`,
+      header: t('hrPayroll.payrolls.period'),
+      cell: (r: Payroll) => `${t(MONTHS[r.periodMonth - 1])} ${r.periodYear}`,
     },
     {
-      header: 'Bruto',
+      header: t('hrPayroll.payrolls.gross'),
       align: 'right' as const,
-      cell: (r: Payroll) =>
-        Number(r.gross).toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' €',
+      cell: (r: Payroll) => formatNumber(Number(r.gross), { minimumFractionDigits: 2 }) + ' €',
     },
     {
-      header: 'Neto',
+      header: t('hrPayroll.payrolls.net'),
       align: 'right' as const,
-      cell: (r: Payroll) => (
-        <b>{Number(r.netPay).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €</b>
-      ),
+      cell: (r: Payroll) => <b>{formatNumber(Number(r.netPay), { minimumFractionDigits: 2 })} €</b>,
     },
     {
-      header: 'Estado',
+      header: t('hr.common.status'),
       cell: (r: Payroll) => (
-        <Badge variant={STATUS_VARIANTS[r.status]}>{STATUS_LABELS[r.status]}</Badge>
+        <Badge variant={STATUS_VARIANTS[r.status]}>{t(STATUS_LABELS[r.status])}</Badge>
       ),
     },
   ];
@@ -329,7 +348,7 @@ export const Payrolls: React.FC = () => {
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener');
     } catch {
-      toast.error('No se pudo generar el PDF');
+      toast.error(t('hrPayroll.payrolls.pdfFailed'));
     }
   };
 
@@ -339,26 +358,29 @@ export const Payrolls: React.FC = () => {
   // duplicarse entre una columna de botones y el menú.
   const rowActions = (r: Payroll): RowAction[] => [
     {
-      label: r.status === 'draft' ? 'Editar líneas / pluses' : 'Ver líneas',
+      label:
+        r.status === 'draft'
+          ? t('hrPayroll.payrolls.editLines')
+          : t('hrPayroll.payrolls.viewLines'),
       icon: <ListPlus size={14} />,
       onClick: () => openLines(r),
     },
     {
-      label: 'Imprimir / descargar recibo',
+      label: t('hrPayroll.payrolls.print'),
       icon: <FileText size={14} />,
       onClick: () => printPayslip(r),
     },
     ...(r.status === 'draft'
       ? [
           {
-            label: 'Aprobar y asentar',
+            label: t('hrPayroll.payrolls.approveAndPost'),
             icon: <CheckCircle size={14} />,
             disabled: !canWrite,
             onClick: () => handleApprove(r.id),
             separatorBefore: true,
           },
           {
-            label: 'Eliminar',
+            label: t('hr.common.delete'),
             icon: <Trash2 size={14} />,
             destructive: true,
             disabled: !canDelete,
@@ -371,12 +393,11 @@ export const Payrolls: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Nóminas"
+        title={t('hrPayroll.payrolls.title')}
         subtitle={
           <span className="block max-w-2xl">
-            Cómo funciona: 1) <b>"Generar mes en curso"</b> crea un borrador para cada empleado con
-            salario base + IRPF + SS automáticos. 2) Edita líneas/pluses si hace falta. 3) Aprueba →
-            se genera el asiento contable (gasto de personal, SS e IRPF).
+            {t('hrPayroll.payrolls.howBefore')} <b>{t('hrPayroll.payrolls.howBold')}</b>{' '}
+            {t('hrPayroll.payrolls.howAfter')}
           </span>
         }
         icon={<Banknote size={18} />}
@@ -392,10 +413,11 @@ export const Payrolls: React.FC = () => {
                   const y = new Date().getFullYear();
                   const m = new Date().getMonth() + 1;
                   const ok = await popup.confirm({
-                    title: `Generar nóminas de ${MONTHS[m - 1]} ${y}`,
-                    message:
-                      'Crea un borrador de nómina para cada empleado activo, con salario base de su contrato y IRPF/SS automáticos. ¿Continuar?',
-                    confirmLabel: 'Generar',
+                    title: t('hrPayroll.payrolls.generateTitle', {
+                      period: `${t(MONTHS[m - 1])} ${y}`,
+                    }),
+                    message: t('hrPayroll.payrolls.generateMessage'),
+                    confirmLabel: t('hrPayroll.payrolls.generate'),
                   });
                   if (!ok) return;
                   const active = employees.filter((e: any) => e.status === 'active');
@@ -437,20 +459,20 @@ export const Payrolls: React.FC = () => {
                     }
                   }
                   if (n === 0 && skipped > 0) {
-                    toast.success(`Sin novedades · ${skipped} ya existían`);
+                    toast.success(t('hrPayroll.payrolls.generatedNone', { skipped }));
                   } else if (skipped > 0) {
-                    toast.success(`Generadas ${n} · ${skipped} ya existían`);
+                    toast.success(t('hrPayroll.payrolls.generatedSome', { n, skipped }));
                   } else {
-                    toast.success(`Generadas ${n} nóminas`);
+                    toast.success(t('hrPayroll.payrolls.generated', { count: n }));
                   }
                   fetchAll();
                 }}
-                title="Crea un borrador de nómina por cada empleado activo con salario y deducciones automáticas"
+                title={t('hrPayroll.payrolls.generateHint')}
               >
-                <CheckCircle size={14} /> Generar mes en curso
+                <CheckCircle size={14} /> {t('hrPayroll.payrolls.generateCurrent')}
               </Button>
               <Button type="button" size="sm" onClick={() => setCreating(true)}>
-                <Plus size={14} /> Nueva nómina
+                <Plus size={14} /> {t('hrPayroll.payrolls.new')}
               </Button>
             </div>
           )
@@ -461,11 +483,11 @@ export const Payrolls: React.FC = () => {
         isOpen={creating}
         onClose={() => setCreating(false)}
         icon={<Plus size={18} />}
-        title="Nueva nómina"
-        subtitle="Sólo elige empleado y mes. Las líneas (salario base, pluses, IRPF, SS) se rellenan automáticamente y luego puedes ajustarlas."
+        title={t('hrPayroll.payrolls.new')}
+        subtitle={t('hrPayroll.payrolls.newSubtitle')}
         size="xl"
         onSubmit={handleCreate}
-        primaryAction={{ label: 'Crear y abrir líneas', disabled: !canWrite }}
+        primaryAction={{ label: t('hrPayroll.payrolls.createAndOpen'), disabled: !canWrite }}
       >
         <div className="space-y-5">
           <div>
@@ -473,26 +495,26 @@ export const Payrolls: React.FC = () => {
                     el <label> suelto. El `required` del <select> nativo era
                     redundante: handleCreate ya avisa si no hay empleado. */}
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Empleado
+              {t('hr.common.employee')}
             </label>
             <SearchableSelect
               options={employeeOptions}
               value={form.employeeId}
               onChange={(v) => setForm({ ...form, employeeId: v })}
-              placeholder="— seleccionar —"
+              placeholder={t('hrTime.shiftPatterns.selectPlaceholder')}
             />
           </div>
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Periodo
+              {t('hrPayroll.payrolls.periodLabel')}
             </label>
             <div className="flex items-center gap-2 mb-2">
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
-                title="Mes anterior"
+                title={t('hrPayroll.payrolls.prevMonth')}
                 onClick={() => {
                   const d = new Date(form.periodYear, form.periodMonth - 2, 1);
                   setForm({
@@ -505,13 +527,13 @@ export const Payrolls: React.FC = () => {
                 <ChevronLeft size={14} />
               </Button>
               <div className="flex-1 text-center text-sm font-bold tabular-nums">
-                {MONTHS[form.periodMonth - 1]} {form.periodYear}
+                {t(MONTHS[form.periodMonth - 1])} {form.periodYear}
               </div>
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
-                title="Mes siguiente"
+                title={t('hrPayroll.payrolls.nextMonth')}
                 onClick={() => {
                   const d = new Date(form.periodYear, form.periodMonth, 1);
                   setForm({
@@ -533,7 +555,7 @@ export const Payrolls: React.FC = () => {
                   variant={form.periodMonth === i + 1 ? 'primary' : 'secondary'}
                   onClick={() => setForm({ ...form, periodMonth: i + 1 })}
                 >
-                  {m}
+                  {t(m)}
                 </Button>
               ))}
             </div>
@@ -549,10 +571,11 @@ export const Payrolls: React.FC = () => {
                 className="mt-0.5"
               />
               <div>
-                <div className="text-sm font-bold">Prellenar salario base del contrato</div>
+                <div className="text-sm font-bold">{t('hrPayroll.payrolls.autoSalary')}</div>
                 <div className="text-xs text-slate-500">
-                  Toma <code>grossSalary / paymentsPerYear</code> del contrato activo y lo añade
-                  como línea "Salario base".
+                  {t('hrPayroll.payrolls.autoSalaryBefore')}{' '}
+                  <code>grossSalary / paymentsPerYear</code>{' '}
+                  {t('hrPayroll.payrolls.autoSalaryAfter')}
                 </div>
               </div>
             </label>
@@ -563,9 +586,9 @@ export const Payrolls: React.FC = () => {
                 className="mt-0.5"
               />
               <div>
-                <div className="text-sm font-bold">Generar IRPF y SS automáticamente</div>
+                <div className="text-sm font-bold">{t('hrPayroll.payrolls.autoTaxes')}</div>
                 <div className="text-xs text-slate-500">
-                  Añade los conceptos "% de base" del catálogo (IRPF, SS empleado, SS empresa).
+                  {t('hrPayroll.payrolls.autoTaxesHint')}
                 </div>
               </div>
             </label>
@@ -587,19 +610,19 @@ export const Payrolls: React.FC = () => {
         isOpen={!!editLines}
         onClose={() => setEditLines(null)}
         icon={<ListPlus size={20} />}
-        title="Editar líneas / pluses"
+        title={t('hrPayroll.payrolls.editLines')}
         subtitle={
           editLines
             ? `${
                 empMap[editLines.employeeId]
                   ? `${empMap[editLines.employeeId].firstName} ${empMap[editLines.employeeId].lastName}`
                   : editLines.employeeId
-              } — ${MONTHS[editLines.periodMonth - 1]} ${editLines.periodYear}`
+              } — ${t(MONTHS[editLines.periodMonth - 1])} ${editLines.periodYear}`
             : undefined
         }
         size="4xl"
         hideCancel
-        primaryAction={{ label: 'Cerrar', onClick: () => setEditLines(null) }}
+        primaryAction={{ label: t('hr.common.close'), onClick: () => setEditLines(null) }}
       >
         {editLines && (
           <div className="space-y-4">
@@ -612,7 +635,7 @@ export const Payrolls: React.FC = () => {
                 onChange={(v) => {
                   if (v) addLine(v);
                 }}
-                placeholder="— añadir concepto del catálogo —"
+                placeholder={t('hrPayroll.payrolls.addConcept')}
                 className="flex-1"
                 disabled={!canWrite}
               />
@@ -627,22 +650,22 @@ export const Payrolls: React.FC = () => {
                   try {
                     const d = await payrollsApi.autoDeductions(editLines.id);
                     if (d.created === 0) {
-                      toast.success('IRPF/SS ya estaban añadidos. Recalculado.');
+                      toast.success(t('hrPayroll.payrolls.autoAlready'));
                     } else {
-                      toast.success(`Añadidos ${d.created} conceptos automáticos`);
+                      toast.success(t('hrPayroll.payrolls.autoAdded', { count: d.created }));
                     }
                     await refreshLines(editLines.id);
                   } catch (err) {
                     toast.error(
                       err instanceof ApiError
                         ? ((err.body as any)?.error ?? err.message)
-                        : 'No hay conceptos IRPF/SS en el catálogo',
+                        : t('hrPayroll.payrolls.noTaxConcepts'),
                     );
                   }
                 }}
-                title="Añade IRPF y SS Empleado/Empresa automáticamente del catálogo"
+                title={t('hrPayroll.payrolls.autoTaxesTitle')}
               >
-                Auto IRPF/SS
+                {t('hrPayroll.payrolls.autoButton')}
               </Button>
               <Button
                 type="button"
@@ -655,22 +678,27 @@ export const Payrolls: React.FC = () => {
                   try {
                     const d = await commissionsApi.importToPayroll(editLines.id);
                     if (d.imported === 0) {
-                      toast.success('No hay comisiones pendientes para este periodo');
+                      toast.success(t('hrPayroll.payrolls.noCommissions'));
                     } else {
                       toast.success(
-                        `Importadas ${d.imported} comisiones · ${Number(d.total).toFixed(2)} €`,
+                        t('hrPayroll.payrolls.commissionsImported', {
+                          count: d.imported,
+                          total: Number(d.total).toFixed(2),
+                        }),
                       );
                     }
                     await refreshLines(editLines.id);
                   } catch (err) {
                     toast.error(
-                      err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error',
+                      err instanceof ApiError
+                        ? ((err.body as any)?.error ?? err.message)
+                        : t('hr.common.error'),
                     );
                   }
                 }}
-                title="Vuelca las comisiones del periodo del empleado a esta nómina como línea de devengo"
+                title={t('hrPayroll.payrolls.importCommissionsTitle')}
               >
-                Importar comisiones
+                {t('hrPayroll.payrolls.importCommissions')}
               </Button>
             </div>
 
@@ -688,10 +716,10 @@ export const Payrolls: React.FC = () => {
               if (hasEarnings && (!hasIrpf || !hasSs)) {
                 return (
                   <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-300">
-                    ⚠ Esta nómina tiene devengos pero le falta {!hasIrpf && <b>IRPF</b>}
-                    {!hasIrpf && !hasSs && ' y '}
-                    {!hasSs && <b>SS Empleado</b>}. El neto que ves no es real. Pulsa "Auto IRPF/SS"
-                    o añade los conceptos manualmente.
+                    ⚠ {t('hrPayroll.payrolls.missingTaxesBefore')} {!hasIrpf && <b>IRPF</b>}
+                    {!hasIrpf && !hasSs && ` ${t('hrPayroll.payrolls.and')} `}
+                    {!hasSs && <b>{t('hrPayroll.payrolls.ssEmployeeLong')}</b>}
+                    {t('hrPayroll.payrolls.missingTaxesAfter')}
                   </div>
                 );
               }
@@ -699,11 +727,12 @@ export const Payrolls: React.FC = () => {
             })()}
 
             {linesLoading ? (
-              <div className="text-center text-sm text-slate-400 py-6">Cargando…</div>
+              <div className="text-center text-sm text-slate-400 py-6">
+                {t('hr.common.loading')}
+              </div>
             ) : lines.length === 0 ? (
               <div className="text-center text-sm text-slate-400 py-6 italic">
-                Esta nómina aún no tiene líneas. Añade conceptos del catálogo o pulsa "Auto
-                IRPF/SS".
+                {t('hrPayroll.payrolls.noLines')}
               </div>
             ) : (
               <div className="space-y-4">
@@ -711,20 +740,20 @@ export const Payrolls: React.FC = () => {
                   [
                     {
                       key: 'earning',
-                      title: '➕ Devengos',
-                      desc: 'Lo que cobra el empleado (salario, pluses, horas extra…)',
+                      title: t('hrPayroll.payrolls.groups.earningTitle'),
+                      desc: t('hrPayroll.payrolls.groups.earningDesc'),
                       tone: 'emerald',
                     },
                     {
                       key: 'deduction',
-                      title: '➖ Deducciones',
-                      desc: 'Lo que se le retiene (IRPF, SS empleado, anticipos…)',
+                      title: t('hrPayroll.payrolls.groups.deductionTitle'),
+                      desc: t('hrPayroll.payrolls.groups.deductionDesc'),
                       tone: 'rose',
                     },
                     {
                       key: 'employer_cost',
-                      title: '🏢 Coste empresa',
-                      desc: 'Aportaciones que paga la empresa (SS empresa)',
+                      title: t('hrPayroll.payrolls.groups.employerTitle'),
+                      desc: t('hrPayroll.payrolls.groups.employerDesc'),
                       tone: 'indigo',
                     },
                   ] as const
@@ -751,11 +780,17 @@ export const Payrolls: React.FC = () => {
                       <table className="w-full text-sm border-collapse">
                         <thead>
                           <tr className="text-left text-xs text-slate-500 border-b">
-                            <th className="py-2 px-3">Concepto</th>
-                            <th className="py-2 pr-2 text-right w-20">Cant.</th>
+                            <th className="py-2 px-3">{t('hrPayroll.payrolls.col.concept')}</th>
+                            <th className="py-2 pr-2 text-right w-20">
+                              {t('hrPayroll.payrolls.col.qty')}
+                            </th>
                             <th className="py-2 pr-2 text-right w-24">€/%</th>
-                            <th className="py-2 pr-2 text-right w-24">Base</th>
-                            <th className="py-2 pr-2 text-right w-28">Importe</th>
+                            <th className="py-2 pr-2 text-right w-24">
+                              {t('hrPayroll.payrolls.col.base')}
+                            </th>
+                            <th className="py-2 pr-2 text-right w-28">
+                              {t('hrPayroll.payrolls.col.amount')}
+                            </th>
                             <th className="py-2 pr-2 w-8"></th>
                           </tr>
                         </thead>
@@ -767,10 +802,10 @@ export const Payrolls: React.FC = () => {
                                 className="py-3 px-3 text-center text-xs text-slate-400 italic"
                               >
                                 {grp.key === 'earning'
-                                  ? 'Aún no hay devengos. Añade "Salario base" desde el desplegable de arriba para que el bruto sea > 0 y los % se calculen.'
+                                  ? t('hrPayroll.payrolls.groups.earningEmpty')
                                   : grp.key === 'deduction'
-                                    ? 'Aún no hay deducciones. Pulsa "Auto IRPF/SS".'
-                                    : 'Aún no hay aportaciones de empresa.'}
+                                    ? t('hrPayroll.payrolls.groups.deductionEmpty')
+                                    : t('hrPayroll.payrolls.groups.employerEmpty')}
                               </td>
                             </tr>
                           )}
@@ -794,7 +829,7 @@ export const Payrolls: React.FC = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm pt-3 border-t">
               <div>
-                <div className="text-xs text-slate-400">Bruto</div>
+                <div className="text-xs text-slate-400">{t('hrPayroll.payrolls.gross')}</div>
                 <div className="font-bold">{Number(editLines.gross).toFixed(2)} €</div>
               </div>
               <div>
@@ -802,15 +837,15 @@ export const Payrolls: React.FC = () => {
                 <div className="font-bold">{Number(editLines.irpfAmount).toFixed(2)} €</div>
               </div>
               <div>
-                <div className="text-xs text-slate-400">SS Trab.</div>
+                <div className="text-xs text-slate-400">{t('hrPayroll.payrolls.ssEmployee')}</div>
                 <div className="font-bold">{Number(editLines.ssEmployee).toFixed(2)} €</div>
               </div>
               <div>
-                <div className="text-xs text-slate-400">SS Empresa</div>
+                <div className="text-xs text-slate-400">{t('hrPayroll.payrolls.ssEmployer')}</div>
                 <div className="font-bold">{Number(editLines.ssEmployer).toFixed(2)} €</div>
               </div>
               <div>
-                <div className="text-xs text-slate-400">Neto</div>
+                <div className="text-xs text-slate-400">{t('hrPayroll.payrolls.net')}</div>
                 <div className="font-black text-emerald-600">
                   {Number(editLines.netPay).toFixed(2)} €
                 </div>
@@ -842,6 +877,7 @@ const PayrollLineRow: React.FC<{
   canWrite: boolean;
   canDelete: boolean;
 }> = ({ line, onUpdate, onDelete, canWrite, canDelete }) => {
+  const { t } = useI18n();
   // number | null puro: antes eran strings porque venían de e.target.value de
   // los <input type="number">; con NumberInput/CurrencyInput el valor ya llega
   // numérico y `null` representa el campo vacío.
@@ -941,7 +977,7 @@ const PayrollLineRow: React.FC<{
           size="sm"
           onClick={() => onDelete(line.id)}
           disabled={!canDelete}
-          title="Eliminar línea"
+          title={t('hrPayroll.payrolls.deleteLine')}
         >
           <Trash2 size={14} />
         </Button>

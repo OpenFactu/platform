@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useMemo, useState } from 'react';
 import { Card, PageHeader } from '@openfactu/ui';
 import { Sun } from 'lucide-react';
@@ -15,6 +16,7 @@ const DAY = 86_400_000;
  * sus oportunidades que cierran pronto y las que llevan tiempo paradas.
  */
 export const Today: React.FC = () => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const oppPerm = useCrmPermissions('/crm/opportunities');
   const { opportunities } = useOpportunities();
@@ -41,29 +43,35 @@ export const Today: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-4">
       <PageHeader
-        title="Hoy"
-        subtitle="Tus actividades pendientes y las oportunidades que piden atención"
+        title={t('crm.nav.today')}
+        subtitle={t('crm.today.subtitle')}
         icon={<Sun size={18} />}
         size="sm"
       />
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-        <Card title="Mis actividades pendientes" subtitle="Las vencidas salen en rojo.">
+        <Card title={t('crm.today.myPending')} subtitle={t('crm.today.overdueHint')}>
           <ActivityList filter={{ status: 'pending', ownerUserId: user?.id }} askPartner compact />
         </Card>
         {oppPerm.canRead && (
           <div className="space-y-4">
-            <Card title="Cierran en los próximos 7 días">
+            <Card title={t('crm.today.closingSoon')}>
               <OpportunityMiniList
                 items={closingSoon}
-                empty="Nada cierra esta semana"
-                date={{ header: 'Cierre previsto', of: (o) => o.expectedCloseDate }}
+                empty={t('crm.today.closingSoonEmpty')}
+                date={{ header: t('crm.common.expectedClose'), of: (o) => o.expectedCloseDate }}
               />
             </Card>
-            <Card title="Paradas" subtitle={`Sin actividad en ${settings.staleDays} días o más.`}>
+            <Card
+              title={t('crm.today.stale')}
+              subtitle={t('crm.today.staleSubtitle', { days: settings.staleDays })}
+            >
               <OpportunityMiniList
                 items={stale}
-                empty="Ninguna parada"
-                date={{ header: 'Última actividad', of: (o) => o.lastActivityAt ?? o.updatedAt }}
+                empty={t('crm.today.staleEmpty')}
+                date={{
+                  header: t('crm.today.lastActivity'),
+                  of: (o) => o.lastActivityAt ?? o.updatedAt,
+                }}
               />
             </Card>
           </div>

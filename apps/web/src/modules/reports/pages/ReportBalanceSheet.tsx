@@ -3,11 +3,13 @@ import { Card, Button, PageHeader, SearchableSelect } from '@openfactu/ui';
 import { ArrowLeft, Download, RefreshCw, Landmark } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
 export const ReportBalanceSheet: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const navigate = useNavigate();
   const [periods, setPeriods] = useState<any[]>([]);
@@ -61,7 +63,7 @@ export const ReportBalanceSheet: React.FC = () => {
           ))}
           <tr className="font-black">
             <td colSpan={2} className="py-2 text-right uppercase text-xs">
-              Total
+              {t('reports.common.total')}
             </td>
             <td className={`py-2 text-right tabular-nums ${color}`}>{fmt.money(total)}</td>
           </tr>
@@ -73,12 +75,12 @@ export const ReportBalanceSheet: React.FC = () => {
   return (
     <div className="p-6 w-full space-y-5">
       <PageHeader
-        title="Balance de Situación"
+        title={t('reports.balanceSheet.title')}
         icon={<Landmark size={18} />}
         size="md"
         breadcrumbs={
           <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> Volver
+            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
           </Button>
         }
         actions={
@@ -89,7 +91,7 @@ export const ReportBalanceSheet: React.FC = () => {
               onClick={load}
               className="flex items-center gap-2"
             >
-              <RefreshCw size={16} /> Actualizar
+              <RefreshCw size={16} /> {t('reports.common.refresh')}
             </Button>
             <Button type="button" onClick={downloadPdf} className="flex items-center gap-2">
               <Download size={16} /> PDF
@@ -98,26 +100,35 @@ export const ReportBalanceSheet: React.FC = () => {
         }
         toolbar={
           <div className="max-w-sm">
-            <label className="block text-xs font-bold text-fg-body mb-1">Período</label>
+            <label className="block text-xs font-bold text-fg-body mb-1">
+              {t('reports.common.period')}
+            </label>
             {/* SearchableSelect: los períodos vienen del servidor y se acumulan
                 ejercicio tras ejercicio, así que conviene el buscador. */}
             <SearchableSelect
               options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
               value={periodId}
               onChange={setPeriodId}
-              placeholder="— seleccionar período —"
+              placeholder={t('reports.common.selectPeriod')}
             />
           </div>
         }
       />
 
       {loading || !data ? (
-        <Card className="p-10 text-center text-fg-subtle italic">Cargando…</Card>
+        <Card className="p-10 text-center text-fg-subtle italic">
+          {t('reports.common.loading')}
+        </Card>
       ) : (
         <>
-          {section('Activo', data.asset, data.totalAsset, 'text-success-fg')}
-          {section('Pasivo', data.liability, data.totalLiability, 'text-warning-fg')}
-          {section('Patrimonio Neto', data.equity, data.totalEquity, 'text-info-fg')}
+          {section(t('reports.balanceSheet.asset'), data.asset, data.totalAsset, 'text-success-fg')}
+          {section(
+            t('reports.balanceSheet.liability'),
+            data.liability,
+            data.totalLiability,
+            'text-warning-fg',
+          )}
+          {section(t('reports.balanceSheet.equity'), data.equity, data.totalEquity, 'text-info-fg')}
         </>
       )}
     </div>

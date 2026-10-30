@@ -16,6 +16,7 @@ import {
 import { BinGeneratorModal } from '../components/BinGeneratorModal';
 import { warehousesApi, zonesApi } from '../api';
 import type { Warehouse, Zone } from '../domain/warehouse';
+import { useI18n } from '@/i18n/I18nContext';
 
 export const Warehouses: React.FC = () => {
   const { user } = useAuth();
@@ -48,6 +49,7 @@ export const Warehouses: React.FC = () => {
 
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
 
   const fetchWarehouses = async () => {
     setLoading(true);
@@ -90,9 +92,9 @@ export const Warehouses: React.FC = () => {
       setWhLocation('');
       setShowWarehouseModal(false);
       await fetchWarehouses();
-      toast.success('Almacén creado');
+      toast.success(t('inventory.warehouses.created'));
     } catch {
-      toast.error('Error al crear almacén');
+      toast.error(t('inventory.warehouses.createError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -110,9 +112,11 @@ export const Warehouses: React.FC = () => {
       setNewBinName('');
       setNewBinDesc('');
       await fetchBins(selectedWarehouse.id);
-      toast.success('Ubicación creada');
+      toast.success(t('inventory.warehouses.binCreated'));
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Error al crear ubicación');
+      toast.error(
+        (err instanceof Error && err.message) || t('inventory.warehouses.binCreateError'),
+      );
     } finally {
       setCreatingBin(false);
     }
@@ -120,19 +124,19 @@ export const Warehouses: React.FC = () => {
 
   const deleteBin = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar ubicación',
-      message: '¿Seguro que quieres eliminar esta ubicación del almacén?',
+      title: t('inventory.warehouses.deleteBinTitle'),
+      message: t('inventory.warehouses.deleteBinMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('inventory.warehouses.delete'),
     });
     if (!ok) return;
     if (!selectedWarehouse) return;
     try {
       await zonesApi.remove(id);
       fetchBins(selectedWarehouse.id);
-      toast.success('Eliminada');
+      toast.success(t('inventory.warehouses.binDeleted'));
     } catch {
-      toast.error('Error');
+      toast.error(t('inventory.warehouses.error'));
     }
   };
 
@@ -149,20 +153,20 @@ export const Warehouses: React.FC = () => {
       : bins;
     const map = new Map<string, any[]>();
     for (const b of filtered) {
-      const prefix = (b.name || '').split('-')[0] || 'Otros';
+      const prefix = (b.name || '').split('-')[0] || t('inventory.warehouses.others');
       if (!map.has(prefix)) map.set(prefix, []);
       map.get(prefix)!.push(b);
     }
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [bins, binQuery]);
+  }, [bins, binQuery, t]);
 
   const totalVisible = grouped.reduce((acc, [, arr]) => acc + arr.length, 0);
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
       <PageHeader
-        title="Almacenes y ubicaciones"
-        subtitle="Centros logísticos y la malla de bins dentro de cada uno."
+        title={t('inventory.warehouses.title')}
+        subtitle={t('inventory.warehouses.subtitle')}
         icon={<WarehouseIcon size={18} />}
         size="sm"
         divider
@@ -172,7 +176,7 @@ export const Warehouses: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
         {/* PANEL IZQUIERDO — lista de almacenes */}
         <Card
-          title="Almacenes"
+          title={t('inventory.warehouses.listTitle')}
           headerAction={
             <Button
               size="sm"
@@ -180,7 +184,7 @@ export const Warehouses: React.FC = () => {
               disabled={!canWrite}
               className="flex items-center gap-1"
             >
-              <Plus size={14} /> Nuevo
+              <Plus size={14} /> {t('inventory.warehouses.new')}
             </Button>
           }
           bodyClassName="p-2 space-y-1 max-h-[70vh] overflow-y-auto"
@@ -190,7 +194,9 @@ export const Warehouses: React.FC = () => {
               <Loader size="sm" />
             </div>
           ) : warehouses.length === 0 ? (
-            <div className="py-6 text-center text-xs text-slate-400">Sin almacenes aún.</div>
+            <div className="py-6 text-center text-xs text-slate-400">
+              {t('inventory.warehouses.empty')}
+            </div>
           ) : (
             warehouses.map((w) => {
               const active = selectedWarehouse?.id === w.id;
@@ -200,13 +206,13 @@ export const Warehouses: React.FC = () => {
                   onClick={() => setSelectedWarehouse(w)}
                   className={`w-full text-left p-3 rounded-lg border transition-all flex items-center gap-3 ${
                     active
-                      ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30'
-                      : 'bg-bg-card border-border-subtle hover:border-blue-200 dark:hover:border-blue-500/30'
+                      ? 'bg-accent/10 border-accent/40'
+                      : 'bg-bg-card border-border-subtle hover:border-accent/40'
                   }`}
                 >
                   <div
                     className={`p-2 rounded-md ${
-                      active ? 'bg-blue-600 text-white' : 'bg-bg-muted text-fg-muted'
+                      active ? 'bg-accent text-accent-fg' : 'bg-bg-muted text-fg-muted'
                     }`}
                   >
                     <MapPin size={14} />
@@ -217,10 +223,10 @@ export const Warehouses: React.FC = () => {
                       {w.isDefault && <Star size={12} className="text-amber-500 fill-amber-500" />}
                     </div>
                     <div className="text-[10px] uppercase tracking-widest font-semibold text-fg-subtle truncate">
-                      {w.location || 'Sin ubicación'}
+                      {w.location || t('inventory.warehouses.noLocation')}
                     </div>
                   </div>
-                  <ChevronRight size={14} className={active ? 'text-blue-500' : 'text-fg-subtle'} />
+                  <ChevronRight size={14} className={active ? 'text-accent' : 'text-fg-subtle'} />
                 </button>
               );
             })
@@ -232,9 +238,11 @@ export const Warehouses: React.FC = () => {
           {!selectedWarehouse ? (
             <Card bodyClassName="py-16 text-center">
               <WarehouseIcon size={40} className="mx-auto mb-4 text-fg-subtle" />
-              <p className="text-sm font-semibold text-fg-body">Selecciona un almacén</p>
+              <p className="text-sm font-semibold text-fg-body">
+                {t('inventory.warehouses.selectWarehouse')}
+              </p>
               <p className="text-xs text-fg-subtle mt-1">
-                O crea uno nuevo desde el panel izquierdo.
+                {t('inventory.warehouses.selectWarehouseHint')}
               </p>
             </Card>
           ) : (
@@ -244,8 +252,8 @@ export const Warehouses: React.FC = () => {
                   <div>
                     <h2 className="text-lg font-black text-fg-default">{selectedWarehouse.name}</h2>
                     <p className="text-xs text-fg-muted mt-0.5">
-                      {selectedWarehouse.location || 'Sin ubicación geográfica'} · {bins.length}{' '}
-                      ubicaciones
+                      {selectedWarehouse.location || t('inventory.warehouses.noGeoLocation')} ·{' '}
+                      {t('inventory.warehouses.binCount', { count: bins.length })}
                     </p>
                   </div>
                   <Button
@@ -255,7 +263,7 @@ export const Warehouses: React.FC = () => {
                     disabled={!canWrite}
                     className="flex items-center gap-2"
                   >
-                    <LayoutGrid size={14} /> Generar en bloque
+                    <LayoutGrid size={14} /> {t('inventory.warehouses.bulkGenerate')}
                   </Button>
                 </div>
               </Card>
@@ -264,18 +272,18 @@ export const Warehouses: React.FC = () => {
               {canWrite && (
                 <Card bodyClassName="p-4">
                   <div className="text-[10px] font-black uppercase tracking-widest text-fg-muted mb-2">
-                    Nueva ubicación
+                    {t('inventory.warehouses.newBin')}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_auto] gap-2">
                     <Input
                       value={newBinName}
                       onChange={(e) => setNewBinName(e.target.value)}
-                      placeholder="Código (p.ej. A-01-03)"
+                      placeholder={t('inventory.warehouses.binCodePlaceholder')}
                     />
                     <Input
                       value={newBinDesc}
                       onChange={(e) => setNewBinDesc(e.target.value)}
-                      placeholder="Descripción (opcional)"
+                      placeholder={t('inventory.warehouses.binDescPlaceholder')}
                     />
                     <Button onClick={createBin} disabled={!newBinName.trim() || creatingBin}>
                       {creatingBin ? <Loader size="sm" variant="white" /> : <Plus size={14} />}
@@ -290,10 +298,12 @@ export const Warehouses: React.FC = () => {
                   leftIcon={<Search size={14} />}
                   value={binQuery}
                   onChange={(e) => setBinQuery(e.target.value)}
-                  placeholder="Buscar por código o descripción..."
+                  placeholder={t('inventory.warehouses.searchPlaceholder')}
                 />
                 {binQuery && (
-                  <div className="text-[11px] text-fg-muted mt-2">{totalVisible} coincidencias</div>
+                  <div className="text-[11px] text-fg-muted mt-2">
+                    {t('inventory.warehouses.matches', { count: totalVisible })}
+                  </div>
                 )}
               </Card>
 
@@ -304,9 +314,9 @@ export const Warehouses: React.FC = () => {
                 </div>
               ) : bins.length === 0 ? (
                 <Card bodyClassName="py-12 text-center">
-                  <p className="text-sm text-fg-muted">Este almacén aún no tiene ubicaciones.</p>
+                  <p className="text-sm text-fg-muted">{t('inventory.warehouses.noBins')}</p>
                   <p className="text-xs text-fg-subtle mt-1">
-                    Crea una arriba o usa "Generar en bloque".
+                    {t('inventory.warehouses.noBinsHint')}
                   </p>
                 </Card>
               ) : (
@@ -320,15 +330,15 @@ export const Warehouses: React.FC = () => {
                           className="w-full flex items-center gap-2 p-3 text-left hover:bg-bg-hover transition-colors"
                         >
                           {isOpen ? (
-                            <ChevronDown size={14} className="text-slate-400" />
+                            <ChevronDown size={14} className="text-fg-subtle" />
                           ) : (
-                            <ChevronRight size={14} className="text-slate-400" />
+                            <ChevronRight size={14} className="text-fg-subtle" />
                           )}
                           <span className="font-mono font-black text-xs uppercase tracking-wider text-fg-body">
                             {prefix}
                           </span>
                           <span className="text-[11px] text-fg-subtle">
-                            {list.length} ubicaciones
+                            {t('inventory.warehouses.binCount', { count: list.length })}
                           </span>
                         </button>
                         {isOpen && (
@@ -351,7 +361,7 @@ export const Warehouses: React.FC = () => {
                                     size="sm"
                                     onClick={() => deleteBin(b.id)}
                                     disabled={!canDelete}
-                                    title="Eliminar ubicación"
+                                    title={t('inventory.warehouses.deleteBinTitle')}
                                   >
                                     <Trash2 size={13} />
                                   </Button>
@@ -384,30 +394,34 @@ export const Warehouses: React.FC = () => {
       <Modal
         isOpen={showWarehouseModal}
         onClose={() => setShowWarehouseModal(false)}
-        title="Nuevo almacén"
-        subtitle="Define un nuevo centro de distribución."
+        title={t('inventory.warehouses.newTitle')}
+        subtitle={t('inventory.warehouses.newSubtitle')}
         maxWidth="md"
       >
         <form onSubmit={handleSubmitWarehouse} className="space-y-4 pt-4">
           <Input
-            label="Nombre"
+            label={t('inventory.warehouses.name')}
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            placeholder="Ej: Almacén central"
+            placeholder={t('inventory.warehouses.namePlaceholder')}
           />
           <Input
-            label="Ubicación geográfica"
+            label={t('inventory.warehouses.geoLocation')}
             value={whLocation}
             onChange={(e) => setWhLocation(e.target.value)}
-            placeholder="Ej: Planta 2, Sector Sur"
+            placeholder={t('inventory.warehouses.geoLocationPlaceholder')}
           />
           <div className="flex justify-end gap-3 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowWarehouseModal(false)} type="button">
-              Cancelar
+              {t('inventory.warehouses.cancel')}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? <Loader size="sm" variant="white" /> : 'Crear almacén'}
+              {isSubmitting ? (
+                <Loader size="sm" variant="white" />
+              ) : (
+                t('inventory.warehouses.create')
+              )}
             </Button>
           </div>
         </form>

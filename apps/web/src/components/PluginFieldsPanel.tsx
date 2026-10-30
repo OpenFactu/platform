@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { cn, Accordion, Badge } from '@openfactu/ui';
 import { ChevronRight, Puzzle, ChevronDown } from 'lucide-react';
 import { usePluginFields, PluginFieldsSection, type FieldSurface } from './plugin-fields';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   tableName: string;
@@ -24,9 +25,11 @@ export const PluginFieldsPanel: React.FC<Props> = ({
   onChange,
   disabled = false,
   layout = 'inline',
-  title = 'Campos Personalizados',
+  title: titleProp,
   surface = 'form',
 }) => {
+  const { t } = useI18n();
+  const title = titleProp ?? t('app.pluginFields.title');
   const fields = usePluginFields(tableName, { surface });
   const [collapsed, setCollapsed] = useState(false);
 

@@ -18,6 +18,7 @@ import React, {
 } from 'react';
 import { useAuth } from './AuthContext';
 import { brandingToThemeInput } from './brandingTheme';
+import { t as tNow } from '@/i18n/i18n';
 
 export interface BrandingConfig {
   colorPrimary: string;
@@ -304,11 +305,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const update = useCallback(
     async (section: 'branding' | 'format' | 'flags', patch: any) => {
-      if (!token || !user?.tenantId) throw new Error('No autenticado');
+      if (!token || !user?.tenantId) throw new Error(tNow('app.common.notAuthenticated'));
       const res = await coreApi.raw('PUT', `/api/config/${section}`, patch);
       if (!res.ok) {
-        const err = res.data ?? { error: 'Error al guardar' };
-        throw new Error(err.error || 'Error al guardar');
+        const err = res.data ?? { error: tNow('app.common.saveError') };
+        throw new Error(err.error || tNow('app.common.saveError'));
       }
       const data = res.data;
       if (section === 'branding') setBranding({ ...BRANDING_DEFAULTS, ...data });

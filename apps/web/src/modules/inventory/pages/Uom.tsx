@@ -17,6 +17,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery';
 import { Hash, Plus, Trash2, ArrowRightLeft, Save, X, Settings2, Pencil } from 'lucide-react';
 import { uomApi } from '../api';
 import type { Uom as UomEntity } from '../domain/uom';
+import { useI18n } from '@/i18n/I18nContext';
 
 /** Id sintético de la fila de alta — se anexa a `data` para que comparta
  *  columnas (y por tanto anchos) con el resto de la tabla. */
@@ -35,6 +36,7 @@ export const Uom: React.FC = () => {
     user?.permissions?.[location.pathname]?.delete;
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
   const [uoms, setUoms] = useState<UomEntity[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -46,7 +48,7 @@ export const Uom: React.FC = () => {
       const data = await uomApi.list();
       setUoms(Array.isArray(data) ? data : []);
     } catch {
-      toast.error('Error al cargar unidades');
+      toast.error(t('inventory.uom.loadError'));
     } finally {
       setLoading(false);
     }
@@ -62,9 +64,9 @@ export const Uom: React.FC = () => {
       await uomApi.create(newRow);
       setNewRow(null);
       fetchUoms();
-      toast.success('Unidad creada');
+      toast.success(t('inventory.uom.created'));
     } catch {
-      toast.error('Error al crear');
+      toast.error(t('inventory.uom.createError'));
     }
   };
 
@@ -73,26 +75,26 @@ export const Uom: React.FC = () => {
       await uomApi.update(id, data);
       setEditingId(null);
       fetchUoms();
-      toast.success('Unidad actualizada');
+      toast.success(t('inventory.uom.updated'));
     } catch {
-      toast.error('Error al actualizar');
+      toast.error(t('inventory.uom.updateError'));
     }
   };
 
   const handleDelete = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar unidad',
-      message: '¿Seguro que deseas eliminar esta unidad de medida?',
+      title: t('inventory.uom.deleteTitle'),
+      message: t('inventory.uom.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('inventory.uom.delete'),
     });
     if (!ok) return;
     try {
       await uomApi.remove(id);
       fetchUoms();
-      toast.success('Unidad eliminada');
+      toast.success(t('inventory.uom.deleted'));
     } catch {
-      toast.error('Error al eliminar');
+      toast.error(t('inventory.uom.deleteError'));
     }
   };
 
@@ -115,7 +117,7 @@ export const Uom: React.FC = () => {
 
   const columns: TableColumn<any>[] = [
     {
-      header: 'Código',
+      header: t('inventory.uom.columns.code'),
       width: '9rem',
       primary: true,
       sortable: true,
@@ -124,7 +126,7 @@ export const Uom: React.FC = () => {
         if (u.id === NEW_ROW_ID)
           return (
             <Input
-              placeholder="Ej: pq"
+              placeholder={t('inventory.uom.codePlaceholder')}
               value={newRow?.code ?? ''}
               onChange={(e) => setNewRow({ ...newRow, code: e.target.value })}
               className="font-mono uppercase"
@@ -144,14 +146,14 @@ export const Uom: React.FC = () => {
       },
     },
     {
-      header: 'Nombre',
+      header: t('inventory.uom.columns.name'),
       sortable: true,
       sortAccessor: (u) => u.name ?? '',
       cell: (u) => {
         if (u.id === NEW_ROW_ID)
           return (
             <Input
-              placeholder="Ej: Paquete"
+              placeholder={t('inventory.uom.namePlaceholder')}
               value={newRow?.name ?? ''}
               onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
             />
@@ -172,7 +174,7 @@ export const Uom: React.FC = () => {
       },
     },
     {
-      header: 'Conversión Logística',
+      header: t('inventory.uom.columns.conversion'),
       cell: (u) => {
         if (u.id === NEW_ROW_ID)
           return (
@@ -185,13 +187,13 @@ export const Uom: React.FC = () => {
                 containerClassName="w-24"
                 className="text-center"
               />
-              <span className="text-xs font-bold text-fg-subtle">de</span>
+              <span className="text-xs font-bold text-fg-subtle">{t('inventory.uom.of')}</span>
               <SearchableSelect
                 options={uomOptions()}
                 value={newRow?.baseUomId || ''}
                 onChange={(v) => setNewRow({ ...newRow, baseUomId: v || null })}
                 clearable
-                placeholder="(Unidad Primaria)"
+                placeholder={t('inventory.uom.primaryUnit')}
               />
             </div>
           );
@@ -218,7 +220,7 @@ export const Uom: React.FC = () => {
                   setUoms(uoms.map((x) => (x.id === u.id ? { ...x, baseUomId: v || null } : x)))
                 }
                 clearable
-                placeholder="(Unidad Primaria)"
+                placeholder={t('inventory.uom.primaryUnit')}
               />
             </div>
           );
@@ -227,7 +229,7 @@ export const Uom: React.FC = () => {
         return !u.baseUomId ? (
           <Badge variant="neutral">
             <Settings2 size={11} className="mr-1" />
-            Unidad base
+            {t('inventory.uom.baseUnit')}
           </Badge>
         ) : (
           <div className="flex items-center gap-2 text-fg-muted text-xs">
@@ -254,7 +256,7 @@ export const Uom: React.FC = () => {
           return (
             <div className="flex items-center justify-end gap-1">
               <Button type="button" size="sm" onClick={handleCreate}>
-                <Save size={14} className="mr-2" /> Guardar
+                <Save size={14} className="mr-2" /> {t('inventory.uom.save')}
               </Button>
               <Button type="button" size="sm" variant="secondary" onClick={() => setNewRow(null)}>
                 <X size={14} />
@@ -265,7 +267,7 @@ export const Uom: React.FC = () => {
           return (
             <div className="flex items-center justify-end gap-1">
               <Button type="button" size="sm" onClick={() => handleUpdate(u.id, u)}>
-                <Save size={14} className="mr-2" /> Aplicar
+                <Save size={14} className="mr-2" /> {t('inventory.uom.apply')}
               </Button>
               <Button
                 type="button"
@@ -290,13 +292,13 @@ export const Uom: React.FC = () => {
       ? []
       : [
           {
-            label: 'Editar',
+            label: t('inventory.uom.edit'),
             icon: <Pencil size={14} />,
             disabled: !canWrite,
             onClick: () => setEditingId(u.id),
           },
           {
-            label: 'Eliminar',
+            label: t('inventory.uom.delete'),
             icon: <Trash2 size={14} />,
             destructive: true,
             disabled: !canDelete,
@@ -307,9 +309,9 @@ export const Uom: React.FC = () => {
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        eyebrow="Logística / Maestro"
-        title="Unidades de Medida"
-        subtitle="Define las dimensiones y conversiones globales para tus artículos."
+        eyebrow={t('inventory.uom.eyebrow')}
+        title={t('inventory.uom.title')}
+        subtitle={t('inventory.uom.subtitle')}
         icon={<Hash size={18} />}
         size="lg"
         actions={
@@ -319,52 +321,52 @@ export const Uom: React.FC = () => {
             disabled={!!newRow || !canWrite}
             className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
           >
-            <Plus size={18} /> Nueva Unidad
+            <Plus size={18} /> {t('inventory.uom.new')}
           </Button>
         }
       />
 
       {esMovil && newRow && (
-        <Card title="Nueva unidad">
+        <Card title={t('inventory.uom.newCardTitle')}>
           <div className="grid gap-4">
             <Input
-              label="Código"
-              placeholder="Ej: CAJA"
+              label={t('inventory.uom.columns.code')}
+              placeholder={t('inventory.uom.codePlaceholderMobile')}
               value={newRow.code ?? ''}
               onChange={(e) => setNewRow({ ...newRow, code: e.target.value })}
               className="font-mono uppercase"
             />
             <Input
-              label="Nombre"
-              placeholder="Ej: Paquete"
+              label={t('inventory.uom.columns.name')}
+              placeholder={t('inventory.uom.namePlaceholder')}
               value={newRow.name ?? ''}
               onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
             />
             <Input
-              label="Cuántas unidades equivale"
+              label={t('inventory.uom.equivalent')}
               type="number"
               step="0.0001"
               value={newRow.baseValue ?? ''}
               onChange={(e) => setNewRow({ ...newRow, baseValue: e.target.value })}
-              helperText="Cuántas de la unidad de abajo entran en ésta."
+              helperText={t('inventory.uom.equivalentHelp')}
             />
             <div>
               <label className="mb-1.5 block text-sm font-medium text-fg-default">
-                De qué unidad
+                {t('inventory.uom.fromUnit')}
               </label>
               <SearchableSelect
                 options={uomOptions()}
                 value={newRow.baseUomId || ''}
                 onChange={(v) => setNewRow({ ...newRow, baseUomId: v || null })}
                 clearable
-                placeholder="(Unidad Primaria)"
+                placeholder={t('inventory.uom.primaryUnit')}
               />
             </div>
 
             <div className="flex gap-2">
               <Button type="button" onClick={handleCreate} className="flex-1">
                 <Save size={16} className="mr-2" />
-                Guardar
+                {t('inventory.uom.save')}
               </Button>
               <Button type="button" variant="secondary" onClick={() => setNewRow(null)}>
                 <X size={16} />
@@ -383,7 +385,7 @@ export const Uom: React.FC = () => {
           data={rows}
           isLoading={loading}
           rowActions={rowActions}
-          emptyMessage="No hay unidades de medida definidas todavía."
+          emptyMessage={t('inventory.uom.empty')}
         />
       </Card>
     </div>

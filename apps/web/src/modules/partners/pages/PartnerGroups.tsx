@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useState } from 'react';
 import {
   Card,
@@ -27,6 +28,7 @@ export const PartnerGroups: React.FC = () => {
     user?.role === 'SUPERUSER' ||
     user?.role === 'ADMIN' ||
     user?.permissions?.[location.pathname]?.delete;
+  const { t } = useI18n();
   const toast = useToast();
   const popup = usePopup();
   const [groups, setGroups] = useState<any[]>([]);
@@ -40,7 +42,7 @@ export const PartnerGroups: React.FC = () => {
       const data = await partnerGroupsApi.list();
       setGroups(Array.isArray(data) ? data : []);
     } catch {
-      toast.error('Error al cargar grupos');
+      toast.error(t('partners.groups.loadError'));
     } finally {
       setLoading(false);
     }
@@ -60,9 +62,9 @@ export const PartnerGroups: React.FC = () => {
       });
       setNewRow(null);
       fetchGroups();
-      toast.success('Grupo creado');
+      toast.success(t('partners.groups.created'));
     } catch {
-      toast.error('Error al crear');
+      toast.error(t('partners.groups.createError'));
     }
   };
 
@@ -75,26 +77,26 @@ export const PartnerGroups: React.FC = () => {
       });
       setEditingId(null);
       fetchGroups();
-      toast.success('Grupo actualizado');
+      toast.success(t('partners.groups.updated'));
     } catch {
-      toast.error('Error al actualizar');
+      toast.error(t('partners.groups.updateError'));
     }
   };
 
   const handleDelete = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar grupo',
-      message: '¿Seguro que deseas eliminar este grupo?',
+      title: t('partners.groups.deleteTitle'),
+      message: t('partners.groups.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('partners.common.delete'),
     });
     if (!ok) return;
     try {
       await partnerGroupsApi.remove(id);
       fetchGroups();
-      toast.success('Grupo eliminado');
+      toast.success(t('partners.groups.deleted'));
     } catch {
-      toast.error('Error al eliminar');
+      toast.error(t('partners.groups.deleteError'));
     }
   };
 
@@ -102,13 +104,13 @@ export const PartnerGroups: React.FC = () => {
   // botones de la antigua columna de acciones.
   const rowActions = (g: any): RowAction[] => [
     {
-      label: 'Editar',
+      label: t('partners.common.edit'),
       icon: <Pencil size={14} />,
       disabled: !canWrite,
       onClick: () => setEditingId(g.id),
     },
     {
-      label: 'Eliminar',
+      label: t('partners.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       disabled: !canDelete,
@@ -129,7 +131,7 @@ export const PartnerGroups: React.FC = () => {
 
   const columns: TableColumn<any>[] = [
     {
-      header: 'Identificación',
+      header: t('partners.groups.identification'),
       cell: (g) =>
         editingId === g.id ? (
           <div className="space-y-2">
@@ -160,7 +162,7 @@ export const PartnerGroups: React.FC = () => {
         ),
     },
     {
-      header: 'Codificación',
+      header: t('partners.groups.coding'),
       align: 'center',
       cell: (g) =>
         editingId === g.id ? (
@@ -176,30 +178,38 @@ export const PartnerGroups: React.FC = () => {
             {g.codePrefix}-XXX
           </Badge>
         ) : (
-          <span className="text-fg-subtle italic text-[10px]">Sin Prefijo</span>
+          <span className="text-fg-subtle italic text-[10px]">{t('partners.groups.noPrefix')}</span>
         ),
     },
     {
-      header: 'Tipología',
+      header: t('partners.groups.typology'),
       align: 'center',
       cell: (g) =>
         editingId === g.id ? (
           <div className="flex flex-col gap-2">
-            {labelledCheck('Cliente', g.isCustomer, (v) => patchGroup(g.id, { isCustomer: v }))}
-            {labelledCheck('Proveedor', g.isVendor, (v) => patchGroup(g.id, { isVendor: v }))}
+            {labelledCheck(t('partners.groups.customer'), g.isCustomer, (v) =>
+              patchGroup(g.id, { isCustomer: v }),
+            )}
+            {labelledCheck(t('partners.groups.supplier'), g.isVendor, (v) =>
+              patchGroup(g.id, { isVendor: v }),
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1">
             {g.isCustomer && (
               <Badge variant="success" className="w-full justify-center gap-1.5">
                 <UserCheck size={10} />
-                <span className="text-[9px] font-black uppercase">Cliente</span>
+                <span className="text-[9px] font-black uppercase">
+                  {t('partners.groups.customer')}
+                </span>
               </Badge>
             )}
             {g.isVendor && (
               <Badge variant="warning" className="w-full justify-center gap-1.5">
                 <ShoppingBag size={10} />
-                <span className="text-[9px] font-black uppercase">Proveedor</span>
+                <span className="text-[9px] font-black uppercase">
+                  {t('partners.groups.supplier')}
+                </span>
               </Badge>
             )}
           </div>
@@ -215,7 +225,7 @@ export const PartnerGroups: React.FC = () => {
         editingId === g.id ? (
           <div className="flex justify-end gap-2 whitespace-nowrap">
             <Button type="button" size="sm" onClick={() => handleUpdate(g.id, g)}>
-              <Save size={14} className="mr-2" /> Aplicar
+              <Save size={14} className="mr-2" /> {t('partners.groups.apply')}
             </Button>
             <Button type="button" size="sm" variant="secondary" onClick={() => setEditingId(null)}>
               <X size={14} />
@@ -228,9 +238,9 @@ export const PartnerGroups: React.FC = () => {
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        eyebrow="CRM / Estructura"
-        title="Grupos de Socios"
-        subtitle="Clasifica tus interlocutores comerciales para segmentación y tarifas."
+        eyebrow={t('partners.groups.eyebrow')}
+        title={t('partners.groups.title')}
+        subtitle={t('partners.groups.subtitle')}
         icon={<Network size={18} />}
         size="lg"
         actions={
@@ -242,7 +252,7 @@ export const PartnerGroups: React.FC = () => {
             disabled={!!newRow || !canWrite}
             className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all"
           >
-            <Plus size={18} /> Nuevo Grupo
+            <Plus size={18} /> {t('partners.groups.new')}
           </Button>
         }
       />
@@ -253,7 +263,7 @@ export const PartnerGroups: React.FC = () => {
           data={groups}
           isLoading={loading}
           rowActions={rowActions}
-          emptyMessage="Todavía no hay grupos de socios"
+          emptyMessage={t('partners.groups.empty')}
           skeletonRowHeight={40}
           appendRow={
             // Alta rápida: la Table la pinta como una fila a lo ancho al final
@@ -261,7 +271,7 @@ export const PartnerGroups: React.FC = () => {
             newRow ? (
               <div className="flex flex-wrap items-center gap-3 px-4 py-3 bg-bg-muted">
                 <Input
-                  placeholder="Cód (Ej: VIP)"
+                  placeholder={t('partners.groups.codePlaceholder')}
                   value={newRow.code}
                   onChange={(e) => setNewRow({ ...newRow, code: e.target.value })}
                   inputSize="sm"
@@ -269,14 +279,14 @@ export const PartnerGroups: React.FC = () => {
                   autoFocus
                 />
                 <Input
-                  placeholder="Nombre del Grupo"
+                  placeholder={t('partners.groups.namePlaceholder')}
                   value={newRow.name}
                   onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
                   inputSize="sm"
                   containerClassName="flex-1 min-w-[180px]"
                 />
                 <Input
-                  placeholder="Prefijo (Ej: V)"
+                  placeholder={t('partners.groups.prefixPlaceholder')}
                   value={newRow.codePrefix}
                   onChange={(e) => setNewRow({ ...newRow, codePrefix: e.target.value })}
                   inputSize="sm"
@@ -285,16 +295,16 @@ export const PartnerGroups: React.FC = () => {
                   maxLength={5}
                 />
                 <div className="flex gap-4">
-                  {labelledCheck('Cliente', newRow.isCustomer, (v) =>
+                  {labelledCheck(t('partners.groups.customer'), newRow.isCustomer, (v) =>
                     setNewRow({ ...newRow, isCustomer: v }),
                   )}
-                  {labelledCheck('Proveedor', newRow.isVendor, (v) =>
+                  {labelledCheck(t('partners.groups.supplier'), newRow.isVendor, (v) =>
                     setNewRow({ ...newRow, isVendor: v }),
                   )}
                 </div>
                 <div className="flex gap-2 ml-auto">
                   <Button type="button" size="sm" onClick={handleCreate}>
-                    <Save size={14} className="mr-2" /> Guardar
+                    <Save size={14} className="mr-2" /> {t('partners.common.save')}
                   </Button>
                   <Button
                     type="button"

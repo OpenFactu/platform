@@ -2,6 +2,7 @@ import React from 'react';
 import { Badge, Button, PageHeader } from '@openfactu/ui';
 import { ArrowLeft } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
+import { useI18n } from '@/i18n/I18nContext';
 
 type StatusVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';
 
@@ -22,6 +23,7 @@ export const DocumentDetailLayout: React.FC<Props> = ({
   actions,
   children,
 }) => {
+  const { t } = useI18n();
   const mobile = useIsMobile();
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
@@ -38,7 +40,7 @@ export const DocumentDetailLayout: React.FC<Props> = ({
               variant="ghost"
               size="sm"
               onClick={onBack}
-              aria-label="Volver"
+              aria-label={t('doc.common.back')}
               className="p-2.5 shrink-0 self-start"
             >
               <ArrowLeft size={18} />

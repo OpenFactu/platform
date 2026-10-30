@@ -59,6 +59,28 @@ export interface Module {
 export const LEGACY_NAV: Module[] = [];
 
 /**
+ * Las categorías de los módulos core se declaran en español (hacen de
+ * identificador: IconSidebar compara la de módulos vecinos para los
+ * separadores). Aquí solo se traducen para pintarlas; una categoría que no
+ * esté en el mapa (plugins) o que ya sea una clave pasa por `t` tal cual.
+ */
+const CATEGORY_KEYS: Record<string, string> = {
+  General: 'app.categories.general',
+  Operaciones: 'app.categories.operations',
+  'Ventas y compras': 'app.categories.salesPurchases',
+  Finanzas: 'app.categories.finance',
+  Análisis: 'app.categories.analytics',
+  Productividad: 'app.categories.productivity',
+  RRHH: 'app.categories.hr',
+  Logística: 'app.categories.logistics',
+};
+
+/** Clave de i18n con la que pintar una categoría (o la propia categoría si no es core). */
+export function categoryLabelKey(category: string): string {
+  return CATEGORY_KEYS[category] ?? category;
+}
+
+/**
  * Encuentra el módulo activo dado un pathname.
  * Hace match exacto primero, luego prefijo más largo.
  */

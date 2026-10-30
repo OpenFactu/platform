@@ -4,6 +4,8 @@ import { timeclockManagementApi as api, type Reader } from '../api/timeclockMana
 import type { Kiosk } from '../domain/kiosk';
 import { ReaderUsbSetup } from './ReaderUsbSetup';
 import { ReaderFirmwareUpdate } from './ReaderFirmwareUpdate';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
 export function TimeclockDevices({
   kiosks,
   canWrite,
@@ -13,6 +15,7 @@ export function TimeclockDevices({
   canWrite: boolean;
   tenantId: string;
 }) {
+  const { t } = useI18n();
   const [rows, setRows] = useState<Reader[]>([]);
   const [editing, setEditing] = useState<Partial<Reader> | null>(null);
   const [secret, setSecret] = useState('');
@@ -42,7 +45,7 @@ export function TimeclockDevices({
       await work();
       setRows(await api.readers());
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo guardar el lector.');
+      setError(e instanceof Error ? e.message : t('hrTime.readers.saveFailed'));
     } finally {
       setBusy(false);
     }
@@ -72,10 +75,8 @@ export function TimeclockDevices({
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Lectores de tarjetas</h2>
-          <p className="text-sm text-fg-muted">
-            Conecta un lector a un kiosco o úsalo como terminal independiente.
-          </p>
+          <h2 className="text-lg font-semibold">{t('hrTime.readers.title')}</h2>
+          <p className="text-sm text-fg-muted">{t('hrTime.readers.subtitle')}</p>
         </div>
         {canWrite && (
           <Button
@@ -86,7 +87,7 @@ export function TimeclockDevices({
               setEditing({ name: '', mode: 'paired', kioskId: '', isActive: true });
             }}
           >
-            Nuevo lector
+            {t('hrTime.readers.new')}
           </Button>
         )}
       </div>
@@ -118,72 +119,64 @@ export function TimeclockDevices({
           }}
         >
           <Input
-            label="Nombre"
+            label={t('hrTime.readers.name')}
             required
             value={editing.name || ''}
             onChange={(e) => setEditing({ ...editing, name: e.target.value })}
           />
           <Input
-            label="Ubicación"
+            label={t('hrTime.readers.location')}
             value={editing.location || ''}
             onChange={(e) => setEditing({ ...editing, location: e.target.value })}
           />
           <Select
-            label="Funcionamiento"
+            label={t('hrTime.readers.mode')}
             value={editing.mode || 'paired'}
             onChange={(v) => setEditing({ ...editing, mode: v as Reader['mode'], kioskId: null })}
             options={[
-              { value: 'paired', label: 'Vinculado a kiosco' },
-              { value: 'standalone', label: 'Independiente' },
+              { value: 'paired', label: t('hrTime.readers.modePaired') },
+              { value: 'standalone', label: t('hrTime.readers.modeStandalone') },
             ]}
           />
           {editing.mode === 'paired' ? (
             <Select
-              label="Kiosco"
+              label={t('hrTime.readers.kiosk')}
               value={editing.kioskId || ''}
               onChange={(v) => setEditing({ ...editing, kioskId: v })}
               options={[
-                { value: '', label: 'Selecciona un kiosco' },
+                { value: '', label: t('hrTime.readers.selectKiosk') },
                 ...kiosks.filter((k) => k.isActive).map((k) => ({ value: k.id, label: k.name })),
               ]}
             />
           ) : (
             <div role="note" className="self-center space-y-1 text-sm">
-              <p className="font-medium text-fg-body">Requiere elegir la acción en el lector</p>
-              <p className="text-fg-muted">
-                El dispositivo debe permitir seleccionar entrada, salida o pausa, por ejemplo, con
-                botones o una pantalla. Pasar la tarjeta no alterna automáticamente entre entrada y
-                salida.
-              </p>
+              <p className="font-medium text-fg-body">{t('hrTime.readers.standaloneTitle')}</p>
+              <p className="text-fg-muted">{t('hrTime.readers.standaloneHint')}</p>
             </div>
           )}
           <div className="flex gap-2 sm:col-span-2">
             <Button type="submit" disabled={busy || !canWrite || !!provisioning}>
-              Guardar lector
+              {t('hrTime.readers.save')}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
-              Cancelar
+              {t('hr.common.cancel')}
             </Button>
           </div>
         </form>
       )}
       {secret && (
         <div className="space-y-3 rounded-lg border border-border-subtle p-4">
-          <p className="text-sm">
-            Guarda esta configuración en el lector. El token solo se muestra ahora.
-          </p>
+          <p className="text-sm">{t('hrTime.readers.secretHint')}</p>
           <pre className="overflow-x-auto whitespace-pre-wrap break-all text-xs">{secret}</pre>
           <CopyButton
             value={secret}
             variant="secondary"
             size="md"
-            label="Copiar configuración"
-            onCopyError={() =>
-              setError('No se pudo copiar. Selecciona la configuración y cópiala.')
-            }
+            label={t('hrTime.readers.copyConfig')}
+            onCopyError={() => setError(t('hrTime.readers.copyFailed'))}
           />
           <Button type="button" variant="secondary" onClick={() => setSecret('')}>
-            Ocultar
+            {t('hrTime.readers.hide')}
           </Button>
         </div>
       )}
@@ -192,17 +185,21 @@ export function TimeclockDevices({
           <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 py-4">
             <div>
               <p className="font-semibold">
-                {row.name} {!row.isActive && '· Desactivado'}
+                {row.name} {!row.isActive && t('hrTime.readers.disabledSuffix')}
               </p>
               <p className="text-sm text-fg-muted">
                 {row.mode === 'standalone'
-                  ? 'Independiente'
-                  : `Kiosco: ${kiosks.find((k) => k.id === row.kioskId)?.name || 'Sin vincular'}`}
+                  ? t('hrTime.readers.modeStandalone')
+                  : t('hrTime.readers.kioskLabel', {
+                      name:
+                        kiosks.find((k) => k.id === row.kioskId)?.name ||
+                        t('hrTime.readers.unlinked'),
+                    })}
               </p>
               <p className="text-xs text-fg-muted">
                 {row.lastSeenAt
-                  ? `Último contacto: ${new Date(row.lastSeenAt).toLocaleString('es-ES')}`
-                  : 'Todavía no ha conectado'}
+                  ? t('hrTime.readers.lastSeen', { date: formatDateTime(row.lastSeenAt) })
+                  : t('hrTime.readers.neverConnected')}
               </p>
             </div>
             {canWrite && (
@@ -213,7 +210,7 @@ export function TimeclockDevices({
                   disabled={busy || !!provisioning || !!updating}
                   onClick={() => setUpdating(row)}
                 >
-                  Actualizar firmware
+                  {t('hrTime.readers.updateFirmware')}
                 </Button>
                 {row.mode === 'paired' && row.isActive && (
                   <Button
@@ -222,7 +219,7 @@ export function TimeclockDevices({
                     disabled={busy || !!provisioning || !!updating}
                     onClick={() => setProvisioning(row)}
                   >
-                    Configurar por USB
+                    {t('hrTime.readers.configureUsb')}
                   </Button>
                 )}
                 <Button
@@ -231,7 +228,7 @@ export function TimeclockDevices({
                   disabled={busy || !!provisioning || !!updating}
                   onClick={() => setEditing(row)}
                 >
-                  Editar
+                  {t('hrTime.readers.edit')}
                 </Button>
                 <Button
                   type="button"
@@ -241,7 +238,7 @@ export function TimeclockDevices({
                     void run(() => api.updateReader(row.id, { isActive: !row.isActive }))
                   }
                 >
-                  {row.isActive ? 'Desactivar' : 'Activar'}
+                  {row.isActive ? t('hrTime.readers.deactivate') : t('hrTime.readers.activate')}
                 </Button>
                 <Button
                   type="button"
@@ -250,23 +247,21 @@ export function TimeclockDevices({
                   onClick={async () => {
                     if (
                       await popup.confirm({
-                        title: 'Cambiar token del lector',
-                        message: 'Tendrás que configurar el lector con el nuevo token.',
+                        title: t('hrTime.readers.rotateTitle'),
+                        message: t('hrTime.readers.rotateMessage'),
                       })
                     )
                       void run(async () => reveal(await api.rotateReader(row.id)));
                   }}
                 >
-                  Cambiar token
+                  {t('hrTime.readers.rotate')}
                 </Button>
               </div>
             )}
           </li>
         ))}
       </ul>
-      {!rows.length && (
-        <p className="text-sm text-fg-muted">Todavía no hay lectores configurados.</p>
-      )}
+      {!rows.length && <p className="text-sm text-fg-muted">{t('hrTime.readers.empty')}</p>}
     </Card>
   );
 }

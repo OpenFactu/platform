@@ -11,10 +11,12 @@ import {
   usePopup,
   EmptyState,
   PageHeader,
+  CurrencyInput,
 } from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   Tag,
   Plus,
@@ -29,6 +31,7 @@ import {
 } from 'lucide-react';
 
 export const PriceLists: React.FC = () => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const location = useLocation();
   const canWrite =
@@ -53,6 +56,9 @@ export const PriceLists: React.FC = () => {
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [searchItem, setSearchItem] = useState('');
   const [savingItems, setSavingItems] = useState<string[]>([]);
+  // Precio tecleado y aún sin guardar, por artículo. Antes el valor se leía del
+  // DOM con getElementById; con CurrencyInput el campo es controlado.
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, number | null>>({});
   const fetchLists = async () => {
     setLoading(true);
     try {
@@ -65,7 +71,7 @@ export const PriceLists: React.FC = () => {
         fetchPrices(loadedLists[0].id);
       }
     } catch (err) {
-      toast.error('Error al cargar listas');
+      toast.error(t('doc.priceLists.loadError'));
     } finally {
       setLoading(false);
     }
@@ -105,9 +111,9 @@ export const PriceLists: React.FC = () => {
       await priceListsApi.create(newListRow);
       setNewListRow(null);
       fetchLists();
-      toast.success('Lista comercial creada');
+      toast.success(t('doc.priceLists.created'));
     } catch (err) {
-      toast.error('Error al crear');
+      toast.error(t('doc.common.createError'));
     }
   };
 
@@ -116,27 +122,27 @@ export const PriceLists: React.FC = () => {
       await priceListsApi.update(id, { name });
       setEditingListId(null);
       fetchLists();
-      toast.success('Lista actualizada');
+      toast.success(t('doc.priceLists.updated'));
     } catch (err) {
-      toast.error('Error al actualizar');
+      toast.error(t('doc.common.updateError'));
     }
   };
 
   const handleDeleteList = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar lista de precios',
-      message: '¿Seguro que deseas eliminar esta lista de precios?',
+      title: t('doc.priceLists.deleteTitle'),
+      message: t('doc.priceLists.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('doc.lines.delete'),
     });
     if (!ok) return;
     try {
       await priceListsApi.remove(id);
       if (selectedList?.id === id) setSelectedList(null);
       fetchLists();
-      toast.success('Lista eliminada');
+      toast.success(t('doc.priceLists.deleted'));
     } catch (err) {
-      toast.error('Error al eliminar');
+      toast.error(t('doc.common.deleteError'));
     }
   };
 
@@ -150,9 +156,9 @@ export const PriceLists: React.FC = () => {
         if (exists) return prev.map((p) => (p.itemId === itemId ? updatedPrice : p));
         return [...prev, updatedPrice];
       });
-      toast.success('Precio actualizado');
+      toast.success(t('doc.priceLists.priceUpdated'));
     } catch (err) {
-      toast.error('Error al actualizar precio');
+      toast.error(t('doc.priceLists.priceUpdateError'));
     } finally {
       setSavingItems((prev) => prev.filter((id) => id !== itemId));
     }
@@ -162,13 +168,13 @@ export const PriceLists: React.FC = () => {
   // Table; el gating de permisos es el mismo que tenían los botones de la fila.
   const listActions = (l: PriceList): RowAction[] => [
     {
-      label: 'Editar',
+      label: t('doc.common.edit'),
       icon: <Pencil size={14} />,
       disabled: !canWrite,
       onClick: () => setEditingListId(l.id),
     },
     {
-      label: 'Eliminar',
+      label: t('doc.lines.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       disabled: !canDelete,
@@ -178,7 +184,7 @@ export const PriceLists: React.FC = () => {
 
   const listColumns: TableColumn<PriceList>[] = [
     {
-      header: 'Nombre de la Tarifa',
+      header: t('doc.priceLists.colName'),
       cell: (l) =>
         editingListId === l.id ? (
           // Edición en línea: el click no debe seleccionar la lista.
@@ -238,10 +244,10 @@ export const PriceLists: React.FC = () => {
       <PageHeader
         size="lg"
         className="pb-2"
-        eyebrow="Comercial / Pricing"
+        eyebrow={t('doc.priceLists.eyebrow')}
         icon={<DollarSign size={18} />}
-        title="Gestión de Tarifas"
-        subtitle="Controla tus márgenes y listas de precios de forma masiva."
+        title={t('doc.priceLists.title')}
+        subtitle={t('doc.priceLists.subtitle')}
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
@@ -249,7 +255,7 @@ export const PriceLists: React.FC = () => {
         <div className="xl:col-span-4 space-y-4">
           <Card
             noPadding
-            title="Catálogos Activos"
+            title={t('doc.priceLists.activeCatalogs')}
             headerAction={
               <Button
                 size="sm"
@@ -266,7 +272,7 @@ export const PriceLists: React.FC = () => {
               data={lists}
               isLoading={loading}
               rowActions={listActions}
-              emptyMessage="Todavía no hay tarifas"
+              emptyMessage={t('doc.priceLists.empty')}
               skeletonRowHeight={28}
               onRowClick={(l) => {
                 // Mientras se renombra, el click se queda en el formulario.
@@ -278,7 +284,7 @@ export const PriceLists: React.FC = () => {
                 newListRow ? (
                   <div className="flex items-center gap-1 px-4 py-3 bg-bg-muted">
                     <Input
-                      placeholder="Ej: Mayoristas"
+                      placeholder={t('doc.priceLists.namePlaceholder')}
                       value={newListRow.name}
                       onChange={(e) => setNewListRow({ name: e.target.value })}
                       inputSize="sm"
@@ -310,16 +316,16 @@ export const PriceLists: React.FC = () => {
               <div className="p-6 bg-bg-muted border-b border-border-subtle flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-black text-fg-default leading-tight">
-                    Precios: {selectedList.name}
+                    {t('doc.priceLists.pricesOf', { name: selectedList.name })}
                   </h2>
                   <p className="text-[10px] text-fg-subtle font-bold uppercase tracking-widest mt-1">
-                    Asignación masiva de precios especiales
+                    {t('doc.priceLists.bulkHint')}
                   </p>
                 </div>
                 <Input
                   leftIcon={<Search size={14} />}
                   inputSize="sm"
-                  placeholder="Buscador por código o nombre..."
+                  placeholder={t('doc.priceLists.search')}
                   value={searchItem}
                   onChange={(e) => setSearchItem(e.target.value)}
                   containerClassName="w-full md:w-64"
@@ -330,10 +336,10 @@ export const PriceLists: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-bg-card border-b border-border-subtle text-[9px] uppercase font-black text-fg-subtle sticky top-0 z-10 shadow-sm">
                     <tr>
-                      <th className="px-6 py-3">Artículo</th>
-                      <th className="px-6 py-3 text-center">Precio Base</th>
-                      <th className="px-6 py-3 text-center">Variación</th>
-                      <th className="px-6 py-3 text-right">Precio Especial</th>
+                      <th className="px-6 py-3">{t('doc.lines.item')}</th>
+                      <th className="px-6 py-3 text-center">{t('doc.priceLists.basePrice')}</th>
+                      <th className="px-6 py-3 text-center">{t('doc.priceLists.variation')}</th>
+                      <th className="px-6 py-3 text-right">{t('doc.priceLists.specialPrice')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border-subtle">
@@ -368,36 +374,45 @@ export const PriceLists: React.FC = () => {
                                 className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-tighter border ${diff >= 0 ? 'bg-danger-bg text-danger-fg border-danger/20' : 'bg-success-bg text-success-fg border-success/20'}`}
                               >
                                 {diff >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                                {Math.abs(diff).toFixed(1)}% {diff >= 0 ? 'Recargo' : 'Dcto'}
+                                {Math.abs(diff).toFixed(1)}%{' '}
+                                {diff >= 0
+                                  ? t('doc.priceLists.surcharge')
+                                  : t('doc.priceLists.discount')}
                               </div>
                             ) : (
-                              <span className="text-fg-subtle italic text-[10px]">Sin cambios</span>
+                              <span className="text-fg-subtle italic text-[10px]">
+                                {t('doc.priceLists.noChanges')}
+                              </span>
                             )}
                           </td>
                           <td className="px-6 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <div className="relative w-32">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-fg-subtle">
-                                  €
-                                </span>
-                                <input
-                                  id={`price-input-${item.id}`}
-                                  type="number"
-                                  step="0.01"
-                                  placeholder={String(item.basePrice ?? '')}
-                                  defaultValue={itemPrice?.price || ''}
-                                  className="h-9 w-full pl-6 pr-2 rounded-lg border border-border-subtle text-xs font-black text-fg-default bg-bg-muted focus:bg-bg-card focus:border-accent focus:ring-2 focus:ring-accent/10 transition-all outline-none text-right"
-                                />
-                              </div>
+                              <CurrencyInput
+                                aria-label={t('doc.priceLists.priceOf', { name: item.name })}
+                                containerClassName="w-32"
+                                align="right"
+                                placeholder={String(item.basePrice ?? '')}
+                                value={
+                                  item.id in priceDrafts
+                                    ? priceDrafts[item.id]
+                                    : itemPrice?.price != null && itemPrice.price !== ''
+                                      ? Number(itemPrice.price)
+                                      : null
+                                }
+                                onChange={(v) => setPriceDrafts((d) => ({ ...d, [item.id]: v }))}
+                              />
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  const input = document.getElementById(
-                                    `price-input-${item.id}`,
-                                  ) as HTMLInputElement;
-                                  handleUpdatePrice(item.id, input.value);
+                                  const v =
+                                    item.id in priceDrafts
+                                      ? priceDrafts[item.id]
+                                      : itemPrice?.price != null
+                                        ? Number(itemPrice.price)
+                                        : null;
+                                  handleUpdatePrice(item.id, v == null ? '' : String(v));
                                 }}
                                 disabled={savingItems.includes(item.id) || !canWrite}
                                 isLoading={savingItems.includes(item.id)}
@@ -413,7 +428,7 @@ export const PriceLists: React.FC = () => {
                     {filteredItems.length === 0 && (
                       <tr>
                         <td colSpan={4} className="p-20 text-center text-fg-subtle italic">
-                          No hay artículos que coincidan con la búsqueda.
+                          {t('doc.priceLists.noMatches')}
                         </td>
                       </tr>
                     )}
@@ -424,8 +439,8 @@ export const PriceLists: React.FC = () => {
           ) : (
             <EmptyState
               icon={<Tag size={18} />}
-              title="Potencia Comercial"
-              hint="Selecciona una lista de la izquierda para empezar a optimizar tus márgenes de beneficio de forma masiva."
+              title={t('doc.priceLists.emptyTitle')}
+              hint={t('doc.priceLists.emptyHint')}
               className="h-full min-h-[400px] border-2 border-dashed border-border-default rounded-[2.5rem] bg-bg-muted"
             />
           )}

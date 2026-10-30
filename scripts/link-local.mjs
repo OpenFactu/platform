@@ -23,6 +23,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const LINKS = {
   ui: 'D:/dev/ui',
   'site-builder': 'D:/dev/site-builder',
+  pdf: 'D:/dev/pdf',
 };
 
 for (const [name, target] of Object.entries(LINKS)) {

@@ -3,6 +3,7 @@
  * comprobaciones y la búsqueda de duplicados son las del alta normal
  * (partners/domain/partnerChecks).
  */
+import { t } from '@/i18n/i18n';
 import {
   checkEmail,
   checkName,
@@ -36,12 +37,7 @@ export function validateQuickPartner(
     ['email', checkEmail(d.email)],
     // Aquí el teléfono se escribe sin prefijo (va aparte en el campo).
     ['phone', checkPhone(d.phone)],
-    [
-      'groupId',
-      d.groupId
-        ? null
-        : 'No hay grupos de clientes con prefijo de código: créalo en Interlocutores → Grupos',
-    ],
+    ['groupId', d.groupId ? null : t('crm.quickPartner.noGroup')],
   ];
   for (const [k, msg] of checks) if (msg) e[k] = msg;
   return e;

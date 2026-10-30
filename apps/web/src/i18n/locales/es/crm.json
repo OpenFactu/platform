@@ -1,0 +1,373 @@
+{
+  "crm": {
+    "nav": {
+      "label": "CRM",
+      "description": "Seguimiento comercial: oportunidades en un embudo, contactos y actividades.",
+      "today": "Hoy",
+      "opportunities": "Oportunidades",
+      "opportunity": "Oportunidad",
+      "activities": "Actividades",
+      "contacts": "Contactos",
+      "reports": "Informes",
+      "stages": "Etapas",
+      "settings": "Ajustes",
+      "stagesTitle": "Etapas del embudo",
+      "reportsTitle": "Informes del CRM",
+      "settingsTitle": "Ajustes del CRM"
+    },
+    "docType": {
+      "SQ": "Presupuesto",
+      "SO": "Pedido",
+      "SDN": "Albarán",
+      "SINV": "Factura"
+    },
+    "stageKind": {
+      "open": "Abierta",
+      "won": "Ganada",
+      "lost": "Perdida"
+    },
+    "activityType": {
+      "call": "Llamada",
+      "meeting": "Reunión",
+      "email": "Correo",
+      "note": "Nota",
+      "task": "Tarea"
+    },
+    "quickPartner": {
+      "noGroup": "No hay grupos de clientes con prefijo de código: créalo en Interlocutores → Grupos",
+      "steps": {
+        "company": "Empresa",
+        "contact": "Contacto",
+        "review": "Revisar"
+      },
+      "nifExists": "Ya existe «{name}» con este NIF",
+      "createFailed": "No se pudo crear el cliente",
+      "legalName": "Nombre o razón social",
+      "country": "País",
+      "nif": "NIF",
+      "example": "ej.: {example}",
+      "nifHelp": "Opcional ahora; hace falta para facturarle.",
+      "group": "Grupo",
+      "contactHint": "Opcional: si los tienes, el correo sirve para mandarle presupuestos y facturas.",
+      "reviewHint": "Dirección, forma de pago y el resto de la ficha se completan luego en Interlocutores.",
+      "usingExisting": "Usando el cliente {name}",
+      "created": "Cliente {name} creado",
+      "title": "Nuevo cliente",
+      "subtitle": "Lo básico para seguir; el resto de la ficha se completa en Interlocutores",
+      "submit": "Crear cliente"
+    },
+    "errors": {
+      "load": "Error al cargar",
+      "loadFailed": "No se pudo cargar",
+      "saveFailed": "No se pudo guardar",
+      "updateFailed": "No se pudo actualizar",
+      "deleteFailed": "No se pudo borrar"
+    },
+    "opportunity": {
+      "validation": {
+        "titleRequired": "El título es obligatorio",
+        "partnerRequired": "Elige el cliente o indica el nombre o la empresa del prospecto",
+        "lostReasonRequired": "Indica el motivo de pérdida",
+        "sourceRequired": "Indica el origen de la oportunidad"
+      },
+      "new": "Nueva oportunidad"
+    },
+    "pipeline": {
+      "moveFailed": "No se pudo mover la oportunidad"
+    },
+    "owner": {
+      "label": "Responsable",
+      "none": "— sin responsable —"
+    },
+    "summary": {
+      "revenue12m": "Facturado 12 meses",
+      "lastPurchase": "Última compra: {date}",
+      "noPurchases": "Sin compras",
+      "pendingReceivable": "Pendiente de cobro",
+      "openQuotes": "Presupuestos abiertos",
+      "quotesCount_one": "{count} presupuesto(s)",
+      "quotesCount_other": "{count} presupuesto(s)",
+      "openOpportunities": "Oportunidades abiertas",
+      "opportunitiesCount_one": "{count} oportunidad(es)",
+      "opportunitiesCount_other": "{count} oportunidad(es)"
+    },
+    "lostReason": {
+      "other": "Otro…",
+      "title": "¿Por qué se ha perdido?",
+      "confirm": "Marcar como perdida",
+      "reason": "Motivo",
+      "choose": "Elige un motivo",
+      "describe": "Describe el motivo"
+    },
+    "partnerSelect": {
+      "label": "Interlocutor",
+      "placeholder": "Busca o crea un cliente",
+      "create": "Crear cliente \"{term}\""
+    },
+    "common": {
+      "opportunity": "Oportunidad",
+      "customer": "Cliente",
+      "stage": "Etapa",
+      "amount": "Importe",
+      "expectedClose": "Cierre previsto",
+      "code": "Código",
+      "date": "Fecha",
+      "status": "Estado",
+      "total": "Total",
+      "save": "Guardar",
+      "name": "Nombre",
+      "email": "Correo",
+      "phone": "Teléfono",
+      "mobile": "Móvil",
+      "notes": "Notas",
+      "tags": "Etiquetas",
+      "showMore": "Ver más",
+      "delete": "Borrar",
+      "next": "Siguiente",
+      "back": "Atrás",
+      "optional": "Opcional"
+    },
+    "partnerPanel": {
+      "noOpportunities": "Sin oportunidades",
+      "pending": "Pendiente",
+      "history": "Historial"
+    },
+    "quoteStatus": {
+      "open": "Abierto",
+      "accepted": "Aceptado",
+      "rejected": "Rechazado",
+      "cancelled": "Cancelado",
+      "expired": "Caducado"
+    },
+    "documents": {
+      "document": "Documento",
+      "ariaLabel": "Documentos de la oportunidad",
+      "empty": "Sin documentos",
+      "emptyHint": "Crea un presupuesto con los productos de la oportunidad."
+    },
+    "stringList": {
+      "empty": "Vacío",
+      "dragToReorder": "Arrastra para reordenar",
+      "remove": "Quitar {value}",
+      "add": "Añadir"
+    },
+    "activityForm": {
+      "subjectRequired": "El asunto es obligatorio",
+      "partnerRequired": "Elige el interlocutor",
+      "editTitle": "Editar actividad",
+      "newTitle": "Nueva actividad",
+      "type": "Tipo",
+      "subject": "Asunto",
+      "detail": "Detalle",
+      "alreadyDone": "Ya está hecha"
+    },
+    "board": {
+      "lastDays": "últimos {days} días",
+      "prospect": "Prospecto",
+      "stale": "Parada",
+      "ariaLabel": "Embudo de oportunidades"
+    },
+    "contactForm": {
+      "required": "El nombre y el interlocutor son obligatorios",
+      "contact": "Contacto",
+      "newTitle": "Nuevo contacto",
+      "role": "Cargo",
+      "isMain": "Contacto principal del interlocutor"
+    },
+    "timeline": {
+      "empty": "Sin historial todavía",
+      "ariaLabel": "Historial del cliente"
+    },
+    "activityList": {
+      "deleteTitle": "Borrar actividad",
+      "deleteMessage": "¿Borrar «{subject}»?",
+      "empty": "Sin actividades",
+      "emptyHint": "Apunta llamadas, reuniones y tareas de seguimiento.",
+      "markPending": "Marcar como pendiente",
+      "markDone": "Marcar como hecha"
+    },
+    "contacts": {
+      "callWith": "Llamada con {name}",
+      "deleteTitle": "Borrar contacto",
+      "deleteMessage": "¿Borrar a {name}?",
+      "main": "Principal",
+      "searchPlaceholder": "Buscar por nombre, interlocutor, correo…",
+      "empty": "Sin contactos.",
+      "subtitle": "Las personas con las que tratas en cada cliente o proveedor"
+    },
+    "lines": {
+      "add": "Añadir producto",
+      "empty": "Sin productos",
+      "emptyHint": "Sin productos, el importe de la oportunidad se teclea a mano.",
+      "item": "Artículo",
+      "description": "Descripción",
+      "quantity": "Cantidad",
+      "price": "Precio",
+      "discountShort": "Dto.",
+      "discount": "Descuento",
+      "remove": "Quitar producto",
+      "chooseItem": "Elige un artículo",
+      "product": "Producto {n}"
+    },
+    "fields": {
+      "title": "Título",
+      "clientOrProspect": "¿Cliente o prospecto?",
+      "existingClient": "Cliente existente",
+      "prospectOption": "Prospecto (aún no es cliente)",
+      "company": "Empresa",
+      "contactPerson": "Persona de contacto",
+      "none": "— ninguno —",
+      "choosePartnerFirst": "Elige antes el interlocutor",
+      "estimatedAmount": "Importe estimado",
+      "amountFromLines": "Se calcula con los productos.",
+      "source": "Origen",
+      "sourcePlaceholder": "¿De dónde viene?",
+      "lostReason": "Motivo de pérdida",
+      "chooseReason": "Elige el motivo",
+      "useTerm": "Usar «{term}»"
+    },
+    "activities": {
+      "pending": "Pendientes",
+      "done": "Hechas",
+      "subtitle": "Llamadas, reuniones y tareas de seguimiento comercial",
+      "onlyMine": "Solo las mías"
+    },
+    "today": {
+      "lastActivity": "Última actividad",
+      "staleSubtitle": "Sin actividad en {days} días o más.",
+      "subtitle": "Tus actividades pendientes y las oportunidades que piden atención",
+      "myPending": "Mis actividades pendientes",
+      "overdueHint": "Las vencidas salen en rojo.",
+      "closingSoon": "Cierran en los próximos 7 días",
+      "closingSoonEmpty": "Nada cierra esta semana",
+      "stale": "Paradas",
+      "staleEmpty": "Ninguna parada"
+    },
+    "settings": {
+      "saved": "Ajustes del CRM guardados",
+      "saveFailed": "No se pudieron guardar",
+      "subtitle": "Catálogos y avisos que usan oportunidades y actividades",
+      "lostReasons": "Motivos de pérdida",
+      "lostReasonsHint": "Se piden al dar una oportunidad por perdida.",
+      "reasons": "Motivos",
+      "newReason": "Nuevo motivo",
+      "sources": "Orígenes",
+      "sourcesHint": "De dónde llegan las oportunidades.",
+      "newSource": "Nuevo origen",
+      "sourceRequired": "Exigir el origen al crear una oportunidad",
+      "followUp": "Seguimiento",
+      "followUpHint": "Responsable por defecto y avisos.",
+      "defaultOwner": "Responsable por defecto",
+      "nobody": "— nadie —",
+      "staleDays": "Días sin actividad para marcar una oportunidad como parada",
+      "boardClosedDays": "Días que una oportunidad ganada o perdida sigue en el tablero",
+      "boardClosedDaysHint": "Después solo se ve en la lista, filtrando por cerradas.",
+      "dormantEnabled": "Avisar de clientes habituales que dejan de comprar",
+      "dormantDays": "Días sin comprar"
+    },
+    "stages": {
+      "deleteTitle": "Borrar etapa",
+      "deleteMessage": "¿Borrar la etapa «{name}»?",
+      "probability": "Probabilidad",
+      "followUpAfter": "{type} a los {days} días",
+      "order": "Orden",
+      "new": "Nueva etapa",
+      "edit": "Editar etapa",
+      "noFollowUp": "Ninguno",
+      "followUpHint": "Se crea para el responsable de la oportunidad cada vez que entra en esta etapa.",
+      "closingHint": "Las etapas «Ganada» y «Perdida» cierran la oportunidad; volver a una abierta la reabre.",
+      "moveUp": "Subir",
+      "moveDown": "Bajar",
+      "subtitle": "Las columnas del tablero de oportunidades, en orden",
+      "followUpOnEnter": "Seguimiento al entrar en la etapa",
+      "afterDays": "A los (días)",
+      "subjectPlaceholder": "Seguimiento: <título de la oportunidad>"
+    },
+    "opportunities": {
+      "deleteTitle": "Borrar oportunidad",
+      "deleteMessage": "¿Borrar «{title}» y sus actividades?",
+      "closed": "Cerradas",
+      "all": "Todas",
+      "board": "Tablero",
+      "list": "Lista",
+      "subtitle": "El embudo comercial: arrastra una tarjeta para cambiarla de etapa",
+      "open": "Abiertas",
+      "openAmount": "Importe abierto",
+      "weighted": "Previsión ponderada",
+      "searchPlaceholder": "Buscar por título, interlocutor o contacto",
+      "scopeLabel": "Qué oportunidades ver",
+      "empty": "Todavía no hay oportunidades."
+    },
+    "detail": {
+      "created": "Oportunidad creada",
+      "saved": "Oportunidad guardada",
+      "quoteCreated": "Presupuesto {num} creado",
+      "quoteFailed": "No se pudo crear el presupuesto",
+      "notFound": "Oportunidad no encontrada.",
+      "backToList": "Volver a oportunidades",
+      "convert": "Convertir en cliente",
+      "create": "Crear oportunidad",
+      "amountFromQuote": "Importe del presupuesto aceptado.",
+      "addItemLines": "Añade productos con artículo",
+      "createQuote": "Crear presupuesto",
+      "saveToQuote": "Guarda la oportunidad para presupuestarla.",
+      "linesLocked": "La oportunidad está cerrada: los productos quedan como estaban.",
+      "linesHint": "El precio sale de la tarifa del cliente. El importe de la oportunidad es su suma.",
+      "converted": "El prospecto ya es cliente",
+      "convertFailed": "No se pudo enlazar el cliente",
+      "data": "Datos",
+      "documents": "Documentos",
+      "documentsHint": "Presupuestos, pedidos y facturas de esta oportunidad.",
+      "activity": "Actividad",
+      "products": "Productos de interés"
+    },
+    "reports": {
+      "noDate": "Sin fecha",
+      "tryLonger": "Prueba con un periodo más largo.",
+      "tabs": {
+        "forecast": "Previsión",
+        "funnel": "Embudo",
+        "lost": "Pérdidas",
+        "sources": "Orígenes",
+        "activity": "Comerciales",
+        "surveys": "Encuestas"
+      },
+      "months": "{n} meses",
+      "weighted": "Ponderado",
+      "won": "Ganado",
+      "funnelSubtitle_one": "{count} oportunidad(es) creadas en el periodo: cuántas pasaron por cada etapa, cuántas siguieron y cuánto tiempo estuvieron.",
+      "funnelSubtitle_other": "{count} oportunidad(es) creadas en el periodo: cuántas pasaron por cada etapa, cuántas siguieron y cuánto tiempo estuvieron.",
+      "conversion": "{pct}% siguen adelante",
+      "avgDays": "{days} días de media",
+      "lostAmount": "Importe perdido",
+      "created": "Creadas",
+      "wonCount": "Ganadas",
+      "lostCount": "Perdidas",
+      "winRate": "% de éxito",
+      "salesRep": "Comercial",
+      "overdue": "Vencidas",
+      "wonAmount": "Importe ganado",
+      "responses_one": "{count} respuesta(s) en el periodo",
+      "responses_other": "{count} respuesta(s) en el periodo",
+      "npsByMonth": "NPS de {name} por mes",
+      "noNps": "Esta encuesta no tiene pregunta NPS.",
+      "noResponses": "Sin respuestas en el periodo.",
+      "subtitle": "Cómo va el embudo, de dónde vienen las ventas y por qué se pierden",
+      "period": "Periodo",
+      "openInPipeline": "Abierto en el embudo",
+      "wonInPeriod": "Ganado en el periodo",
+      "forecastByMonth": "Previsión por mes de cierre",
+      "openOpportunities": "Oportunidades abiertas.",
+      "noOpen": "No hay oportunidades abiertas",
+      "wonByMonth": "Ganado por mes",
+      "noneWon": "Nada ganado en el periodo",
+      "noneCreated": "No se crearon oportunidades en el periodo",
+      "noneLost": "No se perdió ninguna oportunidad en el periodo",
+      "bySource": "Oportunidades por origen",
+      "noActivity": "Sin actividad en el periodo",
+      "activityByRep": "Actividad por comercial",
+      "activityByRepHint": "Actividades hechas en el periodo, pendientes vencidas y oportunidades ganadas.",
+      "noSurveys": "No hay encuestas"
+    }
+  }
+}

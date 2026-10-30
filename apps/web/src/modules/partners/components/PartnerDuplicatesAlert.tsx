@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import { Alert, Button } from '@openfactu/ui';
 import { DUPLICATE_REASON_LABEL, type Duplicate, type PartnerLike } from '../domain/partnerChecks';
@@ -9,17 +10,18 @@ import { DUPLICATE_REASON_LABEL, type Duplicate, type PartnerLike } from '../dom
 export function PartnerDuplicatesAlert<P extends PartnerLike>({
   duplicates,
   onUse,
-  useLabel = 'Usar este',
+  useLabel,
 }: {
   duplicates: Duplicate<P>[];
   onUse: (partner: P) => void;
   useLabel?: string;
 }) {
+  const { t } = useI18n();
   if (!duplicates.length) return null;
   return (
     <Alert
       tone={duplicates.some((d) => d.reason === 'nif') ? 'danger' : 'warning'}
-      title="Puede que este interlocutor ya exista"
+      title={t('partners.duplicates.title')}
     >
       <ul className="mt-1 space-y-1">
         {duplicates.map(({ partner, reason }) => (
@@ -27,10 +29,10 @@ export function PartnerDuplicatesAlert<P extends PartnerLike>({
             <span className="text-sm">
               <strong>{partner.name}</strong>
               {partner.code && <span className="text-fg-muted"> · {partner.code}</span>}
-              <span className="text-fg-muted"> — {DUPLICATE_REASON_LABEL[reason]}</span>
+              <span className="text-fg-muted"> — {t(DUPLICATE_REASON_LABEL[reason])}</span>
             </span>
             <Button type="button" size="sm" variant="secondary" onClick={() => onUse(partner)}>
-              {useLabel}
+              {useLabel ?? t('partners.duplicates.use')}
             </Button>
           </li>
         ))}

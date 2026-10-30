@@ -17,8 +17,10 @@ import type { TableColumn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { TrendingUp, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
+import { useI18n } from '@/i18n/I18nContext';
 
 export const Performance: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const toast = useToast();
   const today = new Date();
@@ -94,21 +96,21 @@ export const Performance: React.FC = () => {
   const exportExcel = () =>
     exportToXlsx({
       filename: `rendimiento_${filters.from}_${filters.to}`,
-      sheetName: 'Rendimiento',
-      title: `Rendimiento · ${filters.from} a ${filters.to}`,
+      sheetName: t('hrTalent.performance.title'),
+      title: t('hrTalent.performance.exportTitle', { from: filters.from, to: filters.to }),
       columns: [
-        { key: 'code', label: 'Código', width: 10 },
-        { key: 'name', label: 'Nombre', width: 28 },
-        { key: 'hoursContracted', label: 'h. Contratadas', type: 'number' },
-        { key: 'hoursPlanned', label: 'h. Planificadas', type: 'number' },
-        { key: 'hoursClocked', label: 'h. Fichadas', type: 'number' },
-        { key: 'hoursOvertime', label: 'h. Extra', type: 'number' },
-        { key: 'compliancePct', label: '% Cumplimiento', type: 'percent' },
-        { key: 'absenceDays', label: 'Días absentismo', type: 'integer' },
+        { key: 'code', label: t('hr.common.code'), width: 10 },
+        { key: 'name', label: t('hr.common.name'), width: 28 },
+        { key: 'hoursContracted', label: t('hrTalent.performance.x.contracted'), type: 'number' },
+        { key: 'hoursPlanned', label: t('hrTalent.performance.x.planned'), type: 'number' },
+        { key: 'hoursClocked', label: t('hrTalent.performance.x.clocked'), type: 'number' },
+        { key: 'hoursOvertime', label: t('hrTalent.performance.x.overtime'), type: 'number' },
+        { key: 'compliancePct', label: t('hrTalent.performance.x.compliance'), type: 'percent' },
+        { key: 'absenceDays', label: t('hrTalent.performance.x.absence'), type: 'integer' },
       ],
       rows,
       totals: {
-        code: 'TOTAL',
+        code: t('hr.common.total').toUpperCase(),
         hoursContracted: totals.contracted,
         hoursPlanned: totals.planned,
         hoursClocked: totals.clocked,
@@ -122,7 +124,7 @@ export const Performance: React.FC = () => {
 
   const columns: TableColumn<Row>[] = [
     {
-      header: 'Empleado',
+      header: t('hr.common.employee'),
       sortable: true,
       sortAccessor: (r) => r.name,
       cell: (r) => (
@@ -133,28 +135,28 @@ export const Performance: React.FC = () => {
       ),
     },
     {
-      header: 'Contratadas',
+      header: t('hrTalent.performance.contracted'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => r.hoursContracted,
       cell: (r) => hours(r.hoursContracted),
     },
     {
-      header: 'Planificadas',
+      header: t('hrTalent.performance.planned'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => r.hoursPlanned,
       cell: (r) => hours(r.hoursPlanned),
     },
     {
-      header: 'Fichadas',
+      header: t('hrTalent.performance.clocked'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => r.hoursClocked,
       cell: (r) => <span className="tabular-nums font-bold">{r.hoursClocked.toFixed(1)}</span>,
     },
     {
-      header: 'Extras',
+      header: t('hrTalent.performance.overtime'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => r.hoursOvertime,
@@ -163,7 +165,7 @@ export const Performance: React.FC = () => {
       ),
     },
     {
-      header: '% Cumplim.',
+      header: t('hrTalent.performance.complianceShort'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => r.compliancePct,
@@ -182,14 +184,14 @@ export const Performance: React.FC = () => {
       ),
     },
     {
-      header: 'Absentismo',
+      header: t('hrTalent.performance.absence'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => r.absenceDays,
       cell: (r) => <span className="tabular-nums">{r.absenceDays}</span>,
     },
     {
-      header: 'Incidencias',
+      header: t('hrTalent.performance.incidents'),
       cell: (r) => (
         <div className="text-xs">
           {Object.entries(r.incidentsByType).map(([k, v]) => (
@@ -201,7 +203,7 @@ export const Performance: React.FC = () => {
             </span>
           ))}
           {Object.keys(r.incidentsByType).length === 0 && (
-            <span className="text-fg-subtle italic">sin incidencias</span>
+            <span className="text-fg-subtle italic">{t('hrTalent.performance.noIncidents')}</span>
           )}
         </div>
       ),
@@ -211,13 +213,13 @@ export const Performance: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-5">
       <PageHeader
-        title="Rendimiento"
-        subtitle="Productividad por empleado: contratadas vs planificadas vs fichadas, % cumplimiento, horas extra, mapa de incidencias."
+        title={t('hrTalent.performance.title')}
+        subtitle={t('hrTalent.performance.subtitle')}
         icon={<TrendingUp size={18} />}
         size="lg"
         actions={
           <Button type="button" size="sm" variant="secondary" onClick={exportExcel}>
-            <Download size={14} /> Exportar Excel
+            <Download size={14} /> {t('hrTime.timeclock.exportExcel')}
           </Button>
         }
       />
@@ -227,12 +229,12 @@ export const Performance: React.FC = () => {
           {/* El rango se guarda como '' cuando se vacía, igual que hacía el
               <input type="date">. */}
           <DatePicker
-            label="Desde"
+            label={t('hr.common.from')}
             value={filters.from || null}
             onChange={(v) => setFilters({ ...filters, from: v ?? '' })}
           />
           <DatePicker
-            label="Hasta"
+            label={t('hr.common.to')}
             value={filters.to || null}
             onChange={(v) => setFilters({ ...filters, to: v ?? '' })}
           />
@@ -240,25 +242,25 @@ export const Performance: React.FC = () => {
             {/* SearchableSelect no tiene prop `label` → se conserva el <label>
                 suelto. El vacío es válido («Todos») → clearable. */}
             <label className="block text-xs font-bold uppercase tracking-wider text-fg-muted mb-1.5">
-              Departamento
+              {t('hr.common.department')}
             </label>
             <SearchableSelect
               options={departmentOptions}
               value={filters.departmentId}
               onChange={(v) => setFilters({ ...filters, departmentId: v })}
-              placeholder="Todos"
+              placeholder={t('hr.common.all')}
               clearable
             />
           </div>
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-fg-muted mb-1.5">
-              Empleado
+              {t('hr.common.employee')}
             </label>
             <SearchableSelect
               options={employeeOptions}
               value={filters.employeeId}
               onChange={(v) => setFilters({ ...filters, employeeId: v })}
-              placeholder="Todos"
+              placeholder={t('hr.common.all')}
               clearable
             />
           </div>
@@ -270,28 +272,35 @@ export const Performance: React.FC = () => {
           siguen al tema: info para lo planificado, success para lo fichado,
           warning para las extras y danger para el absentismo. */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KpiCard label="Contratadas" value={`${totals.contracted.toFixed(1)} h`} />
         <KpiCard
-          label="Planificadas"
+          label={t('hrTalent.performance.contracted')}
+          value={`${totals.contracted.toFixed(1)} h`}
+        />
+        <KpiCard
+          label={t('hrTalent.performance.planned')}
           value={`${totals.planned.toFixed(1)} h`}
           className="border-info"
         />
         <KpiCard
-          label="Fichadas"
+          label={t('hrTalent.performance.clocked')}
           value={`${totals.clocked.toFixed(1)} h`}
           className="border-success"
         />
         <KpiCard
-          label="Extras"
+          label={t('hrTalent.performance.overtime')}
           value={`${totals.overtime.toFixed(1)} h`}
           className="border-warning"
         />
-        <KpiCard label="Absentismo" value={`${totals.absence} días`} className="border-danger" />
+        <KpiCard
+          label={t('hrTalent.performance.absence')}
+          value={t('hrTalent.performance.days', { count: totals.absence })}
+          className="border-danger"
+        />
       </div>
 
       <Card className="overflow-hidden" noPadding>
         <div className="p-3 text-xs text-fg-muted border-b border-border-default">
-          % cumplimiento medio:{' '}
+          {t('hrTalent.performance.avgCompliance')}{' '}
           <span className="font-black text-fg-default tabular-nums">
             {avgCompliance.toFixed(1)}%
           </span>
@@ -302,7 +311,7 @@ export const Performance: React.FC = () => {
           data={rows}
           isLoading={loading}
           rowKey={(r) => r.employeeId}
-          emptyMessage="No hay datos de productividad para los filtros actuales."
+          emptyMessage={t('hrTalent.performance.empty')}
         />
       </Card>
     </div>

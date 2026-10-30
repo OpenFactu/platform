@@ -1,3 +1,4 @@
+import { Spinner } from '@openfactu/ui';
 /**
  * Caja de búsqueda flotante para mapas. Autocompleta direcciones con Photon
  * vía `/api/logistics/geocode/suggest`. Al elegir, llama `onSelect` con
@@ -15,8 +16,9 @@
 
 import { geocodeApi } from '@/modules/logistics/api';
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, X as XIcon, Loader2 } from 'lucide-react';
+import { Search, X as XIcon } from 'lucide-react';
 import type { GeocodeSuggestion as Suggestion } from '@/modules/logistics/domain/shipment';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   onSelect: (s: Suggestion) => void;
@@ -40,7 +42,7 @@ interface Props {
 
 export const MapSearchBox: React.FC<Props> = ({
   onSelect,
-  placeholder = 'Buscar dirección…',
+  placeholder,
   authHeader,
   tenantId,
   className,
@@ -48,6 +50,7 @@ export const MapSearchBox: React.FC<Props> = ({
   value,
   onTextChange,
 }) => {
+  const { t } = useI18n();
   const [q, setQ] = useState(value ?? '');
   // Sincroniza con el valor externo si cambia (ej. reset del formulario).
   useEffect(() => {
@@ -62,8 +65,8 @@ export const MapSearchBox: React.FC<Props> = ({
 
   // Debounce de 250ms mientras se escribe.
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(q.trim()), 250);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebounced(q.trim()), 250);
+    return () => clearTimeout(timer);
   }, [q]);
 
   useEffect(() => {
@@ -153,10 +156,10 @@ export const MapSearchBox: React.FC<Props> = ({
             if (v.length >= 3) setOpen(true);
           }}
           onFocus={() => q.length >= 3 && setOpen(true)}
-          placeholder={placeholder}
+          placeholder={placeholder ?? t('logistics.mapSearch.placeholder')}
           className="flex-1 outline-none text-sm bg-transparent text-fg-default placeholder:text-slate-400"
         />
-        {loading && <Loader2 size={14} className="animate-spin text-slate-400" />}
+        {loading && <Spinner size="sm" tone="muted" />}
         {q && !loading && (
           <button
             onClick={() => {
@@ -166,7 +169,7 @@ export const MapSearchBox: React.FC<Props> = ({
               onTextChange?.('');
             }}
             className="text-slate-400 hover:text-slate-600"
-            title="Limpiar"
+            title={t('logistics.mapSearch.clear')}
           >
             <XIcon size={14} />
           </button>
@@ -187,7 +190,12 @@ export const MapSearchBox: React.FC<Props> = ({
               <div className="text-sm text-fg-default leading-tight truncate">{r.label}</div>
               {(r.type || r.housenumber) && (
                 <div className="text-[10px] text-slate-400 mt-0.5">
-                  {[r.type, r.housenumber ? `nº ${r.housenumber}` : null]
+                  {[
+                    r.type,
+                    r.housenumber
+                      ? t('logistics.mapSearch.houseNumber', { n: r.housenumber })
+                      : null,
+                  ]
                     .filter(Boolean)
                     .join(' · ')}
                 </div>
@@ -198,7 +206,7 @@ export const MapSearchBox: React.FC<Props> = ({
       )}
       {open && !loading && debounced.length >= 3 && results.length === 0 && (
         <div className={dropdownClass + ' px-3 py-2 text-xs text-slate-500'}>
-          Sin resultados para <b>{debounced}</b>
+          {t('logistics.mapSearch.noResultsFor')} <b>{debounced}</b>
         </div>
       )}
     </div>

@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Table, Card, PageHeader, useToast, Badge, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate, formatNumber } from '@/i18n/format';
 import { BookOpenCheck } from 'lucide-react';
 import { chartOfAccountsApi, journalEntriesApi } from '../api';
 import type { Account, LedgerRow } from '../domain/accounting';
 
 export const Ledger: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selected, setSelected] = useState<string>('');
   const [rows, setRows] = useState<LedgerRow[]>([]);
@@ -18,7 +21,7 @@ export const Ledger: React.FC = () => {
     chartOfAccountsApi
       .list()
       .then((d) => setAccounts(Array.isArray(d) ? d : []))
-      .catch(() => toast.error('Error al cargar cuentas'));
+      .catch(() => toast.error(t('accounting.ledger.accountsLoadError')));
   }, [user?.tenantId]);
 
   useEffect(() => {
@@ -30,7 +33,7 @@ export const Ledger: React.FC = () => {
     journalEntriesApi
       .ledger(selected)
       .then((d) => setRows(Array.isArray(d) ? d : []))
-      .catch(() => toast.error('Error al cargar mayor'))
+      .catch(() => toast.error(t('accounting.ledger.loadError')))
       .finally(() => setLoading(false));
   }, [selected]);
 
@@ -40,33 +43,32 @@ export const Ledger: React.FC = () => {
 
   const columns = [
     {
-      header: 'Fecha',
-      cell: (r: LedgerRow) => new Date(r.entryDate).toLocaleDateString(),
+      header: t('accounting.common.date'),
+      cell: (r: LedgerRow) => formatDate(r.entryDate),
     },
-    { header: 'Asiento', cell: (r: LedgerRow) => <b>{r.entryNumber}</b> },
-    { header: 'Concepto', cell: (r: LedgerRow) => r.description || r.headerDescription || '' },
+    { header: t('accounting.ledger.entry'), cell: (r: LedgerRow) => <b>{r.entryNumber}</b> },
     {
-      header: 'Debe',
+      header: t('accounting.common.concept'),
+      cell: (r: LedgerRow) => r.description || r.headerDescription || '',
+    },
+    {
+      header: t('accounting.common.debit'),
       align: 'right' as const,
       cell: (r: LedgerRow) =>
-        Number(r.debit) > 0
-          ? Number(r.debit).toLocaleString('es-ES', { minimumFractionDigits: 2 })
-          : '',
+        Number(r.debit) > 0 ? formatNumber(Number(r.debit), { minimumFractionDigits: 2 }) : '',
     },
     {
-      header: 'Haber',
+      header: t('accounting.common.credit'),
       align: 'right' as const,
       cell: (r: LedgerRow) =>
-        Number(r.credit) > 0
-          ? Number(r.credit).toLocaleString('es-ES', { minimumFractionDigits: 2 })
-          : '',
+        Number(r.credit) > 0 ? formatNumber(Number(r.credit), { minimumFractionDigits: 2 }) : '',
     },
     {
-      header: 'Saldo',
+      header: t('accounting.common.balance'),
       align: 'right' as const,
       cell: (r: LedgerRow) => (
         <b className={r.runningBalance >= 0 ? 'text-fg-body' : 'text-red-600 dark:text-red-400'}>
-          {r.runningBalance.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+          {formatNumber(r.runningBalance, { minimumFractionDigits: 2 })}
         </b>
       ),
     },
@@ -75,8 +77,8 @@ export const Ledger: React.FC = () => {
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Libro mayor"
-        subtitle="Movimientos posteados por cuenta, con saldo corriente."
+        title={t('accounting.ledger.title')}
+        subtitle={t('accounting.ledger.subtitle')}
         icon={<BookOpenCheck size={18} />}
         size="lg"
       />
@@ -84,23 +86,31 @@ export const Ledger: React.FC = () => {
       <Card className="border-border-subtle shadow-lg" noPadding>
         <div className="p-6 flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-fg-body mb-1">Cuenta</label>
+            <label className="block text-sm font-medium text-fg-body mb-1">
+              {t('accounting.common.account')}
+            </label>
             {/* SearchableSelect y no Select: el plan contable puede tener cientos
                 de cuentas y sin buscador es inmanejable. */}
             <SearchableSelect
               options={accounts.map((a) => ({ value: a.id, label: `${a.code} — ${a.name}` }))}
               value={selected}
               onChange={setSelected}
-              placeholder="— seleccionar cuenta —"
+              placeholder={t('accounting.ledger.selectAccount')}
               clearable
             />
           </div>
           {account && (
             <div className="flex items-center gap-2">
               <Badge variant="info">{account.type}</Badge>
-              <Badge variant="success">Debe {totalDebit.toFixed(2)}</Badge>
-              <Badge variant="warning">Haber {totalCredit.toFixed(2)}</Badge>
-              <Badge variant="neutral">Saldo {(totalDebit - totalCredit).toFixed(2)}</Badge>
+              <Badge variant="success">
+                {t('accounting.common.debit')} {totalDebit.toFixed(2)}
+              </Badge>
+              <Badge variant="warning">
+                {t('accounting.common.credit')} {totalCredit.toFixed(2)}
+              </Badge>
+              <Badge variant="neutral">
+                {t('accounting.common.balance')} {(totalDebit - totalCredit).toFixed(2)}
+              </Badge>
             </div>
           )}
         </div>

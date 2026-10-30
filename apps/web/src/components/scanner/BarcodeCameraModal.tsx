@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { X, Camera, AlertTriangle } from 'lucide-react';
 import { useScanner } from '../../context/ScannerContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { t as tNow } from '@/i18n/i18n';
 
 interface Props {
   open: boolean;
@@ -25,6 +27,7 @@ export const BarcodeCameraModal: React.FC<Props> = ({ open, onClose, onScan, con
   const [lastScan, setLastScan] = useState<string | null>(null);
   const [scanCount, setScanCount] = useState(0);
   const { dispatch } = useScanner();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!open) return;
@@ -70,8 +73,8 @@ export const BarcodeCameraModal: React.FC<Props> = ({ open, onClose, onScan, con
       } catch (e: any) {
         setError(
           e?.name === 'NotAllowedError'
-            ? 'Permiso de cámara denegado. Concédelo en los ajustes del navegador.'
-            : e?.message || 'No se pudo iniciar la cámara',
+            ? tNow('app.scanner.permissionDenied')
+            : e?.message || tNow('app.scanner.startError'),
         );
         setLoading(false);
       }
@@ -92,12 +95,12 @@ export const BarcodeCameraModal: React.FC<Props> = ({ open, onClose, onScan, con
       <div className="flex items-center justify-between p-4 text-white">
         <div className="flex items-center gap-2">
           <Camera size={18} className="text-accent" />
-          <span className="font-bold text-sm">Escanear código</span>
+          <span className="font-bold text-sm">{t('app.bottomNav.scan')}</span>
         </div>
         <button
           onClick={onClose}
           className="p-2 rounded-xs hover:bg-white/10 transition-colors"
-          aria-label="Cerrar"
+          aria-label={t('app.common.close')}
         >
           <X size={22} />
         </button>
@@ -120,7 +123,7 @@ export const BarcodeCameraModal: React.FC<Props> = ({ open, onClose, onScan, con
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="bg-black/60 text-white px-4 py-2 rounded-sm text-sm font-mono">
-              Iniciando cámara…
+              {t('app.scanner.starting')}
             </div>
           </div>
         )}
@@ -135,8 +138,10 @@ export const BarcodeCameraModal: React.FC<Props> = ({ open, onClose, onScan, con
 
       <p className="text-center text-white/60 text-xs pb-6 px-4">
         {continuous
-          ? `Escaneo continuo · ${scanCount} leído(s)${lastScan ? ` · último: ${lastScan}` : ''}`
-          : 'Apunta al código. Detección automática · Formatos: EAN · Code-128 · QR'}
+          ? `${t('app.scanner.continuous', { count: scanCount })}${
+              lastScan ? ` · ${t('app.scanner.last', { code: lastScan })}` : ''
+            }`
+          : t('app.scanner.hint')}
       </p>
     </div>
   );

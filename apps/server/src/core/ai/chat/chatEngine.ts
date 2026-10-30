@@ -182,7 +182,7 @@ function stripProviderItemIds(messages: any[]): any[] {
 }
 
 export async function streamChat(
-  ctx: ChatToolContext & { messages: UIMessage[]; modelOverride?: string },
+  ctx: ChatToolContext & { messages: UIMessage[]; modelOverride?: string; locale?: string },
 ) {
   const cfg = await getAiConfig(ctx.tenantClient);
   if (!cfg.enabled) throw new AiDisabledError();
@@ -230,7 +230,13 @@ export async function streamChat(
   const tools = buildChatTools(ctx);
   return streamText({
     model,
-    system: buildSystemPrompt(ctx, isAdmin, new Set(Object.keys(tools))),
+    system:
+      buildSystemPrompt(ctx, isAdmin, new Set(Object.keys(tools))) +
+      // El prompt está en español; con la interfaz en inglés, se responde en inglés.
+      (ctx.locale === 'en'
+        ? '\n\nIMPORTANT: the user interface is in English. Always answer in English, ' +
+          'unless the user writes to you in another language.'
+        : ''),
     messages: modelMessages,
     tools,
     stopWhen: stepCountIs(MAX_STEPS),

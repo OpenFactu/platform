@@ -9,10 +9,14 @@ export interface AuthUser {
   tenantName?: string;
   permissions?: Record<string, { read: boolean; write: boolean; delete: boolean }>;
   avatarImageUrl?: string | null;
+  /** Idioma elegido en su perfil; null = el del navegador. */
+  locale?: 'es' | 'en' | null;
 }
 
 export const authApi = {
   me: () => apiClient.get<AuthUser>('/api/auth/me'),
   switchTenant: (tenantId: string) =>
     apiClient.post<{ token: string; user: AuthUser }>('/api/auth/switch-tenant', { tenantId }),
+  /** Guarda el idioma de la interfaz en el perfil del usuario. */
+  saveLocale: (locale: 'es' | 'en') => apiClient.patch('/api/profile/me', { locale }),
 };

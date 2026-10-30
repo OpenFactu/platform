@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Button, Input } from '@openfactu/ui';
+import { Button, Input, Progress } from '@openfactu/ui';
 import { HelpCircle, Check, Send } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
 
 export interface QuestionOption {
   label: string;
@@ -44,6 +45,7 @@ export const AskUserQuestionCard: React.FC<{
   disabled,
   onAnswer,
 }) => {
+  const { t } = useI18n();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [freeText, setFreeText] = useState('');
   const [answered, setAnswered] = useState(false);
@@ -80,17 +82,10 @@ export const AskUserQuestionCard: React.FC<{
       {step && (
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-accent/80">
-            <span>{step.title || 'Paso a paso'}</span>
-            <span>
-              Paso {step.current} de {step.total}
-            </span>
+            <span>{step.title || t('ai.question.stepByStep')}</span>
+            <span>{t('ai.question.stepOf', { current: step.current, total: step.total })}</span>
           </div>
-          <div className="h-1 rounded-full bg-accent/15 overflow-hidden">
-            <div
-              className="h-full bg-accent rounded-full transition-all duration-300"
-              style={{ width: `${Math.min(100, (step.current / step.total) * 100)}%` }}
-            />
-          </div>
+          <Progress size="sm" value={Math.min(100, (step.current / step.total) * 100)} />
         </div>
       )}
 
@@ -134,7 +129,7 @@ export const AskUserQuestionCard: React.FC<{
 
       {multiSelect && options.length > 0 && !answered && (
         <Button size="sm" onClick={confirmMulti} disabled={disabled || selected.size === 0}>
-          Confirmar selección
+          {t('ai.question.confirmSelection')}
         </Button>
       )}
 
@@ -150,7 +145,7 @@ export const AskUserQuestionCard: React.FC<{
                 submitFreeText();
               }
             }}
-            placeholder={freeTextPlaceholder || 'Escribe tu respuesta…'}
+            placeholder={freeTextPlaceholder || t('ai.question.freeTextPlaceholder')}
             disabled={disabled || answered}
             autoFocus={options.length === 0}
             inputSize="sm"
@@ -162,7 +157,7 @@ export const AskUserQuestionCard: React.FC<{
             size="sm"
             onClick={submitFreeText}
             disabled={disabled || answered || !freeText.trim()}
-            title="Enviar respuesta"
+            title={t('ai.question.send')}
             className="shrink-0"
           >
             <Send size={14} />
@@ -170,9 +165,7 @@ export const AskUserQuestionCard: React.FC<{
         </div>
       )}
 
-      {answered && (
-        <p className="text-[10px] text-accent/70">Respondido — sigue la conversación abajo.</p>
-      )}
+      {answered && <p className="text-[10px] text-accent/70">{t('ai.question.answered')}</p>}
     </div>
   );
 };

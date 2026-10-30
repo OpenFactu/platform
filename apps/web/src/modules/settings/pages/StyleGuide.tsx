@@ -2,6 +2,7 @@ import { Button, Input, Card, Table, Badge, Loader, KpiCard, useToast } from '@o
 import { Mail, Search } from 'lucide-react';
 import React from 'react';
 import { KeirostLogo } from '@/components/branding/KeirostLogo';
+import { useI18n } from '@/i18n/I18nContext';
 
 const TEAL_SCALE: Array<{ name: string; hex: string }> = [
   { name: '50', hex: '#F0FAFA' },
@@ -34,25 +35,40 @@ const SystemColors: Array<{ name: string; hex: string; token: string; role: stri
     name: 'Ink / Brand Black',
     hex: '#0A1628',
     token: '--k-ink-900',
-    role: 'Texto principal, fondos oscuros',
+    role: 'settingsStyleGuide.roles.text',
   },
   {
     name: 'Teal / Brand Accent',
     hex: '#0D9488',
     token: '--k-teal-500',
-    role: 'Acento principal, CTAs',
+    role: 'settingsStyleGuide.roles.accent',
   },
-  { name: 'White', hex: '#FFFFFF', token: '—', role: 'Fondo base' },
-  { name: 'Surface', hex: '#FAFBFC', token: '--k-surface', role: 'Fondos de sección' },
-  { name: 'Line / Border', hex: '#E2E8F0', token: '--k-line', role: 'Divisores' },
-  { name: 'Ink Muted', hex: '#64748B', token: '--k-ink-500', role: 'Texto secundario' },
+  { name: 'White', hex: '#FFFFFF', token: '—', role: 'settingsStyleGuide.roles.base' },
+  {
+    name: 'Surface',
+    hex: '#FAFBFC',
+    token: '--k-surface',
+    role: 'settingsStyleGuide.roles.section',
+  },
+  {
+    name: 'Line / Border',
+    hex: '#E2E8F0',
+    token: '--k-line',
+    role: 'settingsStyleGuide.roles.dividers',
+  },
+  {
+    name: 'Ink Muted',
+    hex: '#64748B',
+    token: '--k-ink-500',
+    role: 'settingsStyleGuide.roles.secondary',
+  },
 ];
 
 const Semantics: Array<{ name: string; hex: string; desc: string }> = [
-  { name: 'Success', hex: '#16A34A', desc: 'Pagado · OK' },
-  { name: 'Warning', hex: '#D97706', desc: 'Pendiente · Revisar' },
-  { name: 'Danger', hex: '#DC2626', desc: 'Error · Vencido' },
-  { name: 'Info', hex: '#2563EB', desc: 'Información · Nota' },
+  { name: 'Success', hex: '#16A34A', desc: 'settingsStyleGuide.semantics.success' },
+  { name: 'Warning', hex: '#D97706', desc: 'settingsStyleGuide.semantics.warning' },
+  { name: 'Danger', hex: '#DC2626', desc: 'settingsStyleGuide.semantics.danger' },
+  { name: 'Info', hex: '#2563EB', desc: 'settingsStyleGuide.semantics.info' },
 ];
 
 const SectionHeader: React.FC<{ num: string; title: string }> = ({ num, title }) => (
@@ -70,6 +86,7 @@ const Label: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 export const StyleGuide: React.FC = () => {
   const toast = useToast();
+  const { t } = useI18n();
   const [showOverlayLoader, setShowOverlayLoader] = React.useState(false);
 
   const tableData = [
@@ -77,49 +94,53 @@ export const StyleGuide: React.FC = () => {
       id: 'INV-2025-0042',
       client: 'Transportes García S.L.',
       date: '12 ene 2025',
-      status: 'Pagado',
+      status: 'paid',
       total: '€ 3.480,00',
     },
     {
       id: 'INV-2025-0041',
       client: 'Construcciones Pérez',
       date: '10 ene 2025',
-      status: 'Pendiente',
+      status: 'pending',
       total: '€ 7.200,00',
     },
     {
       id: 'INV-2025-0040',
       client: 'Logística Norte S.A.',
       date: '08 ene 2025',
-      status: 'Vencido',
+      status: 'overdue',
       total: '€ 1.950,00',
     },
     {
       id: 'INV-2025-0039',
       client: 'Distribuciones Alva',
       date: '05 ene 2025',
-      status: 'Pagado',
+      status: 'paid',
       total: '€ 12.600,00',
     },
   ];
 
   const tableColumns = [
-    { header: 'Nº Factura', accessor: 'id' as const, primary: true },
-    { header: 'Cliente', accessor: 'client' as const },
-    { header: 'Fecha emisión', accessor: 'date' as const },
+    { header: t('settingsStyleGuide.cols.invoice'), accessor: 'id' as const, primary: true },
+    { header: t('settingsStyleGuide.cols.client'), accessor: 'client' as const },
+    { header: t('settingsStyleGuide.cols.date'), accessor: 'date' as const },
     {
-      header: 'Estado',
+      header: t('settingsStyleGuide.cols.status'),
       accessor: (item: any) => (
         <Badge
           variant={
-            item.status === 'Pagado' ? 'success' : item.status === 'Pendiente' ? 'warning' : 'error'
+            item.status === 'paid' ? 'success' : item.status === 'pending' ? 'warning' : 'error'
           }
         >
-          {item.status}
+          {t(`settingsStyleGuide.status.${item.status}`)}
         </Badge>
       ),
     },
-    { header: 'Importe', accessor: 'total' as const, align: 'right' as const },
+    {
+      header: t('settingsStyleGuide.cols.amount'),
+      accessor: 'total' as const,
+      align: 'right' as const,
+    },
   ];
 
   return (
@@ -128,7 +149,7 @@ export const StyleGuide: React.FC = () => {
         {/* HERO */}
         <div className="pt-10 pb-14 border-b border-[var(--k-line)] mb-16 flex items-start justify-between gap-10">
           <div className="flex items-center gap-5">
-            <KeirostLogo size={48} variant="dark" />
+            <KeirostLogo size={48} className="text-[var(--k-ink-900)] dark:text-slate-100" />
             <div>
               <div className="font-display text-[40px] font-extrabold tracking-[-1px] leading-none text-[var(--k-ink-900)] dark:text-slate-100">
                 Keirost <span className="text-[var(--k-teal-500)]">ERP</span>
@@ -142,14 +163,16 @@ export const StyleGuide: React.FC = () => {
             <span className="font-mono text-[10px] text-[var(--k-teal-600)] bg-[var(--k-teal-50)] border border-[var(--k-teal-100)] rounded-[2px] px-3 py-1 tracking-[1px]">
               v1.0 · 2026
             </span>
-            <span className="font-mono text-[10px] text-[var(--k-ink-400)]">Uso interno</span>
+            <span className="font-mono text-[10px] text-[var(--k-ink-400)]">
+              {t('settingsStyleGuide.internalUse')}
+            </span>
           </div>
         </div>
 
         {/* 01 · IDENTIDAD */}
         <section className="mb-20">
-          <SectionHeader num="01" title="Identidad visual" />
-          <Label>Variantes del monograma</Label>
+          <SectionHeader num="01" title={t('settingsStyleGuide.sections.identity')} />
+          <Label>{t('settingsStyleGuide.monogramVariants')}</Label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-px bg-[var(--k-line)] border border-[var(--k-line)] mb-8">
             {[
               {
@@ -160,14 +183,14 @@ export const StyleGuide: React.FC = () => {
               },
               {
                 bg: '#FAFBFC',
-                variant: 'outline' as const,
+                variant: 'light' as const,
                 label: 'Primary light',
                 labelColor: '#94A3B8',
               },
               {
                 bg: '#FFFFFF',
-                variant: 'outline' as const,
-                label: 'Outline',
+                variant: 'tile' as const,
+                label: 'App icon',
                 labelColor: '#94A3B8',
               },
               {
@@ -207,16 +230,16 @@ export const StyleGuide: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--k-line)] border border-[var(--k-line)]">
             {[
               {
-                title: 'Uso correcto',
-                body: 'Usar siempre sobre fondos sólidos. Mantener zona de exclusión mínima de 1× el tamaño del icono.',
+                title: t('settingsStyleGuide.rules.correctTitle'),
+                body: t('settingsStyleGuide.rules.correctBody'),
               },
               {
-                title: 'Tamaño mínimo',
-                body: 'Digital: 24 × 24 px. Impresión: 8 mm. Por debajo no se garantiza legibilidad.',
+                title: t('settingsStyleGuide.rules.minSizeTitle'),
+                body: t('settingsStyleGuide.rules.minSizeBody'),
               },
               {
-                title: 'No hacer',
-                body: 'No rotar, distorsionar, cambiar colores fuera de la paleta ni añadir efectos.',
+                title: t('settingsStyleGuide.rules.dontTitle'),
+                body: t('settingsStyleGuide.rules.dontBody'),
               },
             ].map((r) => (
               <div key={r.title} className="bg-bg-card p-6">
@@ -231,9 +254,9 @@ export const StyleGuide: React.FC = () => {
 
         {/* 02 · PALETA */}
         <section className="mb-20">
-          <SectionHeader num="02" title="Paleta de colores" />
+          <SectionHeader num="02" title={t('settingsStyleGuide.sections.palette')} />
 
-          <Label>Escala primaria — Teal</Label>
+          <Label>{t('settingsStyleGuide.tealScale')}</Label>
           <div className="flex h-12 border border-[var(--k-line)] rounded-[2px] overflow-hidden mb-6">
             {TEAL_SCALE.map((c) => (
               <div
@@ -249,7 +272,7 @@ export const StyleGuide: React.FC = () => {
             ))}
           </div>
 
-          <Label>Escala neutros — Ink</Label>
+          <Label>{t('settingsStyleGuide.inkScale')}</Label>
           <div className="flex h-12 border border-[var(--k-line)] rounded-[2px] overflow-hidden mb-10">
             {INK_SCALE.map((c) => (
               <div
@@ -267,7 +290,7 @@ export const StyleGuide: React.FC = () => {
             ))}
           </div>
 
-          <Label>Colores del sistema</Label>
+          <Label>{t('settingsStyleGuide.systemColors')}</Label>
           <div className="border border-[var(--k-line)] mb-6">
             <table className="w-full">
               <tbody>
@@ -292,14 +315,14 @@ export const StyleGuide: React.FC = () => {
                     <td className="py-3 px-4 font-mono text-[10px] text-[var(--k-ink-400)]">
                       {c.token}
                     </td>
-                    <td className="py-3 px-4 text-[12px] text-[var(--k-ink-400)]">{c.role}</td>
+                    <td className="py-3 px-4 text-[12px] text-[var(--k-ink-400)]">{t(c.role)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
 
-          <Label>Semánticos</Label>
+          <Label>{t('settingsStyleGuide.semanticsLabel')}</Label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-[var(--k-line)] border border-[var(--k-line)]">
             {Semantics.map((s) => (
               <div key={s.name} className="bg-bg-card p-5">
@@ -308,7 +331,7 @@ export const StyleGuide: React.FC = () => {
                   {s.name}
                 </div>
                 <div className="font-mono text-[11px] text-[var(--k-ink-500)]">{s.hex}</div>
-                <div className="text-[11px] text-[var(--k-ink-400)] mt-1">{s.desc}</div>
+                <div className="text-[11px] text-[var(--k-ink-400)] mt-1">{t(s.desc)}</div>
               </div>
             ))}
           </div>
@@ -316,11 +339,11 @@ export const StyleGuide: React.FC = () => {
 
         {/* 03 · TIPOGRAFÍA */}
         <section className="mb-20">
-          <SectionHeader num="03" title="Tipografía" />
+          <SectionHeader num="03" title={t('settingsStyleGuide.sections.typography')} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[var(--k-line)] border border-[var(--k-line)] mb-8">
             <div className="bg-bg-card p-7">
-              <Label>Display / Títulos</Label>
+              <Label>{t('settingsStyleGuide.displayTitles')}</Label>
               <div className="font-display text-[28px] font-bold tracking-[-0.5px]">
                 Space Grotesk
               </div>
@@ -332,7 +355,7 @@ export const StyleGuide: React.FC = () => {
               </div>
             </div>
             <div className="bg-bg-card p-7">
-              <Label>Cuerpo / UI</Label>
+              <Label>{t('settingsStyleGuide.bodyUi')}</Label>
               <div className="font-sans text-[28px] font-light">DM Sans</div>
               <div className="font-sans text-[13px] text-[var(--k-ink-500)] mt-2">
                 Aa Bb Cc Dd 0123456789
@@ -348,32 +371,32 @@ export const StyleGuide: React.FC = () => {
               {
                 meta: 'Display · Space Grotesk 800 · 48px',
                 cls: 'font-display text-[48px] font-extrabold tracking-[-1px] leading-[1.05]',
-                text: 'Gestión empresarial',
+                text: t('settingsStyleGuide.samples.display'),
               },
               {
                 meta: 'H1 · Space Grotesk 700 · 32px',
                 cls: 'font-display text-[32px] font-bold tracking-[-0.5px]',
-                text: 'Panel de control',
+                text: t('settingsStyleGuide.samples.h1'),
               },
               {
                 meta: 'H2 · Space Grotesk 600 · 22px',
                 cls: 'font-display text-[22px] font-semibold',
-                text: 'Resumen mensual de facturación',
+                text: t('settingsStyleGuide.samples.h2'),
               },
               {
                 meta: 'H3 · Space Grotesk 600 · 16px',
                 cls: 'font-display text-[16px] font-semibold',
-                text: 'Últimas transacciones',
+                text: t('settingsStyleGuide.samples.h3'),
               },
               {
                 meta: 'Body · DM Sans 400 · 14px',
                 cls: 'font-sans text-[14px] text-[var(--k-ink-700)] leading-[1.6] max-w-[500px]',
-                text: 'Keirost centraliza todos los procesos de tu empresa: facturación, inventario, contabilidad y gestión de clientes.',
+                text: t('settingsStyleGuide.samples.body'),
               },
               {
                 meta: 'Small · DM Sans · 12px · ink-500',
                 cls: 'font-sans text-[12px] text-[var(--k-ink-500)]',
-                text: 'Última actualización: 12 ene 2026 · 14:32',
+                text: t('settingsStyleGuide.samples.small'),
               },
               {
                 meta: 'Mono · JetBrains Mono · 12px',
@@ -396,99 +419,110 @@ export const StyleGuide: React.FC = () => {
 
         {/* 04 · COMPONENTES */}
         <section className="mb-20">
-          <SectionHeader num="04" title="Componentes UI" />
+          <SectionHeader num="04" title={t('settingsStyleGuide.sections.components')} />
 
-          <Label>Botones</Label>
+          <Label>{t('settingsStyleGuide.buttons')}</Label>
           <div className="border border-[var(--k-line)] p-6 mb-6 space-y-3">
             <div className="flex flex-wrap gap-2 items-center">
-              <Button variant="primary">Guardar</Button>
-              <Button variant="accent">Nueva factura</Button>
-              <Button variant="outline">Exportar</Button>
-              <Button variant="ghost">Cancelar</Button>
-              <Button variant="danger">Eliminar</Button>
+              <Button variant="primary">{t('settingsStyleGuide.btn.save')}</Button>
+              <Button variant="accent">{t('settingsStyleGuide.btn.newInvoice')}</Button>
+              <Button variant="outline">{t('settingsStyleGuide.btn.export')}</Button>
+              <Button variant="ghost">{t('settingsStyleGuide.btn.cancel')}</Button>
+              <Button variant="danger">{t('settingsStyleGuide.btn.delete')}</Button>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
               <Button variant="primary" size="sm">
-                Confirmar
+                {t('settingsStyleGuide.btn.confirm')}
               </Button>
               <Button variant="accent" size="sm">
-                + Añadir
+                {t('settingsStyleGuide.btn.add')}
               </Button>
               <Button variant="outline" size="sm">
-                <Mail size={12} /> Enviar
+                <Mail size={12} /> {t('settingsStyleGuide.btn.send')}
               </Button>
               <Button variant="ghost" size="sm">
-                Descartar
+                {t('settingsStyleGuide.btn.discard')}
               </Button>
             </div>
           </div>
 
-          <Label>Estados · Badges</Label>
+          <Label>{t('settingsStyleGuide.badgesLabel')}</Label>
           <div className="border border-[var(--k-line)] p-5 mb-6">
             <div className="flex flex-wrap gap-2 items-center">
-              <Badge variant="success">Pagado</Badge>
-              <Badge variant="teal">Activo</Badge>
-              <Badge variant="warning">Pendiente</Badge>
-              <Badge variant="error">Vencido</Badge>
-              <Badge variant="neutral">Borrador</Badge>
-              <Badge variant="info">En revisión</Badge>
+              <Badge variant="success">{t('settingsStyleGuide.status.paid')}</Badge>
+              <Badge variant="teal">{t('settingsStyleGuide.badges.active')}</Badge>
+              <Badge variant="warning">{t('settingsStyleGuide.status.pending')}</Badge>
+              <Badge variant="error">{t('settingsStyleGuide.status.overdue')}</Badge>
+              <Badge variant="neutral">{t('settingsStyleGuide.badges.draft')}</Badge>
+              <Badge variant="info">{t('settingsStyleGuide.badges.review')}</Badge>
             </div>
           </div>
 
-          <Label>Formularios</Label>
+          <Label>{t('settingsStyleGuide.forms')}</Label>
           <div className="border border-[var(--k-line)] p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input label="Razón social" placeholder="Empresa Ejemplo S.L." />
-              <Input label="NIF / CIF" placeholder="B-12345678" />
-              <Input label="Importe" placeholder="0,00 €" leftIcon={<Search size={14} />} />
+              <Input
+                label={t('settingsStyleGuide.fields.companyName')}
+                placeholder={t('settingsStyleGuide.fields.companyNamePlaceholder')}
+              />
+              <Input label={t('settingsStyleGuide.fields.taxId')} placeholder="B-12345678" />
+              <Input
+                label={t('settingsStyleGuide.fields.amount')}
+                placeholder={t('settingsStyleGuide.fields.amountPlaceholder')}
+                leftIcon={<Search size={14} />}
+              />
             </div>
           </div>
 
-          <Label>Tarjetas KPI</Label>
+          <Label>{t('settingsStyleGuide.kpiCards')}</Label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-[var(--k-line)] border border-[var(--k-line)] mb-6">
             <KpiCard
-              label="Facturación · mes"
+              label={t('settingsStyleGuide.kpi.billing')}
               value="€ 48.230"
-              sub="enero 2026"
-              trend={{ dir: 'up', text: '12% vs mes anterior' }}
+              sub={t('settingsStyleGuide.kpi.billingSub')}
+              trend={{ dir: 'up', text: t('settingsStyleGuide.kpi.billingTrend') }}
               className="border-0"
             />
             <KpiCard
-              label="Pedidos abiertos"
+              label={t('settingsStyleGuide.kpi.orders')}
               value={127}
-              sub="23 requieren atención"
-              trend={{ dir: 'down', text: '5 más que ayer' }}
+              sub={t('settingsStyleGuide.kpi.ordersSub')}
+              trend={{ dir: 'down', text: t('settingsStyleGuide.kpi.ordersTrend') }}
               className="border-0"
             />
             <KpiCard
-              label="Clientes activos"
+              label={t('settingsStyleGuide.kpi.customers')}
               value={342}
-              sub="+8 nuevos este mes"
-              trend={{ dir: 'up', text: 'tendencia positiva' }}
+              sub={t('settingsStyleGuide.kpi.customersSub')}
+              trend={{ dir: 'up', text: t('settingsStyleGuide.kpi.customersTrend') }}
               className="border-0"
             />
           </div>
 
-          <Label>Tabla de datos</Label>
+          <Label>{t('settingsStyleGuide.dataTable')}</Label>
           <Table responsive="scroll" columns={tableColumns as any} data={tableData} />
 
           <div className="mt-6 flex gap-2 items-center">
-            <Button variant="outline" size="sm" onClick={() => toast.success('Toast de prueba')}>
-              Disparar toast
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.success(t('settingsStyleGuide.testToast'))}
+            >
+              {t('settingsStyleGuide.fireToast')}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setShowOverlayLoader((v) => !v)}>
-              Toggle loader
+              {t('settingsStyleGuide.toggleLoader')}
             </Button>
-            {showOverlayLoader && <Loader size="sm" label="Cargando…" />}
+            {showOverlayLoader && <Loader size="sm" label={t('settingsStyleGuide.loading')} />}
           </div>
         </section>
 
         {/* 05 · ESPACIADO */}
         <section className="mb-20">
-          <SectionHeader num="05" title="Espaciado & Forma" />
+          <SectionHeader num="05" title={t('settingsStyleGuide.sections.spacing')} />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-[var(--k-line)] border border-[var(--k-line)]">
             <div className="bg-bg-card p-7">
-              <Label>Escala de espaciado</Label>
+              <Label>{t('settingsStyleGuide.spacingScale')}</Label>
               <div className="flex items-end gap-5">
                 {[4, 8, 12, 16, 24, 32, 48, 64, 80].map((v) => (
                   <div key={v} className="flex flex-col items-center gap-1.5">
@@ -528,9 +562,9 @@ export const StyleGuide: React.FC = () => {
                 </div>
               </div>
               <div className="mt-6 font-mono text-[10px] text-[var(--k-ink-400)] leading-[1.8]">
-                Botones / inputs → 2px
+                {t('settingsStyleGuide.radiusButtons')}
                 <br />
-                Cards / modales → 4–8px
+                {t('settingsStyleGuide.radiusCards')}
                 <br />
                 Badges / pills → 999px
               </div>
@@ -540,7 +574,7 @@ export const StyleGuide: React.FC = () => {
 
         {/* 06 · TOKENS */}
         <section className="mb-14">
-          <SectionHeader num="06" title="Variables CSS" />
+          <SectionHeader num="06" title={t('settingsStyleGuide.sections.tokens')} />
           <pre className="bg-[var(--k-ink-900)] text-[#CBD5E1] font-mono text-[12px] leading-[2] p-8 rounded-[2px] overflow-x-auto">
             {`/* Keirost ERP — Design Tokens */
 :root {
@@ -568,7 +602,7 @@ export const StyleGuide: React.FC = () => {
             Keirost <span className="text-[var(--k-teal-500)]">ERP</span>
           </div>
           <div className="font-mono text-[10px] text-[var(--k-ink-400)] tracking-[1px]">
-            BRAND GUIDE v1.0 · 2026 · USO INTERNO
+            {t('settingsStyleGuide.footer')}
           </div>
         </div>
       </div>

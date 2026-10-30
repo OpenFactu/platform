@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -30,6 +31,7 @@ type ListScope = 'open' | 'closed' | 'all';
 
 export const Opportunities: React.FC = () => {
   const fmt = useFormat();
+  const { t } = useI18n();
   const toast = useToast();
   const popup = usePopup();
   const { canWrite, canDelete } = useCrmPermissions('/crm/opportunities');
@@ -72,25 +74,30 @@ export const Opportunities: React.FC = () => {
 
   const remove = async (o: Opportunity) => {
     const ok = await popup.confirm({
-      title: 'Borrar oportunidad',
-      message: `¿Borrar «${o.title}» y sus actividades?`,
+      title: t('crm.opportunities.deleteTitle'),
+      message: t('crm.opportunities.deleteMessage', { title: o.title }),
       tone: 'danger',
-      confirmLabel: 'Borrar',
+      confirmLabel: t('crm.common.delete'),
     });
     if (!ok) return;
     try {
       await opportunitiesApi.remove(o.id);
       pipeline.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo borrar');
+      toast.error(err instanceof Error ? err.message : t('crm.errors.deleteFailed'));
     }
   };
 
   const tableColumns: TableColumn<Opportunity>[] = [
-    { header: 'Oportunidad', accessor: 'title', sortable: true, card: 'title' },
-    { header: 'Interlocutor', accessor: 'partnerName', sortable: true, card: 'subtitle' },
+    { header: t('crm.common.opportunity'), accessor: 'title', sortable: true, card: 'title' },
     {
-      header: 'Etapa',
+      header: t('crm.partnerSelect.label'),
+      accessor: 'partnerName',
+      sortable: true,
+      card: 'subtitle',
+    },
+    {
+      header: t('crm.common.stage'),
       id: 'stage',
       cell: (o) => <Badge variant={STAGE_KIND_VARIANT[o.stageKind ?? 'open']}>{o.stageName}</Badge>,
       sortAccessor: (o) => o.stageName,
@@ -98,7 +105,7 @@ export const Opportunities: React.FC = () => {
       card: 'status',
     },
     {
-      header: 'Importe',
+      header: t('crm.common.amount'),
       id: 'amount',
       cell: (o) => fmt.money(o.amount),
       sortAccessor: (o) => Number(o.amount),
@@ -106,42 +113,48 @@ export const Opportunities: React.FC = () => {
       align: 'right',
     },
     {
-      header: 'Cierre previsto',
+      header: t('crm.common.expectedClose'),
       id: 'close',
       cell: (o) => fmt.date(o.expectedCloseDate),
       sortAccessor: (o) => o.expectedCloseDate ?? '',
       sortable: true,
       card: 'meta',
     },
-    { header: 'Contacto', accessor: (o) => o.contactName ?? '—' },
+    { header: t('crm.contactForm.contact'), accessor: (o) => o.contactName ?? '—' },
     {
-      header: 'Responsable',
+      header: t('crm.owner.label'),
       id: 'owner',
       accessor: (o) => (o.ownerUserId ? (members.get(o.ownerUserId)?.name ?? '—') : '—'),
     },
-    { header: 'Origen', id: 'source', accessor: (o) => o.source ?? '—' },
+    { header: t('crm.fields.source'), id: 'source', accessor: (o) => o.source ?? '—' },
   ];
 
   return (
     <div className="p-4 w-full space-y-4">
       <PageHeader
-        title="Oportunidades"
-        subtitle="El embudo comercial: arrastra una tarjeta para cambiarla de etapa"
+        title={t('crm.nav.opportunities')}
+        subtitle={t('crm.opportunities.subtitle')}
         icon={<Target size={18} />}
         size="sm"
         actions={
           canWrite && (
             <Button type="button" size="sm" onClick={() => navigate('/crm/opportunities/new')}>
-              <Plus size={14} /> Nueva oportunidad
+              <Plus size={14} /> {t('crm.opportunity.new')}
             </Button>
           )
         }
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <KpiCard label="Abiertas" value={String(pipeline.summary.openCount)} />
-        <KpiCard label="Importe abierto" value={fmt.money(pipeline.summary.openAmount)} />
-        <KpiCard label="Previsión ponderada" value={fmt.money(pipeline.summary.weighted)} />
+        <KpiCard label={t('crm.opportunities.open')} value={String(pipeline.summary.openCount)} />
+        <KpiCard
+          label={t('crm.opportunities.openAmount')}
+          value={fmt.money(pipeline.summary.openAmount)}
+        />
+        <KpiCard
+          label={t('crm.opportunities.weighted')}
+          value={fmt.money(pipeline.summary.weighted)}
+        />
       </div>
 
       {/* Buscador a la izquierda; los filtros a la derecha y, si no caben, en la
@@ -154,7 +167,7 @@ export const Opportunities: React.FC = () => {
           <SearchInput
             value={search}
             onChange={setSearch}
-            placeholder="Buscar por título, interlocutor o contacto"
+            placeholder={t('crm.opportunities.searchPlaceholder')}
           />
         </div>
         <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
@@ -162,18 +175,22 @@ export const Opportunities: React.FC = () => {
             <SegmentedControl
               size="sm"
               className="shrink-0"
-              aria-label="Qué oportunidades ver"
+              aria-label={t('crm.opportunities.scopeLabel')}
               value={listScope}
               onChange={(v) => setListScope(v as ListScope)}
               options={[
-                { value: 'open', label: 'Abiertas' },
-                { value: 'closed', label: 'Cerradas' },
-                { value: 'all', label: 'Todas' },
+                { value: 'open', label: t('crm.opportunities.open') },
+                { value: 'closed', label: t('crm.opportunities.closed') },
+                { value: 'all', label: t('crm.opportunities.all') },
               ]}
             />
           )}
           <div className="shrink-0 whitespace-nowrap">
-            <Switch label="Solo las mías" checked={onlyMine} onChange={setOnlyMine} />
+            <Switch
+              label={t('crm.activities.onlyMine')}
+              checked={onlyMine}
+              onChange={setOnlyMine}
+            />
           </div>
           <Tabs
             variant="segmented"
@@ -182,8 +199,8 @@ export const Opportunities: React.FC = () => {
             value={view}
             onChange={(k) => setView(k as View)}
             items={[
-              { key: 'board', label: 'Tablero', icon: <Columns3 size={14} /> },
-              { key: 'list', label: 'Lista', icon: <List size={14} /> },
+              { key: 'board', label: t('crm.opportunities.board'), icon: <Columns3 size={14} /> },
+              { key: 'list', label: t('crm.opportunities.list'), icon: <List size={14} /> },
             ]}
           />
         </div>
@@ -192,9 +209,7 @@ export const Opportunities: React.FC = () => {
       {view === 'board' ? (
         <OpportunityBoard
           columns={columns}
-          stages={pipeline.stages}
           canWrite={canWrite}
-          drag={pipeline.drag}
           onOpen={open}
           onMove={pipeline.moveTo}
           members={members}
@@ -209,10 +224,12 @@ export const Opportunities: React.FC = () => {
           errorMessage={pipeline.error ?? undefined}
           onRetry={pipeline.refresh}
           onRowClick={open}
-          emptyMessage="Todavía no hay oportunidades."
-          ariaLabel="Oportunidades"
+          emptyMessage={t('crm.opportunities.empty')}
+          ariaLabel={t('crm.nav.opportunities')}
           rowActions={(o) =>
-            canDelete ? [{ label: 'Borrar', onClick: () => remove(o), destructive: true }] : []
+            canDelete
+              ? [{ label: t('crm.common.delete'), onClick: () => remove(o), destructive: true }]
+              : []
           }
           summaryByColumn={(rows) => ({
             amount: fmt.money(rows.reduce((s, o) => s + (Number(o.amount) || 0), 0)),

@@ -1,0 +1,330 @@
+{
+  "reports": {
+    "nav": {
+      "label": "Reports",
+      "description": "Accounting, management, HR and stock reports.",
+      "accounting": "Accounting",
+      "management": "Management",
+      "hr": "HR",
+      "stock": "Stock",
+      "routes": {
+        "hr": "HR reports",
+        "stock": "Stock reports",
+        "journal": "Journal",
+        "ledger": "Ledger",
+        "trialBalance": "Trial balance",
+        "pl": "P&L",
+        "balanceSheet": "Balance sheet",
+        "vat": "VAT book",
+        "profitCustomer": "Customer profit.",
+        "profitItem": "Product profit.",
+        "profitProject": "Project profit.",
+        "profitCostCenter": "Cost center profit.",
+        "executive": "Executive",
+        "agingReceivables": "Receivables aging",
+        "agingPayables": "Payables aging",
+        "cashflow": "Cash flow",
+        "payslip": "Payslip",
+        "laborCost": "Labor cost",
+        "headcount": "Headcount",
+        "stockValuation": "Valuation",
+        "stockRotation": "Turnover",
+        "stockMovements": "Movements"
+      }
+    },
+    "hub": {
+      "accounting": {
+        "title": "Accounting reports",
+        "subtitle": "Journal, ledger, balances and tax books.",
+        "items": {
+          "journal": {
+            "title": "Journal",
+            "description": "Chronological list of every journal entry in the period."
+          },
+          "ledger": {
+            "title": "General ledger",
+            "description": "Movements of an account with running balance."
+          },
+          "trialBalance": {
+            "title": "Trial balance",
+            "description": "Debit/credit totals and balance per account for the period."
+          },
+          "pl": {
+            "title": "Profit and loss",
+            "description": "Income minus expenses = result for the year."
+          },
+          "balanceSheet": {
+            "title": "Balance sheet",
+            "description": "Assets = Liabilities + Equity at a date."
+          },
+          "vat": {
+            "title": "VAT book",
+            "description": "Input and output VAT for Form 303."
+          }
+        }
+      },
+      "management": {
+        "title": "Management reports",
+        "subtitle": "Profitability, aging, cash and partner reports.",
+        "items": {
+          "profitCustomer": {
+            "title": "Profitability by customer",
+            "description": "Revenue and margin contributed by each customer in the period."
+          },
+          "profitItem": {
+            "title": "Profitability by product",
+            "description": "Margin and turnover by item."
+          },
+          "profitProject": {
+            "title": "Profitability by project",
+            "description": "Income vs expenses by internal order, with deviation."
+          },
+          "profitCostCenter": {
+            "title": "Profitability by cost center",
+            "description": "Analysis by responsibility unit."
+          },
+          "executive": {
+            "title": "Executive report",
+            "description": "Quarterly summary for partners/board with KPIs and comparisons."
+          },
+          "agingReceivables": {
+            "title": "Receivables aging",
+            "description": "Outstanding sales invoices by due-date bucket."
+          },
+          "agingPayables": {
+            "title": "Payables aging",
+            "description": "Outstanding purchase invoices by bucket."
+          },
+          "cashflow": {
+            "title": "Cash flow",
+            "description": "Actual and forecast collections vs payments."
+          }
+        }
+      },
+      "hr": {
+        "title": "HR reports",
+        "subtitle": "Payroll and labor cost.",
+        "items": {
+          "payslip": {
+            "title": "Payslip",
+            "description": "PDF per employee with earnings, deductions and net pay."
+          },
+          "laborCost": {
+            "title": "Labor costs",
+            "description": "Summary of gross + employer social security + IRPF for the period."
+          },
+          "headcount": {
+            "title": "Current headcount",
+            "description": "List of employees with hire date, termination, contract and department."
+          }
+        }
+      },
+      "stock": {
+        "title": "Stock reports",
+        "subtitle": "Valuation, turnover and movements.",
+        "items": {
+          "valuation": {
+            "title": "Inventory valuation",
+            "description": "Stock × average price per item."
+          },
+          "rotation": {
+            "title": "Turnover",
+            "description": "Days of stock and turnover per item."
+          },
+          "movements": {
+            "title": "Stock movements",
+            "description": "Receipts, issues and adjustments by period."
+          }
+        }
+      }
+    },
+    "common": {
+      "account": "Account",
+      "accountName": "Account name",
+      "back": "Back",
+      "balance": "Balance",
+      "code": "Code",
+      "concept": "Description",
+      "credit": "Credit",
+      "customer": "Customer",
+      "date": "Date",
+      "debit": "Debit",
+      "description": "Description",
+      "error": "Error",
+      "expenses": "Expenses",
+      "from": "From",
+      "gross": "Gross",
+      "income": "Income",
+      "item": "Item",
+      "loading": "Loading…",
+      "margin": "Margin",
+      "name": "Name",
+      "net": "Net",
+      "noRows": "No records match the current filters.",
+      "number": "No.",
+      "pdfDownloaded": "PDF downloaded",
+      "pdfError": "Error generating PDF",
+      "period": "Period",
+      "refresh": "Refresh",
+      "revenue": "Revenue",
+      "selectPeriod": "— select period —",
+      "selectPlaceholder": "— select —",
+      "status": "Status",
+      "stock": "Stock",
+      "supplier": "Supplier",
+      "to": "To",
+      "total": "Total",
+      "type": "Type",
+      "months": {
+        "jan": "Jan",
+        "feb": "Feb",
+        "mar": "Mar",
+        "apr": "Apr",
+        "may": "May",
+        "jun": "Jun",
+        "jul": "Jul",
+        "aug": "Aug",
+        "sep": "Sep",
+        "oct": "Oct",
+        "nov": "Nov",
+        "dec": "Dec"
+      }
+    },
+    "aging": {
+      "invoice": "Invoice",
+      "dueDate": "Due date",
+      "daysOverdue": "Days overdue",
+      "bucket": "Bucket",
+      "pending": "Outstanding",
+      "receivablesTitle": "Receivables aging",
+      "payablesTitle": "Payables aging",
+      "receivablesSubtitle": "Sales invoices pending collection by due-date bucket.",
+      "payablesSubtitle": "Purchase invoices pending payment by bucket."
+    },
+    "balanceSheet": {
+      "title": "Balance sheet",
+      "asset": "Assets",
+      "liability": "Liabilities",
+      "equity": "Equity"
+    },
+    "cashflow": {
+      "title": "Cash flow",
+      "subtitle": "Actual collections vs payments over the last {days} days.",
+      "lastDays": "Last {days} days",
+      "rangeAria": "Day range",
+      "inflow": "Inflows",
+      "outflow": "Outflows",
+      "net": "Net"
+    },
+    "executive": {
+      "title": "Executive report",
+      "subtitle": "Period summary for partners and management.",
+      "sales": "Sales",
+      "purchases": "Purchases",
+      "invoices_one": "{count} invoice",
+      "invoices_other": "{count} invoices",
+      "grossMargin": "Gross margin (sales − purchases)"
+    },
+    "headcount": {
+      "title": "Headcount",
+      "subtitle": "List of employees with dates, department and status.",
+      "lastName": "Last name",
+      "department": "Department",
+      "hireDate": "Hire date",
+      "terminationDate": "Termination date"
+    },
+    "journal": {
+      "title": "Journal",
+      "subtitle": "Chronological list of every posted journal entry in the period."
+    },
+    "laborCost": {
+      "title": "Labor costs",
+      "subtitle": "Year {year} — Gross + employer social security + IRPF per month.",
+      "year": "Year",
+      "month": "Month",
+      "ssEmployer": "Employer SS",
+      "irpf": "IRPF",
+      "totalCost": "Total cost"
+    },
+    "ledger": {
+      "title": "General ledger",
+      "entry": "Entry",
+      "selectAccount": "Select an account"
+    },
+    "payslip": {
+      "title": "Payslip",
+      "subtitle": "Select an approved payroll to download the payslip.",
+      "downloaded": "Payslip downloaded",
+      "employee": "Employee",
+      "download": "Download payslip",
+      "empty": "No payrolls"
+    },
+    "pl": {
+      "title": "Profit and loss",
+      "income": "Income (group 7)",
+      "totalIncome": "Total income",
+      "expenses": "Expenses (group 6)",
+      "totalExpenses": "Total expenses",
+      "profit": "Profit for the year",
+      "loss": "Loss for the year"
+    },
+    "profitCostCenter": {
+      "title": "Profitability by cost center",
+      "subtitle": "Income vs expenses allocated to each responsibility unit.",
+      "center": "Center"
+    },
+    "profitCustomer": {
+      "title": "Profitability by customer",
+      "subtitle": "Customer ranking by revenue for the period.",
+      "invoices": "Invoices"
+    },
+    "profitItem": {
+      "title": "Profitability by product",
+      "subtitle": "Top items by revenue.",
+      "unitsSold": "Units sold"
+    },
+    "profitProject": {
+      "title": "Profitability by project",
+      "subtitle": "Income, expenses and budget deviation by internal order.",
+      "project": "Project",
+      "budget": "Budget",
+      "deviation": "Dev. %"
+    },
+    "stockMovements": {
+      "title": "Stock movements",
+      "subtitle": "Receipts (purchase) and issues (sale) by delivery note.",
+      "quantity": "Quantity",
+      "partner": "Business partner"
+    },
+    "stockRotation": {
+      "title": "Stock turnover",
+      "subtitle": "Days the stock will last at the current sales rate.",
+      "sold": "Sold (period)",
+      "daysOfStock": "Days of stock",
+      "noSales": "No sales"
+    },
+    "stockValuation": {
+      "title": "Inventory valuation",
+      "subtitle": "Stock × average price. Total value: {total}",
+      "unitPrice": "Unit price",
+      "value": "Value"
+    },
+    "trialBalance": {
+      "title": "Trial balance",
+      "subtitle": "Debit/credit totals per account for the period."
+    },
+    "vat": {
+      "title": "VAT book",
+      "subtitle": "Output and input VAT (Form 303).",
+      "invoiceNumber": "Invoice no.",
+      "taxId": "Tax ID (NIF)",
+      "base": "Tax base",
+      "vat": "VAT",
+      "empty": "No invoices in the period",
+      "output": "Output VAT (sales)",
+      "input": "Input VAT (purchases)",
+      "toPay": "Payable to the tax authority",
+      "toOffset": "To offset / refund"
+    }
+  }
+}

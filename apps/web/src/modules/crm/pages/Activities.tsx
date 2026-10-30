@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { PageHeader, Switch, Tabs } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -7,14 +8,15 @@ import { ActivityList } from '../components/ActivityList';
 type Status = 'pending' | 'done';
 
 export const Activities: React.FC = () => {
+  const { t } = useI18n();
   const [status, setStatus] = useState<Status>('pending');
   const [onlyMine, setOnlyMine] = useState(true);
   const { user } = useAuth();
   return (
     <div className="p-4 w-full space-y-4">
       <PageHeader
-        title="Actividades"
-        subtitle="Llamadas, reuniones y tareas de seguimiento comercial"
+        title={t('crm.nav.activities')}
+        subtitle={t('crm.activities.subtitle')}
         icon={<CalendarClock size={18} />}
         size="sm"
       />
@@ -24,12 +26,12 @@ export const Activities: React.FC = () => {
           value={status}
           onChange={(k) => setStatus(k as Status)}
           items={[
-            { key: 'pending', label: 'Pendientes' },
-            { key: 'done', label: 'Hechas' },
+            { key: 'pending', label: t('crm.activities.pending') },
+            { key: 'done', label: t('crm.activities.done') },
           ]}
         />
         <div className="shrink-0 whitespace-nowrap">
-          <Switch label="Solo las mías" checked={onlyMine} onChange={setOnlyMine} />
+          <Switch label={t('crm.activities.onlyMine')} checked={onlyMine} onChange={setOnlyMine} />
         </div>
       </div>
       <ActivityList filter={{ status, ownerUserId: onlyMine ? user?.id : undefined }} askPartner />

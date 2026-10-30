@@ -16,6 +16,8 @@ import { DocKind, DocSide, DocStatus } from '@openfactu/common';
 import { LabelPrintButton } from '@/modules/document-templates/components/LabelPrintButton';
 import { PluginFieldInput, PluginFieldValue } from '@/components/plugin-fields';
 import type { ZoneStock } from '@/hooks/useZonesWithStock';
+import { t } from '@/i18n/i18n';
+import { useI18n } from '@/i18n/I18nContext';
 
 export type { DocKind, DocSide } from '@openfactu/common';
 
@@ -142,9 +144,10 @@ function BatchBadge({
   item: any;
   onViewBatch?: (line: any) => void;
 }) {
+  const { t } = useI18n();
   const count = line.batchDetails?.length ?? 0;
   if (count === 0) return null;
-  const label = item?.manageBy === 'S' ? 'Series' : 'Lotes';
+  const label = item?.manageBy === 'S' ? t('doc.lines.serials') : t('doc.lines.batches');
   const IconLead = item?.manageBy === 'S' ? Layers3 : Package;
   const required = Number(line.quantity || 0);
   const assigned = (line.batchDetails ?? []).reduce(
@@ -159,7 +162,7 @@ function BatchBadge({
         e.stopPropagation();
         onViewBatch?.(line);
       }}
-      title={`${label}: ${assigned} de ${required}`}
+      title={t('doc.lines.traceCount', { label, assigned, required })}
       className={`ml-auto inline-flex items-center gap-1.5 h-7 pl-2 pr-1 rounded-lg border text-[10px] font-black uppercase tracking-[0.1em] transition-all hover:shadow-sm active:scale-[0.97] shrink-0 ${
         balanced
           ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/20'
@@ -184,7 +187,7 @@ export function renderArticleCell(
   onViewBatch?: (line: any) => void,
 ): React.ReactNode {
   const item = masters.items?.find((i: any) => i.id === line.itemId);
-  const name = item?.name ?? 'Artículo';
+  const name = item?.name ?? t('doc.lines.item');
   const code = item?.code ?? '—';
   return (
     <div className="min-w-0">
@@ -201,7 +204,7 @@ export function renderArticleCell(
 
 function locationCell(line: any, zones?: any[]): React.ReactNode {
   const zoneName = zones?.find((z: any) => z.id === line.zoneId)?.name;
-  return <span className="text-[11px] font-medium text-fg-muted">{zoneName || 'Por defecto'}</span>;
+  return <span className="text-[11px] font-medium text-fg-muted">{zoneName || t('doc.lines.defaultLocation')}</span>;
 }
 
 function progressCell(
@@ -224,7 +227,7 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
   const { kind, masters, zones, onViewBatch, fmt } = opts;
 
   const articleCol: TableColumn<any> = {
-    header: 'Artículo',
+    header: t('doc.lines.item'),
     width: kind === 'deliveryNote' ? '40%' : '45%',
     cell: (l: any) => renderArticleCell(l, masters, onViewBatch),
   };
@@ -233,7 +236,7 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
 
   if (kind === 'deliveryNote') {
     columns.push({
-      header: 'Ubicación',
+      header: t('doc.lines.location'),
       width: '12%',
       align: 'center',
       cell: (l: any) => locationCell(l, zones),
@@ -243,13 +246,13 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
   if (kind === 'order') {
     columns.push(
       {
-        header: 'Pedido',
+        header: t('doc.lines.ordered'),
         width: '10%',
         align: 'center',
         accessor: (l: any) => numberCell(l.orderedQty ?? l.quantity, fmt, 2),
       },
       {
-        header: opts.side === 'sale' ? 'Entregado' : 'Recibido',
+        header: opts.side === 'sale' ? t('doc.lines.delivered') : t('doc.lines.received'),
         width: '10%',
         align: 'center',
         cell: (l: any) => {
@@ -260,7 +263,7 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
     );
   } else {
     columns.push({
-      header: 'Cantidad',
+      header: t('doc.lines.quantity'),
       width: '14%',
       align: 'center',
       cell: (l: any) => {
@@ -281,14 +284,14 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
   }
 
   columns.push({
-    header: 'Precio',
+    header: t('doc.lines.price'),
     width: '13%',
     align: 'right',
     accessor: (l: any) => moneyCell(l.price, fmt),
   });
 
   columns.push({
-    header: 'Total línea',
+    header: t('doc.lines.lineTotal'),
     width: '16%',
     align: 'right',
     cell: (l: any) => {
@@ -302,7 +305,7 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
   // Proyecto (read-only)
   if ((masters.internalOrders?.length ?? 0) > 0) {
     columns.push({
-      header: 'Proyecto',
+      header: t('doc.lines.project'),
       width: '12%',
       align: 'left',
       cell: (l: any) => {
@@ -341,12 +344,12 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
       l.itemId ? (
         <LabelPrintButton
           params={{ itemId: l.itemId }}
-          title="Imprimir etiqueta del artículo"
+          title={t('doc.lines.printItemLabel')}
           className="inline-flex h-8 w-8 items-center justify-center gap-1.5 p-0 border-transparent bg-transparent text-fg-subtle hover:bg-bg-hover hover:text-accent max-md:h-10 max-md:w-auto max-md:px-3"
           triggerLabel={
             <>
               <Tag size={13} />
-              <span className="md:hidden">Etiqueta</span>
+              <span className="md:hidden">{t('doc.lines.label')}</span>
             </>
           }
         />
@@ -442,6 +445,7 @@ function FormArticleCell({
   /** Si el documento mueve stock y por tanto requiere trazabilidad. False para pedidos. */
   tracksBatches: boolean;
 }) {
+  const { t } = useI18n();
   const item = masters.items.find((i: any) => i.id === line.itemId);
   const hasTrace = (line.batchDetails?.length ?? 0) > 0;
   const count = line.batchDetails?.length ?? 0;
@@ -458,7 +462,7 @@ function FormArticleCell({
           label: `[${i.code}] ${i.name}`,
           value: i.id,
         }))}
-        placeholder="Seleccionar artículo..."
+        placeholder={t('doc.lines.selectItem')}
         className={locked ? 'opacity-60' : ''}
       />
       {needsTrace &&
@@ -481,7 +485,8 @@ function FormArticleCell({
           };
           const IconLead = item?.manageBy === 'S' ? Layers3 : Package;
           const IconTrail = balanced ? CheckCircle2 : partial ? AlertTriangle : Plus;
-          const label = item?.manageBy === 'S' ? 'Series' : 'Lotes';
+          const label =
+            item?.manageBy === 'S' ? t('doc.lines.serials') : t('doc.lines.batches');
           return (
             <button
               type="button"
@@ -491,8 +496,8 @@ function FormArticleCell({
               }}
               title={
                 hasTrace
-                  ? `${label}: ${assigned} de ${required}`
-                  : 'Asignar trazabilidad a esta línea'
+                  ? t('doc.lines.traceCount', { label, assigned, required })
+                  : t('doc.lines.assignTrace')
               }
               className={`group inline-flex items-center gap-1.5 h-7 pl-2 pr-1 rounded-lg border text-[10px] font-black uppercase tracking-[0.1em] transition-all hover:shadow-sm active:scale-[0.97] ${toneCls[tone]}`}
             >
@@ -505,7 +510,7 @@ function FormArticleCell({
                   {required.toFixed(item?.manageBy === 'S' ? 0 : 0)}
                 </span>
               ) : (
-                <span className="font-mono opacity-70">pendiente</span>
+                <span className="font-mono opacity-70">{t('doc.lines.tracePending')}</span>
               )}
               <IconTrail size={12} className="shrink-0 ml-0.5" />
             </button>
@@ -513,7 +518,7 @@ function FormArticleCell({
         })()}
       {locked && hasTrace && (
         <p className="text-[9px] font-bold text-fg-subtle uppercase italic leading-none tracking-wider">
-          Vinculado al albarán origen
+          {t('doc.lines.linkedToSource')}
         </p>
       )}
     </div>
@@ -537,6 +542,7 @@ function ZoneSelectCell({
   headerWarehouseId?: string;
   getAvailableZones?: (itemId?: string, warehouseId?: string) => ZoneStock[] | undefined;
 }) {
+  const { t } = useI18n();
   const locked = !!line.baseId;
   // En modo 'line' cada línea puede tener su propio almacén, así que
   // re-filtramos por line.warehouseId. En modo 'header' el `zones` que
@@ -556,10 +562,10 @@ function ZoneSelectCell({
     ? base.filter((z: any) => stockZones.some((sz) => sz.zoneId === z.id))
     : base;
   const options = [
-    { label: '— Sin Ubicación —', value: '' },
+    { label: t('doc.lines.noLocationOption'), value: '' },
     ...filtered.map((z: any) => {
       const sz = stockZones?.find((s) => s.zoneId === z.id);
-      return { label: z.name, value: z.id, secondaryLabel: sz ? `${sz.stock} ud.` : undefined };
+      return { label: z.name, value: z.id, secondaryLabel: sz ? t('doc.lines.unitsShort', { n: sz.stock }) : undefined };
     }),
   ];
   return (
@@ -568,7 +574,7 @@ function ZoneSelectCell({
       disabled={locked}
       onChange={(val) => actions.updateLine(idx, 'zoneId', val)}
       options={options}
-      placeholder="Sin Ubicación"
+      placeholder={t('doc.lines.noLocation')}
       className={locked ? 'opacity-60' : ''}
     />
   );
@@ -596,7 +602,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
   const columns: TableColumn<any>[] = [];
 
   columns.push({
-    header: 'Artículo',
+    header: t('doc.lines.item'),
     width: kind === 'deliveryNote' || perLineWarehouse ? '30%' : '44%',
     cell: (line: any, idx: number) => (
       <FormArticleCell
@@ -613,7 +619,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
 
   if (perLineWarehouse) {
     columns.push({
-      header: 'Almacén',
+      header: t('doc.lines.warehouse'),
       width: '14%',
       align: 'center',
       cell: (line: any, idx: number) => {
@@ -624,7 +630,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
             value={line.warehouseId || ''}
             onChange={(v) => actions.updateLine(idx, 'warehouseId', v)}
             disabled={locked}
-            placeholder="(Sin almacén)"
+            placeholder={t('doc.lines.noWarehouse')}
             clearable
             className="max-w-[160px]"
           />
@@ -635,7 +641,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
 
   if (showZoneCol) {
     columns.push({
-      header: 'Ubicación',
+      header: t('doc.lines.location'),
       width: '14%',
       align: 'center',
       cell: (line: any, idx: number) => (
@@ -653,7 +659,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
   }
 
   columns.push({
-    header: 'Cantidad',
+    header: t('doc.lines.quantity'),
     width: '18%',
     align: 'right',
     cell: (line: any, idx: number) => {
@@ -702,7 +708,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
               disabled={locked}
               onChange={(v) => handleUomChange(v)}
               className="w-[70px] shrink-0 text-[10px] font-black uppercase"
-              ariaLabel="Unidad de medida"
+              ariaLabel={t('doc.lines.uom')}
             />
           ) : uomCode ? (
             <span className="text-[10px] font-black uppercase tracking-wider text-fg-subtle shrink-0 w-[46px] text-left">
@@ -715,7 +721,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
   });
 
   columns.push({
-    header: 'Precio',
+    header: t('doc.lines.price'),
     width: '14%',
     align: 'right',
     cell: (line: any, idx: number) => {
@@ -746,7 +752,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
   });
 
   columns.push({
-    header: '% IVA',
+    header: t('doc.lines.vatRate'),
     width: '9%',
     align: 'center',
     cell: (line: any, idx: number) => {
@@ -769,7 +775,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
   });
 
   columns.push({
-    header: 'Total',
+    header: t('doc.lines.total'),
     width: kind === 'deliveryNote' ? '12%' : '14%',
     align: 'right',
     cell: (line: any) => {
@@ -791,7 +797,7 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
   // disponible si hay proyectos activos cargados en `masters`.
   if ((masters.internalOrders?.length ?? 0) > 0) {
     columns.push({
-      header: 'Proyecto',
+      header: t('doc.lines.project'),
       width: '12%',
       align: 'left',
       cell: (line: any, idx: number) => {
@@ -848,10 +854,10 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
               size="sm"
               onClick={() => onDuplicateLine(idx)}
               className="h-7 w-7 gap-1.5 p-0 border-transparent bg-transparent text-fg-subtle hover:bg-bg-hover hover:text-accent max-md:h-10 max-md:w-auto max-md:px-3"
-              title="Duplicar línea"
+              title={t('doc.lines.duplicateLine')}
             >
               <CopyIcon size={14} />
-              <span className="md:hidden">Duplicar</span>
+              <span className="md:hidden">{t('doc.lines.duplicate')}</span>
             </Button>
           )}
           <Button
@@ -859,10 +865,10 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
             size="sm"
             onClick={() => actions.removeLine(idx)}
             className="h-7 w-7 gap-1.5 p-0 border-transparent bg-transparent text-fg-subtle hover:bg-[var(--k-danger-bg)] hover:text-[var(--k-danger-fg)] max-md:h-10 max-md:w-auto max-md:px-3"
-            title="Eliminar línea"
+            title={t('doc.lines.deleteLine')}
           >
             <Trash2 size={14} />
-            <span className="md:hidden">Eliminar</span>
+            <span className="md:hidden">{t('doc.lines.delete')}</span>
           </Button>
         </div>
       );
@@ -900,20 +906,20 @@ export function statusBadgeProps(
 ): { label: string; variant: StatusVariant } | undefined {
   if (!status) return undefined;
   if (kind === DocKind.Invoice) {
-    if (status === 'D') return { label: 'Borrador', variant: 'warning' };
-    if (status === DocStatus.Open) return { label: 'Asentado', variant: 'success' };
-    if (status === DocStatus.Cancelled) return { label: 'Cancelado', variant: 'error' };
+    if (status === 'D') return { label: t('doc.status.draft'), variant: 'warning' };
+    if (status === DocStatus.Open) return { label: t('doc.status.posted'), variant: 'success' };
+    if (status === DocStatus.Cancelled) return { label: t('doc.status.cancelled'), variant: 'error' };
   }
   if (kind === DocKind.Order) {
-    if (status === DocStatus.Open) return { label: 'Abierto', variant: 'warning' };
-    if (status === DocStatus.Partial) return { label: 'Parcial', variant: 'info' };
-    if (status === DocStatus.Closed) return { label: 'Cerrado', variant: 'success' };
-    if (status === DocStatus.Cancelled) return { label: 'Cancelado', variant: 'error' };
+    if (status === DocStatus.Open) return { label: t('doc.status.open'), variant: 'warning' };
+    if (status === DocStatus.Partial) return { label: t('doc.status.partial'), variant: 'info' };
+    if (status === DocStatus.Closed) return { label: t('doc.status.closed'), variant: 'success' };
+    if (status === DocStatus.Cancelled) return { label: t('doc.status.cancelled'), variant: 'error' };
   }
   if (kind === DocKind.DeliveryNote) {
-    if (status === DocStatus.Open) return { label: 'Abierto', variant: 'warning' };
-    if (status === DocStatus.Closed) return { label: 'Facturado', variant: 'success' };
-    if (status === DocStatus.Cancelled) return { label: 'Cancelado', variant: 'error' };
+    if (status === DocStatus.Open) return { label: t('doc.status.open'), variant: 'warning' };
+    if (status === DocStatus.Closed) return { label: t('doc.status.invoiced'), variant: 'success' };
+    if (status === DocStatus.Cancelled) return { label: t('doc.status.cancelled'), variant: 'error' };
   }
   return { label: status, variant: 'neutral' };
 }

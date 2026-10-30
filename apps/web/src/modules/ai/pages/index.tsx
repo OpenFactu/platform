@@ -14,7 +14,7 @@
  *   adjuntos, pie con tokens) las registra `registerKeiroParts`.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '@openfactu/ui';
 import { AIWorkspace } from '@openfactu/ui/ai';
 import { Maximize2, Minimize2 } from 'lucide-react';
@@ -24,23 +24,23 @@ import { useConversationList } from '../hooks/useConversationList';
 import { useKeiroChat } from '../hooks/useKeiroChat';
 import { DropOverlay } from '../components/DropOverlay';
 import { KeiroChatBody } from '../components/KeiroChatBody';
-import { KEIRO_LABELS } from '../domain/keiroLabels';
+import { keiroLabels } from '../domain/keiroLabels';
+import { useI18n } from '@/i18n/I18nContext';
 import { registerKeiroParts } from '../components/keiroParts';
 
 registerKeiroParts();
 
-/** Sugerencias iniciales del estado vacío. */
-const HERO_SUGGESTIONS = [
-  { id: 'facturas', label: '¿Cuáles son las últimas facturas de venta?' },
-  { id: 'clientes', label: '¿Qué clientes tenemos dados de alta?' },
-  { id: 'articulo', label: 'Busca el artículo con más líneas vendidas este año' },
-  { id: 'widget', label: 'Añade un widget de ventas mensuales al Dashboard' },
-  { id: 'stock', label: '¿Qué artículos tienen poco stock?' },
-  { id: 'excel', label: 'Genera un Excel con el listado de proveedores' },
-];
+/** Sugerencias iniciales del estado vacío (id → clave `ai.suggestions.<id>`). */
+const HERO_SUGGESTIONS = ['facturas', 'clientes', 'articulo', 'widget', 'stock', 'excel'];
 
 export const AiChat: React.FC = () => {
   const chat = useKeiroChat();
+  const { t } = useI18n();
+  const labels = useMemo(() => keiroLabels(t), [t]);
+  const suggestions = useMemo(
+    () => HERO_SUGGESTIONS.map((id) => ({ id, label: t(`ai.suggestions.${id}`) })),
+    [t],
+  );
   const { composer, drop, setChatVisible, refreshModels, conversationId } = chat;
 
   // Le dice al provider si ESTA pestaña (del sistema de pestañas interno,
@@ -72,7 +72,7 @@ export const AiChat: React.FC = () => {
         <DropOverlay visible={drop.dragOver} acceptImages={chat.supportsImages} />
         <AIWorkspace
           className="h-full"
-          labels={KEIRO_LABELS}
+          labels={labels}
           title={ASSISTANT_NAME}
           header={
             <Button
@@ -80,7 +80,7 @@ export const AiChat: React.FC = () => {
               variant="ghost"
               size="sm"
               onClick={() => setFullscreen((v) => !v)}
-              title={fullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+              title={fullscreen ? t('ai.page.exitFullscreen') : t('ai.page.fullscreen')}
               className="ml-auto text-fg-subtle hover:text-accent"
             >
               {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -119,7 +119,7 @@ export const AiChat: React.FC = () => {
             onRejectTool: chat.rejectTool,
           }}
         >
-          <KeiroChatBody chat={chat} suggestions={HERO_SUGGESTIONS} />
+          <KeiroChatBody chat={chat} suggestions={suggestions} />
         </AIWorkspace>
       </div>
     </div>

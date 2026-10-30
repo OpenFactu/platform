@@ -17,6 +17,7 @@ import {
 } from '@openfactu/ui';
 import { LayoutGrid, Plus, Trash2, Edit2, Code2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { WidgetCodeEditorModal } from '@/components/dashboard/WidgetCodeEditorModal';
 
 const PLUGIN_SNIPPET = `// plugins/<mi-plugin>/index.ts
@@ -36,10 +37,10 @@ interface MetricOption {
 }
 
 const WIDGET_SIZE_OPTIONS = [
-  { value: 'sm', label: 'Pequeño (1/4)' },
-  { value: 'md', label: 'Mediano (2/4)' },
-  { value: 'lg', label: 'Grande (3/4)' },
-  { value: 'full', label: 'Completo' },
+  { value: 'sm', label: 'settings.dashboardWidgets.sizes.sm' },
+  { value: 'md', label: 'settings.dashboardWidgets.sizes.md' },
+  { value: 'lg', label: 'settings.dashboardWidgets.sizes.lg' },
+  { value: 'full', label: 'settings.dashboardWidgets.sizes.full' },
 ];
 
 interface WidgetRow {
@@ -67,6 +68,7 @@ const defaultForm = () => ({
 export const DashboardWidgets: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const popup = usePopup();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<WidgetRow[]>([]);
@@ -137,15 +139,15 @@ export const DashboardWidgets: React.FC = () => {
 
   const save = async () => {
     if (!form.title.trim()) {
-      toast.error('El título es obligatorio');
+      toast.error(t('settings.dashboardWidgets.titleRequired'));
       return;
     }
     if (form.kind === 'metric' && !form.metricKey) {
-      toast.error('Elige una métrica');
+      toast.error(t('settings.dashboardWidgets.metricRequired'));
       return;
     }
     if (form.kind === 'code' && !form.sourceCode.trim()) {
-      toast.error('Escribí el código del componente (botón "Editar código")');
+      toast.error(t('settings.dashboardWidgets.codeRequired'));
       return;
     }
     setSubmitting(true);
@@ -165,10 +167,12 @@ export const DashboardWidgets: React.FC = () => {
       const res = await coreApi.raw(editingId ? 'PATCH' : 'POST', url, body);
       const data = res.data;
       if (!res.ok) {
-        toast.error(data?.error || 'Error al guardar');
+        toast.error(data?.error || t('settings.dashboardWidgets.saveError'));
         return;
       }
-      toast.success(editingId ? 'Widget actualizado' : 'Widget creado');
+      toast.success(
+        editingId ? t('settings.dashboardWidgets.updated') : t('settings.dashboardWidgets.created'),
+      );
       setShowModal(false);
       await load();
     } finally {
@@ -178,33 +182,33 @@ export const DashboardWidgets: React.FC = () => {
 
   const remove = async (row: WidgetRow) => {
     const ok = await popup.confirm({
-      title: 'Eliminar widget',
-      message: `¿Eliminar el widget "${row.title}" del dashboard?`,
+      title: t('settings.dashboardWidgets.deleteTitle'),
+      message: t('settings.dashboardWidgets.deleteMessage', { title: row.title }),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('settings.dashboardWidgets.delete'),
     });
     if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/dashboard-widgets/${row.id}`);
     if (!res.ok) {
       const err = res.data ?? {};
-      toast.error(err.error || 'Error al eliminar');
+      toast.error(err.error || t('settings.dashboardWidgets.deleteError'));
       return;
     }
-    toast.success('Widget eliminado');
+    toast.success(t('settings.dashboardWidgets.deleted'));
     load();
   };
 
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
       <PageHeader
-        title="Widgets de dashboard"
-        subtitle="Elegí una métrica del catálogo o escribí tu propio componente React, sin necesidad de un plugin."
+        title={t('settings.dashboardWidgets.title')}
+        subtitle={t('settings.dashboardWidgets.subtitle')}
         icon={<LayoutGrid size={18} />}
         size="sm"
         divider
         actions={
           <Button type="button" onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={14} /> Nuevo widget
+            <Plus size={14} /> {t('settings.dashboardWidgets.newWidget')}
           </Button>
         }
       />
@@ -215,8 +219,8 @@ export const DashboardWidgets: React.FC = () => {
           className="w-full flex items-center justify-between px-4 py-3 text-left"
         >
           <span className="flex items-center gap-2 text-sm font-semibold text-fg-body">
-            <Code2 size={15} className="text-slate-400" />
-            Avanzado: registrar el widget desde un plugin (código en disco)
+            <Code2 size={15} className="text-fg-subtle" />
+            {t('settings.dashboardWidgets.advanced')}
           </span>
           {showPluginWay ? (
             <ChevronUp size={16} className="text-slate-400" />
@@ -227,8 +231,9 @@ export const DashboardWidgets: React.FC = () => {
         {showPluginWay && (
           <div className="px-4 pb-4 space-y-2">
             <p className="text-xs text-fg-muted">
-              Si preferís empaquetar el widget como parte de un plugin instalable (en vez de
-              guardarlo acá), desde el <code>init()</code> del plugin (
+              {t('settings.dashboardWidgets.pluginHelpBefore')}
+              <code>init()</code>
+              {t('settings.dashboardWidgets.pluginHelpMiddle')}
               <code>plugins/&lt;mi-plugin&gt;/index.ts</code>):
             </p>
             <pre className="bg-slate-900 text-slate-100 text-[11px] leading-relaxed rounded-lg p-3 overflow-x-auto font-mono">
@@ -246,11 +251,11 @@ export const DashboardWidgets: React.FC = () => {
         <Card bodyClassName="p-0">
           <EmptyState
             icon={<LayoutGrid size={18} />}
-            title="Aún no has creado ningún widget"
-            hint="Elige una métrica del catálogo o escribe tu propio componente React para el Dashboard."
+            title={t('settings.dashboardWidgets.emptyTitle')}
+            hint={t('settings.dashboardWidgets.emptyHint')}
             action={
               <Button onClick={openCreate} className="flex items-center gap-2">
-                <Plus size={14} /> Nuevo widget
+                <Plus size={14} /> {t('settings.dashboardWidgets.newWidget')}
               </Button>
             }
           />
@@ -267,9 +272,9 @@ export const DashboardWidgets: React.FC = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm text-fg-default">{r.title}</span>
                     {r.kind === 'code' ? (
-                      <Badge variant="info">Componente React</Badge>
+                      <Badge variant="info">{t('settings.dashboardWidgets.kindCode')}</Badge>
                     ) : r.kind === 'query' ? (
-                      <Badge variant="info">Widget IA</Badge>
+                      <Badge variant="info">{t('settings.dashboardWidgets.kindQuery')}</Badge>
                     ) : (
                       <Badge variant="info">{r.metricLabel}</Badge>
                     )}
@@ -289,7 +294,7 @@ export const DashboardWidgets: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => openEdit(r)}
-                  title="Editar"
+                  title={t('settings.dashboardWidgets.edit')}
                 >
                   <Edit2 size={13} />
                 </Button>
@@ -298,7 +303,7 @@ export const DashboardWidgets: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => remove(r)}
-                  title="Eliminar"
+                  title={t('settings.dashboardWidgets.delete')}
                 >
                   <Trash2 size={13} />
                 </Button>
@@ -311,20 +316,22 @@ export const DashboardWidgets: React.FC = () => {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editingId ? 'Editar widget' : 'Nuevo widget'}
-        subtitle="Elegí una métrica del catálogo, o escribí tu propio componente React."
+        title={
+          editingId
+            ? t('settings.dashboardWidgets.editTitle')
+            : t('settings.dashboardWidgets.newWidget')
+        }
+        subtitle={t('settings.dashboardWidgets.modalSubtitle')}
         maxWidth="md"
       >
         <div className="space-y-4 pt-4">
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Tipo de widget
+              {t('settings.dashboardWidgets.kindLabel')}
             </label>
             {form.kind === 'query' ? (
               <p className="text-xs text-fg-muted italic">
-                Este widget lo creó el asistente de IA a partir de una consulta. Desde aquí puedes
-                editar título, subtítulo, tamaño y orden; para cambiar la consulta, pídeselo al
-                asistente en el chat.
+                {t('settings.dashboardWidgets.queryHelp')}
               </p>
             ) : (
               <div className="flex gap-2">
@@ -334,7 +341,7 @@ export const DashboardWidgets: React.FC = () => {
                   variant={form.kind === 'metric' ? 'primary' : 'outline'}
                   onClick={() => setForm({ ...form, kind: 'metric' })}
                 >
-                  Métrica
+                  {t('settings.dashboardWidgets.kindMetric')}
                 </Button>
                 <Button
                   type="button"
@@ -342,38 +349,38 @@ export const DashboardWidgets: React.FC = () => {
                   variant={form.kind === 'code' ? 'primary' : 'outline'}
                   onClick={() => setForm({ ...form, kind: 'code' })}
                 >
-                  Componente React
+                  {t('settings.dashboardWidgets.kindCode')}
                 </Button>
               </div>
             )}
           </div>
           <Input
-            label="Título"
+            label={t('settings.dashboardWidgets.titleLabel')}
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="Artículos en catálogo"
+            placeholder={t('settings.dashboardWidgets.titlePlaceholder')}
           />
           <Input
-            label="Subtítulo (opcional)"
+            label={t('settings.dashboardWidgets.subtitleLabel')}
             value={form.subtitle}
             onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
           />
           {form.kind === 'metric' ? (
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Métrica
+                {t('settings.dashboardWidgets.kindMetric')}
               </label>
               <SearchableSelect
                 value={form.metricKey}
                 onChange={(value) => setForm({ ...form, metricKey: value })}
-                placeholder="Elige una métrica"
+                placeholder={t('settings.dashboardWidgets.metricPlaceholder')}
                 options={metrics.map((m) => ({ value: m.key, label: m.label }))}
               />
             </div>
           ) : form.kind === 'code' ? (
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Componente
+                {t('settings.dashboardWidgets.component')}
               </label>
               <div className="flex items-center gap-2">
                 <Button
@@ -382,10 +389,12 @@ export const DashboardWidgets: React.FC = () => {
                   onClick={() => setShowCodeEditor(true)}
                   className="flex items-center gap-2"
                 >
-                  <Code2 size={13} /> Editar código
+                  <Code2 size={13} /> {t('settings.dashboardWidgets.editCode')}
                 </Button>
                 <span className="text-xs text-fg-subtle">
-                  {form.sourceCode.trim() ? 'Código guardado ✓' : 'Sin código todavía'}
+                  {form.sourceCode.trim()
+                    ? t('settings.dashboardWidgets.codeSaved')
+                    : t('settings.dashboardWidgets.noCode')}
                 </span>
               </div>
             </div>
@@ -393,13 +402,13 @@ export const DashboardWidgets: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* 4 opciones fijas: Select, no SearchableSelect. */}
             <Select
-              label="Tamaño"
+              label={t('settings.dashboardWidgets.size')}
               value={form.size}
               onChange={(value) => setForm({ ...form, size: value as typeof form.size })}
-              options={WIDGET_SIZE_OPTIONS}
+              options={WIDGET_SIZE_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
             />
             <NumberInput
-              label="Orden"
+              label={t('settings.dashboardWidgets.order')}
               value={form.displayOrder}
               onChange={(v) => setForm({ ...form, displayOrder: v ?? 0 })}
               emptyValue="zero"
@@ -408,15 +417,15 @@ export const DashboardWidgets: React.FC = () => {
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Cancelar
+              {t('settings.dashboardWidgets.cancel')}
             </Button>
             <Button onClick={save} disabled={submitting}>
               {submitting ? (
                 <Loader size="sm" variant="white" />
               ) : editingId ? (
-                'Guardar cambios'
+                t('settings.dashboardWidgets.saveChanges')
               ) : (
-                'Crear widget'
+                t('settings.dashboardWidgets.createWidget')
               )}
             </Button>
           </div>

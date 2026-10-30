@@ -1,5 +1,6 @@
 import { ApiError, extractErrorMessage } from './ApiError';
 import { buildQuery, type QueryParams } from './queryString';
+import { getLocale, t } from '../../i18n/i18n';
 
 const TOKEN_KEY = 'openfactu_token';
 
@@ -155,7 +156,7 @@ export class ApiClient {
   ): Promise<Response> {
     const useAuth = opts?.auth !== false;
     const isForm = body instanceof FormData;
-    const headers: Record<string, string> = { ...opts?.headers };
+    const headers: Record<string, string> = { 'Accept-Language': getLocale(), ...opts?.headers };
     if (useAuth && this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
       if (this.tenantId) headers['x-tenant-id'] = this.tenantId;
@@ -168,7 +169,7 @@ export class ApiClient {
       body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
       signal: opts?.signal,
     }).catch(() => {
-      throw new ApiError(0, null, 'Error de red');
+      throw new ApiError(0, null, t('common.networkError'));
     });
   }
 

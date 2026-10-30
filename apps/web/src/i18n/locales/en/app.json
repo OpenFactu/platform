@@ -1,0 +1,744 @@
+{
+  "app": {
+    "tabs": {
+      "close": "Close tab",
+      "closeOthers": "Close other tabs",
+      "closeRight": "Close tabs to the right",
+      "closeAll": "Close all tabs",
+      "notFoundTitle": "Route not found",
+      "notFoundBody": "This tab points to a route that no longer exists."
+    },
+    "nav": {
+      "custom": "Custom",
+      "general": "General",
+      "myRoute": "My route"
+    },
+    "sidebar": {
+      "menu": "Menu",
+      "closeMenu": "Close menu",
+      "openMenu": "Open menu",
+      "searchPlaceholder": "Search the menu…",
+      "noResults": "No results for “{query}”.",
+      "admin": "Administrator",
+      "switchCompany": "Switch company",
+      "logout": "Log out",
+      "activeCompany": "Active company",
+      "user": "User",
+      "userMenu": "User menu"
+    },
+    "header": {
+      "back": "Back",
+      "switchSection": "{title}: change section"
+    },
+    "bottomNav": {
+      "home": "Home",
+      "sales": "Sales",
+      "purchases": "Purchases",
+      "scan": "Scan code",
+      "search": "Search",
+      "more": "More",
+      "aria": "Bottom navigation",
+      "actions": "Actions",
+      "quickActions": "Quick actions"
+    },
+    "search": {
+      "actions": {
+        "newSalesInvoice": {
+          "label": "New sales invoice",
+          "keywords": "create invoice sales customer factura"
+        },
+        "newPurchaseInvoice": {
+          "label": "New purchase invoice",
+          "keywords": "create invoice purchase supplier bill"
+        },
+        "newSalesOrder": {
+          "label": "New sales order",
+          "keywords": "create order sales customer"
+        },
+        "newPurchaseOrder": {
+          "label": "New purchase order",
+          "keywords": "create order purchase supplier"
+        },
+        "newSalesDn": {
+          "label": "New delivery note",
+          "keywords": "create delivery note sales shipment"
+        },
+        "newPurchaseDn": {
+          "label": "New goods receipt",
+          "keywords": "create goods receipt purchase reception"
+        },
+        "newQuote": {
+          "label": "New quote",
+          "keywords": "create quote quotation estimate offer"
+        },
+        "partners": {
+          "label": "Business partners",
+          "keywords": "customers suppliers contacts partners"
+        },
+        "items": {
+          "label": "Items",
+          "keywords": "catalog products stock"
+        },
+        "journal": {
+          "label": "Journal entries",
+          "keywords": "journal accounting ledger"
+        },
+        "employees": {
+          "label": "Employees",
+          "keywords": "hr staff people"
+        },
+        "settings": {
+          "label": "Company settings",
+          "keywords": "configuration branding theme"
+        }
+      },
+      "sections": {
+        "partners": "Business partners",
+        "items": "Items",
+        "salesInvoices": "Sales invoices",
+        "purchaseInvoices": "Purchase invoices",
+        "salesDeliveryNotes": "Delivery notes",
+        "purchaseDeliveryNotes": "Goods receipts",
+        "salesOrders": "Sales orders",
+        "purchaseOrders": "Purchase orders",
+        "journalEntries": "Journal entries",
+        "employees": "Employees",
+        "internalOrders": "Projects",
+        "chartOfAccounts": "Chart of accounts"
+      },
+      "actionsSection": "Actions",
+      "create": "Create",
+      "goTo": "Go to",
+      "journalNumber": "No. {number}",
+      "search": "Search",
+      "placeholder": "Search business partners, items or documents…",
+      "empty": "No results. Try a code, a tax ID or part of the name.",
+      "close": "Close"
+    },
+    "attachments": {
+      "title": "Attachments",
+      "loadError": "Error loading attachments",
+      "uploadError": "Upload error",
+      "deleteTitle": "Delete attachment",
+      "deleteError": "Error deleting",
+      "downloadError": "Download error",
+      "uploading": "Uploading…",
+      "dropLabel": "Drag files here or click to select",
+      "empty": "No attachments."
+    },
+    "common": {
+      "cannotUndo": "This action cannot be undone.",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "save": "Save",
+      "close": "Close",
+      "loading": "Loading…",
+      "saving": "Saving…",
+      "edit": "Edit",
+      "new": "New",
+      "add": "Add",
+      "search": "Search",
+      "noResults": "No results",
+      "error": "Error",
+      "retry": "Retry",
+      "back": "Back",
+      "yes": "Yes",
+      "no": "No",
+      "all": "All",
+      "actions": "Actions",
+      "name": "Name",
+      "code": "Code",
+      "status": "Status",
+      "date": "Date",
+      "description": "Description",
+      "active": "Active",
+      "refresh": "Refresh",
+      "confirm": "Confirm",
+      "saveError": "Error saving",
+      "deleteError": "Error deleting",
+      "httpError": "HTTP error {status}",
+      "loadingShort": "Loading",
+      "inactive": "Inactive",
+      "notAuthenticated": "Not authenticated"
+    },
+    "pluginFields": {
+      "title": "Custom fields",
+      "option": "Option",
+      "attachmentPlaceholder": "Attachment URL or id",
+      "searchRef": "Search {table}...",
+      "additional": "Additional fields (plugins)",
+      "enable": "Enable"
+    },
+    "tenant": {
+      "loadError": "Could not load companies",
+      "switched": "Company switched",
+      "switchError": "Error switching company",
+      "none": "No company",
+      "yours": "Your companies",
+      "noneAccessible": "No accessible companies",
+      "new": "New company"
+    },
+    "debug": {
+      "injected": "Code injected: {code}",
+      "subtitle": "Development tools",
+      "simulateScanner": "Simulate scanner",
+      "codePlaceholder": "Code + Enter",
+      "fire": "Fire",
+      "destructiveWarning": "Destructive actions — use them only in development. They will reset the app to its initial state.",
+      "resetting": "Resetting…",
+      "resetSetup": "Full setup reset",
+      "forceWizard": "Force wizard (?force=1)",
+      "seeding": "Seeding…",
+      "reseedGeo": "Reload countries / geography",
+      "resetConfirmTitle": "Fully reset the setup?",
+      "resetConfirmMessage": "This will delete all tenants and their schemas, all global users and the configuration file. Countries (Country/Region/…) are kept.",
+      "resetConfirm": "Reset"
+    },
+    "clone": {
+      "copyDocument": "Copy document",
+      "pasteDocument": "Paste document",
+      "copyHint": "Copy to clipboard to duplicate in another list",
+      "copy": "Copy",
+      "pasteHint": "Paste copied document → a draft duplicate is created",
+      "paste": "Paste",
+      "copied_one": "Document copied ({count} line) — go to the list and paste",
+      "copied_other": "Document copied ({count} lines) — go to the list and paste",
+      "clipboardDenied": "The browser did not allow clipboard access",
+      "clipboardEmpty": "Clipboard is empty",
+      "notADocument": "The clipboard does not contain a document copied from Keirost",
+      "wrongType": "The copied document is of type {got} — this view expects {expected}",
+      "readError": "Could not read from the clipboard (browser permissions or invalid format)"
+    },
+    "excel": {
+      "noData": "No data to export",
+      "exported_one": "Exported {count} row",
+      "exported_other": "Exported {count} rows",
+      "exportError": "Error exporting",
+      "pasteTitle": "Paste from Excel",
+      "pasteSubtitle": "Copy the cells from Excel/Calc and paste them below. Columns are detected automatically from the first row.",
+      "imported_one": "{count} row imported",
+      "imported_other": "{count} rows imported",
+      "importError": "Error importing",
+      "exportHint": "Export to Excel (formatted .xlsx)",
+      "export": "Export",
+      "importHint": "Paste rows from Excel or CSV",
+      "import": "Import",
+      "pastePlaceholder": "Paste the cells copied from Excel here...",
+      "firstRowHeader": "First row is a header",
+      "colShort": "Col {n}",
+      "ignore": "— ignore —",
+      "column": "Column {name}",
+      "moreRows_one": "... and {count} more row",
+      "moreRows_other": "... and {count} more rows",
+      "validRows_one": "{count} valid row to import",
+      "validRows_other": "{count} valid rows to import",
+      "discarded_one": "({count} discarded due to empty required fields)",
+      "discarded_other": "({count} discarded due to empty required fields)",
+      "importing": "Importing…",
+      "importN": "Import {count}"
+    },
+    "docTypes": {
+      "SQ": "Quote",
+      "SO": "Sales order",
+      "PO": "Purchase order",
+      "SDN": "Delivery note",
+      "PDN": "Goods receipt",
+      "SINV": "Sales invoice",
+      "PINV": "Purchase invoice"
+    },
+    "trace": {
+      "loadError": "Error loading traceability",
+      "loading": "Loading traceability…",
+      "emptyTitle": "No linked documents",
+      "emptyHint": "When this document originates or is generated from another, the full chain will appear here.",
+      "origin": "Source",
+      "derived": "Derived",
+      "payments": "Collections / Payments",
+      "ref": "Ref {ref}",
+      "journalEntries": "Journal entries",
+      "journalEntry": "Journal entry {number}",
+      "numberShort": "No. {number}",
+      "posted": "Posted",
+      "reversed": "Reversed",
+      "draft": "Draft",
+      "title": "Traceability",
+      "subtitle": "Full chain of related documents.",
+      "view": "View traceability",
+      "comesFrom_one": "Comes from ({count} document)",
+      "comesFrom_other": "Comes from ({count} documents)",
+      "generated_one": "Generated ({count} document)",
+      "generated_other": "Generated ({count} documents)",
+      "thisDocument": "This document",
+      "current": "(current)",
+      "paymentsAndAccounting": "Payments and accounting",
+      "payment": "Collection / payment",
+      "journalEntryLabel": "Journal entry",
+      "emptyHintPopup": "When this document originates another or is generated from one, the full chain will appear here."
+    },
+    "prep": {
+      "reused": "Preparation already started — opening",
+      "started": "Preparation started",
+      "shipmentTitle": "Shipment in preparation",
+      "title": "Preparation",
+      "error": "Error starting preparation",
+      "prepare": "Prepare shipment",
+      "receive": "Receive"
+    },
+    "widgets": {
+      "noExport": "The component exports nothing renderable (default).",
+      "loadError": "Error loading the component.",
+      "noData": "No data",
+      "queryResult": "Query result",
+      "noRows": "The query returned no rows",
+      "networkError": "Network error",
+      "editorTitle": "Widget component",
+      "editorSubtitle": "Available: react, @openfactu/ui, lucide-react, @openfactu/widget-api (GET only).",
+      "compiling": "Compiling…",
+      "test": "▶ Test",
+      "compiles": "✓ Compiles fine",
+      "saveCode": "Save code"
+    },
+    "fiscalTable": {
+      "loadError": "Error loading {title}",
+      "created": "Created",
+      "updated": "Updated",
+      "deleteTitle": "Delete record",
+      "deleted": "Deleted",
+      "empty": "No data — press \"Add\" to create."
+    },
+    "geo": {
+      "country": "Country",
+      "selectCountry": "Select country...",
+      "locality": "Municipality",
+      "searchLocality": "Search municipality...",
+      "selectProvinceFirst": "Select the province first",
+      "phone": "Phone",
+      "postalCode": "Postal code",
+      "invalidFormat": "Invalid format.",
+      "loading": "Loading...",
+      "selectX": "Select {label}...",
+      "province": "province",
+      "invalidTaxId": "Invalid format for {country}. Example: {example}"
+    },
+    "dimensions": {
+      "loadError": "Error loading {title}",
+      "nameRequired": "Name is required",
+      "codeNameRequired": "Code and name are required",
+      "parent": "Parent",
+      "auto": "Auto",
+      "namePlaceholder": "Madrid office",
+      "parentOptional": "Parent (optional)",
+      "noParent": "— no parent —",
+      "empty": "No dimensions created",
+      "notes": "Notes",
+      "saveChanges": "Save changes",
+      "create": "Create"
+    },
+    "about": {
+      "headline1": "Purchasing, sales, stock and people,",
+      "headline2": "all in one place.",
+      "bodyBefore": "Keirost is an",
+      "bodyHighlight": "open-source ERP",
+      "bodyAfter": "built for the day-to-day of small and medium-sized businesses: from quote to invoice, from warehouse to delivery and from customers to the people who work with you. Each company has its own space, with isolated data and its own branding, and can grow with modules and plugins as it needs."
+    },
+    "login": {
+      "rememberedAccounts": "Accounts remembered in this browser",
+      "forgetAccount": "Forget {name} in this browser",
+      "useOtherAccount": "Use another account",
+      "pickCompanyError": "Choose the company you want to sign in to",
+      "invalid2fa": "Invalid 2FA code",
+      "invalidCredentials": "Incorrect credentials or invalid company",
+      "connectionError": "Could not connect to the server",
+      "twoFactorTitle": "Two-step verification",
+      "pickAccountTitle": "Choose your account",
+      "hello": "Hi, {name}",
+      "title": "Sign in",
+      "twoFactorHint": "Enter the code from your authenticator app or a backup code.",
+      "pickAccountHint": "You have signed in from this browser before.",
+      "passwordHint": "Enter your password to sign in.",
+      "subtitle": "Sign in with your username or work email.",
+      "verificationCode": "Verification code",
+      "change": "Change",
+      "userOrEmail": "Username or email",
+      "userPlaceholder": "admin or you@company.com",
+      "company": "Company",
+      "pickCompany": "Choose a company",
+      "password": "Password",
+      "forgot": "Forgot your password?",
+      "verify": "Verify",
+      "enter": "Sign in",
+      "whatIs": "What is Keirost?",
+      "docs": "Documentation"
+    },
+    "categories": {
+      "general": "General",
+      "operations": "Operations",
+      "salesPurchases": "Sales and purchasing",
+      "finance": "Finance",
+      "analytics": "Analytics",
+      "productivity": "Productivity",
+      "hr": "HR",
+      "logistics": "Logistics"
+    },
+    "pluginLoader": {
+      "noExport": "The plugin module does not export a valid component (default or function).",
+      "loadError": "Error downloading or transpiling the plugin component.",
+      "errorTitle": "Extension error",
+      "errorHint": "Check that the file exists in the plugin folder and is valid.",
+      "loading": "Loading external component",
+      "syncing": "Syncing with the Plugin SDK...",
+      "rendering": "Rendering..."
+    },
+    "scanner": {
+      "permissionDenied": "Camera permission denied. Grant it in the browser settings.",
+      "startError": "Could not start the camera",
+      "starting": "Starting camera…",
+      "continuous_one": "Continuous scan · {count} read",
+      "continuous_other": "Continuous scan · {count} read",
+      "last": "last: {code}",
+      "hint": "Point at the code. Automatic detection · Formats: EAN · Code-128 · QR",
+      "itemNotFound": "Item not found: {code}"
+    },
+    "lines": {
+      "project": "Project",
+      "inheritHeader": "— Inherit from header —"
+    },
+    "validation": {
+      "empty": "empty",
+      "invalidChars": "invalid characters",
+      "unknownCountry": "unknown country {country}",
+      "ibanLength": "{country} expected {expected} chars, got {got}",
+      "badChecksum": "invalid checksum",
+      "swiftLength": "{got} characters, expected 8 or 11",
+      "invalidFormat": "invalid format"
+    },
+    "barcode": {
+      "empty": "Empty",
+      "badCheckDigit": "Invalid check digit (expected {expected})",
+      "twelveDigits": "12 digits: as UPC-A the check digit is invalid. As EAN-13 one is missing (it would be {suggested})",
+      "missingCheckDigit": "Check digit missing (it would be {suggested})",
+      "nonStandardLength": "Length {length} is not standard (8/12/13)",
+      "nonPrintable": "Contains non-printable characters"
+    },
+    "forgot": {
+      "checkEmail": "Check your email",
+      "sentBefore": "If the email",
+      "sentAfter": "belongs to an account, we have sent you a link to reset your password. It expires in 1 hour.",
+      "notReceived": "Didn't get it? Check your spam folder or ask your administrator to reset it.",
+      "backToLogin": "Back to sign in",
+      "title": "Recover password",
+      "subtitle": "Enter your email and we'll send you a link to create a new password.",
+      "email": "Email",
+      "emailPlaceholder": "user@company.com",
+      "send": "Send link"
+    },
+    "reset": {
+      "tooShort": "Password must be at least 6 characters",
+      "mismatch": "Passwords do not match",
+      "invalidLink": "The link is invalid or has expired",
+      "doneTitle": "Password updated",
+      "doneBody": "You can now sign in with your new password. Redirecting…",
+      "noTokenTitle": "Invalid link",
+      "noTokenBody": "The recovery token is missing. Request a new link from the sign-in screen.",
+      "requestNew": "Request a new link",
+      "newPassword": "New password",
+      "subtitle": "Choose a secure password for your account.",
+      "repeat": "Repeat password",
+      "save": "Save password"
+    },
+    "aboutPage": {
+      "marquee": {
+        "m0": "Quotes",
+        "m1": "Orders",
+        "m2": "Delivery notes",
+        "m3": "Invoices",
+        "m4": "Collections",
+        "m5": "Inventory",
+        "m6": "Batches and serial numbers",
+        "m7": "CRM",
+        "m8": "Forms",
+        "m9": "Accounting",
+        "m10": "Payroll",
+        "m11": "Clock-ins",
+        "m12": "Delivery routes",
+        "m13": "Company website",
+        "m14": "AI assistant",
+        "m15": "Plugins"
+      },
+      "modules": {
+        "sales": {
+          "title": "Sales and purchasing",
+          "text": "Quotes, orders, delivery notes and invoices chained together: each document is born from the previous one, with nothing typed twice."
+        },
+        "warehouse": {
+          "title": "Warehouse",
+          "text": "Stock by warehouse and location, batches, expiry dates and serial numbers."
+        },
+        "crm": {
+          "title": "CRM",
+          "text": "Opportunities on a board, today's activities and the full record of every customer."
+        },
+        "accounting": {
+          "title": "Accounting",
+          "text": "Automatic journal entries when invoicing, taxes and period closing."
+        },
+        "people": {
+          "title": "People",
+          "text": "Clock-ins from a phone or a kiosk, shifts, payroll and reviews."
+        },
+        "logistics": {
+          "title": "Logistics",
+          "text": "Order picking, routes on the map and proof of delivery with signature."
+        },
+        "forms": {
+          "title": "Forms",
+          "text": "Surveys and sign-ups with a public link; responses reach the CRM."
+        },
+        "web": {
+          "title": "Company website",
+          "text": "Your own website, with your brand, built from blocks inside the ERP."
+        },
+        "ai": {
+          "title": "AI assistant",
+          "text": "Ask it about your sales or have it draft a document: it works with your data and your permissions."
+        },
+        "plugins": {
+          "title": "Plugins",
+          "text": "Custom fields, screens and automations, without touching the core."
+        }
+      },
+      "chain": {
+        "quote": {
+          "label": "Quote",
+          "description": "You prepare the offer and send it to the customer."
+        },
+        "order": {
+          "label": "Order",
+          "description": "The customer accepts and the quote becomes an order."
+        },
+        "delivery": {
+          "label": "Delivery note",
+          "description": "The goods ship: stock goes down by itself, with its batches."
+        },
+        "invoice": {
+          "label": "Invoice",
+          "description": "The delivery note is invoiced and the journal entry is created automatically."
+        },
+        "payment": {
+          "label": "Collection",
+          "description": "You record the collection and the invoice is settled."
+        }
+      },
+      "stats": {
+        "s0": "modules that are turned on as you need them",
+        "s1": "document types, from quote to goods receipt",
+        "s2": "open source, no licences",
+        "s3": "single tool for the whole company"
+      },
+      "faq": {
+        "free": {
+          "title": "How much does it cost?",
+          "content": "Keirost is open source: you can install it on your own servers without paying for licences. If you prefer not to deal with anything, it can also be offered as a hosted service."
+        },
+        "data": {
+          "title": "Where is my data?",
+          "content": "Each company has its own space in the database, separate from the others. You can export all of it whenever you want, with its attachments."
+        },
+        "companies": {
+          "title": "Can I manage several companies?",
+          "content": "Yes. The same user can belong to several companies and switch between them; each one with its own data, permissions and branding."
+        },
+        "mobile": {
+          "title": "Does it work on mobile?",
+          "content": "Yes. The whole app adapts to mobile: clock in, check stock, scan codes or record a delivery with the customer's signature."
+        },
+        "extend": {
+          "title": "Can I adapt it to my business?",
+          "content": "With plugins you can add fields, screens, document types and automations. And themes change colours, typography and the whole look."
+        },
+        "ai": {
+          "title": "What does the assistant do?",
+          "content": "It answers questions about your data, prepares documents and suggests actions. It only sees what your user can see, and asks for confirmation before changing anything."
+        }
+      },
+      "backToLogin": "Back to sign in",
+      "marqueeLabel": "What Keirost does",
+      "modulesEyebrow": "Everything in one place",
+      "modulesTitle1": "A module for every part",
+      "modulesTitle2": "of your business.",
+      "modulesIntro": "They switch on when you need them and share the same data: the CRM customer is the one on the invoice, and the warehouse item is the one on the order.",
+      "chainEyebrow": "Never type twice",
+      "chainTitle": "From quote to collection, in one go.",
+      "chainIntro": "Each document is born from the previous one. Stock, accounting and payment status update themselves.",
+      "chainAria": "A document from start to finish",
+      "statsEyebrow": "In numbers",
+      "statsTitle": "Small on the outside, complete on the inside.",
+      "faqEyebrow": "Frequently asked questions",
+      "faqTitle": "What people usually ask.",
+      "ctaTitle": "Shall we start?",
+      "ctaBody": "Sign in with your user or ask your company's administrator for access.",
+      "goToLogin": "Go to sign in"
+    },
+    "setup": {
+      "subtitle": "Initial setup wizard",
+      "next": "Next",
+      "back": "Back",
+      "failed": "Setup failed. Check the logs.",
+      "networkError": "Network error while setting up the system.",
+      "db": {
+        "fillAll": "Fill in all the database fields.",
+        "badPort": "The port must be a valid number (1-65535).",
+        "ok": "Connection successful.",
+        "fail": "Could not connect.",
+        "networkError": "Network error while checking the connection.",
+        "existingTitle": "Existing configuration detected",
+        "existingBody": "This database already has a Keirost ERP configuration. Do you want to skip the setup and go straight to sign in?",
+        "continue": "Continue setup",
+        "goLogin": "Go to sign in",
+        "continuing": "Continuing with the setup...",
+        "title": "1. Database",
+        "subtitle": "Set up the main PostgreSQL connection.",
+        "host": "Host (e.g. localhost)",
+        "port": "Port (e.g. 5432)",
+        "user": "User (e.g. openfactu)",
+        "password": "DB password",
+        "testing": "Testing connection...",
+        "test": "Test connection",
+        "checking": "Checking connection..."
+      },
+      "admin": {
+        "title": "2. Administrator",
+        "subtitle": "Create the global superuser account.",
+        "email": "Email",
+        "username": "Username (e.g. angel)"
+      },
+      "company": {
+        "title": "3. First company",
+        "subtitle": "Tax details of your main company.",
+        "name": "Company name",
+        "nif": "Tax ID (NIF / CIF)"
+      },
+      "details": {
+        "title": "4. Company settings",
+        "subtitle": "Contact details, address and preferences. You can edit them later in Settings.",
+        "address": "Address",
+        "city": "City",
+        "currency": "Currency",
+        "email": "Contact email",
+        "web": "Website",
+        "fiscalYearStart": "Fiscal year start (MM-DD)",
+        "publicUrl": "Public application URL",
+        "publicUrlHint": "Domain from which your customers will open tracking links (emails). You can change it later in Settings."
+      },
+      "countries": {
+        "ES": "Spain",
+        "PT": "Portugal",
+        "FR": "France",
+        "IT": "Italy",
+        "DE": "Germany",
+        "GB": "United Kingdom",
+        "US": "United States"
+      },
+      "modules": {
+        "title": "5. Modules",
+        "subtitle": "Choose which modules to enable. You can change this later in Apps.",
+        "initializing": "Initializing...",
+        "finish": "Finish"
+      }
+    },
+    "tracking": {
+      "copy": {
+        "t0": "Being prepared",
+        "t1": "Ready / Dispatched",
+        "t2": "On the way",
+        "t3": "Out for delivery",
+        "t4": "Delivered",
+        "t5": "Scheduled",
+        "t6": "Assigned to route",
+        "t7": "Pickup today",
+        "t8": "Picked up",
+        "t9": "Preparing",
+        "t10": "We're preparing your order",
+        "t11": "We'll let you know when it leaves the warehouse.",
+        "t12": "We're packing your order",
+        "t13": "As soon as it's ready, it will go out for delivery.",
+        "t14": "Packed",
+        "t15": "Your order is packed",
+        "t16": "Waiting to be dispatched.",
+        "t17": "Ready to go",
+        "t18": "Your order is ready to go",
+        "t19": "It will leave as soon as the driver picks it up.",
+        "t20": "Dispatched",
+        "t21": "Your order has been dispatched",
+        "t22": "Assigned to a delivery route — it will head your way shortly.",
+        "t23": "Your order is on the way",
+        "t24": "Follow the driver in real time.",
+        "t25": "Heading to you today",
+        "t26": "Your order is heading to you today!",
+        "t27": "Make sure someone is there to receive it.",
+        "t28": "Delivery postponed",
+        "t29": "Delivery attempt failed",
+        "t30": "Nobody was there to receive the order. We'll try again soon.",
+        "t31": "Delivered!",
+        "t32": "Thank you for trusting us.",
+        "t33": "Incident",
+        "t34": "An incident has occurred",
+        "t35": "We'll contact you as soon as possible.",
+        "t36": "Returned",
+        "t37": "Your order has been returned",
+        "t38": "Check the history for more details.",
+        "t39": "Cancelled",
+        "t40": "Order cancelled",
+        "t41": "Pickup scheduled",
+        "t42": "We're going to collect your package",
+        "t43": "We'll let you know when the driver heads your way.",
+        "t44": "Your pickup is planned",
+        "t45": "We'll come for the package soon.",
+        "t46": "We're on our way to collect your package",
+        "t47": "We're collecting your package today!",
+        "t48": "Have the package ready and someone to hand it to the driver.",
+        "t49": "Pickup postponed",
+        "t50": "We couldn't collect your package",
+        "t51": "We'll try again soon.",
+        "t52": "Package collected!",
+        "t53": "We have it — we'll contact you with the outcome.",
+        "t54": "Pickup cancelled"
+      },
+      "now": "just now",
+      "minutesAgo": "{n} min ago",
+      "hoursAgo": "{n} h ago",
+      "daysAgo": "{n} d ago",
+      "notFoundBody": "We couldn't find your shipment. Check the link we sent you by email.",
+      "shareTitle": "Shipment tracking",
+      "loading": "Loading tracking…",
+      "notFound": "Shipment not found",
+      "invalidLink": "Invalid link.",
+      "tracking": "Tracking",
+      "share": "Share",
+      "eta": "Estimated arrival:",
+      "pickedUpOn": "Picked up on {date}",
+      "deliveredOn": "Delivered on {date}",
+      "pickupAt": "We'll collect from",
+      "deliverTo": "Deliver to",
+      "updated": "Updated {ago}",
+      "history": "Shipment history",
+      "noEvents": "No events recorded yet.",
+      "footer": "Automatically updated every 30 seconds · Keirost ERP"
+    },
+    "trackingChat": {
+      "open": "Ask Keiro about your shipment",
+      "subtitle": "Ask me about your shipment",
+      "close": "Close chat",
+      "empty": "Ask me about the status of your shipment or tell me if there's a problem.",
+      "typing": "Typing…",
+      "placeholder": "Type your message…",
+      "send": "Send"
+    },
+    "publicForm": {
+      "unavailable": "Form unavailable",
+      "unavailableHint": "The link is incorrect or the form no longer exists.",
+      "hello": "Hi, {name}.",
+      "editing": "You are changing a response you already submitted."
+    }
+  }
+}

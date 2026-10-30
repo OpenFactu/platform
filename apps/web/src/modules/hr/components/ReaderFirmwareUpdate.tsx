@@ -8,7 +8,10 @@ import {
   type ReaderFirmwareState,
 } from '../domain/readerFirmware';
 import type { ReaderSerialApi } from '../domain/timeclockUsb';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
 export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onClose: () => void }) {
+  const { t } = useI18n();
   const [release, setRelease] = useState<FirmwareRelease | null>(null);
   const [state, setState] = useState<ReaderFirmwareState>({});
   const [busy, setBusy] = useState(false);
@@ -36,9 +39,9 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
       })
       .catch(() => {
         if (mounted.current && request === stateRequest.current)
-          setStateError('No se pudo consultar el estado del lector. Pulsa «Comprobar de nuevo».');
+          setStateError(t('hrTime.firmwareUpdate.stateFailed'));
       });
-  }, [reader.id]);
+  }, [reader.id, t]);
   useEffect(() => {
     mounted.current = true;
     void firmwareApi
@@ -47,8 +50,7 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
         if (mounted.current) setRelease(value);
       })
       .catch(() => {
-        if (mounted.current)
-          setError('No se pudo consultar GitHub. Comprueba la conexión y vuelve a abrir.');
+        if (mounted.current) setError(t('hrTime.firmwareUpdate.githubFailed'));
       });
     void refreshState();
     const timer = setInterval(() => void refreshState(), 5000);
@@ -59,7 +61,7 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
       clearInterval(timer);
       window.removeEventListener('focus', onFocus);
     };
-  }, [refreshState]);
+  }, [refreshState, t]);
   useEffect(() => {
     if (!busy) return;
     const warn = (e: BeforeUnloadEvent) => {
@@ -78,7 +80,8 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
     try {
       await work();
     } catch (e) {
-      if (mounted.current) setError(e instanceof Error ? e.message : 'No se pudo actualizar.');
+      if (mounted.current)
+        setError(e instanceof Error ? e.message : t('hrTime.firmwareUpdate.updateFailed'));
     } finally {
       running.current = false;
       if (mounted.current) setBusy(false);
@@ -94,37 +97,42 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
     state.currentVersion.localeCompare(release.version, undefined, { numeric: true }) >= 0
   );
   const wifiUnavailable = stateError
-    ? 'No se puede comprobar la actualización por Wi-Fi hasta recuperar el estado del lector.'
+    ? t('hrTime.firmwareUpdate.wifi.noState')
     : !stateLoaded
-      ? 'Consultando la versión instalada…'
+      ? t('hrTime.firmwareUpdate.wifi.loading')
       : !reader.isActive
-        ? 'Activa el lector para actualizarlo por Wi-Fi.'
+        ? t('hrTime.firmwareUpdate.wifi.inactive')
         : !state.currentVersion
-          ? 'Esperando que el lector comunique su versión por Wi-Fi. Déjalo encendido y conectado; puede tardar hasta un minuto. Si sigue sin aparecer, revisa su conexión con Keirost. Las versiones 0.2.x necesitan primero una actualización por USB.'
+          ? t('hrTime.firmwareUpdate.wifi.noVersion')
           : status === 'pending'
-            ? 'Hay una actualización pendiente de confirmación.'
+            ? t('hrTime.firmwareUpdate.wifi.pending')
             : upToDate
-              ? 'Ya tienes la última versión disponible. La actualización por Wi-Fi se habilitará cuando se publique una versión nueva.'
+              ? t('hrTime.firmwareUpdate.wifi.upToDate')
               : !release
-                ? 'Esperando la versión publicada.'
+                ? t('hrTime.firmwareUpdate.wifi.noRelease')
                 : '';
   return (
-    <Card title={`Actualizar ${reader.name}`} subtitle="Versiones oficiales de OpenFactu/keirots">
+    <Card
+      title={t('hrTime.firmwareUpdate.title', { name: reader.name })}
+      subtitle={t('hrTime.firmwareUpdate.subtitle')}
+    >
       <div className="space-y-4">
         <p>
-          Versión del lector:{' '}
+          {t('hrTime.firmwareUpdate.readerVersion')}{' '}
           <strong>
             {state.currentVersion ||
-              (stateError ? 'No disponible' : stateLoaded ? 'Esperando al lector' : 'Consultando…')}
+              (stateError
+                ? t('hrTime.firmwareUpdate.notAvailable')
+                : stateLoaded
+                  ? t('hrTime.firmwareUpdate.waitingReader')
+                  : t('hrTime.firmwareUpdate.querying'))}
           </strong>
         </p>
         <p>
-          Versión publicada: <strong>{release?.version || 'Consultando…'}</strong>
+          {t('hrTime.firmwareUpdate.publishedVersion')}{' '}
+          <strong>{release?.version || t('hrTime.firmwareUpdate.querying')}</strong>
         </p>
-        <p className="text-sm text-fg-muted">
-          Se conserva la configuración Wi-Fi, el certificado y el token. Durante la instalación el
-          lector no estará disponible para fichar.
-        </p>
+        <p className="text-sm text-fg-muted">{t('hrTime.firmwareUpdate.keepsConfig')}</p>
         <div className="flex flex-wrap gap-3">
           <Button
             disabled={
@@ -142,7 +150,7 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
               })
             }
           >
-            Actualizar por USB
+            {t('hrTime.firmwareUpdate.updateUsb')}
           </Button>
           <Button
             variant="secondary"
@@ -154,28 +162,30 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
               })
             }
           >
-            {upToDate ? 'Wi-Fi: actualizado' : 'Actualizar por Wi-Fi'}
+            {upToDate
+              ? t('hrTime.firmwareUpdate.wifiUpToDate')
+              : t('hrTime.firmwareUpdate.updateWifi')}
           </Button>
           <Button variant="secondary" disabled={busy} onClick={() => void refreshState()}>
-            Comprobar de nuevo
+            {t('hrTime.firmwareUpdate.checkAgain')}
           </Button>
           <Button variant="ghost" disabled={busy} onClick={onClose}>
-            Cerrar
+            {t('hr.common.close')}
           </Button>
         </div>
         <p id="reader-wifi-update-status" role="status" className="text-sm text-fg-muted">
-          {wifiUnavailable || 'Actualización disponible por Wi-Fi.'}
+          {wifiUnavailable || t('hrTime.firmwareUpdate.wifiAvailable')}
         </p>
         {state.lastReportedAt && (
           <p className="text-xs text-fg-muted">
-            Último contacto del lector: {new Date(state.lastReportedAt).toLocaleString('es-ES')}.
+            {t('hrTime.firmwareUpdate.lastContact', {
+              date: formatDateTime(state.lastReportedAt),
+            })}
           </p>
         )}
         {contactMissing && !stateError && (
           <p role="status" className="text-warning">
-            Sin contacto reciente con el lector. Comprueba que tiene alimentación y Wi-Fi, y que
-            puede acceder a Keirost. Si ejecutas Keirost en este ordenador, debe permanecer
-            encendido y sin suspensión.
+            {t('hrTime.firmwareUpdate.noContact')}
           </p>
         )}
         {stateError && (
@@ -183,21 +193,18 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
             {stateError}
           </Alert>
         )}
-        <p className="text-sm text-fg-muted">
-          USB: conecta el lector y cierra el monitor Arduino. Necesitas Chrome o Edge de escritorio.
-          Para habilitar Wi-Fi en versiones 0.2.x, actualiza primero por USB.
-        </p>
-        {busy && <Progress label="Progreso de actualización" value={percent} showValue />}
+        <p className="text-sm text-fg-muted">{t('hrTime.firmwareUpdate.usbHint')}</p>
+        {busy && <Progress label={t('hrTime.firmwareUpdate.progress')} value={percent} showValue />}
         {message && <p role="status">{message}</p>}
         {status === 'pending' && (
           <div className="space-y-2">
             <p role="status">
-              Versión {state.update!.version} pendiente de confirmación del lector.
+              {t('hrTime.firmwareUpdate.pendingVersion', { version: state.update!.version })}
             </p>
             <p className="text-sm text-fg-muted">
               {contactMissing
-                ? 'La solicitud está guardada, pero falta la confirmación del lector. La espera no significa que esté descargando o instalando.'
-                : 'El lector consulta las actualizaciones cada minuto. Mantén su alimentación y la conexión con Keirost hasta que confirme la nueva versión.'}
+                ? t('hrTime.firmwareUpdate.pendingNoContact')
+                : t('hrTime.firmwareUpdate.pendingHint')}
             </p>
             <Button
               variant="secondary"
@@ -208,22 +215,19 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
                 })
               }
             >
-              Cancelar actualización pendiente
+              {t('hrTime.firmwareUpdate.cancelPending')}
             </Button>
-            <p className="text-xs text-fg-muted">
-              Cancelar no interrumpe una instalación que ya haya comenzado.
-            </p>
+            <p className="text-xs text-fg-muted">{t('hrTime.firmwareUpdate.cancelHint')}</p>
           </div>
         )}
         {status === 'installed' && (
           <p role="status" className="text-success">
-            El lector ha confirmado la versión {state.update!.version}.
+            {t('hrTime.firmwareUpdate.installed', { version: state.update!.version })}
           </p>
         )}
         {status === 'failed' && (
           <Alert tone="danger" role="alert">
-            El lector no pudo instalar la versión. Conserva la anterior; comprueba la conexión y
-            vuelve a intentarlo.
+            {t('hrTime.firmwareUpdate.failed')}
           </Alert>
         )}
         {error && (

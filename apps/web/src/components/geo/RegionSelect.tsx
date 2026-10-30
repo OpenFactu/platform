@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { SearchableSelect } from '@openfactu/ui';
 import { useGeo, type GeoRow } from '../../hooks/useGeo';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   countryCode: string;
@@ -18,6 +19,7 @@ export const RegionSelect: React.FC<Props> = ({
   disabled,
 }) => {
   const { loadRegions, getCountry } = useGeo();
+  const { t } = useI18n();
   const [regions, setRegions] = useState<GeoRow[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -54,7 +56,9 @@ export const RegionSelect: React.FC<Props> = ({
         options={options}
         value={value}
         onChange={onChange}
-        placeholder={loading ? 'Cargando...' : `Seleccionar ${country.regionLabel}...`}
+        placeholder={
+          loading ? t('app.geo.loading') : t('app.geo.selectX', { label: country.regionLabel })
+        }
         disabled={disabled || loading}
       />
     </div>

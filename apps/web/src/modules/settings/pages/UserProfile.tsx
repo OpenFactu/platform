@@ -1,8 +1,10 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, Input, FileDropzone, PageHeader, useToast, usePopup } from '@openfactu/ui';
-import { UserCircle, Upload, X as XIcon, Save, PenLine, ImageIcon } from 'lucide-react';
+import { UserCircle, Upload, X as XIcon, Save, PenLine, ImageIcon, Languages } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { TwoFactorSettings } from '../components/TwoFactorSettings';
 
 interface Profile {
@@ -24,6 +26,7 @@ interface Profile {
 export const UserProfile: React.FC = () => {
   const { token, user, refreshUser } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const popup = usePopup();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [name, setName] = useState('');
@@ -92,10 +95,10 @@ export const UserProfile: React.FC = () => {
         signatureRole: role,
       });
       if (!res.ok) throw new Error(res.data.error);
-      toast.success('Perfil actualizado');
+      toast.success(t('settings.profile.updated'));
       await load();
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error');
+      toast.error((e instanceof Error ? e.message : undefined) || t('settings.profile.error'));
     } finally {
       setSaving(false);
     }
@@ -103,11 +106,11 @@ export const UserProfile: React.FC = () => {
 
   const uploadSignature = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      toast.error('Solo PNG o JPG');
+      toast.error(t('settings.profile.onlyPngJpg'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Máximo 5 MB');
+      toast.error(t('settings.profile.max5mb'));
       return;
     }
     setUploading(true);
@@ -115,7 +118,7 @@ export const UserProfile: React.FC = () => {
       const form = new FormData();
       form.append('file', file);
       await coreApi.postForm('/api/profile/me/signature', form);
-      toast.success('Firma subida');
+      toast.success(t('settings.profile.signatureUploaded'));
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : undefined);
@@ -126,16 +129,16 @@ export const UserProfile: React.FC = () => {
 
   const deleteSignature = async () => {
     const ok = await popup.confirm({
-      title: 'Eliminar firma',
-      message: 'Se borrará la imagen de tu firma. Tus PDFs volverán a usar la firma de la empresa.',
+      title: t('settings.profile.deleteSignatureTitle'),
+      message: t('settings.profile.deleteSignatureMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('settings.profile.delete'),
     });
     if (!ok) return;
     try {
       const res = await coreApi.raw('DELETE', '/api/profile/me/signature');
       if (!res.ok) throw new Error(res.data.error);
-      toast.success('Firma eliminada');
+      toast.success(t('settings.profile.signatureDeleted'));
       if (signaturePreview?.startsWith('blob:')) URL.revokeObjectURL(signaturePreview);
       setSignaturePreview(null);
       await load();
@@ -149,11 +152,11 @@ export const UserProfile: React.FC = () => {
   // src> directo basta.
   const uploadAvatar = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      toast.error('Solo imágenes');
+      toast.error(t('settings.profile.onlyImages'));
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('Máximo 5 MB');
+      toast.error(t('settings.profile.max5mb'));
       return;
     }
     setUploadingAvatar(true);
@@ -161,11 +164,11 @@ export const UserProfile: React.FC = () => {
       const form = new FormData();
       form.append('file', file);
       await coreApi.postForm('/api/profile/me/avatar', form);
-      toast.success('Foto de perfil actualizada');
+      toast.success(t('settings.profile.avatarUpdated'));
       await load();
       await refreshUser();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error');
+      toast.error(e instanceof Error ? e.message : t('settings.profile.error'));
     } finally {
       setUploadingAvatar(false);
     }
@@ -173,45 +176,42 @@ export const UserProfile: React.FC = () => {
 
   const deleteAvatar = async () => {
     const ok = await popup.confirm({
-      title: 'Eliminar foto de perfil',
-      message: 'Volverás a mostrar la inicial de tu usuario en la tabla de Usuarios y en el chat.',
+      title: t('settings.profile.deleteAvatarTitle'),
+      message: t('settings.profile.deleteAvatarMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('settings.profile.delete'),
     });
     if (!ok) return;
     try {
       const res = await coreApi.raw('DELETE', '/api/profile/me/avatar');
       if (!res.ok) throw new Error(res.data.error);
-      toast.success('Foto eliminada');
+      toast.success(t('settings.profile.avatarDeleted'));
       await load();
       await refreshUser();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error');
+      toast.error(e instanceof Error ? e.message : t('settings.profile.error'));
     }
   };
 
   return (
     <div className="p-8 max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
       <PageHeader
-        title="Mi perfil"
-        subtitle="Tu firma personal aparecerá en los PDFs de los documentos que tú emitas, sustituyendo a la firma genérica de la empresa."
+        title={t('settings.profile.title')}
+        subtitle={t('settings.profile.subtitle')}
         icon={<UserCircle size={18} />}
         size="lg"
       />
 
       <Card className="p-6 space-y-4 border-border-subtle">
         <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
-          <ImageIcon size={14} /> Foto de perfil
+          <ImageIcon size={14} /> {t('settings.profile.avatarSection')}
         </h2>
-        <p className="text-[11px] text-fg-muted">
-          Se usa en la tabla de Usuarios y en tus mensajes del asistente de IA (PNG o JPG, máx. 5
-          MB).
-        </p>
+        <p className="text-[11px] text-fg-muted">{t('settings.profile.avatarHelp')}</p>
         <div className="flex items-center gap-4">
           {profile?.avatarImageUrl ? (
             <img
               src={profile.avatarImageUrl}
-              alt="Foto de perfil"
+              alt={t('settings.profile.avatarAlt')}
               className="w-16 h-16 rounded-lg object-cover border border-border-default"
             />
           ) : (
@@ -227,15 +227,23 @@ export const UserProfile: React.FC = () => {
               accept="image/png,image/jpeg,image/webp"
               maxSizeMb={5}
               icon={<Upload size={18} />}
-              label={profile?.avatarImageUrl ? 'Reemplazar' : 'Subir foto'}
+              label={
+                profile?.avatarImageUrl
+                  ? t('settings.profile.replace')
+                  : t('settings.profile.uploadPhoto')
+              }
               isUploading={uploadingAvatar}
-              uploadingLabel="Subiendo…"
+              uploadingLabel={t('settings.profile.uploading')}
               disabled={uploadingAvatar}
               onFiles={(files) => {
                 if (files[0]) uploadAvatar(files[0]);
               }}
               onReject={(reason) =>
-                toast.error(reason === 'size' ? 'Máximo 5 MB' : 'Solo PNG, JPG o WebP')
+                toast.error(
+                  reason === 'size'
+                    ? t('settings.profile.max5mb')
+                    : t('settings.profile.onlyPngJpgWebp'),
+                )
               }
             />
             {profile?.avatarImageUrl && (
@@ -246,7 +254,7 @@ export const UserProfile: React.FC = () => {
                 onClick={deleteAvatar}
                 className="flex items-center gap-2"
               >
-                <XIcon size={14} /> Eliminar
+                <XIcon size={14} /> {t('settings.profile.delete')}
               </Button>
             )}
           </div>
@@ -255,48 +263,64 @@ export const UserProfile: React.FC = () => {
 
       <Card className="p-6 space-y-4 border-border-subtle">
         <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
-          <UserCircle size={14} /> Datos de la cuenta
+          <UserCircle size={14} /> {t('settings.profile.accountSection')}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input label="Email" value={profile?.email || ''} disabled />
-          <Input label="Usuario" value={profile?.username || ''} disabled />
+          <Input label={t('settings.profile.email')} value={profile?.email || ''} disabled />
+          <Input label={t('settings.profile.username')} value={profile?.username || ''} disabled />
         </div>
-        <p className="text-[11px] text-fg-subtle">
-          Para cambiar email o contraseña, ve a la sección Usuarios (requiere permisos).
-        </p>
+        <p className="text-[11px] text-fg-subtle">{t('settings.profile.accountHelp')}</p>
+      </Card>
+
+      <Card className="p-6 space-y-4 border-border-subtle">
+        <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
+          <Languages size={14} /> {t('settings.profile.preferencesSection')}
+        </h2>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-sm font-black text-fg-default">{t('settings.profile.language')}</p>
+            <p className="text-[11px] text-fg-subtle font-medium max-w-sm">
+              {t('settings.profile.languageHelp')}
+            </p>
+          </div>
+          <LanguageSwitcher />
+        </div>
       </Card>
 
       <TwoFactorSettings />
 
       <Card className="p-6 space-y-4 border-border-subtle">
         <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
-          <PenLine size={14} /> Firma para PDFs
+          <PenLine size={14} /> {t('settings.profile.signatureSection')}
         </h2>
-        <p className="text-[11px] text-fg-muted">
-          Rellena tu nombre y cargo. Opcionalmente sube una imagen de tu firma (PNG o JPG, máx. 5
-          MB). Si rellenas estos campos, prevalecen sobre la firma de la empresa en tus PDFs.
-        </p>
+        <p className="text-[11px] text-fg-muted">{t('settings.profile.signatureHelp')}</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
-            label="Nombre del firmante"
+            label={t('settings.profile.signerName')}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Ej. Juan García"
+            placeholder={t('settings.profile.signerNamePlaceholder')}
           />
           <Input
-            label="Cargo"
+            label={t('settings.profile.signerRole')}
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            placeholder="Ej. Director Comercial"
+            placeholder={t('settings.profile.signerRolePlaceholder')}
           />
         </div>
 
         <div>
-          <label className="block text-xs text-fg-muted mb-1">Imagen de firma</label>
+          <label className="block text-xs text-fg-muted mb-1">
+            {t('settings.profile.signatureImage')}
+          </label>
           <div className="flex items-center gap-3 flex-wrap">
             {profile?.signatureImageUrl && signaturePreview && (
               <div className="p-2 border border-border-default rounded-md bg-bg-card">
-                <img src={signaturePreview} alt="Firma actual" className="h-14 object-contain" />
+                <img
+                  src={signaturePreview}
+                  alt={t('settings.profile.currentSignature')}
+                  className="h-14 object-contain"
+                />
               </div>
             )}
             <FileDropzone
@@ -304,15 +328,23 @@ export const UserProfile: React.FC = () => {
               accept="image/png,image/jpeg"
               maxSizeMb={5}
               icon={<Upload size={18} />}
-              label={profile?.signatureImageUrl ? 'Reemplazar' : 'Subir PNG/JPG'}
+              label={
+                profile?.signatureImageUrl
+                  ? t('settings.profile.replace')
+                  : t('settings.profile.uploadPngJpg')
+              }
               isUploading={uploading}
-              uploadingLabel="Subiendo…"
+              uploadingLabel={t('settings.profile.uploading')}
               disabled={uploading}
               onFiles={(files) => {
                 if (files[0]) uploadSignature(files[0]);
               }}
               onReject={(reason) =>
-                toast.error(reason === 'size' ? 'Máximo 5 MB' : 'Solo PNG o JPG')
+                toast.error(
+                  reason === 'size'
+                    ? t('settings.profile.max5mb')
+                    : t('settings.profile.onlyPngJpg'),
+                )
               }
             />
             {profile?.signatureImageUrl && (
@@ -323,7 +355,7 @@ export const UserProfile: React.FC = () => {
                 onClick={deleteSignature}
                 className="flex items-center gap-2"
               >
-                <XIcon size={14} /> Eliminar
+                <XIcon size={14} /> {t('settings.profile.delete')}
               </Button>
             )}
           </div>
@@ -332,7 +364,7 @@ export const UserProfile: React.FC = () => {
         <div className="flex justify-end pt-2">
           <Button onClick={saveMeta} disabled={saving} className="flex items-center gap-2">
             <Save size={16} />
-            {saving ? 'Guardando…' : 'Guardar nombre y cargo'}
+            {saving ? t('settings.profile.saving') : t('settings.profile.saveSignature')}
           </Button>
         </div>
       </Card>

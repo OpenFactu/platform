@@ -32,6 +32,7 @@ router.get('/', async (req: any, res) => {
         amountPaid: schema.purchaseInvoices.amountPaid,
         isLocked: schema.purchaseInvoices.isLocked,
         dueDate: schema.purchaseInvoices.dueDate,
+        externalRef: schema.purchaseInvoices.externalRef,
         baseDocCode: sql<string | null>`(
         SELECT COALESCE(ds."prefix", '') || '-' || COALESCE(ap."code", '') || '-' || LPAD(pdn."docNum"::text, 6, '0')
         FROM "PurchaseDeliveryNote" pdn

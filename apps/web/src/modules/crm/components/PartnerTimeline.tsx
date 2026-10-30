@@ -1,6 +1,7 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Badge, Button, EmptyState, Skeleton } from '@openfactu/ui';
+import { Badge, Button, EmptyState, Skeleton, Timeline, type TimelineTone } from '@openfactu/ui';
 import {
   CalendarClock,
   CheckCircle2,
@@ -45,9 +46,16 @@ function iconOf(e: TimelineEntry) {
   return DOC_ICON[e.kind];
 }
 
+function toneOf(e: TimelineEntry): TimelineTone {
+  if (e.kind === 'activity') return e.done ? 'success' : 'default';
+  if (e.kind === 'opportunity') return 'accent';
+  return 'info';
+}
+
+/** Clave de i18n de la etiqueta de la entrada. */
 function labelOf(e: TimelineEntry) {
   if (e.kind === 'activity') return ACTIVITY_TYPE_LABEL[e.activityType ?? 'note'];
-  if (e.kind === 'opportunity') return 'Oportunidad';
+  if (e.kind === 'opportunity') return 'crm.common.opportunity';
   return DOC_TYPE_LABEL[e.kind];
 }
 
@@ -57,6 +65,7 @@ function labelOf(e: TimelineEntry) {
  */
 export const PartnerTimeline: React.FC<{ partnerId: string }> = ({ partnerId }) => {
   const fmt = useFormat();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,42 +96,36 @@ export const PartnerTimeline: React.FC<{ partnerId: string }> = ({ partnerId }) 
   if (loading) return <Skeleton className="h-24 w-full" />;
   if (entries.length === 0)
     return (
-      <EmptyState variant="compact" icon={<History size={18} />} title="Sin historial todavía" />
+      <EmptyState variant="compact" icon={<History size={18} />} title={t('crm.timeline.empty')} />
     );
 
   return (
     <div className="space-y-2">
-      <ol className="relative border-l border-border-default ml-2 space-y-3">
-        {entries.map((e) => (
-          <li key={`${e.kind}-${e.id}`} className="ml-4">
-            <span className="absolute -left-[9px] mt-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-bg-card border border-border-default text-fg-muted">
-              {iconOf(e)}
-            </span>
-            <button
-              type="button"
-              onClick={() => open(e)}
-              disabled={e.kind === 'activity'}
-              className="w-full text-left disabled:cursor-default"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-fg-muted">{labelOf(e)}</span>
-                <span className="text-sm font-medium text-fg-default">{e.title}</span>
-                {e.status && e.kind === 'opportunity' && (
-                  <Badge variant="neutral">{e.status}</Badge>
-                )}
-                <span className="flex-1" />
-                {e.amount != null && (
-                  <span className="text-xs tabular-nums text-fg-body">{fmt.money(e.amount)}</span>
-                )}
-                <span className="text-xs text-fg-subtle tabular-nums">{fmt.date(e.at)}</span>
-              </div>
-              {e.kind === 'activity' && e.detail && (
-                <p className="text-xs text-fg-muted mt-0.5 line-clamp-2">{e.detail}</p>
+      {/* Timeline de @openfactu/ui: agrupa por día y pone la fecha relativa;
+          antes era una <ol> con la línea y los puntos montados a mano. */}
+      <Timeline
+        aria-label={t('crm.timeline.ariaLabel')}
+        events={entries.map((e) => ({
+          id: `${e.kind}-${e.id}`,
+          date: e.at,
+          icon: iconOf(e),
+          tone: toneOf(e),
+          author: t(labelOf(e)),
+          title: (
+            <span className="inline-flex flex-wrap items-center gap-2">
+              {e.title}
+              {e.status && e.kind === 'opportunity' && <Badge variant="neutral">{e.status}</Badge>}
+              {e.amount != null && (
+                <span className="text-xs font-normal tabular-nums text-fg-body">
+                  {fmt.money(e.amount)}
+                </span>
               )}
-            </button>
-          </li>
-        ))}
-      </ol>
+            </span>
+          ),
+          description: e.kind === 'activity' && e.detail ? e.detail : undefined,
+          onClick: e.kind === 'activity' ? undefined : () => open(e),
+        }))}
+      />
       {hasMore && (
         <Button
           type="button"
@@ -130,7 +133,7 @@ export const PartnerTimeline: React.FC<{ partnerId: string }> = ({ partnerId }) 
           size="sm"
           onClick={() => fetchPage(entries[entries.length - 1]?.at)}
         >
-          Ver más
+          {t('crm.common.showMore')}
         </Button>
       )}
     </div>

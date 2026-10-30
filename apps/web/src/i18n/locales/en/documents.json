@@ -1,0 +1,69 @@
+{
+  "invoice": {
+    "title": "Invoice",
+    "status": {
+      "draft": "Draft",
+      "open": "Open",
+      "cancelled": "Cancelled"
+    },
+    "paymentStatus": {
+      "pending": "Pending",
+      "partial": "Partial",
+      "paid": "Paid",
+      "overdue": "Overdue"
+    },
+    "locked": "Locked — read-only",
+    "documentType": "Document type",
+    "dueDate": "Due date",
+    "supplyDate": "Supply date",
+    "paymentMethod": "Payment method",
+    "paymentTerm": "Payment terms",
+    "withholdingRate": "Withholding %",
+    "withholdingAmount": "Withholding",
+    "currency": "Currency",
+    "notes": "Notes",
+    "internalNotes": "Internal notes",
+    "registerPayment": "Register payment",
+    "registerPaymentPurchase": "Register payment",
+    "amountPaid": "Paid",
+    "remaining": "Remaining"
+  },
+  "line": {
+    "description": "Description",
+    "discountRate": "Disc %",
+    "discountAmount": "Disc €",
+    "project": "Project"
+  },
+  "payment": {
+    "date": "Date",
+    "amount": "Amount",
+    "method": "Method",
+    "reference": "Reference",
+    "source": "Source",
+    "manual": "Manual",
+    "referenceRequired": "The reference number is required",
+    "referencePlaceholder": "transfer no., receipt…",
+    "requiredField": "Required field",
+    "editCollection": "Edit collection",
+    "editPayment": "Edit payment",
+    "editSubtitle": "Only informational fields can be edited. The amount {amount} cannot be changed — if it is wrong, delete it and create it again.",
+    "updated": "Updated",
+    "updateError": "Error updating",
+    "deleteCollection": "Delete collection",
+    "deletePayment": "Delete payment",
+    "deleteMessage": "{amount} — the invoice status will be recalculated and the journal entry (if any) will be reversed automatically.",
+    "delete": "Delete",
+    "deleted": "Deleted",
+    "deleteError": "Error deleting",
+    "collectionsTitle": "Recorded collections",
+    "paymentsTitle": "Recorded payments",
+    "loading": "Loading…",
+    "noCollections": "No collections yet",
+    "noPayments": "No payments yet",
+    "refShort": "Ref {ref}",
+    "edit": "Edit",
+    "referenceNo": "Reference no.",
+    "cancel": "Cancel",
+    "save": "Save"
+  }
+}

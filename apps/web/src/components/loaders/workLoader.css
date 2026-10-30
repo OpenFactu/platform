@@ -1,0 +1,242 @@
+/*
+ * Escenas del cargador (WorkLoader). Todo con transform/opacity, colores del
+ * tema y duraciones multiplicadas por --k-motion (velocidad de animaciones del
+ * branding). Con «reducir movimiento» se quedan quietas.
+ */
+.kl {
+  --kl-ink: var(--fg-muted, #52606f);
+  --kl-soft: var(--border-strong, #cbd5e1);
+  --kl-accent: var(--color-accent, #0d9488);
+  --kl-t: calc(var(--k-motion, 1) * 1s);
+  color: var(--kl-ink);
+}
+.kl * {
+  transform-box: fill-box;
+}
+.kl-stroke {
+  fill: none;
+  stroke: var(--kl-ink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.kl-ground {
+  stroke: var(--kl-soft);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.kl-box {
+  fill: var(--kl-accent);
+}
+.kl-box-line {
+  stroke: color-mix(in srgb, var(--kl-accent) 60%, black);
+  stroke-width: 1;
+}
+
+/* ── 1. Persona cargando el camión ───────────────────────────────────── */
+.kl-walker {
+  animation: kl-walk calc(var(--kl-t) * 2.6) ease-in-out infinite;
+}
+@keyframes kl-walk {
+  0%,
+  6% {
+    transform: translateX(0);
+  }
+  44%,
+  54% {
+    transform: translateX(58px);
+  }
+  94%,
+  100% {
+    transform: translateX(0);
+  }
+}
+.kl-carried {
+  animation: kl-carried calc(var(--kl-t) * 2.6) linear infinite;
+}
+@keyframes kl-carried {
+  0%,
+  46% {
+    opacity: 1;
+  }
+  48%,
+  97% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.kl-loaded {
+  opacity: 0;
+  animation: kl-loaded calc(var(--kl-t) * 2.6) linear infinite;
+}
+@keyframes kl-loaded {
+  0%,
+  47% {
+    opacity: 0;
+  }
+  49%,
+  92% {
+    opacity: 1;
+  }
+  97%,
+  100% {
+    opacity: 0;
+  }
+}
+.kl-leg-a,
+.kl-leg-b {
+  transform-origin: 50% 0;
+  animation: kl-step calc(var(--kl-t) * 0.45) ease-in-out infinite alternate;
+}
+.kl-leg-b {
+  animation-delay: calc(var(--kl-t) * -0.45);
+}
+@keyframes kl-step {
+  from {
+    transform: rotate(-22deg);
+  }
+  to {
+    transform: rotate(22deg);
+  }
+}
+
+/* ── 2. Carretilla subiendo un palé ──────────────────────────────────── */
+.kl-forklift {
+  animation: kl-drive calc(var(--kl-t) * 3.2) ease-in-out infinite;
+}
+@keyframes kl-drive {
+  0% {
+    transform: translateX(-60px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  32%,
+  70% {
+    transform: translateX(0);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(70px);
+    opacity: 0;
+  }
+}
+.kl-fork {
+  animation: kl-lift calc(var(--kl-t) * 3.2) ease-in-out infinite;
+}
+@keyframes kl-lift {
+  0%,
+  34% {
+    transform: translateY(0);
+  }
+  48%,
+  60% {
+    transform: translateY(-18px);
+  }
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+}
+.kl-wheel {
+  transform-origin: center;
+  animation: kl-spin calc(var(--kl-t) * 0.8) linear infinite;
+}
+@keyframes kl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── 3. Cajas que se apilan ──────────────────────────────────────────── */
+.kl-drop {
+  opacity: 0;
+  animation: kl-drop calc(var(--kl-t) * 2.8) cubic-bezier(0.3, 0, 0.4, 1) infinite;
+}
+.kl-drop-2 {
+  animation-delay: calc(var(--kl-t) * 0.35);
+}
+.kl-drop-3 {
+  animation-delay: calc(var(--kl-t) * 0.7);
+}
+@keyframes kl-drop {
+  0% {
+    transform: translateY(-36px);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  20% {
+    transform: translateY(0);
+  }
+  24% {
+    transform: translateY(-3px);
+  }
+  28%,
+  78% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  90%,
+  100% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+}
+
+/* ── 4. Factura saliendo de la impresora ─────────────────────────────── */
+.kl-paper {
+  transform-origin: 50% 0;
+  animation: kl-print calc(var(--kl-t) * 2.4) ease-out infinite;
+}
+@keyframes kl-print {
+  0% {
+    transform: scaleY(0);
+    opacity: 1;
+  }
+  60%,
+  82% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1) translateY(6px);
+    opacity: 0;
+  }
+}
+.kl-led {
+  animation: kl-blink calc(var(--kl-t) * 0.6) steps(2, start) infinite;
+}
+@keyframes kl-blink {
+  to {
+    opacity: 0.2;
+  }
+}
+
+/* Cambio de escena: entra suave. */
+.kl-scene {
+  animation: kl-in calc(var(--kl-t) * 0.25) ease-out both;
+}
+@keyframes kl-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kl *,
+  .kl-scene {
+    animation: none !important;
+  }
+  .kl-loaded,
+  .kl-drop {
+    opacity: 1;
+  }
+}

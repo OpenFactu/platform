@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
 export const ReportProfitCostCenter: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,19 +25,19 @@ export const ReportProfitCostCenter: React.FC = () => {
 
   const columns = useMemo(
     () => [
-      { key: 'code', label: 'Código' },
-      { key: 'name', label: 'Centro' },
-      { key: 'income', label: 'Ingresos', format: (v: any) => fmt.money(v) },
-      { key: 'expense', label: 'Gastos', format: (v: any) => fmt.money(v) },
-      { key: 'margin', label: 'Margen', format: (v: any) => fmt.money(v) },
+      { key: 'code', label: t('reports.common.code') },
+      { key: 'name', label: t('reports.profitCostCenter.center') },
+      { key: 'income', label: t('reports.common.income'), format: (v: any) => fmt.money(v) },
+      { key: 'expense', label: t('reports.common.expenses'), format: (v: any) => fmt.money(v) },
+      { key: 'margin', label: t('reports.common.margin'), format: (v: any) => fmt.money(v) },
     ],
-    [fmt],
+    [fmt, t],
   );
 
   return (
     <ReportPage
-      title="Rentabilidad por centro de coste"
-      subtitle="Ingresos vs gastos imputados a cada unidad de responsabilidad."
+      title={t('reports.profitCostCenter.title')}
+      subtitle={t('reports.profitCostCenter.subtitle')}
       rows={rows}
       columns={columns as any}
       loading={loading}

@@ -1,0 +1,143 @@
+{
+  "hrTalent": {
+    "evaluations": {
+      "status": {
+        "draft": "Draft",
+        "active": "Active",
+        "closed": "Closed",
+        "pending": "Pending",
+        "selfDone": "Self-assessed",
+        "managerDone": "Assessed"
+      },
+      "tabCycles": "Cycles",
+      "tabCompetencies": "Competencies",
+      "cycleRequired": "Name and dates are required",
+      "scoresSaved": "Scores saved",
+      "closed": "Evaluation closed",
+      "closeFailed": "Could not close",
+      "open": "Open",
+      "finalScore": "Final score",
+      "score": "Score",
+      "scale": "Scale",
+      "editCompetency": "Edit competency",
+      "title": "Evaluations",
+      "subtitle": "Evaluation cycles with weighted competencies. Closing an evaluation calculates the final score as Σ(score × weight) / Σweight.",
+      "newCycle": "New cycle",
+      "emptyCycles": "No evaluation cycles yet.",
+      "addEmployee": "Add employee to the cycle",
+      "chooseEmployee": "— choose employee —",
+      "emptyEvaluations": "No employees in this cycle yet.",
+      "newCompetency": "New competency",
+      "scaleN": "Scale (1..N)",
+      "emptyCompetencies": "No competencies defined yet.",
+      "scoreTitle": "Score evaluation",
+      "closeEvaluation": "Close evaluation (calculates final)",
+      "competency": "Competency",
+      "self": "Self",
+      "manager": "Manager",
+      "selfAria": "Self-assessment",
+      "managerAria": "Manager rating",
+      "comments": "Comments"
+    },
+    "gantt": {
+      "title": "Task calendar",
+      "subtitle": "Drag a task to another day or time to reschedule it",
+      "allProjects": "All projects",
+      "empty": "No tasks on these dates",
+      "assignedOptional": "Assigned to (optional)",
+      "quickHint": "It will be created without dates. Drag it from \"Unscheduled\" to a calendar day to schedule it.",
+      "editInTasks": "Edit in Tasks",
+      "estimated": "Estimated",
+      "assigned": "Assigned"
+    },
+    "objectives": {
+      "status": {
+        "pending": "Pending",
+        "inProgress": "In progress",
+        "achieved": "Achieved",
+        "missed": "Missed"
+      },
+      "required": "Employee and title are required",
+      "deleteTitle": "Delete objective",
+      "deleteMessage": "Delete the objective \"{title}\"?",
+      "metric": "Metric",
+      "progress": "Progress",
+      "due": "Due",
+      "title": "SMART objectives",
+      "subtitle": "Objectives per employee with a measurable metric and progress.",
+      "new": "New objective",
+      "countSuffix": "objectives",
+      "choose": "— choose —",
+      "metricFree": "Metric (free text)",
+      "target": "Target",
+      "achieved": "Achieved",
+      "weight": "Weight",
+      "dueDate": "Due date",
+      "empty": "No objectives match the current filters."
+    },
+    "performance": {
+      "title": "Performance",
+      "exportTitle": "Performance · {from} to {to}",
+      "x": {
+        "contracted": "Contracted h",
+        "planned": "Planned h",
+        "clocked": "Clocked h",
+        "overtime": "Overtime h",
+        "compliance": "% Compliance",
+        "absence": "Absence days"
+      },
+      "contracted": "Contracted",
+      "planned": "Planned",
+      "clocked": "Clocked",
+      "overtime": "Overtime",
+      "complianceShort": "% Compl.",
+      "absence": "Absenteeism",
+      "incidents": "Incidents",
+      "noIncidents": "no incidents",
+      "subtitle": "Productivity per employee: contracted vs planned vs clocked hours, % compliance, overtime, incident map.",
+      "days_one": "{count} day",
+      "days_other": "{count} days",
+      "avgCompliance": "Average compliance %:",
+      "empty": "No productivity data for the current filters."
+    },
+    "taskCalendar": {
+      "saveFailed": "Could not save",
+      "created": "Task created · drag it to a day to schedule it",
+      "createFailed": "Could not create"
+    },
+    "tasks": {
+      "status": {
+        "backlog": "Backlog",
+        "todo": "To do",
+        "in_progress": "In progress",
+        "blocked": "Blocked",
+        "done": "Done",
+        "cancelled": "Cancelled"
+      },
+      "priority": {
+        "low": "Low",
+        "normal": "Normal",
+        "high": "High",
+        "urgent": "Urgent"
+      },
+      "titleRequired": "Title is required",
+      "deleteTitle": "Delete task",
+      "deleteMessage": "Delete task {code}?",
+      "title": "Tasks",
+      "subtitle": "Lightweight planner · drag a task to another column to change its status",
+      "new": "New task",
+      "assignedTo": "Assigned to",
+      "count_one": "{count} task",
+      "count_other": "{count} tasks",
+      "kanbanAria": "Tasks by status",
+      "editTitle": "Edit {code}",
+      "taskWord": "task",
+      "titleField": "Title",
+      "priorityLabel": "Priority",
+      "unassigned": "— unassigned —",
+      "none": "— none —",
+      "estimatedHours": "Estimated (h)",
+      "progress": "Progress (%)"
+    }
+  }
+}

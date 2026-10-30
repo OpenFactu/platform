@@ -7,15 +7,19 @@ import { PermittedRoute } from './PermittedRoute';
 import { usePlugins } from '../../context/PluginContext';
 import { PluginViewRenderer } from '@/modules/plugins/components/PluginViewRenderer';
 import { PageLoading } from '../PageLoading';
+import { useI18n } from '../../i18n/I18nContext';
 
 const MAX_MOUNTED_TABS = 3;
 
-const NotFound: React.FC = () => (
-  <div className="p-8 text-fg-muted">
-    <h2 className="text-lg font-bold mb-2">Ruta no encontrada</h2>
-    <p className="text-sm">La pestaña apunta a una ruta que ya no existe.</p>
-  </div>
-);
+const NotFound: React.FC = () => {
+  const { t } = useI18n();
+  return (
+    <div className="p-8 text-fg-muted">
+      <h2 className="text-lg font-bold mb-2">{t('app.tabs.notFoundTitle')}</h2>
+      <p className="text-sm">{t('app.tabs.notFoundBody')}</p>
+    </div>
+  );
+};
 
 export const TabsHost: React.FC = () => {
   const { tabs, activeTabId } = useTabs();

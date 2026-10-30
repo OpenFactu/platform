@@ -1,6 +1,7 @@
 import { coreApi } from '@/shared/api';
 import { useCallback } from 'react';
 import { useToast } from '@openfactu/ui';
+import { t } from '@/i18n/i18n';
 
 /**
  * Portapapeles estructurado para clonar documentos entre vistas (detalle → lista)
@@ -133,11 +134,9 @@ export function useDocumentClone(docType: CloneDocType) {
       };
       try {
         await navigator.clipboard.writeText(JSON.stringify(payload));
-        toast.success(
-          `Documento copiado (${payload.lines.length} línea${payload.lines.length === 1 ? '' : 's'}) — ve al listado y pega`,
-        );
+        toast.success(t('app.clone.copied', { count: payload.lines.length }));
       } catch {
-        toast.error('El navegador no permitió acceder al portapapeles');
+        toast.error(t('app.clone.clipboardDenied'));
       }
     },
     [docType, toast],
@@ -147,23 +146,21 @@ export function useDocumentClone(docType: CloneDocType) {
     try {
       const raw = await navigator.clipboard.readText();
       if (!raw) {
-        toast.error('Portapapeles vacío');
+        toast.error(t('app.clone.clipboardEmpty'));
         return null;
       }
       const parsed = JSON.parse(raw);
       if (parsed?.magic !== MAGIC) {
-        toast.error('El portapapeles no contiene un documento copiado desde Keirost');
+        toast.error(t('app.clone.notADocument'));
         return null;
       }
       if (parsed.docType !== docType) {
-        toast.error(
-          `El documento copiado es de tipo ${parsed.docType} — esta vista espera ${docType}`,
-        );
+        toast.error(t('app.clone.wrongType', { got: parsed.docType, expected: docType }));
         return null;
       }
       return { header: parsed.header, lines: parsed.lines };
     } catch {
-      toast.error('No se pudo leer del portapapeles (permisos del navegador o formato inválido)');
+      toast.error(t('app.clone.readError'));
       return null;
     }
   }, [docType, toast]);

@@ -1,3 +1,4 @@
+import { t } from '@/i18n/i18n';
 import { useEffect, useState } from 'react';
 import { applyTheme, getThemePreset } from '@openfactu/ui';
 import type { Answers, FormDefinition } from '@forms-engine';
@@ -150,10 +151,10 @@ export function usePublicForm(tenantId: string, slug: string, token?: string, ed
           ? (err.body as { errors?: Record<string, string>; error?: string })
           : null;
       if (err instanceof ApiError && err.status === 409) {
-        setBlocked(body?.error ?? 'Este formulario ya no acepta respuestas.');
+        setBlocked(body?.error ?? t('forms.public.closed'));
         return undefined;
       }
-      setSubmitError(err instanceof Error ? err.message : 'No se pudo enviar');
+      setSubmitError(err instanceof Error ? err.message : t('forms.public.sendFailed'));
       return body?.errors ? { errors: body.errors } : undefined;
     } finally {
       setSending(false);
@@ -173,7 +174,7 @@ export function usePublicForm(tenantId: string, slug: string, token?: string, ed
       blocked ??
       (editing
         ? null
-        : (data?.closed ?? (data?.invitee?.responded ? 'Ya respondiste. ¡Gracias!' : null))),
+        : (data?.closed ?? (data?.invitee?.responded ? t('forms.public.alreadyResponded') : null))),
     result,
     /** Para enviar otra respuesta: vuelve al formulario vacío. */
     reset: () => setResult(null),

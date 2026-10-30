@@ -3,16 +3,17 @@ import { Modal, Input, Button, Textarea, useToast } from '@openfactu/ui';
 import { Mail } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { documentEmailApi } from '../../api';
+import { useI18n } from '@/i18n/I18nContext';
 
 export type AnyDocType = 'SINV' | 'PINV' | 'SDN' | 'PDN' | 'SO' | 'PO';
 
 const DOC_LABEL: Record<AnyDocType, string> = {
-  SINV: 'Factura',
-  PINV: 'Factura',
-  SDN: 'Albarán',
-  PDN: 'Albarán',
-  SO: 'Pedido',
-  PO: 'Pedido',
+  SINV: 'doc.email.docLabel.invoice',
+  PINV: 'doc.email.docLabel.invoice',
+  SDN: 'doc.email.docLabel.deliveryNote',
+  PDN: 'doc.email.docLabel.deliveryNote',
+  SO: 'doc.email.docLabel.order',
+  PO: 'doc.email.docLabel.order',
 };
 
 interface Props {
@@ -41,20 +42,25 @@ export const SendInvoiceModal: React.FC<Props> = ({
 }) => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
 
-  const label = DOC_LABEL[docType] || 'Documento';
+  const label = t(DOC_LABEL[docType] || 'doc.email.docLabel.document');
   const [to, setTo] = useState(partnerEmail || '');
   const [cc, setCc] = useState('');
   const [subject, setSubject] = useState(`${label} ${docCode}`);
   const [body, setBody] = useState(
-    `Hola${partnerName ? ' ' + partnerName : ''},\n\nAdjuntamos ${label.toLowerCase()} ${docCode}.\n\nSaludos.`,
+    t('doc.email.body', {
+      name: partnerName ? ' ' + partnerName : '',
+      doc: label.toLowerCase(),
+      code: docCode,
+    }),
   );
   const [sending, setSending] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
   const submit = async () => {
     if (!to.trim()) {
-      toast.error('Indica un destinatario');
+      toast.error(t('doc.email.recipientRequired'));
       return;
     }
     setSending(true);
@@ -67,17 +73,17 @@ export const SendInvoiceModal: React.FC<Props> = ({
         subject,
         body,
       });
-      toast.success(`Email encolado → ${data.to || to}. Te notificamos cuando se entregue.`);
+      toast.success(t('doc.email.queued', { to: data.to || to }));
       onClose();
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al enviar');
+      toast.error((e instanceof Error ? e.message : undefined) || t('doc.email.sendError'));
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <Modal isOpen={open} onClose={onClose} title="Enviar factura">
+    <Modal isOpen={open} onClose={onClose} title={t('doc.email.sendInvoice')}>
       <div className="p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xs bg-accent/10 text-accent">
@@ -85,50 +91,48 @@ export const SendInvoiceModal: React.FC<Props> = ({
           </div>
           <div>
             <h2 className="text-lg font-bold text-ink-900 dark:text-slate-100 font-display">
-              Enviar factura
+              {t('doc.email.sendInvoice')}
             </h2>
             <p className="text-xs text-ink-500 dark:text-ink-400 font-mono">{docCode}</p>
           </div>
         </div>
 
         <div className="space-y-3">
-          <Field label="Para">
+          <Field label={t('doc.email.to')}>
             <Input
               type="email"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              placeholder="cliente@empresa.com"
+              placeholder={t('doc.email.toPlaceholder')}
             />
           </Field>
-          <Field label="Con copia (CC)">
+          <Field label={t('doc.email.cc')}>
             <Input
               type="email"
               value={cc}
               onChange={(e) => setCc(e.target.value)}
-              placeholder="opcional, varios separados por coma"
+              placeholder={t('doc.email.ccPlaceholder')}
             />
           </Field>
-          <Field label="Asunto">
+          <Field label={t('doc.email.subject')}>
             <Input value={subject} onChange={(e) => setSubject(e.target.value)} />
           </Field>
-          <Field label="Mensaje">
+          <Field label={t('doc.email.message')}>
             <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={6} />
           </Field>
-          <p className="text-[10px] text-ink-400 font-mono">
-            El PDF se genera y adjunta automáticamente.
-          </p>
+          <p className="text-[10px] text-ink-400 font-mono">{t('doc.email.pdfAuto')}</p>
         </div>
 
         {/* Preview */}
         {showPreview && (
           <div className="border-t border-line dark:border-ink-700 pt-4">
             <h3 className="text-[10px] font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400 mb-2">
-              Vista previa
+              {t('doc.email.preview')}
             </h3>
             <div className="rounded-sm border border-line dark:border-ink-700 bg-white dark:bg-ink-900 overflow-hidden">
               <div className="bg-line-2/60 dark:bg-ink-800 px-4 py-2 text-xs space-y-0.5">
                 <div>
-                  <span className="font-mono text-ink-400">Para: </span>
+                  <span className="font-mono text-ink-400">{t('doc.email.to')}: </span>
                   <span className="text-ink-700 dark:text-slate-200">{to || '—'}</span>
                 </div>
                 {cc && (
@@ -138,7 +142,7 @@ export const SendInvoiceModal: React.FC<Props> = ({
                   </div>
                 )}
                 <div>
-                  <span className="font-mono text-ink-400">Asunto: </span>
+                  <span className="font-mono text-ink-400">{t('doc.email.subject')}: </span>
                   <span className="font-bold text-ink-900 dark:text-slate-100">{subject}</span>
                 </div>
               </div>
@@ -147,7 +151,7 @@ export const SendInvoiceModal: React.FC<Props> = ({
               </pre>
               <div className="px-4 py-2 border-t border-line dark:border-ink-700 text-[11px] text-ink-500 dark:text-ink-400 flex items-center gap-2">
                 <Mail size={12} />
-                Adjunto: <span className="font-mono">{docCode}.pdf</span>
+                {t('doc.email.attachment')}: <span className="font-mono">{docCode}.pdf</span>
               </div>
             </div>
           </div>
@@ -155,14 +159,14 @@ export const SendInvoiceModal: React.FC<Props> = ({
 
         <div className="flex justify-between gap-2 pt-2">
           <Button variant="outline" onClick={() => setShowPreview((v) => !v)} disabled={sending}>
-            {showPreview ? 'Ocultar preview' : 'Ver preview'}
+            {showPreview ? t('doc.email.hidePreview') : t('doc.email.showPreview')}
           </Button>
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} disabled={sending}>
-              Cancelar
+              {t('doc.common.cancel')}
             </Button>
             <Button onClick={submit} disabled={sending} className="gap-2">
-              <Mail size={14} /> {sending ? 'Enviando…' : 'Enviar'}
+              <Mail size={14} /> {sending ? t('doc.email.sending') : t('doc.actions.send')}
             </Button>
           </div>
         </div>

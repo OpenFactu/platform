@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Layers, Plus, Trash2, Save, X, Network, Pencil } from 'lucide-react';
 import { categoriesApi } from '../api';
 import type { Category } from '../domain/category';
+import { useI18n } from '@/i18n/I18nContext';
 
 /** Id sintético de la fila de alta — se anexa a `data` para que comparta
  *  columnas (y por tanto anchos) con el resto de la tabla. */
@@ -34,6 +35,7 @@ export const Categories: React.FC = () => {
     user?.permissions?.[location.pathname]?.delete;
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export const Categories: React.FC = () => {
       const data = await categoriesApi.list();
       setCategories(Array.isArray(data) ? data : []);
     } catch {
-      toast.error('Error al cargar categorías');
+      toast.error(t('inventory.categories.loadError'));
     } finally {
       setLoading(false);
     }
@@ -65,9 +67,9 @@ export const Categories: React.FC = () => {
       });
       setNewRow(null);
       fetchCategories();
-      toast.success('Categoría creada');
+      toast.success(t('inventory.categories.created'));
     } catch {
-      toast.error('Error al crear');
+      toast.error(t('inventory.categories.createError'));
     }
   };
 
@@ -80,26 +82,26 @@ export const Categories: React.FC = () => {
       });
       setEditingId(null);
       fetchCategories();
-      toast.success('Categoría actualizada');
+      toast.success(t('inventory.categories.updated'));
     } catch {
-      toast.error('Error al actualizar');
+      toast.error(t('inventory.categories.updateError'));
     }
   };
 
   const handleDelete = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar categoría',
-      message: '¿Seguro que deseas eliminar esta categoría?',
+      title: t('inventory.categories.deleteTitle'),
+      message: t('inventory.categories.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('inventory.categories.delete'),
     });
     if (!ok) return;
     try {
       await categoriesApi.remove(id);
       fetchCategories();
-      toast.success('Categoría eliminada');
+      toast.success(t('inventory.categories.deleted'));
     } catch {
-      toast.error('Error al eliminar');
+      toast.error(t('inventory.categories.deleteError'));
     }
   };
 
@@ -115,12 +117,12 @@ export const Categories: React.FC = () => {
 
   const columns: TableColumn<any>[] = [
     {
-      header: 'Información Básica',
+      header: t('inventory.categories.columns.basicInfo'),
       cell: (c) => {
         if (c.id === NEW_ROW_ID)
           return (
             <Input
-              placeholder="Nombre (Ej: Procesadores)"
+              placeholder={t('inventory.categories.namePlaceholder')}
               value={newRow?.name ?? ''}
               onChange={(e) => setNewRow({ ...newRow, name: e.target.value })}
             />
@@ -147,12 +149,12 @@ export const Categories: React.FC = () => {
       },
     },
     {
-      header: 'Prefijo Autogeneral',
+      header: t('inventory.categories.columns.prefix'),
       cell: (c) => {
         if (c.id === NEW_ROW_ID)
           return (
             <Input
-              placeholder="Ej: CPU"
+              placeholder={t('inventory.categories.prefixPlaceholder')}
               value={newRow?.codePrefix ?? ''}
               onChange={(e) => setNewRow({ ...newRow, codePrefix: e.target.value })}
               className="uppercase font-mono"
@@ -177,12 +179,14 @@ export const Categories: React.FC = () => {
             {c.codePrefix}-XXX
           </Badge>
         ) : (
-          <span className="text-fg-subtle italic text-[10px]">Sin Prefijo</span>
+          <span className="text-fg-subtle italic text-[10px]">
+            {t('inventory.categories.noPrefix')}
+          </span>
         );
       },
     },
     {
-      header: 'Estructura',
+      header: t('inventory.categories.columns.structure'),
       cell: (c) => {
         if (c.id === NEW_ROW_ID)
           return (
@@ -191,7 +195,7 @@ export const Categories: React.FC = () => {
               value={newRow?.parentId || ''}
               onChange={(v) => setNewRow({ ...newRow, parentId: v || null })}
               clearable
-              placeholder="-- Sin Padre --"
+              placeholder={t('inventory.categories.noParent')}
             />
           );
         if (editingId === c.id)
@@ -205,14 +209,14 @@ export const Categories: React.FC = () => {
                 )
               }
               clearable
-              placeholder="-- Sin Padre --"
+              placeholder={t('inventory.categories.noParent')}
             />
           );
         return (
           <div className="flex items-center gap-2 text-fg-muted text-xs font-semibold">
             <Network size={12} className="text-fg-subtle" />
             {categories.find((p) => p.id === c.parentId)?.name || (
-              <span className="text-fg-subtle italic">Rizoma</span>
+              <span className="text-fg-subtle italic">{t('inventory.categories.root')}</span>
             )}
           </div>
         );
@@ -221,7 +225,7 @@ export const Categories: React.FC = () => {
     {
       // Guardar/cancelar tienen que estar siempre visibles mientras se edita,
       // así que se quedan en su columna; editar y eliminar van a `rowActions`.
-      header: 'Acciones',
+      header: t('inventory.categories.columns.actions'),
       align: 'right',
       width: '11rem',
       cell: (c) => {
@@ -229,7 +233,7 @@ export const Categories: React.FC = () => {
           return (
             <div className="flex items-center justify-end gap-1">
               <Button type="button" size="sm" onClick={handleCreate}>
-                <Save size={14} className="mr-2" /> Guardar
+                <Save size={14} className="mr-2" /> {t('inventory.categories.save')}
               </Button>
               <Button type="button" size="sm" variant="secondary" onClick={() => setNewRow(null)}>
                 <X size={14} />
@@ -240,7 +244,7 @@ export const Categories: React.FC = () => {
           return (
             <div className="flex items-center justify-end gap-1">
               <Button type="button" size="sm" onClick={() => handleUpdate(c.id, c)}>
-                <Save size={14} className="mr-2" /> Aplicar
+                <Save size={14} className="mr-2" /> {t('inventory.categories.apply')}
               </Button>
               <Button
                 type="button"
@@ -265,13 +269,13 @@ export const Categories: React.FC = () => {
       ? []
       : [
           {
-            label: 'Editar',
+            label: t('inventory.categories.edit'),
             icon: <Pencil size={14} />,
             disabled: !canWrite,
             onClick: () => setEditingId(c.id),
           },
           {
-            label: 'Eliminar',
+            label: t('inventory.categories.delete'),
             icon: <Trash2 size={14} />,
             destructive: true,
             disabled: !canDelete,
@@ -282,9 +286,9 @@ export const Categories: React.FC = () => {
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        eyebrow="Logística / Clasificación"
-        title="Categorías"
-        subtitle="Clasifica tus artículos y establece secuencias de códigos por familia."
+        eyebrow={t('inventory.categories.eyebrow')}
+        title={t('inventory.categories.title')}
+        subtitle={t('inventory.categories.subtitle')}
         icon={<Layers size={18} />}
         size="lg"
         actions={
@@ -294,7 +298,7 @@ export const Categories: React.FC = () => {
             disabled={!!newRow || !canWrite}
             className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
           >
-            <Plus size={18} /> Nueva Categoría
+            <Plus size={18} /> {t('inventory.categories.new')}
           </Button>
         }
       />
@@ -308,7 +312,7 @@ export const Categories: React.FC = () => {
           data={rows}
           isLoading={loading}
           rowActions={rowActions}
-          emptyMessage="No hay categorías definidas todavía."
+          emptyMessage={t('inventory.categories.empty')}
         />
       </Card>
     </div>

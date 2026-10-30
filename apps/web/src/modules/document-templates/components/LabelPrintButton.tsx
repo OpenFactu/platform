@@ -19,6 +19,7 @@ import { Alert, Modal, Button, Select, NumberInput } from '@openfactu/ui';
 import { Tag, Printer } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface FreeTemplate {
   id: string;
@@ -37,23 +38,44 @@ interface Props {
   variant?: 'icon' | 'full';
   /** className extra para el botón. */
   className?: string;
+  /** Abierto controlado desde fuera (p. ej. el botón flotante de móvil). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Sin botón propio: solo el modal, que se abre con `open`. */
+  hideTrigger?: boolean;
 }
 
 export const LabelPrintButton: React.FC<Props> = ({
   params,
-  title = 'Imprimir etiqueta',
+  title,
   triggerLabel,
   variant = 'icon',
   className,
+  open: openProp,
+  onOpenChange,
+  hideTrigger,
 }) => {
   const { token, user } = useAuth();
+  const { t } = useI18n();
   const tenantId = user?.tenantId;
   const navigate = useNavigate();
   const canOpenTemplates =
     user?.role === 'ADMIN' ||
     user?.role === 'SUPERUSER' ||
     !!user?.permissions?.['/document-templates']?.read;
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = openProp ?? localOpen;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setLocalOpen(next);
+    onOpenChange?.(next);
+    // Al cerrar se olvida la lista: la siguiente apertura vuelve a pedirla,
+    // por si mientras tanto se ha creado la primera plantilla de etiquetas.
+    if (!next) {
+      setTemplates(null);
+      setSelectedId('');
+      setError(null);
+    }
+  };
   const [templates, setTemplates] = useState<FreeTemplate[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>('');
@@ -72,14 +94,13 @@ export const LabelPrintButton: React.FC<Props> = ({
         const def = list.find((t) => t.isDefault) ?? list[0];
         setSelectedId(def?.id ?? '');
       } catch (e) {
-        if (active)
-          setError(e instanceof Error ? e.message : 'No se pudieron cargar las plantillas');
+        if (active) setError(e instanceof Error ? e.message : t('templates.labelPrint.loadError'));
       }
     })();
     return () => {
       active = false;
     };
-  }, [open, templates, token, tenantId]);
+  }, [open, templates, token, tenantId, t]);
 
   const doPrint = async () => {
     if (!selectedId) return;
@@ -96,14 +117,14 @@ export const LabelPrintButton: React.FC<Props> = ({
         // Bloqueado por popups: ofrecemos descarga directa como fallback.
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'etiqueta.pdf';
+        a.download = t('templates.labelPrint.fileName');
         a.click();
       }
       // Liberamos el blob tras un margen para que el navegador lo cargue.
       setTimeout(() => URL.revokeObjectURL(url), 30_000);
       setOpen(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al imprimir');
+      setError(e instanceof Error ? e.message : t('templates.labelPrint.printError'));
     } finally {
       setPrinting(false);
     }
@@ -111,27 +132,29 @@ export const LabelPrintButton: React.FC<Props> = ({
 
   return (
     <>
-      <Button
-        type="button"
-        variant="secondary"
-        size="sm"
-        onClick={(e) => {
-          e.stopPropagation();
-          setTemplates(null);
-          setSelectedId('');
-          setError(null);
-          setOpen(true);
-        }}
-        title={title}
-        className={className || (variant === 'full' ? '' : 'h-7 w-7 p-0')}
-      >
-        {triggerLabel ?? (
-          <>
-            <Tag size={variant === 'full' ? 13 : 14} />
-            {variant === 'full' && <span>Etiqueta</span>}
-          </>
-        )}
-      </Button>
+      {!hideTrigger && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            setTemplates(null);
+            setSelectedId('');
+            setError(null);
+            setOpen(true);
+          }}
+          title={title ?? t('templates.labelPrint.title')}
+          className={className || (variant === 'full' ? '' : 'h-7 w-7 p-0')}
+        >
+          {triggerLabel ?? (
+            <>
+              <Tag size={variant === 'full' ? 13 : 14} />
+              {variant === 'full' && <span>{t('templates.labelPrint.label')}</span>}
+            </>
+          )}
+        </Button>
+      )}
 
       {/* El Modal del paquete ya trae portal, backdrop, cierre al pulsar fuera
           y el pie de botones; antes esto era un createPortal a mano con el
@@ -139,7 +162,7 @@ export const LabelPrintButton: React.FC<Props> = ({
       <Modal
         isOpen={open}
         onClose={() => setOpen(false)}
-        title="Imprimir etiqueta"
+        title={t('templates.labelPrint.title')}
         size="md"
         isBusy={printing}
         closeOnOverlayClick
@@ -152,7 +175,9 @@ export const LabelPrintButton: React.FC<Props> = ({
               disabled={printing}
               onClick={() => setOpen(false)}
             >
-              {templates?.length ? 'Cancelar' : 'Cerrar'}
+              {templates?.length
+                ? t('templates.labelPrint.cancel')
+                : t('templates.labelPrint.close')}
             </Button>
             {templates?.length === 0 && canOpenTemplates && (
               <Button
@@ -163,7 +188,7 @@ export const LabelPrintButton: React.FC<Props> = ({
                   navigate('/document-templates');
                 }}
               >
-                Ver plantillas
+                {t('templates.labelPrint.viewTemplates')}
               </Button>
             )}
             {!!templates?.length && (
@@ -175,7 +200,7 @@ export const LabelPrintButton: React.FC<Props> = ({
                 isLoading={printing}
               >
                 <Printer size={13} />
-                {printing ? 'Generando…' : 'Imprimir'}
+                {printing ? t('templates.labelPrint.generating') : t('templates.labelPrint.print')}
               </Button>
             )}
           </Modal.Footer>
@@ -184,34 +209,36 @@ export const LabelPrintButton: React.FC<Props> = ({
         <div className="space-y-3 text-sm">
           {!templates && !error && (
             <div role="status" className="text-fg-muted">
-              Cargando plantillas…
+              {t('templates.labelPrint.loading')}
             </div>
           )}
           {templates && templates.length === 0 && (
             <div className="space-y-2">
-              <p className="font-medium text-fg-body">Todavía no hay plantillas de etiquetas</p>
+              <p className="font-medium text-fg-body">{t('templates.labelPrint.emptyTitle')}</p>
               <p className="text-fg-muted leading-relaxed">
                 {canOpenTemplates
-                  ? 'Para imprimir, necesitas una plantilla de tipo «Etiqueta libre». Puedes configurarla en Plantillas PDF.'
-                  : 'Pide a un administrador que configure una plantilla de tipo «Etiqueta libre» en Plantillas PDF.'}
+                  ? t('templates.labelPrint.emptyCanOpen')
+                  : t('templates.labelPrint.emptyAskAdmin')}
               </p>
             </div>
           )}
           {templates && templates.length > 0 && (
             <>
               <Select
-                label="Plantilla"
+                label={t('templates.labelPrint.template')}
                 value={selectedId}
                 onChange={setSelectedId}
-                options={templates.map((t) => ({
-                  value: t.id,
-                  label: `${t.name}${t.isDefault ? ' (predeterminada)' : ''}`,
+                options={templates.map((tpl) => ({
+                  value: tpl.id,
+                  label: tpl.isDefault
+                    ? t('templates.labelPrint.defaultSuffix', { name: tpl.name })
+                    : tpl.name,
                 }))}
               />
               {/* El recorte a [1, 200] lo hace ya el propio NumberInput al salir
                   del campo; aquí solo se cubre el caso de dejarlo vacío. */}
               <NumberInput
-                label="Copias"
+                label={t('templates.labelPrint.copies')}
                 min={1}
                 max={200}
                 value={copies}

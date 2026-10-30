@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, Checkbox, Textarea } from '@openfactu/ui';
 import { Globe, ImagePlus, X } from 'lucide-react';
 import { MediaLibraryModal } from '@/modules/website/components/MediaLibraryModal';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   webVisible: boolean;
@@ -26,6 +27,7 @@ export const ItemWebFields: React.FC<Props> = ({
   setWebImages,
 }) => {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const { t } = useI18n();
 
   return (
     <div className="space-y-4">
@@ -35,26 +37,27 @@ export const ItemWebFields: React.FC<Props> = ({
         </div>
         <label className="flex items-center gap-2 cursor-pointer flex-1 pt-1">
           <Checkbox checked={webVisible} onChange={setWebVisible} />
-          <span className="text-sm font-bold text-fg-body">Vender en la web</span>
+          <span className="text-sm font-bold text-fg-body">
+            {t('inventory.itemFields.web.sellOnline')}
+          </span>
         </label>
       </div>
       <p className="text-[11px] text-slate-400 -mt-2">
-        El artículo aparecerá en el bloque «Tienda» de tu web pública. El precio mostrado es el
-        precio base con su IVA incluido.
+        {t('inventory.itemFields.web.sellOnlineHint')}
       </p>
 
       <Textarea
-        label="Descripción para la web"
+        label={t('inventory.itemFields.web.description')}
         value={webDescription}
         onChange={(e) => setWebDescription(e.target.value)}
         rows={3}
         maxLength={600}
-        placeholder="Texto que ven los visitantes (independiente de la descripción interna)."
+        placeholder={t('inventory.itemFields.web.descriptionPlaceholder')}
       />
 
       <div>
         <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 block">
-          Imágenes del producto
+          {t('inventory.itemFields.web.images')}
         </label>
         <div className="flex flex-wrap gap-2">
           {webImages.map((url, i) => (
@@ -65,14 +68,14 @@ export const ItemWebFields: React.FC<Props> = ({
               <img src={url} alt="" className="w-full h-full object-cover" />
               {i === 0 && (
                 <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] font-bold text-center py-0.5">
-                  Portada
+                  {t('inventory.itemFields.web.cover')}
                 </span>
               )}
               <button
                 type="button"
                 onClick={() => setWebImages(webImages.filter((_, idx) => idx !== i))}
                 className="absolute top-0.5 right-0.5 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Quitar"
+                title={t('inventory.itemFields.web.remove')}
               >
                 <X size={12} />
               </button>
@@ -86,11 +89,11 @@ export const ItemWebFields: React.FC<Props> = ({
             className="w-20 h-20 flex flex-col items-center justify-center gap-1"
           >
             <ImagePlus size={16} />
-            <span className="text-[9px]">Añadir</span>
+            <span className="text-[9px]">{t('inventory.itemFields.web.add')}</span>
           </Button>
         </div>
         <p className="text-[11px] text-slate-400 mt-1">
-          De la biblioteca de medios del módulo Website; la primera es la portada.
+          {t('inventory.itemFields.web.imagesHint')}
         </p>
       </div>
 

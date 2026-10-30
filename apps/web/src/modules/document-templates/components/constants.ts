@@ -1,5 +1,7 @@
 import type { DocType as PdfDocType } from '@/utils/visualTemplateBuilder';
 import { getCachedDocType, useDocTypes } from '@/modules/documents/domain/docTypeRegistry';
+import { t } from '@/i18n/i18n';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * `FREE` es un tipo extendido propio (no existe en el paquete @openfactu/pdf).
@@ -11,15 +13,16 @@ import { getCachedDocType, useDocTypes } from '@/modules/documents/domain/docTyp
  */
 export type DocType = PdfDocType | 'FREE' | 'LABEL';
 
+/** Claves i18n: se traducen al pintar (`t(DOC_TYPE_LABELS[dt])`). */
 export const DOC_TYPE_LABELS: Record<DocType, string> = {
-  SINV: 'Factura de Venta',
-  PINV: 'Factura de Compra',
-  SDN: 'Albarán de Venta',
-  PDN: 'Albarán de Compra',
-  SO: 'Pedido de Venta',
-  PO: 'Pedido de Compra',
-  FREE: 'Documento Libre',
-  LABEL: 'Etiqueta',
+  SINV: 'templates.docTypes.SINV',
+  PINV: 'templates.docTypes.PINV',
+  SDN: 'templates.docTypes.SDN',
+  PDN: 'templates.docTypes.PDN',
+  SO: 'templates.docTypes.SO',
+  PO: 'templates.docTypes.PO',
+  FREE: 'templates.docTypes.FREE',
+  LABEL: 'templates.docTypes.LABEL',
 };
 
 export const DOC_TYPE_COLORS: Record<DocType, string> = {
@@ -34,10 +37,12 @@ export const DOC_TYPE_COLORS: Record<DocType, string> = {
     'bg-violet-50 dark:bg-violet-900 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-600',
 };
 
-export const DOC_TYPE_OPTIONS = (Object.keys(DOC_TYPE_LABELS) as DocType[]).map((v) => ({
-  label: DOC_TYPE_LABELS[v],
-  value: v,
-}));
+/** Opciones con la etiqueta ya traducida al idioma activo en el momento de la llamada. */
+export const getDocTypeOptions = (): { label: string; value: DocType }[] =>
+  (Object.keys(DOC_TYPE_LABELS) as DocType[]).map((v) => ({
+    label: t(DOC_TYPE_LABELS[v]),
+    value: v,
+  }));
 
 // ── Versión registry-aware ─────────────────────────────────────────
 // Los exports estáticos de arriba solo conocen los 6 tipos core (+FREE/LABEL).
@@ -54,7 +59,7 @@ const CATEGORY_FALLBACK_COLORS: Record<string, string> = {
 };
 
 export function getDocTypeLabel(dt: DocType): string {
-  return DOC_TYPE_LABELS[dt] ?? getCachedDocType(dt)?.label ?? dt;
+  return DOC_TYPE_LABELS[dt] ? t(DOC_TYPE_LABELS[dt]) : (getCachedDocType(dt)?.label ?? dt);
 }
 
 export function getDocTypeColor(dt: DocType): string {
@@ -69,11 +74,12 @@ export function getDocTypeColor(dt: DocType): string {
 /** Hook: opciones de tipo de documento (registry + FREE/LABEL). */
 export function useDocTypeOptions(): { label: string; value: DocType }[] {
   const { types } = useDocTypes();
-  if (types.length === 0) return DOC_TYPE_OPTIONS;
+  const { t: tr } = useI18n();
+  if (types.length === 0) return getDocTypeOptions();
   return [
     ...types.map((t) => ({ label: t.label, value: t.docType as DocType })),
-    { label: DOC_TYPE_LABELS.FREE, value: 'FREE' as DocType },
-    { label: DOC_TYPE_LABELS.LABEL, value: 'LABEL' as DocType },
+    { label: tr(DOC_TYPE_LABELS.FREE), value: 'FREE' as DocType },
+    { label: tr(DOC_TYPE_LABELS.LABEL), value: 'LABEL' as DocType },
   ];
 }
 

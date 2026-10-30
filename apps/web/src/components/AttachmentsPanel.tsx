@@ -13,9 +13,11 @@
 
 import { coreApi } from '@/shared/api';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Paperclip, Upload, Trash2, Download, FileText } from 'lucide-react';
-import { FileDropzone } from '@openfactu/ui';
+import { Paperclip, Upload } from 'lucide-react';
+import { AttachmentList, FileDropzone, Skeleton, usePopup } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
 
 interface Attachment {
   id: string;
@@ -44,9 +46,12 @@ export const AttachmentsPanel: React.FC<Props> = ({
   entityType,
   entityId,
   compact = false,
-  title = 'Adjuntos',
+  title: titleProp,
 }) => {
+  const { t } = useI18n();
+  const title = titleProp ?? t('app.attachments.title');
   const { token, user } = useAuth();
+  const popup = usePopup();
   const [items, setItems] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -68,7 +73,7 @@ export const AttachmentsPanel: React.FC<Props> = ({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setItems(res.data);
     } catch (e: any) {
-      setError(e?.message || 'Error al cargar adjuntos');
+      setError(e?.message || t('app.attachments.loadError'));
     } finally {
       setLoading(false);
     }
@@ -92,20 +97,26 @@ export const AttachmentsPanel: React.FC<Props> = ({
       }
       await refresh();
     } catch (e: any) {
-      setError(e?.message || 'Error al subir');
+      setError(e?.message || t('app.attachments.uploadError'));
     } finally {
       setUploading(false);
     }
   };
 
   const onDelete = async (id: string) => {
-    if (!confirm('¿Eliminar este adjunto?')) return;
+    const ok = await popup.confirm({
+      title: t('app.attachments.deleteTitle'),
+      message: t('app.common.cannotUndo'),
+      tone: 'danger',
+      confirmLabel: t('app.common.delete'),
+    });
+    if (!ok) return;
     try {
       const res = await coreApi.raw('DELETE', `/api/attachments/${id}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await refresh();
     } catch (e: any) {
-      setError(e?.message || 'Error al borrar');
+      setError(e?.message || t('app.attachments.deleteError'));
     }
   };
 
@@ -124,7 +135,7 @@ export const AttachmentsPanel: React.FC<Props> = ({
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 30_000);
       })
-      .catch((e) => setError(e?.message || 'Error al descargar'));
+      .catch((e) => setError(e?.message || t('app.attachments.downloadError')));
   };
 
   const inner = (
@@ -148,54 +159,34 @@ export const AttachmentsPanel: React.FC<Props> = ({
         multiple
         acceptPaste
         isUploading={uploading}
-        uploadingLabel="Subiendo…"
-        label="Arrastra archivos aquí o haz clic para seleccionar"
+        uploadingLabel={t('app.attachments.uploading')}
+        label={t('app.attachments.dropLabel')}
         icon={<Upload size={16} />}
         onFiles={(files) => upload(files)}
         error={error || undefined}
       />
 
+      {/* AttachmentList del paquete: nombre, tamaño, descargar y quitar, con
+          el estado vacío; antes era una <ul> con botones a mano. */}
       {loading ? (
-        <div className="mt-3 text-xs text-fg-subtle italic">Cargando adjuntos…</div>
-      ) : items.length === 0 ? (
-        <div className="mt-3 text-xs text-fg-subtle italic">Sin adjuntos.</div>
+        <Skeleton height={44} className="mt-3" />
       ) : (
-        <ul className="mt-3 space-y-1">
-          {items.map((a) => (
-            <li
-              key={a.id}
-              className="flex items-center gap-2 px-2 py-1.5 rounded border border-border-default bg-bg-card hover:bg-bg-hover"
-            >
-              <FileText size={14} className="text-fg-subtle shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-semibold text-fg-body truncate">{a.fileName}</div>
-                <div className="text-[10px] text-fg-subtle flex items-center gap-2">
-                  <span>{formatBytes(a.size)}</span>
-                  <span>·</span>
-                  <span className="font-mono">{a.provider}</span>
-                  <span>·</span>
-                  <span>{new Date(a.uploadedAt).toLocaleString()}</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => onDownload(a)}
-                title="Descargar"
-                className="p-1.5 rounded-xs hover:bg-bg-hover text-fg-subtle hover:text-accent"
-              >
-                <Download size={13} />
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete(a.id)}
-                title="Eliminar"
-                className="p-1.5 rounded-xs hover:bg-danger-bg text-fg-subtle hover:text-danger-fg"
-              >
-                <Trash2 size={13} />
-              </button>
-            </li>
-          ))}
-        </ul>
+        <AttachmentList
+          className="mt-3"
+          aria-label={title}
+          emptyMessage={t('app.attachments.empty')}
+          items={items.map((a) => ({
+            id: a.id,
+            name: a.fileName,
+            size: a.size,
+            description: `${a.provider} · ${formatDateTime(a.uploadedAt)}`,
+          }))}
+          onDownload={(item) => {
+            const a = items.find((x) => x.id === item.id);
+            if (a) onDownload(a);
+          }}
+          onRemove={(item) => void onDelete(item.id)}
+        />
       )}
     </>
   );
@@ -204,15 +195,3 @@ export const AttachmentsPanel: React.FC<Props> = ({
 
   return <div className="rounded-lg border border-border-default bg-bg-card p-4">{inner}</div>;
 };
-
-function formatBytes(n: number): string {
-  if (!n) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let i = 0;
-  let v = n;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i++;
-  }
-  return `${v.toFixed(v >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
-}

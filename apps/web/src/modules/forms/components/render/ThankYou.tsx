@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import { Badge, Button, Card, Input, useToast } from '@openfactu/ui';
 import { CheckCircle2, Copy } from 'lucide-react';
@@ -13,6 +14,7 @@ interface Props {
 
 /** Pantalla tras enviar: mensaje, enlace para editar y, en un cuestionario, la nota. */
 export const ThankYou: React.FC<Props> = ({ result, definition, editLink, onAnother }) => {
+  const { t } = useI18n();
   const toast = useToast();
   const score = result.score;
   const titles = new Map(allQuestions(definition).map((q) => [q.id, q]));
@@ -22,29 +24,25 @@ export const ThankYou: React.FC<Props> = ({ result, definition, editLink, onAnot
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <CheckCircle2 size={36} className="text-success-fg" />
           <p className="text-lg font-semibold text-fg-default">
-            {result.message || '¡Gracias! Hemos recibido tu respuesta.'}
+            {result.message || t('forms.thanks.default')}
           </p>
           {score && (
             <p className="text-3xl font-bold tabular-nums text-fg-default">
               {score.score}{' '}
-              <span className="text-base font-normal text-fg-muted">/ {score.maxScore} puntos</span>
+              <span className="text-base font-normal text-fg-muted">
+                {t('forms.thanks.outOf', { max: score.maxScore })}
+              </span>
             </p>
           )}
-          {score?.pending && (
-            <p className="text-sm text-fg-muted">
-              Algunas preguntas se corrigen a mano: la nota puede cambiar.
-            </p>
-          )}
+          {score?.pending && <p className="text-sm text-fg-muted">{t('forms.thanks.pending')}</p>}
         </div>
         {editLink && (
           <div className="space-y-2 border-t border-border-subtle pt-4">
-            <p className="text-sm text-fg-muted">
-              Guarda este enlace si quieres cambiar tu respuesta más tarde:
-            </p>
+            <p className="text-sm text-fg-muted">{t('forms.thanks.saveLink')}</p>
             <div className="flex flex-col gap-2 sm:flex-row">
               <div className="flex-1 min-w-0">
                 <Input
-                  aria-label="Enlace para editar"
+                  aria-label={t('forms.thanks.editLink')}
                   value={editLink}
                   readOnly
                   onFocus={(e) => e.target.select()}
@@ -56,11 +54,11 @@ export const ThankYou: React.FC<Props> = ({ result, definition, editLink, onAnot
                 onClick={() =>
                   navigator.clipboard
                     .writeText(editLink)
-                    .then(() => toast.success('Enlace copiado'))
-                    .catch(() => toast.error('No se pudo copiar'))
+                    .then(() => toast.success(t('forms.thanks.linkCopied')))
+                    .catch(() => toast.error(t('forms.thanks.copyFailed')))
                 }
               >
-                <Copy size={14} /> Copiar
+                <Copy size={14} /> {t('forms.thanks.copy')}
               </Button>
             </div>
           </div>
@@ -68,7 +66,7 @@ export const ThankYou: React.FC<Props> = ({ result, definition, editLink, onAnot
         {onAnother && (
           <div className="flex justify-center pt-4">
             <Button type="button" variant="link" onClick={onAnother}>
-              Enviar otra respuesta
+              {t('forms.thanks.another')}
             </Button>
           </div>
         )}
@@ -95,10 +93,12 @@ export const ThankYou: React.FC<Props> = ({ result, definition, editLink, onAnot
                     {g.points}/{g.max}
                   </Badge>
                 )}
-                {g.correct === null && <Badge variant="warning">Por corregir</Badge>}
+                {g.correct === null && <Badge variant="warning">{t('forms.thanks.toGrade')}</Badge>}
               </div>
               {g.correct === false && correct.length > 0 && (
-                <p className="text-sm text-fg-body">Respuesta correcta: {correct.join(', ')}</p>
+                <p className="text-sm text-fg-body">
+                  {t('forms.thanks.correctAnswer', { answer: correct.join(', ') })}
+                </p>
               )}
               {g.feedback && (
                 <p className="text-sm text-fg-muted whitespace-pre-wrap">{g.feedback}</p>

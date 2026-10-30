@@ -18,6 +18,7 @@ import type {
   UploadedSheet,
 } from '../types';
 import type { MappingIssue } from '../lib/mappingChecks';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   object: ImportObject;
@@ -35,10 +36,11 @@ interface Props {
   onDeleteMapping: (saved: SavedMapping) => void;
 }
 
+/** Claves de i18n; se traducen al pintar. */
 const CONFIDENCE_LABEL: Record<NonNullable<AutomapEntry['confidence']>, string> = {
-  exact: 'Coincide con la plantilla',
-  synonym: 'Reconocido por su nombre habitual',
-  partial: 'Parecido — revísalo',
+  exact: 'dataImport.mapping.confidence.exact',
+  synonym: 'dataImport.mapping.confidence.synonym',
+  partial: 'dataImport.mapping.confidence.partial',
 };
 
 function requiredMark(field: ImportField): string {
@@ -61,6 +63,7 @@ export const StepMapping: React.FC<Props> = ({
   onSaveMapping,
   onDeleteMapping,
 }) => {
+  const { t } = useI18n();
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState('');
 
@@ -68,16 +71,22 @@ export const StepMapping: React.FC<Props> = ({
     const header = object.fields.map((f) => ({
       value: f.key,
       label: f.label + requiredMark(f),
-      secondaryLabel: f.help || (f.ref ? `Se busca por ${f.ref.matchBy.join(' o ')}` : undefined),
-      group: 'Campos',
+      secondaryLabel:
+        f.help ||
+        (f.ref
+          ? t('dataImport.mapping.searchedBy', {
+              fields: f.ref.matchBy.join(t('dataImport.mapping.or')),
+            })
+          : undefined),
+      group: t('dataImport.mapping.fieldsGroup'),
     }));
     const lines = (object.lines?.fields || []).map((f) => ({
       value: f.key,
       label: f.label + requiredMark(f),
-      group: object.lines?.label || 'Líneas',
+      group: object.lines?.label || t('dataImport.mapping.linesGroup'),
     }));
     return [...header, ...lines];
-  }, [object]);
+  }, [object, t]);
 
   const confidenceOf = (column: string) =>
     sheet.automap.find((a) => a.column === column)?.confidence ?? null;
@@ -89,10 +98,10 @@ export const StepMapping: React.FC<Props> = ({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={onReset} className="gap-1.5">
-          <Wand2 size={14} /> Automapeo
+          <Wand2 size={14} /> {t('dataImport.mapping.automap')}
         </Button>
         <Button variant="outline" size="sm" onClick={onClear} className="gap-1.5">
-          <RotateCcw size={14} /> Vaciar
+          <RotateCcw size={14} /> {t('dataImport.mapping.clear')}
         </Button>
         <Button
           variant="outline"
@@ -101,23 +110,23 @@ export const StepMapping: React.FC<Props> = ({
           className="gap-1.5"
           disabled={Object.keys(mapping).length === 0}
         >
-          <Bookmark size={14} /> Guardar mapeo
+          <Bookmark size={14} /> {t('dataImport.mapping.save')}
         </Button>
 
         {savedMappings.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 ml-auto">
-            <span className="text-[11px] text-fg-subtle">Guardados:</span>
+            <span className="text-[11px] text-fg-subtle">{t('dataImport.mapping.saved')}</span>
             {savedMappings.map((saved) => (
               <span key={saved.id} className="inline-flex items-center">
                 <Button variant="ghost" size="sm" onClick={() => onApplySaved(saved)}>
                   {saved.name}
                 </Button>
-                <Tooltip content="Borrar este mapeo">
+                <Tooltip content={t('dataImport.mapping.deleteTooltip')}>
                   <button
                     type="button"
                     onClick={() => onDeleteMapping(saved)}
                     className="p-1 text-fg-subtle hover:text-danger transition-colors"
-                    aria-label={`Borrar el mapeo ${saved.name}`}
+                    aria-label={t('dataImport.mapping.deleteAria', { name: saved.name })}
                   >
                     <Trash2 size={12} />
                   </button>
@@ -153,7 +162,9 @@ export const StepMapping: React.FC<Props> = ({
 
       <SheetMapping
         sheet={sheet}
-        title={linesSheet ? `Cabeceras · hoja "${sheet.name}"` : undefined}
+        title={
+          linesSheet ? t('dataImport.mapping.headersSheetTitle', { sheet: sheet.name }) : undefined
+        }
         groupBy={object.lines?.groupBy}
         mapping={mapping}
         options={options}
@@ -164,7 +175,10 @@ export const StepMapping: React.FC<Props> = ({
       {linesSheet && (
         <SheetMapping
           sheet={linesSheet}
-          title={`${object.lines?.label} · hoja "${linesSheet.name}"`}
+          title={t('dataImport.mapping.linesSheetTitle', {
+            lines: object.lines?.label ?? '',
+            sheet: linesSheet.name,
+          })}
           groupBy={object.lines?.groupBy}
           mapping={mapping}
           options={options}
@@ -173,23 +187,26 @@ export const StepMapping: React.FC<Props> = ({
         />
       )}
 
-      <Modal isOpen={saveOpen} onClose={() => setSaveOpen(false)} title="Guardar este mapeo">
+      <Modal
+        isOpen={saveOpen}
+        onClose={() => setSaveOpen(false)}
+        title={t('dataImport.mapping.saveModalTitle')}
+      >
         <Modal.Body>
           <Input
-            label="Nombre"
+            label={t('dataImport.mapping.name')}
             value={saveName}
             onChange={(e) => setSaveName(e.target.value)}
-            placeholder="Excel del gestor"
+            placeholder={t('dataImport.mapping.namePlaceholder')}
             autoFocus
           />
           <p className="text-xs text-fg-muted mt-2">
-            Se guarda para {object.label.toLowerCase()}. Si repites un nombre, se sobrescribe el
-            anterior.
+            {t('dataImport.mapping.saveHint', { object: object.label.toLowerCase() })}
           </p>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="outline" onClick={() => setSaveOpen(false)}>
-            Cancelar
+            {t('dataImport.mapping.cancel')}
           </Button>
           <Button
             disabled={!saveName.trim()}
@@ -199,7 +216,7 @@ export const StepMapping: React.FC<Props> = ({
               setSaveOpen(false);
             }}
           >
-            Guardar
+            {t('dataImport.mapping.confirmSave')}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -220,75 +237,78 @@ const SheetMapping: React.FC<{
   options: SearchableSelectOption[];
   confidenceOf: (column: string) => AutomapEntry['confidence'];
   onSetColumn: (column: string, field: string | null) => void;
-}> = ({ sheet, title, groupBy, mapping, options, confidenceOf, onSetColumn }) => (
-  <Card>
-    {title && (
-      <div className="px-4 pt-3 text-[11px] font-bold uppercase tracking-widest text-fg-subtle">
-        {title}
-      </div>
-    )}
-    <div className="divide-y divide-border-subtle">
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-2 px-4 py-2 bg-bg-muted">
-        <span className="text-[11px] font-bold uppercase tracking-widest text-fg-subtle">
-          Columna del fichero
-        </span>
-        <span className="text-[11px] font-bold uppercase tracking-widest text-fg-subtle">
-          Campo de Keirost
-        </span>
-      </div>
+}> = ({ sheet, title, groupBy, mapping, options, confidenceOf, onSetColumn }) => {
+  const { t } = useI18n();
+  return (
+    <Card>
+      {title && (
+        <div className="px-4 pt-3 text-[11px] font-bold uppercase tracking-widest text-fg-subtle">
+          {title}
+        </div>
+      )}
+      <div className="divide-y divide-border-subtle">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-2 px-4 py-2 bg-bg-muted">
+          <span className="text-[11px] font-bold uppercase tracking-widest text-fg-subtle">
+            {t('dataImport.mapping.fileColumn')}
+          </span>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-fg-subtle">
+            {t('dataImport.mapping.keirostField')}
+          </span>
+        </div>
 
-      {sheet.headers.map((column) => {
-        const confidence = confidenceOf(column);
-        const sample = sheet.preview.find(
-          (r) => r[column] !== null && r[column] !== undefined && r[column] !== '',
-        )?.[column];
-        const isGroupColumn = column === groupBy;
+        {sheet.headers.map((column) => {
+          const confidence = confidenceOf(column);
+          const sample = sheet.preview.find(
+            (r) => r[column] !== null && r[column] !== undefined && r[column] !== '',
+          )?.[column];
+          const isGroupColumn = column === groupBy;
 
-        return (
-          <div
-            key={`${sheet.name}:${column}`}
-            className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-2 px-4 py-2.5 items-center"
-          >
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-fg-default truncate">{column}</span>
-                {isGroupColumn ? (
-                  <Badge variant="accent">enlace</Badge>
-                ) : (
-                  confidence &&
-                  mapping[column] && (
-                    <Tooltip content={CONFIDENCE_LABEL[confidence]}>
-                      <Badge variant={confidence === 'partial' ? 'warning' : 'neutral'}>auto</Badge>
-                    </Tooltip>
-                  )
+          return (
+            <div
+              key={`${sheet.name}:${column}`}
+              className="grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-2 px-4 py-2.5 items-center"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-fg-default truncate">{column}</span>
+                  {isGroupColumn ? (
+                    <Badge variant="accent">{t('dataImport.mapping.link')}</Badge>
+                  ) : (
+                    confidence &&
+                    mapping[column] && (
+                      <Tooltip content={t(CONFIDENCE_LABEL[confidence])}>
+                        <Badge variant={confidence === 'partial' ? 'warning' : 'neutral'}>
+                          {t('dataImport.mapping.auto')}
+                        </Badge>
+                      </Tooltip>
+                    )
+                  )}
+                </div>
+                {sample !== undefined && (
+                  <p className="text-[11px] text-fg-subtle truncate">
+                    {t('dataImport.mapping.example', { sample: String(sample).slice(0, 60) })}
+                  </p>
                 )}
               </div>
-              {sample !== undefined && (
-                <p className="text-[11px] text-fg-subtle truncate">
-                  p. ej. {String(sample).slice(0, 60)}
-                </p>
+
+              {isGroupColumn ? (
+                // No se mapea a ningún campo: es lo que empareja cada cabecera
+                // con sus líneas, y sin ella no se podría armar el documento.
+                <p className="text-xs text-fg-muted">{t('dataImport.mapping.linkHint')}</p>
+              ) : (
+                <SearchableSelect
+                  value={mapping[column] || ''}
+                  onChange={(value) => onSetColumn(column, value || null)}
+                  options={options}
+                  placeholder={t('dataImport.mapping.skipColumn')}
+                  clearable
+                  emptyMessage={t('dataImport.mapping.noFieldMatch')}
+                />
               )}
             </div>
-
-            {isGroupColumn ? (
-              // No se mapea a ningún campo: es lo que empareja cada cabecera
-              // con sus líneas, y sin ella no se podría armar el documento.
-              <p className="text-xs text-fg-muted">
-                Une cada cabecera con sus líneas. No se importa como dato.
-              </p>
-            ) : (
-              <SearchableSelect
-                value={mapping[column] || ''}
-                onChange={(value) => onSetColumn(column, value || null)}
-                options={options}
-                placeholder="No importar esta columna"
-                clearable
-                emptyMessage="Ningún campo coincide"
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  </Card>
-);
+          );
+        })}
+      </div>
+    </Card>
+  );
+};

@@ -3,6 +3,7 @@ import { Card, Button, PageHeader, SearchableSelect } from '@openfactu/ui';
 import { ArrowLeft, Download, FileText, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
@@ -16,6 +17,7 @@ interface PLData {
 
 export const ReportPL: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const navigate = useNavigate();
   const [periods, setPeriods] = useState<any[]>([]);
@@ -55,12 +57,12 @@ export const ReportPL: React.FC = () => {
   return (
     <div className="p-6 w-full space-y-5">
       <PageHeader
-        title="Cuenta de Pérdidas y Ganancias"
+        title={t('reports.pl.title')}
         icon={<FileText size={18} />}
         size="md"
         breadcrumbs={
           <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> Volver
+            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
           </Button>
         }
         actions={
@@ -71,7 +73,7 @@ export const ReportPL: React.FC = () => {
               onClick={load}
               className="flex items-center gap-2"
             >
-              <RefreshCw size={16} /> Actualizar
+              <RefreshCw size={16} /> {t('reports.common.refresh')}
             </Button>
             <Button type="button" onClick={downloadPdf} className="flex items-center gap-2">
               <Download size={16} /> PDF
@@ -80,24 +82,28 @@ export const ReportPL: React.FC = () => {
         }
         toolbar={
           <div className="max-w-sm">
-            <label className="block text-xs font-bold text-fg-body mb-1">Período</label>
+            <label className="block text-xs font-bold text-fg-body mb-1">
+              {t('reports.common.period')}
+            </label>
             <SearchableSelect
               options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
               value={periodId}
               onChange={setPeriodId}
-              placeholder="— seleccionar período —"
+              placeholder={t('reports.common.selectPeriod')}
             />
           </div>
         }
       />
 
       {loading || !data ? (
-        <Card className="p-10 text-center text-fg-subtle italic">Cargando…</Card>
+        <Card className="p-10 text-center text-fg-subtle italic">
+          {t('reports.common.loading')}
+        </Card>
       ) : (
         <>
           <Card className="p-5 space-y-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-fg-subtle">
-              Ingresos (grupo 7)
+              {t('reports.pl.income')}
             </h3>
             <table className="w-full text-sm">
               <tbody>
@@ -110,7 +116,7 @@ export const ReportPL: React.FC = () => {
                 ))}
                 <tr className="font-black">
                   <td colSpan={2} className="py-2 text-right uppercase text-xs">
-                    Total ingresos
+                    {t('reports.pl.totalIncome')}
                   </td>
                   <td className="py-2 text-right tabular-nums text-success-fg">
                     {fmt.money(data.totalIncome)}
@@ -122,7 +128,7 @@ export const ReportPL: React.FC = () => {
 
           <Card className="p-5 space-y-3">
             <h3 className="text-xs font-black uppercase tracking-wider text-fg-subtle">
-              Gastos (grupo 6)
+              {t('reports.pl.expenses')}
             </h3>
             <table className="w-full text-sm">
               <tbody>
@@ -135,7 +141,7 @@ export const ReportPL: React.FC = () => {
                 ))}
                 <tr className="font-black">
                   <td colSpan={2} className="py-2 text-right uppercase text-xs">
-                    Total gastos
+                    {t('reports.pl.totalExpenses')}
                   </td>
                   <td className="py-2 text-right tabular-nums text-danger-fg">
                     {fmt.money(data.totalExpense)}
@@ -148,7 +154,7 @@ export const ReportPL: React.FC = () => {
           <Card className={`p-5 ${data.result >= 0 ? 'bg-success-bg' : 'bg-danger-bg'}`}>
             <div className="flex items-baseline justify-between">
               <span className="text-xs font-black uppercase tracking-widest">
-                {data.result >= 0 ? 'Beneficio del ejercicio' : 'Pérdida del ejercicio'}
+                {data.result >= 0 ? t('reports.pl.profit') : t('reports.pl.loss')}
               </span>
               <span
                 className={`text-3xl font-black tracking-tight tabular-nums ${data.result >= 0 ? 'text-success-fg' : 'text-danger-fg'}`}

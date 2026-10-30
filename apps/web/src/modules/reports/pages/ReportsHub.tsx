@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@openfactu/ui';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   ScrollText,
   BookOpenCheck,
@@ -66,146 +67,147 @@ interface HubProps {
   category: 'accounting' | 'management' | 'hr' | 'stock';
 }
 
+/** Claves i18n: título, subtítulo y tarjetas se traducen al pintar. */
 const CATEGORIES = {
   accounting: {
-    title: 'Informes contables',
-    subtitle: 'Diario, mayor, balances y libros fiscales.',
+    title: 'reports.hub.accounting.title',
+    subtitle: 'reports.hub.accounting.subtitle',
     items: [
       {
-        title: 'Diario de asientos',
-        description: 'Listado cronológico de todos los asientos contables del período.',
+        title: 'reports.hub.accounting.items.journal.title',
+        description: 'reports.hub.accounting.items.journal.description',
         icon: ScrollText,
         path: '/reports/accounting/journal',
       },
       {
-        title: 'Libro mayor',
-        description: 'Movimientos de una cuenta con saldo corriente.',
+        title: 'reports.hub.accounting.items.ledger.title',
+        description: 'reports.hub.accounting.items.ledger.description',
         icon: BookOpenCheck,
         path: '/reports/accounting/ledger',
       },
       {
-        title: 'Balance sumas y saldos',
-        description: 'Totales debe/haber y saldo por cuenta del período.',
+        title: 'reports.hub.accounting.items.trialBalance.title',
+        description: 'reports.hub.accounting.items.trialBalance.description',
         icon: Scale,
         path: '/reports/accounting/trial-balance',
       },
       {
-        title: 'Cuenta de P&L',
-        description: 'Ingresos menos gastos = resultado del ejercicio.',
+        title: 'reports.hub.accounting.items.pl.title',
+        description: 'reports.hub.accounting.items.pl.description',
         icon: TrendingUp,
         path: '/reports/accounting/pl',
       },
       {
-        title: 'Balance de situación',
-        description: 'Activo = Pasivo + Patrimonio a una fecha.',
+        title: 'reports.hub.accounting.items.balanceSheet.title',
+        description: 'reports.hub.accounting.items.balanceSheet.description',
         icon: Landmark,
         path: '/reports/accounting/balance-sheet',
       },
       {
-        title: 'Libro de IVA',
-        description: 'IVA soportado y repercutido para modelo 303.',
+        title: 'reports.hub.accounting.items.vat.title',
+        description: 'reports.hub.accounting.items.vat.description',
         icon: Receipt,
         path: '/reports/accounting/vat',
       },
     ],
   },
   management: {
-    title: 'Informes de gestión',
-    subtitle: 'Rentabilidad, aging, tesorería e informes para socios.',
+    title: 'reports.hub.management.title',
+    subtitle: 'reports.hub.management.subtitle',
     items: [
       {
-        title: 'Rentabilidad por cliente',
-        description: 'Facturación y margen aportado por cliente en el período.',
+        title: 'reports.hub.management.items.profitCustomer.title',
+        description: 'reports.hub.management.items.profitCustomer.description',
         icon: PieChart,
         path: '/reports/management/profit-customer',
       },
       {
-        title: 'Rentabilidad por producto',
-        description: 'Margen y rotación por artículo.',
+        title: 'reports.hub.management.items.profitItem.title',
+        description: 'reports.hub.management.items.profitItem.description',
         icon: Package,
         path: '/reports/management/profit-item',
       },
       {
-        title: 'Rentabilidad por proyecto',
-        description: 'Ingresos vs gastos por orden interna con desviación.',
+        title: 'reports.hub.management.items.profitProject.title',
+        description: 'reports.hub.management.items.profitProject.description',
         icon: Briefcase,
         path: '/reports/management/profit-project',
       },
       {
-        title: 'Rentabilidad por centro de coste',
-        description: 'Análisis por unidad de responsabilidad.',
+        title: 'reports.hub.management.items.profitCostCenter.title',
+        description: 'reports.hub.management.items.profitCostCenter.description',
         icon: Building2,
         path: '/reports/management/profit-cost-center',
       },
       {
-        title: 'Informe ejecutivo',
-        description: 'Resumen trimestral para socios/junta con KPIs y comparativas.',
+        title: 'reports.hub.management.items.executive.title',
+        description: 'reports.hub.management.items.executive.description',
         icon: FileBarChart,
         path: '/reports/management/executive',
       },
       {
-        title: 'Aging de cobros',
-        description: 'Facturas de venta pendientes por tramo de vencimiento.',
+        title: 'reports.hub.management.items.agingReceivables.title',
+        description: 'reports.hub.management.items.agingReceivables.description',
         icon: TrendingDown,
         path: '/reports/management/aging-receivables',
       },
       {
-        title: 'Aging de pagos',
-        description: 'Facturas de compra pendientes por tramo.',
+        title: 'reports.hub.management.items.agingPayables.title',
+        description: 'reports.hub.management.items.agingPayables.description',
         icon: Wallet,
         path: '/reports/management/aging-payables',
       },
       {
-        title: 'Cash-flow',
-        description: 'Cobros vs pagos reales y previstos.',
+        title: 'reports.hub.management.items.cashflow.title',
+        description: 'reports.hub.management.items.cashflow.description',
         icon: LineChartIcon,
         path: '/reports/management/cashflow',
       },
     ],
   },
   hr: {
-    title: 'Informes RRHH',
-    subtitle: 'Nóminas y coste laboral.',
+    title: 'reports.hub.hr.title',
+    subtitle: 'reports.hub.hr.subtitle',
     items: [
       {
-        title: 'Recibo de nómina',
-        description: 'PDF por empleado con devengos, deducciones y neto.',
+        title: 'reports.hub.hr.items.payslip.title',
+        description: 'reports.hub.hr.items.payslip.description',
         icon: Banknote,
         path: '/reports/hr/payslip',
       },
       {
-        title: 'Costes laborales',
-        description: 'Resumen bruto + SS empresa + IRPF del período.',
+        title: 'reports.hub.hr.items.laborCost.title',
+        description: 'reports.hub.hr.items.laborCost.description',
         icon: UserCheck,
         path: '/reports/hr/labor-cost',
       },
       {
-        title: 'Plantilla actual',
-        description: 'Listado de empleados con alta, baja, contrato y departamento.',
+        title: 'reports.hub.hr.items.headcount.title',
+        description: 'reports.hub.hr.items.headcount.description',
         icon: Users,
         path: '/reports/hr/headcount',
       },
     ],
   },
   stock: {
-    title: 'Informes de stock',
-    subtitle: 'Valoración, rotación y movimientos.',
+    title: 'reports.hub.stock.title',
+    subtitle: 'reports.hub.stock.subtitle',
     items: [
       {
-        title: 'Valoración de inventario',
-        description: 'Stock × precio medio por artículo.',
+        title: 'reports.hub.stock.items.valuation.title',
+        description: 'reports.hub.stock.items.valuation.description',
         icon: Warehouse,
         path: '/reports/stock/valuation',
       },
       {
-        title: 'Rotación',
-        description: 'Días de stock y rotación por artículo.',
+        title: 'reports.hub.stock.items.rotation.title',
+        description: 'reports.hub.stock.items.rotation.description',
         icon: RotateCw,
         path: '/reports/stock/rotation',
       },
       {
-        title: 'Movimientos de stock',
-        description: 'Entradas, salidas y ajustes por período.',
+        title: 'reports.hub.stock.items.movements.title',
+        description: 'reports.hub.stock.items.movements.description',
         icon: ArrowLeftRight,
         path: '/reports/stock/movements',
       },
@@ -214,14 +216,20 @@ const CATEGORIES = {
 };
 
 export const ReportsHub: React.FC<HubProps> = ({ category }) => {
+  const { t } = useI18n();
   const cat = CATEGORIES[category];
   return (
     <div className="p-8 w-full space-y-6 animate-in fade-in duration-500">
-      <PageHeader title={cat.title} subtitle={cat.subtitle} size="lg" />
+      <PageHeader title={t(cat.title)} subtitle={t(cat.subtitle)} size="lg" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {cat.items.map((item) => (
-          <ReportCard key={item.path} {...item} />
+          <ReportCard
+            key={item.path}
+            {...item}
+            title={t(item.title)}
+            description={t(item.description)}
+          />
         ))}
       </div>
     </div>

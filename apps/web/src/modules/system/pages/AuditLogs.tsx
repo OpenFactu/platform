@@ -15,6 +15,8 @@ import {
 import type { BadgeProps, RowAction, TableColumn } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ClipboardList, Search, RotateCcw, Eye } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate, formatNumber, formatTime } from '@/i18n/format';
 
 interface AuditLog {
   id: string;
@@ -32,15 +34,15 @@ interface AuditLog {
 // semánticas) en vez de una paleta fija que no seguía al tema del tenant.
 const ACTION_CONFIG: Record<AuditLog['action'], { label: string; variant: BadgeProps['variant'] }> =
   {
-    CREATE: { label: 'Creación', variant: 'success' },
-    UPDATE: { label: 'Edición', variant: 'info' },
-    DELETE: { label: 'Borrado', variant: 'error' },
+    CREATE: { label: 'system.audit.actions.CREATE', variant: 'success' },
+    UPDATE: { label: 'system.audit.actions.UPDATE', variant: 'info' },
+    DELETE: { label: 'system.audit.actions.DELETE', variant: 'error' },
   };
 
 // Las opciones del filtro salen de ACTION_CONFIG para no repetir los valores;
 // la primera es el «sin filtro» que antes era <option value="">.
 const ACTION_OPTIONS = [
-  { value: '', label: 'Todas' },
+  { value: '', label: 'system.audit.all' },
   ...Object.entries(ACTION_CONFIG).map(([value, cfg]) => ({ value, label: cfg.label })),
 ];
 
@@ -65,6 +67,7 @@ const ENTITY_TYPES = [
 ];
 
 const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onClose }) => {
+  const { t } = useI18n();
   const old = log.oldValue
     ? typeof log.oldValue === 'string'
       ? JSON.parse(log.oldValue)
@@ -96,9 +99,9 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
     );
 
   const diffColumns: TableColumn<(typeof diffRows)[number]>[] = [
-    { header: 'Campo', accessor: 'field', width: '33%', className: 'font-medium' },
+    { header: t('system.audit.field'), accessor: 'field', width: '33%', className: 'font-medium' },
     {
-      header: 'Anterior',
+      header: t('system.audit.previous'),
       width: '33%',
       cell: (r) => (
         <span className={`font-mono text-xs ${r.changed ? 'text-danger-fg' : 'text-fg-muted'}`}>
@@ -107,7 +110,7 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
       ),
     },
     {
-      header: 'Nuevo',
+      header: t('system.audit.new'),
       width: '33%',
       cell: (r) => (
         <span
@@ -125,7 +128,7 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
     <Modal
       isOpen
       onClose={onClose}
-      eyebrow="Detalle de cambio"
+      eyebrow={t('system.audit.changeDetail')}
       title={`${log.entityType} · ${log.entityId.slice(0, 8)}…`}
       size="2xl"
       closeOnOverlayClick
@@ -137,7 +140,7 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
           data={diffRows}
           rowKey={(r) => r.field}
           density="compact"
-          emptyMessage="Sin campos comparables"
+          emptyMessage={t('system.audit.noComparable')}
         />
       ) : (
         <pre className="bg-bg-muted rounded-lg p-4 text-xs font-mono text-fg-body overflow-auto whitespace-pre-wrap">
@@ -150,6 +153,7 @@ const DiffModal: React.FC<{ log: AuditLog; onClose: () => void }> = ({ log, onCl
 
 export const AuditLogs: React.FC = () => {
   const { token, user } = useAuth();
+  const { t } = useI18n();
 
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [total, setTotal] = useState(0);
@@ -198,20 +202,20 @@ export const AuditLogs: React.FC = () => {
 
   const columns: TableColumn<AuditLog>[] = [
     {
-      header: 'Fecha / Hora',
+      header: t('system.audit.dateTime'),
       cell: (log) => {
         const date = new Date(log.createdAt);
         return (
           <div>
             <p className="font-bold text-fg-default text-sm tabular-nums">
-              {date.toLocaleDateString('es-ES', {
+              {formatDate(date, {
                 day: '2-digit',
                 month: '2-digit',
                 year: 'numeric',
               })}
             </p>
             <p className="text-[10px] text-fg-subtle font-mono tabular-nums">
-              {date.toLocaleTimeString('es-ES', {
+              {formatTime(date, {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
@@ -222,18 +226,18 @@ export const AuditLogs: React.FC = () => {
       },
     },
     {
-      header: 'Acción',
+      header: t('system.audit.action'),
       cell: (log) => {
         const cfg = ACTION_CONFIG[log.action] || ACTION_CONFIG.CREATE;
-        return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+        return <Badge variant={cfg.variant}>{t(cfg.label)}</Badge>;
       },
     },
     {
-      header: 'Entidad',
+      header: t('system.audit.entity'),
       cell: (log) => <span className="font-bold text-fg-body text-sm">{log.entityType}</span>,
     },
     {
-      header: 'ID Entidad',
+      header: t('system.audit.entityId'),
       cell: (log) => (
         <span className="font-mono text-xs text-fg-muted bg-bg-muted px-2 py-1 rounded-lg">
           {log.entityId.slice(0, 12)}…
@@ -241,12 +245,14 @@ export const AuditLogs: React.FC = () => {
       ),
     },
     {
-      header: 'Usuario',
+      header: t('system.audit.user'),
       cell: (log) =>
         log.userId ? (
           <span className="text-xs text-fg-muted font-medium">{log.userId.slice(0, 12)}…</span>
         ) : (
-          <span className="text-xs text-fg-muted font-medium opacity-40 italic">sistema</span>
+          <span className="text-xs text-fg-muted font-medium opacity-40 italic">
+            {t('system.audit.system')}
+          </span>
         ),
     },
   ];
@@ -255,7 +261,7 @@ export const AuditLogs: React.FC = () => {
   // registro no guarda ni valor anterior ni nuevo, igual que antes se ocultaba.
   const rowActions = (log: AuditLog): RowAction[] => [
     {
-      label: 'Ver detalle',
+      label: t('system.audit.viewDetail'),
       icon: <Eye size={14} />,
       disabled: !(log.oldValue || log.newValue),
       onClick: () => setSelectedLog(log),
@@ -267,16 +273,16 @@ export const AuditLogs: React.FC = () => {
       {selectedLog && <DiffModal log={selectedLog} onClose={() => setSelectedLog(null)} />}
 
       <PageHeader
-        title="Registros de Auditoría"
-        subtitle="Histórico completo de creaciones, modificaciones y eliminaciones."
-        eyebrow="Gestión Central / Seguridad"
+        title={t('system.audit.title')}
+        subtitle={t('system.audit.subtitle')}
+        eyebrow={t('system.audit.eyebrow')}
         icon={<ClipboardList size={18} />}
         size="lg"
         actions={
           <div className="text-right">
-            <p className="text-2xl font-black text-fg-default">{total.toLocaleString()}</p>
+            <p className="text-2xl font-black text-fg-default">{formatNumber(total)}</p>
             <p className="text-xs text-fg-subtle font-bold uppercase tracking-widest">
-              registros totales
+              {t('system.audit.totalRecords')}
             </p>
           </div>
         }
@@ -288,33 +294,33 @@ export const AuditLogs: React.FC = () => {
           <div className="flex-1 min-w-[160px]">
             {/* 12 entidades: pasa del umbral de Select, así que va con buscador.
                 SearchableSelect no tiene prop `label`, se conserva el <label>. */}
-            <label className={filterLabelCls}>Entidad</label>
+            <label className={filterLabelCls}>{t('system.audit.entity')}</label>
             <SearchableSelect
               value={filters.entityType}
               onChange={(v) => {
                 setFilters((f) => ({ ...f, entityType: v }));
                 setPage(1);
               }}
-              options={ENTITY_TYPES.map((t) => ({ value: t, label: t }))}
-              placeholder="Todas"
+              options={ENTITY_TYPES.map((et) => ({ value: et, label: et }))}
+              placeholder={t('system.audit.all')}
               clearable
             />
           </div>
           <div className="flex-1 min-w-[140px]">
             <Select
-              label="Acción"
+              label={t('system.audit.action')}
               value={filters.action}
               onChange={(v) => {
                 setFilters((f) => ({ ...f, action: v }));
                 setPage(1);
               }}
-              options={ACTION_OPTIONS}
-              placeholder="Todas"
+              options={ACTION_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
+              placeholder={t('system.audit.all')}
             />
           </div>
           <div className="flex-1 min-w-[150px]">
             <DatePicker
-              label="Desde"
+              label={t('system.audit.from')}
               value={filters.dateFrom || null}
               onChange={(v) => {
                 setFilters((f) => ({ ...f, dateFrom: v ?? '' }));
@@ -324,7 +330,7 @@ export const AuditLogs: React.FC = () => {
           </div>
           <div className="flex-1 min-w-[150px]">
             <DatePicker
-              label="Hasta"
+              label={t('system.audit.to')}
               value={filters.dateTo || null}
               onChange={(v) => {
                 setFilters((f) => ({ ...f, dateTo: v ?? '' }));
@@ -335,7 +341,7 @@ export const AuditLogs: React.FC = () => {
           <div className="flex gap-2">
             <Button onClick={fetchLogs} className="h-10 gap-2">
               <Search size={16} />
-              Filtrar
+              {t('system.audit.filter')}
             </Button>
             <Button variant="secondary" onClick={handleReset} className="h-10 gap-2 text-fg-muted">
               <RotateCcw size={14} />
@@ -349,8 +355,8 @@ export const AuditLogs: React.FC = () => {
         <Card className="border-0">
           <EmptyState
             icon={<ClipboardList size={18} />}
-            title="No se encontraron registros de auditoría"
-            hint="Prueba a ampliar el rango de fechas o a quitar filtros."
+            title={t('system.audit.emptyTitle')}
+            hint={t('system.audit.emptyHint')}
           />
         </Card>
       ) : (

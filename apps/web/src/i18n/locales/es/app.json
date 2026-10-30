@@ -1,0 +1,744 @@
+{
+  "app": {
+    "tabs": {
+      "close": "Cerrar pestaña",
+      "closeOthers": "Cerrar otras pestañas",
+      "closeRight": "Cerrar pestañas a la derecha",
+      "closeAll": "Cerrar todas las pestañas",
+      "notFoundTitle": "Ruta no encontrada",
+      "notFoundBody": "La pestaña apunta a una ruta que ya no existe."
+    },
+    "nav": {
+      "custom": "Personalizado",
+      "general": "General",
+      "myRoute": "Mi ruta"
+    },
+    "sidebar": {
+      "menu": "Menú",
+      "closeMenu": "Cerrar menú",
+      "openMenu": "Abrir menú",
+      "searchPlaceholder": "Buscar en el menú…",
+      "noResults": "Sin resultados para “{query}”.",
+      "admin": "Administrador",
+      "switchCompany": "Cambiar empresa",
+      "logout": "Cerrar sesión",
+      "activeCompany": "Empresa activa",
+      "user": "Usuario",
+      "userMenu": "Menú de usuario"
+    },
+    "header": {
+      "back": "Volver",
+      "switchSection": "{title}: cambiar de sección"
+    },
+    "bottomNav": {
+      "home": "Inicio",
+      "sales": "Ventas",
+      "purchases": "Compras",
+      "scan": "Escanear código",
+      "search": "Buscar",
+      "more": "Más",
+      "aria": "Navegación inferior",
+      "actions": "Acciones",
+      "quickActions": "Acciones rápidas"
+    },
+    "search": {
+      "actions": {
+        "newSalesInvoice": {
+          "label": "Nueva factura de venta",
+          "keywords": "crear factura venta cliente"
+        },
+        "newPurchaseInvoice": {
+          "label": "Nueva factura de compra",
+          "keywords": "crear factura compra proveedor"
+        },
+        "newSalesOrder": {
+          "label": "Nuevo pedido de venta",
+          "keywords": "crear pedido venta cliente"
+        },
+        "newPurchaseOrder": {
+          "label": "Nuevo pedido de compra",
+          "keywords": "crear pedido compra proveedor"
+        },
+        "newSalesDn": {
+          "label": "Nuevo albarán de venta",
+          "keywords": "crear albaran venta entrega"
+        },
+        "newPurchaseDn": {
+          "label": "Nuevo albarán de compra",
+          "keywords": "crear albaran compra recepcion"
+        },
+        "newQuote": {
+          "label": "Nuevo presupuesto",
+          "keywords": "crear presupuesto oferta cotizacion"
+        },
+        "partners": {
+          "label": "Interlocutores",
+          "keywords": "clientes proveedores contactos"
+        },
+        "items": {
+          "label": "Artículos",
+          "keywords": "catalogo productos stock"
+        },
+        "journal": {
+          "label": "Asientos contables",
+          "keywords": "diario contabilidad apuntes"
+        },
+        "employees": {
+          "label": "Empleados",
+          "keywords": "rrhh plantilla personal"
+        },
+        "settings": {
+          "label": "Ajustes de la empresa",
+          "keywords": "configuracion branding tema"
+        }
+      },
+      "sections": {
+        "partners": "Interlocutores",
+        "items": "Artículos",
+        "salesInvoices": "Facturas de venta",
+        "purchaseInvoices": "Facturas de compra",
+        "salesDeliveryNotes": "Albaranes de venta",
+        "purchaseDeliveryNotes": "Albaranes de compra",
+        "salesOrders": "Pedidos de venta",
+        "purchaseOrders": "Pedidos de compra",
+        "journalEntries": "Asientos",
+        "employees": "Empleados",
+        "internalOrders": "Proyectos",
+        "chartOfAccounts": "Plan contable"
+      },
+      "actionsSection": "Acciones",
+      "create": "Crear",
+      "goTo": "Ir a",
+      "journalNumber": "Nº {number}",
+      "search": "Buscar",
+      "placeholder": "Buscar interlocutores, artículos o documentos…",
+      "empty": "Sin resultados. Prueba con un código, un NIF o parte del nombre.",
+      "close": "Cerrar"
+    },
+    "attachments": {
+      "title": "Adjuntos",
+      "loadError": "Error al cargar adjuntos",
+      "uploadError": "Error al subir",
+      "deleteTitle": "Eliminar adjunto",
+      "deleteError": "Error al borrar",
+      "downloadError": "Error al descargar",
+      "uploading": "Subiendo…",
+      "dropLabel": "Arrastra archivos aquí o haz clic para seleccionar",
+      "empty": "Sin adjuntos."
+    },
+    "common": {
+      "cannotUndo": "Esta acción no se puede deshacer.",
+      "delete": "Eliminar",
+      "cancel": "Cancelar",
+      "save": "Guardar",
+      "close": "Cerrar",
+      "loading": "Cargando…",
+      "saving": "Guardando…",
+      "edit": "Editar",
+      "new": "Nuevo",
+      "add": "Añadir",
+      "search": "Buscar",
+      "noResults": "Sin resultados",
+      "error": "Error",
+      "retry": "Reintentar",
+      "back": "Volver",
+      "yes": "Sí",
+      "no": "No",
+      "all": "Todos",
+      "actions": "Acciones",
+      "name": "Nombre",
+      "code": "Código",
+      "status": "Estado",
+      "date": "Fecha",
+      "description": "Descripción",
+      "active": "Activo",
+      "refresh": "Actualizar",
+      "confirm": "Confirmar",
+      "saveError": "Error al guardar",
+      "deleteError": "Error al eliminar",
+      "httpError": "Error HTTP {status}",
+      "loadingShort": "Cargando",
+      "inactive": "Inactivo",
+      "notAuthenticated": "No autenticado"
+    },
+    "pluginFields": {
+      "title": "Campos Personalizados",
+      "option": "Opción",
+      "attachmentPlaceholder": "URL o id del adjunto",
+      "searchRef": "Buscar {table}...",
+      "additional": "Campos Adicionales (Plugins)",
+      "enable": "Activar"
+    },
+    "tenant": {
+      "loadError": "No se pudieron cargar las empresas",
+      "switched": "Empresa cambiada",
+      "switchError": "Error al cambiar de empresa",
+      "none": "Sin empresa",
+      "yours": "Tus empresas",
+      "noneAccessible": "Sin empresas accesibles",
+      "new": "Nueva empresa"
+    },
+    "debug": {
+      "injected": "Código inyectado: {code}",
+      "subtitle": "Utilidades de desarrollo",
+      "simulateScanner": "Simular escáner",
+      "codePlaceholder": "Código + Enter",
+      "fire": "Disparar",
+      "destructiveWarning": "Acciones destructivas — solo úsalas en desarrollo. Pondrán la app en estado inicial.",
+      "resetting": "Reseteando…",
+      "resetSetup": "Reset setup completo",
+      "forceWizard": "Forzar wizard (?force=1)",
+      "seeding": "Sembrando…",
+      "reseedGeo": "Re-cargar países / geografía",
+      "resetConfirmTitle": "¿Resetear setup completamente?",
+      "resetConfirmMessage": "Va a borrar todos los tenants y sus schemas, todos los usuarios globales y el archivo de configuración. Los países (Country/Region/…) se conservan.",
+      "resetConfirm": "Resetear"
+    },
+    "clone": {
+      "copyDocument": "Copiar documento",
+      "pasteDocument": "Pegar documento",
+      "copyHint": "Copiar al portapapeles para duplicar en otro listado",
+      "copy": "Copiar",
+      "pasteHint": "Pegar documento copiado → se crea un duplicado en borrador",
+      "paste": "Pegar",
+      "copied_one": "Documento copiado ({count} línea) — ve al listado y pega",
+      "copied_other": "Documento copiado ({count} líneas) — ve al listado y pega",
+      "clipboardDenied": "El navegador no permitió acceder al portapapeles",
+      "clipboardEmpty": "Portapapeles vacío",
+      "notADocument": "El portapapeles no contiene un documento copiado desde Keirost",
+      "wrongType": "El documento copiado es de tipo {got} — esta vista espera {expected}",
+      "readError": "No se pudo leer del portapapeles (permisos del navegador o formato inválido)"
+    },
+    "excel": {
+      "noData": "No hay datos para exportar",
+      "exported_one": "Exportada {count} fila",
+      "exported_other": "Exportadas {count} filas",
+      "exportError": "Error al exportar",
+      "pasteTitle": "Pegar desde Excel",
+      "pasteSubtitle": "Copia las celdas desde Excel/Calc y pégalas abajo. Se detectan automáticamente las columnas por la primera fila.",
+      "imported_one": "{count} fila importada",
+      "imported_other": "{count} filas importadas",
+      "importError": "Error al importar",
+      "exportHint": "Exportar a Excel (.xlsx con formato)",
+      "export": "Exportar",
+      "importHint": "Pegar filas desde Excel o CSV",
+      "import": "Importar",
+      "pastePlaceholder": "Pega aquí las celdas copiadas desde Excel...",
+      "firstRowHeader": "La primera fila es cabecera",
+      "colShort": "Col {n}",
+      "ignore": "— ignorar —",
+      "column": "Columna {name}",
+      "moreRows_one": "... y {count} fila más",
+      "moreRows_other": "... y {count} filas más",
+      "validRows_one": "{count} fila válida para importar",
+      "validRows_other": "{count} filas válidas para importar",
+      "discarded_one": "({count} descartada por campos obligatorios vacíos)",
+      "discarded_other": "({count} descartadas por campos obligatorios vacíos)",
+      "importing": "Importando…",
+      "importN": "Importar {count}"
+    },
+    "docTypes": {
+      "SQ": "Presupuesto",
+      "SO": "Pedido venta",
+      "PO": "Pedido compra",
+      "SDN": "Albarán venta",
+      "PDN": "Albarán compra",
+      "SINV": "Factura venta",
+      "PINV": "Factura compra"
+    },
+    "trace": {
+      "loadError": "Error al cargar trazabilidad",
+      "loading": "Cargando trazabilidad…",
+      "emptyTitle": "Sin documentos enlazados",
+      "emptyHint": "Cuando este documento origine o se genere desde otro, aparecerá aquí la cadena completa.",
+      "origin": "Origen",
+      "derived": "Derivado",
+      "payments": "Cobros / Pagos",
+      "ref": "Ref {ref}",
+      "journalEntries": "Asientos contables",
+      "journalEntry": "Asiento {number}",
+      "numberShort": "Nº {number}",
+      "posted": "Asentado",
+      "reversed": "Reversado",
+      "draft": "Borrador",
+      "title": "Trazabilidad",
+      "subtitle": "Cadena completa de documentos relacionados.",
+      "view": "Ver trazabilidad",
+      "comesFrom_one": "Viene de ({count} documento)",
+      "comesFrom_other": "Viene de ({count} documentos)",
+      "generated_one": "Ha generado ({count} documento)",
+      "generated_other": "Ha generado ({count} documentos)",
+      "thisDocument": "Este documento",
+      "current": "(actual)",
+      "paymentsAndAccounting": "Cobros y contabilidad",
+      "payment": "Cobro / pago",
+      "journalEntryLabel": "Asiento contable",
+      "emptyHintPopup": "Cuando este documento origine otro o se genere desde uno, aquí aparecerá la cadena completa."
+    },
+    "prep": {
+      "reused": "Preparación ya iniciada — abriendo",
+      "started": "Preparación iniciada",
+      "shipmentTitle": "Envío en preparación",
+      "title": "Preparación",
+      "error": "Error al iniciar preparación",
+      "prepare": "Preparar envío",
+      "receive": "Recepcionar"
+    },
+    "widgets": {
+      "noExport": "El componente no exporta nada renderizable (default).",
+      "loadError": "Error al cargar el componente.",
+      "noData": "Sin datos",
+      "queryResult": "Resultado de la consulta",
+      "noRows": "La consulta no devolvió filas",
+      "networkError": "Error de red",
+      "editorTitle": "Componente del widget",
+      "editorSubtitle": "Disponible: react, @openfactu/ui, lucide-react, @openfactu/widget-api (solo GET).",
+      "compiling": "Compilando…",
+      "test": "▶ Probar",
+      "compiles": "✓ Compila bien",
+      "saveCode": "Guardar código"
+    },
+    "fiscalTable": {
+      "loadError": "Error cargando {title}",
+      "created": "Creado",
+      "updated": "Actualizado",
+      "deleteTitle": "Eliminar registro",
+      "deleted": "Eliminado",
+      "empty": "Sin datos — pulsa \"Añadir\" para crear."
+    },
+    "geo": {
+      "country": "País",
+      "selectCountry": "Seleccionar país...",
+      "locality": "Municipio",
+      "searchLocality": "Buscar municipio...",
+      "selectProvinceFirst": "Selecciona antes la provincia",
+      "phone": "Teléfono",
+      "postalCode": "Código postal",
+      "invalidFormat": "Formato inválido.",
+      "loading": "Cargando...",
+      "selectX": "Seleccionar {label}...",
+      "province": "provincia",
+      "invalidTaxId": "Formato inválido para {country}. Ejemplo: {example}"
+    },
+    "dimensions": {
+      "loadError": "Error al cargar {title}",
+      "nameRequired": "El nombre es obligatorio",
+      "codeNameRequired": "Código y nombre son obligatorios",
+      "parent": "Padre",
+      "auto": "Auto",
+      "namePlaceholder": "Oficina Madrid",
+      "parentOptional": "Padre (opcional)",
+      "noParent": "— sin padre —",
+      "empty": "No hay dimensiones creadas",
+      "notes": "Notas",
+      "saveChanges": "Guardar cambios",
+      "create": "Crear"
+    },
+    "about": {
+      "headline1": "Compras, ventas, stock y personas,",
+      "headline2": "en un solo sitio.",
+      "bodyBefore": "Keirost es un",
+      "bodyHighlight": "ERP de código abierto",
+      "bodyAfter": "pensado para el día a día de la pequeña y mediana empresa: del presupuesto a la factura, del almacén al reparto y de los clientes a las personas que trabajan contigo. Cada empresa tiene su propio espacio, con sus datos aislados y su propia marca, y puede crecer con módulos y plugins a medida que lo necesite."
+    },
+    "login": {
+      "rememberedAccounts": "Cuentas recordadas en este navegador",
+      "forgetAccount": "Olvidar {name} en este navegador",
+      "useOtherAccount": "Usar otra cuenta",
+      "pickCompanyError": "Elige la empresa a la que quieres entrar",
+      "invalid2fa": "Código 2FA inválido",
+      "invalidCredentials": "Credenciales incorrectas o empresa no válida",
+      "connectionError": "No se pudo establecer conexión con el servidor",
+      "twoFactorTitle": "Verificación en dos pasos",
+      "pickAccountTitle": "Elige tu cuenta",
+      "hello": "Hola, {name}",
+      "title": "Inicia sesión",
+      "twoFactorHint": "Introduce el código de tu app de autenticación o uno de respaldo.",
+      "pickAccountHint": "Ya entraste antes desde este navegador.",
+      "passwordHint": "Escribe tu contraseña para entrar.",
+      "subtitle": "Accede con tu usuario o tu email de trabajo.",
+      "verificationCode": "Código de verificación",
+      "change": "Cambiar",
+      "userOrEmail": "Usuario o email",
+      "userPlaceholder": "admin o tu@empresa.com",
+      "company": "Empresa",
+      "pickCompany": "Elige una empresa",
+      "password": "Contraseña",
+      "forgot": "¿Has olvidado tu contraseña?",
+      "verify": "Verificar",
+      "enter": "Entrar",
+      "whatIs": "¿Qué es Keirost?",
+      "docs": "Documentación"
+    },
+    "categories": {
+      "general": "General",
+      "operations": "Operaciones",
+      "salesPurchases": "Ventas y compras",
+      "finance": "Finanzas",
+      "analytics": "Análisis",
+      "productivity": "Productividad",
+      "hr": "RRHH",
+      "logistics": "Logística"
+    },
+    "pluginLoader": {
+      "noExport": "El módulo de plugin no exporta un componente válido (default o función).",
+      "loadError": "Error al descargar o transpilar el componente del plugin.",
+      "errorTitle": "Error de Extensión",
+      "errorHint": "Verifica que el archivo exista en la carpeta del plugin y sea válido.",
+      "loading": "Cargando Componente Externo",
+      "syncing": "Sincronizando con el Plugin SDK...",
+      "rendering": "Renderizando..."
+    },
+    "scanner": {
+      "permissionDenied": "Permiso de cámara denegado. Concédelo en los ajustes del navegador.",
+      "startError": "No se pudo iniciar la cámara",
+      "starting": "Iniciando cámara…",
+      "continuous_one": "Escaneo continuo · {count} leído",
+      "continuous_other": "Escaneo continuo · {count} leídos",
+      "last": "último: {code}",
+      "hint": "Apunta al código. Detección automática · Formatos: EAN · Code-128 · QR",
+      "itemNotFound": "Artículo no encontrado: {code}"
+    },
+    "lines": {
+      "project": "Proyecto",
+      "inheritHeader": "— Hereda cabecera —"
+    },
+    "validation": {
+      "empty": "vacío",
+      "invalidChars": "caracteres no válidos",
+      "unknownCountry": "país {country} desconocido",
+      "ibanLength": "{country} esperaba {expected} chars, recibidos {got}",
+      "badChecksum": "checksum inválido",
+      "swiftLength": "{got} caracteres, esperados 8 u 11",
+      "invalidFormat": "formato inválido"
+    },
+    "barcode": {
+      "empty": "Vacío",
+      "badCheckDigit": "Dígito de control inválido (esperado {expected})",
+      "twelveDigits": "12 dígitos: como UPC-A el check digit es inválido. Como EAN-13 falta uno (sería {suggested})",
+      "missingCheckDigit": "Falta el dígito de control (sería {suggested})",
+      "nonStandardLength": "Longitud {length} no es estándar (8/12/13)",
+      "nonPrintable": "Contiene caracteres no imprimibles"
+    },
+    "forgot": {
+      "checkEmail": "Revisa tu correo",
+      "sentBefore": "Si el email",
+      "sentAfter": "corresponde a una cuenta, te hemos enviado un enlace para restablecer tu contraseña. Caduca en 1 hora.",
+      "notReceived": "¿No lo recibes? Comprueba spam o pide a tu administrador que te lo restablezca.",
+      "backToLogin": "Volver a iniciar sesión",
+      "title": "Recuperar contraseña",
+      "subtitle": "Introduce tu email y te enviaremos un enlace para crear una nueva contraseña.",
+      "email": "Email",
+      "emailPlaceholder": "usuario@empresa.com",
+      "send": "Enviar enlace"
+    },
+    "reset": {
+      "tooShort": "La contraseña debe tener al menos 6 caracteres",
+      "mismatch": "Las contraseñas no coinciden",
+      "invalidLink": "El enlace no es válido o ha caducado",
+      "doneTitle": "Contraseña actualizada",
+      "doneBody": "Ya puedes iniciar sesión con tu nueva contraseña. Te redirigimos…",
+      "noTokenTitle": "Enlace no válido",
+      "noTokenBody": "Falta el token de recuperación. Solicita un nuevo enlace desde la pantalla de acceso.",
+      "requestNew": "Solicitar nuevo enlace",
+      "newPassword": "Nueva contraseña",
+      "subtitle": "Elige una contraseña segura para tu cuenta.",
+      "repeat": "Repetir contraseña",
+      "save": "Guardar contraseña"
+    },
+    "aboutPage": {
+      "marquee": {
+        "m0": "Presupuestos",
+        "m1": "Pedidos",
+        "m2": "Albaranes",
+        "m3": "Facturas",
+        "m4": "Cobros",
+        "m5": "Inventario",
+        "m6": "Lotes y números de serie",
+        "m7": "CRM",
+        "m8": "Formularios",
+        "m9": "Contabilidad",
+        "m10": "Nóminas",
+        "m11": "Fichajes",
+        "m12": "Rutas de reparto",
+        "m13": "Web de empresa",
+        "m14": "Asistente con IA",
+        "m15": "Plugins"
+      },
+      "modules": {
+        "sales": {
+          "title": "Ventas y compras",
+          "text": "Presupuestos, pedidos, albaranes y facturas encadenados: cada documento nace del anterior, sin volver a teclear nada."
+        },
+        "warehouse": {
+          "title": "Almacén",
+          "text": "Stock por almacén y ubicación, lotes, caducidades y números de serie."
+        },
+        "crm": {
+          "title": "CRM",
+          "text": "Oportunidades en un tablero, actividades del día y la ficha completa de cada cliente."
+        },
+        "accounting": {
+          "title": "Contabilidad",
+          "text": "Asientos automáticos al facturar, impuestos y cierre de periodos."
+        },
+        "people": {
+          "title": "Personas",
+          "text": "Fichajes desde el móvil o un kiosco, turnos, nóminas y evaluaciones."
+        },
+        "logistics": {
+          "title": "Logística",
+          "text": "Preparación de pedidos, rutas en el mapa y prueba de entrega con firma."
+        },
+        "forms": {
+          "title": "Formularios",
+          "text": "Encuestas e inscripciones con enlace público; las respuestas llegan al CRM."
+        },
+        "web": {
+          "title": "Web de empresa",
+          "text": "Una web propia, con tu marca, montada por bloques desde el propio ERP."
+        },
+        "ai": {
+          "title": "Asistente con IA",
+          "text": "Pregúntale por tus ventas o pídele un documento: trabaja con tus datos y tus permisos."
+        },
+        "plugins": {
+          "title": "Plugins",
+          "text": "Campos, pantallas y automatizaciones a medida, sin tocar el núcleo."
+        }
+      },
+      "chain": {
+        "quote": {
+          "label": "Presupuesto",
+          "description": "Preparas la oferta y se la envías al cliente."
+        },
+        "order": {
+          "label": "Pedido",
+          "description": "El cliente acepta y el presupuesto pasa a pedido."
+        },
+        "delivery": {
+          "label": "Albarán",
+          "description": "Sale la mercancía: el stock baja solo, con sus lotes."
+        },
+        "invoice": {
+          "label": "Factura",
+          "description": "Se factura el albarán y el asiento contable se crea solo."
+        },
+        "payment": {
+          "label": "Cobro",
+          "description": "Registras el cobro y la factura queda saldada."
+        }
+      },
+      "stats": {
+        "s0": "módulos que se activan según los necesites",
+        "s1": "tipos de documento, del presupuesto al albarán de compra",
+        "s2": "código abierto, sin licencias",
+        "s3": "sola herramienta para toda la empresa"
+      },
+      "faq": {
+        "free": {
+          "title": "¿Cuánto cuesta?",
+          "content": "Keirost es de código abierto: puedes instalarlo en tus servidores sin pagar licencias. Si prefieres no ocuparte de nada, también puede ofrecerse alojado."
+        },
+        "data": {
+          "title": "¿Dónde están mis datos?",
+          "content": "Cada empresa tiene su propio espacio en la base de datos, separado del de las demás. Puedes exportarlo entero cuando quieras, con sus archivos adjuntos."
+        },
+        "companies": {
+          "title": "¿Puedo llevar varias empresas?",
+          "content": "Sí. Un mismo usuario puede pertenecer a varias empresas y pasar de una a otra; cada una con sus datos, sus permisos y su propia marca."
+        },
+        "mobile": {
+          "title": "¿Funciona en el móvil?",
+          "content": "Sí. Toda la aplicación se adapta al móvil: fichar, consultar stock, escanear códigos o registrar una entrega con la firma del cliente."
+        },
+        "extend": {
+          "title": "¿Puedo adaptarlo a mi negocio?",
+          "content": "Con plugins puedes añadir campos, pantallas, tipos de documento y automatizaciones. Y los temas cambian colores, tipografía y el aspecto entero."
+        },
+        "ai": {
+          "title": "¿Qué hace el asistente?",
+          "content": "Responde preguntas sobre tus datos, prepara documentos y te propone acciones. Solo ve lo que tu usuario puede ver, y te pide confirmación antes de cambiar nada."
+        }
+      },
+      "backToLogin": "Volver al acceso",
+      "marqueeLabel": "Lo que hace Keirost",
+      "modulesEyebrow": "Todo en un sitio",
+      "modulesTitle1": "Un módulo para cada parte",
+      "modulesTitle2": "de tu empresa.",
+      "modulesIntro": "Se activan cuando los necesitas y comparten los mismos datos: el cliente del CRM es el de la factura, y el artículo del almacén es el del pedido.",
+      "chainEyebrow": "Sin teclear dos veces",
+      "chainTitle": "Del presupuesto al cobro, de un tirón.",
+      "chainIntro": "Cada documento nace del anterior. El stock, la contabilidad y el estado de cobro se actualizan solos.",
+      "chainAria": "Un documento de principio a fin",
+      "statsEyebrow": "En números",
+      "statsTitle": "Pequeño por fuera, completo por dentro.",
+      "faqEyebrow": "Preguntas frecuentes",
+      "faqTitle": "Lo que suele preguntarse.",
+      "ctaTitle": "¿Empezamos?",
+      "ctaBody": "Entra con tu usuario o pide acceso a quien administre tu empresa.",
+      "goToLogin": "Ir al acceso"
+    },
+    "setup": {
+      "subtitle": "Asistente de configuración inicial",
+      "next": "Siguiente",
+      "back": "Atrás",
+      "failed": "Fallo en la configuración. Revisa los logs.",
+      "networkError": "Error de red al intentar configurar el sistema.",
+      "db": {
+        "fillAll": "Completa todos los campos de la base de datos.",
+        "badPort": "El puerto debe ser un número válido (1-65535).",
+        "ok": "Conexión correcta.",
+        "fail": "No se pudo conectar.",
+        "networkError": "Error de red al verificar la conexión.",
+        "existingTitle": "Configuración existente detectada",
+        "existingBody": "Esta base de datos ya tiene una configuración de Keirost ERP. ¿Quieres saltarte el setup e ir directamente al login?",
+        "continue": "Continuar setup",
+        "goLogin": "Ir al login",
+        "continuing": "Continuando con el setup...",
+        "title": "1. Base de Datos",
+        "subtitle": "Configura la conexión principal de PostgreSQL.",
+        "host": "Host (ej: localhost)",
+        "port": "Puerto (ej: 5432)",
+        "user": "Usuario (ej: openfactu)",
+        "password": "Contraseña DB",
+        "testing": "Probando conexión...",
+        "test": "Probar conexión",
+        "checking": "Verificando conexión..."
+      },
+      "admin": {
+        "title": "2. Administrador",
+        "subtitle": "Crea la cuenta de superusuario global.",
+        "email": "Email",
+        "username": "Nombre de Usuario (ej: angel)"
+      },
+      "company": {
+        "title": "3. Primera Empresa",
+        "subtitle": "Datos fiscales de tu empresa principal.",
+        "name": "Nombre de la Empresa",
+        "nif": "NIF / CIF"
+      },
+      "details": {
+        "title": "4. Configuración de Empresa",
+        "subtitle": "Datos de contacto, domicilio y preferencias. Podrás editarlos después en Ajustes.",
+        "address": "Dirección",
+        "city": "Ciudad",
+        "currency": "Moneda",
+        "email": "Email de contacto",
+        "web": "Web",
+        "fiscalYearStart": "Inicio del año fiscal (MM-DD)",
+        "publicUrl": "URL pública de la aplicación",
+        "publicUrlHint": "Dominio desde el que tus clientes abrirán los enlaces de seguimiento (emails). Podrás cambiarlo luego en Ajustes."
+      },
+      "countries": {
+        "ES": "España",
+        "PT": "Portugal",
+        "FR": "Francia",
+        "IT": "Italia",
+        "DE": "Alemania",
+        "GB": "Reino Unido",
+        "US": "Estados Unidos"
+      },
+      "modules": {
+        "title": "5. Módulos",
+        "subtitle": "Elige qué módulos activar. Podrás cambiarlo después en Apps.",
+        "initializing": "Inicializando...",
+        "finish": "Finalizar"
+      }
+    },
+    "tracking": {
+      "copy": {
+        "t0": "En preparación",
+        "t1": "Listo / Despachado",
+        "t2": "En camino",
+        "t3": "En reparto",
+        "t4": "Entregado",
+        "t5": "Programada",
+        "t6": "Asignada a ruta",
+        "t7": "Recogida hoy",
+        "t8": "Recogido",
+        "t9": "Preparándose",
+        "t10": "Estamos preparando tu pedido",
+        "t11": "Te avisaremos cuando salga del almacén.",
+        "t12": "Estamos empaquetando tu pedido",
+        "t13": "En cuanto esté listo, saldrá a reparto.",
+        "t14": "Empaquetado",
+        "t15": "Tu pedido está empaquetado",
+        "t16": "Esperando a ser despachado.",
+        "t17": "Listo para salir",
+        "t18": "Tu pedido está listo para salir",
+        "t19": "Saldrá en cuanto el repartidor lo recoja.",
+        "t20": "Despachado",
+        "t21": "Tu pedido ha sido despachado",
+        "t22": "Asignado a una ruta de reparto — saldrá hacia ti en breve.",
+        "t23": "Tu pedido está en camino",
+        "t24": "Sigue al repartidor en tiempo real.",
+        "t25": "Sale hoy hacia ti",
+        "t26": "¡Tu pedido sale hoy hacia ti!",
+        "t27": "Asegúrate de que haya alguien para recibirlo.",
+        "t28": "Entrega aplazada",
+        "t29": "Intento de entrega fallido",
+        "t30": "No había nadie para recibir el pedido. Lo volveremos a intentar pronto.",
+        "t31": "¡Entregado!",
+        "t32": "Gracias por confiar en nosotros.",
+        "t33": "Incidencia",
+        "t34": "Ha ocurrido una incidencia",
+        "t35": "Te contactaremos cuanto antes.",
+        "t36": "Devuelto",
+        "t37": "Tu pedido ha sido devuelto",
+        "t38": "Consulta el historial para más detalles.",
+        "t39": "Cancelado",
+        "t40": "Pedido cancelado",
+        "t41": "Recogida programada",
+        "t42": "Vamos a recoger tu paquete",
+        "t43": "Te avisaremos cuando el repartidor salga hacia ti.",
+        "t44": "Tu recogida ya está planificada",
+        "t45": "Pasaremos pronto a por el paquete.",
+        "t46": "Vamos de camino a por tu paquete",
+        "t47": "¡Hoy recogemos tu paquete!",
+        "t48": "Ten el paquete preparado y a alguien para entregárselo al repartidor.",
+        "t49": "Recogida aplazada",
+        "t50": "No pudimos recoger tu paquete",
+        "t51": "Lo volveremos a intentar pronto.",
+        "t52": "¡Paquete recogido!",
+        "t53": "Ya lo tenemos — te contactaremos con la resolución.",
+        "t54": "Recogida cancelada"
+      },
+      "now": "ahora",
+      "minutesAgo": "hace {n} min",
+      "hoursAgo": "hace {n} h",
+      "daysAgo": "hace {n} d",
+      "notFoundBody": "No encontramos tu envío. Revisa el enlace que te enviamos por email.",
+      "shareTitle": "Seguimiento de envío",
+      "loading": "Cargando seguimiento…",
+      "notFound": "Envío no encontrado",
+      "invalidLink": "Enlace inválido.",
+      "tracking": "Seguimiento",
+      "share": "Compartir",
+      "eta": "Llegada estimada:",
+      "pickedUpOn": "Recogido el {date}",
+      "deliveredOn": "Entregado el {date}",
+      "pickupAt": "Recogeremos en",
+      "deliverTo": "Entregar en",
+      "updated": "Actualizado {ago}",
+      "history": "Historial del envío",
+      "noEvents": "Sin eventos registrados todavía.",
+      "footer": "Actualizado automáticamente cada 30 segundos · Keirost ERP"
+    },
+    "trackingChat": {
+      "open": "Preguntar a Keiro sobre tu envío",
+      "subtitle": "Pregúntame sobre tu envío",
+      "close": "Cerrar chat",
+      "empty": "Pregúntame por el estado de tu envío o cuéntame si hay algún problema.",
+      "typing": "Escribiendo…",
+      "placeholder": "Escribe tu mensaje…",
+      "send": "Enviar"
+    },
+    "publicForm": {
+      "unavailable": "Formulario no disponible",
+      "unavailableHint": "El enlace no es correcto o el formulario ya no existe.",
+      "hello": "Hola, {name}.",
+      "editing": "Estás cambiando una respuesta que ya enviaste."
+    }
+  }
+}

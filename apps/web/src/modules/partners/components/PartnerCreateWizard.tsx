@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Button, Card, DescriptionList, PageHeader, Stepper } from '@openfactu/ui';
@@ -26,6 +27,7 @@ interface Props {
 
 /** Resumen del alta antes de crear. */
 const Review: React.FC<{ form: PartnerForm; wizard: PartnerWizard }> = ({ form, wizard }) => {
+  const { t } = useI18n();
   const { data, addresses, lookups } = form;
   const nameOf = (rows: Array<{ id: string; name: string }>, id: string) =>
     rows.find((r) => r.id === id)?.name ?? null;
@@ -37,37 +39,57 @@ const Review: React.FC<{ form: PartnerForm; wizard: PartnerWizard }> = ({ form, 
       columns={2}
       emptyValue={<span className="text-fg-subtle">—</span>}
       items={[
-        { key: 'name', label: 'Razón social', value: data.name.trim(), fullWidth: true },
-        { key: 'foreign', label: 'Nombre comercial', value: data.foreignName || null },
-        { key: 'group', label: 'Grupo', value: nameOf(lookups.groups, data.groupId) },
-        { key: 'country', label: 'País', value: wizard.country?.name ?? data.countryCode },
+        {
+          key: 'name',
+          label: t('partners.fields.legalName'),
+          value: data.name.trim(),
+          fullWidth: true,
+        },
+        { key: 'foreign', label: t('partners.fields.tradeName'), value: data.foreignName || null },
+        {
+          key: 'group',
+          label: t('partners.fields.group'),
+          value: nameOf(lookups.groups, data.groupId),
+        },
+        {
+          key: 'country',
+          label: t('partners.fields.country'),
+          value: wizard.country?.name ?? data.countryCode,
+        },
         {
           key: 'nif',
-          label: wizard.country?.taxIdLabel || 'NIF',
+          label: wizard.country?.taxIdLabel || t('partners.checks.nif'),
           value: data.nif || null,
           mono: true,
         },
-        { key: 'phone', label: 'Teléfono', value: data.phone || null },
-        { key: 'email', label: 'Correo', value: data.email || null },
-        { key: 'web', label: 'Web', value: data.website || null },
-        { key: 'price', label: 'Tarifa', value: nameOf(lookups.priceLists, data.priceListId) },
+        { key: 'phone', label: t('partners.fields.phone'), value: data.phone || null },
+        { key: 'email', label: t('partners.fields.email'), value: data.email || null },
+        { key: 'web', label: t('partners.fields.website'), value: data.website || null },
+        {
+          key: 'price',
+          label: t('partners.fields.priceList'),
+          value: nameOf(lookups.priceLists, data.priceListId),
+        },
         {
           key: 'addresses',
-          label: 'Direcciones',
+          label: t('partners.wizard.steps.addresses'),
           value: addresses.length
-            ? [billing && `${billing} de facturación`, shipping && `${shipping} de envío`]
+            ? [
+                billing && t('partners.wizard.billingCount', { count: billing }),
+                shipping && t('partners.wizard.shippingCount', { count: shipping }),
+              ]
                 .filter(Boolean)
                 .join(' · ')
             : null,
         },
         {
           key: 'pay',
-          label: 'Forma de pago',
+          label: t('partners.fields.paymentMethod'),
           value: nameOf(lookups.paymentMethods, data.defaultPaymentMethodId),
         },
         {
           key: 'term',
-          label: 'Plazo de pago',
+          label: t('partners.fields.paymentTerm'),
           value: nameOf(lookups.paymentTerms, data.defaultPaymentTermId),
         },
         { key: 'iban', label: 'IBAN', value: data.iban || null, mono: true },
@@ -83,6 +105,7 @@ const Review: React.FC<{ form: PartnerForm; wizard: PartnerWizard }> = ({ form, 
  * interlocutor con el mismo NIF, correo o nombre.
  */
 export const PartnerCreateWizard: React.FC<Props> = ({ form, onCreate, onCancel }) => {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const wizard = usePartnerWizard(form);
   const { step, isLast } = wizard;
@@ -116,37 +139,40 @@ export const PartnerCreateWizard: React.FC<Props> = ({ form, onCreate, onCancel 
             // En móvil ya está la flecha de volver de la barra superior.
             className="w-fit gap-1 max-md:hidden"
           >
-            <ArrowLeft size={12} /> Interlocutores
+            <ArrowLeft size={12} /> {t('partners.nav.label')}
           </Button>
         }
-        title={form.data.name.trim() || 'Nuevo interlocutor'}
-        subtitle={`Paso ${step + 1} de ${PARTNER_WIZARD_STEPS.length} · ${current.label}`}
+        title={form.data.name.trim() || t('partners.wizard.newTitle')}
+        subtitle={`${t('partners.wizard.stepOf', {
+          n: step + 1,
+          total: PARTNER_WIZARD_STEPS.length,
+        })} · ${t(current.label)}`}
       />
 
       <Card noPadding className="mx-auto w-full max-w-4xl">
         <div className="overflow-x-auto border-b border-border-default px-4 py-3">
           <Stepper
-            aria-label="Pasos del alta"
+            aria-label={t('partners.wizard.stepsLabel')}
             size="sm"
             current={step}
-            steps={PARTNER_WIZARD_STEPS.map((s) => ({ id: s.id, label: s.label }))}
+            steps={PARTNER_WIZARD_STEPS.map((s) => ({ id: s.id, label: t(s.label) }))}
             onStepClick={(_, i) => wizard.goTo(i)}
           />
         </div>
 
         <div className="space-y-5 p-4 sm:p-6">
           <div>
-            <h2 className="text-lg font-semibold text-fg-default">{current.label}</h2>
-            <p className="text-sm text-fg-muted">{current.hint}</p>
+            <h2 className="text-lg font-semibold text-fg-default">{t(current.label)}</h2>
+            <p className="text-sm text-fg-muted">{t(current.hint)}</p>
           </div>
 
           <PartnerDuplicatesAlert
             duplicates={wizard.duplicates}
-            useLabel="Abrir su ficha"
+            useLabel={t('partners.wizard.openRecord')}
             onUse={(p) => navigate(`/partners/${p.id}`)}
           />
           {wizard.problems.length > 0 && (
-            <Alert tone="danger" title="Revisa antes de seguir" role="alert">
+            <Alert tone="danger" title={t('partners.wizard.reviewBeforeContinuing')} role="alert">
               <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm">
                 {wizard.problems.map((p) => (
                   <li key={p}>{p}</li>
@@ -162,7 +188,7 @@ export const PartnerCreateWizard: React.FC<Props> = ({ form, onCreate, onCancel 
               {form.addresses.length > 0 && (
                 <div className="flex justify-end">
                   <Button type="button" variant="secondary" size="sm" onClick={form.addAddress}>
-                    <Plus size={14} /> Nueva dirección
+                    <Plus size={14} /> {t('partners.addresses.new')}
                   </Button>
                 </div>
               )}
@@ -177,7 +203,7 @@ export const PartnerCreateWizard: React.FC<Props> = ({ form, onCreate, onCancel 
                 values={form.pluginValues}
                 onChange={form.setPluginValue}
                 layout="inline"
-                title="Campos personalizados"
+                title={t('partners.common.customFields')}
               />
             </div>
           )}
@@ -187,20 +213,20 @@ export const PartnerCreateWizard: React.FC<Props> = ({ form, onCreate, onCancel 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-default px-4 py-3 sm:px-6">
           {step > 0 ? (
             <Button type="button" variant="secondary" onClick={wizard.back}>
-              <ArrowLeft size={14} /> Atrás
+              <ArrowLeft size={14} /> {t('partners.common.back')}
             </Button>
           ) : (
             <Button type="button" variant="ghost" onClick={onCancel}>
-              Cancelar
+              {t('partners.common.cancel')}
             </Button>
           )}
           {isLast ? (
             <Button type="submit" isLoading={form.saving}>
-              {!form.saving && <UserPlus size={14} />} Crear interlocutor
+              {!form.saving && <UserPlus size={14} />} {t('partners.wizard.create')}
             </Button>
           ) : (
             <Button type="submit">
-              Siguiente <ArrowRight size={14} />
+              {t('partners.common.next')} <ArrowRight size={14} />
             </Button>
           )}
         </div>

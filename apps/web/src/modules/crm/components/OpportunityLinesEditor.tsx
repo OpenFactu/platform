@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Button,
@@ -43,6 +44,7 @@ export const OpportunityLinesEditor: React.FC<Props> = ({
   disabled,
 }) => {
   const fmt = useFormat();
+  const { t } = useI18n();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const [items, setItems] = useState<Item[]>([]);
   useEffect(() => {
@@ -59,7 +61,7 @@ export const OpportunityLinesEditor: React.FC<Props> = ({
 
   const addButton = !disabled && (
     <Button type="button" variant="secondary" size="sm" onClick={onAdd}>
-      <Plus size={14} /> Añadir producto
+      <Plus size={14} /> {t('crm.lines.add')}
     </Button>
   );
 
@@ -68,8 +70,8 @@ export const OpportunityLinesEditor: React.FC<Props> = ({
       <EmptyState
         variant="compact"
         icon={<PackagePlus size={18} />}
-        title="Sin productos"
-        hint="Sin productos, el importe de la oportunidad se teclea a mano."
+        title={t('crm.lines.empty')}
+        hint={t('crm.lines.emptyHint')}
         action={addButton || undefined}
       />
     );
@@ -84,12 +86,12 @@ export const OpportunityLinesEditor: React.FC<Props> = ({
         <div
           className={`${DESKTOP_GRID} px-3 text-[11px] font-bold uppercase tracking-wider text-fg-muted`}
         >
-          <span>Artículo</span>
-          <span>Descripción</span>
-          <span className="text-right">Cantidad</span>
-          <span className="text-right">Precio</span>
-          <span className="text-right">Dto.</span>
-          <span className="text-right">Importe</span>
+          <span>{t('crm.lines.item')}</span>
+          <span>{t('crm.lines.description')}</span>
+          <span className="text-right">{t('crm.lines.quantity')}</span>
+          <span className="text-right">{t('crm.lines.price')}</span>
+          <span className="text-right">{t('crm.lines.discountShort')}</span>
+          <span className="text-right">{t('crm.common.amount')}</span>
           <span />
         </div>
       )}
@@ -104,8 +106,8 @@ export const OpportunityLinesEditor: React.FC<Props> = ({
               variant="ghost"
               size="sm"
               onClick={() => onRemove(key)}
-              aria-label="Quitar producto"
-              title="Quitar producto"
+              aria-label={t('crm.lines.remove')}
+              title={t('crm.lines.remove')}
             >
               <Trash2 size={14} />
             </Button>
@@ -114,29 +116,29 @@ export const OpportunityLinesEditor: React.FC<Props> = ({
             <>
               <div className={isDesktop ? 'min-w-0' : 'col-span-2'}>
                 <SearchableSelect
-                  label={label('Artículo')}
-                  ariaLabel="Artículo"
+                  label={label(t('crm.lines.item'))}
+                  ariaLabel={t('crm.lines.item')}
                   options={itemOptions}
                   value={l.itemId ?? ''}
                   onChange={(v) => set({ itemId: v || null, itemName: null })}
-                  placeholder="Elige un artículo"
+                  placeholder={t('crm.lines.chooseItem')}
                   clearable
                   disabled={disabled}
                 />
               </div>
               <div className={isDesktop ? 'min-w-0' : 'col-span-2'}>
                 <Input
-                  label={label('Descripción')}
-                  aria-label="Descripción"
+                  label={label(t('crm.lines.description'))}
+                  aria-label={t('crm.lines.description')}
                   value={l.description ?? ''}
                   onChange={(e) => set({ description: e.target.value })}
-                  placeholder="Opcional"
+                  placeholder={t('crm.common.optional')}
                   disabled={disabled}
                 />
               </div>
               <NumberInput
-                label={label('Cantidad')}
-                aria-label="Cantidad"
+                label={label(t('crm.lines.quantity'))}
+                aria-label={t('crm.lines.quantity')}
                 value={l.quantity}
                 onChange={(v) => set({ quantity: v ?? 0 })}
                 precision={2}
@@ -145,16 +147,16 @@ export const OpportunityLinesEditor: React.FC<Props> = ({
                 disabled={disabled}
               />
               <CurrencyInput
-                label={label('Precio')}
-                aria-label="Precio"
+                label={label(t('crm.lines.price'))}
+                aria-label={t('crm.lines.price')}
                 value={l.price}
                 onChange={(v) => set({ price: v ?? 0 })}
                 align="right"
                 disabled={disabled}
               />
               <PercentInput
-                label={label('Descuento')}
-                aria-label="Descuento"
+                label={label(t('crm.lines.discount'))}
+                aria-label={t('crm.lines.discount')}
                 value={l.discount}
                 onChange={(v) => set({ discount: v ?? 0 })}
                 precision={0}
@@ -180,7 +182,7 @@ export const OpportunityLinesEditor: React.FC<Props> = ({
             <li key={key} className="py-5 first:pt-0 space-y-4">
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-fg-muted">
-                  Producto {idx + 1}
+                  {t('crm.lines.product', { n: idx + 1 })}
                 </span>
                 <span className="flex-1" />
                 <span className="text-sm font-semibold tabular-nums text-fg-default">
@@ -203,7 +205,7 @@ export const OpportunityLinesEditor: React.FC<Props> = ({
       >
         {isDesktop && (addButton || <span />)}
         <div className="flex items-baseline justify-between gap-3">
-          <span className="text-sm text-fg-muted">Total</span>
+          <span className="text-sm text-fg-muted">{t('crm.common.total')}</span>
           <span className="text-base font-semibold tabular-nums text-fg-default">
             {fmt.money(total)}
           </span>

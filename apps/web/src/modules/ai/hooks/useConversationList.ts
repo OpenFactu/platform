@@ -1,6 +1,7 @@
 import { coreApi } from '@/shared/api';
 import { useCallback, useEffect, useState } from 'react';
 import type { AIConversationItem, AIConversationProject } from '@openfactu/ui/ai';
+import { t } from '@/i18n/i18n';
 
 interface ConversationSummary {
   id: string;
@@ -28,7 +29,7 @@ export function useConversationList(currentId: string | null) {
         setItems(
           (list ?? []).map((c) => ({
             id: c.id,
-            title: c.title || 'Conversación',
+            title: c.title || t('ai.history.untitled'),
             projectId: c.projectId ?? undefined,
             updatedAt: c.updatedAt,
           })),

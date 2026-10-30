@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
 export const ReportStockValuation: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -25,19 +27,23 @@ export const ReportStockValuation: React.FC = () => {
 
   const columns = useMemo(
     () => [
-      { key: 'code', label: 'Código' },
-      { key: 'name', label: 'Artículo' },
-      { key: 'stock', label: 'Stock', format: (v: any) => String(v) },
-      { key: 'unitPrice', label: 'Precio ud', format: (v: any) => fmt.money(v) },
-      { key: 'value', label: 'Valor', format: (v: any) => fmt.money(v) },
+      { key: 'code', label: t('reports.common.code') },
+      { key: 'name', label: t('reports.common.item') },
+      { key: 'stock', label: t('reports.common.stock'), format: (v: any) => String(v) },
+      {
+        key: 'unitPrice',
+        label: t('reports.stockValuation.unitPrice'),
+        format: (v: any) => fmt.money(v),
+      },
+      { key: 'value', label: t('reports.stockValuation.value'), format: (v: any) => fmt.money(v) },
     ],
-    [fmt],
+    [fmt, t],
   );
 
   return (
     <ReportPage
-      title="Valoración de inventario"
-      subtitle={`Stock × precio medio. Valor total: ${fmt.money(totalValue)}`}
+      title={t('reports.stockValuation.title')}
+      subtitle={t('reports.stockValuation.subtitle', { total: fmt.money(totalValue) })}
       rows={rows}
       columns={columns as any}
       loading={loading}

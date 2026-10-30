@@ -27,6 +27,8 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useZonesWithStock } from '@/hooks/useZonesWithStock';
 import { BarcodeCameraModal } from '@/components/scanner/BarcodeCameraModal';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate } from '@/i18n/format';
 
 export interface BatchDetail {
   batchNum: string;
@@ -97,6 +99,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
   const showZoneColumn = Array.isArray(zones) && zones.length > 0;
   const { token, user } = useAuth();
   const zonesWithStock = useZonesWithStock();
+  const { t } = useI18n();
 
   // --- Líneas relevantes (las que usan lotes/series) ---
   const traceableLines = useMemo(() => {
@@ -543,8 +546,8 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Gestión de trazabilidad"
-      subtitle="Asigna lotes y series a las líneas del documento"
+      title={t('inventory.batchPanel.title')}
+      subtitle={t('inventory.batchPanel.subtitle')}
       maxWidth="7xl"
     >
       <div className="flex flex-col gap-4 max-h-[85vh] overflow-y-auto">
@@ -552,10 +555,10 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
         <div className="rounded-lg border border-border-default bg-bg-muted overflow-hidden">
           <div className="px-4 py-2 bg-bg-muted border-b border-border-default flex items-center justify-between">
             <p className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
-              Líneas del documento
+              {t('inventory.batchPanel.documentLines')}
             </p>
             <p className="text-[10px] font-bold text-fg-subtle">
-              {traceableLines.length} línea{traceableLines.length === 1 ? '' : 's'} con trazabilidad
+              {t('inventory.batchPanel.traceableLines', { count: traceableLines.length })}
             </p>
           </div>
           {/* Las tres tablas de este panel se quedan a mano: la de arriba pinta
@@ -567,25 +570,28 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
               <thead className="sticky top-0 bg-bg-muted backdrop-blur-sm border-b border-border-default">
                 <tr className="text-[9px] font-black uppercase tracking-widest text-fg-subtle">
                   <th className="px-3 py-2 text-left">#</th>
-                  <th className="px-3 py-2 text-left">Artículo</th>
-                  <th className="px-3 py-2 text-center">Tipo</th>
-                  <th className="px-3 py-2 text-right">Requerido</th>
-                  <th className="px-3 py-2 text-right">Asignado</th>
-                  <th className="px-3 py-2 text-right">Pendiente</th>
-                  <th className="px-3 py-2 text-center">Estado</th>
+                  <th className="px-3 py-2 text-left">{t('inventory.batchPanel.item')}</th>
+                  <th className="px-3 py-2 text-center">{t('inventory.batchPanel.type')}</th>
+                  <th className="px-3 py-2 text-right">{t('inventory.batchPanel.required')}</th>
+                  <th className="px-3 py-2 text-right">{t('inventory.batchPanel.assigned')}</th>
+                  <th className="px-3 py-2 text-right">{t('inventory.batchPanel.pending')}</th>
+                  <th className="px-3 py-2 text-center">{t('inventory.batchPanel.status')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle">
                 {traceableLines.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-3 py-8 text-center text-xs text-fg-subtle italic">
-                      No hay líneas con lotes o series en este documento.
+                      {t('inventory.batchPanel.noTraceableLines')}
                     </td>
                   </tr>
                 )}
                 {traceableLines.map(({ line, originalIdx }, i) => {
                   const item = masters.items.find((it: any) => it.id === line.itemId);
-                  const type = item?.manageBy === 'S' ? 'Serie' : 'Lote';
+                  const type =
+                    item?.manageBy === 'S'
+                      ? t('inventory.batchPanel.serial')
+                      : t('inventory.batchPanel.batch');
                   const req = Number(line.quantity || 0);
                   const asig = (pending[originalIdx] ?? []).reduce(
                     (a, b) => a + Number(b.quantity || 0),
@@ -668,8 +674,10 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
               <div className="px-4 py-2 bg-bg-muted border-b border-border-default flex items-center justify-between gap-2">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
                   {isSale
-                    ? 'Stock disponible'
-                    : `${manageBy === 'S' ? 'Series' : 'Lotes'} existentes`}
+                    ? t('inventory.batchPanel.availableStock')
+                    : manageBy === 'S'
+                      ? t('inventory.batchPanel.existingSerials')
+                      : t('inventory.batchPanel.existingBatches')}
                 </p>
                 {isSale && (
                   <Button
@@ -677,11 +685,11 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                     size="sm"
                     onClick={autoFillRemaining}
                     disabled={isBalanced}
-                    title="Asigna automáticamente en orden FIFO hasta completar la cantidad pendiente"
+                    title={t('inventory.batchPanel.autoFifoHint')}
                     className="gap-1.5"
                   >
                     <Zap size={11} className={isBalanced ? '' : 'animate-pulse'} />
-                    Auto FIFO
+                    {t('inventory.batchPanel.autoFifo')}
                   </Button>
                 )}
               </div>
@@ -691,7 +699,11 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                 <Input
                   inputSize="sm"
                   leftIcon={<Search size={12} />}
-                  placeholder={`Buscar ${manageBy === 'S' ? 'serie' : 'lote'}...`}
+                  placeholder={
+                    manageBy === 'S'
+                      ? t('inventory.batchPanel.searchSerial')
+                      : t('inventory.batchPanel.searchBatch')
+                  }
                   value={leftSearch}
                   onChange={(e) => setLeftSearch(e.target.value)}
                 />
@@ -712,8 +724,8 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                       onPaste={handleDraftPaste}
                       placeholder={
                         manageBy === 'S'
-                          ? 'S0001 o S0001,S0002 o S0001-S0010...'
-                          : 'L-001 o L-001,L-002...'
+                          ? t('inventory.batchPanel.serialInputPlaceholder')
+                          : t('inventory.batchPanel.batchInputPlaceholder')
                       }
                       containerClassName="flex-1 min-w-0"
                       className="font-mono font-bold"
@@ -731,7 +743,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                           onChange={setDraftQty}
                           precision={2}
                           min={0}
-                          placeholder="Cant."
+                          placeholder={t('inventory.batchPanel.qtyShort')}
                           inputSize="sm"
                           containerClassName="w-20 shrink-0"
                           onKeyDown={(e) => {
@@ -754,7 +766,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                       variant="secondary"
                       size="sm"
                       onClick={() => setCameraOpen(true)}
-                      title="Escanear con cámara"
+                      title={t('inventory.batchPanel.scanWithCamera')}
                       className="shrink-0"
                     >
                       <Camera size={14} />
@@ -766,16 +778,18 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                       size="sm"
                       onClick={addDraft}
                       disabled={!draftBatch.trim() || (manageBy === 'B' && draftQty == null)}
-                      title="Añadir nuevo (Enter)"
+                      title={t('inventory.batchPanel.addNew')}
                       className="shrink-0"
                     >
                       <Plus size={14} />
                     </Button>
                   </div>
                   <p className="text-[9px] text-fg-subtle italic px-1 leading-tight">
-                    Pega con <kbd className="font-mono">,</kbd> <kbd className="font-mono">;</kbd> o
-                    saltos de línea · rangos tipo <kbd className="font-mono">S0001-S0010</kbd> · usa{' '}
-                    <kbd className="font-mono">📷</kbd> para escanear con cámara o un lector USB
+                    {t('inventory.batchPanel.pasteHintPrefix')} <kbd className="font-mono">,</kbd>{' '}
+                    <kbd className="font-mono">;</kbd> {t('inventory.batchPanel.pasteHintNewlines')}{' '}
+                    <kbd className="font-mono">S0001-S0010</kbd> ·{' '}
+                    {t('inventory.batchPanel.pasteHintUse')} <kbd className="font-mono">📷</kbd>{' '}
+                    {t('inventory.batchPanel.pasteHintScan')}
                   </p>
                 </div>
               )}
@@ -784,29 +798,43 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
               <div className="flex-1 overflow-y-auto max-h-[320px]">
                 {loadingAvail ? (
                   <p className="p-4 text-[11px] text-fg-subtle italic text-center">
-                    Cargando {manageBy === 'S' ? 'series' : 'lotes'}...
+                    {manageBy === 'S'
+                      ? t('inventory.batchPanel.loadingSerials')
+                      : t('inventory.batchPanel.loadingBatches')}
                   </p>
                 ) : availableList.length === 0 ? (
                   <p className="p-4 text-[11px] text-fg-subtle italic text-center">
                     {isSale
-                      ? 'No hay stock disponible con trazabilidad.'
-                      : `No hay ${manageBy === 'S' ? 'series' : 'lotes'} previos para este artículo.`}
+                      ? t('inventory.batchPanel.noTraceableStock')
+                      : manageBy === 'S'
+                        ? t('inventory.batchPanel.noPreviousSerials')
+                        : t('inventory.batchPanel.noPreviousBatches')}
                   </p>
                 ) : (
                   <table className="w-full text-[11px]">
                     <thead className="sticky top-0 bg-bg-muted backdrop-blur-sm border-b border-border-subtle">
                       <tr className="text-[9px] font-black uppercase tracking-wider text-fg-subtle">
                         <th className="px-2 py-1.5 text-left">
-                          {manageBy === 'S' ? 'Nº Serie' : 'Lote'}
+                          {manageBy === 'S'
+                            ? t('inventory.batchPanel.serialNo')
+                            : t('inventory.batchPanel.batch')}
                         </th>
                         {manageBy === 'B' && (
                           <th className="px-2 py-1.5 text-right">
-                            {isSale ? 'Disp.' : 'En stock'}
+                            {isSale
+                              ? t('inventory.batchPanel.availableShort')
+                              : t('inventory.batchPanel.inStock')}
                           </th>
                         )}
-                        {isSale && <th className="px-2 py-1.5 text-left">Ubicación</th>}
+                        {isSale && (
+                          <th className="px-2 py-1.5 text-left">
+                            {t('inventory.batchPanel.location')}
+                          </th>
+                        )}
                         {!isSale && manageBy === 'B' && (
-                          <th className="px-2 py-1.5 text-left">Caduc.</th>
+                          <th className="px-2 py-1.5 text-left">
+                            {t('inventory.batchPanel.expiryShort')}
+                          </th>
                         )}
                         <th className="px-2 py-1.5 w-6"></th>
                       </tr>
@@ -842,7 +870,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                             )}
                             {!isSale && manageBy === 'B' && (
                               <td className="px-2 py-1.5 text-[10px] text-fg-subtle tabular-nums">
-                                {ab.expiryDate ? new Date(ab.expiryDate).toLocaleDateString() : '—'}
+                                {ab.expiryDate ? formatDate(ab.expiryDate) : '—'}
                               </td>
                             )}
                             <td className="px-2 py-1.5">
@@ -852,7 +880,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => assignFromAvailable(ab)}
-                                  title="Asignar"
+                                  title={t('inventory.batchPanel.assign')}
                                 >
                                   <ChevronRight size={14} />
                                 </Button>
@@ -871,23 +899,26 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
             <div className="rounded-lg border border-border-default bg-bg-card flex flex-col overflow-hidden">
               <div className="px-4 py-2 bg-bg-muted border-b border-border-default flex items-center justify-between gap-2">
                 <p className="text-[10px] font-black uppercase tracking-[0.15em] text-fg-muted">
-                  Asignado
+                  {t('inventory.batchPanel.assigned')}
                 </p>
                 <div className="flex items-center gap-3">
                   {/* Preferencia que surte efecto al instante (no se guarda con
                       ningún botón), así que Switch en vez de Checkbox. */}
-                  <span title="Salta a la siguiente línea incompleta al cuadrar la actual">
+                  <span title={t('inventory.batchPanel.autoAdvanceHint')}>
                     <Switch
                       size="sm"
                       checked={autoAdvance}
                       onChange={setAutoAdvance}
-                      label="Auto-avance"
+                      label={t('inventory.batchPanel.autoAdvance')}
                     />
                   </span>
                   <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider">
                     <span className="text-fg-subtle tabular-nums">
                       {manageBy === 'S'
-                        ? `${assigned.length} / ${Math.round(requiredQty)} series`
+                        ? t('inventory.batchPanel.serialsProgress', {
+                            assigned: assigned.length,
+                            required: Math.round(requiredQty),
+                          })
                         : `${totalAssigned.toFixed(2)} / ${requiredQty.toFixed(2)}`}
                     </span>
                     {isBalanced ? (
@@ -901,7 +932,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
               {showZoneColumn && assigned.length > 0 && (
                 <div className="px-3 py-2 border-b border-border-subtle bg-indigo-50/40 dark:bg-indigo-500/5 flex items-center gap-2">
                   <span className="text-[9px] font-black uppercase tracking-wider text-fg-muted shrink-0">
-                    Zona todos:
+                    {t('inventory.batchPanel.zoneForAll')}
                   </span>
                   {/* Actúa como acción, no como campo: el valor vuelve siempre a
                       vacío tras aplicar la zona a todas las filas. */}
@@ -911,7 +942,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                     onChange={(v) => {
                       if (v) setZoneForAll(v);
                     }}
-                    placeholder="— aplicar a todas las filas —"
+                    placeholder={t('inventory.batchPanel.applyToAllRows')}
                     className="flex-1"
                   />
                 </div>
@@ -920,7 +951,11 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                 {assigned.length === 0 ? (
                   <EmptyState
                     icon={<Package size={24} />}
-                    title={`Sin ${manageBy === 'S' ? 'series' : 'lotes'} asignados`}
+                    title={
+                      manageBy === 'S'
+                        ? t('inventory.batchPanel.noSerialsAssigned')
+                        : t('inventory.batchPanel.noBatchesAssigned')
+                    }
                   />
                 ) : (
                   <table className="w-full text-[11px]">
@@ -928,11 +963,25 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                       <tr className="text-[9px] font-black uppercase tracking-wider text-fg-subtle">
                         <th className="px-2 py-1.5 w-6"></th>
                         <th className="px-2 py-1.5 text-left">
-                          {manageBy === 'S' ? 'Nº Serie' : 'Lote'}
+                          {manageBy === 'S'
+                            ? t('inventory.batchPanel.serialNo')
+                            : t('inventory.batchPanel.batch')}
                         </th>
-                        {manageBy === 'B' && <th className="px-2 py-1.5 text-right">Cant.</th>}
-                        {manageBy === 'B' && <th className="px-2 py-1.5 text-left">Caducidad</th>}
-                        {showZoneColumn && <th className="px-2 py-1.5 text-left">Zona</th>}
+                        {manageBy === 'B' && (
+                          <th className="px-2 py-1.5 text-right">
+                            {t('inventory.batchPanel.qtyShort')}
+                          </th>
+                        )}
+                        {manageBy === 'B' && (
+                          <th className="px-2 py-1.5 text-left">
+                            {t('inventory.batchPanel.expiry')}
+                          </th>
+                        )}
+                        {showZoneColumn && (
+                          <th className="px-2 py-1.5 text-left">
+                            {t('inventory.batchPanel.zone')}
+                          </th>
+                        )}
                         <th className="px-2 py-1.5 w-6"></th>
                       </tr>
                     </thead>
@@ -945,7 +994,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                               variant="ghost"
                               size="sm"
                               onClick={() => unassign(a.batchNum)}
-                              title="Quitar"
+                              title={t('inventory.batchPanel.remove')}
                             >
                               <ChevronLeft size={14} />
                             </Button>
@@ -969,7 +1018,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                           )}
                           {manageBy === 'B' && (
                             <td className="px-2 py-1.5 text-[10px] text-fg-subtle tabular-nums">
-                              {a.expiryDate ? new Date(a.expiryDate).toLocaleDateString() : '—'}
+                              {a.expiryDate ? formatDate(a.expiryDate) : '—'}
                             </td>
                           )}
                           {showZoneColumn && (
@@ -990,7 +1039,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                               variant="ghost"
                               size="sm"
                               onClick={() => unassign(a.batchNum)}
-                              title="Eliminar"
+                              title={t('inventory.batchPanel.delete')}
                             >
                               <Trash2 size={12} />
                             </Button>
@@ -1008,7 +1057,7 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
                     {selectedItem.name}
                   </span>
                   <span className="font-black uppercase tracking-wider text-fg-subtle shrink-0 ml-2">
-                    {assigned.length} línea{assigned.length === 1 ? '' : 's'}
+                    {t('inventory.batchPanel.lineCount', { count: assigned.length })}
                   </span>
                 </div>
               )}
@@ -1019,24 +1068,24 @@ export const BatchAssignmentPanel: React.FC<Props> = ({
         {/* ----------- FOOTER ----------- */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-border-subtle">
           <p className="text-[11px] text-fg-subtle italic">
-            {
-              traceableLines.filter(({ originalIdx }) => {
+            {t('inventory.batchPanel.balancedSummary', {
+              balanced: traceableLines.filter(({ originalIdx }) => {
                 const l = lines[originalIdx];
                 const a = (pending[originalIdx] ?? []).reduce(
                   (acc, b) => acc + Number(b.quantity || 0),
                   0,
                 );
                 return Math.abs(Number(l.quantity || 0) - a) < 0.0001;
-              }).length
-            }{' '}
-            de {traceableLines.length} líneas cuadradas
+              }).length,
+              total: traceableLines.length,
+            })}
           </p>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onClose}>
-              Cancelar
+              {t('inventory.batchPanel.cancel')}
             </Button>
             <Button onClick={handleSave} className="flex items-center gap-2">
-              <Check size={16} /> Guardar asignaciones
+              <Check size={16} /> {t('inventory.batchPanel.saveAssignments')}
             </Button>
           </div>
         </div>

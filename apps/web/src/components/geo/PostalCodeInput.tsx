@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Input } from '@openfactu/ui';
 import { validatePostalCode } from '@openfactu/common';
 import { useGeo } from '../../hooks/useGeo';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   countryCode: string;
@@ -19,6 +20,7 @@ export const PostalCodeInput: React.FC<Props> = ({
   label,
 }) => {
   const { getCountry } = useGeo();
+  const { t } = useI18n();
   const country = getCountry(countryCode);
   const [touched, setTouched] = useState(false);
   const valid = value ? validatePostalCode(value, country || undefined) : true;
@@ -26,7 +28,7 @@ export const PostalCodeInput: React.FC<Props> = ({
 
   return (
     <Input
-      label={label || country?.postalCodeLabel || 'Código postal'}
+      label={label || country?.postalCodeLabel || t('app.geo.postalCode')}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       onBlur={() => setTouched(true)}
@@ -34,7 +36,7 @@ export const PostalCodeInput: React.FC<Props> = ({
       // `status` pinta el icono de validación como sufijo (Check / X, los mismos
       // que se dibujaban aquí a mano) y `error` implica status 'error'.
       status={touched && !!value && valid ? 'success' : 'default'}
-      error={showError ? 'Formato inválido.' : undefined}
+      error={showError ? t('app.geo.invalidFormat') : undefined}
     />
   );
 };

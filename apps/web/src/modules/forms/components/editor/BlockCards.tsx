@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import {
   Button,
@@ -30,34 +31,37 @@ const BlockActions: React.FC<{
   onDuplicate: () => void;
   onRemove: () => void;
   disabled?: boolean;
-}> = ({ onDuplicate, onRemove, disabled }) => (
-  <div className="flex justify-end gap-1 border-t border-border-subtle pt-3">
-    <Tooltip content="Duplicar">
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        aria-label="Duplicar"
-        onClick={onDuplicate}
-        disabled={disabled}
-      >
-        <Copy size={16} />
-      </Button>
-    </Tooltip>
-    <Tooltip content="Eliminar">
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        aria-label="Eliminar"
-        onClick={onRemove}
-        disabled={disabled}
-      >
-        <Trash2 size={16} />
-      </Button>
-    </Tooltip>
-  </div>
-);
+}> = ({ onDuplicate, onRemove, disabled }) => {
+  const { t } = useI18n();
+  return (
+    <div className="flex justify-end gap-1 border-t border-border-subtle pt-3">
+      <Tooltip content={t('forms.blocks.duplicate')}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label={t('forms.blocks.duplicate')}
+          onClick={onDuplicate}
+          disabled={disabled}
+        >
+          <Copy size={16} />
+        </Button>
+      </Tooltip>
+      <Tooltip content={t('forms.blocks.delete')}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          aria-label={t('forms.blocks.delete')}
+          onClick={onRemove}
+          disabled={disabled}
+        >
+          <Trash2 size={16} />
+        </Button>
+      </Tooltip>
+    </div>
+  );
+};
 
 interface BlockProps<T> {
   block: T;
@@ -114,48 +118,51 @@ export const TextBlockCard: React.FC<BlockProps<TextBlock>> = ({
   onChange,
   disabled,
   ...p
-}) => (
-  <BlockShell
-    active={p.active}
-    onActivate={p.onActivate}
-    label="Editar bloque de texto"
-    handleProps={p.handleProps}
-    preview={
-      block.title || block.description ? (
-        <TextBlockContent block={block} />
-      ) : (
-        <span className="text-fg-subtle">Título</span>
-      )
-    }
-  >
-    <Input
-      aria-label="Título"
-      value={block.title}
-      onChange={(e) => onChange({ title: e.target.value })}
-      placeholder="Título"
-      disabled={disabled}
-    />
-    <Textarea
-      aria-label="Texto"
-      rows={4}
-      value={block.description ?? ''}
-      onChange={(e) => onChange({ description: e.target.value || undefined })}
-      placeholder="Texto (opcional)"
-      helperText={RICH_TEXT_HINT}
-      disabled={disabled}
-    />
-    <TextStyleControls block={block} onChange={onChange} disabled={disabled} />
-    {(block.title || block.description) && (
-      <div className="space-y-2 rounded-xs border border-dashed border-border-default p-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
-          Así se verá
+}) => {
+  const { t } = useI18n();
+  return (
+    <BlockShell
+      active={p.active}
+      onActivate={p.onActivate}
+      label={t('forms.blocks.editText')}
+      handleProps={p.handleProps}
+      preview={
+        block.title || block.description ? (
+          <TextBlockContent block={block} />
+        ) : (
+          <span className="text-fg-subtle">{t('forms.blocks.title')}</span>
+        )
+      }
+    >
+      <Input
+        aria-label={t('forms.blocks.title')}
+        value={block.title}
+        onChange={(e) => onChange({ title: e.target.value })}
+        placeholder={t('forms.blocks.title')}
+        disabled={disabled}
+      />
+      <Textarea
+        aria-label={t('forms.blocks.text')}
+        rows={4}
+        value={block.description ?? ''}
+        onChange={(e) => onChange({ description: e.target.value || undefined })}
+        placeholder={t('forms.blocks.textOptional')}
+        helperText={t(RICH_TEXT_HINT)}
+        disabled={disabled}
+      />
+      <TextStyleControls block={block} onChange={onChange} disabled={disabled} />
+      {(block.title || block.description) && (
+        <div className="space-y-2 rounded-xs border border-dashed border-border-default p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
+            {t('forms.blocks.preview')}
+          </div>
+          <TextBlockContent block={block} />
         </div>
-        <TextBlockContent block={block} />
-      </div>
-    )}
-    <BlockActions onDuplicate={p.onDuplicate} onRemove={p.onRemove} disabled={disabled} />
-  </BlockShell>
-);
+      )}
+      <BlockActions onDuplicate={p.onDuplicate} onRemove={p.onRemove} disabled={disabled} />
+    </BlockShell>
+  );
+};
 
 export const ImageBlockCard: React.FC<
   BlockProps<ImageBlock> & {
@@ -163,49 +170,52 @@ export const ImageBlockCard: React.FC<
     onUpload: (file: File) => Promise<void>;
     uploading: boolean;
   }
-> = ({ block, onChange, disabled, imageUrl, onUpload, uploading, ...p }) => (
-  <BlockShell
-    active={p.active}
-    onActivate={p.onActivate}
-    label="Editar imagen"
-    handleProps={p.handleProps}
-    preview={
-      <>
-        {imageUrl ? (
-          <img src={imageUrl} alt={block.caption ?? ''} className="w-full rounded-xs" />
-        ) : (
-          <p className="text-sm text-fg-subtle">Sin imagen</p>
-        )}
-        {block.caption && <p className="text-sm text-fg-muted mt-2">{block.caption}</p>}
-      </>
-    }
-  >
-    {imageUrl && (
-      <img
-        src={imageUrl}
-        alt=""
-        className="w-full max-h-80 object-contain rounded-xs bg-bg-muted"
+> = ({ block, onChange, disabled, imageUrl, onUpload, uploading, ...p }) => {
+  const { t } = useI18n();
+  return (
+    <BlockShell
+      active={p.active}
+      onActivate={p.onActivate}
+      label={t('forms.blocks.editImage')}
+      handleProps={p.handleProps}
+      preview={
+        <>
+          {imageUrl ? (
+            <img src={imageUrl} alt={block.caption ?? ''} className="w-full rounded-xs" />
+          ) : (
+            <p className="text-sm text-fg-subtle">{t('forms.blocks.noImage')}</p>
+          )}
+          {block.caption && <p className="text-sm text-fg-muted mt-2">{block.caption}</p>}
+        </>
+      }
+    >
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt=""
+          className="w-full max-h-80 object-contain rounded-xs bg-bg-muted"
+        />
+      )}
+      <FileDropzone
+        variant="inline"
+        accept="image/*"
+        maxSizeMb={5}
+        isUploading={uploading}
+        label={imageUrl ? t('forms.blocks.changeImage') : t('forms.blocks.uploadImage')}
+        onFiles={(files) => (files[0] ? onUpload(files[0]) : undefined)}
+        disabled={disabled}
       />
-    )}
-    <FileDropzone
-      variant="inline"
-      accept="image/*"
-      maxSizeMb={5}
-      isUploading={uploading}
-      label={imageUrl ? 'Cambiar imagen' : 'Subir imagen'}
-      onFiles={(files) => (files[0] ? onUpload(files[0]) : undefined)}
-      disabled={disabled}
-    />
-    <Input
-      aria-label="Pie de foto"
-      value={block.caption ?? ''}
-      onChange={(e) => onChange({ caption: e.target.value || undefined })}
-      placeholder="Pie de foto (opcional)"
-      disabled={disabled}
-    />
-    <BlockActions onDuplicate={p.onDuplicate} onRemove={p.onRemove} disabled={disabled} />
-  </BlockShell>
-);
+      <Input
+        aria-label={t('forms.blocks.caption')}
+        value={block.caption ?? ''}
+        onChange={(e) => onChange({ caption: e.target.value || undefined })}
+        placeholder={t('forms.blocks.captionOptional')}
+        disabled={disabled}
+      />
+      <BlockActions onDuplicate={p.onDuplicate} onRemove={p.onRemove} disabled={disabled} />
+    </BlockShell>
+  );
+};
 
 /** Cabecera de una sección cuando hay varias: «Sección 2 de 3», título, descripción y menú. */
 export const SectionHeader: React.FC<{
@@ -216,76 +226,79 @@ export const SectionHeader: React.FC<{
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
   disabled?: boolean;
-}> = ({ section, index, count, onChange, onMove, onRemove, disabled }) => (
-  <div>
-    <div className="inline-flex items-center rounded-t-xs bg-accent px-3 py-1 text-xs font-semibold text-accent-fg">
-      Sección {index + 1} de {count}
-    </div>
-    <Card className="rounded-tl-none border-t-4 border-t-accent" bodyClassName="space-y-3">
-      <div className="flex items-start gap-2">
-        <div className="flex-1 min-w-0 space-y-2">
-          <Input
-            aria-label="Título de la sección"
-            value={section.title ?? ''}
-            onChange={(e) => onChange({ title: e.target.value || undefined })}
-            placeholder="Sección sin título"
-            disabled={disabled}
-          />
-          <Textarea
-            aria-label="Descripción de la sección"
-            rows={2}
-            value={section.description ?? ''}
-            onChange={(e) => onChange({ description: e.target.value || undefined })}
-            placeholder="Descripción (opcional)"
-            helperText={RICH_TEXT_HINT}
-            disabled={disabled}
-          />
-          <div className="sm:w-64">
-            <Select
-              label="Efecto del título"
-              options={TITLE_EFFECT_OPTIONS}
-              value={section.titleEffect ?? 'none'}
-              onChange={(v) =>
-                onChange({ titleEffect: v === 'none' ? undefined : (v as TitleEffect) })
-              }
+}> = ({ section, index, count, onChange, onMove, onRemove, disabled }) => {
+  const { t } = useI18n();
+  return (
+    <div>
+      <div className="inline-flex items-center rounded-t-xs bg-accent px-3 py-1 text-xs font-semibold text-accent-fg">
+        {t('forms.blocks.sectionOf', { n: index + 1, count })}
+      </div>
+      <Card className="rounded-tl-none border-t-4 border-t-accent" bodyClassName="space-y-3">
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0 space-y-2">
+            <Input
+              aria-label={t('forms.blocks.sectionTitle')}
+              value={section.title ?? ''}
+              onChange={(e) => onChange({ title: e.target.value || undefined })}
+              placeholder={t('forms.blocks.untitledSection')}
               disabled={disabled}
             />
+            <Textarea
+              aria-label={t('forms.blocks.sectionDescription')}
+              rows={2}
+              value={section.description ?? ''}
+              onChange={(e) => onChange({ description: e.target.value || undefined })}
+              placeholder={t('forms.blocks.descriptionOptional')}
+              helperText={t(RICH_TEXT_HINT)}
+              disabled={disabled}
+            />
+            <div className="sm:w-64">
+              <Select
+                label={t('forms.textControls.titleEffect')}
+                options={TITLE_EFFECT_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
+                value={section.titleEffect ?? 'none'}
+                onChange={(v) =>
+                  onChange({ titleEffect: v === 'none' ? undefined : (v as TitleEffect) })
+                }
+                disabled={disabled}
+              />
+            </div>
           </div>
+          <DropdownMenu
+            align="end"
+            aria-label={t('forms.blocks.sectionOptions')}
+            disabled={disabled}
+            items={[
+              {
+                label: t('forms.blocks.moveSectionUp'),
+                icon: <ArrowUp size={14} />,
+                onClick: () => onMove(-1),
+                disabled: index === 0,
+              },
+              {
+                label: t('forms.blocks.moveSectionDown'),
+                icon: <ArrowDown size={14} />,
+                onClick: () => onMove(1),
+                disabled: index === count - 1,
+              },
+              {
+                label: t('forms.blocks.deleteSection'),
+                icon: <Trash2 size={14} />,
+                onClick: onRemove,
+                destructive: true,
+                separatorBefore: true,
+              },
+            ]}
+          >
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xs text-fg-muted hover:bg-bg-hover">
+              <MoreVertical size={16} />
+            </span>
+          </DropdownMenu>
         </div>
-        <DropdownMenu
-          align="end"
-          aria-label="Opciones de la sección"
-          disabled={disabled}
-          items={[
-            {
-              label: 'Subir sección',
-              icon: <ArrowUp size={14} />,
-              onClick: () => onMove(-1),
-              disabled: index === 0,
-            },
-            {
-              label: 'Bajar sección',
-              icon: <ArrowDown size={14} />,
-              onClick: () => onMove(1),
-              disabled: index === count - 1,
-            },
-            {
-              label: 'Eliminar sección (sus preguntas se conservan)',
-              icon: <Trash2 size={14} />,
-              onClick: onRemove,
-              destructive: true,
-              separatorBefore: true,
-            },
-          ]}
-        >
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-xs text-fg-muted hover:bg-bg-hover">
-            <MoreVertical size={16} />
-          </span>
-        </DropdownMenu>
-      </div>
-    </Card>
-  </div>
-);
+      </Card>
+    </div>
+  );
+};
 
 /** «Después de la sección N»: a dónde se va al terminarla. */
 export const SectionNext: React.FC<{
@@ -294,26 +307,29 @@ export const SectionNext: React.FC<{
   sections: Section[];
   onChange: (next: string | undefined) => void;
   disabled?: boolean;
-}> = ({ section, index, sections, onChange, disabled }) => (
-  <div className="flex flex-wrap items-center gap-2 px-1 text-sm text-fg-muted">
-    <span>Después de la sección {index + 1}</span>
-    <div className="w-full sm:w-72">
-      <Select
-        ariaLabel={`Después de la sección ${index + 1}`}
-        options={[
-          { value: '', label: 'Continuar a la siguiente sección' },
-          ...sections
-            .map((s, i) => ({
-              value: s.id,
-              label: `Ir a la sección ${i + 1}${s.title ? `: ${s.title}` : ''}`,
-            }))
-            .filter((o) => o.value !== section.id),
-          { value: 'submit', label: 'Enviar formulario' },
-        ]}
-        value={section.next ?? ''}
-        onChange={(v) => onChange(v || undefined)}
-        disabled={disabled}
-      />
+}> = ({ section, index, sections, onChange, disabled }) => {
+  const { t } = useI18n();
+  return (
+    <div className="flex flex-wrap items-center gap-2 px-1 text-sm text-fg-muted">
+      <span>{t('forms.blocks.afterSection', { n: index + 1 })}</span>
+      <div className="w-full sm:w-72">
+        <Select
+          ariaLabel={t('forms.blocks.afterSection', { n: index + 1 })}
+          options={[
+            { value: '', label: t('forms.options.continueNext') },
+            ...sections
+              .map((s, i) => ({
+                value: s.id,
+                label: `${t('forms.options.goToSection', { n: i + 1 })}${s.title ? `: ${s.title}` : ''}`,
+              }))
+              .filter((o) => o.value !== section.id),
+            { value: 'submit', label: t('forms.options.submitForm') },
+          ]}
+          value={section.next ?? ''}
+          onChange={(v) => onChange(v || undefined)}
+          disabled={disabled}
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};

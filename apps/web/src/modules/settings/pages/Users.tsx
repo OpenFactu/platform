@@ -15,6 +15,7 @@ import {
 } from '@openfactu/ui';
 import type { PasswordRequirement } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   UserPlus,
   Mail,
@@ -97,9 +98,9 @@ const EMPTY_PERM: PermSet = { read: false, write: false, delete: false };
  * cuando escribe una contraseña a mano en lugar de generarla.
  */
 const PASSWORD_REQUIREMENTS: PasswordRequirement[] = [
-  { label: 'Al menos 8 caracteres', test: (v) => v.length >= 8 },
-  { label: 'Mayúsculas y minúsculas', test: (v) => /[a-z]/.test(v) && /[A-Z]/.test(v) },
-  { label: 'Al menos un número', test: (v) => /\d/.test(v) },
+  { label: 'settingsUsers.password.minLength', test: (v) => v.length >= 8 },
+  { label: 'settingsUsers.password.mixedCase', test: (v) => /[a-z]/.test(v) && /[A-Z]/.test(v) },
+  { label: 'settingsUsers.password.digit', test: (v) => /\d/.test(v) },
 ];
 
 /** Roles de membership por empresa. */
@@ -197,6 +198,7 @@ const PermissionsEditor: React.FC<{
   disabled?: boolean;
   onChange: (p: Permissions) => void;
 }> = ({ permissions, disabled, onChange }) => {
+  const { t } = useI18n();
   const { groups, loading } = usePermissionCatalog();
 
   const togglePerm = (path: string, key: keyof PermSet, value: boolean) => {
@@ -215,7 +217,7 @@ const PermissionsEditor: React.FC<{
     group.items.every((i) => permissions[i.path]?.[key]);
 
   if (loading) {
-    return <p className="pt-2 text-xs text-fg-muted">Cargando el catálogo de permisos…</p>;
+    return <p className="pt-2 text-xs text-fg-muted">{t('settingsUsers.loadingCatalog')}</p>;
   }
 
   return (
@@ -254,7 +256,11 @@ const PermissionsEditor: React.FC<{
  }
  ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}
                     >
-                      {key === 'read' ? 'Ver' : key === 'write' ? 'Crear' : 'Borrar'}
+                      {key === 'read'
+                        ? t('settingsUsers.perm.read')
+                        : key === 'write'
+                          ? t('settingsUsers.perm.write')
+                          : t('settingsUsers.perm.delete')}
                     </button>
                   );
                 })}
@@ -271,7 +277,7 @@ const PermissionsEditor: React.FC<{
                       <PermToggle
                         active={p.read}
                         tone="success"
-                        label="Ver"
+                        label={t('settingsUsers.perm.read')}
                         icon={<Eye size={18} />}
                         disabled={disabled}
                         onChange={(v) => togglePerm(item.path, 'read', v)}
@@ -279,7 +285,7 @@ const PermissionsEditor: React.FC<{
                       <PermToggle
                         active={p.write}
                         tone="accent"
-                        label="Crear"
+                        label={t('settingsUsers.perm.write')}
                         icon={<Pencil size={18} />}
                         disabled={disabled}
                         onChange={(v) => togglePerm(item.path, 'write', v)}
@@ -287,7 +293,7 @@ const PermissionsEditor: React.FC<{
                       <PermToggle
                         active={p.delete}
                         tone="danger"
-                        label="Borrar"
+                        label={t('settingsUsers.perm.delete')}
                         icon={<AlertTriangle size={18} />}
                         disabled={disabled}
                         onChange={(v) => togglePerm(item.path, 'delete', v)}
@@ -320,6 +326,7 @@ export const Users: React.FC = () => {
   const isPrivileged = currentUser?.role === 'SUPERUSER' || currentUser?.role === 'ADMIN';
 
   const toast = useToast();
+  const { t } = useI18n();
   const popup = usePopup();
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -347,7 +354,7 @@ export const Users: React.FC = () => {
       const res = await coreApi.raw('GET', '/api/users');
       setUsers(res.data);
     } catch {
-      toast.error('Error al cargar usuarios');
+      toast.error(t('settingsUsers.loadError'));
     } finally {
       setLoading(false);
     }
@@ -409,7 +416,7 @@ export const Users: React.FC = () => {
   const addMembership = () => {
     const usedTenants = memberships.filter((m) => !m.isDeleted).map((m) => m.tenantId);
     const available = allTenants.find((t) => !usedTenants.includes(t.id));
-    if (!available) return toast.error('Ya has asignado todas las empresas disponibles');
+    if (!available) return toast.error(t('settingsUsers.allAssigned'));
     setMemberships((prev) => [
       ...prev,
       {
@@ -460,7 +467,7 @@ export const Users: React.FC = () => {
       if (password) payload.password = password;
 
       const savedUser: any = await coreApi.raw(method, url, payload).then((r) => {
-        if (!r.ok) throw new Error(r.data?.error || 'Error al guardar usuario');
+        if (!r.ok) throw new Error(r.data?.error || t('settingsUsers.saveError'));
         return r.data;
       });
       const userId = savedUser.id || editingUser?.id;
@@ -485,11 +492,13 @@ export const Users: React.FC = () => {
         }
       }
 
-      toast.success(editingUser ? 'Usuario actualizado' : 'Usuario creado');
+      toast.success(editingUser ? t('settingsUsers.updated') : t('settingsUsers.created'));
       resetForm();
       fetchUsers();
     } catch (err) {
-      toast.error((err instanceof Error ? err.message : undefined) || 'Error de conexión');
+      toast.error(
+        (err instanceof Error ? err.message : undefined) || t('settingsUsers.connectionError'),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -497,21 +506,20 @@ export const Users: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar usuario',
-      message:
-        'Se eliminará el usuario y sus accesos a las empresas asignadas. No se puede deshacer.',
+      title: t('settingsUsers.deleteTitle'),
+      message: t('settingsUsers.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('settingsUsers.delete'),
     });
     if (!ok) return;
     try {
       const res = await coreApi.raw('DELETE', `/api/users/${id}`);
       if (res.ok) {
         fetchUsers();
-        toast.success('Usuario eliminado');
+        toast.success(t('settingsUsers.deleted'));
       }
     } catch {
-      toast.error('Fallo al eliminar');
+      toast.error(t('settingsUsers.deleteError'));
     }
   };
 
@@ -523,9 +531,9 @@ export const Users: React.FC = () => {
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Usuarios"
-        subtitle="Gestiona accesos, roles y permisos por empresa."
-        eyebrow="Gestión Central"
+        title={t('settingsUsers.title')}
+        subtitle={t('settingsUsers.subtitle')}
+        eyebrow={t('settingsUsers.eyebrow')}
         icon={<UsersIcon size={18} />}
         size="lg"
         actions={
@@ -536,7 +544,7 @@ export const Users: React.FC = () => {
               disabled={!canWrite}
               className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
             >
-              <UserPlus size={18} /> Nuevo Usuario
+              <UserPlus size={18} /> {t('settingsUsers.newUser')}
             </Button>
           )
         }
@@ -547,14 +555,16 @@ export const Users: React.FC = () => {
         <Card className="border-0">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-black text-fg-default">
-              {editingUser ? `Editando: ${editingUser.username}` : 'Nuevo Usuario'}
+              {editingUser
+                ? t('settingsUsers.editing', { name: editingUser.username })
+                : t('settingsUsers.newUser')}
             </h2>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={resetForm}
-              title="Cerrar formulario"
+              title={t('settingsUsers.closeForm')}
             >
               <X size={18} />
             </Button>
@@ -564,7 +574,7 @@ export const Users: React.FC = () => {
             {/* Identidad */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Nombre de Usuario"
+                label={t('settingsUsers.username')}
                 type="text"
                 placeholder="jdoe"
                 value={username}
@@ -574,11 +584,11 @@ export const Users: React.FC = () => {
               <Input
                 label={
                   <span className="inline-flex items-center gap-1">
-                    <Mail size={10} /> Email
+                    <Mail size={10} /> {t('settingsUsers.email')}
                   </span>
                 }
                 type="email"
-                placeholder="ejemplo@empresa.com"
+                placeholder={t('settingsUsers.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -592,19 +602,23 @@ export const Users: React.FC = () => {
                     hay algo escrito, para no pintar 3 avisos en rojo en el
                     caso normal de edición sin tocar la contraseña. */}
                 <PasswordInput
-                  label={editingUser ? 'Nueva Contraseña (vacío = no cambiar)' : 'Contraseña'}
+                  label={
+                    editingUser ? t('settingsUsers.newPassword') : t('settingsUsers.password.label')
+                  }
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required={!editingUser}
                   generator={{ length: 14 }}
                   showStrength={!!password}
-                  requirements={password ? PASSWORD_REQUIREMENTS : undefined}
+                  requirements={
+                    password
+                      ? PASSWORD_REQUIREMENTS.map((r) => ({ ...r, label: t(r.label as string) }))
+                      : undefined
+                  }
                 />
                 {editingUser && (
-                  <p className="text-[10px] text-fg-subtle">
-                    Escribe o genera una nueva contraseña para restablecer el acceso del usuario.
-                  </p>
+                  <p className="text-[10px] text-fg-subtle">{t('settingsUsers.resetHelp')}</p>
                 )}
               </div>
               <div className="space-y-1.5">
@@ -613,33 +627,34 @@ export const Users: React.FC = () => {
                     size={11}
                     className={isPrivileged ? 'text-accent' : 'text-fg-subtle'}
                   />
-                  Rol Global {!isPrivileged && <Lock size={9} className="text-fg-subtle" />}
+                  {t('settingsUsers.globalRole')}{' '}
+                  {!isPrivileged && <Lock size={9} className="text-fg-subtle" />}
                 </label>
                 {isPrivileged ? (
                   // 2–3 opciones fijas → Select. La etiqueta con iconos se queda
                   // arriba (Select solo acepta `label` de texto), de ahí ariaLabel.
                   <Select
-                    ariaLabel="Rol global"
+                    ariaLabel={t('settingsUsers.globalRoleAria')}
                     value={globalRole}
                     onChange={(v) => setGlobalRole(v)}
                     options={[
-                      { label: 'Usuario estándar', value: 'USER' },
-                      { label: 'Administrador', value: 'ADMIN' },
+                      { label: t('settingsUsers.roles.user'), value: 'USER' },
+                      { label: t('settingsUsers.roles.admin'), value: 'ADMIN' },
                       ...(currentUser?.role === 'SUPERUSER'
-                        ? [{ label: 'Superadministrador', value: 'SUPERUSER' }]
+                        ? [{ label: t('settingsUsers.roles.superuser'), value: 'SUPERUSER' }]
                         : []),
                     ]}
                   />
                 ) : (
                   <div className="w-full bg-bg-muted border border-border-default rounded-lg py-2 px-3 text-sm text-fg-muted font-bold">
                     {globalRole === 'USER'
-                      ? 'Usuario estándar'
+                      ? t('settingsUsers.roles.user')
                       : globalRole === 'ADMIN'
-                        ? 'Administrador'
+                        ? t('settingsUsers.roles.admin')
                         : globalRole === 'DRIVER'
-                          ? 'Conductor (Reparto)'
+                          ? t('settingsUsers.roles.driver')
                           : globalRole === 'SUPERUSER'
-                            ? 'Superadministrador'
+                            ? t('settingsUsers.roles.superuser')
                             : globalRole}
                   </div>
                 )}
@@ -651,12 +666,12 @@ export const Users: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-black text-fg-default uppercase tracking-tight">
-                    Acceso a Empresas
+                    {t('settingsUsers.companyAccess')}
                   </h3>
                   <p className="text-[10px] text-fg-subtle font-bold mt-0.5">
                     {activeMemberships.length === 0
-                      ? 'Sin empresas asignadas — este usuario no podrá iniciar sesión'
-                      : `${activeMemberships.length} empresa${activeMemberships.length > 1 ? 's' : ''} asignada${activeMemberships.length > 1 ? 's' : ''}`}
+                      ? t('settingsUsers.noCompanies')
+                      : t('settingsUsers.companiesAssigned', { count: activeMemberships.length })}
                   </p>
                 </div>
                 {isPrivileged && globalRole !== 'SUPERUSER' && (
@@ -667,7 +682,7 @@ export const Users: React.FC = () => {
                     onClick={addMembership}
                     className="gap-1.5"
                   >
-                    <Plus size={14} /> Añadir Empresa
+                    <Plus size={14} /> {t('settingsUsers.addCompany')}
                   </Button>
                 )}
               </div>
@@ -675,19 +690,14 @@ export const Users: React.FC = () => {
               {globalRole === 'SUPERUSER' && (
                 <div className="flex items-center gap-3 p-4 bg-warning-bg border border-[rgb(var(--k-warning-rgb)/0.35)] rounded-lg text-warning-fg">
                   <ShieldCheck size={18} className="shrink-0" />
-                  <p className="text-sm font-bold">
-                    Los SUPERUSER tienen acceso global a todas las empresas sin necesidad de
-                    asignación.
-                  </p>
+                  <p className="text-sm font-bold">{t('settingsUsers.superuserHelp')}</p>
                 </div>
               )}
 
               {activeMemberships.length === 0 && globalRole !== 'SUPERUSER' && (
                 <div className="flex items-center gap-3 p-4 bg-bg-muted border border-dashed border-border-default rounded-lg text-fg-subtle">
                   <Building2 size={18} className="shrink-0" />
-                  <p className="text-sm font-medium">
-                    Pulsa"Añadir Empresa"para asignar acceso a una empresa.
-                  </p>
+                  <p className="text-sm font-medium">{t('settingsUsers.addCompanyHelp')}</p>
                 </div>
               )}
 
@@ -704,14 +714,14 @@ export const Users: React.FC = () => {
                           {m.tenantName}
                         </span>
                         <span className="text-[10px] text-danger font-black uppercase">
-                          Se eliminará al guardar
+                          {t('settingsUsers.willBeRemoved')}
                         </span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           className="ml-auto"
-                          title="Deshacer eliminación"
+                          title={t('settingsUsers.undoRemove')}
                           onClick={() => updateMembership(idx, { isDeleted: false })}
                         >
                           <X size={14} />
@@ -745,13 +755,13 @@ export const Users: React.FC = () => {
                             value={m.tenantId}
                             onChange={(v) => updateMembership(idx, { tenantId: v })}
                             disabled={!isPrivileged}
-                            placeholder="Elige empresa"
+                            placeholder={t('settingsUsers.chooseCompany')}
                           />
                         </div>
 
                         {/* Rol de membership — 3 opciones fijas → Select */}
                         <Select
-                          ariaLabel="Rol en la empresa"
+                          ariaLabel={t('settingsUsers.companyRole')}
                           options={MEMBERSHIP_ROLE_OPTIONS}
                           value={m.role}
                           onChange={(v) =>
@@ -768,12 +778,14 @@ export const Users: React.FC = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => updateMembership(idx, { expanded: !m.expanded })}
-                            title="Configurar permisos"
+                            title={t('settingsUsers.configurePermissions')}
                           >
                             {m.expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                           </Button>
                         )}
-                        {m.role === 'ADMIN' && <Badge variant="info">Acceso Total</Badge>}
+                        {m.role === 'ADMIN' && (
+                          <Badge variant="info">{t('settingsUsers.fullAccess')}</Badge>
+                        )}
 
                         {/* Eliminar — sigue siendo solo para roles privilegiados */}
                         {isPrivileged && (
@@ -782,7 +794,7 @@ export const Users: React.FC = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => removeMembership(idx)}
-                            title="Quitar acceso a esta empresa"
+                            title={t('settingsUsers.removeAccess')}
                           >
                             <X size={15} />
                           </Button>
@@ -806,7 +818,7 @@ export const Users: React.FC = () => {
                                 updateMembership(idx, { permissions: all });
                               }}
                             >
-                              Activar Todo
+                              {t('settingsUsers.enableAll')}
                             </Button>
                             <Button
                               type="button"
@@ -817,7 +829,7 @@ export const Users: React.FC = () => {
                                 updateMembership(idx, { permissions: defaultPermissions() })
                               }
                             >
-                              Limpiar
+                              {t('settingsUsers.clear')}
                             </Button>
                           </div>
                           <PermissionsEditor
@@ -836,11 +848,11 @@ export const Users: React.FC = () => {
             {/* Acciones */}
             <div className="flex gap-3 justify-end pt-4 border-t border-border-subtle">
               <Button variant="secondary" type="button" onClick={resetForm}>
-                Cancelar
+                {t('settingsUsers.cancel')}
               </Button>
               <Button type="submit" disabled={isSubmitting || !canWrite}>
                 {isSubmitting && <Loader size="sm" variant="white" className="mr-2" />}
-                {editingUser ? 'Guardar Cambios' : 'Crear Usuario'}
+                {editingUser ? t('settingsUsers.saveChanges') : t('settingsUsers.createUser')}
               </Button>
             </div>
           </form>

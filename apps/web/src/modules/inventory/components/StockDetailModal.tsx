@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Modal, Table, Loader, Button, Badge } from '@openfactu/ui';
 import { Tag, Package, Warehouse, Boxes } from 'lucide-react';
 import { useFormat } from '@/hooks/useFormat';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Batch {
   batchNum: string;
@@ -59,7 +60,7 @@ const SectionHeader: React.FC<{
 export const StockDetailModal: React.FC<Props> = ({
   isOpen,
   onClose,
-  title = 'Detalle de Inventario',
+  title,
   subtitle,
   selectedStockItem,
   stockDetail,
@@ -67,6 +68,7 @@ export const StockDetailModal: React.FC<Props> = ({
   defaultUnified = true,
 }) => {
   const fmt = useFormat();
+  const { t } = useI18n();
   const [showUnified, setShowUnified] = useState<boolean>(!!defaultUnified);
 
   const warehouseStock = stockDetail?.warehouseStock ?? [];
@@ -105,7 +107,7 @@ export const StockDetailModal: React.FC<Props> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`${title}: ${selectedStockItem?.name || ''}`}
+      title={`${title ?? t('inventory.stockDetail.title')}: ${selectedStockItem?.name || ''}`}
       subtitle={subtitle}
       maxWidth="5xl"
     >
@@ -120,7 +122,7 @@ export const StockDetailModal: React.FC<Props> = ({
             <div className="flex items-center gap-2 text-fg-muted">
               <Boxes size={16} />
               <span className="text-[11px] font-bold uppercase tracking-wide">
-                Stock total físico
+                {t('inventory.stockDetail.totalPhysical')}
               </span>
             </div>
             <span className="text-2xl font-black font-mono tracking-tight text-fg-default tabular-nums">
@@ -134,23 +136,25 @@ export const StockDetailModal: React.FC<Props> = ({
             <div className="space-y-4 min-w-0">
               {/* Stock por almacén */}
               <div className="rounded-lg border border-border-default overflow-hidden">
-                <SectionHeader icon={<Warehouse size={12} />}>Stock por Almacén</SectionHeader>
+                <SectionHeader icon={<Warehouse size={12} />}>
+                  {t('inventory.stockDetail.byWarehouse')}
+                </SectionHeader>
                 <Table
                   responsive="scroll"
                   className="w-full"
                   density="compact"
-                  emptyMessage="Sin existencias físicas en ningún almacén."
+                  emptyMessage={t('inventory.stockDetail.noStock')}
                   data={warehouseStock}
                   columns={[
                     {
-                      header: 'Almacén',
+                      header: t('inventory.stockDetail.warehouse'),
                       primary: true,
                       cell: (item: WarehouseStock) => (
                         <span className="truncate">{item.warehouseName}</span>
                       ),
                     },
                     {
-                      header: 'Stock Físico',
+                      header: t('inventory.stockDetail.physicalStock'),
                       align: 'right',
                       width: '32%',
                       cell: (item: WarehouseStock) => (
@@ -167,7 +171,7 @@ export const StockDetailModal: React.FC<Props> = ({
               {zoneStock.length > 0 && (
                 <div className="rounded-lg border border-border-default overflow-hidden">
                   <SectionHeader icon={<Package size={12} />}>
-                    Reparto por Ubicaciones (Zonas)
+                    {t('inventory.stockDetail.byZone')}
                   </SectionHeader>
                   <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {zoneStock.map((zs) => (
@@ -200,11 +204,13 @@ export const StockDetailModal: React.FC<Props> = ({
                   icon={<Tag size={12} />}
                   action={
                     <Button size="sm" variant="ghost" onClick={() => setShowUnified((s) => !s)}>
-                      {showUnified ? 'Solo lotes' : 'Incluir sin lote'}
+                      {showUnified
+                        ? t('inventory.stockDetail.onlyBatches')
+                        : t('inventory.stockDetail.includeUnbatched')}
                     </Button>
                   }
                 >
-                  Trazabilidad por Lote/Serie
+                  {t('inventory.stockDetail.traceability')}
                 </SectionHeader>
 
                 {traceData.length ? (
@@ -216,7 +222,7 @@ export const StockDetailModal: React.FC<Props> = ({
                       data={traceData}
                       columns={[
                         {
-                          header: 'Lote / Serie',
+                          header: t('inventory.stockDetail.batchSerial'),
                           width: '24%',
                           cell: (item: Batch) =>
                             item.batchNum ? (
@@ -228,13 +234,13 @@ export const StockDetailModal: React.FC<Props> = ({
                             ),
                         },
                         {
-                          header: 'Almacén',
+                          header: t('inventory.stockDetail.warehouse'),
                           cell: (item: Batch) => (
                             <span className="truncate">{item.warehouseName}</span>
                           ),
                         },
                         {
-                          header: 'Cant.',
+                          header: t('inventory.stockDetail.qtyShort'),
                           align: 'right',
                           width: '14%',
                           cell: (item: Batch) => (
@@ -242,7 +248,7 @@ export const StockDetailModal: React.FC<Props> = ({
                           ),
                         },
                         {
-                          header: 'Caducidad',
+                          header: t('inventory.stockDetail.expiry'),
                           align: 'right',
                           width: '20%',
                           cell: (item: Batch) => (
@@ -252,7 +258,7 @@ export const StockDetailModal: React.FC<Props> = ({
                           ),
                         },
                         {
-                          header: 'Ubicación',
+                          header: t('inventory.stockDetail.location'),
                           align: 'right',
                           width: '18%',
                           cell: (item: Batch) => (
@@ -266,7 +272,7 @@ export const StockDetailModal: React.FC<Props> = ({
                   <div className="p-8 text-center flex-1 flex flex-col items-center justify-center">
                     <Package size={24} className="mx-auto text-fg-subtle mb-2" />
                     <p className="text-[11px] text-fg-subtle italic">
-                      No hay lotes o series con existencias disponibles en este momento.
+                      {t('inventory.stockDetail.noBatches')}
                     </p>
                   </div>
                 )}
@@ -276,7 +282,7 @@ export const StockDetailModal: React.FC<Props> = ({
 
           {/* Pie */}
           <div className="flex justify-end gap-3 pt-3 border-t border-border-subtle">
-            <Button onClick={onClose}>Cerrar</Button>
+            <Button onClick={onClose}>{t('inventory.stockDetail.close')}</Button>
           </div>
         </div>
       )}

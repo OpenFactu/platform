@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Loader, Modal, usePopup, useToast } from '@openfactu/ui';
+import { Button, Loader, Modal, Stepper, usePopup, useToast } from '@openfactu/ui';
 import { validateBarcode } from '@/utils/barcodeValidation';
 import { useItemForm } from '../hooks/useItemForm';
 import { ItemGeneralFields } from './ItemGeneralFields';
@@ -9,6 +9,7 @@ import type { Category } from '../domain/category';
 import type { Item } from '../domain/item';
 import type { Uom } from '../domain/uom';
 import type { Warehouse, Zone } from '../domain/warehouse';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   open: boolean;
@@ -24,9 +25,9 @@ interface Props {
 }
 
 const STEPS = [
-  { id: 1, label: 'Esencial' },
-  { id: 2, label: 'Logística' },
-  { id: 3, label: 'Web' },
+  { id: 1, label: 'inventory.itemWizard.steps.essential' },
+  { id: 2, label: 'inventory.itemWizard.steps.logistics' },
+  { id: 3, label: 'inventory.itemWizard.steps.web' },
 ];
 
 /**
@@ -45,6 +46,7 @@ export const ItemCreateWizard: React.FC<Props> = ({
   onCreated,
 }) => {
   const toast = useToast();
+  const { t } = useI18n();
   const popup = usePopup();
   const form = useItemForm();
   const [step, setStep] = useState(1);
@@ -71,22 +73,22 @@ export const ItemCreateWizard: React.FC<Props> = ({
       const v = validateBarcode(values.barcode);
       if (!v.valid) {
         const ok = await popup.confirm({
-          title: 'Código de barras inválido',
-          message: `El código de barras parece inválido (${v.format}: ${v.reason}). ¿Guardar de todos modos?`,
+          title: t('inventory.barcode.invalidTitle'),
+          message: t('inventory.barcode.invalidMessage', { format: v.format, reason: v.reason }),
           tone: 'warning',
-          confirmLabel: 'Guardar igualmente',
+          confirmLabel: t('inventory.barcode.saveAnyway'),
         });
         if (!ok) return;
       }
     }
     try {
       const saved = await form.submit();
-      toast.success('Artículo creado');
+      toast.success(t('inventory.itemWizard.created'));
       onCreated(saved, openDetail);
       onClose();
     } catch (err: any) {
       console.error('[ItemCreateWizard] error:', err);
-      toast.error(`Error: ${err?.message || err}`);
+      toast.error(t('inventory.itemWizard.error', { message: err?.message || err }));
     }
   };
 
@@ -94,32 +96,26 @@ export const ItemCreateWizard: React.FC<Props> = ({
     <Modal
       isOpen={open}
       onClose={onClose}
-      title={duplicateFrom ? `Duplicar: ${duplicateFrom.name}` : 'Nuevo Artículo'}
-      subtitle="Con lo esencial basta — logística y web son opcionales."
+      title={
+        duplicateFrom
+          ? t('inventory.itemWizard.duplicateTitle', { name: duplicateFrom.name })
+          : t('inventory.itemWizard.newTitle')
+      }
+      subtitle={t('inventory.itemWizard.subtitle')}
       maxWidth="lg"
     >
       <div className="pt-2">
-        {/* Indicador de pasos */}
-        <div className="flex items-center gap-2 mb-6">
-          {STEPS.map((s, i) => (
-            <React.Fragment key={s.id}>
-              {i > 0 && <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />}
-              {/* Indicador+atajo de paso: sigue siendo un botón, pero el estado
-                  (actual / hecho / pendiente) va por variant en vez de clases. */}
-              <Button
-                type="button"
-                size="sm"
-                variant={step === s.id ? 'primary' : step > s.id ? 'secondary' : 'ghost'}
-                disabled={s.id > step && !essentialsOk}
-                onClick={() => setStep(s.id)}
-                className="rounded-full gap-2"
-              >
-                <span>{step > s.id ? '✓' : s.id}</span>
-                {s.label}
-              </Button>
-            </React.Fragment>
-          ))}
-        </div>
+        {/* Stepper de @openfactu/ui: hechos, actual y pendientes, y volver
+            atrás pulsando. Saltar adelante solo con lo esencial completo. */}
+        <Stepper
+          className="mb-6"
+          size="sm"
+          aria-label={t('inventory.itemWizard.stepsAria')}
+          current={step - 1}
+          allowForward={essentialsOk}
+          steps={STEPS.map((s) => ({ id: String(s.id), label: t(s.label) }))}
+          onStepClick={(_, i) => setStep(i + 1)}
+        />
 
         {step === 1 && (
           <div className="animate-in slide-in-from-left-2 duration-200">
@@ -153,13 +149,13 @@ export const ItemCreateWizard: React.FC<Props> = ({
           <div>
             {step > 1 && (
               <Button type="button" variant="secondary" onClick={() => setStep(step - 1)}>
-                ← Atrás
+                {t('inventory.itemWizard.back')}
               </Button>
             )}
           </div>
           <div className="flex gap-2">
             <Button type="button" variant="secondary" onClick={onClose} disabled={form.saving}>
-              Cancelar
+              {t('inventory.itemWizard.cancel')}
             </Button>
             {step < 3 ? (
               <>
@@ -168,12 +164,12 @@ export const ItemCreateWizard: React.FC<Props> = ({
                   variant="outline"
                   onClick={() => create(false)}
                   disabled={!essentialsOk || form.saving}
-                  title="Crear con los valores por defecto del resto de pasos"
+                  title={t('inventory.itemWizard.createNowHint')}
                 >
-                  {form.saving ? <Loader size="sm" /> : 'Crear ya'}
+                  {form.saving ? <Loader size="sm" /> : t('inventory.itemWizard.createNow')}
                 </Button>
                 <Button type="button" onClick={() => setStep(step + 1)} disabled={!essentialsOk}>
-                  Siguiente →
+                  {t('inventory.itemWizard.next')}
                 </Button>
               </>
             ) : (
@@ -182,7 +178,11 @@ export const ItemCreateWizard: React.FC<Props> = ({
                 onClick={() => create(true)}
                 disabled={!essentialsOk || form.saving}
               >
-                {form.saving ? <Loader size="sm" variant="white" /> : 'Crear artículo'}
+                {form.saving ? (
+                  <Loader size="sm" variant="white" />
+                ) : (
+                  t('inventory.itemWizard.create')
+                )}
               </Button>
             )}
           </div>

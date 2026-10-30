@@ -6,9 +6,11 @@ const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default:
 export const homeModule: ModuleManifest = {
   nav: {
     id: 'home',
-    label: 'Inicio',
+    label: 'home.nav.home',
     icon: 'Home',
-    subTabs: [{ id: 'dashboard', label: 'Dashboard', path: '/' }],
+    subTabs: [{ id: 'dashboard', label: 'home.nav.dashboard', path: '/' }],
   },
-  routes: [{ pattern: '/', Component: Dashboard, title: 'Dashboard', iconName: 'BarChart3' }],
+  routes: [
+    { pattern: '/', Component: Dashboard, title: 'home.nav.dashboard', iconName: 'BarChart3' },
+  ],
 };

@@ -1,82 +1,47 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import esMessages from './locales/es.json';
-import enMessages from './locales/en.json';
+import React, { createContext, useCallback, useContext, useSyncExternalStore } from 'react';
+import {
+  I18nProvider as UiI18nProvider,
+  registerTranslations,
+  type DeepPartial,
+  type Messages as UiMessages,
+} from '@openfactu/ui';
+import uiEn from './ui/en.json';
+import {
+  getLocale,
+  setLocale,
+  subscribeLocale,
+  translate,
+  type Locale,
+  type TranslateVars,
+} from './i18n';
 
-type Messages = Record<string, any>;
-
-export type Locale = 'es' | 'en';
-
-const MESSAGES: Record<Locale, Messages> = {
-  es: esMessages as Messages,
-  en: enMessages as Messages,
-};
-
-const STORAGE_KEY = 'keirost_locale';
+export type { Locale } from './i18n';
 
 interface I18nContextType {
   locale: Locale;
   setLocale: (l: Locale) => void;
-  t: (path: string, vars?: Record<string, string | number>) => string;
+  t: (path: string, vars?: TranslateVars) => string;
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
-function detectInitialLocale(): Locale {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'es' || stored === 'en') return stored;
-  } catch {
-    /* noop */
-  }
-  const nav = (navigator.language || 'es').slice(0, 2).toLowerCase();
-  return nav === 'en' ? 'en' : 'es';
-}
-
-function lookup(obj: Messages, path: string): string | undefined {
-  const keys = path.split('.');
-  let cur: any = obj;
-  for (const k of keys) {
-    if (cur && typeof cur === 'object' && k in cur) cur = cur[k];
-    else return undefined;
-  }
-  return typeof cur === 'string' ? cur : undefined;
-}
-
-function interpolate(template: string, vars?: Record<string, string | number>): string {
-  if (!vars) return template;
-  return template.replace(/\{(\w+)\}/g, (_, key) => (key in vars ? String(vars[key]) : `{${key}}`));
-}
+// `@openfactu/ui` solo trae español: su catálogo inglés lo pone la app.
+registerTranslations('en', uiEn as DeepPartial<UiMessages>, { source: 'keirost' });
 
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [locale, setLocaleState] = useState<Locale>(detectInitialLocale);
+  const locale = useSyncExternalStore(subscribeLocale, getLocale, getLocale);
 
-  const setLocale = useCallback((l: Locale) => {
-    setLocaleState(l);
-    try {
-      localStorage.setItem(STORAGE_KEY, l);
-    } catch {
-      /* noop */
-    }
-    document.documentElement.lang = l;
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.lang = locale;
-  }, [locale]);
-
+  // Nueva identidad de `t` al cambiar de idioma para que memos y efectos se recalculen.
   const t = useCallback(
-    (path: string, vars?: Record<string, string | number>): string => {
-      const primary = lookup(MESSAGES[locale], path);
-      if (primary != null) return interpolate(primary, vars);
-      // Fallback a español, luego a la propia clave
-      const fallback = lookup(MESSAGES.es, path);
-      if (fallback != null) return interpolate(fallback, vars);
-      return path;
-    },
+    (path: string, vars?: TranslateVars): string => translate(locale, path, vars),
     [locale],
   );
 
-  return <I18nContext.Provider value={{ locale, setLocale, t }}>{children}</I18nContext.Provider>;
+  return (
+    <I18nContext.Provider value={{ locale, setLocale, t }}>
+      <UiI18nProvider locale={locale}>{children}</UiI18nProvider>
+    </I18nContext.Provider>
+  );
 };
 
 export const useI18n = (): I18nContextType => {

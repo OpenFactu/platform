@@ -1,7 +1,8 @@
 import { coreApi } from '@/shared/api';
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { LogOut, Building2, X, ChevronDown } from 'lucide-react';
-import { cn, Tooltip, Badge, SearchInput } from '@openfactu/ui';
+// Phosphor, el estilo de iconos del menú (ver components/icons/phosphorIcons.ts).
+import { BuildingsIcon, CaretDownIcon, SignOutIcon, XIcon } from '@phosphor-icons/react';
+import { cn, Tooltip, Badge, SearchInput, useScrollLock } from '@openfactu/ui';
 import { useModules, useActiveModule } from '../../context/PluginContext';
 import { useTabs } from '../../context/TabsContext';
 import { useAuth } from '../../context/AuthContext';
@@ -9,11 +10,11 @@ import { useMobileNav } from '../../context/MobileNavContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { PluginIcon } from '../PluginIcon';
-import { NavIconChip } from './NavIconChip';
 import { visibleModules, visibleSubTabs, canSeeSubTab } from '@/modules/permissions';
 import { iconNameFor } from '@/modules/routeLookup';
 import { TenantSwitcher } from '../TenantSwitcher';
 import type { Module } from '../../modules/registry';
+import { useI18n } from '@/i18n/I18nContext';
 
 /** Madurez de una pantalla. El tono es semántico, no decorativo: `dev` avisa
  *  de que la pantalla puede romperse, `alpha`/`beta` de que aún se mueve. */
@@ -45,15 +46,16 @@ export const IconSidebar: React.FC = () => {
   const active = useActiveModule(pathname);
   const { user, logout } = useAuth();
   const { flags } = useTheme();
+  const { t } = useI18n();
   const modules = (() => {
     if (user?.role === 'DRIVER') {
       // Sidebar simplificado para conductores: solo su app.
       return [
         {
           id: 'driver',
-          label: 'Mi ruta',
+          label: t('app.nav.myRoute'),
           icon: 'Navigation',
-          subTabs: [{ id: 'driver-home', label: 'Mi ruta', path: '/driver' }],
+          subTabs: [{ id: 'driver-home', label: t('app.nav.myRoute'), path: '/driver' }],
         } as Module,
       ];
     }
@@ -78,6 +80,8 @@ export const IconSidebar: React.FC = () => {
 
   const isMobile = useIsMobile();
   const { open: mobileOpen, setOpen: setMobileOpen } = useMobileNav();
+  // Con el menú abierto en móvil, la página de detrás no se desplaza.
+  useScrollLock(isMobile && mobileOpen);
 
   // Buscador del drawer.
   const [query, setQuery] = useState('');
@@ -193,14 +197,16 @@ export const IconSidebar: React.FC = () => {
         aria-hidden={!mobileOpen}
       >
         {/* Header del drawer */}
-        <div className="flex items-center justify-between px-4 h-14 border-b border-border-default">
-          <span className="font-display text-lg font-bold text-fg-default">Menú</span>
+        <div className="flex items-center justify-between pl-4 pr-2 h-12 border-b border-border-default">
+          <span className="font-display text-base font-bold text-fg-default">
+            {t('app.sidebar.menu')}
+          </span>
           <button
             onClick={() => setMobileOpen(false)}
             className="p-2 rounded-xs text-fg-muted hover:text-accent hover:bg-bg-hover transition-colors"
-            aria-label="Cerrar menú"
+            aria-label={t('app.sidebar.closeMenu')}
           >
-            <X size={22} />
+            <XIcon size={20} />
           </button>
         </div>
 
@@ -222,16 +228,18 @@ export const IconSidebar: React.FC = () => {
               if (query) setQuery('');
               else setMobileOpen(false);
             }}
-            placeholder="Buscar en el menú…"
+            placeholder={t('app.sidebar.searchPlaceholder')}
             clearable
           />
         </div>
 
         {/* Resultados de búsqueda o lista de módulos */}
-        <nav className="flex-1 overflow-y-auto py-2">
+        <nav className="flex-1 overflow-y-auto overscroll-contain py-1">
           {query.trim() ? (
             searchResults.length === 0 ? (
-              <p className="px-5 py-6 text-sm text-fg-muted">Sin resultados para “{query}”.</p>
+              <p className="px-5 py-6 text-sm text-fg-muted">
+                {t('app.sidebar.noResults', { query })}
+              </p>
             ) : (
               searchResults.map(({ modLabel, modIcon, sub }) => {
                 const subActive = sub.path === pathname;
@@ -247,7 +255,7 @@ export const IconSidebar: React.FC = () => {
                       subActive ? 'bg-accent/10 text-accent' : 'text-fg-body hover:bg-bg-hover',
                     )}
                   >
-                    <PluginIcon iconName={modIcon} size={16} />
+                    <PluginIcon iconName={modIcon} size={16} family="phosphor" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold truncate">{sub.label}</p>
                       <p className="text-[11px] text-fg-muted truncate">
@@ -276,74 +284,60 @@ export const IconSidebar: React.FC = () => {
           )}
         </nav>
 
-        {/* Tenant + usuario al pie */}
-        <div className="border-t border-border-default p-3 space-y-2">
-          {/* Tenant */}
-          <div>
+        {/* Pie compacto: una fila con el usuario y dos accesos (empresa, salir).
+            El selector de empresa se despliega encima, solo cuando se pide. */}
+        <div className="border-t border-border-default px-3 py-2">
+          {tenantOpen && (
+            <div className="mb-2 p-2 bg-bg-muted border border-border-default rounded-sm">
+              <TenantSwitcher />
+            </div>
+          )}
+          <div className="flex items-center gap-2.5">
+            {user?.avatarImageUrl ? (
+              <img
+                src={user.avatarImageUrl}
+                alt=""
+                className="w-8 h-8 rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-primary text-primary-fg flex items-center justify-center font-bold text-xs shrink-0">
+                {user?.username?.charAt(0)?.toUpperCase() || 'A'}
+              </div>
+            )}
+            <div className="flex-1 min-w-0 leading-tight">
+              <p className="text-[13px] font-semibold text-fg-default truncate">
+                {user?.username || t('app.sidebar.admin')}
+              </p>
+              <p className="text-[11px] text-fg-muted truncate">
+                {user?.role || 'USER'} · v{version || '…'}
+              </p>
+            </div>
             <button
               onClick={() => {
                 setTenantOpen((v) => !v);
                 setUserOpen(false);
               }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xs text-fg-body hover:bg-bg-hover transition-colors"
+              aria-expanded={tenantOpen}
+              aria-label={t('app.sidebar.switchCompany')}
+              title={t('app.sidebar.switchCompany')}
+              className={cn(
+                'p-2 rounded-xs transition-colors',
+                tenantOpen ? 'text-accent bg-accent/10' : 'text-fg-muted hover:bg-bg-hover',
+              )}
             >
-              <Building2 size={20} />
-              <span className="flex-1 text-left text-sm font-semibold">Cambiar empresa</span>
-              <ChevronDown
-                size={14}
-                className={cn('opacity-60 transition-transform', tenantOpen && 'rotate-90')}
-              />
+              <BuildingsIcon size={18} />
             </button>
-            {tenantOpen && (
-              <div className="mt-2 p-3 bg-bg-muted border border-border-default rounded-sm">
-                <TenantSwitcher />
-              </div>
-            )}
-          </div>
-
-          {/* Usuario */}
-          <div className="flex items-center gap-3 px-3 py-2">
-            {user?.avatarImageUrl ? (
-              <img
-                src={user.avatarImageUrl}
-                alt=""
-                className="w-10 h-10 rounded-full object-cover border-2 border-transparent"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-primary text-primary-fg flex items-center justify-center font-bold text-sm border-2 border-transparent">
-                {user?.username?.charAt(0)?.toUpperCase() || 'A'}
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate" style={{ color: 'var(--fg-default)' }}>
-                {user?.username || 'Administrador'}
-              </p>
-              <p className="text-xs truncate" style={{ color: 'var(--fg-muted)' }}>
-                {user?.email || ''}
-              </p>
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-accent bg-accent/10 px-1.5 py-0.5 rounded-xs">
-              {user?.role || 'USER'}
-            </span>
-          </div>
-
-          <button
-            onClick={() => {
-              setMobileOpen(false);
-              logout();
-            }}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xs text-sm font-semibold text-danger-fg hover:bg-danger-bg transition-colors"
-          >
-            <LogOut size={16} />
-            Cerrar sesión
-          </button>
-
-          <div
-            className="flex items-center justify-between pt-2 border-t border-border-subtle text-[10px] font-mono px-1"
-            style={{ color: 'var(--fg-muted)' }}
-          >
-            <span>Keirost</span>
-            <span>v{version || '…'}</span>
+            <button
+              onClick={() => {
+                setMobileOpen(false);
+                logout();
+              }}
+              aria-label={t('app.sidebar.logout')}
+              title={t('app.sidebar.logout')}
+              className="p-2 rounded-xs text-danger-fg hover:bg-danger-bg transition-colors"
+            >
+              <SignOutIcon size={18} />
+            </button>
           </div>
         </div>
       </aside>
@@ -411,7 +405,12 @@ export const IconSidebar: React.FC = () => {
                       )}
                       aria-hidden
                     />
-                    <PluginIcon iconName={mod.icon} size={19} strokeWidth={isActive ? 2.4 : 2} />
+                    <PluginIcon
+                      iconName={mod.icon}
+                      size={20}
+                      family="phosphor"
+                      weight={isActive ? 'duotone' : 'regular'}
+                    />
                   </button>
                 </Tooltip>
               </React.Fragment>
@@ -427,8 +426,8 @@ export const IconSidebar: React.FC = () => {
                 setTenantOpen((v) => !v);
                 setUserOpen(false);
               }}
-              title="Cambiar empresa"
-              aria-label="Cambiar empresa"
+              title={t('app.sidebar.switchCompany')}
+              aria-label={t('app.sidebar.switchCompany')}
               className={cn(
                 'relative w-11 h-10 flex items-center justify-center rounded-sm',
                 'transition-colors duration-150',
@@ -437,12 +436,12 @@ export const IconSidebar: React.FC = () => {
                   : 'text-fg-subtle hover:bg-bg-hover hover:text-fg-default',
               )}
             >
-              <Building2 size={19} />
+              <BuildingsIcon size={19} />
             </button>
             {tenantOpen && (
               <div className="absolute bottom-0 left-full ml-2 w-72 p-3 bg-bg-card border border-border-default rounded-sm shadow-k-lg z-popover">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-2">
-                  Empresa activa
+                  {t('app.sidebar.activeCompany')}
                 </p>
                 <TenantSwitcher />
               </div>
@@ -455,8 +454,8 @@ export const IconSidebar: React.FC = () => {
                 setUserOpen((v) => !v);
                 setTenantOpen(false);
               }}
-              title={user?.username || 'Usuario'}
-              aria-label="Menú de usuario"
+              title={user?.username || t('app.sidebar.user')}
+              aria-label={t('app.sidebar.userMenu')}
               className={cn(
                 'relative w-9 h-9 flex items-center justify-center rounded-full overflow-hidden',
                 'transition-colors duration-150',
@@ -484,7 +483,7 @@ export const IconSidebar: React.FC = () => {
               <div className="absolute bottom-0 left-full ml-2 w-56 p-3 bg-bg-card border border-border-default rounded-sm shadow-k-lg z-popover">
                 <div className="mb-2 pb-2 border-b border-border-subtle">
                   <p className="text-sm font-bold truncate" style={{ color: 'var(--fg-default)' }}>
-                    {user?.username || 'Administrador'}
+                    {user?.username || t('app.sidebar.admin')}
                   </p>
                   <p className="text-xs" style={{ color: 'var(--fg-muted)' }}>
                     {user?.email || ''}
@@ -500,8 +499,8 @@ export const IconSidebar: React.FC = () => {
                   }}
                   className="w-full flex items-center gap-2 px-2 py-1.5 rounded-xs text-sm font-medium text-danger-fg hover:bg-danger-bg transition-colors"
                 >
-                  <LogOut size={14} />
-                  Cerrar sesión
+                  <SignOutIcon size={14} />
+                  {t('app.sidebar.logout')}
                 </button>
                 <div
                   className="mt-2 pt-2 border-t border-border-subtle text-[10px] font-mono flex items-center justify-between"
@@ -545,24 +544,30 @@ const MobileModuleAccordion: React.FC<{
           if (!hasSubs) return;
           setOpen((v) => !v);
         }}
+        aria-expanded={hasSubs ? open : undefined}
         className={cn(
-          'w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors border-l-4',
+          'w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors border-l-2',
           isActive
             ? 'bg-accent/10 text-accent border-accent'
             : 'text-fg-body hover:bg-bg-hover border-transparent',
         )}
       >
-        <NavIconChip iconName={mod.icon} size={20} active={isActive} />
+        <PluginIcon
+          iconName={mod.icon}
+          size={20}
+          family="phosphor"
+          weight={isActive ? 'duotone' : 'regular'}
+        />
         <span className="flex-1 text-sm font-semibold tracking-tight">{mod.label}</span>
         {hasSubs && (
-          <ChevronDown
-            size={16}
+          <CaretDownIcon
+            size={14}
             className={cn('opacity-60 transition-transform', open && 'rotate-180')}
           />
         )}
       </button>
       {open && hasSubs && (
-        <div className="bg-bg-muted border-l-4 border-accent/20">
+        <div className="ml-[25px] mb-1 border-l border-border-default">
           {subTabs.map((sub: any) => {
             const subActive = sub.path === currentPath;
             return (
@@ -570,17 +575,21 @@ const MobileModuleAccordion: React.FC<{
                 key={sub.id}
                 onClick={() => onNavigate(sub.path)}
                 className={cn(
-                  'w-full flex items-center gap-3 pl-14 pr-5 py-2.5 text-left text-sm transition-colors',
+                  'w-full flex items-center gap-2.5 pl-4 pr-4 py-2 text-left text-[13px] transition-colors -ml-px border-l',
                   subActive
-                    ? 'text-accent font-semibold'
-                    : 'text-fg-body hover:text-accent hover:bg-bg-hover font-medium',
+                    ? 'text-accent font-semibold border-accent'
+                    : 'text-fg-body hover:text-accent hover:bg-bg-hover font-medium border-transparent',
                 )}
               >
                 {/* El sub-tab casi nunca declara icono; el de su ruta sí existe.
                     Se comprueba antes de pintar porque `PluginIcon` sin nombre
                     dibuja una pieza de puzle, y eso es peor que nada. */}
                 {iconNameFor(sub.path, sub.icon) && (
-                  <PluginIcon iconName={iconNameFor(sub.path, sub.icon)} size={14} />
+                  <PluginIcon
+                    iconName={iconNameFor(sub.path, sub.icon)}
+                    size={16}
+                    family="phosphor"
+                  />
                 )}
                 <span className="flex-1 truncate">{sub.label}</span>
                 <StatusBadge status={sub.status} />

@@ -1,18 +1,19 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import {
   Badge,
-  Button,
   Card,
   DropdownMenu,
   Input,
   Select,
   Switch,
   Textarea,
-  Tooltip,
   cn,
   type SortableHandleProps,
 } from '@openfactu/ui';
 import { ArrowDown, ArrowUp, Copy, GripHorizontal, MoreVertical, Trash2 } from 'lucide-react';
+import { IconButton } from './IconButton';
+import { iconButtonClass } from './iconButtonStyles';
 import {
   BRANCHING_TYPES,
   CHOICE_TYPES,
@@ -51,9 +52,10 @@ export interface QuestionCardProps {
   disabled?: boolean;
 }
 
-const TYPE_OPTIONS = QUESTION_TYPE_GROUPS.flat().map((t) => ({
-  value: t,
-  label: QUESTION_TYPE_LABEL[t],
+/** `label` es una clave de i18n. */
+const TYPE_OPTIONS = QUESTION_TYPE_GROUPS.flat().map((type) => ({
+  value: type,
+  label: QUESTION_TYPE_LABEL[type],
 }));
 
 /** Paneles que ya tienen contenido y por tanto se enseñan abiertos. */
@@ -72,6 +74,7 @@ function initialPanels(q: Question): Set<PanelKey> {
  * verá; activa se edita en el sitio, como en Google Forms.
  */
 export const QuestionCard: React.FC<QuestionCardProps> = (p) => {
+  const { t } = useI18n();
   const { question: q, active, onChange, disabled } = p;
   const [panels, setPanels] = useState<Set<PanelKey>>(() => initialPanels(q));
 
@@ -95,34 +98,42 @@ export const QuestionCard: React.FC<QuestionCardProps> = (p) => {
 
   const mark = (on: boolean, label: string) => (on ? `✓ ${label}` : label);
   const menu = [
-    { label: mark(panels.has('description'), 'Descripción'), onClick: () => toggle('description') },
+    {
+      label: mark(panels.has('description'), t('forms.question.description')),
+      onClick: () => toggle('description'),
+    },
     ...(validationKinds(q.type).length
       ? [
           {
-            label: mark(panels.has('validation'), 'Validación de la respuesta'),
+            label: mark(panels.has('validation'), t('forms.question.validation')),
             onClick: () => toggle('validation'),
           },
         ]
       : []),
     {
-      label: mark(panels.has('condition'), 'Mostrar solo si…'),
+      label: mark(panels.has('condition'), t('forms.question.showIf')),
       onClick: () => toggle('condition'),
     },
     ...(BRANCHING_TYPES.includes(q.type) && p.sectionCount > 1
       ? [
           {
-            label: mark(panels.has('branching'), 'Ir a sección según la respuesta'),
+            label: mark(panels.has('branching'), t('forms.question.branching')),
             onClick: () => toggle('branching'),
           },
         ]
       : []),
     ...(p.crm
-      ? [{ label: mark(panels.has('crm'), 'Guardar en el CRM'), onClick: () => toggle('crm') }]
+      ? [
+          {
+            label: mark(panels.has('crm'), t('forms.question.saveToCrm')),
+            onClick: () => toggle('crm'),
+          },
+        ]
       : []),
     ...(p.onMoveSection && p.sectionIndex > 0
       ? [
           {
-            label: 'Mover a la sección anterior',
+            label: t('forms.question.movePrev'),
             icon: <ArrowUp size={14} />,
             onClick: () => p.onMoveSection!(-1),
             separatorBefore: true,
@@ -132,7 +143,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = (p) => {
     ...(p.onMoveSection && p.sectionIndex < p.sectionCount - 1
       ? [
           {
-            label: 'Mover a la sección siguiente',
+            label: t('forms.question.moveNext'),
             icon: <ArrowDown size={14} />,
             onClick: () => p.onMoveSection!(1),
             separatorBefore: !(p.sectionIndex > 0),
@@ -142,10 +153,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = (p) => {
   ];
 
   const tags = [
-    q.showIf && 'Condicional',
-    q.goTo && Object.keys(q.goTo).length && 'Con saltos',
-    p.quiz && q.quiz?.points ? `${q.quiz.points} pt` : null,
-    q.mapTo && `CRM: ${MAP_TARGET_LABEL[q.mapTo]}`,
+    q.showIf && t('forms.question.conditional'),
+    q.goTo && Object.keys(q.goTo).length && t('forms.question.withJumps'),
+    p.quiz && q.quiz?.points ? t('forms.question.points', { n: q.quiz.points }) : null,
+    q.mapTo && `CRM: ${t(MAP_TARGET_LABEL[q.mapTo])}`,
   ].filter(Boolean) as string[];
 
   return (
@@ -171,7 +182,9 @@ export const QuestionCard: React.FC<QuestionCardProps> = (p) => {
         <div
           role="button"
           tabIndex={0}
-          aria-label={`Editar «${q.title || 'Pregunta sin título'}»`}
+          aria-label={t('forms.question.editItem', {
+            title: q.title || t('forms.question.untitled'),
+          })}
           onClick={p.onActivate}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -183,13 +196,13 @@ export const QuestionCard: React.FC<QuestionCardProps> = (p) => {
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="text-base font-medium text-fg-default">
-              {q.title || <span className="text-fg-subtle">Pregunta sin título</span>}
+              {q.title || <span className="text-fg-subtle">{t('forms.question.untitled')}</span>}
               {q.required && <span className="text-danger-fg"> *</span>}
             </div>
             <div className="flex flex-wrap gap-1">
-              {tags.map((t) => (
-                <Badge key={t} variant="neutral">
-                  {t}
+              {tags.map((tag) => (
+                <Badge key={tag} variant="neutral">
+                  {tag}
                 </Badge>
               ))}
             </div>
@@ -207,31 +220,31 @@ export const QuestionCard: React.FC<QuestionCardProps> = (p) => {
           <div className="flex flex-col gap-3 md:flex-row md:items-start">
             <div className="flex-1 min-w-0">
               <Textarea
-                aria-label="Pregunta"
+                aria-label={t('forms.question.question')}
                 rows={1}
                 value={q.title}
                 onChange={(e) => onChange({ title: e.target.value })}
-                placeholder="Pregunta"
+                placeholder={t('forms.question.question')}
                 autoFocus={!q.title}
                 disabled={disabled}
               />
             </div>
             <div className="md:w-64 shrink-0">
               <Select
-                ariaLabel="Tipo de pregunta"
-                options={TYPE_OPTIONS}
+                ariaLabel={t('forms.question.type')}
+                options={TYPE_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                 value={q.type}
-                onChange={(t) => p.onChangeType(t as QuestionType)}
+                onChange={(v) => p.onChangeType(v as QuestionType)}
                 disabled={disabled}
               />
             </div>
           </div>
           {panels.has('description') && (
             <Input
-              aria-label="Descripción"
+              aria-label={t('forms.question.description')}
               value={q.description ?? ''}
               onChange={(e) => onChange({ description: e.target.value || undefined })}
-              placeholder="Descripción o ayuda"
+              placeholder={t('forms.question.descriptionPlaceholder')}
               disabled={disabled}
             />
           )}
@@ -281,33 +294,19 @@ export const QuestionCard: React.FC<QuestionCardProps> = (p) => {
           {panels.has('crm') && <CrmPanel question={q} onChange={onChange} disabled={disabled} />}
 
           <div className="flex flex-wrap items-center justify-end gap-1 border-t border-border-subtle pt-3">
-            <Tooltip content="Duplicar">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-label="Duplicar pregunta"
-                onClick={p.onDuplicate}
-                disabled={disabled}
-              >
-                <Copy size={16} />
-              </Button>
-            </Tooltip>
-            <Tooltip content="Eliminar">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-label="Eliminar pregunta"
-                onClick={p.onRemove}
-                disabled={disabled}
-              >
-                <Trash2 size={16} />
-              </Button>
-            </Tooltip>
+            <IconButton
+              label={t('forms.question.duplicate')}
+              onClick={p.onDuplicate}
+              disabled={disabled}
+            >
+              <Copy size={16} />
+            </IconButton>
+            <IconButton label={t('forms.question.delete')} onClick={p.onRemove} disabled={disabled}>
+              <Trash2 size={16} />
+            </IconButton>
             <span className="mx-2 h-6 w-px bg-border-default" aria-hidden />
             <Switch
-              label="Obligatoria"
+              label={t('forms.question.required')}
               checked={!!q.required}
               onChange={(v) => onChange({ required: v || undefined })}
               disabled={disabled}
@@ -315,10 +314,10 @@ export const QuestionCard: React.FC<QuestionCardProps> = (p) => {
             <DropdownMenu
               items={menu}
               align="end"
-              aria-label="Más opciones de la pregunta"
+              aria-label={t('forms.question.moreOptions')}
               disabled={disabled}
             >
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xs text-fg-muted hover:bg-bg-hover">
+              <span className={iconButtonClass}>
                 <MoreVertical size={16} />
               </span>
             </DropdownMenu>

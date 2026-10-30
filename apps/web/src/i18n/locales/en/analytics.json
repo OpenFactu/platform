@@ -1,0 +1,67 @@
+{
+  "analytics": {
+    "nav": {
+      "label": "Analytics",
+      "description": "Cost centers, profit centers and projects/internal orders.",
+      "costCenters": "Cost centers",
+      "profitCenters": "Profit centers",
+      "internalOrders": "Projects/Orders",
+      "projects": "Projects"
+    },
+    "common": {
+      "cancel": "Cancel",
+      "code": "Code",
+      "create": "Create",
+      "created": "Created",
+      "delete": "Delete",
+      "deleted": "Deleted",
+      "edit": "Edit",
+      "errorDeleting": "Error deleting",
+      "errorSaving": "Error saving",
+      "irreversible": "This action cannot be undone.",
+      "name": "Name",
+      "new": "New",
+      "notes": "Notes",
+      "saveChanges": "Save changes",
+      "status": "Status",
+      "type": "Type",
+      "updated": "Updated"
+    },
+    "costCenters": {
+      "title": "Cost centers",
+      "subtitle": "Hierarchical analytical dimension to allocate expenses and income to responsibility units."
+    },
+    "profitCenters": {
+      "title": "Profit centers",
+      "subtitle": "Dimension orthogonal to cost centers — useful to segment by business line or market."
+    },
+    "headerField": {
+      "label": "Project",
+      "noProjectOption": "— No project —",
+      "noProject": "No project"
+    },
+    "internalOrders": {
+      "title": "Projects and internal orders",
+      "subtitle": "Third analytical dimension. Groups costs and income by initiative, project or WBS.",
+      "types": {
+        "project": "Project",
+        "internalOrder": "Internal order",
+        "wbs": "WBS"
+      },
+      "statuses": {
+        "open": "Open",
+        "closed": "Closed"
+      },
+      "loadError": "Error loading data",
+      "nameRequired": "Name is required",
+      "deleteTitle": "Delete project",
+      "budget": "Budget",
+      "budgetEur": "Budget (€)",
+      "codePlaceholder": "Auto (PRJ-0001)",
+      "start": "Start",
+      "end": "End",
+      "costCenter": "Cost center",
+      "unassigned": "— unassigned —"
+    }
+  }
+}

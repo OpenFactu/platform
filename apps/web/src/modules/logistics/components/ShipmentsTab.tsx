@@ -24,6 +24,8 @@ import { useFormat } from '@/hooks/useFormat';
 import { RoutePicker } from '../components/RoutePicker';
 import { MapSearchBox } from './maps/MapSearchBox';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
+import type { TranslateVars } from '@/i18n/i18n';
 import type { Carrier } from '../domain/carrier';
 import type { Route } from '../domain/route';
 import type { Shipment } from '../domain/shipment';
@@ -47,18 +49,18 @@ const STATUS_BADGE: Record<string, BadgeProps['variant']> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pendiente',
-  picking: 'Preparando',
-  packed: 'Empaquetado',
-  ready: 'Listo',
-  dispatched: 'Despachado',
-  in_transit: 'En tránsito',
-  out_for_delivery: 'En reparto',
-  postponed: 'Aplazado',
-  delivered: 'Entregado',
-  exception: 'Incidencia',
-  returned: 'Devuelto',
-  cancelled: 'Cancelado',
+  pending: 'logistics.status.shipment.pending',
+  picking: 'logistics.status.shipment.picking',
+  packed: 'logistics.status.shipment.packed',
+  ready: 'logistics.status.shipment.ready',
+  dispatched: 'logistics.status.shipment.dispatched',
+  in_transit: 'logistics.status.shipment.in_transit',
+  out_for_delivery: 'logistics.status.shipment.out_for_delivery',
+  postponed: 'logistics.status.shipment.postponed',
+  delivered: 'logistics.status.shipment.delivered',
+  exception: 'logistics.status.shipment.exception',
+  returned: 'logistics.status.shipment.returned',
+  cancelled: 'logistics.status.shipment.cancelled',
 };
 
 const STATUS_OPTIONS: Array<keyof typeof STATUS_LABEL> = [
@@ -84,15 +86,15 @@ function isLive(lastLocationAt: string | null): boolean {
   return Date.now() - new Date(lastLocationAt).getTime() < 10 * 60 * 1000;
 }
 
-function timeAgo(iso: string | null): string {
+function timeAgo(iso: string | null, t: (path: string, vars?: TranslateVars) => string): string {
   if (!iso) return '—';
   const ms = Date.now() - new Date(iso).getTime();
   const m = Math.floor(ms / 60000);
-  if (m < 1) return 'ahora';
-  if (m < 60) return `hace ${m} min`;
+  if (m < 1) return t('logistics.shipments.timeAgo.now');
+  if (m < 60) return t('logistics.shipments.timeAgo.minutes', { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `hace ${h} h`;
-  return `hace ${Math.floor(h / 24)} d`;
+  if (h < 24) return t('logistics.shipments.timeAgo.hours', { n: h });
+  return t('logistics.shipments.timeAgo.days', { n: Math.floor(h / 24) });
 }
 
 export const ShipmentsTab: React.FC = () => {
@@ -101,6 +103,7 @@ export const ShipmentsTab: React.FC = () => {
   const fmt = useFormat();
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
 
   const [rows, setRows] = useState<Shipment[]>([]);
   const [total, setTotal] = useState(0);
@@ -131,8 +134,8 @@ export const ShipmentsTab: React.FC = () => {
   // Debounce: al teclear `q`, espera 300ms antes de pedir.
   const [debouncedQ, setDebouncedQ] = useState('');
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(q), 300);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebouncedQ(q), 300);
+    return () => clearTimeout(timer);
   }, [q]);
 
   const load = async () => {
@@ -198,34 +201,34 @@ export const ShipmentsTab: React.FC = () => {
     if (!form.destinationAddress || !String(form.destinationAddress).trim()) {
       toast.error(
         form.kind === 'pickup_return'
-          ? 'La dirección de recogida es obligatoria.'
-          : 'La dirección de destino es obligatoria.',
+          ? t('logistics.shipments.pickupAddressRequired')
+          : t('logistics.shipments.destinationAddressRequired'),
       );
       return;
     }
     if (form.kind === 'pickup_return' && !form.returnWarehouseId) {
-      toast.error('Selecciona el almacén de destino al devolverlo.');
+      toast.error(t('logistics.shipments.returnWarehouseRequired'));
       return;
     }
     try {
       const d = await shipmentsApi.create(form);
-      toast.success(`Envío creado (token ${d.reportToken.slice(0, 8)}…)`);
+      toast.success(t('logistics.shipments.created', { token: d.reportToken.slice(0, 8) }));
       setShowModal(false);
       setForm({ carrier: 'propio', status: 'pending', kind: 'delivery' });
       setCarrierMode('propio');
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error');
+      toast.error(msg || t('logistics.common.error'));
     }
   };
 
   const remove = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar envío',
-      message: 'Se eliminará el envío y su seguimiento. Esta acción no se puede deshacer.',
+      title: t('logistics.shipments.deleteTitle'),
+      message: t('logistics.shipments.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('logistics.common.delete'),
     });
     if (!ok) return;
     await shipmentsApi.remove(id);
@@ -235,9 +238,9 @@ export const ShipmentsTab: React.FC = () => {
   const resendNotification = async (id: string, status: string) => {
     try {
       await shipmentsApi.notify(id, { stage: status });
-      toast.success('Email enfilado');
+      toast.success(t('logistics.shipments.emailQueued'));
     } catch {
-      toast.error('No se pudo enviar');
+      toast.error(t('logistics.shipments.sendError'));
     }
   };
 
@@ -260,11 +263,11 @@ export const ShipmentsTab: React.FC = () => {
   // Opciones de los selectores: una vez por render en lugar de una por <option>.
   const carrierOptions = useMemo(
     () => [
-      { value: 'propio', label: 'Propio (flota interna)' },
+      { value: 'propio', label: t('logistics.shipments.ownFleet') },
       ...carriers.map((c: any) => ({ value: c.code || c.id, label: c.name })),
-      { value: '__custom__', label: 'Otro…' },
+      { value: '__custom__', label: t('logistics.shipments.otherCarrier') },
     ],
-    [carriers],
+    [carriers, t],
   );
 
   const driverOptions = useMemo(
@@ -275,10 +278,10 @@ export const ShipmentsTab: React.FC = () => {
           [emp.firstName, emp.lastName].filter(Boolean).join(' ').trim() ||
           emp.code ||
           emp.email ||
-          '(sin nombre)',
+          t('logistics.shipments.noName'),
         secondaryLabel: emp.code || undefined,
       })),
-    [employees],
+    [employees, t],
   );
 
   const vehicleOptions = useMemo(
@@ -301,23 +304,23 @@ export const ShipmentsTab: React.FC = () => {
 
   const columns: TableColumn<Shipment>[] = [
     {
-      header: 'Estado',
+      header: t('logistics.shipments.columns.status'),
       cell: (s) => (
         <div className="flex items-center gap-1.5">
           <Badge variant={STATUS_BADGE[s.status] || 'neutral'}>
-            {STATUS_LABEL[s.status] || s.status}
+            {STATUS_LABEL[s.status] ? t(STATUS_LABEL[s.status]) : s.status}
           </Badge>
           {isLive(s.lastLocationAt) && (
             <span
               className="inline-block w-2 h-2 rounded-full bg-success animate-pulse"
-              title="Reportando posición ahora"
+              title={t('logistics.shipments.liveHint')}
             />
           )}
         </div>
       ),
     },
     {
-      header: 'Transportista',
+      header: t('logistics.shipments.columns.carrier'),
       cell: (s) => (
         <>
           {s.carrier}
@@ -330,7 +333,7 @@ export const ShipmentsTab: React.FC = () => {
       sortAccessor: (s) => s.carrier,
     },
     {
-      header: 'Conductor',
+      header: t('logistics.shipments.columns.driver'),
       cell: (s) => (
         <>
           {s.driverName || '—'}
@@ -345,13 +348,13 @@ export const ShipmentsTab: React.FC = () => {
       sortAccessor: (s) => s.driverName || '',
     },
     {
-      header: 'Destino',
+      header: t('logistics.shipments.columns.destination'),
       cell: (s) => s.destinationAddress || '—',
       className: 'truncate max-w-[280px]',
     },
     {
-      header: 'Última posición',
-      cell: (s) => (s.lastLat != null && s.lastLng != null ? timeAgo(s.lastLocationAt) : '—'),
+      header: t('logistics.shipments.columns.lastPosition'),
+      cell: (s) => (s.lastLat != null && s.lastLng != null ? timeAgo(s.lastLocationAt, t) : '—'),
       className: 'text-[11px] text-fg-muted',
     },
   ];
@@ -360,17 +363,17 @@ export const ShipmentsTab: React.FC = () => {
   // click derecho) que ofrece la Table.
   const rowActions = (s: Shipment): RowAction[] => [
     {
-      label: 'Ver detalle',
+      label: t('logistics.shipments.actions.view'),
       icon: <MapPin size={14} />,
       onClick: () => openTab(`/logistics/shipments/${s.id}`),
     },
     {
-      label: 'Reenviar notificación',
+      label: t('logistics.shipments.actions.resend'),
       icon: <Mail size={14} />,
       onClick: () => resendNotification(s.id, s.status),
     },
     {
-      label: 'Eliminar envío',
+      label: t('logistics.shipments.deleteTitle'),
       icon: <Trash2 size={14} />,
       destructive: true,
       onClick: () => remove(s.id),
@@ -388,7 +391,7 @@ export const ShipmentsTab: React.FC = () => {
               setPage(1);
               setQ(e.target.value);
             }}
-            placeholder="Buscar por tracking, dirección o conductor…"
+            placeholder={t('logistics.shipments.searchPlaceholder')}
             leftIcon={<Search size={14} />}
             containerClassName="flex-1"
           />
@@ -414,12 +417,12 @@ export const ShipmentsTab: React.FC = () => {
             />
           </div>
           <Button onClick={() => setShowModal(true)} className="flex items-center gap-2 shrink-0">
-            <Plus size={14} /> Nuevo envío
+            <Plus size={14} /> {t('logistics.shipments.new')}
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Estado:
+            {t('logistics.shipments.statusFilter')}
           </div>
           {STATUS_OPTIONS.map((s) => (
             <Button
@@ -429,7 +432,7 @@ export const ShipmentsTab: React.FC = () => {
               variant={statuses.includes(s) ? 'primary' : 'outline'}
               onClick={() => toggleStatus(s)}
             >
-              {STATUS_LABEL[s]}
+              {t(STATUS_LABEL[s])}
             </Button>
           ))}
           <div className="flex-1 min-w-[180px]">
@@ -441,12 +444,12 @@ export const ShipmentsTab: React.FC = () => {
               }}
               routes={routes}
               allowEmpty
-              placeholder="Todas las rutas"
+              placeholder={t('logistics.shipments.allRoutes')}
             />
           </div>
           {hasFilters && (
             <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
-              Limpiar filtros
+              {t('logistics.shipments.clearFilters')}
             </Button>
           )}
         </div>
@@ -457,20 +460,22 @@ export const ShipmentsTab: React.FC = () => {
         <Card bodyClassName="py-10">
           <EmptyState
             icon={<Truck size={28} />}
-            title={hasFilters ? 'Ningún envío coincide con los filtros' : 'Sin envíos aún'}
+            title={
+              hasFilters ? t('logistics.shipments.emptyFiltered') : t('logistics.shipments.empty')
+            }
             hint={
               hasFilters
-                ? 'Prueba a quitar algún filtro o amplía el rango de fechas.'
-                : 'Crea el primer envío para empezar a hacer seguimiento.'
+                ? t('logistics.shipments.emptyFilteredHint')
+                : t('logistics.shipments.emptyHint')
             }
             action={
               hasFilters ? (
                 <Button type="button" variant="secondary" size="sm" onClick={clearFilters}>
-                  Limpiar filtros
+                  {t('logistics.shipments.clearFilters')}
                 </Button>
               ) : (
                 <Button type="button" size="sm" onClick={() => setShowModal(true)}>
-                  <Plus size={14} className="mr-1" /> Nuevo envío
+                  <Plus size={14} className="mr-1" /> {t('logistics.shipments.new')}
                 </Button>
               )
             }
@@ -503,8 +508,8 @@ export const ShipmentsTab: React.FC = () => {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title="Nuevo envío"
-        subtitle="Crea un seguimiento. Se genera un token opaco para el reporte de GPS."
+        title={t('logistics.shipments.new')}
+        subtitle={t('logistics.shipments.modal.subtitle')}
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
@@ -512,7 +517,7 @@ export const ShipmentsTab: React.FC = () => {
                de devolución independiente). */}
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Tipo
+              {t('logistics.shipments.modal.type')}
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button
@@ -521,7 +526,7 @@ export const ShipmentsTab: React.FC = () => {
                 onClick={() => setForm({ ...form, kind: 'delivery' })}
                 className="h-10 w-full"
               >
-                📦 Entrega
+                📦 {t('logistics.shipments.modal.delivery')}
               </Button>
               {/* `accent` para la recogida: la acción excepcional se distingue
                   de la entrega normal igual que hacía el ámbar de antes. */}
@@ -531,13 +536,12 @@ export const ShipmentsTab: React.FC = () => {
                 onClick={() => setForm({ ...form, kind: 'pickup_return' })}
                 className="h-10 w-full"
               >
-                ↩ Recogida de devolución
+                ↩ {t('logistics.shipments.modal.pickupReturn')}
               </Button>
             </div>
             {form.kind === 'pickup_return' && (
               <p className="text-[11px] text-amber-600 mt-1">
-                El conductor recogerá la mercancía en la dirección indicada y al confirmarlo se
-                creará una entrada de stock en borrador.
+                {t('logistics.shipments.modal.pickupHint')}
               </p>
             )}
           </div>
@@ -545,12 +549,12 @@ export const ShipmentsTab: React.FC = () => {
           {/* ─── Transportista ─── */}
           <div className="border-t border-border-subtle pt-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Transportista
+              {t('logistics.shipments.modal.carrier')}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                  Operador
+                  {t('logistics.shipments.modal.operator')}
                 </label>
                 <SearchableSelect
                   options={carrierOptions}
@@ -568,7 +572,7 @@ export const ShipmentsTab: React.FC = () => {
                 {carrierMode === '__custom__' && (
                   <Input
                     className="mt-2"
-                    placeholder="Nombre del transportista"
+                    placeholder={t('logistics.shipments.modal.carrierName')}
                     value={form.carrier || ''}
                     onChange={(e) => setForm({ ...form, carrier: e.target.value })}
                   />
@@ -576,10 +580,10 @@ export const ShipmentsTab: React.FC = () => {
               </div>
               <div>
                 <Input
-                  label="Nº de tracking"
+                  label={t('logistics.shipments.modal.trackingNumber')}
                   value={form.trackingNumber || ''}
                   onChange={(e) => setForm({ ...form, trackingNumber: e.target.value })}
-                  placeholder="Opcional"
+                  placeholder={t('logistics.shipments.modal.optional')}
                 />
               </div>
             </div>
@@ -588,12 +592,12 @@ export const ShipmentsTab: React.FC = () => {
           {/* ─── Conductor y vehículo ─── */}
           <div className="border-t border-border-subtle pt-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Conductor y vehículo
+              {t('logistics.shipments.modal.driverAndVehicle')}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                  Conductor
+                  {t('logistics.shipments.modal.driver')}
                 </label>
                 <SearchableSelect
                   options={driverOptions}
@@ -610,17 +614,17 @@ export const ShipmentsTab: React.FC = () => {
                     });
                   }}
                   clearable
-                  placeholder="— seleccionar —"
+                  placeholder={t('logistics.common.selectPlaceholder')}
                 />
                 {employees.length === 0 && (
                   <p className="text-[11px] text-slate-500 mt-1">
-                    No hay empleados activos. Da de alta en RRHH → Empleados.
+                    {t('logistics.shipments.modal.noEmployees')}
                   </p>
                 )}
               </div>
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                  Vehículo
+                  {t('logistics.shipments.modal.vehicle')}
                 </label>
                 <SearchableSelect
                   options={vehicleOptions}
@@ -634,11 +638,11 @@ export const ShipmentsTab: React.FC = () => {
                     });
                   }}
                   clearable
-                  placeholder="— seleccionar —"
+                  placeholder={t('logistics.common.selectPlaceholder')}
                 />
                 {vehicles.length === 0 && (
                   <p className="text-[11px] text-slate-500 mt-1">
-                    No hay vehículos activos. Da de alta en Logística → Vehículos.
+                    {t('logistics.shipments.modal.noVehicles')}
                   </p>
                 )}
               </div>
@@ -648,10 +652,14 @@ export const ShipmentsTab: React.FC = () => {
           {/* ─── Dirección ─── */}
           <div className="border-t border-border-subtle pt-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              {form.kind === 'pickup_return' ? 'Recogida' : 'Destino'}
+              {form.kind === 'pickup_return'
+                ? t('logistics.shipments.modal.pickup')
+                : t('logistics.shipments.modal.destination')}
             </div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              {form.kind === 'pickup_return' ? 'Dirección de recogida' : 'Dirección de destino'}
+              {form.kind === 'pickup_return'
+                ? t('logistics.shipments.modal.pickupAddress')
+                : t('logistics.shipments.modal.destinationAddress')}
               <span className="text-rose-500 ml-0.5">*</span>
             </label>
             <MapSearchBox
@@ -661,8 +669,8 @@ export const ShipmentsTab: React.FC = () => {
               value={form.destinationAddress || ''}
               placeholder={
                 form.kind === 'pickup_return'
-                  ? 'Dónde recoger (casa del cliente, etc.)'
-                  : 'Dónde entregar'
+                  ? t('logistics.shipments.modal.pickupPlaceholder')
+                  : t('logistics.shipments.modal.destinationPlaceholder')
               }
               onTextChange={(v) =>
                 setForm((f: any) => ({
@@ -694,7 +702,7 @@ export const ShipmentsTab: React.FC = () => {
             {form.kind === 'pickup_return' && (
               <div className="mt-3">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                  Almacén de destino al devolverlo
+                  {t('logistics.shipments.modal.returnWarehouse')}
                   <span className="text-rose-500 ml-0.5">*</span>
                 </label>
                 {/* Obligatorio, pero el aviso ya lo da `create()` con toast —
@@ -703,11 +711,10 @@ export const ShipmentsTab: React.FC = () => {
                   options={warehouseOptions}
                   value={form.returnWarehouseId || ''}
                   onChange={(v) => setForm({ ...form, returnWarehouseId: v || null })}
-                  placeholder="— seleccionar —"
+                  placeholder={t('logistics.common.selectPlaceholder')}
                 />
                 <p className="text-[11px] text-slate-500 mt-1">
-                  Al confirmar la recogida, se generará una entrada de stock (GoodsReceipt draft)
-                  sobre este almacén para que la revises.
+                  {t('logistics.shipments.modal.returnWarehouseHint')}
                 </p>
               </div>
             )}
@@ -717,24 +724,24 @@ export const ShipmentsTab: React.FC = () => {
           <div className="border-t border-border-subtle pt-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
               {form.kind === 'pickup_return'
-                ? 'Contacto en el punto de recogida'
-                : 'Destinatario (opcional)'}
+                ? t('logistics.shipments.modal.pickupContact')
+                : t('logistics.shipments.modal.recipient')}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
-                placeholder="Nombre"
+                placeholder={t('logistics.shipments.modal.name')}
                 value={form.recipientName || ''}
                 onChange={(e) => setForm({ ...form, recipientName: e.target.value })}
               />
               <Input
-                placeholder="Teléfono"
+                placeholder={t('logistics.shipments.modal.phone')}
                 value={form.recipientPhone || ''}
                 onChange={(e) => setForm({ ...form, recipientPhone: e.target.value })}
               />
             </div>
             <Input
               className="mt-2"
-              placeholder="Email (para recibir notificaciones de tracking)"
+              placeholder={t('logistics.shipments.modal.emailPlaceholder')}
               type="email"
               value={form.recipientEmail || ''}
               onChange={(e) => setForm({ ...form, recipientEmail: e.target.value })}
@@ -744,32 +751,32 @@ export const ShipmentsTab: React.FC = () => {
           {/* ─── Detalles adicionales ─── */}
           <div className="border-t border-border-subtle pt-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Detalles adicionales
+              {t('logistics.shipments.modal.additionalDetails')}
             </div>
             <div className="grid grid-cols-1 gap-3">
               {/* datetime-local: la librería no tiene selector de fecha+hora,
                   así que se queda como Input nativo. */}
               <Input
-                label="Fecha estimada de entrega"
+                label={t('logistics.shipments.modal.estimatedDelivery')}
                 type="datetime-local"
                 value={form.estimatedDelivery || ''}
                 onChange={(e) => setForm({ ...form, estimatedDelivery: e.target.value || null })}
               />
               <Textarea
-                label="Notas internas"
+                label={t('logistics.shipments.modal.internalNotes')}
                 rows={3}
                 value={form.notes || ''}
                 onChange={(e) => setForm({ ...form, notes: e.target.value || null })}
-                placeholder="Instrucciones para el conductor, observaciones, etc."
+                placeholder={t('logistics.shipments.modal.notesPlaceholder')}
               />
             </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Cancelar
+              {t('logistics.common.cancel')}
             </Button>
-            <Button onClick={create}>Crear</Button>
+            <Button onClick={create}>{t('logistics.common.create')}</Button>
           </div>
         </div>
       </Modal>

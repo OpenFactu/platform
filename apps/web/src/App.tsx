@@ -22,6 +22,7 @@ const ForgotPassword = lazy(() =>
 const ResetPassword = lazy(() =>
   import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword })),
 );
+const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
 const TrackingPage = lazy(() =>
   import('./pages/public/TrackingPage').then((m) => ({ default: m.TrackingPage })),
 );
@@ -100,9 +101,7 @@ function App() {
   }
 
   if (!setupChecked || authLoading) {
-    return (
-      <BootLoader />
-    );
+    return <BootLoader />;
   }
 
   if (setupNeeded) {
@@ -129,6 +128,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/que-es-keirost" element={<AboutPage />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>
@@ -158,7 +158,7 @@ function App() {
 
 export default function AppWithSuspense() {
   return (
-    <Suspense fallback={<PageLoading />}>
+    <Suspense fallback={<PageLoading fullScreen />}>
       <App />
     </Suspense>
   );

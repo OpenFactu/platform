@@ -34,10 +34,21 @@ import {
   Wand2,
 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 
-const DAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+// Claves de i18n de los días (lunes primero); se traducen al pintar.
+const DAYS = [
+  'hrTime.days.mon',
+  'hrTime.days.tue',
+  'hrTime.days.wed',
+  'hrTime.days.thu',
+  'hrTime.days.fri',
+  'hrTime.days.sat',
+  'hrTime.days.sun',
+];
 
 export const ShiftPatterns: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const { canWrite, canDelete } = usePagePermissions();
   const [list, setList] = useState<Pattern[]>([]);
@@ -77,7 +88,7 @@ export const ShiftPatterns: React.FC = () => {
   const newPattern = () => {
     setEditing({
       id: '',
-      name: 'Nuevo patrón',
+      name: t('hrTime.shiftPatterns.defaultName'),
       cycleWeeks: 1,
       slots: [],
       isActive: true,
@@ -127,7 +138,7 @@ export const ShiftPatterns: React.FC = () => {
       return;
     }
     if (!brush) {
-      toast.error('Elige antes una plantilla "pincel" arriba');
+      toast.error(t('hrTime.shiftPatterns.pickBrushFirst'));
       return;
     }
     const days = preset === 'lunVie' ? [1, 2, 3, 4, 5] : [1, 2, 3, 4, 5, 6, 7];
@@ -145,24 +156,28 @@ export const ShiftPatterns: React.FC = () => {
       const d = isNew
         ? await shiftPatternsApi.create(editing)
         : await shiftPatternsApi.update(editing.id, editing);
-      toast.success('Guardado');
+      toast.success(t('hr.common.saved'));
       setEditing(d);
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
   const addAssignment = async (employeeId: string, validFrom: string, weekOffset: number) => {
     if (!editing?.id) {
-      toast.error('Guarda el patrón antes de asignar empleados');
+      toast.error(t('hrTime.shiftPatterns.saveFirst'));
       return;
     }
     try {
       await shiftPatternsApi.addAssignment(editing.id, { employeeId, validFrom, weekOffset });
       openEdit(editing);
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
@@ -174,33 +189,35 @@ export const ShiftPatterns: React.FC = () => {
   const expand = async () => {
     if (!editing?.id) return;
     if (!expanding.from || !expanding.to) {
-      toast.error('Indica from y to');
+      toast.error(t('hrTime.shiftPatterns.rangeRequired'));
       return;
     }
     try {
       const d = await shiftPatternsApi.expand(editing.id, expanding);
-      toast.success(`Generadas ${d.created} asignaciones de turno`);
+      toast.success(t('hrTime.shiftPatterns.expanded', { count: d.created }));
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
   // Listado de patrones. La matriz semana × día de más abajo NO usa la Table
   // del paquete: es una rejilla editable con un <select> por celda.
   const listColumns: TableColumn<Pattern>[] = [
-    { header: 'Nombre', accessor: 'name', sortable: true, primary: true },
-    { header: 'Semanas ciclo', accessor: 'cycleWeeks', sortable: true },
+    { header: t('hr.common.name'), accessor: 'name', sortable: true, primary: true },
+    { header: t('hrTime.shiftPatterns.cycleWeeks'), accessor: 'cycleWeeks', sortable: true },
     {
-      header: 'Activo',
+      header: t('hr.common.active'),
       sortable: true,
       sortAccessor: (p) => (p.isActive ? 1 : 0),
-      cell: (p) => (p.isActive ? 'Sí' : 'No'),
+      cell: (p) => (p.isActive ? t('hr.common.yes') : t('hr.common.no')),
     },
   ];
 
   const listRowActions = (p: Pattern): RowAction[] => [
     {
-      label: 'Editar',
+      label: t('hr.common.edit'),
       icon: <Pencil size={14} />,
       disabled: !canWrite,
       onClick: () => openEdit(p),
@@ -210,16 +227,14 @@ export const ShiftPatterns: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-6">
       <PageHeader
-        title="Patrones de turno"
-        subtitle={
-          'Rotaciones cíclicas que se aplican a empleados con offsets distintos. Al "expandir" se generan asignaciones reales por día.'
-        }
+        title={t('hrTime.shiftPatterns.title')}
+        subtitle={t('hrTime.shiftPatterns.subtitle')}
         icon={<Repeat size={18} />}
         size="lg"
         actions={
           canWrite && (
             <Button type="button" size="sm" onClick={newPattern}>
-              <Plus size={14} /> Nuevo patrón
+              <Plus size={14} /> {t('hrTime.shiftPatterns.new')}
             </Button>
           )
         }
@@ -233,7 +248,7 @@ export const ShiftPatterns: React.FC = () => {
             data={list}
             rowActions={listRowActions}
             onRowClick={(p) => openEdit(p)}
-            emptyMessage="Todavía no hay patrones de turno."
+            emptyMessage={t('hrTime.shiftPatterns.empty')}
           />
         </Card>
       )}
@@ -251,7 +266,7 @@ export const ShiftPatterns: React.FC = () => {
                 <div className="flex items-center gap-2">
                   {/* La etiqueta va en línea, no encima, así que se mantiene el
                       <label> suelto en lugar de la prop `label`. */}
-                  <label className="text-sm">Semanas:</label>
+                  <label className="text-sm">{t('hrTime.shiftPatterns.weeks')}</label>
                   <NumberInput
                     value={editing.cycleWeeks}
                     onChange={(v) => setEditing({ ...editing, cycleWeeks: v ?? 1 })}
@@ -262,26 +277,25 @@ export const ShiftPatterns: React.FC = () => {
                   />
                 </div>
                 <Button onClick={save} disabled={!canWrite}>
-                  <Save size={16} /> Guardar
+                  <Save size={16} /> {t('hr.common.save')}
                 </Button>
                 <Button variant="secondary" onClick={() => setEditing(null)}>
-                  Cerrar
+                  {t('hr.common.close')}
                 </Button>
               </div>
               {/* Toolbar de relleno rápido */}
               <div className="rounded-lg border border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50/40 dark:bg-indigo-500/5 p-3 space-y-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-sm font-bold text-indigo-700 dark:text-indigo-300">
-                    <Paintbrush size={16} /> Rellenado rápido
+                    <Paintbrush size={16} /> {t('hrTime.shiftPatterns.quickFill')}
                   </div>
                   <span className="text-xs text-slate-500">
-                    Elige una plantilla "pincel" y aplica con un click. También puedes copiar
-                    semanas.
+                    {t('hrTime.shiftPatterns.quickFillHint')}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                    Pincel:
+                    {t('hrTime.shiftPatterns.brush')}
                   </span>
                   {/* Muestras de color: el relleno lo manda el color de la
                       plantilla, así que el `style` inline se conserva sobre el
@@ -322,7 +336,7 @@ export const ShiftPatterns: React.FC = () => {
                         : 'border-dashed border-slate-300 hover:border-slate-400')
                     }
                   >
-                    Borrar
+                    {t('hrTime.shiftPatterns.erase')}
                   </Button>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -332,7 +346,7 @@ export const ShiftPatterns: React.FC = () => {
                     variant="secondary"
                     onClick={() => applyPreset('lunVie')}
                   >
-                    <Wand2 size={14} /> Lun-Vie con pincel
+                    <Wand2 size={14} /> {t('hrTime.shiftPatterns.presetWeekdays')}
                   </Button>
                   <Button
                     type="button"
@@ -340,7 +354,7 @@ export const ShiftPatterns: React.FC = () => {
                     variant="secondary"
                     onClick={() => applyPreset('todos')}
                   >
-                    <Wand2 size={14} /> Toda la semana
+                    <Wand2 size={14} /> {t('hrTime.shiftPatterns.presetAll')}
                   </Button>
                   <Button
                     type="button"
@@ -348,7 +362,7 @@ export const ShiftPatterns: React.FC = () => {
                     variant="secondary"
                     onClick={() => applyPreset('limpiar')}
                   >
-                    <Eraser size={14} /> Vaciar todo
+                    <Eraser size={14} /> {t('hrTime.shiftPatterns.clearAll')}
                   </Button>
                 </div>
               </div>
@@ -358,7 +372,7 @@ export const ShiftPatterns: React.FC = () => {
                   <thead>
                     <tr>
                       <th className="bg-bg-muted border-b border-r border-border-default px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-20">
-                        Semana
+                        {t('hrTime.shiftPatterns.week')}
                       </th>
                       {DAYS.map((d, i) => (
                         <th
@@ -369,7 +383,7 @@ export const ShiftPatterns: React.FC = () => {
                             (i >= 5 ? ' bg-slate-200/60 dark:bg-slate-800/80' : '')
                           }
                         >
-                          {d}
+                          {t(d)}
                         </th>
                       ))}
                     </tr>
@@ -390,12 +404,12 @@ export const ShiftPatterns: React.FC = () => {
                               onClick={() =>
                                 brush
                                   ? fillRow(w, [1, 2, 3, 4, 5], brush)
-                                  : toast.error('Elige pincel')
+                                  : toast.error(t('hrTime.shiftPatterns.pickBrush'))
                               }
                               className="text-[10px] px-1.5 py-0.5 font-bold"
-                              title="Aplicar pincel a Lun-Vie de esta semana"
+                              title={t('hrTime.shiftPatterns.applyWeekdaysTitle')}
                             >
-                              L-V
+                              {t('hrTime.shiftPatterns.weekdaysShort')}
                             </Button>
                             <Button
                               type="button"
@@ -403,7 +417,7 @@ export const ShiftPatterns: React.FC = () => {
                               size="sm"
                               onClick={() => fillRow(w, [1, 2, 3, 4, 5, 6, 7], '')}
                               className="text-[10px] p-1"
-                              title="Vaciar esta semana"
+                              title={t('hrTime.shiftPatterns.clearWeek')}
                             >
                               <Eraser size={11} />
                             </Button>
@@ -414,7 +428,7 @@ export const ShiftPatterns: React.FC = () => {
                                 size="sm"
                                 onClick={() => copyWeek(w - 1, w)}
                                 className="text-[10px] p-1"
-                                title={`Copiar semana ${w} aquí`}
+                                title={t('hrTime.shiftPatterns.copyWeek', { n: w })}
                               >
                                 <Copy size={11} />
                               </Button>
@@ -488,7 +502,7 @@ export const ShiftPatterns: React.FC = () => {
           {editing.id && (
             <Card noPadding>
               <div className="p-6 space-y-3">
-                <h3 className="font-bold">Empleados asignados</h3>
+                <h3 className="font-bold">{t('hrTime.shiftPatterns.assigned')}</h3>
                 <ul className="divide-y">
                   {assignments.map((a) => {
                     const e: any = employees.find((x) => x.id === a.employeeId);
@@ -497,7 +511,10 @@ export const ShiftPatterns: React.FC = () => {
                         <span className="flex-1">
                           {e ? `${e.firstName} ${e.lastName}` : a.employeeId}
                           <span className="text-xs text-slate-400 ml-2">
-                            (offset {a.weekOffset} · desde {a.validFrom})
+                            {t('hrTime.shiftPatterns.assignmentInfo', {
+                              offset: a.weekOffset,
+                              from: a.validFrom,
+                            })}
                           </span>
                         </span>
                         <Button
@@ -506,7 +523,7 @@ export const ShiftPatterns: React.FC = () => {
                           size="sm"
                           onClick={() => removeAssignment(a)}
                           disabled={!canDelete}
-                          title="Quitar asignación"
+                          title={t('hrTime.shiftPatterns.removeAssignment')}
                         >
                           <Trash2 size={14} />
                         </Button>
@@ -528,28 +545,27 @@ export const ShiftPatterns: React.FC = () => {
             <Card noPadding>
               <div className="p-6 space-y-3">
                 <h3 className="font-bold flex items-center gap-2">
-                  <Calendar size={16} /> Expandir patrón a fechas
+                  <Calendar size={16} /> {t('hrTime.shiftPatterns.expandTitle')}
                 </h3>
                 <div className="flex items-center gap-3">
                   <DatePicker
-                    label="Desde"
+                    label={t('hr.common.from')}
                     value={expanding.from}
                     onChange={(v) => setExpanding({ ...expanding, from: v ?? '' })}
                   />
                   <DatePicker
-                    label="Hasta"
+                    label={t('hr.common.to')}
                     value={expanding.to}
                     onChange={(v) => setExpanding({ ...expanding, to: v ?? '' })}
                   />
                   <div className="self-end">
                     <Button onClick={expand} disabled={!canWrite}>
-                      Expandir
+                      {t('hrTime.shiftPatterns.expand')}
                     </Button>
                   </div>
                 </div>
                 <p className="text-xs text-slate-400 italic">
-                  Genera asignaciones materializadas (turnos reales) en el rango. Es idempotente:
-                  borra antes las generadas previamente con este patrón en el mismo rango.
+                  {t('hrTime.shiftPatterns.expandHint')}
                 </p>
               </div>
             </Card>
@@ -566,6 +582,7 @@ const AssignmentForm: React.FC<{
   cycleWeeks: number;
   canWrite: boolean;
 }> = ({ onAdd, employees, cycleWeeks, canWrite }) => {
+  const { t } = useI18n();
   const [employeeId, setEmployeeId] = useState('');
   const [validFrom, setValidFrom] = useState('');
   // `weekOffset` puede quedar vacío en el NumberInput → null; al añadir se
@@ -589,19 +606,23 @@ const AssignmentForm: React.FC<{
           {/* SearchableSelect no tiene prop `label` → se conserva el <label>
               suelto. */}
           <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">
-            Empleado
+            {t('hr.common.employee')}
           </label>
           <SearchableSelect
             options={employeeOptions}
             value={employeeId}
             onChange={(v) => setEmployeeId(v)}
-            placeholder="— seleccionar —"
+            placeholder={t('hrTime.shiftPatterns.selectPlaceholder')}
           />
         </div>
-        <DatePicker label="Desde" value={validFrom} onChange={(v) => setValidFrom(v ?? '')} />
+        <DatePicker
+          label={t('hr.common.from')}
+          value={validFrom}
+          onChange={(v) => setValidFrom(v ?? '')}
+        />
         <div className="w-24">
           <NumberInput
-            label="Offset"
+            label={t('hrTime.shiftPatterns.offset')}
             value={weekOffset}
             onChange={(v) => setWeekOffset(v)}
             min={0}
@@ -619,7 +640,7 @@ const AssignmentForm: React.FC<{
             setWeekOffset(0);
           }}
         >
-          <Plus size={16} /> Añadir
+          <Plus size={16} /> {t('hr.common.add')}
         </Button>
       </div>
     </div>

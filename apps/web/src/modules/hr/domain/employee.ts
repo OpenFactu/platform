@@ -1,7 +1,8 @@
+/** Claves de i18n: tradúcelas al pintar con `t(EMPLOYEE_STATUS_LABEL[s])`. */
 export const EMPLOYEE_STATUS_LABEL = {
-  active: 'Activo',
-  leave: 'Baja temporal',
-  terminated: 'Baja definitiva',
+  active: 'hr.employeeStatus.active',
+  leave: 'hr.employeeStatus.leave',
+  terminated: 'hr.employeeStatus.terminated',
 };
 export interface Employee {
   id: string;

@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import type { CanvasLayout, ParamDef } from './canvas/types';
 import { resolveInputParams } from './canvas/params';
 import { templatesApi } from '../api';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   templateId: string;
@@ -42,6 +43,7 @@ function parseManualOptions(options?: string[]): Opt[] {
 
 export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateName, onClose }) => {
   const { token, user } = useAuth();
+  const { t } = useI18n();
   const tenantId = user?.tenantId;
   const headers = {
     Authorization: `Bearer ${token ?? ''}`,
@@ -108,7 +110,7 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
         if (!cancelled)
           setLoadError(
             (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-              'No se pudo cargar la plantilla',
+              t('templates.generator.loadError'),
           );
       }
     })();
@@ -136,7 +138,11 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
     // Validación de obligatorios.
     const missing = paramDefs.filter((p) => p.required && isEmpty(values[p.name]));
     if (missing.length > 0) {
-      setError(`Falta rellenar: ${missing.map((p) => p.label ?? p.name).join(', ')}`);
+      setError(
+        t('templates.generator.missing', {
+          fields: missing.map((p) => p.label ?? p.name).join(', '),
+        }),
+      );
       return;
     }
     setError(null);
@@ -187,7 +193,7 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
     } catch (e) {
       setError(
         (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-          'Error al generar el documento',
+          t('templates.generator.generateError'),
       );
     } finally {
       setGenerating(false);
@@ -208,13 +214,13 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
     <Modal
       isOpen
       onClose={onClose}
-      title={`Generar: ${templateName}`}
+      title={t('templates.generator.title', { name: templateName })}
       size="sm"
       closeOnOverlayClick
       footer={
         <div className="flex justify-end gap-2 w-full">
           <Button type="button" variant="secondary" size="sm" onClick={onClose}>
-            {warnings.length > 0 ? 'Cerrar' : 'Cancelar'}
+            {warnings.length > 0 ? t('templates.generator.close') : t('templates.generator.cancel')}
           </Button>
           <Button
             type="button"
@@ -224,18 +230,20 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
             isLoading={generating}
           >
             <FileDown size={13} />
-            {generating ? 'Generando…' : 'Generar PDF'}
+            {generating
+              ? t('templates.generator.generating')
+              : t('templates.generator.generatePdf')}
           </Button>
         </div>
       }
     >
       <div className="space-y-3 text-sm">
-        {!paramDefs && !loadError && <div className="text-fg-subtle italic">Cargando…</div>}
+        {!paramDefs && !loadError && (
+          <div className="text-fg-subtle italic">{t('templates.generator.loading')}</div>
+        )}
         {loadError && <div className="text-danger-fg text-xs">⚠ {loadError}</div>}
         {paramDefs && paramDefs.length === 0 && (
-          <div className="text-fg-muted text-xs">
-            Esta plantilla no tiene parámetros de entrada. Pulsa “Generar PDF”.
-          </div>
+          <div className="text-fg-muted text-xs">{t('templates.generator.noParams')}</div>
         )}
         {paramDefs?.map((p) => (
           <div key={p.name} className="space-y-1">
@@ -285,7 +293,7 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
                         .filter(Boolean),
                     }))
                   }
-                  placeholder="varios valores separados por comas"
+                  placeholder={t('templates.generator.multiPlaceholder')}
                 />
               )
             ) : p.type === 'number' ? (
@@ -310,7 +318,7 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
         ))}
         {paramDefs && (
           <NumberInput
-            label="Copias"
+            label={t('templates.generator.copies')}
             min={1}
             max={200}
             value={copies}
@@ -321,7 +329,7 @@ export const DocumentGeneratorModal: React.FC<Props> = ({ templateId, templateNa
         {error && <div className="text-danger-fg text-xs whitespace-pre-wrap">⚠ {error}</div>}
         {warnings.length > 0 && (
           <div className="text-warning-fg text-xs space-y-1">
-            <div className="font-semibold">PDF generado, pero algunas consultas fallaron:</div>
+            <div className="font-semibold">{t('templates.generator.partialFailure')}</div>
             {warnings.map((w, i) => (
               <div key={i} className="font-mono">
                 • {w.name}: {w.error}

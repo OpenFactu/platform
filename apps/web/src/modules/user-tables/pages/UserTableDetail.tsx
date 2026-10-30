@@ -6,6 +6,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { PluginFieldsSection } from '@/components/plugin-fields';
+import { useI18n } from '@/i18n/I18nContext';
 
 export const UserTableDetail: React.FC = () => {
   const { name, id } = useParams();
@@ -14,6 +15,7 @@ export const UserTableDetail: React.FC = () => {
   const { token, user } = useAuth();
   const { openTab } = useTabs();
   const toast = useToast();
+  const { t } = useI18n();
 
   const tblName = name?.startsWith('pt_') ? name : `pt_${name}`;
 
@@ -48,10 +50,10 @@ export const UserTableDetail: React.FC = () => {
       const res = await coreApi.raw(isNew ? 'POST' : 'PATCH', url, values);
       const data = res.data;
       if (!res.ok) {
-        toast.error(data?.error || 'Error al guardar');
+        toast.error(data?.error || t('userTables.detail.saveError'));
         return;
       }
-      toast.success(isNew ? 'Registro creado' : 'Cambios guardados');
+      toast.success(isNew ? t('userTables.detail.created') : t('userTables.detail.saved'));
       openTab(`/u/${name}`);
     } finally {
       setSaving(false);
@@ -69,7 +71,7 @@ export const UserTableDetail: React.FC = () => {
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
       <PageHeader
-        title={isNew ? 'Nuevo registro' : 'Editar registro'}
+        title={isNew ? t('userTables.detail.newTitle') : t('userTables.detail.editTitle')}
         size="sm"
         divider
         className="pb-4"
@@ -79,7 +81,7 @@ export const UserTableDetail: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => openTab(`/u/${name}`)}
-            title="Volver"
+            title={t('userTables.detail.back')}
             className="w-fit"
           >
             <ArrowLeft size={14} />
@@ -93,7 +95,7 @@ export const UserTableDetail: React.FC = () => {
             className="flex items-center gap-2"
           >
             <Save size={14} />
-            {saving ? 'Guardando...' : 'Guardar'}
+            {saving ? t('userTables.detail.saving') : t('userTables.detail.save')}
           </Button>
         }
       />

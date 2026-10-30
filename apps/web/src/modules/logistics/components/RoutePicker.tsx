@@ -1,5 +1,6 @@
 import React from 'react';
 import { SearchableSelect } from '@openfactu/ui';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface RouteLike {
   id: string;
@@ -22,10 +23,10 @@ interface RoutePickerProps {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  planned: 'Planificada',
-  active: 'En curso',
-  completed: 'Completada',
-  cancelled: 'Cancelada',
+  planned: 'logistics.status.route.planned',
+  active: 'logistics.status.route.active',
+  completed: 'logistics.status.route.completed',
+  cancelled: 'logistics.status.route.cancelled',
 };
 
 /**
@@ -39,22 +40,24 @@ export const RoutePicker: React.FC<RoutePickerProps> = ({
   routes,
   allowEmpty = true,
   filterStatuses,
-  placeholder = '— seleccionar ruta —',
+  placeholder,
   disabled,
   className,
 }) => {
+  const { t } = useI18n();
+  const resolvedPlaceholder = placeholder ?? t('logistics.routePicker.placeholder');
   const filtered = filterStatuses?.length
     ? routes.filter((r) => r.status && filterStatuses.includes(r.status))
     : routes;
 
   const options = [
-    ...(allowEmpty ? [{ value: '', label: placeholder }] : []),
+    ...(allowEmpty ? [{ value: '', label: resolvedPlaceholder }] : []),
     ...filtered.map((r) => {
       const label = [r.code, r.name?.trim() || null].filter(Boolean).join(' · ');
       const secondary = [
         r.plannedDate || null,
         r.driverName || null,
-        r.status ? STATUS_LABEL[r.status] || r.status : null,
+        r.status ? (STATUS_LABEL[r.status] ? t(STATUS_LABEL[r.status]) : r.status) : null,
       ]
         .filter(Boolean)
         .join(' · ');
@@ -67,7 +70,7 @@ export const RoutePicker: React.FC<RoutePickerProps> = ({
       options={options}
       value={value || ''}
       onChange={onChange}
-      placeholder={placeholder}
+      placeholder={resolvedPlaceholder}
       disabled={disabled}
       className={className}
     />

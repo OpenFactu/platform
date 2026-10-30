@@ -1,20 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { Badge, Button, Card, EmptyState, Table } from '@openfactu/ui';
-import { History, Loader2 } from 'lucide-react';
+import { Badge, Button, Card, EmptyState, Table, Spinner } from '@openfactu/ui';
+import { History } from 'lucide-react';
 import { dataImportApi } from '../api/dataImportApi';
 import { useFormat } from '@/hooks/useFormat';
 import type { ImportJob, ImportObject } from '../types';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatNumber } from '@/i18n/format';
 
 const STATUS: Record<
   ImportJob['status'],
   { label: string; variant: 'neutral' | 'info' | 'success' | 'warning' | 'error' }
 > = {
-  pending: { label: 'En cola', variant: 'neutral' },
-  running: { label: 'En curso', variant: 'info' },
-  done: { label: 'Terminada', variant: 'success' },
-  cancelled: { label: 'Cancelada', variant: 'warning' },
-  error: { label: 'Fallida', variant: 'error' },
-  undone: { label: 'Deshecha', variant: 'neutral' },
+  // `label` es la clave de i18n; se traduce al pintar.
+  pending: { label: 'dataImport.status.pending', variant: 'neutral' },
+  running: { label: 'dataImport.status.running', variant: 'info' },
+  done: { label: 'dataImport.status.done', variant: 'success' },
+  cancelled: { label: 'dataImport.status.cancelled', variant: 'warning' },
+  error: { label: 'dataImport.status.error', variant: 'error' },
+  undone: { label: 'dataImport.status.undone', variant: 'neutral' },
 };
 
 interface Props {
@@ -24,6 +27,7 @@ interface Props {
 
 export const JobHistory: React.FC<Props> = ({ objects, onOpen }) => {
   const fmt = useFormat();
+  const { t } = useI18n();
   const [jobs, setJobs] = useState<ImportJob[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +55,7 @@ export const JobHistory: React.FC<Props> = ({ objects, onOpen }) => {
   if (loading) {
     return (
       <div className="flex items-center gap-2 text-xs text-fg-subtle p-4">
-        <Loader2 size={14} className="animate-spin" /> Cargando el histórico…
+        <Spinner size="sm" tone="inherit" /> {t('dataImport.history.loading')}
       </div>
     );
   }
@@ -60,8 +64,8 @@ export const JobHistory: React.FC<Props> = ({ objects, onOpen }) => {
     return (
       <EmptyState
         icon={<History size={28} />}
-        title="Todavía no has importado nada"
-        hint="Aquí quedará el registro de cada fichero con su resultado."
+        title={t('dataImport.history.emptyTitle')}
+        hint={t('dataImport.history.emptyHint')}
       />
     );
   }
@@ -74,7 +78,7 @@ export const JobHistory: React.FC<Props> = ({ objects, onOpen }) => {
         onRowClick={(job) => onOpen(job.id)}
         columns={[
           {
-            header: 'Fichero',
+            header: t('dataImport.history.colFile'),
             primary: true,
             cell: (job: ImportJob) => (
               <div className="min-w-0">
@@ -84,27 +88,30 @@ export const JobHistory: React.FC<Props> = ({ objects, onOpen }) => {
             ),
           },
           {
-            header: 'Estado',
+            header: t('dataImport.history.colStatus'),
             width: '150px',
             cell: (job: ImportJob) => (
               <div className="flex items-center gap-1.5">
-                <Badge variant={STATUS[job.status].variant}>{STATUS[job.status].label}</Badge>
-                {job.dryRun && <Badge variant="neutral">simulación</Badge>}
+                <Badge variant={STATUS[job.status].variant}>{t(STATUS[job.status].label)}</Badge>
+                {job.dryRun && (
+                  <Badge variant="neutral">{t('dataImport.history.simulation')}</Badge>
+                )}
               </div>
             ),
           },
           {
-            header: 'Resultado',
+            header: t('dataImport.history.colResult'),
             width: '170px',
             cell: (job: ImportJob) => (
               <span className="text-xs tabular-nums text-fg-muted">
-                {job.okRows.toLocaleString('es-ES')} ok
-                {job.errorRows > 0 && ` · ${job.errorRows.toLocaleString('es-ES')} con error`}
+                {t('dataImport.history.ok', { ok: formatNumber(job.okRows) })}
+                {job.errorRows > 0 &&
+                  ` · ${t('dataImport.history.withErrors', { errors: formatNumber(job.errorRows) })}`}
               </span>
             ),
           },
           {
-            header: 'Cuándo',
+            header: t('dataImport.history.colWhen'),
             width: '150px',
             cell: (job: ImportJob) => (
               <span className="text-xs text-fg-muted">
@@ -118,7 +125,7 @@ export const JobHistory: React.FC<Props> = ({ objects, onOpen }) => {
             align: 'right',
             cell: (job: ImportJob) => (
               <Button variant="ghost" size="sm" onClick={() => onOpen(job.id)}>
-                Ver
+                {t('dataImport.history.view')}
               </Button>
             ),
           },

@@ -82,6 +82,16 @@ export interface DocumentHookContext {
   flags: any;
 }
 
+/** Contexto de `beforeCreate`: la cabecera tal cual llega, antes de numerar nada. */
+export interface DocumentBeforeCreateHookContext {
+  tx: any;
+  tenantId: string;
+  user: any;
+  def: DocumentDefinition;
+  request: DocumentCreateRequest;
+  flags: any;
+}
+
 /** Contexto pasado al hook `afterCancel` — espejo de `DocumentHookContext` pero para cancelación. */
 export interface DocumentCancelHookContext {
   tx: any;
@@ -103,6 +113,8 @@ export interface DocumentCancelHookContext {
  * Los tipos que no registran `hooks` se comportan exactamente igual que hoy.
  */
 export interface DocumentHooks {
+  /** Una vez, antes de numerar y de tocar nada — validar la cabecera/lanzar error. */
+  beforeCreate?: (ctx: DocumentBeforeCreateHookContext) => Promise<void> | void;
   /** Por línea, antes del check de trazabilidad y del insert — validar/lanzar error. */
   beforeLine?: (ctx: LineHookContext) => Promise<void> | void;
   /** Solo si la línea no trae batchDetails y el artículo es trazable — puede devolver una lista para usar en vez de exigir selección manual. */
@@ -163,6 +175,10 @@ export class DocumentEngine {
     const flags = await getConfigSection(db, 'flags', FLAGS_DEFAULTS);
 
     const result = await db.transaction(async (tx: any) => {
+      // 1b. Validación de cabecera propia del tipo (p. ej. la referencia del
+      // proveedor, obligatoria en facturas de compra).
+      await def.hooks?.beforeCreate?.({ tx, tenantId, user, def, request, flags });
+
       // 2. Numeración
       const { docNum, isManualSeries } = await this.resolveDocNumber(tx, def, request);
 
@@ -841,6 +857,10 @@ export class DocumentEngine {
       if ((request as any).notes != null) updatePayload.notes = (request as any).notes;
       if ((request as any).internalNotes != null)
         updatePayload.internalNotes = (request as any).internalNotes;
+      if ((def.schemaTable as any).externalRef !== undefined) {
+        const ref = String((request as any).externalRef ?? '').trim();
+        if (ref) updatePayload.externalRef = ref;
+      }
       if ((request as any).rectifyRef) updatePayload.rectifyRef = (request as any).rectifyRef;
       if ((request as any).rectifyReason)
         updatePayload.rectifyReason = (request as any).rectifyReason;

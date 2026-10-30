@@ -35,6 +35,7 @@ import { BaseMap, type BaseMapHandle } from '../components/maps/BaseMap';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 import type { Route, RouteDetail, RouteStop } from '../domain/route';
 import type { Shipment } from '../domain/shipment';
 
@@ -64,28 +65,28 @@ function NumberedPin({ n, done }: { n: number; done: boolean }) {
 }
 
 const STOP_LABEL: Record<string, string> = {
-  pending: 'Pendiente',
-  en_route: 'En camino',
-  arrived: 'En la puerta',
-  delivered: 'Entregado',
-  postponed: 'Aplazado',
-  exception: 'Incidencia',
-  cancelled: 'Cancelado',
+  pending: 'logistics.driver.stopStatus.pending',
+  en_route: 'logistics.driver.stopStatus.en_route',
+  arrived: 'logistics.driver.stopStatus.arrived',
+  delivered: 'logistics.driver.stopStatus.delivered',
+  postponed: 'logistics.driver.stopStatus.postponed',
+  exception: 'logistics.driver.stopStatus.exception',
+  cancelled: 'logistics.driver.stopStatus.cancelled',
 };
 
 const SHIP_LABEL: Record<string, string> = {
-  pending: 'Pendiente',
-  picking: 'Preparando',
-  packed: 'Empaquetado',
-  ready: 'Listo',
-  dispatched: 'Despachado',
-  in_transit: 'En tránsito',
-  out_for_delivery: 'En reparto',
-  postponed: 'Aplazado',
-  delivered: 'Entregado',
-  exception: 'Incidencia',
-  returned: 'Devuelto',
-  cancelled: 'Cancelado',
+  pending: 'logistics.status.shipment.pending',
+  picking: 'logistics.status.shipment.picking',
+  packed: 'logistics.status.shipment.packed',
+  ready: 'logistics.status.shipment.ready',
+  dispatched: 'logistics.status.shipment.dispatched',
+  in_transit: 'logistics.status.shipment.in_transit',
+  out_for_delivery: 'logistics.status.shipment.out_for_delivery',
+  postponed: 'logistics.status.shipment.postponed',
+  delivered: 'logistics.status.shipment.delivered',
+  exception: 'logistics.status.shipment.exception',
+  returned: 'logistics.status.shipment.returned',
+  cancelled: 'logistics.status.shipment.cancelled',
 };
 
 /**
@@ -171,6 +172,7 @@ export const DriverApp: React.FC = () => {
   const { token, user } = useAuth();
   const fmt = useFormat();
   const toast = useToast();
+  const { t } = useI18n();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<RouteDetail | null>(null);
@@ -255,7 +257,7 @@ export const DriverApp: React.FC = () => {
 
   const startGps = () => {
     if (!navigator.geolocation) {
-      toast.error('Este dispositivo no soporta geolocalización');
+      toast.error(t('logistics.driver.noGeolocation'));
       return;
     }
     if (!detail) return;
@@ -281,7 +283,7 @@ export const DriverApp: React.FC = () => {
           ),
         );
       },
-      (err) => toast.error(`GPS: ${err.message}`),
+      (err) => toast.error(t('logistics.driver.gpsError', { message: err.message })),
       { enableHighAccuracy: true, maximumAge: 10_000, timeout: 15_000 },
     );
   };
@@ -314,7 +316,7 @@ export const DriverApp: React.FC = () => {
     try {
       parsed = JSON.parse(raw);
     } catch {
-      toast.error('QR no reconocido');
+      toast.error(t('logistics.driver.qrUnrecognized'));
       return;
     }
 
@@ -336,17 +338,17 @@ export const DriverApp: React.FC = () => {
         });
         if (navigator.vibrate) navigator.vibrate([60, 30, 60]);
       } catch {
-        toast.error('No se pudo leer el paquete');
+        toast.error(t('logistics.driver.packageReadError'));
       }
       return;
     }
 
     if (!parsed || parsed.v !== 1 || !parsed.s) {
-      toast.error('QR no válido para un acopio');
+      toast.error(t('logistics.driver.qrInvalidArea'));
       return;
     }
     if (parsed.t && user?.tenantId && parsed.t !== user.tenantId) {
-      toast.error('Este acopio pertenece a otra empresa');
+      toast.error(t('logistics.driver.areaOtherCompany'));
       return;
     }
     try {
@@ -381,7 +383,7 @@ export const DriverApp: React.FC = () => {
       }
       if (navigator.vibrate) navigator.vibrate(hits.length > 0 ? [80, 40, 80] : 200);
     } catch (e) {
-      toast.error('No se pudo cargar el acopio');
+      toast.error(t('logistics.driver.areaLoadError'));
     }
   };
 
@@ -400,7 +402,7 @@ export const DriverApp: React.FC = () => {
     if (!selectedId || !detail) return;
     const pending = detail.stops.filter((s) => s.status === 'pending');
     if (pending.length === 0) {
-      toast.error('No hay paradas pendientes');
+      toast.error(t('logistics.driver.noPendingStops'));
       return;
     }
     setConfirmBulkArrive(pending.length);
@@ -417,7 +419,7 @@ export const DriverApp: React.FC = () => {
     );
     setConfirmBulkArrive(null);
     loadDetail(selectedId);
-    toast.success(`${pending.length} parada(s) marcadas como llegadas`);
+    toast.success(t('logistics.driver.markedArrived', { count: pending.length }));
   };
 
   /**
@@ -431,11 +433,11 @@ export const DriverApp: React.FC = () => {
     setRouteBusy(true);
     try {
       await routesApi.start(selectedId);
-      toast.success('Ruta iniciada — ¡buen reparto!');
+      toast.success(t('logistics.driver.routeStarted'));
       await loadDetail(selectedId);
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'No se pudo iniciar la ruta');
+      toast.error(msg || t('logistics.driver.routeStartError'));
     } finally {
       setRouteBusy(false);
     }
@@ -447,14 +449,14 @@ export const DriverApp: React.FC = () => {
     setRouteBusy(true);
     try {
       await routesApi.finish(selectedId);
-      toast.success('Ruta finalizada');
+      toast.success(t('logistics.driver.routeFinished'));
       setFinishConfirm(false);
       stopGps();
       setSelectedId(null);
       loadRoutes();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'No se pudo finalizar la ruta');
+      toast.error(msg || t('logistics.driver.routeFinishError'));
     } finally {
       setRouteBusy(false);
     }
@@ -476,7 +478,7 @@ export const DriverApp: React.FC = () => {
    * una entrada `shipmentEvent` con el motivo que teclee el conductor.
    */
   const markPostponed = (stopId: string, shipmentId: string | null) => {
-    setPostponeFor({ stopId, shipmentId, reason: 'No había nadie para recibirlo' });
+    setPostponeFor({ stopId, shipmentId, reason: t('logistics.driver.postponeDefaultReason') });
   };
 
   const submitPostpone = async () => {
@@ -492,7 +494,7 @@ export const DriverApp: React.FC = () => {
     }
     setPostponeFor(null);
     loadDetail(selectedId);
-    toast.success('Entrega aplazada');
+    toast.success(t('logistics.driver.postponed'));
   };
 
   /** Reporta una incidencia: el stop queda `exception`, el shipment también. */
@@ -504,7 +506,7 @@ export const DriverApp: React.FC = () => {
     if (!selectedId || !exceptionFor) return;
     const { stopId, shipmentId, reason } = exceptionFor;
     if (!reason.trim()) {
-      toast.error('Necesitas describir la incidencia');
+      toast.error(t('logistics.driver.exceptionRequired'));
       return;
     }
     await routesApi.updateStop(selectedId, stopId, {
@@ -517,14 +519,16 @@ export const DriverApp: React.FC = () => {
     }
     setExceptionFor(null);
     loadDetail(selectedId);
-    toast.success('Incidencia reportada');
+    toast.success(t('logistics.driver.exceptionReported'));
   };
 
   const markDelivered = (stopId: string, shipmentId: string | null) => {
     if (!selectedId) return;
     const stop = detail?.stops.find((s) => s.id === stopId);
     const ship = stop?.shipmentId ? shipmentsById.get(stop.shipmentId) : undefined;
-    const label = stop ? resolveAddress(stop, ship) || `Parada ${stop.sequence}` : 'Parada';
+    const label = stop
+      ? resolveAddress(stop, ship) || t('logistics.driver.stopN', { n: stop.sequence })
+      : t('logistics.driver.stop');
     setPodFor({ stopId, shipmentId, label });
   };
 
@@ -549,7 +553,11 @@ export const DriverApp: React.FC = () => {
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
       const status = err instanceof ApiError ? err.status : undefined;
-      toast.error(`No se pudo marcar como entregado: ${msg || `Error ${status}`}`);
+      toast.error(
+        t('logistics.driver.deliverError', {
+          detail: msg || t('logistics.driver.errorStatus', { status: String(status) }),
+        }),
+      );
       return;
     }
     if (podFor.shipmentId) {
@@ -557,7 +565,7 @@ export const DriverApp: React.FC = () => {
     }
     await loadDetail(selectedId);
     setPodFor(null);
-    toast.success('Entregado');
+    toast.success(t('logistics.driver.delivered'));
   };
 
   const shipmentsById = useMemo(
@@ -582,7 +590,7 @@ export const DriverApp: React.FC = () => {
       <Modal
         isOpen={!!packageScan}
         onClose={() => setPackageScan(null)}
-        title="Paquete escaneado"
+        title={t('logistics.driver.scan.packageTitle')}
         maxWidth="sm"
       >
         {packageScan && (
@@ -600,15 +608,16 @@ export const DriverApp: React.FC = () => {
             </div>
             <div className="rounded-lg bg-amber-50 dark:bg-amber-500/10 border-2 border-amber-500 p-4">
               <div className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 mb-1">
-                Entregar en
+                {t('logistics.driver.deliverTo')}
               </div>
               <div className="text-base font-bold text-fg-default leading-snug">
-                {packageScan.destinationAddress || 'SIN DIRECCIÓN'}
+                {packageScan.destinationAddress || t('logistics.driver.scan.noAddress')}
               </div>
             </div>
             {packageScan.trackingNumber && (
               <div className="text-xs text-slate-500">
-                Envío: <code className="font-mono">{packageScan.trackingNumber}</code>
+                {t('logistics.driver.scan.shipment')}{' '}
+                <code className="font-mono">{packageScan.trackingNumber}</code>
               </div>
             )}
           </div>
@@ -624,7 +633,7 @@ export const DriverApp: React.FC = () => {
       <Modal
         isOpen={!!scanResult}
         onClose={() => setScanResult(null)}
-        title="Acopio escaneado"
+        title={t('logistics.driver.scan.areaTitle')}
         maxWidth="sm"
       >
         {scanResult && (
@@ -634,17 +643,20 @@ export const DriverApp: React.FC = () => {
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 size={28} className="text-emerald-500" strokeWidth={2.5} />
                   <div className="text-lg font-black text-emerald-700 dark:text-emerald-300">
-                    ¡Es tuyo!
+                    {t('logistics.driver.scan.mine')}
                   </div>
                 </div>
                 <div className="text-sm text-fg-body">
-                  Acopio <b>{scanResult.stagingName}</b> ({scanResult.stagingCode}) —{' '}
-                  {scanResult.packagesCount} paquete(s).
+                  {t('logistics.driver.scan.area')} <b>{scanResult.stagingName}</b> (
+                  {scanResult.stagingCode}) —{' '}
+                  {t('logistics.driver.scan.packages', { count: scanResult.packagesCount })}
                 </div>
                 {scanResult.myRoutes && scanResult.myRoutes.length > 0 && (
                   <div className="mt-3 space-y-2">
                     <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                      {scanResult.myRoutes.length > 1 ? 'Tus rutas en este acopio' : 'Tu ruta'}
+                      {scanResult.myRoutes.length > 1
+                        ? t('logistics.driver.scan.yourRoutes')
+                        : t('logistics.driver.scan.yourRoute')}
                     </div>
                     {/* Fila clicable (tarjeta de ruta), no un control: se queda
                         como <button> crudo — es estructura y además un objetivo
@@ -662,7 +674,7 @@ export const DriverApp: React.FC = () => {
                           {r.name || '—'}
                         </span>
                         <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-bold">
-                          Abrir →
+                          {t('logistics.driver.scan.open')} →
                         </span>
                       </button>
                     ))}
@@ -675,21 +687,22 @@ export const DriverApp: React.FC = () => {
                 <div className="flex items-center gap-2 mb-2">
                   <XIcon size={28} className="text-rose-500" strokeWidth={2.5} />
                   <div className="text-lg font-black text-rose-700 dark:text-rose-300">
-                    Este acopio NO es tuyo
+                    {t('logistics.driver.scan.notMine')}
                   </div>
                 </div>
                 <div className="text-sm text-fg-body">
-                  Está asignado a <b>{scanResult.otherDriver}</b>
+                  {t('logistics.driver.scan.assignedTo')} <b>{scanResult.otherDriver}</b>
                   {scanResult.otherRouteCode && (
                     <>
                       {' '}
-                      (ruta <code className="font-mono">{scanResult.otherRouteCode}</code>)
+                      ({t('logistics.driver.scan.route')}{' '}
+                      <code className="font-mono">{scanResult.otherRouteCode}</code>)
                     </>
                   )}
                   .
                 </div>
                 <div className="text-xs text-slate-500 mt-2">
-                  No cargues este palet. Consulta con el almacén.
+                  {t('logistics.driver.scan.dontLoad')}
                 </div>
               </div>
             )}
@@ -698,11 +711,12 @@ export const DriverApp: React.FC = () => {
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle size={28} className="text-amber-500" strokeWidth={2.5} />
                   <div className="text-lg font-black text-amber-700 dark:text-amber-300">
-                    Sin ruta asignada
+                    {t('logistics.driver.scan.unassigned')}
                   </div>
                 </div>
                 <div className="text-sm text-fg-body">
-                  El acopio <b>{scanResult.stagingName}</b> aún no tiene ruta planificada ni activa.
+                  {t('logistics.driver.scan.unassignedBefore')} <b>{scanResult.stagingName}</b>{' '}
+                  {t('logistics.driver.scan.unassignedAfter')}
                 </div>
               </div>
             )}
@@ -714,19 +728,20 @@ export const DriverApp: React.FC = () => {
       <Modal
         isOpen={confirmBulkArrive !== null}
         onClose={() => setConfirmBulkArrive(null)}
-        title="Marcar todas como llegadas"
+        title={t('logistics.driver.bulk.title')}
         maxWidth="sm"
       >
         <div className="pt-2 space-y-4">
           <p className="text-sm text-fg-body">
-            Se marcarán <b>{confirmBulkArrive}</b> parada(s) pendiente(s) como <b>llegadas</b> con
-            la hora actual.
+            {t('logistics.driver.bulk.before')} <b>{confirmBulkArrive}</b>{' '}
+            {t('logistics.driver.bulk.middle', { count: confirmBulkArrive ?? 0 })}{' '}
+            <b>{t('logistics.driver.bulk.arrived')}</b> {t('logistics.driver.bulk.after')}
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setConfirmBulkArrive(null)}>
-              Cancelar
+              {t('logistics.common.cancel')}
             </Button>
-            <Button onClick={confirmMarkAllArrived}>Marcar como llegadas</Button>
+            <Button onClick={confirmMarkAllArrived}>{t('logistics.driver.bulk.confirm')}</Button>
           </div>
         </div>
       </Modal>
@@ -735,24 +750,24 @@ export const DriverApp: React.FC = () => {
       <Modal
         isOpen={!!postponeFor}
         onClose={() => setPostponeFor(null)}
-        title="Aplazar entrega"
-        subtitle="El motivo se envía al destinatario por email."
+        title={t('logistics.driver.postponeModal.title')}
+        subtitle={t('logistics.driver.postponeModal.subtitle')}
         maxWidth="sm"
       >
         {postponeFor && (
           <div className="pt-2 space-y-4">
             <Input
-              label="Motivo"
+              label={t('logistics.driver.postponeModal.reason')}
               value={postponeFor.reason}
               onChange={(e) => setPostponeFor({ ...postponeFor, reason: e.target.value })}
-              placeholder="No había nadie para recibirlo"
+              placeholder={t('logistics.driver.postponeDefaultReason')}
             />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setPostponeFor(null)}>
-                Cancelar
+                {t('logistics.common.cancel')}
               </Button>
               <Button onClick={submitPostpone} className="!bg-amber-600 hover:!bg-amber-700">
-                ⏸ Aplazar
+                ⏸ {t('logistics.driver.postpone')}
               </Button>
             </div>
           </div>
@@ -763,26 +778,26 @@ export const DriverApp: React.FC = () => {
       <Modal
         isOpen={!!exceptionFor}
         onClose={() => setExceptionFor(null)}
-        title="Reportar incidencia"
-        subtitle="Dirección errónea, daño, rechazo del cliente, etc."
+        title={t('logistics.driver.exceptionModal.title')}
+        subtitle={t('logistics.driver.exceptionModal.subtitle')}
         maxWidth="sm"
       >
         {exceptionFor && (
           <div className="pt-2 space-y-4">
             {/* Obligatorio: `submitException` ya avisa con toast si viene vacío. */}
             <Input
-              label="Descripción"
+              label={t('logistics.driver.exceptionModal.description')}
               requiredMark
               value={exceptionFor.reason}
               onChange={(e) => setExceptionFor({ ...exceptionFor, reason: e.target.value })}
-              placeholder="Describe la incidencia"
+              placeholder={t('logistics.driver.exceptionModal.placeholder')}
             />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setExceptionFor(null)}>
-                Cancelar
+                {t('logistics.common.cancel')}
               </Button>
               <Button onClick={submitException} className="!bg-rose-600 hover:!bg-rose-700">
-                ⚠ Reportar
+                ⚠ {t('logistics.driver.exceptionModal.report')}
               </Button>
             </div>
           </div>
@@ -799,8 +814,8 @@ export const DriverApp: React.FC = () => {
     return (
       <div className="min-h-screen bg-bg-muted p-3">
         <PageHeader
-          title={`Hola, ${user?.username}`}
-          subtitle="Tus rutas asignadas"
+          title={t('logistics.driver.greeting', { name: user?.username ?? '' })}
+          subtitle={t('logistics.driver.assignedRoutes')}
           size="sm"
           className="mb-3"
           actions={
@@ -810,10 +825,12 @@ export const DriverApp: React.FC = () => {
               type="button"
               onClick={() => setScanOpen(true)}
               className="flex-col gap-0.5 px-4 py-2 rounded-lg shadow-md active:scale-95"
-              title="Escanear acopio"
+              title={t('logistics.driver.scanArea')}
             >
               <QrCode size={22} />
-              <span className="text-[10px] font-bold tracking-wide">ESCANEAR</span>
+              <span className="text-[10px] font-bold tracking-wide">
+                {t('logistics.driver.scanButton')}
+              </span>
             </Button>
           }
         />
@@ -829,7 +846,7 @@ export const DriverApp: React.FC = () => {
             onClick={() => setDateFilter(todayStr())}
             className="h-8 px-3 rounded-lg"
           >
-            Hoy
+            {t('logistics.driver.today')}
           </Button>
           <Button
             type="button"
@@ -838,7 +855,7 @@ export const DriverApp: React.FC = () => {
             onClick={() => setDateFilter('')}
             className="h-8 px-3 rounded-lg"
           >
-            Todas
+            {t('logistics.driver.all')}
           </Button>
           {/* '' = todas las fechas, de ahí el `|| null` / `?? ''`. */}
           <DatePicker
@@ -855,14 +872,18 @@ export const DriverApp: React.FC = () => {
           </div>
         ) : routes.length === 0 ? (
           <Card bodyClassName="py-10">
-            <EmptyState icon={<RouteIcon size={18} />} title="No tienes rutas asignadas" />
+            <EmptyState icon={<RouteIcon size={18} />} title={t('logistics.driver.noRoutes')} />
           </Card>
         ) : visibleRoutes.length === 0 ? (
           <Card bodyClassName="py-10">
             <EmptyState
               icon={<RouteIcon size={18} />}
-              title={`Sin rutas para ${dateFilter === todayStr() ? 'hoy' : 'ese día'}`}
-              hint="Usa «Todas» para ver el resto."
+              title={
+                dateFilter === todayStr()
+                  ? t('logistics.driver.noRoutesToday')
+                  : t('logistics.driver.noRoutesThatDay')
+              }
+              hint={t('logistics.driver.noRoutesHint')}
               action={
                 <Button
                   type="button"
@@ -870,7 +891,7 @@ export const DriverApp: React.FC = () => {
                   variant="secondary"
                   onClick={() => setDateFilter('')}
                 >
-                  Ver todas
+                  {t('logistics.driver.viewAll')}
                 </Button>
               }
             />
@@ -949,7 +970,7 @@ export const DriverApp: React.FC = () => {
       {lastFix && (
         <Marker longitude={lastFix.lng} latitude={lastFix.lat} anchor="center">
           <div
-            title="Tu ubicación"
+            title={t('logistics.driver.yourLocation')}
             style={{
               background: '#0284c7',
               color: '#fff',
@@ -993,7 +1014,9 @@ export const DriverApp: React.FC = () => {
               closeOnClick={false}
             >
               <div className="text-xs">
-                <div className="font-black mb-1">Parada {pt.stop.sequence}</div>
+                <div className="font-black mb-1">
+                  {t('logistics.driver.stopN', { n: pt.stop.sequence })}
+                </div>
                 <div className="text-slate-700">{resolveAddress(pt.stop, ship) || '—'}</div>
                 <a
                   href={mapsUrl(pt.stop, ship) || '#'}
@@ -1001,7 +1024,7 @@ export const DriverApp: React.FC = () => {
                   rel="noreferrer"
                   className="block mt-2 text-blue-600 underline"
                 >
-                  Abrir en Maps →
+                  {t('logistics.driver.openInMaps')} →
                 </a>
               </div>
             </Popup>
@@ -1042,7 +1065,7 @@ export const DriverApp: React.FC = () => {
             setSelectedId(null);
           }}
         >
-          ← Mis rutas
+          ← {t('logistics.driver.myRoutes')}
         </Button>
         <div className="flex items-center gap-3">
           {/* `p-2` se conserva: el icono de 18px necesita el área táctil. */}
@@ -1050,12 +1073,14 @@ export const DriverApp: React.FC = () => {
             type="button"
             onClick={() => setScanOpen(true)}
             className="p-2 rounded-lg shadow-sm active:scale-95"
-            title="Escanear acopio"
+            title={t('logistics.driver.scanArea')}
           >
             <QrCode size={18} />
           </Button>
           <div className="text-[11px] text-slate-500">
-            {lastFix ? `GPS: ${lastFix.lat.toFixed(4)}, ${lastFix.lng.toFixed(4)}` : 'GPS inactivo'}
+            {lastFix
+              ? `GPS: ${lastFix.lat.toFixed(4)}, ${lastFix.lng.toFixed(4)}`
+              : t('logistics.driver.gpsInactive')}
           </div>
         </div>
       </div>
@@ -1076,16 +1101,16 @@ export const DriverApp: React.FC = () => {
                 rel="noreferrer"
                 className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-emerald-500 text-white text-xs font-black uppercase tracking-wider shadow-sm hover:shadow-md active:scale-[0.97] transition-all"
               >
-                <RouteIcon size={14} /> Navegar ruta
+                <RouteIcon size={14} /> {t('logistics.driver.navigateRoute')}
               </a>
             )}
             {tracking ? (
               <Button onClick={stopGps} variant="danger" className="flex items-center gap-2">
-                <Square size={14} /> Detener GPS
+                <Square size={14} /> {t('logistics.driver.stopGps')}
               </Button>
             ) : (
               <Button onClick={startGps} className="flex items-center gap-2">
-                <Play size={14} /> Iniciar GPS
+                <Play size={14} /> {t('logistics.driver.startGps')}
               </Button>
             )}
           </div>
@@ -1101,11 +1126,10 @@ export const DriverApp: React.FC = () => {
               disabled={routeBusy}
               className="w-full flex items-center justify-center gap-2"
             >
-              <Play size={16} /> Iniciar ruta
+              <Play size={16} /> {t('logistics.driver.startRoute')}
             </Button>
             <div className="text-[11px] text-slate-500 text-center">
-              Inicia la ruta para empezar el reparto — avisaremos a los clientes de que su pedido va
-              en camino.
+              {t('logistics.driver.startRouteHint')}
             </div>
           </>
         )}
@@ -1116,7 +1140,7 @@ export const DriverApp: React.FC = () => {
             disabled={routeBusy}
             className="w-full flex items-center justify-center gap-2"
           >
-            <Square size={14} /> Finalizar ruta
+            <Square size={14} /> {t('logistics.driver.finishRoute')}
           </Button>
         )}
 
@@ -1135,7 +1159,7 @@ export const DriverApp: React.FC = () => {
               )}
               {detail.vehicle.capacity != null && (
                 <span className="ml-auto text-[11px] text-slate-500">
-                  Capacidad: {detail.vehicle.capacity} kg
+                  {t('logistics.driver.capacity', { kg: detail.vehicle.capacity })}
                 </span>
               )}
             </div>
@@ -1149,7 +1173,7 @@ export const DriverApp: React.FC = () => {
         {detail.pickups && detail.pickups.length > 0 && (
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-              Recoge en
+              {t('logistics.driver.pickupAt')}
             </div>
             <div className="space-y-1.5">
               {detail.pickups.map((p) => {
@@ -1175,8 +1199,9 @@ export const DriverApp: React.FC = () => {
                         )}
                       </div>
                       <div className="text-[11px] text-slate-500 truncate">
-                        {p.address || p.platform?.address || 'Sin dirección'} ·{' '}
-                        <b>{p.packageCount}</b> paquete(s)
+                        {p.address || p.platform?.address || t('logistics.driver.noAddress')} ·{' '}
+                        <b>{p.packageCount}</b>{' '}
+                        {t('logistics.driver.packagesWord', { count: p.packageCount })}
                       </div>
                     </div>
                     {navUrl && (
@@ -1186,7 +1211,7 @@ export const DriverApp: React.FC = () => {
                         rel="noreferrer"
                         className="shrink-0 inline-flex items-center gap-1 h-8 px-2.5 rounded-md bg-amber-500 text-white text-[11px] font-bold uppercase tracking-wider shadow-sm hover:opacity-90"
                       >
-                        <Navigation size={12} /> Ir
+                        <Navigation size={12} /> {t('logistics.driver.go')}
                       </a>
                     )}
                   </div>
@@ -1207,9 +1232,7 @@ export const DriverApp: React.FC = () => {
             onClick={() => setMapOpen((v) => !v)}
             className="w-full flex items-center justify-between px-4 py-2 border-b border-border-subtle text-[10px] font-black uppercase tracking-[0.15em] text-slate-500"
           >
-            <span>
-              Mapa · {mapPoints.length} parada{mapPoints.length === 1 ? '' : 's'}
-            </span>
+            <span>{t('logistics.driver.mapStops', { count: mapPoints.length })}</span>
             {mapOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           {mapOpen && (
@@ -1222,17 +1245,21 @@ export const DriverApp: React.FC = () => {
                   type="button"
                   onClick={() => centerMap(mapRef)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-card shadow-md border border-border-default text-[11px] font-bold uppercase tracking-wider text-fg-body hover:bg-bg-hover active:scale-95 transition"
-                  title={lastFix ? 'Centrar en mi GPS' : 'Centrar en la 1ª parada'}
+                  title={
+                    lastFix
+                      ? t('logistics.driver.centerGps')
+                      : t('logistics.driver.centerFirstStop')
+                  }
                 >
-                  <Navigation size={12} /> Centrar
+                  <Navigation size={12} /> {t('logistics.driver.center')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setMapFullscreen(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-card shadow-md border border-border-default text-[11px] font-bold uppercase tracking-wider text-fg-body hover:bg-bg-hover active:scale-95 transition"
-                  title="Ampliar mapa"
+                  title={t('logistics.driver.expandMap')}
                 >
-                  <Maximize2 size={12} /> Ampliar
+                  <Maximize2 size={12} /> {t('logistics.driver.expand')}
                 </button>
               </div>
               <BaseMap ref={mapRef} latitude={mapCenterLat} longitude={mapCenterLng} zoom={12}>
@@ -1249,7 +1276,7 @@ export const DriverApp: React.FC = () => {
       <Modal
         isOpen={mapFullscreen}
         onClose={() => setMapFullscreen(false)}
-        title={`Mapa · ${mapPoints.length} parada${mapPoints.length === 1 ? '' : 's'}`}
+        title={t('logistics.driver.mapStops', { count: mapPoints.length })}
         maxWidth="full"
       >
         <div style={{ height: '75vh' }} className="relative">
@@ -1258,9 +1285,11 @@ export const DriverApp: React.FC = () => {
             type="button"
             onClick={() => centerMap(mapRefFull)}
             className="absolute top-2 right-2 z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-card shadow-md border border-border-default text-[11px] font-bold uppercase tracking-wider text-fg-body hover:bg-bg-hover active:scale-95 transition"
-            title={lastFix ? 'Centrar en mi GPS' : 'Centrar en la 1ª parada'}
+            title={
+              lastFix ? t('logistics.driver.centerGps') : t('logistics.driver.centerFirstStop')
+            }
           >
-            <Navigation size={12} /> Centrar
+            <Navigation size={12} /> {t('logistics.driver.center')}
           </button>
           {mapFullscreen && (
             <BaseMap ref={mapRefFull} latitude={mapCenterLat} longitude={mapCenterLng} zoom={12}>
@@ -1271,19 +1300,23 @@ export const DriverApp: React.FC = () => {
       </Modal>
 
       {/* Confirmación de finalizar ruta — avisa si quedan paradas sin cerrar. */}
-      <Modal isOpen={finishConfirm} onClose={() => setFinishConfirm(false)} title="Finalizar ruta">
+      <Modal
+        isOpen={finishConfirm}
+        onClose={() => setFinishConfirm(false)}
+        title={t('logistics.driver.finishRoute')}
+      >
         <div className="space-y-3">
           <p className="text-sm text-fg-body">
             {openStopsCount > 0
-              ? `Quedan ${openStopsCount} parada(s) sin entregar. Se marcarán como aplazadas y volverán al almacén para reintentarse.`
-              : 'Todas las paradas están cerradas. ¿Finalizar la ruta?'}
+              ? t('logistics.driver.finishOpenStops', { count: openStopsCount })
+              : t('logistics.driver.finishAllClosed')}
           </p>
           <div className="flex gap-2 justify-end">
             <Button variant="secondary" onClick={() => setFinishConfirm(false)}>
-              Cancelar
+              {t('logistics.common.cancel')}
             </Button>
             <Button variant="danger" onClick={finishRoute} disabled={routeBusy}>
-              Finalizar ruta
+              {t('logistics.driver.finishRoute')}
             </Button>
           </div>
         </div>
@@ -1292,11 +1325,11 @@ export const DriverApp: React.FC = () => {
       {/* Header de la lista de repartos */}
       <div className="flex items-center justify-between mt-2 mb-1 px-1">
         <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-fg-muted">
-          Repartos · {detail.stops.length}
+          {t('logistics.driver.deliveries', { count: detail.stops.length })}
         </h2>
         <span className="text-[10px] text-slate-400">
           {detail.stops.filter((s) => s.status === 'delivered').length} / {detail.stops.length}{' '}
-          entregados
+          {t('logistics.driver.deliveredCount')}
         </span>
       </div>
 
@@ -1311,7 +1344,7 @@ export const DriverApp: React.FC = () => {
             onClick={markAllArrived}
             className="w-full h-10 rounded-lg mb-2 text-sm !bg-blue-500 hover:!bg-blue-600 !text-white shadow-sm active:scale-[0.98]"
           >
-            <MapPin size={16} /> Llegué en todas las paradas pendientes
+            <MapPin size={16} /> {t('logistics.driver.arrivedAll')}
           </Button>
         )}
 
@@ -1334,22 +1367,29 @@ export const DriverApp: React.FC = () => {
                   {s.sequence}
                 </span>
                 <Badge variant={isDone ? 'success' : s.status === 'en_route' ? 'info' : 'neutral'}>
-                  {(isPickup && s.status === 'delivered' ? 'Recogido' : STOP_LABEL[s.status]) ||
-                    s.status}
+                  {(isPickup && s.status === 'delivered'
+                    ? t('logistics.driver.collected')
+                    : STOP_LABEL[s.status]
+                      ? t(STOP_LABEL[s.status])
+                      : '') || s.status}
                 </Badge>
                 {ship && (
                   <Badge variant="info">
                     {(isPickup && ship.status === 'delivered'
-                      ? 'Recogido'
+                      ? t('logistics.driver.collected')
                       : isPickup && ship.status === 'out_for_delivery'
-                        ? 'Recogiendo'
-                        : SHIP_LABEL[ship.status]) || ship.status}
+                        ? t('logistics.driver.collecting')
+                        : SHIP_LABEL[ship.status]
+                          ? t(SHIP_LABEL[ship.status])
+                          : '') || ship.status}
                   </Badge>
                 )}
-                {isPickup && <Badge variant="warning">↩ Recogida de devolución</Badge>}
+                {isPickup && (
+                  <Badge variant="warning">↩ {t('logistics.driver.returnPickup')}</Badge>
+                )}
               </div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-0.5">
-                {isPickup ? 'Recoger de' : 'Entregar en'}
+                {isPickup ? t('logistics.driver.collectFrom') : t('logistics.driver.deliverTo')}
               </div>
               <div className="font-semibold text-fg-default">{addr || '—'}</div>
               {(ship?.recipientName || ship?.recipientEmail) && (
@@ -1373,7 +1413,7 @@ export const DriverApp: React.FC = () => {
                     rel="noreferrer"
                     className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-blue-500 text-white text-[11px] font-black uppercase tracking-wider shadow-sm hover:shadow-md active:scale-[0.97] transition-all"
                   >
-                    <Navigation size={12} /> Abrir en Maps
+                    <Navigation size={12} /> {t('logistics.driver.openInMaps')}
                   </a>
                 )}
                 {ship?.recipientPhone && (
@@ -1383,17 +1423,20 @@ export const DriverApp: React.FC = () => {
                       href={`tel:${ship.recipientPhone.replace(/\s+/g, '')}`}
                       className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-200 dark:bg-slate-700 text-fg-default text-[11px] font-black uppercase tracking-wider active:scale-[0.97] transition-all"
                     >
-                      📞 Llamar
+                      📞 {t('logistics.driver.call')}
                     </a>
                     {/* WhatsApp con mensaje prerrellenado */}
                     <a
                       href={buildWhatsAppUrl(
                         ship.recipientPhone,
-                        `Hola${ship.recipientName ? ` ${ship.recipientName}` : ''}, soy el repartidor. ${
+                        t(
                           isPickup
-                            ? 'Voy de camino a recoger tu paquete — tenlo preparado, por favor.'
-                            : 'Voy de camino con tu pedido.'
-                        }`,
+                            ? 'logistics.driver.whatsapp.pickup'
+                            : 'logistics.driver.whatsapp.delivery',
+                          {
+                            name: ship.recipientName ? ` ${ship.recipientName}` : '',
+                          },
+                        ),
                       )}
                       target="_blank"
                       rel="noreferrer"
@@ -1415,7 +1458,7 @@ export const DriverApp: React.FC = () => {
                         onClick={() => markArrived(s.id)}
                         className="flex-1 flex items-center justify-center gap-1"
                       >
-                        <MapPin size={14} /> Llegué
+                        <MapPin size={14} /> {t('logistics.driver.arrived')}
                       </Button>
                     )}
                     <Button
@@ -1424,7 +1467,10 @@ export const DriverApp: React.FC = () => {
                       onClick={() => markDelivered(s.id, s.shipmentId)}
                       className="flex-1 flex items-center justify-center gap-1"
                     >
-                      <CheckCircle2 size={14} /> {isPickup ? 'Recogí' : 'Entregué'}
+                      <CheckCircle2 size={14} />{' '}
+                      {isPickup
+                        ? t('logistics.driver.collectedAction')
+                        : t('logistics.driver.deliveredAction')}
                     </Button>
                   </div>
                   {/* Se conservan `flex-1 h-9` (área táctil) y el tono
@@ -1438,7 +1484,7 @@ export const DriverApp: React.FC = () => {
                       onClick={() => markPostponed(s.id, s.shipmentId)}
                       className="flex-1 h-9 rounded-lg text-[11px] font-bold uppercase tracking-wider !bg-amber-50 !text-amber-800 !border-amber-200 hover:!bg-amber-100 dark:!bg-amber-500/10 dark:!text-amber-300 dark:!border-amber-500/30 active:scale-[0.97]"
                     >
-                      ⏸ Aplazar
+                      ⏸ {t('logistics.driver.postpone')}
                     </Button>
                     <Button
                       type="button"
@@ -1448,7 +1494,7 @@ export const DriverApp: React.FC = () => {
                       onClick={() => reportException(s.id, s.shipmentId)}
                       className="flex-1 h-9 rounded-lg text-[11px] font-bold uppercase tracking-wider !bg-rose-50 !text-rose-700 !border-rose-200 hover:!bg-rose-100 dark:!bg-rose-500/10 dark:!text-rose-300 dark:!border-rose-500/30 active:scale-[0.97]"
                     >
-                      ⚠ Incidencia
+                      ⚠ {t('logistics.driver.incident')}
                     </Button>
                   </div>
                 </>

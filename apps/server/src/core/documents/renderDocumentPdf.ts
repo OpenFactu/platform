@@ -14,6 +14,7 @@ import { registerCanvasHelpers } from '../../api/documentTemplates';
 import { runTemplateQueries, type TemplateQuery } from './templateQueries';
 import { getConfigSection } from '../config/systemConfigSection';
 import { FLAGS_DEFAULTS } from '../config/appConfig';
+import { getRequestLocale, tr } from '../../i18n';
 
 /**
  * Inyecta un watermark diagonal semitransparente en un HTML de plantilla YA
@@ -76,7 +77,9 @@ export async function renderDocumentPdf(
   }
 
   // 2. Construir payload
-  const payload = await PdfPayloadBuilder.build(docType, documentId, tenantClient);
+  // El PDF sale en el idioma de quien lo pide.
+  const locale = res.req ? getRequestLocale(res.req) : 'es';
+  const payload = await PdfPayloadBuilder.build(docType, documentId, tenantClient, locale);
 
   // 2.b Ejecutar las consultas SQL guardadas en la plantilla (canvasLayout.queries)
   // e inyectar sus filas como `queries.<name>`, igual que hacen el preview del
@@ -119,7 +122,7 @@ export async function renderDocumentPdf(
         watermark: {
           ...baseOpts.watermark,
           enabled: true,
-          text: baseOpts.watermark?.text || 'BORRADOR',
+          text: baseOpts.watermark?.text || tr(locale, 'BORRADOR'),
         },
       };
       finalHtml = injectWatermark(template.html, finalOpts.watermark);
@@ -130,7 +133,7 @@ export async function renderDocumentPdf(
         watermark: {
           ...baseOpts.watermark,
           enabled: true,
-          text: 'PAGADA',
+          text: tr(locale, 'PAGADA'),
           color: '#16A34A',
           opacity: 0.18,
           rotation: -25,
@@ -156,7 +159,7 @@ export async function renderDocumentPdf(
       const docAny = payload.doc as any;
       docAny.customFields = {
         ...(docAny.customFields || {}),
-        Proyecto: `${io.code}${io.name ? ' — ' + io.name : ''}`,
+        [tr(locale, 'Proyecto')]: `${io.code}${io.name ? ' — ' + io.name : ''}`,
       };
     }
   }

@@ -4,6 +4,7 @@ import { cn } from '@openfactu/ui';
 import { usePluginFields } from './usePluginFields';
 import { PluginFieldInput } from './PluginFieldInput';
 import type { FieldSurface, PluginFieldDef } from './types';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   tableName: string;
@@ -23,10 +24,12 @@ export const PluginFieldsSection: React.FC<Props> = ({
   values,
   onChange,
   disabled,
-  title = 'Campos Personalizados',
+  title: titleProp,
   surface = 'form',
   header = true,
 }) => {
+  const { t } = useI18n();
+  const title = titleProp ?? t('app.pluginFields.title');
   const fields = usePluginFields(tableName, { surface });
   if (fields.length === 0) return null;
 

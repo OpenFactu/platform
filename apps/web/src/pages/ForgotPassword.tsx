@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2, CheckCircle2, Send } from 'lucide-react';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { AuroraBackdrop } from '../components/login/AuroraBackdrop';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Página pública de recuperación de contraseña. Pide el email y llama a
@@ -15,6 +16,7 @@ export const ForgotPassword: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +39,7 @@ export const ForgotPassword: React.FC = () => {
 
       <div className="w-full max-w-md space-y-6 animate-in fade-in zoom-in-95 duration-500 bg-white/95 dark:bg-[#1A2535]/90 backdrop-blur-md border border-white/40 dark:border-white/10 rounded-[4px] p-6 md:p-8 shadow-2xl relative z-10">
         <div className="flex flex-col items-center mb-2">
-          <KeirostLogo size={48} variant="dark" className="mb-4" />
+          <KeirostLogo size={44} className="mb-4 text-fg-default" />
         </div>
 
         {sent ? (
@@ -47,39 +49,34 @@ export const ForgotPassword: React.FC = () => {
             </div>
             <div className="space-y-2">
               <h3 className="text-2xl font-black text-fg-default tracking-tight">
-                Revisa tu correo
+                {t('app.forgot.checkEmail')}
               </h3>
               <p className="text-fg-muted font-medium text-sm leading-relaxed">
-                Si el email <strong>{email}</strong> corresponde a una cuenta, te hemos enviado un
-                enlace para restablecer tu contraseña. Caduca en 1 hora.
+                {t('app.forgot.sentBefore')} <strong>{email}</strong> {t('app.forgot.sentAfter')}
               </p>
-              <p className="text-fg-subtle text-xs pt-2">
-                ¿No lo recibes? Comprueba spam o pide a tu administrador que te lo restablezca.
-              </p>
+              <p className="text-fg-subtle text-xs pt-2">{t('app.forgot.notReceived')}</p>
             </div>
             <button
               type="button"
               onClick={() => navigate('/login')}
               className="w-full flex items-center justify-center gap-2 text-[#0D9488] hover:text-[#0A6E63] font-bold text-sm pt-2"
             >
-              <ArrowLeft size={16} /> Volver a iniciar sesión
+              <ArrowLeft size={16} /> {t('app.forgot.backToLogin')}
             </button>
           </div>
         ) : (
           <>
             <div className="space-y-2">
               <h3 className="text-2xl font-black text-fg-default tracking-tight">
-                Recuperar contraseña
+                {t('app.forgot.title')}
               </h3>
-              <p className="text-fg-muted font-medium text-sm">
-                Introduce tu email y te enviaremos un enlace para crear una nueva contraseña.
-              </p>
+              <p className="text-fg-muted font-medium text-sm">{t('app.forgot.subtitle')}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-1.5">
                 <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
-                  Email
+                  {t('app.forgot.email')}
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
@@ -91,7 +88,7 @@ export const ForgotPassword: React.FC = () => {
                     autoFocus
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="usuario@empresa.com"
+                    placeholder={t('app.forgot.emailPlaceholder')}
                     className="w-full bg-bg-card border border-[#E2E8F0] dark:border-[#2D3A4A] rounded-[4px] py-3.5 pl-12 pr-4 text-[#0A1628] dark:text-slate-100 text-sm placeholder:text-[#94A3B8] focus:outline-none focus:ring-2 focus:ring-[#0D9488]/20 focus:border-[#0D9488] transition-all font-medium"
                   />
                 </div>
@@ -106,7 +103,7 @@ export const ForgotPassword: React.FC = () => {
                   <Loader2 className="animate-spin" size={20} />
                 ) : (
                   <>
-                    Enviar enlace <Send size={16} />
+                    {t('app.forgot.send')} <Send size={16} />
                   </>
                 )}
               </button>
@@ -116,7 +113,7 @@ export const ForgotPassword: React.FC = () => {
                 onClick={() => navigate('/login')}
                 className="w-full flex items-center justify-center gap-2 text-fg-muted hover:text-[#0D9488] font-bold text-sm"
               >
-                <ArrowLeft size={16} /> Volver a iniciar sesión
+                <ArrowLeft size={16} /> {t('app.forgot.backToLogin')}
               </button>
             </form>
           </>

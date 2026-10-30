@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   CurrencyInput,
@@ -7,12 +8,12 @@ import {
   SegmentedControl,
   Select,
   Textarea,
+  TagInput,
 } from '@openfactu/ui';
 import { contactsApi } from '../api';
 import type { Contact, CrmSettings, Opportunity, OpportunityStage } from '../domain/crm';
 import { PartnerSelect } from './PartnerSelect';
 import { OwnerSelect } from './OwnerSelect';
-import { TagsInput } from './TagsInput';
 
 export type OpportunityDraft = Partial<Opportunity>;
 
@@ -45,6 +46,7 @@ export const OpportunityFields: React.FC<Props> = ({
   amountHint,
   disabled,
 }) => {
+  const { t } = useI18n();
   const [contacts, setContacts] = useState<Contact[]>([]);
   // Prospecto: sin cliente aún, con sus datos sueltos. Se deduce de lo guardado
   // y el usuario puede cambiarlo mientras no haya cliente elegido.
@@ -80,7 +82,7 @@ export const OpportunityFields: React.FC<Props> = ({
   return (
     <div className="space-y-4">
       <Input
-        label="Título"
+        label={t('crm.fields.title')}
         value={form.title ?? ''}
         onChange={(e) => set({ title: e.target.value })}
         required
@@ -89,12 +91,12 @@ export const OpportunityFields: React.FC<Props> = ({
       {!form.partnerId && !disabled && (
         <SegmentedControl
           size="sm"
-          aria-label="¿Cliente o prospecto?"
+          aria-label={t('crm.fields.clientOrProspect')}
           value={isProspect ? 'prospect' : 'client'}
           onChange={(v) => setProspectChosen(v === 'prospect')}
           options={[
-            { value: 'client', label: 'Cliente existente' },
-            { value: 'prospect', label: 'Prospecto (aún no es cliente)' },
+            { value: 'client', label: t('crm.fields.existingClient') },
+            { value: 'prospect', label: t('crm.fields.prospectOption') },
           ]}
         />
       )}
@@ -102,26 +104,26 @@ export const OpportunityFields: React.FC<Props> = ({
         {isProspect ? (
           <>
             <Input
-              label="Empresa"
+              label={t('crm.fields.company')}
               value={form.prospectCompany ?? ''}
               onChange={(e) => set({ prospectCompany: e.target.value })}
               disabled={disabled}
             />
             <Input
-              label="Persona de contacto"
+              label={t('crm.fields.contactPerson')}
               value={form.prospectName ?? ''}
               onChange={(e) => set({ prospectName: e.target.value })}
               disabled={disabled}
             />
             <Input
-              label="Correo"
+              label={t('crm.common.email')}
               type="email"
               value={form.prospectEmail ?? ''}
               onChange={(e) => set({ prospectEmail: e.target.value })}
               disabled={disabled}
             />
             <Input
-              label="Teléfono"
+              label={t('crm.common.phone')}
               type="tel"
               value={form.prospectPhone ?? ''}
               onChange={(e) => set({ prospectPhone: e.target.value })}
@@ -136,32 +138,34 @@ export const OpportunityFields: React.FC<Props> = ({
               disabled={disabled}
             />
             <SearchableSelect
-              label="Contacto"
+              label={t('crm.contactForm.contact')}
               options={contactOptions}
               value={form.contactId ?? ''}
               onChange={(v) => set({ contactId: v || null })}
-              placeholder={form.partnerId ? '— ninguno —' : 'Elige antes el interlocutor'}
+              placeholder={
+                form.partnerId ? t('crm.fields.none') : t('crm.fields.choosePartnerFirst')
+              }
               clearable
               disabled={disabled || !form.partnerId}
             />
           </>
         )}
         <Select
-          label="Etapa"
+          label={t('crm.common.stage')}
           options={stageOptions}
           value={stageId}
           onChange={(v) => set({ stageId: v })}
           disabled={disabled}
         />
         <CurrencyInput
-          label="Importe estimado"
+          label={t('crm.fields.estimatedAmount')}
           value={form.amount != null && form.amount !== '' ? Number(form.amount) : null}
           onChange={(v) => set({ amount: v == null ? '0' : String(v) })}
-          helperText={amountFromLines ? 'Se calcula con los productos.' : amountHint}
+          helperText={amountFromLines ? t('crm.fields.amountFromLines') : amountHint}
           disabled={disabled || amountFromLines}
         />
         <DatePicker
-          label="Cierre previsto"
+          label={t('crm.common.expectedClose')}
           value={form.expectedCloseDate ? form.expectedCloseDate.slice(0, 10) : null}
           onChange={(v) => set({ expectedCloseDate: v ?? null })}
           disabled={disabled}
@@ -172,36 +176,41 @@ export const OpportunityFields: React.FC<Props> = ({
           disabled={disabled}
         />
         <SearchableSelect
-          label="Origen"
+          label={t('crm.fields.source')}
           options={withCurrent(settings.sources, form.source)}
           value={form.source ?? ''}
           onChange={(v) => set({ source: v || null })}
-          placeholder="¿De dónde viene?"
+          placeholder={t('crm.fields.sourcePlaceholder')}
           clearable={!settings.sourceRequired}
           required={settings.sourceRequired}
           disabled={disabled}
         />
         {isLost && (
           <SearchableSelect
-            label="Motivo de pérdida"
+            label={t('crm.fields.lostReason')}
             options={withCurrent(settings.lostReasons, form.lostReason)}
             value={form.lostReason ?? ''}
             onChange={(v) => set({ lostReason: v || null })}
-            placeholder="Elige el motivo"
+            placeholder={t('crm.fields.chooseReason')}
             creatable
             onCreate={(term) => {
               set({ lostReason: term });
               return term;
             }}
-            createLabel="Usar «{term}»"
+            createLabel={t('crm.fields.useTerm')}
             required
             disabled={disabled}
           />
         )}
       </div>
-      <TagsInput value={form.tags ?? []} onChange={(tags) => set({ tags })} disabled={disabled} />
+      <TagInput
+        label={t('crm.common.tags')}
+        value={form.tags ?? []}
+        onChange={(tags) => set({ tags })}
+        disabled={disabled}
+      />
       <Textarea
-        label="Notas"
+        label={t('crm.common.notes')}
         rows={3}
         value={form.notes ?? ''}
         onChange={(e) => set({ notes: e.target.value })}

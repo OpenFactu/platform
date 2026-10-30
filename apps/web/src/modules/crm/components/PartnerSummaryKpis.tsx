@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useState } from 'react';
 import { KpiCard } from '@openfactu/ui';
 import { useFormat } from '@/hooks/useFormat';
@@ -7,6 +8,7 @@ import type { PartnerSummary } from '../domain/crm';
 /** Cifras del cliente. Las que el usuario no puede ver no se pintan. */
 export const PartnerSummaryKpis: React.FC<{ partnerId: string }> = ({ partnerId }) => {
   const fmt = useFormat();
+  const { t } = useI18n();
   const [summary, setSummary] = useState<PartnerSummary | null>(null);
   useEffect(() => {
     crmPartnersApi
@@ -19,24 +21,27 @@ export const PartnerSummaryKpis: React.FC<{ partnerId: string }> = ({ partnerId 
   const cards: Array<{ label: string; value: string; sub?: string }> = [];
   if (summary.revenue12m !== null)
     cards.push({
-      label: 'Facturado 12 meses',
+      label: t('crm.summary.revenue12m'),
       value: fmt.money(summary.revenue12m),
       sub: summary.lastPurchaseAt
-        ? `Última compra: ${fmt.date(summary.lastPurchaseAt)}`
-        : 'Sin compras',
+        ? t('crm.summary.lastPurchase', { date: fmt.date(summary.lastPurchaseAt) })
+        : t('crm.summary.noPurchases'),
     });
   if (summary.pendingReceivable !== null)
-    cards.push({ label: 'Pendiente de cobro', value: fmt.money(summary.pendingReceivable) });
+    cards.push({
+      label: t('crm.summary.pendingReceivable'),
+      value: fmt.money(summary.pendingReceivable),
+    });
   if (summary.openQuotes)
     cards.push({
-      label: 'Presupuestos abiertos',
+      label: t('crm.summary.openQuotes'),
       value: fmt.money(summary.openQuotes.amount),
-      sub: `${summary.openQuotes.count} presupuesto(s)`,
+      sub: t('crm.summary.quotesCount', { count: summary.openQuotes.count }),
     });
   cards.push({
-    label: 'Oportunidades abiertas',
+    label: t('crm.summary.openOpportunities'),
     value: fmt.money(summary.openOpportunities.amount),
-    sub: `${summary.openOpportunities.count} oportunidad(es)`,
+    sub: t('crm.summary.opportunitiesCount', { count: summary.openOpportunities.count }),
   });
 
   return (

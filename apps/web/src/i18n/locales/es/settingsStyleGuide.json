@@ -1,0 +1,109 @@
+{
+  "settingsStyleGuide": {
+    "roles": {
+      "text": "Texto principal, fondos oscuros",
+      "accent": "Acento principal, CTAs",
+      "base": "Fondo base",
+      "section": "Fondos de sección",
+      "dividers": "Divisores",
+      "secondary": "Texto secundario"
+    },
+    "semantics": {
+      "success": "Pagado · OK",
+      "warning": "Pendiente · Revisar",
+      "danger": "Error · Vencido",
+      "info": "Información · Nota"
+    },
+    "status": {
+      "paid": "Pagado",
+      "pending": "Pendiente",
+      "overdue": "Vencido"
+    },
+    "cols": {
+      "invoice": "Nº Factura",
+      "client": "Cliente",
+      "date": "Fecha emisión",
+      "status": "Estado",
+      "amount": "Importe"
+    },
+    "internalUse": "Uso interno",
+    "sections": {
+      "identity": "Identidad visual",
+      "palette": "Paleta de colores",
+      "typography": "Tipografía",
+      "components": "Componentes UI",
+      "spacing": "Espaciado & Forma",
+      "tokens": "Variables CSS"
+    },
+    "monogramVariants": "Variantes del monograma",
+    "rules": {
+      "correctTitle": "Uso correcto",
+      "correctBody": "Usar siempre sobre fondos sólidos. Mantener zona de exclusión mínima de 1× el tamaño del icono.",
+      "minSizeTitle": "Tamaño mínimo",
+      "minSizeBody": "Digital: 24 × 24 px. Impresión: 8 mm. Por debajo no se garantiza legibilidad.",
+      "dontTitle": "No hacer",
+      "dontBody": "No rotar, distorsionar, cambiar colores fuera de la paleta ni añadir efectos."
+    },
+    "tealScale": "Escala primaria — Teal",
+    "inkScale": "Escala neutros — Ink",
+    "systemColors": "Colores del sistema",
+    "semanticsLabel": "Semánticos",
+    "displayTitles": "Display / Títulos",
+    "bodyUi": "Cuerpo / UI",
+    "samples": {
+      "display": "Gestión empresarial",
+      "h1": "Panel de control",
+      "h2": "Resumen mensual de facturación",
+      "h3": "Últimas transacciones",
+      "body": "Keirost centraliza todos los procesos de tu empresa: facturación, inventario, contabilidad y gestión de clientes.",
+      "small": "Última actualización: 12 ene 2026 · 14:32"
+    },
+    "buttons": "Botones",
+    "btn": {
+      "save": "Guardar",
+      "newInvoice": "Nueva factura",
+      "export": "Exportar",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "confirm": "Confirmar",
+      "add": "+ Añadir",
+      "send": "Enviar",
+      "discard": "Descartar"
+    },
+    "badgesLabel": "Estados · Badges",
+    "badges": {
+      "active": "Activo",
+      "draft": "Borrador",
+      "review": "En revisión"
+    },
+    "forms": "Formularios",
+    "fields": {
+      "companyName": "Razón social",
+      "companyNamePlaceholder": "Empresa Ejemplo S.L.",
+      "taxId": "NIF / CIF",
+      "amount": "Importe",
+      "amountPlaceholder": "0,00 €"
+    },
+    "kpiCards": "Tarjetas KPI",
+    "kpi": {
+      "billing": "Facturación · mes",
+      "billingSub": "enero 2026",
+      "billingTrend": "12% vs mes anterior",
+      "orders": "Pedidos abiertos",
+      "ordersSub": "23 requieren atención",
+      "ordersTrend": "5 más que ayer",
+      "customers": "Clientes activos",
+      "customersSub": "+8 nuevos este mes",
+      "customersTrend": "tendencia positiva"
+    },
+    "dataTable": "Tabla de datos",
+    "testToast": "Toast de prueba",
+    "fireToast": "Disparar toast",
+    "toggleLoader": "Toggle loader",
+    "loading": "Cargando…",
+    "spacingScale": "Escala de espaciado",
+    "radiusButtons": "Botones / inputs → 2px",
+    "radiusCards": "Cards / modales → 4–8px",
+    "footer": "BRAND GUIDE v1.0 · 2026 · USO INTERNO"
+  }
+}

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { Card, Select } from '@openfactu/ui';
 import { allQuestions, formatAnswer, isEmpty, type FormDefinition } from '@forms-engine';
@@ -9,24 +10,31 @@ export const ByQuestionView: React.FC<{ definition: FormDefinition; rows: FormRe
   definition,
   rows,
 }) => {
+  const { t } = useI18n();
   const fmt = useFormat();
   const questions = allQuestions(definition);
   const [picked, setPicked] = useState(questions[0]?.id ?? '');
   const q = questions.find((x) => x.id === picked) ?? questions[0];
-  if (!q) return <p className="text-sm text-fg-muted">El formulario no tiene preguntas.</p>;
+  if (!q) return <p className="text-sm text-fg-muted">{t('forms.byQuestion.noQuestions')}</p>;
   const answered = rows.filter((r) => !isEmpty(r.answers?.[q.id]));
 
   return (
     <div className="space-y-4">
       <Select
-        label="Pregunta"
-        options={questions.map((x) => ({ value: x.id, label: x.title || 'Pregunta sin título' }))}
+        label={t('forms.question.question')}
+        options={questions.map((x) => ({
+          value: x.id,
+          label: x.title || t('forms.question.untitled'),
+        }))}
         value={q.id}
         onChange={setPicked}
       />
-      <Card title={q.title || 'Pregunta sin título'} subtitle={`${answered.length} respuesta(s)`}>
+      <Card
+        title={q.title || t('forms.question.untitled')}
+        subtitle={t('forms.responses.count', { count: answered.length })}
+      >
         {answered.length === 0 ? (
-          <p className="text-sm text-fg-muted">Nadie ha respondido a esta pregunta.</p>
+          <p className="text-sm text-fg-muted">{t('forms.byQuestion.noAnswers')}</p>
         ) : (
           <ul className="divide-y divide-border-subtle">
             {answered.map((r) => (

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Card, DatePicker, Input, SearchableSelect } from '@openfactu/ui';
+import { Card, DatePicker, Field as UiField, Input, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { crudApi } from '@/shared/api';
+import { useI18n } from '@/i18n/I18nContext';
 
 export type DocSideKind = 'sales' | 'purchase';
 
@@ -22,6 +23,9 @@ interface Props {
   /** Si true, se pinta colapsable (cerrado por defecto). Útil en docs
    *  no fiscales como pedidos o albaranes, donde estos datos son opcionales. */
   collapsible?: boolean;
+  /** Solo los campos, sin tarjeta ni título: el alta de documentos pone la
+   *  sección por fuera (DocumentFormLayout). */
+  bare?: boolean;
 }
 
 /**
@@ -38,8 +42,10 @@ export const DocumentFiscalPanel: React.FC<Props> = ({
   setState,
   compact,
   collapsible,
+  bare,
 }) => {
-  const [open, setOpen] = useState(!collapsible);
+  const { t } = useI18n();
+  const [open, setOpen] = useState(!collapsible || !!bare);
   const { token, user } = useAuth();
   const [docTypes, setDocTypes] = useState<LookupRow[]>([]);
   const [methods, setMethods] = useState<LookupRow[]>([]);
@@ -77,114 +83,111 @@ export const DocumentFiscalPanel: React.FC<Props> = ({
   };
   const get = (k: string) => state.pluginData?.[PREFIX + k] ?? '';
 
+  const fields = (
+    <div className="space-y-4">
+      <div className={compact ? 'space-y-3' : 'grid grid-cols-1 md:grid-cols-2 gap-4'}>
+        <Field label={t('invoice.documentType')}>
+          <SearchableSelect
+            value={get('documentTypeId')}
+            onChange={(v: string) => set('documentTypeId', v)}
+            options={docTypes.map((d) => ({
+              label: d.code ? `${d.code} · ${d.name}` : d.name,
+              value: d.id,
+            }))}
+            placeholder="—"
+          />
+        </Field>
+
+        <Field label={t('invoice.paymentMethod')}>
+          <SearchableSelect
+            value={get('paymentMethodId')}
+            onChange={(v: string) => set('paymentMethodId', v)}
+            options={methods.map((m) => ({
+              label: m.code ? `${m.code} · ${m.name}` : m.name,
+              value: m.id,
+            }))}
+            placeholder="—"
+          />
+        </Field>
+
+        <Field label={t('doc.fiscal.paymentTerm')}>
+          <SearchableSelect
+            value={get('paymentTermId')}
+            onChange={(v: string) => set('paymentTermId', v)}
+            options={terms.map((t) => ({ label: t.name, value: t.id }))}
+            placeholder="—"
+          />
+        </Field>
+
+        <Field label={t('invoice.dueDate')}>
+          <DatePicker value={get('dueDate') || null} onChange={(v) => set('dueDate', v ?? '')} />
+        </Field>
+
+        <Field label={t('invoice.supplyDate')}>
+          <DatePicker
+            value={get('supplyDate') || null}
+            onChange={(v) => set('supplyDate', v ?? '')}
+          />
+        </Field>
+
+        <Field label={t('invoice.withholdingRate')}>
+          <Input
+            type="number"
+            step="0.01"
+            value={state.withholdingRate ?? 0}
+            onChange={(e) => setState.setWithholdingRate?.(Number(e.target.value) || 0)}
+            placeholder="0.00"
+          />
+        </Field>
+      </div>
+
+      <div className="space-y-3">
+        <Field label={t('doc.fiscal.notesPdf')}>
+          <Input
+            value={get('notes') || ''}
+            onChange={(e) => set('notes', e.target.value)}
+            placeholder={t('doc.fiscal.notesPlaceholder')}
+          />
+        </Field>
+        <Field label={t('invoice.internalNotes')}>
+          <Input
+            value={get('internalNotes') || ''}
+            onChange={(e) => set('internalNotes', e.target.value)}
+            placeholder={t('doc.fiscal.internalNotesPlaceholder')}
+          />
+        </Field>
+      </div>
+    </div>
+  );
+
+  if (bare) return fields;
+
   return (
     <Card
-      className="border-line dark:border-ink-700"
+      className="border-border-default"
       bodyClassName={compact ? 'p-4 space-y-3' : 'p-6 space-y-4'}
     >
       {collapsible ? (
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="w-full flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400 border-b border-line dark:border-ink-700 pb-2"
+          className="w-full flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-fg-muted border-b border-border-default pb-2"
         >
-          <span>Fiscal y pago · opcional</span>
+          <span>{t('doc.fiscal.titleOptional')}</span>
           <span className="text-xs">{open ? '▾' : '▸'}</span>
         </button>
       ) : (
-        <h3 className="text-[10px] font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400 border-b border-line dark:border-ink-700 pb-2">
-          Fiscal y pago
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-fg-muted border-b border-border-default pb-2">
+          {t('doc.steps.fiscal')}
         </h3>
       )}
 
-      {!open ? null : (
-        <>
-          <div className={compact ? 'space-y-3' : 'grid grid-cols-1 md:grid-cols-2 gap-4'}>
-            <Field label="Tipo de documento">
-              <SearchableSelect
-                value={get('documentTypeId')}
-                onChange={(v: string) => set('documentTypeId', v)}
-                options={docTypes.map((d) => ({
-                  label: d.code ? `${d.code} · ${d.name}` : d.name,
-                  value: d.id,
-                }))}
-                placeholder="—"
-              />
-            </Field>
-
-            <Field label="Método de pago">
-              <SearchableSelect
-                value={get('paymentMethodId')}
-                onChange={(v: string) => set('paymentMethodId', v)}
-                options={methods.map((m) => ({
-                  label: m.code ? `${m.code} · ${m.name}` : m.name,
-                  value: m.id,
-                }))}
-                placeholder="—"
-              />
-            </Field>
-
-            <Field label="Plazo de pago">
-              <SearchableSelect
-                value={get('paymentTermId')}
-                onChange={(v: string) => set('paymentTermId', v)}
-                options={terms.map((t) => ({ label: t.name, value: t.id }))}
-                placeholder="—"
-              />
-            </Field>
-
-            <Field label="Vencimiento">
-              <DatePicker
-                value={get('dueDate') || null}
-                onChange={(v) => set('dueDate', v ?? '')}
-              />
-            </Field>
-
-            <Field label="Fecha de operación">
-              <DatePicker
-                value={get('supplyDate') || null}
-                onChange={(v) => set('supplyDate', v ?? '')}
-              />
-            </Field>
-
-            <Field label="Retención %">
-              <Input
-                type="number"
-                step="0.01"
-                value={state.withholdingRate ?? 0}
-                onChange={(e) => setState.setWithholdingRate?.(Number(e.target.value) || 0)}
-                placeholder="0.00"
-              />
-            </Field>
-          </div>
-
-          <div className="space-y-3">
-            <Field label="Notas (visibles en PDF)">
-              <Input
-                value={get('notes') || ''}
-                onChange={(e) => set('notes', e.target.value)}
-                placeholder="Texto que aparece en la factura…"
-              />
-            </Field>
-            <Field label="Notas internas">
-              <Input
-                value={get('internalNotes') || ''}
-                onChange={(e) => set('internalNotes', e.target.value)}
-                placeholder="Sólo uso interno, nunca en PDF"
-              />
-            </Field>
-          </div>
-        </>
-      )}
+      {open && fields}
     </Card>
   );
 };
 
+// Field de @openfactu/ui: etiqueta enlazada al control y estilo del tema.
 const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-  <div className="space-y-1">
-    <label className="text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-      {label}
-    </label>
-    {children}
-  </div>
+  <UiField label={label}>{children}</UiField>
 );

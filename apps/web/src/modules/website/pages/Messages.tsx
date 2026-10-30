@@ -1,11 +1,14 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useState } from 'react';
 import { Badge, Card, Loader, PageHeader, useToast } from '@openfactu/ui';
 import { Inbox, MailOpen } from 'lucide-react';
+import { intlLocale } from '@/i18n/i18n';
 import { websiteApi } from '../api/websiteApi';
 import type { WebsiteSubmission } from '../domain/website';
 
 /** Bandeja de mensajes recibidos por el formulario de contacto de la web. */
 export const Messages: React.FC = () => {
+  const { t } = useI18n();
   const toast = useToast();
   const [rows, setRows] = useState<WebsiteSubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,7 +17,7 @@ export const Messages: React.FC = () => {
     try {
       setRows(await websiteApi.listSubmissions());
     } catch {
-      toast.error('Error al cargar los mensajes');
+      toast.error(t('website.messages.loadError'));
     } finally {
       setLoading(false);
     }
@@ -31,7 +34,7 @@ export const Messages: React.FC = () => {
       await websiteApi.markSubmissionRead(row.id);
       setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, read: true } : r)));
     } catch {
-      toast.error('Error al marcar leído');
+      toast.error(t('website.messages.markReadError'));
     }
   };
 
@@ -42,12 +45,14 @@ export const Messages: React.FC = () => {
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        eyebrow="Website / Mensajes"
-        title="Mensajes de contacto"
+        eyebrow={t('website.messages.eyebrow')}
+        title={t('website.messages.title')}
         subtitle={
           <>
-            {unread > 0 ? `${unread} sin leer` : 'Todo leído'} — enviados desde el formulario de tu
-            web pública.
+            {unread > 0
+              ? t('website.messages.unread', { count: unread })
+              : t('website.messages.allRead')}{' '}
+            — {t('website.messages.subtitle')}
           </>
         }
         icon={<Inbox size={18} />}
@@ -58,7 +63,7 @@ export const Messages: React.FC = () => {
         {rows.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
             <MailOpen size={32} className="mx-auto mb-3 opacity-40" />
-            Aún no has recibido ningún mensaje.
+            {t('website.messages.empty')}
           </div>
         ) : (
           <ul className="divide-y divide-border-subtle">
@@ -70,9 +75,9 @@ export const Messages: React.FC = () => {
               >
                 <div className="flex items-center justify-between gap-4 mb-1">
                   <div className="flex items-center gap-2 min-w-0">
-                    {!row.read && <Badge variant="info">Nuevo</Badge>}
+                    {!row.read && <Badge variant="info">{t('website.messages.new')}</Badge>}
                     <span className="font-bold text-fg-default text-sm truncate">
-                      {row.name || 'Sin nombre'}
+                      {row.name || t('website.messages.noName')}
                     </span>
                     {row.email && (
                       <a
@@ -85,7 +90,7 @@ export const Messages: React.FC = () => {
                     )}
                   </div>
                   <span className="text-[11px] text-slate-400 whitespace-nowrap">
-                    {new Date(row.createdAt).toLocaleString()}
+                    {new Date(row.createdAt).toLocaleString(intlLocale())}
                   </span>
                 </div>
                 <p className="text-sm text-fg-body whitespace-pre-wrap">{row.message}</p>

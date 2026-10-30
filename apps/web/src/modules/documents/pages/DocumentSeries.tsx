@@ -19,19 +19,22 @@ import { useAuth } from '@/context/AuthContext';
 import { seriesApi } from '../api';
 import { crudApi } from '@/shared/api';
 import { useDocTypes } from '../domain/docTypeRegistry';
+import { useI18n } from '@/i18n/I18nContext';
 
 // Fallback estático mientras llega (o si falla) GET /api/documents/types —
-// mismas etiquetas que se mostraban hardcodeadas antes del registry.
+// mismas etiquetas que se mostraban hardcodeadas antes del registry. Guarda la
+// clave de i18n; se traduce al pintar.
 const FALLBACK_DOC_TYPE_OPTIONS = [
-  { label: 'Pedido Compra', value: 'PO' },
-  { label: 'Albarán Compra', value: 'PDN' },
-  { label: 'Factura Compra', value: 'PINV' },
-  { label: 'Pedido Venta', value: 'SO' },
-  { label: 'Albarán Venta', value: 'SDN' },
-  { label: 'Factura Venta', value: 'SINV' },
+  { label: 'doc.types.PO', value: 'PO' },
+  { label: 'doc.types.PDN', value: 'PDN' },
+  { label: 'doc.types.PINV', value: 'PINV' },
+  { label: 'doc.types.SO', value: 'SO' },
+  { label: 'doc.types.SDN', value: 'SDN' },
+  { label: 'doc.types.SINV', value: 'SINV' },
 ];
 
 export const DocumentSeries: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const location = useLocation();
   const canWrite =
@@ -60,12 +63,16 @@ export const DocumentSeries: React.FC = () => {
   const { types: serverDocTypes } = useDocTypes();
   const docTypeOptions =
     serverDocTypes.length > 0
-      ? serverDocTypes.map((t) => ({ label: t.label, value: t.docType }))
-      : FALLBACK_DOC_TYPE_OPTIONS;
-  const docTypeLabel = (dt: string) =>
-    serverDocTypes.find((t) => t.docType === dt)?.label ??
-    FALLBACK_DOC_TYPE_OPTIONS.find((o) => o.value === dt)?.label ??
-    dt;
+      ? serverDocTypes.map((s) => ({ label: s.label, value: s.docType }))
+      : FALLBACK_DOC_TYPE_OPTIONS.map((o) => ({ ...o, label: t(o.label) }));
+  const docTypeLabel = (dt: string) => {
+    const fallback = FALLBACK_DOC_TYPE_OPTIONS.find((o) => o.value === dt)?.label;
+    return serverDocTypes.find((s) => s.docType === dt)?.label ?? (fallback ? t(fallback) : dt);
+  };
+  const modeOptions = [
+    { label: t('doc.series.auto'), value: 'AUTO' },
+    { label: t('doc.series.manual'), value: 'MANUAL' },
+  ];
 
   const fetchData = async () => {
     setLoading(true);
@@ -111,9 +118,13 @@ export const DocumentSeries: React.FC = () => {
       setFirstNumber(1);
       setLastNumber(99999);
       fetchData();
-      toast.success('Serie creada correctamente');
+      toast.success(t('doc.series.created'));
     } catch (err) {
-      toast.error(err instanceof Error ? `Error: ${err.message}` : 'Error al crear Serie');
+      toast.error(
+        err instanceof Error
+          ? t('doc.common.errorWithMessage', { message: err.message })
+          : t('doc.series.createError'),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -123,9 +134,9 @@ export const DocumentSeries: React.FC = () => {
     try {
       await seriesApi.remove(id);
       fetchData();
-      toast.success('Serie eliminada');
+      toast.success(t('doc.series.deleted'));
     } catch (err) {
-      toast.error('Error al eliminar');
+      toast.error(t('doc.common.deleteError'));
     }
   };
 
@@ -137,22 +148,19 @@ export const DocumentSeries: React.FC = () => {
         {
           key: 'docType',
           type: 'select',
-          label: 'Tipo',
+          label: t('doc.series.type'),
           options: docTypeOptions,
         },
         {
           key: 'numberingMode',
           type: 'select',
-          label: 'Modo',
-          options: [
-            { label: 'Automática', value: 'AUTO' },
-            { label: 'Manual', value: 'MANUAL' },
-          ],
+          label: t('doc.series.mode'),
+          options: modeOptions,
         },
         {
           key: 'periodId',
           type: 'select',
-          label: 'Periodo',
+          label: t('doc.series.period'),
           options: periods.map((p: any) => ({ label: p.code, value: p.id })),
         },
       ],
@@ -160,30 +168,33 @@ export const DocumentSeries: React.FC = () => {
 
   const columns = [
     {
-      header: 'Serie (Name)',
+      header: t('doc.series.colName'),
       sortable: true,
       primary: true,
       sortAccessor: (i: any) => i.name ?? '',
       cell: (c: any) => c.name || '—',
     },
     {
-      header: 'Tipo',
+      header: t('doc.series.type'),
       cell: (c: any) => docTypeLabel(c.docType),
     },
     {
-      header: 'Modo',
+      header: t('doc.series.mode'),
       cell: (c: any) => (
         <Badge variant={c.numberingMode === 'MANUAL' ? 'warning' : 'neutral'}>
-          {c.numberingMode === 'MANUAL' ? 'Manual' : 'Automática'}
+          {c.numberingMode === 'MANUAL' ? t('doc.series.manual') : t('doc.series.auto')}
         </Badge>
       ),
     },
-    { header: 'Periodo', cell: (c: any) => periods.find((p) => p.id === c.periodId)?.code || '-' },
     {
-      header: 'Rango Visual',
+      header: t('doc.series.period'),
+      cell: (c: any) => periods.find((p) => p.id === c.periodId)?.code || '-',
+    },
+    {
+      header: t('doc.series.colRange'),
       cell: (c: any) =>
         c.numberingMode === 'MANUAL' ? (
-          <span className="text-slate-400 text-xs italic">Manual</span>
+          <span className="text-slate-400 text-xs italic">{t('doc.series.manual')}</span>
         ) : (
           <span className="font-mono text-xs">
             {c.prefix ? `${c.prefix}-` : ''}
@@ -193,7 +204,7 @@ export const DocumentSeries: React.FC = () => {
         ),
     },
     {
-      header: 'Siguiente Num',
+      header: t('doc.series.colNext'),
       cell: (c: any) =>
         c.numberingMode === 'MANUAL' ? (
           <span className="text-slate-400">—</span>
@@ -210,7 +221,7 @@ export const DocumentSeries: React.FC = () => {
   // vez en lugar de duplicarse entre una columna de botones y el menú.
   const rowActions = (c: any): RowAction[] => [
     {
-      label: 'Eliminar',
+      label: t('doc.lines.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       disabled: !canDelete,
@@ -222,8 +233,8 @@ export const DocumentSeries: React.FC = () => {
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <PageHeader
         size="lg"
-        title="Series Documentales"
-        subtitle="Configura los rangos de numeración para cada tipo de documento del sistema."
+        title={t('doc.series.title')}
+        subtitle={t('doc.series.subtitle')}
         icon={<FileDigit size={18} />}
       />
 
@@ -233,16 +244,20 @@ export const DocumentSeries: React.FC = () => {
           className="p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end"
         >
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-fg-muted uppercase">Nombre Serie</label>
+            <label className="text-xs font-bold text-fg-muted uppercase">
+              {t('doc.series.name')}
+            </label>
             <Input
-              placeholder="Ej: Principal PO"
+              placeholder={t('doc.series.namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
             />
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-fg-muted uppercase">Tipo Documento</label>
+            <label className="text-xs font-bold text-fg-muted uppercase">
+              {t('doc.series.docType')}
+            </label>
             <div className="mt-1">
               <SearchableSelect
                 value={docType}
@@ -251,52 +266,55 @@ export const DocumentSeries: React.FC = () => {
                   label: `${o.label} (${o.value})`,
                   value: o.value,
                 }))}
-                placeholder="Seleccionar tipo..."
+                placeholder={t('doc.series.selectType')}
               />
             </div>
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-fg-muted uppercase">Numeración</label>
+            <label className="text-xs font-bold text-fg-muted uppercase">
+              {t('doc.series.numbering')}
+            </label>
             <div className="mt-1">
               <SearchableSelect
                 value={numberingMode}
                 onChange={(v) => setNumberingMode(v)}
-                options={[
-                  { label: 'Automática', value: 'AUTO' },
-                  { label: 'Manual', value: 'MANUAL' },
-                ]}
+                options={modeOptions}
               />
             </div>
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-fg-muted uppercase">Aplica al Periodo</label>
+            <label className="text-xs font-bold text-fg-muted uppercase">
+              {t('doc.series.appliesToPeriod')}
+            </label>
             <div className="mt-1">
               <SearchableSelect
                 value={periodId}
                 onChange={(v) => setPeriodId(v)}
                 options={periods.map((p) => ({ label: `${p.code} - ${p.name}`, value: p.id }))}
-                placeholder="Seleccionar..."
+                placeholder={t('doc.common.select')}
               />
             </div>
           </div>
           <div className="md:col-span-1">
-            <label className="text-xs font-bold text-fg-muted uppercase">Prefijo Visual</label>
+            <label className="text-xs font-bold text-fg-muted uppercase">
+              {t('doc.series.prefix')}
+            </label>
             <Input
-              placeholder="Ej: F24"
+              placeholder={t('doc.series.prefixPlaceholder')}
               value={prefix}
               onChange={(e) => setPrefix(e.target.value)}
             />
           </div>
           {numberingMode === 'MANUAL' ? (
             <div className="md:col-span-2 flex items-end">
-              <p className="text-xs text-fg-muted italic">
-                Serie manual: el número de cada documento se teclea al crearlo.
-              </p>
+              <p className="text-xs text-fg-muted italic">{t('doc.series.manualHint')}</p>
             </div>
           ) : (
             <>
               <div className="md:col-span-1">
-                <label className="text-xs font-bold text-fg-muted uppercase">Inicio de Rango</label>
+                <label className="text-xs font-bold text-fg-muted uppercase">
+                  {t('doc.series.rangeStart')}
+                </label>
                 <Input
                   type="number"
                   value={firstNumber}
@@ -305,7 +323,9 @@ export const DocumentSeries: React.FC = () => {
                 />
               </div>
               <div className="md:col-span-1">
-                <label className="text-xs font-bold text-fg-muted uppercase">Límite Final</label>
+                <label className="text-xs font-bold text-fg-muted uppercase">
+                  {t('doc.series.rangeEnd')}
+                </label>
                 <Input
                   type="number"
                   value={lastNumber}
@@ -322,7 +342,7 @@ export const DocumentSeries: React.FC = () => {
               className="flex items-center gap-2 px-8 disabled:opacity-50 disabled:grayscale transition-all"
             >
               {isSubmitting ? <Loader size="sm" variant="white" /> : <Plus size={18} />}
-              Añadir Serie
+              {t('doc.series.add')}
             </Button>
           </div>
         </form>
@@ -336,26 +356,23 @@ export const DocumentSeries: React.FC = () => {
           activeFilters={activeFilters}
           onFilterChange={setFilter}
           onClear={clearFilters}
-          searchPlaceholder="Buscar serie por nombre…"
+          searchPlaceholder={t('doc.series.search')}
           config={[
             {
               key: 'docType',
-              label: 'Tipo',
+              label: t('doc.series.type'),
               type: 'select',
               options: docTypeOptions,
             },
             {
               key: 'numberingMode',
-              label: 'Modo',
+              label: t('doc.series.mode'),
               type: 'select',
-              options: [
-                { label: 'Automática', value: 'AUTO' },
-                { label: 'Manual', value: 'MANUAL' },
-              ],
+              options: modeOptions,
             },
             {
               key: 'periodId',
-              label: 'Periodo',
+              label: t('doc.series.period'),
               type: 'select',
               options: periods.map((p: any) => ({ label: p.code, value: p.id })),
             },

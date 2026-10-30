@@ -1,6 +1,8 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import type { ChatMessageMetadata } from '../domain/types';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatNumber } from '@/i18n/format';
 
 /**
  * Pie de un mensaje del asistente: tokens usados en el turno (pedido por el
@@ -18,6 +20,7 @@ export const MessageFooter: React.FC<{
   metadata?: unknown;
   estimate: { tokens: number; elapsedMs: number } | null;
 }> = ({ metadata, estimate }) => {
+  const { t } = useI18n();
   const meta = metadata as ChatMessageMetadata | undefined;
   const cut = meta?.finishReason === 'length';
   const serverTokens = meta?.usage?.totalTokens;
@@ -33,13 +36,11 @@ export const MessageFooter: React.FC<{
       {tokens !== undefined && (
         <span
           title={
-            serverTokens !== undefined
-              ? 'Tokens reales del proveedor'
-              : 'Estimado (~4 caracteres/token) — el proveedor no reporta uso real'
+            serverTokens !== undefined ? t('ai.footer.realTokens') : t('ai.footer.estimatedTokens')
           }
         >
           {serverTokens === undefined && '~'}
-          {tokens.toLocaleString('es-ES')} tokens
+          {t('ai.footer.tokens', { count: formatNumber(tokens) })}
         </span>
       )}
       {seconds !== null && <span>· {seconds.toFixed(1)}s</span>}
@@ -49,13 +50,13 @@ export const MessageFooter: React.FC<{
           <AlertTriangle size={10} />
           {meta?.provider === 'local' && meta?.localBackend === 'ollama' ? (
             <>
-              Respuesta cortada — el contexto de Ollama por defecto es corto (~4k tokens). Para
-              ampliarlo de verdad: crea un Modelfile con{' '}
-              <code className="font-mono">PARAMETER num_ctx 8192</code> y{' '}
-              <code className="font-mono">ollama create</code> tu modelo con ese ajuste.
+              {t('ai.footer.cutOllamaBefore')}{' '}
+              <code className="font-mono">PARAMETER num_ctx 8192</code>{' '}
+              {t('ai.footer.cutOllamaAnd')} <code className="font-mono">ollama create</code>{' '}
+              {t('ai.footer.cutOllamaAfter')}
             </>
           ) : (
-            'Respuesta cortada por límite de tokens — pídele que continúe.'
+            t('ai.footer.cut')
           )}
         </span>
       )}

@@ -27,6 +27,7 @@
  *   POST   /api/ai/extract-file              — extrae texto de un Excel/PDF/Word/CSV adjuntado al chat
  */
 
+import { getRequestLocale } from '../i18n';
 import { Router } from 'express';
 import { Readable } from 'stream';
 import { generateText } from 'ai';
@@ -106,6 +107,7 @@ router.post('/chat', async (req: any, res) => {
       effectivePermissions,
       messages,
       modelOverride,
+      locale: getRequestLocale(req),
       // Mismo patrón que dashboardWidgets.ts: el host que el navegador usó
       // para llegar aquí, para que render_component compile imports externos
       // (react, @openfactu/ui...) contra ESTE server, no uno hardcodeado.

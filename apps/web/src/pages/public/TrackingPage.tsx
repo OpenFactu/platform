@@ -14,6 +14,9 @@ import {
   RefreshCw,
   Share2,
 } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
+import { t as tNow } from '@/i18n/i18n';
 
 interface TrackEvent {
   kind: string;
@@ -38,21 +41,21 @@ interface TrackPayload {
 
 /** Pasos lineales del viaje — usados para la progress bar superior. */
 const STEPS: { key: string[]; label: string; Icon: any }[] = [
-  { key: ['pending', 'draft', 'picking', 'packed'], label: 'En preparación', Icon: Package },
-  { key: ['ready', 'dispatched'], label: 'Listo / Despachado', Icon: Package },
-  { key: ['in_transit'], label: 'En camino', Icon: Truck },
+  { key: ['pending', 'draft', 'picking', 'packed'], label: 'app.tracking.copy.t0', Icon: Package },
+  { key: ['ready', 'dispatched'], label: 'app.tracking.copy.t1', Icon: Package },
+  { key: ['in_transit'], label: 'app.tracking.copy.t2', Icon: Truck },
   // `postponed` encaja aquí — está en ruta pero aplazado por un intento fallido.
-  { key: ['out_for_delivery', 'postponed'], label: 'En reparto', Icon: Truck },
-  { key: ['delivered'], label: 'Entregado', Icon: CheckCircle2 },
+  { key: ['out_for_delivery', 'postponed'], label: 'app.tracking.copy.t3', Icon: Truck },
+  { key: ['delivered'], label: 'app.tracking.copy.t4', Icon: CheckCircle2 },
 ];
 
 /** Mismos pasos con vocabulario de RECOGIDA — vamos a por el paquete. */
 const PICKUP_STEPS: { key: string[]; label: string; Icon: any }[] = [
-  { key: ['pending', 'draft', 'picking', 'packed'], label: 'Programada', Icon: Package },
-  { key: ['ready', 'dispatched'], label: 'Asignada a ruta', Icon: Package },
-  { key: ['in_transit'], label: 'En camino', Icon: Truck },
-  { key: ['out_for_delivery', 'postponed'], label: 'Recogida hoy', Icon: Truck },
-  { key: ['delivered'], label: 'Recogido', Icon: CheckCircle2 },
+  { key: ['pending', 'draft', 'picking', 'packed'], label: 'app.tracking.copy.t5', Icon: Package },
+  { key: ['ready', 'dispatched'], label: 'app.tracking.copy.t6', Icon: Package },
+  { key: ['in_transit'], label: 'app.tracking.copy.t2', Icon: Truck },
+  { key: ['out_for_delivery', 'postponed'], label: 'app.tracking.copy.t7', Icon: Truck },
+  { key: ['delivered'], label: 'app.tracking.copy.t8', Icon: CheckCircle2 },
 ];
 
 const STATUS_COPY: Record<
@@ -60,99 +63,99 @@ const STATUS_COPY: Record<
   { label: string; tone: string; accent: string; Icon: any; hero: string; sub: string }
 > = {
   pending: {
-    label: 'Preparándose',
+    label: 'app.tracking.copy.t9',
     tone: 'bg-slate-100 text-slate-700',
     accent: 'bg-slate-500',
     Icon: Package,
-    hero: 'Estamos preparando tu pedido',
-    sub: 'Te avisaremos cuando salga del almacén.',
+    hero: 'app.tracking.copy.t10',
+    sub: 'app.tracking.copy.t11',
   },
   picking: {
-    label: 'En preparación',
+    label: 'app.tracking.copy.t0',
     tone: 'bg-amber-100 text-amber-800',
     accent: 'bg-amber-500',
     Icon: Package,
-    hero: 'Estamos empaquetando tu pedido',
-    sub: 'En cuanto esté listo, saldrá a reparto.',
+    hero: 'app.tracking.copy.t12',
+    sub: 'app.tracking.copy.t13',
   },
   packed: {
-    label: 'Empaquetado',
+    label: 'app.tracking.copy.t14',
     tone: 'bg-amber-100 text-amber-800',
     accent: 'bg-amber-500',
     Icon: Package,
-    hero: 'Tu pedido está empaquetado',
-    sub: 'Esperando a ser despachado.',
+    hero: 'app.tracking.copy.t15',
+    sub: 'app.tracking.copy.t16',
   },
   ready: {
-    label: 'Listo para salir',
+    label: 'app.tracking.copy.t17',
     tone: 'bg-blue-100 text-blue-800',
     accent: 'bg-blue-500',
     Icon: Package,
-    hero: 'Tu pedido está listo para salir',
-    sub: 'Saldrá en cuanto el repartidor lo recoja.',
+    hero: 'app.tracking.copy.t18',
+    sub: 'app.tracking.copy.t19',
   },
   dispatched: {
-    label: 'Despachado',
+    label: 'app.tracking.copy.t20',
     tone: 'bg-blue-100 text-blue-800',
     accent: 'bg-blue-500',
     Icon: Truck,
-    hero: 'Tu pedido ha sido despachado',
-    sub: 'Asignado a una ruta de reparto — saldrá hacia ti en breve.',
+    hero: 'app.tracking.copy.t21',
+    sub: 'app.tracking.copy.t22',
   },
   in_transit: {
-    label: 'En camino',
+    label: 'app.tracking.copy.t2',
     tone: 'bg-indigo-100 text-indigo-800',
     accent: 'bg-indigo-500',
     Icon: Truck,
-    hero: 'Tu pedido está en camino',
-    sub: 'Sigue al repartidor en tiempo real.',
+    hero: 'app.tracking.copy.t23',
+    sub: 'app.tracking.copy.t24',
   },
   out_for_delivery: {
-    label: 'Sale hoy hacia ti',
+    label: 'app.tracking.copy.t25',
     tone: 'bg-violet-100 text-violet-800',
     accent: 'bg-violet-500',
     Icon: Truck,
-    hero: '¡Tu pedido sale hoy hacia ti!',
-    sub: 'Asegúrate de que haya alguien para recibirlo.',
+    hero: 'app.tracking.copy.t26',
+    sub: 'app.tracking.copy.t27',
   },
   postponed: {
-    label: 'Entrega aplazada',
+    label: 'app.tracking.copy.t28',
     tone: 'bg-amber-100 text-amber-800',
     accent: 'bg-amber-500',
     Icon: AlertTriangle,
-    hero: 'Intento de entrega fallido',
-    sub: 'No había nadie para recibir el pedido. Lo volveremos a intentar pronto.',
+    hero: 'app.tracking.copy.t29',
+    sub: 'app.tracking.copy.t30',
   },
   delivered: {
-    label: 'Entregado',
+    label: 'app.tracking.copy.t4',
     tone: 'bg-emerald-100 text-emerald-800',
     accent: 'bg-emerald-500',
     Icon: CheckCircle2,
-    hero: '¡Entregado!',
-    sub: 'Gracias por confiar en nosotros.',
+    hero: 'app.tracking.copy.t31',
+    sub: 'app.tracking.copy.t32',
   },
   exception: {
-    label: 'Incidencia',
+    label: 'app.tracking.copy.t33',
     tone: 'bg-rose-100 text-rose-800',
     accent: 'bg-rose-500',
     Icon: AlertTriangle,
-    hero: 'Ha ocurrido una incidencia',
-    sub: 'Te contactaremos cuanto antes.',
+    hero: 'app.tracking.copy.t34',
+    sub: 'app.tracking.copy.t35',
   },
   returned: {
-    label: 'Devuelto',
+    label: 'app.tracking.copy.t36',
     tone: 'bg-rose-100 text-rose-800',
     accent: 'bg-rose-500',
     Icon: AlertTriangle,
-    hero: 'Tu pedido ha sido devuelto',
-    sub: 'Consulta el historial para más detalles.',
+    hero: 'app.tracking.copy.t37',
+    sub: 'app.tracking.copy.t38',
   },
   cancelled: {
-    label: 'Cancelado',
+    label: 'app.tracking.copy.t39',
     tone: 'bg-slate-200 text-slate-700',
     accent: 'bg-slate-500',
     Icon: AlertTriangle,
-    hero: 'Pedido cancelado',
+    hero: 'app.tracking.copy.t40',
     sub: '',
   },
 };
@@ -164,59 +167,59 @@ const STATUS_COPY: Record<
  */
 const PICKUP_STATUS_COPY: Partial<typeof STATUS_COPY> = {
   pending: {
-    label: 'Recogida programada',
+    label: 'app.tracking.copy.t41',
     tone: 'bg-violet-100 text-violet-800',
     accent: 'bg-violet-500',
     Icon: Package,
-    hero: 'Vamos a recoger tu paquete',
-    sub: 'Te avisaremos cuando el repartidor salga hacia ti.',
+    hero: 'app.tracking.copy.t42',
+    sub: 'app.tracking.copy.t43',
   },
   dispatched: {
-    label: 'Asignada a ruta',
+    label: 'app.tracking.copy.t6',
     tone: 'bg-blue-100 text-blue-800',
     accent: 'bg-blue-500',
     Icon: Truck,
-    hero: 'Tu recogida ya está planificada',
-    sub: 'Pasaremos pronto a por el paquete.',
+    hero: 'app.tracking.copy.t44',
+    sub: 'app.tracking.copy.t45',
   },
   in_transit: {
-    label: 'En camino',
+    label: 'app.tracking.copy.t2',
     tone: 'bg-indigo-100 text-indigo-800',
     accent: 'bg-indigo-500',
     Icon: Truck,
-    hero: 'Vamos de camino a por tu paquete',
-    sub: 'Sigue al repartidor en tiempo real.',
+    hero: 'app.tracking.copy.t46',
+    sub: 'app.tracking.copy.t24',
   },
   out_for_delivery: {
-    label: 'Recogida hoy',
+    label: 'app.tracking.copy.t7',
     tone: 'bg-violet-100 text-violet-800',
     accent: 'bg-violet-500',
     Icon: Truck,
-    hero: '¡Hoy recogemos tu paquete!',
-    sub: 'Ten el paquete preparado y a alguien para entregárselo al repartidor.',
+    hero: 'app.tracking.copy.t47',
+    sub: 'app.tracking.copy.t48',
   },
   postponed: {
-    label: 'Recogida aplazada',
+    label: 'app.tracking.copy.t49',
     tone: 'bg-amber-100 text-amber-800',
     accent: 'bg-amber-500',
     Icon: AlertTriangle,
-    hero: 'No pudimos recoger tu paquete',
-    sub: 'Lo volveremos a intentar pronto.',
+    hero: 'app.tracking.copy.t50',
+    sub: 'app.tracking.copy.t51',
   },
   delivered: {
-    label: 'Recogido',
+    label: 'app.tracking.copy.t8',
     tone: 'bg-emerald-100 text-emerald-800',
     accent: 'bg-emerald-500',
     Icon: CheckCircle2,
-    hero: '¡Paquete recogido!',
-    sub: 'Ya lo tenemos — te contactaremos con la resolución.',
+    hero: 'app.tracking.copy.t52',
+    sub: 'app.tracking.copy.t53',
   },
   cancelled: {
-    label: 'Recogida cancelada',
+    label: 'app.tracking.copy.t54',
     tone: 'bg-slate-200 text-slate-700',
     accent: 'bg-slate-500',
     Icon: AlertTriangle,
-    hero: 'Recogida cancelada',
+    hero: 'app.tracking.copy.t54',
     sub: '',
   },
 };
@@ -246,13 +249,13 @@ function TruckMarker({ selected = true }: { selected?: boolean }) {
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
   const s = Math.floor(ms / 1000);
-  if (s < 60) return 'ahora';
+  if (s < 60) return tNow('app.tracking.now');
   const m = Math.floor(s / 60);
-  if (m < 60) return `hace ${m} min`;
+  if (m < 60) return tNow('app.tracking.minutesAgo', { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `hace ${h} h`;
+  if (h < 24) return tNow('app.tracking.hoursAgo', { n: h });
   const d = Math.floor(h / 24);
-  return `hace ${d} d`;
+  return tNow('app.tracking.daysAgo', { n: d });
 }
 
 export const TrackingPage: React.FC = () => {
@@ -261,6 +264,7 @@ export const TrackingPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const { t } = useI18n();
 
   const load = async (silent = false) => {
     if (!token) return;
@@ -271,7 +275,7 @@ export const TrackingPage: React.FC = () => {
       setData(d);
       setError(null);
     } catch {
-      setError('No encontramos tu envío. Revisa el enlace que te enviamos por email.');
+      setError(t('app.tracking.notFoundBody'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -302,7 +306,7 @@ export const TrackingPage: React.FC = () => {
   const share = async () => {
     try {
       await navigator.share?.({
-        title: 'Seguimiento de envío',
+        title: t('app.tracking.shareTitle'),
         url: window.location.href,
       });
     } catch {
@@ -317,7 +321,7 @@ export const TrackingPage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="animate-pulse text-sm text-slate-500">Cargando seguimiento…</div>
+        <div className="animate-pulse text-sm text-slate-500">{t('app.tracking.loading')}</div>
       </div>
     );
   }
@@ -329,8 +333,8 @@ export const TrackingPage: React.FC = () => {
           <div className="w-16 h-16 mx-auto rounded-full bg-rose-50 flex items-center justify-center">
             <AlertTriangle className="text-rose-500" size={32} />
           </div>
-          <h1 className="text-xl font-black text-slate-800">Envío no encontrado</h1>
-          <p className="text-sm text-slate-500">{error || 'Enlace inválido.'}</p>
+          <h1 className="text-xl font-black text-slate-800">{t('app.tracking.notFound')}</h1>
+          <p className="text-sm text-slate-500">{error || t('app.tracking.invalidLink')}</p>
         </div>
       </div>
     );
@@ -349,7 +353,9 @@ export const TrackingPage: React.FC = () => {
               <div className="text-[13px] font-black tracking-tight text-slate-900 leading-none">
                 Keirost
               </div>
-              <div className="text-[10px] text-slate-500 leading-tight">Seguimiento</div>
+              <div className="text-[10px] text-slate-500 leading-tight">
+                {t('app.tracking.tracking')}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1">
@@ -357,14 +363,14 @@ export const TrackingPage: React.FC = () => {
               onClick={() => load(true)}
               disabled={refreshing}
               className="p-2 rounded-full hover:bg-slate-100 active:scale-95 transition"
-              aria-label="Actualizar"
+              aria-label={t('app.common.refresh')}
             >
               <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={share}
               className="p-2 rounded-full hover:bg-slate-100 active:scale-95 transition"
-              aria-label="Compartir"
+              aria-label={t('app.tracking.share')}
             >
               <Share2 size={16} />
             </button>
@@ -384,23 +390,24 @@ export const TrackingPage: React.FC = () => {
           <div className="relative">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-xs font-bold backdrop-blur-sm">
               <copy.Icon size={14} strokeWidth={2.5} />
-              {copy.label}
+              {t(copy.label)}
             </div>
-            <h1 className="mt-3 text-2xl sm:text-3xl font-black leading-tight">{copy.hero}</h1>
-            {copy.sub && <p className="mt-1.5 text-sm text-white/85">{copy.sub}</p>}
+            <h1 className="mt-3 text-2xl sm:text-3xl font-black leading-tight">{t(copy.hero)}</h1>
+            {copy.sub && <p className="mt-1.5 text-sm text-white/85">{t(copy.sub)}</p>}
 
             {/* ETA o fecha de entrega */}
             {data.estimatedDelivery && !data.deliveredAt && (
               <div className="mt-5 inline-flex items-center gap-2 bg-white/20 px-3 py-2 rounded-xl text-sm backdrop-blur-sm">
                 <Clock size={14} />
-                Llegada estimada: <b>{new Date(data.estimatedDelivery).toLocaleString('es-ES')}</b>
+                {t('app.tracking.eta')} <b>{formatDateTime(data.estimatedDelivery)}</b>
               </div>
             )}
             {data.deliveredAt && (
               <div className="mt-5 inline-flex items-center gap-2 bg-white/20 px-3 py-2 rounded-xl text-sm backdrop-blur-sm">
                 <CheckCircle2 size={14} />
-                {isPickup ? 'Recogido' : 'Entregado'} el{' '}
-                {new Date(data.deliveredAt).toLocaleString('es-ES')}
+                {t(isPickup ? 'app.tracking.pickedUpOn' : 'app.tracking.deliveredOn', {
+                  date: formatDateTime(data.deliveredAt),
+                })}
               </div>
             )}
           </div>
@@ -437,7 +444,7 @@ export const TrackingPage: React.FC = () => {
                         (done || current ? 'text-slate-700' : 'text-slate-400')
                       }
                     >
-                      {s.label}
+                      {t(s.label)}
                     </div>
                   </div>
                 );
@@ -464,7 +471,7 @@ export const TrackingPage: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {isPickup ? 'Recogeremos en' : 'Entregar en'}
+                  {isPickup ? t('app.tracking.pickupAt') : t('app.tracking.deliverTo')}
                 </div>
                 <div className="text-sm font-semibold text-slate-800 leading-snug mt-0.5 break-words">
                   {data.destination.address}
@@ -497,7 +504,7 @@ export const TrackingPage: React.FC = () => {
               <div className="absolute bottom-2 left-2 right-2 flex justify-between items-end pointer-events-none">
                 <div className="pointer-events-auto inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-sm rounded-lg px-2.5 py-1.5 shadow-md text-[11px] font-semibold text-slate-700">
                   <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Actualizado {timeAgo(data.lastPosition.reportedAt)}
+                  {t('app.tracking.updated', { ago: timeAgo(data.lastPosition.reportedAt) })}
                 </div>
               </div>
             </div>
@@ -507,10 +514,10 @@ export const TrackingPage: React.FC = () => {
         {/* Historial */}
         <section className="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
           <h2 className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-4">
-            Historial del envío
+            {t('app.tracking.history')}
           </h2>
           {data.events.length === 0 ? (
-            <div className="text-sm text-slate-400 italic">Sin eventos registrados todavía.</div>
+            <div className="text-sm text-slate-400 italic">{t('app.tracking.noEvents')}</div>
           ) : (
             <ol className="relative">
               {/* Línea vertical punteada. */}
@@ -533,7 +540,7 @@ export const TrackingPage: React.FC = () => {
                       }}
                     />
                     <div className="text-sm font-bold text-slate-800 leading-tight">
-                      {s?.label || e.kind}
+                      {s?.label ? t(s.label) : e.kind}
                     </div>
                     {e.description && (
                       <div className="text-xs text-slate-500 mt-0.5 leading-snug">
@@ -541,7 +548,7 @@ export const TrackingPage: React.FC = () => {
                       </div>
                     )}
                     <div className="text-[11px] text-slate-400 mt-0.5">
-                      {new Date(e.createdAt).toLocaleString('es-ES', {
+                      {formatDateTime(e.createdAt, {
                         day: '2-digit',
                         month: 'short',
                         hour: '2-digit',
@@ -556,7 +563,7 @@ export const TrackingPage: React.FC = () => {
         </section>
 
         <footer className="text-center text-[11px] text-slate-400 pt-3">
-          Actualizado automáticamente cada 30 segundos · Keirost ERP
+          {t('app.tracking.footer')}
         </footer>
       </main>
 

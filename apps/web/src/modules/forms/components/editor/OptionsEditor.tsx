@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import { Button, Checkbox, Input, Select, SortableList, Tooltip } from '@openfactu/ui';
 import { CheckCircle2, Circle, GripVertical, Plus, Square, X } from 'lucide-react';
@@ -26,13 +27,17 @@ export const OptionsEditor: React.FC<Props> = ({
   quiz,
   disabled,
 }) => {
+  const { t } = useI18n();
   const options = q.options ?? [];
   const correct = new Set(q.quiz?.correct ?? []);
   const Mark = q.type === 'checkbox' ? Square : Circle;
 
   const setOptions = (next: Option[]) => onChange({ options: next });
   const add = () =>
-    setOptions([...options, { id: newId('o'), label: `Opción ${options.length + 1}` }]);
+    setOptions([
+      ...options,
+      { id: newId('o'), label: t('forms.options.optionN', { n: options.length + 1 }) },
+    ]);
   const remove = (id: string) => {
     const goTo = { ...(q.goTo ?? {}) };
     delete goTo[id];
@@ -56,12 +61,12 @@ export const OptionsEditor: React.FC<Props> = ({
     onChange({ quiz: { points: q.quiz?.points ?? 1, ...q.quiz, correct: [...set] } });
   };
   const goToOptions = [
-    { value: '', label: 'Continuar a la siguiente sección' },
+    { value: '', label: t('forms.options.continueNext') },
     ...sections.map((s, i) => ({
       value: s.id,
-      label: `Ir a la sección ${i + 1}${s.title ? `: ${s.title}` : ''}`,
+      label: `${t('forms.options.goToSection', { n: i + 1 })}${s.title ? `: ${s.title}` : ''}`,
     })),
-    { value: 'submit', label: 'Enviar formulario' },
+    { value: 'submit', label: t('forms.options.submitForm') },
   ];
 
   return (
@@ -71,7 +76,7 @@ export const OptionsEditor: React.FC<Props> = ({
         getKey={(o) => o.id}
         onReorder={setOptions}
         disabled={disabled}
-        handleLabel="Arrastra para reordenar"
+        handleLabel={t('forms.common.dragToReorder')}
         className="space-y-1"
         renderItem={(o, { handleProps, index }) => (
           <div className="flex flex-wrap items-center gap-2">
@@ -81,11 +86,17 @@ export const OptionsEditor: React.FC<Props> = ({
               </span>
             )}
             {quiz ? (
-              <Tooltip content={correct.has(o.id) ? 'Respuesta correcta' : 'Marcar como correcta'}>
+              <Tooltip
+                content={
+                  correct.has(o.id)
+                    ? t('forms.options.correctAnswer')
+                    : t('forms.options.markCorrect')
+                }
+              >
                 <button
                   type="button"
                   aria-pressed={correct.has(o.id)}
-                  aria-label={`Marcar «${o.label}» como correcta`}
+                  aria-label={t('forms.options.markItemCorrect', { label: o.label })}
                   onClick={() => toggleCorrect(o.id)}
                   className={correct.has(o.id) ? 'text-success-fg' : 'text-fg-subtle'}
                   disabled={disabled}
@@ -102,7 +113,7 @@ export const OptionsEditor: React.FC<Props> = ({
             )}
             <div className="flex-1 min-w-[10rem]">
               <Input
-                aria-label={`Opción ${index + 1}`}
+                aria-label={t('forms.options.optionN', { n: index + 1 })}
                 value={o.label}
                 onChange={(e) =>
                   setOptions(
@@ -115,7 +126,7 @@ export const OptionsEditor: React.FC<Props> = ({
             {branching && (
               <div className="w-full sm:w-64">
                 <Select
-                  ariaLabel={`Después de «${o.label}»`}
+                  ariaLabel={t('forms.options.after', { label: o.label })}
                   options={goToOptions}
                   value={q.goTo?.[o.id] ?? ''}
                   onChange={(v) => {
@@ -133,7 +144,7 @@ export const OptionsEditor: React.FC<Props> = ({
                 type="button"
                 variant="ghost"
                 size="sm"
-                aria-label={`Quitar «${o.label}»`}
+                aria-label={t('forms.common.removeItem', { label: o.label })}
                 onClick={() => remove(o.id)}
               >
                 <X size={14} />
@@ -146,14 +157,14 @@ export const OptionsEditor: React.FC<Props> = ({
         <div className="flex items-center gap-2 pl-6">
           <Mark size={16} className="text-fg-subtle" />
           <span className="flex-1 text-sm text-fg-muted border-b border-dashed border-border-default py-2">
-            Otro…
+            {t('forms.options.otherEllipsis')}
           </span>
           {!disabled && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              aria-label="Quitar «Otro»"
+              aria-label={t('forms.options.removeOther')}
               onClick={() => onChange({ hasOther: false })}
             >
               <X size={14} />
@@ -164,7 +175,7 @@ export const OptionsEditor: React.FC<Props> = ({
       {!disabled && (
         <div className="flex flex-wrap items-center gap-2 pl-6">
           <Button type="button" variant="ghost" size="sm" onClick={add}>
-            <Plus size={14} /> Añadir opción
+            <Plus size={14} /> {t('forms.options.add')}
           </Button>
           {q.type !== 'dropdown' && !q.hasOther && (
             <Button
@@ -173,14 +184,14 @@ export const OptionsEditor: React.FC<Props> = ({
               size="sm"
               onClick={() => onChange({ hasOther: true })}
             >
-              Añadir «Otro»
+              {t('forms.options.addOther')}
             </Button>
           )}
         </div>
       )}
       {q.type !== 'dropdown' && (
         <Checkbox
-          label="Barajar el orden de las opciones"
+          label={t('forms.options.shuffle')}
           checked={!!q.shuffle}
           onChange={(v) => onChange({ shuffle: v || undefined })}
           disabled={disabled}

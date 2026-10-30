@@ -2,6 +2,7 @@ import { templatesApi } from '../../api';
 import { useEffect, useState } from 'react';
 import type { FieldDef, FieldGroup } from './fieldRegistry';
 import type { CanvasLayout } from './types';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Construye el catálogo de campos para plantillas SIN documento ligado
@@ -29,6 +30,7 @@ export function useQueryFields(
   headers: Record<string, string>,
   enabled: boolean,
 ): QueryFields {
+  const { t } = useI18n();
   const [queryGroups, setQueryGroups] = useState<FieldGroup[]>([]);
   const [queryColumns, setQueryColumns] = useState<Record<string, string[]>>({});
 
@@ -55,13 +57,13 @@ export function useQueryFields(
           colsByQuery[q.name] = cols;
           groups.push({
             group: 'doc',
-            label: `Consulta: ${q.name}`,
+            label: t('templates.queryFields.queryGroup', { name: q.name }),
             icon: 'ListOrdered',
             fields: cols.map(
               (c): FieldDef => ({
                 path: `queries.${q.name}.0.${c}`,
                 type: 'string',
-                description: `Columna "${c}" de la consulta ${q.name}`,
+                description: t('templates.queryFields.columnDesc', { column: c, query: q.name }),
               }),
             ),
           });
@@ -78,20 +80,20 @@ export function useQueryFields(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, sig]);
+  }, [enabled, sig, t]);
 
   const paramKeys = Object.keys(testParams ?? {});
   const paramsGroup: FieldGroup | null =
     enabled && paramKeys.length > 0
       ? {
           group: 'doc',
-          label: 'Parámetros',
+          label: t('templates.queryFields.params'),
           icon: 'FileText',
           fields: paramKeys.map(
             (k): FieldDef => ({
               path: `params.${k}`,
               type: 'string',
-              description: `Parámetro ${k}`,
+              description: t('templates.queryFields.paramDesc', { name: k }),
             }),
           ),
         }

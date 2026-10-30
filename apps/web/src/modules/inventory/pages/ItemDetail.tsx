@@ -17,8 +17,13 @@ import { categoriesApi, itemsApi, uomApi, warehousesApi, zonesApi } from '../api
 import type { Category } from '../domain/category';
 import type { Uom } from '../domain/uom';
 import type { Warehouse, Zone } from '../domain/warehouse';
+import { useI18n } from '@/i18n/I18nContext';
 
-const MANAGE_LABEL: Record<string, string> = { N: 'Estándar', B: 'Lotes', S: 'Series' };
+const MANAGE_LABEL: Record<string, string> = {
+  N: 'inventory.itemDetail.manageBy.N',
+  B: 'inventory.itemDetail.manageBy.B',
+  S: 'inventory.itemDetail.manageBy.S',
+};
 
 /**
  * Ficha completa de un artículo (/items/:itemId) — sustituye a la edición en
@@ -30,6 +35,7 @@ export const ItemDetail: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
   const { user } = useAuth();
   const canWrite =
     user?.role === 'SUPERUSER' || user?.role === 'ADMIN' || user?.permissions?.['/items']?.write;
@@ -66,7 +72,7 @@ export const ItemDetail: React.FC = () => {
         setWarehouses(Array.isArray(wData) ? wData : []);
         setZones(Array.isArray(zData) ? zData : []);
       } catch (err: any) {
-        if (!cancelled) toast.error(err?.message || 'No se pudo cargar el artículo');
+        if (!cancelled) toast.error(err?.message || t('inventory.itemDetail.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -82,17 +88,17 @@ export const ItemDetail: React.FC = () => {
     // La unidad base ya no la protege el `required` del <select> nativo (que
     // nunca validó nada aquí, no hay <form>): se comprueba explícitamente.
     if (!form.values.uomId) {
-      toast.error('Selecciona la unidad base del artículo');
+      toast.error(t('inventory.itemDetail.baseUnitRequired'));
       return;
     }
     if (form.values.barcode.trim()) {
       const v = validateBarcode(form.values.barcode);
       if (!v.valid) {
         const ok = await popup.confirm({
-          title: 'Código de barras inválido',
-          message: `El código de barras parece inválido (${v.format}: ${v.reason}). ¿Guardar de todos modos?`,
+          title: t('inventory.barcode.invalidTitle'),
+          message: t('inventory.barcode.invalidMessage', { format: v.format, reason: v.reason }),
           tone: 'warning',
-          confirmLabel: 'Guardar igualmente',
+          confirmLabel: t('inventory.barcode.saveAnyway'),
         });
         if (!ok) return;
       }
@@ -100,10 +106,10 @@ export const ItemDetail: React.FC = () => {
     try {
       const saved = await form.submit(itemId);
       setItem(saved);
-      toast.success('Artículo actualizado');
+      toast.success(t('inventory.itemDetail.updated'));
     } catch (err: any) {
       console.error('[ItemDetail.save] error:', err);
-      toast.error(`Error: ${err?.message || err}`);
+      toast.error(t('inventory.itemDetail.error', { message: err?.message || err }));
     }
   };
 
@@ -114,7 +120,7 @@ export const ItemDetail: React.FC = () => {
     try {
       setStockDetail(await itemsApi.stockDetail(item.id));
     } catch {
-      toast.error('Error al cargar inventario');
+      toast.error(t('inventory.itemDetail.stockLoadError'));
     } finally {
       setStockLoading(false);
     }
@@ -130,10 +136,10 @@ export const ItemDetail: React.FC = () => {
   if (!item) {
     return (
       <div className="p-12 text-center text-slate-400">
-        Artículo no encontrado.
+        {t('inventory.itemDetail.notFound')}
         <div className="mt-4">
           <Button variant="secondary" onClick={() => navigate('/items')}>
-            <ArrowLeft size={14} className="mr-2" /> Volver al catálogo
+            <ArrowLeft size={14} className="mr-2" /> {t('inventory.itemDetail.backToCatalog')}
           </Button>
         </div>
       </div>
@@ -171,7 +177,7 @@ export const ItemDetail: React.FC = () => {
                 onClick={() => navigate('/items')}
                 className="w-fit gap-1"
               >
-                <ArrowLeft size={12} /> Catálogo
+                <ArrowLeft size={12} /> {t('inventory.itemDetail.catalog')}
               </Button>
             }
             title={
@@ -181,9 +187,17 @@ export const ItemDetail: React.FC = () => {
                     el subtítulo dentro de un <p> y Badge es un <div>, que el
                     navegador cerraría en falso rompiendo la línea. */}
                 <span className="flex flex-wrap items-center gap-2">
-                  <Badge>{item.kind === 'box' ? 'Caja' : 'Producto'}</Badge>
-                  <Badge>{MANAGE_LABEL[form.values.manageBy] ?? form.values.manageBy}</Badge>
-                  {form.values.webVisible && <Badge>En la web</Badge>}
+                  <Badge>
+                    {item.kind === 'box'
+                      ? t('inventory.itemDetail.kindBox')
+                      : t('inventory.itemDetail.kindProduct')}
+                  </Badge>
+                  <Badge>
+                    {MANAGE_LABEL[form.values.manageBy]
+                      ? t(MANAGE_LABEL[form.values.manageBy])
+                      : form.values.manageBy}
+                  </Badge>
+                  {form.values.webVisible && <Badge>{t('inventory.itemDetail.onWeb')}</Badge>}
                 </span>
               </>
             }
@@ -199,20 +213,20 @@ export const ItemDetail: React.FC = () => {
                     <Loader size="sm" variant="white" />
                   ) : (
                     <>
-                      <Save size={14} className="mr-2" /> Guardar
+                      <Save size={14} className="mr-2" /> {t('inventory.itemDetail.save')}
                     </>
                   )}
                 </Button>
                 <Button type="button" variant="secondary" onClick={handleViewStock}>
-                  <Boxes size={14} className="mr-2" /> Inventario
+                  <Boxes size={14} className="mr-2" /> {t('inventory.itemDetail.inventory')}
                 </Button>
                 <LabelPrintButton
                   params={{ itemId: item.id }}
-                  title="Imprimir etiqueta del artículo"
+                  title={t('inventory.itemDetail.printLabel')}
                   className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-lg border border-border-default text-sm font-semibold text-fg-body hover:bg-bg-hover"
                   triggerLabel={
                     <>
-                      <Tag size={14} /> Etiqueta
+                      <Tag size={14} /> {t('inventory.itemDetail.label')}
                     </>
                   }
                 />
@@ -223,7 +237,10 @@ export const ItemDetail: React.FC = () => {
       </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-        <Card title="General" subtitle="Identificación, categoría, unidad y precio.">
+        <Card
+          title={t('inventory.itemDetail.sections.general')}
+          subtitle={t('inventory.itemDetail.sections.generalSubtitle')}
+        >
           <ItemGeneralFields
             values={form.values}
             set={form.set}
@@ -232,7 +249,10 @@ export const ItemDetail: React.FC = () => {
             isEditing
           />
         </Card>
-        <Card title="Logística" subtitle="Tipo, trazabilidad y ubicación por defecto.">
+        <Card
+          title={t('inventory.itemDetail.sections.logistics')}
+          subtitle={t('inventory.itemDetail.sections.logisticsSubtitle')}
+        >
           <ItemLogisticsFields
             values={form.values}
             set={form.set}
@@ -240,7 +260,10 @@ export const ItemDetail: React.FC = () => {
             zones={zones}
           />
         </Card>
-        <Card title="Web" subtitle="Cómo se vende este artículo en tu web pública.">
+        <Card
+          title={t('inventory.itemDetail.sections.web')}
+          subtitle={t('inventory.itemDetail.sections.webSubtitle')}
+        >
           <ItemWebFields
             webVisible={form.values.webVisible}
             setWebVisible={(v) => form.set('webVisible', v)}
@@ -250,10 +273,10 @@ export const ItemDetail: React.FC = () => {
             setWebImages={(v) => form.set('webImages', v)}
           />
         </Card>
-        <Card title="Unidades alternativas" noPadding>
+        <Card title={t('inventory.itemDetail.sections.altUoms')} noPadding>
           <AlternativeUomsPanel itemId={item.id} baseUomId={form.values.uomId} uoms={uoms} />
         </Card>
-        <Card title="Campos personalizados">
+        <Card title={t('inventory.itemDetail.sections.customFields')}>
           <PluginFieldsPanel
             tableName="Item"
             values={form.values.customValues}
@@ -262,7 +285,7 @@ export const ItemDetail: React.FC = () => {
             title=""
           />
         </Card>
-        <Card title="Adjuntos">
+        <Card title={t('inventory.itemDetail.sections.attachments')}>
           <AttachmentsPanel entityType="Item" entityId={item.id} />
         </Card>
       </div>
@@ -270,8 +293,8 @@ export const ItemDetail: React.FC = () => {
       <StockDetailModal
         isOpen={stockOpen}
         onClose={() => setStockOpen(false)}
-        title="Detalle de Inventario"
-        subtitle="Desglose por almacenes y trazabilidad."
+        title={t('inventory.stockDetail.title')}
+        subtitle={t('inventory.itemDetail.stockSubtitle')}
         selectedStockItem={item}
         stockDetail={stockDetail}
         loading={stockLoading}

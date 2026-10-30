@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import { Button, Checkbox, EmptyState, Input, SearchableSelect, Select } from '@openfactu/ui';
 import { MapPin, Plus, Trash2 } from 'lucide-react';
@@ -46,28 +47,29 @@ const BankCheck: React.FC<{ result: { ok: boolean; reason?: string }; okLabel: s
 );
 
 export const PartnerGeneralFields: React.FC<SectionProps> = ({ form, disabled }) => {
+  const { t } = useI18n();
   const { data, set, lookups } = form;
   const countryOptions = useCountryOptions();
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input
-          label="Razón social"
+          label={t('partners.fields.legalName')}
           required
           value={data.name}
           onChange={(e) => set('name', e.target.value)}
-          placeholder="Nombre legal"
+          placeholder={t('partners.fields.legalNamePlaceholder')}
           disabled={disabled}
         />
         <Input
-          label="Nombre comercial"
+          label={t('partners.fields.tradeName')}
           value={data.foreignName}
           onChange={(e) => set('foreignName', e.target.value)}
-          placeholder="Nombre alternativo o alias"
+          placeholder={t('partners.fields.tradeNamePlaceholder')}
           disabled={disabled}
         />
         <SearchableSelect
-          label="Grupo"
+          label={t('partners.fields.group')}
           required
           value={data.groupId}
           onChange={(v) => set('groupId', v)}
@@ -75,15 +77,15 @@ export const PartnerGeneralFields: React.FC<SectionProps> = ({ form, disabled })
             label: g.codePrefix ? `${g.name} (${g.codePrefix})` : g.name,
             value: g.id,
           }))}
-          placeholder="Seleccionar grupo…"
+          placeholder={t('partners.fields.selectGroup')}
           disabled={disabled}
         />
         <SearchableSelect
-          label="País"
+          label={t('partners.fields.country')}
           value={data.countryCode}
           onChange={(v) => set('countryCode', v)}
           options={countryOptions}
-          placeholder="Seleccionar país…"
+          placeholder={t('partners.fields.selectCountry')}
           disabled={disabled}
         />
         <TaxIdInput
@@ -93,14 +95,14 @@ export const PartnerGeneralFields: React.FC<SectionProps> = ({ form, disabled })
           disabled={disabled}
         />
         <SearchableSelect
-          label="Tarifa"
+          label={t('partners.fields.priceList')}
           value={data.priceListId}
           onChange={(v) => set('priceListId', v)}
           options={[
-            { label: 'Tarifa estándar (sin descuento)', value: '' },
+            { label: t('partners.fields.standardPriceList'), value: '' },
             ...lookups.priceLists.map((pl) => ({ label: pl.name, value: pl.id })),
           ]}
-          helperText="Precios por defecto en pedidos y facturas."
+          helperText={t('partners.fields.priceListHint')}
           disabled={disabled}
         />
       </div>
@@ -109,6 +111,7 @@ export const PartnerGeneralFields: React.FC<SectionProps> = ({ form, disabled })
 };
 
 export const PartnerContactFields: React.FC<SectionProps> = ({ form, disabled }) => {
+  const { t } = useI18n();
   const { data, set } = form;
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -116,19 +119,19 @@ export const PartnerContactFields: React.FC<SectionProps> = ({ form, disabled })
         countryCode={data.countryCode}
         value={data.phone}
         onChange={(v) => set('phone', v)}
-        label="Teléfono"
+        label={t('partners.fields.phone')}
         disabled={disabled}
       />
       <Input
-        label="Correo electrónico"
+        label={t('partners.fields.emailLong')}
         type="email"
         value={data.email}
         onChange={(e) => set('email', e.target.value)}
-        placeholder="admin@empresa.com"
+        placeholder={t('partners.fields.emailPlaceholder')}
         disabled={disabled}
       />
       <Input
-        label="Sitio web"
+        label={t('partners.fields.websiteLong')}
         value={data.website}
         onChange={(e) => set('website', e.target.value)}
         placeholder="https://…"
@@ -140,17 +143,16 @@ export const PartnerContactFields: React.FC<SectionProps> = ({ form, disabled })
 };
 
 export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) => {
+  const { t } = useI18n();
   const { data, set, lookups } = form;
   return (
     <div className="space-y-5">
       <div>
-        <h3 className={sectionTitleCls}>Valores por defecto al facturar</h3>
-        <p className={sectionDescCls}>
-          Se sugieren al crear una factura; se pueden cambiar en cada una.
-        </p>
+        <h3 className={sectionTitleCls}>{t('partners.fiscal.defaults')}</h3>
+        <p className={sectionDescCls}>{t('partners.fiscal.defaultsHint')}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <SearchableSelect
-            label="Tipo de documento"
+            label={t('partners.fields.documentType')}
             value={data.defaultDocumentTypeId}
             onChange={(v) => set('defaultDocumentTypeId', v)}
             options={lookupOptions(lookups.docTypes)}
@@ -159,7 +161,7 @@ export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) 
             disabled={disabled}
           />
           <SearchableSelect
-            label="Método de pago"
+            label={t('partners.fields.paymentMethodLong')}
             value={data.defaultPaymentMethodId}
             onChange={(v) => set('defaultPaymentMethodId', v)}
             options={lookupOptions(lookups.paymentMethods)}
@@ -168,7 +170,7 @@ export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) 
             disabled={disabled}
           />
           <SearchableSelect
-            label="Plazo de pago"
+            label={t('partners.fields.paymentTerm')}
             value={data.defaultPaymentTermId}
             onChange={(v) => set('defaultPaymentTermId', v)}
             options={lookupOptions(lookups.paymentTerms)}
@@ -177,7 +179,7 @@ export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) 
             disabled={disabled}
           />
           <Input
-            label="Retención %"
+            label={t('partners.fields.withholding')}
             type="number"
             step="0.01"
             value={String(data.defaultWithholdingRate ?? '')}
@@ -188,8 +190,8 @@ export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) 
         </div>
       </div>
       <div className="pt-4 border-t border-border-default">
-        <h3 className={sectionTitleCls}>Cuenta bancaria principal</h3>
-        <p className={sectionDescCls}>IBAN para cobros y pagos.</p>
+        <h3 className={sectionTitleCls}>{t('partners.fiscal.bankAccount')}</h3>
+        <p className={sectionDescCls}>{t('partners.fiscal.bankAccountHint')}</p>
         <div className="space-y-3">
           <div>
             <Input
@@ -201,12 +203,15 @@ export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) 
               disabled={disabled}
             />
             {data.iban.trim() && (
-              <BankCheck result={validateIban(data.iban)} okLabel="IBAN válido" />
+              <BankCheck
+                result={validateIban(data.iban)}
+                okLabel={t('partners.fiscal.ibanValid')}
+              />
             )}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Banco"
+              label={t('partners.fields.bank')}
               value={data.bankName}
               onChange={(e) => set('bankName', e.target.value)}
               disabled={disabled}
@@ -220,7 +225,10 @@ export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) 
                 disabled={disabled}
               />
               {data.bankSwift.trim() && (
-                <BankCheck result={validateSwift(data.bankSwift)} okLabel="SWIFT válido" />
+                <BankCheck
+                  result={validateSwift(data.bankSwift)}
+                  okLabel={t('partners.fiscal.swiftValid')}
+                />
               )}
             </div>
           </div>
@@ -230,12 +238,14 @@ export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) 
   );
 };
 
+/** `label` es una clave de i18n. */
 const ADDRESS_TYPE_OPTIONS = [
-  { label: 'Facturación', value: 'B' },
-  { label: 'Envío', value: 'S' },
+  { label: 'partners.addresses.billing', value: 'B' },
+  { label: 'partners.addresses.shipping', value: 'S' },
 ];
 
 export const PartnerAddressesFields: React.FC<SectionProps> = ({ form, disabled }) => {
+  const { t } = useI18n();
   const { searchLocalities } = useGeo();
   const countryOptions = useCountryOptions();
   const { addresses, addAddress, updateAddress, removeAddress, subRegions, subRegionsLoading } =
@@ -245,12 +255,12 @@ export const PartnerAddressesFields: React.FC<SectionProps> = ({ form, disabled 
     return (
       <EmptyState
         icon={<MapPin size={18} />}
-        title="Sin direcciones"
-        hint="Añade una dirección de facturación o de envío."
+        title={t('partners.addresses.empty')}
+        hint={t('partners.addresses.emptyHint')}
         action={
           !disabled && (
             <Button type="button" variant="secondary" size="sm" onClick={addAddress}>
-              <Plus size={14} /> Nueva dirección
+              <Plus size={14} /> {t('partners.addresses.new')}
             </Button>
           )
         }
@@ -272,7 +282,7 @@ export const PartnerAddressesFields: React.FC<SectionProps> = ({ form, disabled 
                 caía en una fila propia en medio de los campos. */}
             <div className="flex items-center justify-between gap-2">
               <span className="text-sm font-semibold text-fg-default">
-                {addr.name?.trim() || `Dirección ${idx + 1}`}
+                {addr.name?.trim() || t('partners.addresses.addressN', { n: idx + 1 })}
               </span>
               {!disabled && (
                 <Button
@@ -280,8 +290,8 @@ export const PartnerAddressesFields: React.FC<SectionProps> = ({ form, disabled 
                   variant="ghost"
                   size="sm"
                   onClick={() => removeAddress(idx)}
-                  aria-label="Quitar dirección"
-                  title="Quitar dirección"
+                  aria-label={t('partners.addresses.remove')}
+                  title={t('partners.addresses.remove')}
                 >
                   <Trash2 size={15} />
                 </Button>
@@ -289,39 +299,39 @@ export const PartnerAddressesFields: React.FC<SectionProps> = ({ form, disabled 
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_12rem_auto] gap-3 items-end">
               <Input
-                label="Nombre"
+                label={t('partners.fields.name')}
                 required
                 value={addr.name}
                 onChange={(e) => updateAddress(idx, { name: e.target.value })}
-                placeholder="Ej.: Sede central"
+                placeholder={t('partners.addresses.namePlaceholder')}
                 disabled={disabled}
               />
               <Select
-                label="Tipo"
+                label={t('partners.fields.type')}
                 value={addr.type}
                 onChange={(v) => updateAddress(idx, { type: v })}
-                options={ADDRESS_TYPE_OPTIONS}
+                options={ADDRESS_TYPE_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                 disabled={disabled}
               />
               <div className="pb-2">
                 <Checkbox
                   checked={addr.isDefault}
                   onChange={(v) => updateAddress(idx, { isDefault: v })}
-                  label="Por defecto"
+                  label={t('partners.addresses.default')}
                   disabled={disabled}
                 />
               </div>
             </div>
             <Input
-              label="Calle"
+              label={t('partners.addresses.street')}
               value={addr.street}
               onChange={(e) => updateAddress(idx, { street: e.target.value })}
-              placeholder="C/ Mayor 1…"
+              placeholder={t('partners.addresses.streetPlaceholder')}
               disabled={disabled}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <SearchableSelect
-                label="País"
+                label={t('partners.fields.country')}
                 value={addr.countryCode || 'ES'}
                 onChange={(code) => {
                   updateAddress(idx, {
@@ -333,15 +343,19 @@ export const PartnerAddressesFields: React.FC<SectionProps> = ({ form, disabled 
                   form.loadSubRegions(idx, code);
                 }}
                 options={countryOptions}
-                placeholder="Seleccionar país…"
+                placeholder={t('partners.fields.selectCountry')}
                 disabled={disabled}
               />
               <SearchableSelect
-                label="Provincia"
+                label={t('partners.addresses.province')}
                 value={String(addr.subRegionId || '')}
                 onChange={(id) => updateAddress(idx, { subRegionId: id, localityId: '', city: '' })}
                 options={regions.map((r) => ({ label: r.name, value: r.id }))}
-                placeholder={regionsLoading ? 'Cargando…' : 'Seleccionar provincia…'}
+                placeholder={
+                  regionsLoading
+                    ? t('partners.common.loading')
+                    : t('partners.addresses.selectProvince')
+                }
                 disabled={disabled || regionsLoading || regions.length === 0}
               />
               <MunicipalitySearch
@@ -351,7 +365,7 @@ export const PartnerAddressesFields: React.FC<SectionProps> = ({ form, disabled 
                 onChange={(loc) =>
                   updateAddress(idx, { localityId: loc?.id || '', city: loc?.name || '' })
                 }
-                label="Municipio"
+                label={t('partners.addresses.municipality')}
                 disabled={disabled || !addr.subRegionId}
                 onSearch={searchLocalities}
               />
@@ -359,7 +373,7 @@ export const PartnerAddressesFields: React.FC<SectionProps> = ({ form, disabled 
                 countryCode={addr.countryCode || 'ES'}
                 value={addr.zipCode}
                 onChange={(v) => updateAddress(idx, { zipCode: v })}
-                label="C.P."
+                label={t('partners.addresses.zip')}
                 disabled={disabled}
               />
             </div>

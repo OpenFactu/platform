@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Card,
   Badge,
@@ -24,25 +24,33 @@ import type { PluginInfo } from '../domain/PluginInfo';
 import type { PluginField } from '../domain/PluginField';
 import type { PluginTable } from '../domain/PluginTable';
 import type { Module } from '@/modules';
+import { useI18n } from '@/i18n/I18nContext';
 
 /** Nombre de tabla/campo en monoespaciada, como en el resto de vistas técnicas. */
 const codeCell = (text: string) => (
   <code className="bg-bg-muted px-1.5 py-0.5 rounded text-xs">{text}</code>
 );
 
+// Las cabeceras guardan la CLAVE de i18n; se traducen al pintar (ver `fieldColumns`).
 const FIELD_COLUMNS: TableColumn<PluginField>[] = [
-  { header: 'Plugin', accessor: 'pluginId' },
-  { header: 'Tabla', accessor: 'tableName' },
-  { header: 'Campo', cell: (f) => codeCell(f.fieldName) },
-  { header: 'Tipo', cell: (f) => <Badge variant="neutral">{f.fieldType}</Badge> },
-  { header: 'Etiqueta', cell: (f) => <span className="text-fg-muted">{f.label}</span> },
+  { header: 'plugins.manager.columns.plugin', accessor: 'pluginId' },
+  { header: 'plugins.manager.columns.table', accessor: 'tableName' },
+  { header: 'plugins.manager.columns.field', cell: (f) => codeCell(f.fieldName) },
+  {
+    header: 'plugins.manager.columns.type',
+    cell: (f) => <Badge variant="neutral">{f.fieldType}</Badge>,
+  },
+  {
+    header: 'plugins.manager.columns.label',
+    cell: (f) => <span className="text-fg-muted">{f.label}</span>,
+  },
 ];
 
 const TABLE_COLUMNS: TableColumn<PluginTable>[] = [
-  { header: 'Plugin', accessor: 'pluginId' },
-  { header: 'Tabla', cell: (t) => codeCell(t.tableName) },
+  { header: 'plugins.manager.columns.plugin', accessor: 'pluginId' },
+  { header: 'plugins.manager.columns.table', cell: (t) => codeCell(t.tableName) },
   {
-    header: 'Estructura',
+    header: 'plugins.manager.columns.structure',
     cell: (t) => (
       <span className="text-xs font-mono text-fg-muted truncate max-w-xs block">
         {t.definition}
@@ -55,6 +63,15 @@ export const appsPluginManager: React.FC = () => {
   const { token, user } = useAuth();
   const { reload: reloadManifests } = usePlugins();
   const toast = useToast();
+  const { t } = useI18n();
+  const fieldColumns = useMemo(
+    () => FIELD_COLUMNS.map((c) => ({ ...c, header: t(c.header as string) })),
+    [t],
+  );
+  const tableColumns = useMemo(
+    () => TABLE_COLUMNS.map((c) => ({ ...c, header: t(c.header as string) })),
+    [t],
+  );
 
   const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [fields, setFields] = useState<PluginField[]>([]);
@@ -68,7 +85,9 @@ export const appsPluginManager: React.FC = () => {
   const { flags, update } = useTheme();
   const activatableModules = allModules.filter((m) => Boolean(m.featureFlag));
   const modulesByCategory = activatableModules.reduce<Record<string, Module[]>>((acc, m) => {
-    const cat = m.category || 'General';
+    // Se agrupa por la etiqueta YA traducida: dos módulos pueden usar claves
+    // distintas para la misma categoría.
+    const cat = t(m.category || 'plugins.manager.generalCategory');
     (acc[cat] = acc[cat] || []).push(m);
     return acc;
   }, {});
@@ -85,7 +104,7 @@ export const appsPluginManager: React.FC = () => {
       setFields(Array.isArray(fieldsRes) ? fieldsRes : []);
       setTables(Array.isArray(tablesRes) ? tablesRes : []);
     } catch {
-      toast.error('Error al cargar datos de plugins');
+      toast.error(t('plugins.manager.loadError'));
     } finally {
       setLoading(false);
     }
@@ -119,11 +138,13 @@ export const appsPluginManager: React.FC = () => {
       setTables(Array.isArray(tablesRes) ? tablesRes : []);
 
       toast.success(
-        currentlyActive ? `Plugin "${pluginId}" desactivado` : `Plugin "${pluginId}" activado`,
+        currentlyActive
+          ? t('plugins.manager.pluginDeactivated', { id: pluginId })
+          : t('plugins.manager.pluginActivated', { id: pluginId }),
       );
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error al cambiar estado del plugin');
+      toast.error(msg || t('plugins.manager.pluginToggleError'));
     } finally {
       setToggling(null);
     }
@@ -137,10 +158,12 @@ export const appsPluginManager: React.FC = () => {
     try {
       await update('flags', { [key]: !currentlyEnabled });
       toast.success(
-        currentlyEnabled ? `Módulo "${mod.label}" desactivado` : `Módulo "${mod.label}" activado`,
+        currentlyEnabled
+          ? t('plugins.manager.moduleDeactivated', { name: t(mod.label) })
+          : t('plugins.manager.moduleActivated', { name: t(mod.label) }),
       );
     } catch {
-      toast.error('Error al cambiar estado del módulo');
+      toast.error(t('plugins.manager.moduleToggleError'));
     } finally {
       setTogglingModule(null);
     }
@@ -151,17 +174,17 @@ export const appsPluginManager: React.FC = () => {
   // La pestaña de desarrollo sigue siendo sólo para ADMIN/SUPERUSER: se omite
   // del array en lugar de ocultarse con CSS.
   const tabItems: TabItem[] = [
-    { key: 'plugins', label: 'Aplicaciones', icon: <LayoutGrid size={15} /> },
+    { key: 'plugins', label: t('plugins.manager.tabApps'), icon: <LayoutGrid size={15} /> },
     ...(user?.role === 'ADMIN' || user?.role === 'SUPERUSER'
-      ? [{ key: 'dev', label: 'Desarrollo', icon: <Key size={15} /> }]
+      ? [{ key: 'dev', label: t('plugins.manager.tabDev'), icon: <Key size={15} /> }]
       : []),
   ];
 
   return (
     <div className="p-4">
       <PageHeader
-        title="Apps"
-        subtitle="Activa o desactiva módulos y plugins para esta empresa."
+        title={t('plugins.manager.title')}
+        subtitle={t('plugins.manager.subtitle')}
         size="lg"
         className="mb-6"
         actions={
@@ -169,7 +192,8 @@ export const appsPluginManager: React.FC = () => {
             <div className="flex items-center gap-2 px-3 py-1.5 bg-bg-muted rounded-lg text-sm text-fg-body">
               <Zap size={14} />
               <span>
-                <strong>{activeCount}</strong> / {plugins.length} activos
+                <strong>{activeCount}</strong> / {plugins.length}{' '}
+                {t('plugins.manager.activeSuffix')}
               </span>
             </div>
             <Button
@@ -180,7 +204,7 @@ export const appsPluginManager: React.FC = () => {
               className="gap-2"
             >
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              Refrescar
+              {t('plugins.manager.refresh')}
             </Button>
           </div>
         }
@@ -220,7 +244,9 @@ export const appsPluginManager: React.FC = () => {
           ))}
 
           {/* Plugin Cards Grid */}
-          <h3 className="text-sm font-bold uppercase tracking-wide text-fg-muted mb-3">Plugins</h3>
+          <h3 className="text-sm font-bold uppercase tracking-wide text-fg-muted mb-3">
+            {t('plugins.manager.pluginsHeading')}
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-10">
             {loading
               ? Array.from({ length: 3 }).map((_, i) => (
@@ -241,8 +267,8 @@ export const appsPluginManager: React.FC = () => {
           {plugins.length === 0 && !loading && (
             <EmptyState
               icon={<Puzzle size={18} />}
-              title="No hay plugins instalados"
-              hint="Coloca plugins en la carpeta /plugins/ del servidor."
+              title={t('plugins.manager.emptyTitle')}
+              hint={t('plugins.manager.emptyHint')}
               className="py-20"
             />
           )}
@@ -250,16 +276,16 @@ export const appsPluginManager: React.FC = () => {
           {/* DB Extensions */}
           {fields.length > 0 && (
             <Card
-              title="Campos de Base de Datos"
-              subtitle="Campos inyectados por plugins activos en los esquemas de tenant."
+              title={t('plugins.manager.fieldsTitle')}
+              subtitle={t('plugins.manager.fieldsSubtitle')}
             >
               <div className="flex items-center gap-2 mb-4 p-3 bg-info-bg text-info-fg rounded-lg text-sm">
                 <Database size={16} />
-                <span>Solo se muestran campos de plugins activos para esta empresa.</span>
+                <span>{t('plugins.manager.fieldsNotice')}</span>
               </div>
               <Table
                 className="max-md:p-3"
-                columns={FIELD_COLUMNS}
+                columns={fieldColumns}
                 data={fields}
                 rowKey={(_f, i) => i}
               />
@@ -268,13 +294,13 @@ export const appsPluginManager: React.FC = () => {
 
           {tables.length > 0 && (
             <Card
-              title="Tablas de Plugins"
-              subtitle="Tablas creadas por extensiones activas."
+              title={t('plugins.manager.tablesTitle')}
+              subtitle={t('plugins.manager.tablesSubtitle')}
               className="mt-6"
             >
               <Table
                 className="max-md:p-3"
-                columns={TABLE_COLUMNS}
+                columns={tableColumns}
                 data={tables}
                 rowKey={(_t, i) => i}
               />

@@ -45,7 +45,8 @@ function requireWriteScope(req: any, res: any, next: any) {
  * POST /api/factuapi/documents/:docType
  * Crea un documento completo con líneas + campos custom + trazabilidad.
  *
- * Body: { partnerId, seriesId, periodId, date, warehouseId?, lines: [...], customFields?: {...} }
+ * Body: { partnerId, seriesId, periodId, date, warehouseId?, externalRef?, lines: [...], customFields?: {...} }
+ * En PINV `externalRef` (número de factura del proveedor) es obligatorio.
  */
 router.post('/:docType', requireWriteScope, async (req: any, res) => {
   const { docType } = req.params;

@@ -4,6 +4,7 @@ import type { RowAction, TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, Banknote } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
@@ -12,6 +13,7 @@ import { useFormat } from '@/hooks/useFormat';
  */
 export const ReportPayslip: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const navigate = useNavigate();
   const toast = useToast();
@@ -37,9 +39,9 @@ export const ReportPayslip: React.FC = () => {
         `/api/reports/payslip/${payrollId}/pdf`,
         `recibo-${empName.replace(/\s/g, '_')}-${year}-${String(month).padStart(2, '0')}.pdf`,
       );
-      toast.success('Recibo descargado');
+      toast.success(t('reports.payslip.downloaded'));
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error');
+      toast.error((e instanceof Error ? e.message : undefined) || t('reports.common.error'));
     }
   };
 
@@ -53,28 +55,28 @@ export const ReportPayslip: React.FC = () => {
 
   const columns: TableColumn<any>[] = [
     {
-      header: 'Empleado',
+      header: t('reports.payslip.employee'),
       cell: (p) => nameOf(p),
       sortable: true,
       sortAccessor: (p) => nameOf(p),
       primary: true,
     },
     {
-      header: 'Período',
+      header: t('reports.common.period'),
       cell: (p) => `${p.periodYear}-${String(p.periodMonth).padStart(2, '0')}`,
       sortable: true,
       sortAccessor: (p) => `${p.periodYear}-${String(p.periodMonth).padStart(2, '0')}`,
       className: 'font-mono text-xs',
     },
-    { header: 'Bruto', cell: (p) => fmt.money(p.gross), align: 'right' },
+    { header: t('reports.common.gross'), cell: (p) => fmt.money(p.gross), align: 'right' },
     {
-      header: 'Neto',
+      header: t('reports.common.net'),
       cell: (p) => fmt.money(p.netPay),
       align: 'right',
       className: 'font-bold',
     },
     {
-      header: 'Estado',
+      header: t('reports.common.status'),
       align: 'center',
       cell: (p) => (
         <Badge variant={p.status === 'approved' ? 'success' : 'neutral'}>{p.status}</Badge>
@@ -85,19 +87,23 @@ export const ReportPayslip: React.FC = () => {
   // La descarga era un botón por fila; ahora vive en el menú ⋯ (y en el click
   // derecho), además del click en la fila que ya prometía la cabecera.
   const rowActions = (p: any): RowAction[] => [
-    { label: 'Descargar recibo', icon: <Download size={14} />, onClick: () => download(p) },
+    {
+      label: t('reports.payslip.download'),
+      icon: <Download size={14} />,
+      onClick: () => download(p),
+    },
   ];
 
   return (
     <div className="p-6 w-full space-y-5">
       <PageHeader
-        title="Recibo de nómina"
-        subtitle="Selecciona una nómina aprobada para descargar el recibo."
+        title={t('reports.payslip.title')}
+        subtitle={t('reports.payslip.subtitle')}
         icon={<Banknote size={18} />}
         size="md"
         breadcrumbs={
           <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> Volver
+            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
           </Button>
         }
       />
@@ -108,7 +114,7 @@ export const ReportPayslip: React.FC = () => {
           columns={columns}
           data={payrolls}
           isLoading={loading}
-          emptyMessage="Sin nóminas"
+          emptyMessage={t('reports.payslip.empty')}
           onRowClick={download}
           rowActions={rowActions}
         />

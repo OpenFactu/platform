@@ -1,0 +1,330 @@
+{
+  "reports": {
+    "nav": {
+      "label": "Informes",
+      "description": "Informes contables, de gestión, RRHH y stock.",
+      "accounting": "Contabilidad",
+      "management": "Gestión",
+      "hr": "RRHH",
+      "stock": "Stock",
+      "routes": {
+        "hr": "Informes RRHH",
+        "stock": "Informes stock",
+        "journal": "Diario",
+        "ledger": "Mayor",
+        "trialBalance": "Sumas y saldos",
+        "pl": "P&L",
+        "balanceSheet": "Balance situación",
+        "vat": "Libro IVA",
+        "profitCustomer": "Rent. cliente",
+        "profitItem": "Rent. producto",
+        "profitProject": "Rent. proyecto",
+        "profitCostCenter": "Rent. CC",
+        "executive": "Ejecutivo",
+        "agingReceivables": "Aging cobros",
+        "agingPayables": "Aging pagos",
+        "cashflow": "Cash-flow",
+        "payslip": "Recibo nómina",
+        "laborCost": "Coste laboral",
+        "headcount": "Plantilla",
+        "stockValuation": "Valoración",
+        "stockRotation": "Rotación",
+        "stockMovements": "Movimientos"
+      }
+    },
+    "hub": {
+      "accounting": {
+        "title": "Informes contables",
+        "subtitle": "Diario, mayor, balances y libros fiscales.",
+        "items": {
+          "journal": {
+            "title": "Diario de asientos",
+            "description": "Listado cronológico de todos los asientos contables del período."
+          },
+          "ledger": {
+            "title": "Libro mayor",
+            "description": "Movimientos de una cuenta con saldo corriente."
+          },
+          "trialBalance": {
+            "title": "Balance sumas y saldos",
+            "description": "Totales debe/haber y saldo por cuenta del período."
+          },
+          "pl": {
+            "title": "Cuenta de P&L",
+            "description": "Ingresos menos gastos = resultado del ejercicio."
+          },
+          "balanceSheet": {
+            "title": "Balance de situación",
+            "description": "Activo = Pasivo + Patrimonio a una fecha."
+          },
+          "vat": {
+            "title": "Libro de IVA",
+            "description": "IVA soportado y repercutido para modelo 303."
+          }
+        }
+      },
+      "management": {
+        "title": "Informes de gestión",
+        "subtitle": "Rentabilidad, aging, tesorería e informes para socios.",
+        "items": {
+          "profitCustomer": {
+            "title": "Rentabilidad por cliente",
+            "description": "Facturación y margen aportado por cliente en el período."
+          },
+          "profitItem": {
+            "title": "Rentabilidad por producto",
+            "description": "Margen y rotación por artículo."
+          },
+          "profitProject": {
+            "title": "Rentabilidad por proyecto",
+            "description": "Ingresos vs gastos por orden interna con desviación."
+          },
+          "profitCostCenter": {
+            "title": "Rentabilidad por centro de coste",
+            "description": "Análisis por unidad de responsabilidad."
+          },
+          "executive": {
+            "title": "Informe ejecutivo",
+            "description": "Resumen trimestral para socios/junta con KPIs y comparativas."
+          },
+          "agingReceivables": {
+            "title": "Aging de cobros",
+            "description": "Facturas de venta pendientes por tramo de vencimiento."
+          },
+          "agingPayables": {
+            "title": "Aging de pagos",
+            "description": "Facturas de compra pendientes por tramo."
+          },
+          "cashflow": {
+            "title": "Cash-flow",
+            "description": "Cobros vs pagos reales y previstos."
+          }
+        }
+      },
+      "hr": {
+        "title": "Informes RRHH",
+        "subtitle": "Nóminas y coste laboral.",
+        "items": {
+          "payslip": {
+            "title": "Recibo de nómina",
+            "description": "PDF por empleado con devengos, deducciones y neto."
+          },
+          "laborCost": {
+            "title": "Costes laborales",
+            "description": "Resumen bruto + SS empresa + IRPF del período."
+          },
+          "headcount": {
+            "title": "Plantilla actual",
+            "description": "Listado de empleados con alta, baja, contrato y departamento."
+          }
+        }
+      },
+      "stock": {
+        "title": "Informes de stock",
+        "subtitle": "Valoración, rotación y movimientos.",
+        "items": {
+          "valuation": {
+            "title": "Valoración de inventario",
+            "description": "Stock × precio medio por artículo."
+          },
+          "rotation": {
+            "title": "Rotación",
+            "description": "Días de stock y rotación por artículo."
+          },
+          "movements": {
+            "title": "Movimientos de stock",
+            "description": "Entradas, salidas y ajustes por período."
+          }
+        }
+      }
+    },
+    "common": {
+      "account": "Cuenta",
+      "accountName": "Denominación",
+      "back": "Volver",
+      "balance": "Saldo",
+      "code": "Código",
+      "concept": "Concepto",
+      "credit": "Haber",
+      "customer": "Cliente",
+      "date": "Fecha",
+      "debit": "Debe",
+      "description": "Descripción",
+      "error": "Error",
+      "expenses": "Gastos",
+      "from": "Desde",
+      "gross": "Bruto",
+      "income": "Ingresos",
+      "item": "Artículo",
+      "loading": "Cargando…",
+      "margin": "Margen",
+      "name": "Nombre",
+      "net": "Neto",
+      "noRows": "Ningún registro cumple los filtros actuales.",
+      "number": "Nº",
+      "pdfDownloaded": "PDF descargado",
+      "pdfError": "Error al generar PDF",
+      "period": "Período",
+      "refresh": "Actualizar",
+      "revenue": "Facturación",
+      "selectPeriod": "— seleccionar período —",
+      "selectPlaceholder": "— seleccionar —",
+      "status": "Estado",
+      "stock": "Stock",
+      "supplier": "Proveedor",
+      "to": "Hasta",
+      "total": "Total",
+      "type": "Tipo",
+      "months": {
+        "jan": "Ene",
+        "feb": "Feb",
+        "mar": "Mar",
+        "apr": "Abr",
+        "may": "May",
+        "jun": "Jun",
+        "jul": "Jul",
+        "aug": "Ago",
+        "sep": "Sep",
+        "oct": "Oct",
+        "nov": "Nov",
+        "dec": "Dic"
+      }
+    },
+    "aging": {
+      "invoice": "Factura",
+      "dueDate": "Vencimiento",
+      "daysOverdue": "Días vencido",
+      "bucket": "Tramo",
+      "pending": "Pendiente",
+      "receivablesTitle": "Aging de cobros",
+      "payablesTitle": "Aging de pagos",
+      "receivablesSubtitle": "Facturas de venta pendientes de cobro por tramo de vencimiento.",
+      "payablesSubtitle": "Facturas de compra pendientes de pago por tramo."
+    },
+    "balanceSheet": {
+      "title": "Balance de Situación",
+      "asset": "Activo",
+      "liability": "Pasivo",
+      "equity": "Patrimonio Neto"
+    },
+    "cashflow": {
+      "title": "Cash-flow",
+      "subtitle": "Cobros vs pagos reales últimos {days} días.",
+      "lastDays": "Últimos {days} días",
+      "rangeAria": "Rango de días",
+      "inflow": "Entradas",
+      "outflow": "Salidas",
+      "net": "Neto"
+    },
+    "executive": {
+      "title": "Informe ejecutivo",
+      "subtitle": "Resumen del período para socios y dirección.",
+      "sales": "Facturación",
+      "purchases": "Compras",
+      "invoices_one": "{count} facturas",
+      "invoices_other": "{count} facturas",
+      "grossMargin": "Margen bruto (ventas − compras)"
+    },
+    "headcount": {
+      "title": "Plantilla",
+      "subtitle": "Listado de empleados con fechas, departamento y estado.",
+      "lastName": "Apellidos",
+      "department": "Departamento",
+      "hireDate": "Fecha alta",
+      "terminationDate": "Fecha baja"
+    },
+    "journal": {
+      "title": "Diario de asientos",
+      "subtitle": "Listado cronológico de todos los asientos posteados del período."
+    },
+    "laborCost": {
+      "title": "Costes laborales",
+      "subtitle": "Año {year} — Bruto + SS empresa + IRPF por mes.",
+      "year": "Año",
+      "month": "Mes",
+      "ssEmployer": "SS empresa",
+      "irpf": "IRPF",
+      "totalCost": "Coste total"
+    },
+    "ledger": {
+      "title": "Libro mayor",
+      "entry": "Asiento",
+      "selectAccount": "Selecciona una cuenta"
+    },
+    "payslip": {
+      "title": "Recibo de nómina",
+      "subtitle": "Selecciona una nómina aprobada para descargar el recibo.",
+      "downloaded": "Recibo descargado",
+      "employee": "Empleado",
+      "download": "Descargar recibo",
+      "empty": "Sin nóminas"
+    },
+    "pl": {
+      "title": "Cuenta de Pérdidas y Ganancias",
+      "income": "Ingresos (grupo 7)",
+      "totalIncome": "Total ingresos",
+      "expenses": "Gastos (grupo 6)",
+      "totalExpenses": "Total gastos",
+      "profit": "Beneficio del ejercicio",
+      "loss": "Pérdida del ejercicio"
+    },
+    "profitCostCenter": {
+      "title": "Rentabilidad por centro de coste",
+      "subtitle": "Ingresos vs gastos imputados a cada unidad de responsabilidad.",
+      "center": "Centro"
+    },
+    "profitCustomer": {
+      "title": "Rentabilidad por cliente",
+      "subtitle": "Ranking de clientes por facturación del período.",
+      "invoices": "Facturas"
+    },
+    "profitItem": {
+      "title": "Rentabilidad por producto",
+      "subtitle": "Top artículos por facturación.",
+      "unitsSold": "Ud vendidas"
+    },
+    "profitProject": {
+      "title": "Rentabilidad por proyecto",
+      "subtitle": "Ingresos, gastos y desviación sobre presupuesto por orden interna.",
+      "project": "Proyecto",
+      "budget": "Presupuesto",
+      "deviation": "Desv. %"
+    },
+    "stockMovements": {
+      "title": "Movimientos de stock",
+      "subtitle": "Entradas (compra) y salidas (venta) por albarán.",
+      "quantity": "Cantidad",
+      "partner": "Partner"
+    },
+    "stockRotation": {
+      "title": "Rotación de stock",
+      "subtitle": "Días que durará el stock al ritmo de ventas actual.",
+      "sold": "Vendido (período)",
+      "daysOfStock": "Días de stock",
+      "noSales": "Sin ventas"
+    },
+    "stockValuation": {
+      "title": "Valoración de inventario",
+      "subtitle": "Stock × precio medio. Valor total: {total}",
+      "unitPrice": "Precio ud",
+      "value": "Valor"
+    },
+    "trialBalance": {
+      "title": "Balance de sumas y saldos",
+      "subtitle": "Totales debe/haber por cuenta del período."
+    },
+    "vat": {
+      "title": "Libro de IVA",
+      "subtitle": "IVA repercutido y soportado (modelo 303).",
+      "invoiceNumber": "Nº Factura",
+      "taxId": "NIF",
+      "base": "Base",
+      "vat": "IVA",
+      "empty": "Sin facturas en el período",
+      "output": "IVA Repercutido (ventas)",
+      "input": "IVA Soportado (compras)",
+      "toPay": "A ingresar a Hacienda",
+      "toOffset": "A compensar / devolver"
+    }
+  }
+}

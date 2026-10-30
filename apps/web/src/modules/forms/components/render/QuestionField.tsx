@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import {
   Checkbox,
@@ -63,6 +64,7 @@ export const QuestionField: React.FC<Props> = ({
   disabled,
   upload,
 }) => {
+  const { t } = useI18n();
   const value = answers[q.id];
   const set = (v: AnswerValue | undefined) => onChange(q.id, v);
   const other = String(answers[otherKey(q.id)] ?? '');
@@ -81,7 +83,7 @@ export const QuestionField: React.FC<Props> = ({
           value={String(value ?? '')}
           onChange={(e) => set(e.target.value)}
           error={error}
-          placeholder="Tu respuesta"
+          placeholder={t('forms.field.yourAnswer')}
           disabled={disabled}
         />
       );
@@ -124,7 +126,7 @@ export const QuestionField: React.FC<Props> = ({
           options={(q.options ?? []).map((o) => ({ value: o.id, label: o.label }))}
           value={String(value ?? '')}
           onChange={(v) => set(v || undefined)}
-          placeholder="Elige"
+          placeholder={t('forms.logic.choose')}
           error={error}
           disabled={disabled}
         />
@@ -135,7 +137,7 @@ export const QuestionField: React.FC<Props> = ({
           <RadioGroup
             options={[
               ...(q.options ?? []).map((o) => ({ value: o.id, label: o.label })),
-              ...(q.hasOther ? [{ value: OTHER, label: 'Otro' }] : []),
+              ...(q.hasOther ? [{ value: OTHER, label: t('forms.field.other') }] : []),
             ]}
             value={String(value ?? '')}
             onChange={(v) => set(v)}
@@ -144,10 +146,10 @@ export const QuestionField: React.FC<Props> = ({
           />
           {value === OTHER && (
             <Input
-              aria-label="Otro"
+              aria-label={t('forms.field.other')}
               value={other}
               onChange={(e) => setOther(e.target.value)}
-              placeholder="Escribe tu respuesta"
+              placeholder={t('forms.field.writeAnswer')}
               disabled={disabled}
             />
           )}
@@ -161,23 +163,24 @@ export const QuestionField: React.FC<Props> = ({
       };
       return (
         <div className="space-y-2">
-          {[...(q.options ?? []), ...(q.hasOther ? [{ id: OTHER, label: 'Otro' }] : [])].map(
-            (o) => (
-              <Checkbox
-                key={o.id}
-                label={o.label}
-                checked={list.includes(o.id)}
-                onChange={(on) => toggle(o.id, on)}
-                disabled={disabled}
-              />
-            ),
-          )}
+          {[
+            ...(q.options ?? []),
+            ...(q.hasOther ? [{ id: OTHER, label: t('forms.field.other') }] : []),
+          ].map((o) => (
+            <Checkbox
+              key={o.id}
+              label={o.label}
+              checked={list.includes(o.id)}
+              onChange={(on) => toggle(o.id, on)}
+              disabled={disabled}
+            />
+          ))}
           {list.includes(OTHER) && (
             <Input
-              aria-label="Otro"
+              aria-label={t('forms.field.other')}
               value={other}
               onChange={(e) => setOther(e.target.value)}
-              placeholder="Escribe tu respuesta"
+              placeholder={t('forms.field.writeAnswer')}
               disabled={disabled}
             />
           )}
@@ -220,7 +223,7 @@ export const QuestionField: React.FC<Props> = ({
                 type="button"
                 role="radio"
                 aria-checked={current === n}
-                aria-label={`${n} de ${max}`}
+                aria-label={t('forms.field.ratingOf', { n, max })}
                 disabled={disabled}
                 onClick={() => set(current === n ? undefined : n)}
                 className="p-1 text-accent disabled:opacity-50"
@@ -293,13 +296,16 @@ export const QuestionField: React.FC<Props> = ({
             accept={q.file?.accept?.length ? q.file.accept.join(',') : undefined}
             disabled={disabled || !upload || tokens.length >= maxFiles}
             isUploading={uploading}
-            uploadingLabel="Subiendo…"
+            uploadingLabel={t('forms.field.uploading')}
             hint={
               upload
-                ? `Hasta ${maxFiles} archivo(s) de ${Math.min(q.file?.maxSizeMb ?? 10, 10)} MB`
-                : 'La subida solo funciona en el formulario publicado'
+                ? t('forms.field.fileHint', {
+                    count: maxFiles,
+                    mb: Math.min(q.file?.maxSizeMb ?? 10, 10),
+                  })
+                : t('forms.field.uploadOnlyPublished')
             }
-            files={tokens.map((t) => picked[t] ?? new File([], 'Archivo adjunto'))}
+            files={tokens.map((tok) => picked[tok] ?? new File([], t('forms.field.attachment')))}
             onRemoveFile={(i: number) => {
               const next = tokens.filter((_, k) => k !== i);
               set(next.length ? next : undefined);
@@ -307,10 +313,10 @@ export const QuestionField: React.FC<Props> = ({
             onReject={(reason) =>
               setUploadError(
                 reason === 'size'
-                  ? 'El archivo es demasiado grande'
+                  ? t('forms.field.fileTooBig')
                   : reason === 'type'
-                    ? 'Tipo de archivo no permitido'
-                    : 'Demasiados archivos',
+                    ? t('forms.field.fileTypeNotAllowed')
+                    : t('forms.field.tooManyFiles'),
               )
             }
             onFiles={async (files: File[]) => {
@@ -328,7 +334,7 @@ export const QuestionField: React.FC<Props> = ({
                 setPicked((p) => ({ ...p, ...newFiles }));
                 set([...tokens, ...added]);
               } catch (e) {
-                setUploadError(e instanceof Error ? e.message : 'No se pudo subir');
+                setUploadError(e instanceof Error ? e.message : t('forms.field.uploadFailed'));
               } finally {
                 setUploading(false);
               }
@@ -346,7 +352,7 @@ export const QuestionField: React.FC<Props> = ({
           value={String(value ?? '')}
           onChange={(e) => set(e.target.value)}
           error={error}
-          placeholder="Tu respuesta"
+          placeholder={t('forms.field.yourAnswer')}
           disabled={disabled}
         />
       );

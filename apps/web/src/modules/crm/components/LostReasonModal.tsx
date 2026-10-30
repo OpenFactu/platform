@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { Input, Modal, Select } from '@openfactu/ui';
 
@@ -15,11 +16,12 @@ interface Props {
  * de pérdidas no dicen nada, así que es obligatorio.
  */
 export const LostReasonModal: React.FC<Props> = ({ open, reasons, onCancel, onConfirm }) => {
+  const { t } = useI18n();
   const [choice, setChoice] = useState('');
   const [other, setOther] = useState('');
   const options = [
     ...reasons.filter((r) => r !== 'Otro').map((r) => ({ value: r, label: r })),
-    { value: OTHER, label: 'Otro…' },
+    { value: OTHER, label: t('crm.lostReason.other') },
   ];
   const reason = choice === OTHER ? other.trim() : choice;
 
@@ -27,26 +29,26 @@ export const LostReasonModal: React.FC<Props> = ({ open, reasons, onCancel, onCo
     <Modal
       isOpen={open}
       onClose={onCancel}
-      title="¿Por qué se ha perdido?"
+      title={t('crm.lostReason.title')}
       size="sm"
       tone="warning"
       onSubmit={(e) => {
         e.preventDefault();
         if (reason) onConfirm(reason);
       }}
-      primaryAction={{ label: 'Marcar como perdida', type: 'submit', disabled: !reason }}
+      primaryAction={{ label: t('crm.lostReason.confirm'), type: 'submit', disabled: !reason }}
     >
       <div className="space-y-3">
         <Select
-          label="Motivo"
+          label={t('crm.lostReason.reason')}
           options={options}
           value={choice}
           onChange={setChoice}
-          placeholder="Elige un motivo"
+          placeholder={t('crm.lostReason.choose')}
         />
         {choice === OTHER && (
           <Input
-            label="Describe el motivo"
+            label={t('crm.lostReason.describe')}
             value={other}
             onChange={(e) => setOther(e.target.value)}
             autoFocus

@@ -2,6 +2,7 @@ import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Select, type TableColumn } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Devuelve la definición de una columna "Proyecto" para integrar en la
@@ -18,6 +19,7 @@ export function useInternalOrderLineColumn(
 ) {
   const { token, user } = useAuth();
   const [orders, setOrders] = useState<InternalOrder[]>(cache.orders || []);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (cache.orders) return;
@@ -35,12 +37,12 @@ export function useInternalOrderLineColumn(
 
   return useMemo<TableColumn<any>>(
     () => ({
-      header: 'Proyecto',
+      header: t('app.lines.project'),
       width: '220px',
       cell: (line: any, idx: number) => (
         <Select
           options={[
-            { value: '', label: '— Hereda cabecera —' },
+            { value: '', label: t('app.lines.inheritHeader') },
             ...orders
               .filter((o) => o.status !== 'closed')
               .map((o) => ({ value: String(o.id), label: `${o.code} — ${o.name}` })),
@@ -48,10 +50,10 @@ export function useInternalOrderLineColumn(
           value={line.internalOrderId || ''}
           onChange={(v) => updateLine(idx, 'internalOrderId', v || null)}
           className="min-w-[200px]"
-          ariaLabel="Proyecto"
+          ariaLabel={t('app.lines.project')}
         />
       ),
     }),
-    [orders, updateLine],
+    [orders, updateLine, t],
   );
 }

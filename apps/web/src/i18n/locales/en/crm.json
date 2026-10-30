@@ -1,0 +1,373 @@
+{
+  "crm": {
+    "nav": {
+      "label": "CRM",
+      "description": "Sales tracking: opportunities in a pipeline, contacts and activities.",
+      "today": "Today",
+      "opportunities": "Opportunities",
+      "opportunity": "Opportunity",
+      "activities": "Activities",
+      "contacts": "Contacts",
+      "reports": "Reports",
+      "stages": "Stages",
+      "settings": "Settings",
+      "stagesTitle": "Pipeline stages",
+      "reportsTitle": "CRM reports",
+      "settingsTitle": "CRM settings"
+    },
+    "docType": {
+      "SQ": "Quote",
+      "SO": "Order",
+      "SDN": "Delivery note",
+      "SINV": "Invoice"
+    },
+    "stageKind": {
+      "open": "Open",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "activityType": {
+      "call": "Call",
+      "meeting": "Meeting",
+      "email": "Email",
+      "note": "Note",
+      "task": "Task"
+    },
+    "quickPartner": {
+      "noGroup": "There are no customer groups with a code prefix: create one in Business partners → Groups",
+      "steps": {
+        "company": "Company",
+        "contact": "Contact",
+        "review": "Review"
+      },
+      "nifExists": "«{name}» already exists with this Tax ID (NIF)",
+      "createFailed": "Could not create the customer",
+      "legalName": "Name or company name",
+      "country": "Country",
+      "nif": "Tax ID (NIF)",
+      "example": "e.g.: {example}",
+      "nifHelp": "Optional for now; required to invoice them.",
+      "group": "Group",
+      "contactHint": "Optional: if you have it, the email is used to send them quotes and invoices.",
+      "reviewHint": "Address, payment method and the rest of the record are completed later in Business partners.",
+      "usingExisting": "Using customer {name}",
+      "created": "Customer {name} created",
+      "title": "New customer",
+      "subtitle": "The basics to get going; the rest of the record is completed in Business partners",
+      "submit": "Create customer"
+    },
+    "errors": {
+      "load": "Error loading",
+      "loadFailed": "Could not load",
+      "saveFailed": "Could not save",
+      "updateFailed": "Could not update",
+      "deleteFailed": "Could not delete"
+    },
+    "opportunity": {
+      "validation": {
+        "titleRequired": "Title is required",
+        "partnerRequired": "Choose the customer or enter the prospect's name or company",
+        "lostReasonRequired": "Enter the reason for losing it",
+        "sourceRequired": "Enter the opportunity source"
+      },
+      "new": "New opportunity"
+    },
+    "pipeline": {
+      "moveFailed": "Could not move the opportunity"
+    },
+    "owner": {
+      "label": "Owner",
+      "none": "— no owner —"
+    },
+    "summary": {
+      "revenue12m": "Invoiced last 12 months",
+      "lastPurchase": "Last purchase: {date}",
+      "noPurchases": "No purchases",
+      "pendingReceivable": "Pending collection",
+      "openQuotes": "Open quotes",
+      "quotesCount_one": "{count} quote",
+      "quotesCount_other": "{count} quotes",
+      "openOpportunities": "Open opportunities",
+      "opportunitiesCount_one": "{count} opportunity",
+      "opportunitiesCount_other": "{count} opportunities"
+    },
+    "lostReason": {
+      "other": "Other…",
+      "title": "Why was it lost?",
+      "confirm": "Mark as lost",
+      "reason": "Reason",
+      "choose": "Choose a reason",
+      "describe": "Describe the reason"
+    },
+    "partnerSelect": {
+      "label": "Business partner",
+      "placeholder": "Search or create a customer",
+      "create": "Create customer \"{term}\""
+    },
+    "common": {
+      "opportunity": "Opportunity",
+      "customer": "Customer",
+      "stage": "Stage",
+      "amount": "Amount",
+      "expectedClose": "Expected close",
+      "code": "Code",
+      "date": "Date",
+      "status": "Status",
+      "total": "Total",
+      "save": "Save",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "mobile": "Mobile",
+      "notes": "Notes",
+      "tags": "Tags",
+      "showMore": "Show more",
+      "delete": "Delete",
+      "next": "Next",
+      "back": "Back",
+      "optional": "Optional"
+    },
+    "partnerPanel": {
+      "noOpportunities": "No opportunities",
+      "pending": "Pending",
+      "history": "History"
+    },
+    "quoteStatus": {
+      "open": "Open",
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled",
+      "expired": "Expired"
+    },
+    "documents": {
+      "document": "Document",
+      "ariaLabel": "Opportunity documents",
+      "empty": "No documents",
+      "emptyHint": "Create a quote with the opportunity's products."
+    },
+    "stringList": {
+      "empty": "Empty",
+      "dragToReorder": "Drag to reorder",
+      "remove": "Remove {value}",
+      "add": "Add"
+    },
+    "activityForm": {
+      "subjectRequired": "Subject is required",
+      "partnerRequired": "Choose the business partner",
+      "editTitle": "Edit activity",
+      "newTitle": "New activity",
+      "type": "Type",
+      "subject": "Subject",
+      "detail": "Details",
+      "alreadyDone": "Already done"
+    },
+    "board": {
+      "lastDays": "last {days} days",
+      "prospect": "Prospect",
+      "stale": "Stalled",
+      "ariaLabel": "Opportunity pipeline"
+    },
+    "contactForm": {
+      "required": "Name and business partner are required",
+      "contact": "Contact",
+      "newTitle": "New contact",
+      "role": "Job title",
+      "isMain": "Main contact of the business partner"
+    },
+    "timeline": {
+      "empty": "No history yet",
+      "ariaLabel": "Customer history"
+    },
+    "activityList": {
+      "deleteTitle": "Delete activity",
+      "deleteMessage": "Delete «{subject}»?",
+      "empty": "No activities",
+      "emptyHint": "Log calls, meetings and follow-up tasks.",
+      "markPending": "Mark as pending",
+      "markDone": "Mark as done"
+    },
+    "contacts": {
+      "callWith": "Call with {name}",
+      "deleteTitle": "Delete contact",
+      "deleteMessage": "Delete {name}?",
+      "main": "Main",
+      "searchPlaceholder": "Search by name, business partner, email…",
+      "empty": "No contacts.",
+      "subtitle": "The people you deal with at each customer or supplier"
+    },
+    "lines": {
+      "add": "Add product",
+      "empty": "No products",
+      "emptyHint": "Without products, the opportunity amount is entered by hand.",
+      "item": "Item",
+      "description": "Description",
+      "quantity": "Quantity",
+      "price": "Price",
+      "discountShort": "Disc.",
+      "discount": "Discount",
+      "remove": "Remove product",
+      "chooseItem": "Choose an item",
+      "product": "Product {n}"
+    },
+    "fields": {
+      "title": "Title",
+      "clientOrProspect": "Customer or prospect?",
+      "existingClient": "Existing customer",
+      "prospectOption": "Prospect (not a customer yet)",
+      "company": "Company",
+      "contactPerson": "Contact person",
+      "none": "— none —",
+      "choosePartnerFirst": "Choose the business partner first",
+      "estimatedAmount": "Estimated amount",
+      "amountFromLines": "Calculated from the products.",
+      "source": "Source",
+      "sourcePlaceholder": "Where does it come from?",
+      "lostReason": "Loss reason",
+      "chooseReason": "Choose the reason",
+      "useTerm": "Use «{term}»"
+    },
+    "activities": {
+      "pending": "Pending",
+      "done": "Done",
+      "subtitle": "Calls, meetings and sales follow-up tasks",
+      "onlyMine": "Only mine"
+    },
+    "today": {
+      "lastActivity": "Last activity",
+      "staleSubtitle": "No activity for {days} days or more.",
+      "subtitle": "Your pending activities and the opportunities that need attention",
+      "myPending": "My pending activities",
+      "overdueHint": "Overdue ones are shown in red.",
+      "closingSoon": "Closing in the next 7 days",
+      "closingSoonEmpty": "Nothing closes this week",
+      "stale": "Stalled",
+      "staleEmpty": "None stalled"
+    },
+    "settings": {
+      "saved": "CRM settings saved",
+      "saveFailed": "Could not save",
+      "subtitle": "Catalogues and alerts used by opportunities and activities",
+      "lostReasons": "Loss reasons",
+      "lostReasonsHint": "Asked for when an opportunity is marked as lost.",
+      "reasons": "Reasons",
+      "newReason": "New reason",
+      "sources": "Sources",
+      "sourcesHint": "Where opportunities come from.",
+      "newSource": "New source",
+      "sourceRequired": "Require the source when creating an opportunity",
+      "followUp": "Follow-up",
+      "followUpHint": "Default owner and alerts.",
+      "defaultOwner": "Default owner",
+      "nobody": "— nobody —",
+      "staleDays": "Days without activity before an opportunity is marked as stalled",
+      "boardClosedDays": "Days a won or lost opportunity stays on the board",
+      "boardClosedDaysHint": "After that it only shows in the list, filtering by closed.",
+      "dormantEnabled": "Alert about regular customers who stop buying",
+      "dormantDays": "Days without buying"
+    },
+    "stages": {
+      "deleteTitle": "Delete stage",
+      "deleteMessage": "Delete stage «{name}»?",
+      "probability": "Probability",
+      "followUpAfter": "{type} after {days} days",
+      "order": "Order",
+      "new": "New stage",
+      "edit": "Edit stage",
+      "noFollowUp": "None",
+      "followUpHint": "It is created for the opportunity owner every time it enters this stage.",
+      "closingHint": "The «Won» and «Lost» stages close the opportunity; moving it back to an open stage reopens it.",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "subtitle": "The columns of the opportunity board, in order",
+      "followUpOnEnter": "Follow-up when entering the stage",
+      "afterDays": "After (days)",
+      "subjectPlaceholder": "Follow-up: <opportunity title>"
+    },
+    "opportunities": {
+      "deleteTitle": "Delete opportunity",
+      "deleteMessage": "Delete «{title}» and its activities?",
+      "closed": "Closed",
+      "all": "All",
+      "board": "Board",
+      "list": "List",
+      "subtitle": "The sales pipeline: drag a card to change its stage",
+      "open": "Open",
+      "openAmount": "Open amount",
+      "weighted": "Weighted forecast",
+      "searchPlaceholder": "Search by title, business partner or contact",
+      "scopeLabel": "Which opportunities to show",
+      "empty": "No opportunities yet."
+    },
+    "detail": {
+      "created": "Opportunity created",
+      "saved": "Opportunity saved",
+      "quoteCreated": "Quote {num} created",
+      "quoteFailed": "Could not create the quote",
+      "notFound": "Opportunity not found.",
+      "backToList": "Back to opportunities",
+      "convert": "Convert to customer",
+      "create": "Create opportunity",
+      "amountFromQuote": "Amount of the accepted quote.",
+      "addItemLines": "Add products with an item",
+      "createQuote": "Create quote",
+      "saveToQuote": "Save the opportunity to quote it.",
+      "linesLocked": "The opportunity is closed: the products stay as they were.",
+      "linesHint": "The price comes from the customer's price list. The opportunity amount is their sum.",
+      "converted": "The prospect is now a customer",
+      "convertFailed": "Could not link the customer",
+      "data": "Details",
+      "documents": "Documents",
+      "documentsHint": "Quotes, orders and invoices for this opportunity.",
+      "activity": "Activity",
+      "products": "Products of interest"
+    },
+    "reports": {
+      "noDate": "No date",
+      "tryLonger": "Try a longer period.",
+      "tabs": {
+        "forecast": "Forecast",
+        "funnel": "Funnel",
+        "lost": "Losses",
+        "sources": "Sources",
+        "activity": "Sales reps",
+        "surveys": "Surveys"
+      },
+      "months": "{n} months",
+      "weighted": "Weighted",
+      "won": "Won",
+      "funnelSubtitle_one": "{count} opportunity created in the period: how many went through each stage, how many moved on and how long they stayed.",
+      "funnelSubtitle_other": "{count} opportunities created in the period: how many went through each stage, how many moved on and how long they stayed.",
+      "conversion": "{pct}% move on",
+      "avgDays": "{days} days on average",
+      "lostAmount": "Amount lost",
+      "created": "Created",
+      "wonCount": "Won",
+      "lostCount": "Lost",
+      "winRate": "Win rate %",
+      "salesRep": "Sales rep",
+      "overdue": "Overdue",
+      "wonAmount": "Amount won",
+      "responses_one": "{count} response in the period",
+      "responses_other": "{count} responses in the period",
+      "npsByMonth": "NPS of {name} by month",
+      "noNps": "This survey has no NPS question.",
+      "noResponses": "No responses in the period.",
+      "subtitle": "How the pipeline is doing, where sales come from and why they are lost",
+      "period": "Period",
+      "openInPipeline": "Open in the pipeline",
+      "wonInPeriod": "Won in the period",
+      "forecastByMonth": "Forecast by close month",
+      "openOpportunities": "Open opportunities.",
+      "noOpen": "There are no open opportunities",
+      "wonByMonth": "Won by month",
+      "noneWon": "Nothing won in the period",
+      "noneCreated": "No opportunities were created in the period",
+      "noneLost": "No opportunities were lost in the period",
+      "bySource": "Opportunities by source",
+      "noActivity": "No activity in the period",
+      "activityByRep": "Activity by sales rep",
+      "activityByRepHint": "Activities done in the period, overdue pending ones and opportunities won.",
+      "noSurveys": "There are no surveys"
+    }
+  }
+}

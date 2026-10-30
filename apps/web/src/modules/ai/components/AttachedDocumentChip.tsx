@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, FileText } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
 
 /** Chip plegable para un documento (Excel/PDF/Word/CSV) que el usuario
  * adjuntó — su texto extraído viaja dentro del mensaje para que el modelo lo
@@ -10,6 +11,7 @@ export const AttachedDocumentChip: React.FC<{
   text: string;
   truncated: boolean;
 }> = ({ filename, text, truncated }) => {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-md border border-white/25 bg-white/10 overflow-hidden text-xs">
@@ -20,7 +22,9 @@ export const AttachedDocumentChip: React.FC<{
       >
         <FileText size={13} className="shrink-0" />
         <span className="truncate flex-1 text-left">{filename}</span>
-        {truncated && <span className="text-[10px] opacity-70 shrink-0">truncado</span>}
+        {truncated && (
+          <span className="text-[10px] opacity-70 shrink-0">{t('ai.document.truncated')}</span>
+        )}
         <ChevronDown
           size={12}
           className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}

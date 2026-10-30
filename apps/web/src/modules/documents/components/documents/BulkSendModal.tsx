@@ -3,6 +3,7 @@ import { Modal, Input, Button, Textarea, useToast } from '@openfactu/ui';
 import { Mail, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { documentEmailApi } from '../../api';
+import { useI18n } from '@/i18n/I18nContext';
 
 export type AnyDocType = 'SINV' | 'PINV' | 'SDN' | 'PDN' | 'SO' | 'PO';
 
@@ -32,11 +33,10 @@ interface Props {
 export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess }) => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
 
   const [subjectPrefix, setSubjectPrefix] = useState('');
-  const [bodyTemplate, setBodyTemplate] = useState(
-    'Hola,\n\nAdjuntamos {{label}} {{code}} emitido el {{date}}.\n\nSaludos,\n{{company}}',
-  );
+  const [bodyTemplate, setBodyTemplate] = useState(() => t('doc.bulk.bodyTemplate'));
   const [cc, setCc] = useState('');
   const [sending, setSending] = useState(false);
   const [results, setResults] = useState<
@@ -57,20 +57,20 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
       });
       const failed = (data.results || []).filter((r: any) => !r.ok).length;
       toast.success(
-        `${data.queued} encolados · envío desatendido, te llegará una notificación por cada uno.` +
-          (failed ? ` ${failed} sin email/plantilla.` : ''),
+        t('doc.bulk.queued', { n: data.queued }) +
+          (failed ? ` ${t('doc.bulk.failed', { n: failed })}` : ''),
       );
       if (data.queued > 0) onSuccess?.();
       onClose();
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error en envío masivo');
+      toast.error((e instanceof Error ? e.message : undefined) || t('doc.bulk.error'));
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <Modal isOpen={open} onClose={onClose} title="Envío masivo">
+    <Modal isOpen={open} onClose={onClose} title={t('doc.bulk.title')}>
       <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xs bg-accent/10 text-accent">
@@ -78,40 +78,39 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
           </div>
           <div>
             <h2 className="text-lg font-bold text-ink-900 dark:text-slate-100 font-display">
-              Envío masivo
+              {t('doc.bulk.title')}
             </h2>
             <p className="text-xs text-ink-500 dark:text-ink-400">
-              {items.length} documentos · cada uno al email de su interlocutor
+              {t('doc.bulk.subtitle', { n: items.length })}
             </p>
           </div>
         </div>
 
         {missingEmailCount > 0 && (
           <div className="p-2.5 rounded-xs bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 text-[11px] text-amber-800 dark:text-amber-200">
-            ⚠ {missingEmailCount} de {items.length} interlocutor(es) no tienen email registrado —
-            esos se omitirán.
+            ⚠ {t('doc.bulk.missingEmail', { n: missingEmailCount, total: items.length })}
           </div>
         )}
 
         <div className="space-y-3">
-          <Field label="Prefijo asunto (opcional)">
+          <Field label={t('doc.bulk.subjectPrefix')}>
             <Input
               value={subjectPrefix}
               onChange={(e) => setSubjectPrefix(e.target.value)}
-              placeholder="p.ej. '[Keirost]' (se antepone al número de documento)"
+              placeholder={t('doc.bulk.subjectPrefixPlaceholder')}
             />
           </Field>
 
-          <Field label="Con copia (CC)">
+          <Field label={t('doc.email.cc')}>
             <Input
               type="email"
               value={cc}
               onChange={(e) => setCc(e.target.value)}
-              placeholder="opcional, aplicado a todos"
+              placeholder={t('doc.bulk.ccPlaceholder')}
             />
           </Field>
 
-          <Field label="Mensaje (usa {{code}}, {{label}}, {{date}}, {{company}})">
+          <Field label={t('doc.bulk.messageLabel')}>
             <Textarea
               value={bodyTemplate}
               onChange={(e) => setBodyTemplate(e.target.value)}
@@ -123,7 +122,7 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
         {/* Lista de documentos */}
         <div className="border border-line dark:border-ink-700 rounded-sm overflow-hidden">
           <div className="bg-line-2/60 dark:bg-ink-800 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400">
-            Documentos a enviar
+            {t('doc.bulk.docsToSend')}
           </div>
           <ul className="max-h-48 overflow-y-auto">
             {items.map((it, idx) => {
@@ -143,7 +142,7 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
                     {it.partnerName || '—'}
                   </span>
                   <span className="text-[10px] text-ink-400 truncate">
-                    {it.partnerEmail || 'sin email'}
+                    {it.partnerEmail || t('doc.bulk.noEmail')}
                   </span>
                   {r ? (
                     r.ok ? (
@@ -165,11 +164,13 @@ export const BulkSendModal: React.FC<Props> = ({ open, onClose, items, onSuccess
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose} disabled={sending}>
-            Cerrar
+            {t('doc.common.close')}
           </Button>
           <Button onClick={submit} disabled={sending || items.length === 0} className="gap-2">
             <Mail size={14} />
-            {sending ? 'Enviando…' : `Enviar ${items.length - missingEmailCount}`}
+            {sending
+              ? t('doc.email.sending')
+              : t('doc.bulk.sendN', { n: items.length - missingEmailCount })}
           </Button>
         </div>
       </div>

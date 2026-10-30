@@ -3,6 +3,7 @@ import { Button } from '@openfactu/ui';
 import { Mail, X } from 'lucide-react';
 import { BulkSendModal, type AnyDocType } from './BulkSendModal';
 import { formatDocCode } from '@/utils/docCode';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface PartnerLike {
   id: string;
@@ -35,6 +36,7 @@ export const BulkSendToolbar: React.FC<Props> = ({
   onClear,
   onSent,
 }) => {
+  const { t } = useI18n();
   const [modalOpen, setModalOpen] = useState(false);
 
   if (selectedKeys.size === 0) return null;
@@ -63,16 +65,16 @@ export const BulkSendToolbar: React.FC<Props> = ({
             size="sm"
             onClick={onClear}
             className="p-1"
-            title="Deseleccionar"
+            title={t('doc.bulk.deselect')}
           >
             <X size={14} />
           </Button>
           <span className="font-bold text-accent">
-            {selectedKeys.size} seleccionado{selectedKeys.size === 1 ? '' : 's'}
+            {t('doc.bulk.selected', { count: selectedKeys.size })}
           </span>
           {withoutEmail > 0 && (
             <span className="text-[11px] text-amber-700 dark:text-amber-300">
-              · {withoutEmail} sin email
+              · {t('doc.bulk.withoutEmail', { n: withoutEmail })}
             </span>
           )}
         </div>
@@ -83,7 +85,7 @@ export const BulkSendToolbar: React.FC<Props> = ({
             onClick={() => setModalOpen(true)}
             className="gap-2 border-accent/40 text-accent hover:bg-accent/10"
           >
-            <Mail size={14} /> Enviar por email
+            <Mail size={14} /> {t('doc.actions.sendByEmail')}
           </Button>
         </div>
       </div>

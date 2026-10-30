@@ -1,49 +1,50 @@
-/** Etiquetas humanas para las tools del backend (core/ai/tools). */
+/** Etiquetas humanas para las tools del backend (core/ai/tools). Claves de i18n. */
 export const TOOL_LABELS: Record<string, string> = {
-  search_partners: 'Buscando interlocutores',
-  search_items: 'Buscando artículos',
-  list_documents: 'Listando documentos',
-  get_document: 'Consultando documento',
-  list_tables: 'Listando tablas de la base de datos',
-  get_table_columns: 'Consultando columnas',
-  run_read_query: 'Ejecutando consulta de lectura',
-  create_document: 'Crear documento (borrador)',
-  propose_dashboard_widget: 'Añadir widget al Dashboard',
-  render_component: 'Generando vista',
-  ask_user_question: 'Preguntando',
-  create_excel: 'Generando Excel',
-  create_word: 'Generando Word',
-  create_pdf: 'Generando PDF',
-  preview_document_template: 'Generando vista previa de plantilla',
-  create_document_template: 'Guardar plantilla de documento',
-  list_warehouses: 'Consultando almacenes',
-  list_departments: 'Consultando departamentos',
-  create_partner: 'Crear interlocutor',
-  create_partners_bulk: 'Crear interlocutores en lote',
-  create_stock_transfer: 'Crear traslado de stock',
-  create_goods_receipt: 'Crear entrada de mercancía',
-  create_employee: 'Dar de alta empleado',
+  search_partners: 'ai.tools.search_partners',
+  search_items: 'ai.tools.search_items',
+  list_documents: 'ai.tools.list_documents',
+  get_document: 'ai.tools.get_document',
+  list_tables: 'ai.tools.list_tables',
+  get_table_columns: 'ai.tools.get_table_columns',
+  run_read_query: 'ai.tools.run_read_query',
+  create_document: 'ai.tools.create_document',
+  propose_dashboard_widget: 'ai.tools.propose_dashboard_widget',
+  render_component: 'ai.tools.render_component',
+  ask_user_question: 'ai.tools.ask_user_question',
+  create_excel: 'ai.tools.create_excel',
+  create_word: 'ai.tools.create_word',
+  create_pdf: 'ai.tools.create_pdf',
+  preview_document_template: 'ai.tools.preview_document_template',
+  create_document_template: 'ai.tools.create_document_template',
+  list_warehouses: 'ai.tools.list_warehouses',
+  list_departments: 'ai.tools.list_departments',
+  create_partner: 'ai.tools.create_partner',
+  create_partners_bulk: 'ai.tools.create_partners_bulk',
+  create_stock_transfer: 'ai.tools.create_stock_transfer',
+  create_goods_receipt: 'ai.tools.create_goods_receipt',
+  create_employee: 'ai.tools.create_employee',
 };
 
 /** Nombres de las tools de ACCIÓN — su tarjeta de confirmación se resalta. */
 export const ACTION_LABELS: Record<string, string> = {
-  create_document: 'Crear documento en borrador',
-  propose_dashboard_widget: 'Añadir widget al Dashboard',
-  create_document_template: 'Guardar plantilla de documento',
-  create_partner: 'Crear interlocutor',
-  create_partners_bulk: 'Crear interlocutores en lote',
-  create_stock_transfer: 'Crear traslado de stock',
-  create_goods_receipt: 'Crear entrada de mercancía',
-  create_employee: 'Dar de alta empleado',
+  create_document: 'ai.actions.create_document',
+  propose_dashboard_widget: 'ai.actions.propose_dashboard_widget',
+  create_document_template: 'ai.actions.create_document_template',
+  create_partner: 'ai.actions.create_partner',
+  create_partners_bulk: 'ai.actions.create_partners_bulk',
+  create_stock_transfer: 'ai.actions.create_stock_transfer',
+  create_goods_receipt: 'ai.actions.create_goods_receipt',
+  create_employee: 'ai.actions.create_employee',
 };
 
 /** Mismo nombre que en apps/server/src/core/ai/chat/chatEngine.ts (ASSISTANT_NAME). */
 export const ASSISTANT_NAME = 'Keiro';
 
+/** Claves de i18n. */
 export const SUGGESTIONS = [
-  '¿Cuáles son las últimas facturas de venta?',
-  '¿Qué clientes tenemos dados de alta?',
-  'Busca el artículo con más líneas vendidas este año',
+  'ai.suggestions.facturas',
+  'ai.suggestions.clientes',
+  'ai.suggestions.articulo',
 ];
 
 export const MAX_ATTACHMENTS = 4;

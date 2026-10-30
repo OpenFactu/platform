@@ -1,6 +1,7 @@
 import React from 'react';
 import { Table, Badge, type TableColumn, type RowAction } from '@openfactu/ui';
 import { Building2, Edit2, Trash2 } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -38,9 +39,10 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const { t } = useI18n();
   const columns: TableColumn<UserRow>[] = [
     {
-      header: 'Usuario',
+      header: t('settings.usersTable.user'),
       card: 'title',
       cell: (u) => (
         <div className="flex items-center gap-3 ">
@@ -60,28 +62,32 @@ export const UsersTable: React.FC<UsersTableProps> = ({
       ),
     },
     {
-      header: 'Email',
+      header: t('settings.usersTable.email'),
       card: 'subtitle',
       cell: (u) => <span className="text-sm text-fg-muted">{u.email}</span>,
     },
     {
-      header: 'Rol Global',
+      header: t('settings.usersTable.globalRole'),
       card: 'status',
       cell: (u) => (
         <Badge
           variant={u.role === 'SUPERUSER' ? 'warning' : u.role === 'ADMIN' ? 'info' : 'neutral'}
         >
-          {u.role === 'SUPERUSER' ? '⚡ Superadmin' : u.role === 'ADMIN' ? 'Admin' : 'Usuario'}
+          {u.role === 'SUPERUSER'
+            ? t('settings.usersTable.roleSuperuser')
+            : u.role === 'ADMIN'
+              ? t('settings.usersTable.roleAdmin')
+              : t('settings.usersTable.roleUser')}
         </Badge>
       ),
     },
     {
-      header: 'Empresas',
+      header: t('settings.usersTable.companies'),
       cell: (u) => {
         if (u.role === 'SUPERUSER') {
           return (
             <span className="text-xs text-amber-600 dark:text-amber-300 font-bold">
-              Todas las empresas
+              {t('settings.usersTable.allCompanies')}
             </span>
           );
         }
@@ -90,7 +96,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
             <div className="flex items-center gap-1.5">
               <Building2 size={13} className="text-fg-subtle" />
               <span className="text-sm font-bold text-fg-body">
-                {u.membershipCount} empresa{u.membershipCount !== 1 ? 's' : ''}
+                {t('settings.usersTable.companyCount', { count: u.membershipCount })}
               </span>
             </div>
           );
@@ -98,7 +104,11 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         if (u.tenantName) {
           return <span className="text-xs text-fg-muted font-medium">{u.tenantName}</span>;
         }
-        return <span className="text-xs text-rose-400 font-bold">Sin asignar</span>;
+        return (
+          <span className="text-xs text-rose-400 font-bold">
+            {t('settings.usersTable.unassigned')}
+          </span>
+        );
       },
     },
   ];
@@ -107,11 +117,16 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   // del hover y en el menú de click derecho, así que los permisos se declaran
   // una vez en lugar de duplicarse entre una columna de botones y el menú.
   const rowActions = (u: UserRow): RowAction[] => [
-    { label: 'Editar', icon: <Edit2 size={14} />, disabled: !canWrite, onClick: () => onEdit(u) },
+    {
+      label: t('settings.usersTable.edit'),
+      icon: <Edit2 size={14} />,
+      disabled: !canWrite,
+      onClick: () => onEdit(u),
+    },
     ...(u.role !== 'SUPERUSER'
       ? [
           {
-            label: 'Eliminar',
+            label: t('settings.usersTable.delete'),
             icon: <Trash2 size={14} />,
             destructive: true,
             disabled: !canDelete,
@@ -127,7 +142,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
       columns={columns}
       data={users}
       isLoading={loading}
-      emptyMessage="No hay usuarios registrados."
+      emptyMessage={t('settings.usersTable.empty')}
       rowKey={(u: UserRow) => u.id}
       rowActions={rowActions}
     />

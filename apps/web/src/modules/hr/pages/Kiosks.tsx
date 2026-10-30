@@ -26,8 +26,10 @@ import {
   Palette,
 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 
 export const Kiosks: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const { canWrite, canDelete } = usePagePermissions();
   const [rows, setRows] = useState<Kiosk[]>([]);
@@ -67,16 +69,18 @@ export const Kiosks: React.FC = () => {
       setEditing(null);
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
   const regenerate = async (k: Kiosk) => {
     const ok = await popup.confirm({
-      title: 'Regenerar token',
-      message: '¿Regenerar token? El kiosko deberá ser configurado de nuevo.',
+      title: t('hrTime.kiosks.regenTitle'),
+      message: t('hrTime.kiosks.regenMessage'),
       tone: 'danger',
-      confirmLabel: 'Regenerar',
+      confirmLabel: t('hrTime.kiosks.regen'),
     });
     if (!ok) return;
     await kiosksApi.regenerateToken(k.id);
@@ -85,10 +89,10 @@ export const Kiosks: React.FC = () => {
 
   const remove = async (k: Kiosk) => {
     const ok = await popup.confirm({
-      title: 'Eliminar kiosko',
-      message: `¿Eliminar el kiosko "${k.name}"?`,
+      title: t('hrTime.kiosks.deleteTitle'),
+      message: t('hrTime.kiosks.deleteMessage', { name: k.name }),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('hr.common.delete'),
     });
     if (!ok) return;
     await kiosksApi.remove(k.id);
@@ -104,7 +108,7 @@ export const Kiosks: React.FC = () => {
   const copyLink = (k: Kiosk) => {
     const url = kioskUrl(k);
     navigator.clipboard.writeText(url);
-    toast.success('Enlace del kiosko copiado');
+    toast.success(t('hrTime.kiosks.linkCopied'));
   };
 
   const openKiosk = (k: Kiosk) => {
@@ -112,47 +116,60 @@ export const Kiosks: React.FC = () => {
   };
 
   const columns: TableColumn<Kiosk>[] = [
-    { header: 'Nombre', accessor: 'name', sortable: true, primary: true },
+    { header: t('hr.common.name'), accessor: 'name', sortable: true, primary: true },
     {
-      header: 'Ubicación',
+      header: t('hr.common.location'),
       sortable: true,
       sortAccessor: (k) => k.location || '',
       cell: (k) => k.location || '—',
     },
     {
-      header: 'Token (recortado)',
+      header: t('hrTime.kiosks.tokenShort'),
       cell: (k) => (
         <div className="flex items-center gap-2 font-mono text-xs">
           {k.token.slice(0, 8)}…
-          <CopyButton value={k.token} variant="ghost" iconOnly label="Copiar token completo" />
+          <CopyButton
+            value={k.token}
+            variant="ghost"
+            iconOnly
+            label={t('hrTime.kiosks.copyToken')}
+          />
         </div>
       ),
     },
     {
-      header: 'Activo',
+      header: t('hr.common.active'),
       sortable: true,
       sortAccessor: (k) => (k.isActive ? 1 : 0),
-      cell: (k) => (k.isActive ? 'Sí' : 'No'),
+      cell: (k) => (k.isActive ? t('hr.common.yes') : t('hr.common.no')),
     },
   ];
 
   const rowActions = (k: Kiosk): RowAction[] => [
     {
-      label: 'Personalizar pantalla',
+      label: t('hrTime.kiosks.customize'),
       icon: <Palette size={14} />,
       disabled: !canWrite,
       onClick: () => setAppearanceKiosk(k),
     },
-    { label: 'Copiar enlace', icon: <LinkIcon size={14} />, onClick: () => copyLink(k) },
-    { label: 'Abrir kiosko', icon: <ExternalLink size={14} />, onClick: () => openKiosk(k) },
     {
-      label: 'Regenerar token',
+      label: t('hrTime.kiosks.copyLink'),
+      icon: <LinkIcon size={14} />,
+      onClick: () => copyLink(k),
+    },
+    {
+      label: t('hrTime.kiosks.open'),
+      icon: <ExternalLink size={14} />,
+      onClick: () => openKiosk(k),
+    },
+    {
+      label: t('hrTime.kiosks.regenTitle'),
       icon: <RefreshCw size={14} />,
       disabled: !canWrite,
       onClick: () => regenerate(k),
     },
     {
-      label: 'Eliminar',
+      label: t('hr.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       disabled: !canDelete,
@@ -163,14 +180,14 @@ export const Kiosks: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-6">
       <PageHeader
-        title="Kioskos de fichaje"
-        subtitle="Terminales compartidos para fichar con PIN, tarjeta o QR personal."
+        title={t('hrTime.kiosks.title')}
+        subtitle={t('hrTime.kiosks.subtitle')}
         icon={<Tablet size={18} />}
         size="lg"
         actions={
           canWrite && (
             <Button type="button" size="sm" onClick={() => setEditing({ name: '', location: '' })}>
-              <Plus size={14} /> Nuevo kiosko
+              <Plus size={14} /> {t('hrTime.kiosks.new')}
             </Button>
           )
         }
@@ -187,22 +204,22 @@ export const Kiosks: React.FC = () => {
         <Card noPadding>
           <form onSubmit={save} className="p-6 grid grid-cols-1 md:grid-cols-3 gap-3">
             <Input
-              label="Nombre"
+              label={t('hr.common.name')}
               value={editing.name || ''}
               onChange={(e) => setEditing({ ...editing, name: e.target.value })}
               required
             />
             <Input
-              label="Ubicación"
+              label={t('hr.common.location')}
               value={editing.location || ''}
               onChange={(e) => setEditing({ ...editing, location: e.target.value })}
             />
             <div className="flex items-end gap-2">
               <Button type="submit" disabled={!canWrite}>
-                Guardar
+                {t('hr.common.save')}
               </Button>
               <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
-                Cancelar
+                {t('hr.common.cancel')}
               </Button>
             </div>
           </form>
@@ -216,7 +233,7 @@ export const Kiosks: React.FC = () => {
           data={rows}
           isLoading={loading}
           rowActions={rowActions}
-          emptyMessage="Todavía no hay kioskos configurados."
+          emptyMessage={t('hrTime.kiosks.empty')}
         />
       </Card>
 
@@ -226,10 +243,7 @@ export const Kiosks: React.FC = () => {
         canWrite={!!canWrite}
         tenantId={user?.tenantId || ''}
       />
-      <p className="text-xs text-slate-400 italic">
-        Abre el enlace del kiosco en el terminal. Los empleados pueden identificarse con su PIN, QR
-        personal o una tarjeta leída por un lector vinculado y elegir la acción en pantalla.
-      </p>
+      <p className="text-xs text-slate-400 italic">{t('hrTime.kiosks.footerHint')}</p>
     </div>
   );
 };

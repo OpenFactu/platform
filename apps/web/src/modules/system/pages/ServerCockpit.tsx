@@ -11,7 +11,7 @@
 
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState, useRef } from 'react';
-import { PageHeader, Table } from '@openfactu/ui';
+import { PageHeader, Table, Progress, StackedBar } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import {
   Cpu,
@@ -29,6 +29,9 @@ import {
   Puzzle,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { t as tNow } from '@/i18n/i18n';
+import { formatNumber } from '@/i18n/format';
 
 interface Metrics {
   cpu: { model: string; cores: number; loadAvg: number[]; usagePct: number };
@@ -86,9 +89,15 @@ const HISTORY_LEN = 60; // 60 samples × 3s ≈ 3 minutos visibles.
 
 /** Columnas del listado de esquemas de empresa. */
 const TENANT_COLUMNS: TableColumn<{ name: string; sizeMB: number }>[] = [
-  { header: 'Empresa', accessor: 'name', className: 'font-mono', sortable: true, primary: true },
   {
-    header: 'Tamaño',
+    header: 'system.cockpit.company',
+    accessor: 'name',
+    className: 'font-mono',
+    sortable: true,
+    primary: true,
+  },
+  {
+    header: 'system.cockpit.size',
     cell: (t) => `${t.sizeMB.toFixed(1)} MB`,
     align: 'right',
     sortable: true,
@@ -98,6 +107,7 @@ const TENANT_COLUMNS: TableColumn<{ name: string; sizeMB: number }>[] = [
 
 export const ServerCockpit: React.FC = () => {
   const { token } = useAuth();
+  const { t } = useI18n();
   const [m, setM] = useState<Metrics | null>(null);
   const [services, setServices] = useState<ServiceCheck[] | null>(null);
   const [plugins, setPlugins] = useState<PluginInfo[] | null>(null);
@@ -124,7 +134,7 @@ export const ServerCockpit: React.FC = () => {
           coreApi.raw('GET', '/api/system/services'),
         ]);
         if (metricsRes.status === 403 || servicesRes.status === 403) {
-          setError('Solo SUPERUSER puede ver este cockpit.');
+          setError(tNow('system.cockpit.forbidden'));
           return;
         }
         if (!metricsRes.ok) throw new Error(`HTTP ${metricsRes.status}`);
@@ -160,7 +170,7 @@ export const ServerCockpit: React.FC = () => {
         if (!cancelled)
           setError(
             (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-              'Error',
+              tNow('app.common.error'),
           );
       }
     };
@@ -186,8 +196,8 @@ export const ServerCockpit: React.FC = () => {
   return (
     <div className="p-6 space-y-6 w-full">
       <PageHeader
-        title="Cockpit del servidor"
-        subtitle="Métricas en vivo del proceso, host y base de datos. Refresco cada 3s."
+        title={t('system.cockpit.title')}
+        subtitle={t('system.cockpit.subtitle')}
         icon={<Activity size={18} />}
         size="md"
         actions={
@@ -211,21 +221,24 @@ export const ServerCockpit: React.FC = () => {
       )}
 
       {!m ? (
-        <div className="text-sm text-slate-400 italic">Cargando métricas…</div>
+        <div className="text-sm text-slate-400 italic">{t('system.cockpit.loading')}</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <MetricCard
             icon={<Cpu size={18} />}
             title="CPU"
             value={`${m.cpu.usagePct.toFixed(1)}%`}
-            subtitle={`${m.cpu.cores} núcleos · load ${m.cpu.loadAvg.map((n) => n.toFixed(2)).join(' ')}`}
+            subtitle={t('system.cockpit.cpuSubtitle', {
+              cores: m.cpu.cores,
+              load: m.cpu.loadAvg.map((n) => n.toFixed(2)).join(' '),
+            })}
             barPct={m.cpu.usagePct}
             history={history.cpu}
             maxY={100}
           />
           <MetricCard
             icon={<MemoryStick size={18} />}
-            title="Memoria"
+            title={t('system.cockpit.memory')}
             value={`${m.memory.usedPct.toFixed(1)}%`}
             subtitle={`${formatMB(m.memory.usedMB)} / ${formatMB(m.memory.totalMB)}`}
             barPct={m.memory.usedPct}
@@ -234,7 +247,7 @@ export const ServerCockpit: React.FC = () => {
           />
           <MetricCard
             icon={<HardDrive size={18} />}
-            title="Disco"
+            title={t('system.cockpit.disk')}
             value={`${m.disk.usedPct.toFixed(1)}%`}
             subtitle={`${m.disk.usedGB.toFixed(1)} / ${m.disk.totalGB.toFixed(1)} GB · ${m.disk.storagePath}`}
             barPct={m.disk.usedPct}
@@ -245,9 +258,11 @@ export const ServerCockpit: React.FC = () => {
             value={
               m.postgres
                 ? `${m.postgres.connectionsActive}/${m.postgres.connectionsMax}`
-                : 'sin datos'
+                : t('system.cockpit.noData')
             }
-            subtitle={m.postgres ? `${m.postgres.dbSizeMB.toFixed(1)} MB de BD` : ''}
+            subtitle={
+              m.postgres ? t('system.cockpit.dbSize', { mb: m.postgres.dbSizeMB.toFixed(1) }) : ''
+            }
             barPct={
               m.postgres && m.postgres.connectionsMax > 0
                 ? (m.postgres.connectionsActive * 100) / m.postgres.connectionsMax
@@ -260,7 +275,10 @@ export const ServerCockpit: React.FC = () => {
             icon={<MemoryStick size={18} />}
             title="Heap Node"
             value={`${m.process.heapUsedMB.toFixed(1)} MB`}
-            subtitle={`de ${m.process.heapTotalMB.toFixed(1)} MB reservados · RSS ${m.process.rssMB.toFixed(0)} MB`}
+            subtitle={t('system.cockpit.heapSubtitle', {
+              total: m.process.heapTotalMB.toFixed(1),
+              rss: m.process.rssMB.toFixed(0),
+            })}
             barPct={
               m.process.heapTotalMB ? (m.process.heapUsedMB * 100) / m.process.heapTotalMB : 0
             }
@@ -281,7 +299,9 @@ export const ServerCockpit: React.FC = () => {
         <div className="rounded-lg border border-border-default bg-bg-card p-5">
           <div className="flex items-center gap-2 text-fg-body mb-3">
             <Server size={16} />
-            <h2 className="text-sm font-bold uppercase tracking-wider">Servicios</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider">
+              {t('system.cockpit.services')}
+            </h2>
           </div>
           <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {services.map((s) => (
@@ -303,7 +323,7 @@ export const ServerCockpit: React.FC = () => {
           <div className="flex items-center gap-2 text-fg-body mb-3">
             <Puzzle size={16} />
             <h2 className="text-sm font-bold uppercase tracking-wider">
-              Plugins cargados ({plugins.length})
+              {t('system.cockpit.pluginsLoaded', { n: plugins.length })}
             </h2>
           </div>
           <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -325,7 +345,7 @@ export const ServerCockpit: React.FC = () => {
                         : 'text-amber-600 dark:text-amber-400'
                     }
                   >
-                    {p.loaded ? 'cargado' : 'solo manifest'}
+                    {p.loaded ? t('system.cockpit.loaded') : t('system.cockpit.manifestOnly')}
                   </span>
                 </div>
               </li>
@@ -339,16 +359,16 @@ export const ServerCockpit: React.FC = () => {
           <div className="flex items-center gap-2 text-fg-body mb-3">
             <Building size={16} />
             <h2 className="text-sm font-bold uppercase tracking-wider">
-              Empresas ({m.tenants.total})
+              {t('system.cockpit.companies', { n: m.tenants.total })}
             </h2>
           </div>
           <Table
             className="max-md:p-3"
-            columns={TENANT_COLUMNS}
+            columns={TENANT_COLUMNS.map((c) => ({ ...c, header: t(c.header as string) }))}
             data={m.tenants.schemas}
             rowKey={(t) => t.name}
             density="compact"
-            emptyMessage="No hay empresas registradas."
+            emptyMessage={t('system.cockpit.noCompanies')}
           />
         </div>
       )}
@@ -381,14 +401,12 @@ const MetricCard: React.FC<{
       <span className="text-3xl font-bold text-fg-default tabular-nums">{value}</span>
     </div>
     {!hideBar && (
-      <div className="mt-2 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-        <div
-          className={`h-full transition-all ${
-            barPct > 85 ? 'bg-rose-500' : barPct > 60 ? 'bg-amber-500' : 'bg-emerald-500'
-          }`}
-          style={{ width: `${Math.min(100, barPct)}%` }}
-        />
-      </div>
+      <Progress
+        className="mt-2"
+        size="sm"
+        value={Math.min(100, barPct)}
+        variant={barPct > 85 ? 'danger' : barPct > 60 ? 'warning' : 'success'}
+      />
     )}
     {history && history.length > 1 && (
       <div className="mt-3">
@@ -449,40 +467,45 @@ const Stat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   </div>
 );
 
-const HostPanel: React.FC<{ host: Metrics['host'] }> = ({ host }) => (
-  <div className="rounded-lg border border-border-default bg-bg-card p-5">
-    <div className="flex items-center gap-2 text-fg-body mb-3">
-      <Globe size={16} />
-      <h2 className="text-sm font-bold uppercase tracking-wider">Host</h2>
+const HostPanel: React.FC<{ host: Metrics['host'] }> = ({ host }) => {
+  const { t } = useI18n();
+  return (
+    <div className="rounded-lg border border-border-default bg-bg-card p-5">
+      <div className="flex items-center gap-2 text-fg-body mb-3">
+        <Globe size={16} />
+        <h2 className="text-sm font-bold uppercase tracking-wider">Host</h2>
+      </div>
+      <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+        <Stat label="Hostname" value={host.hostname} />
+        <Stat label="Timezone" value={host.timezone} />
+        <Stat label="Platform" value={`${host.platform} ${host.release}`} />
+        <Stat label="Arch" value={host.arch} />
+      </div>
+      {host.interfaces.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 text-fg-muted mb-1">
+            <Network size={12} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">
+              {t('system.cockpit.interfaces')}
+            </span>
+          </div>
+          <ul className="text-[11px] font-mono space-y-0.5">
+            {host.interfaces.map((iface, i) => (
+              <li
+                key={`${iface.name}-${iface.address}-${i}`}
+                className="flex justify-between text-fg-body border-t border-border-subtle py-0.5"
+              >
+                <span className="text-slate-500">{iface.name}</span>
+                <span className="tabular-nums">{iface.address}</span>
+                <span className="text-slate-400 text-[10px]">{iface.family}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </div>
-    <div className="grid grid-cols-2 gap-3 text-xs mb-3">
-      <Stat label="Hostname" value={host.hostname} />
-      <Stat label="Timezone" value={host.timezone} />
-      <Stat label="Platform" value={`${host.platform} ${host.release}`} />
-      <Stat label="Arch" value={host.arch} />
-    </div>
-    {host.interfaces.length > 0 && (
-      <>
-        <div className="flex items-center gap-2 text-fg-muted mb-1">
-          <Network size={12} />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Interfaces de red</span>
-        </div>
-        <ul className="text-[11px] font-mono space-y-0.5">
-          {host.interfaces.map((iface, i) => (
-            <li
-              key={`${iface.name}-${iface.address}-${i}`}
-              className="flex justify-between text-fg-body border-t border-border-subtle py-0.5"
-            >
-              <span className="text-slate-500">{iface.name}</span>
-              <span className="tabular-nums">{iface.address}</span>
-              <span className="text-slate-400 text-[10px]">{iface.family}</span>
-            </li>
-          ))}
-        </ul>
-      </>
-    )}
-  </div>
-);
+  );
+};
 
 const TrafficPanel: React.FC<{
   requests: Metrics['requests'];
@@ -492,49 +515,38 @@ const TrafficPanel: React.FC<{
   const classes = requests.byStatusClass;
   const methods = Object.entries(requests.byMethod).sort((a, b) => b[1] - a[1]);
   const peak = Math.max(...history, 1);
+  const { t } = useI18n();
   return (
     <div className="rounded-lg border border-border-default bg-bg-card p-5">
       <div className="flex items-center gap-2 text-fg-body mb-3">
         <Activity size={16} />
-        <h2 className="text-sm font-bold uppercase tracking-wider">Tráfico HTTP</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wider">
+          {t('system.cockpit.traffic')}
+        </h2>
       </div>
       <div className="grid grid-cols-3 gap-3 text-xs mb-3">
-        <Stat label="Total" value={requests.total.toLocaleString()} />
+        <Stat label="Total" value={formatNumber(requests.total)} />
         <Stat
-          label="Errores 5xx"
+          label={t('system.cockpit.errors5xx')}
           value={`${requests.errors} (${requests.errorRatePct.toFixed(1)}%)`}
         />
         <Stat label="Avg req/s" value={requests.avgPerSec.toFixed(2)} />
       </div>
-      {/* Barra stacked por status class */}
-      <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden flex mb-1">
-        <div
-          className="bg-emerald-500 h-full"
-          style={{ width: `${(classes['2xx'] * 100) / total}%` }}
-          title={`2xx: ${classes['2xx']}`}
-        />
-        <div
-          className="bg-sky-500 h-full"
-          style={{ width: `${(classes['3xx'] * 100) / total}%` }}
-          title={`3xx: ${classes['3xx']}`}
-        />
-        <div
-          className="bg-amber-500 h-full"
-          style={{ width: `${(classes['4xx'] * 100) / total}%` }}
-          title={`4xx: ${classes['4xx']}`}
-        />
-        <div
-          className="bg-rose-500 h-full"
-          style={{ width: `${(classes['5xx'] * 100) / total}%` }}
-          title={`5xx: ${classes['5xx']}`}
-        />
-      </div>
-      <div className="flex gap-3 text-[10px] font-mono text-slate-500 mb-3">
-        <span className="text-emerald-600">2xx {classes['2xx']}</span>
-        <span className="text-sky-600">3xx {classes['3xx']}</span>
-        <span className="text-amber-600">4xx {classes['4xx']}</span>
-        <span className="text-rose-600">5xx {classes['5xx']}</span>
-      </div>
+      {/* StackedBar de @openfactu/ui: barra apilada por clase de estado, con
+          su leyenda; antes eran cuatro <div> con los colores fijos de Tailwind. */}
+      <StackedBar
+        className="mb-3"
+        height={8}
+        showLegend
+        ariaLabel={t('system.cockpit.byStatusAria')}
+        total={total}
+        segments={[
+          { key: '2xx', label: '2xx', value: classes['2xx'], color: 'var(--k-success)' },
+          { key: '3xx', label: '3xx', value: classes['3xx'], color: 'var(--k-info)' },
+          { key: '4xx', label: '4xx', value: classes['4xx'], color: 'var(--k-warning)' },
+          { key: '5xx', label: '5xx', value: classes['5xx'], color: 'var(--k-danger)' },
+        ]}
+      />
       {/* Sparkline req/s */}
       {history.length > 1 && (
         <div className="mb-2">

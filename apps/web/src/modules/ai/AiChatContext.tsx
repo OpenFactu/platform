@@ -17,6 +17,7 @@ import {
 import { useToast } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ASSISTANT_NAME } from './domain/constants';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface AvailableModelsDTO {
   provider: string;
@@ -59,6 +60,7 @@ const AiChatContext = createContext<AiChatContextValue | null>(null);
 export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const [supportsImages, setSupportsImages] = useState(false);
   const [contextWindow, setContextWindow] = useState<number | null>(null);
   const [availableModels, setAvailableModels] = useState<AvailableModelsDTO>({
@@ -177,7 +179,11 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const lastAssistant = [...messages].reverse().find((m) => m.role === 'assistant');
         const text = lastAssistant?.parts.find((p) => p.type === 'text')?.text || '';
         const preview = text.length > 80 ? `${text.slice(0, 80)}…` : text;
-        toast.info(`${ASSISTANT_NAME} ha terminado de responder${preview ? `: "${preview}"` : ''}`);
+        toast.info(
+          preview
+            ? t('ai.chat.finishedWithPreview', { name: ASSISTANT_NAME, preview })
+            : t('ai.chat.finished', { name: ASSISTANT_NAME }),
+        );
       }
     }
     prevStatusRef.current = status;

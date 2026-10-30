@@ -1,0 +1,86 @@
+{
+  "plugins": {
+    "nav": {
+      "apps": "Apps",
+      "applications": "Applications"
+    },
+    "manager": {
+      "title": "Apps",
+      "subtitle": "Turn modules and plugins on or off for this company.",
+      "columns": {
+        "plugin": "Plugin",
+        "table": "Table",
+        "field": "Field",
+        "type": "Type",
+        "label": "Label",
+        "structure": "Structure"
+      },
+      "generalCategory": "General",
+      "loadError": "Error loading plugin data",
+      "pluginActivated": "Plugin \"{id}\" activated",
+      "pluginDeactivated": "Plugin \"{id}\" deactivated",
+      "pluginToggleError": "Error changing the plugin status",
+      "moduleActivated": "Module \"{name}\" activated",
+      "moduleDeactivated": "Module \"{name}\" deactivated",
+      "moduleToggleError": "Error changing the module status",
+      "tabApps": "Applications",
+      "tabDev": "Development",
+      "activeSuffix": "active",
+      "refresh": "Refresh",
+      "pluginsHeading": "Plugins",
+      "emptyTitle": "No plugins installed",
+      "emptyHint": "Place plugins in the server's /plugins/ folder.",
+      "fieldsTitle": "Database fields",
+      "fieldsSubtitle": "Fields injected by active plugins into tenant schemas.",
+      "fieldsNotice": "Only fields from plugins active for this company are shown.",
+      "tablesTitle": "Plugin tables",
+      "tablesSubtitle": "Tables created by active extensions."
+    },
+    "card": {
+      "activateModule": "Activate module",
+      "deactivateModule": "Deactivate module",
+      "activatePlugin": "Activate plugin",
+      "deactivatePlugin": "Deactivate plugin",
+      "active": "Active",
+      "inactive": "Inactive",
+      "dbExtensions_one": "{count} DB extension",
+      "dbExtensions_other": "{count} DB extensions",
+      "uiViews_one": "{count} UI view",
+      "uiViews_other": "{count} UI views"
+    },
+    "view": {
+      "renderError": "Rendering error",
+      "unsupportedType": "The view type \"{type}\" isn't currently supported."
+    },
+    "devKeys": {
+      "nameRequired": "The name is required",
+      "generated": "API key generated",
+      "generateError": "Error generating the key",
+      "deleted": "Key deleted",
+      "deleteError": "Error deleting the key",
+      "toggleError": "Error changing the key status",
+      "saveSecretNow": "Save the Client Secret now. It can't be recovered later.",
+      "copyClientId": "Copy Client ID",
+      "copySecret": "Copy Client Secret",
+      "serverPlaceholder": "your-server",
+      "pluginPlaceholder": "my-plugin",
+      "savedAck": "Got it, I've saved it",
+      "title": "Development credentials",
+      "subtitle": "Generate API keys to develop and upload plugins from other machines.",
+      "namePlaceholder": "Key name (e.g. My dev PC)",
+      "generating": "Generating...",
+      "generate": "Generate key",
+      "emptyTitle": "No API keys generated",
+      "emptyHint": "Generate one to upload plugins from other machines.",
+      "lastUsed": "Last used: {date}",
+      "active": "Active",
+      "inactive": "Inactive",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "delete": "Delete",
+      "howToTitle": "How to use API keys",
+      "howToPush": "From another computer, upload your plugin to the server:",
+      "howToLink": "Or link a local plugin for development:"
+    }
+  }
+}

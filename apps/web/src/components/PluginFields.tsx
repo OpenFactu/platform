@@ -1,6 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Input } from '@openfactu/ui';
+import { Checkbox, Input } from '@openfactu/ui';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface PluginFieldDef {
   id: string;
@@ -25,6 +26,7 @@ export const PluginFields: React.FC<PluginFieldsProps> = ({
   disabled,
 }) => {
   const [fields, setFields] = useState<PluginFieldDef[]>([]);
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export const PluginFields: React.FC<PluginFieldsProps> = ({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 border-t border-border-subtle bg-bg-muted">
       <div className="col-span-full">
         <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest mb-2">
-          Campos Adicionales (Plugins)
+          {t('app.pluginFields.additional')}
         </h4>
       </div>
       {fields.map((f) => (
@@ -57,16 +59,13 @@ export const PluginFields: React.FC<PluginFieldsProps> = ({
             {f.label}
           </label>
           {f.fieldType === 'BOOLEAN' ? (
-            <div className="flex items-center h-10 gap-2">
-              <input
-                type="checkbox"
-                checked={!!values[f.fieldName]}
-                onChange={(e) => onChange(f.fieldName, e.target.checked)}
-                disabled={disabled}
-                className="w-4 h-4 accent-blue-600"
-              />
-              <span className="text-xs font-medium text-fg-body">Activar</span>
-            </div>
+            <Checkbox
+              checked={!!values[f.fieldName]}
+              onChange={(v) => onChange(f.fieldName, v)}
+              disabled={disabled}
+              label={t('app.pluginFields.enable')}
+              containerClassName="h-10"
+            />
           ) : (
             <Input
               type={f.fieldType === 'INTEGER' || f.fieldType === 'DECIMAL' ? 'number' : 'text'}

@@ -1,0 +1,18 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "new": "Nuevo",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "back": "Volver",
+    "loading": "Cargando…",
+    "error": "Error",
+    "success": "Hecho",
+    "networkError": "Error de red",
+    "language": "Idioma",
+    "languageSaveError": "No se pudo guardar el idioma en tu perfil"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "new": "New",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "loading": "Loading…",
+    "error": "Error",
+    "success": "Done",
+    "networkError": "Network error",
+    "language": "Language",
+    "languageSaveError": "Could not save the language to your profile"
+  }
+}

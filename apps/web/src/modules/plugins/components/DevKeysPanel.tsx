@@ -4,9 +4,12 @@ import { Shield, Key, Trash2, Eye, EyeOff, Plus } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 import { devKeysApi } from '../api';
 import type { DevKey } from '../domain/DevKeys';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate } from '@/i18n/format';
 
 export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ token, user }) => {
   const toast = useToast();
+  const { t } = useI18n();
   const [keys, setKeys] = useState<DevKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -31,7 +34,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
 
   const createKey = async () => {
     if (!newKeyName.trim()) {
-      toast.error('El nombre es obligatorio');
+      toast.error(t('plugins.devKeys.nameRequired'));
       return;
     }
     setCreating(true);
@@ -40,10 +43,10 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
       setNewKey({ clientId: data.clientId, clientSecret: data.clientSecret });
       setNewKeyName('');
       fetchKeys();
-      toast.success('API Key generada');
+      toast.success(t('plugins.devKeys.generated'));
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error al generar la key');
+      toast.error(msg || t('plugins.devKeys.generateError'));
     } finally {
       setCreating(false);
     }
@@ -53,9 +56,9 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
     try {
       await devKeysApi.remove(id);
       setKeys((prev) => prev.filter((k) => k.id !== id));
-      toast.success('Key eliminada');
+      toast.success(t('plugins.devKeys.deleted'));
     } catch {
-      toast.error('Error al eliminar la key');
+      toast.error(t('plugins.devKeys.deleteError'));
     }
   };
 
@@ -64,7 +67,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
       const data = await devKeysApi.toggle(id);
       setKeys((prev) => prev.map((k) => (k.id === id ? { ...k, isActive: data.isActive } : k)));
     } catch {
-      toast.error('Error al cambiar el estado de la key');
+      toast.error(t('plugins.devKeys.toggleError'));
     }
   };
 
@@ -75,10 +78,12 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
         <div className="mb-6 p-5 rounded-lg border-2 border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/20">
           <div className="flex items-center gap-2 mb-3">
             <Shield size={18} className="text-emerald-600 dark:text-emerald-400" />
-            <h3 className="font-bold text-emerald-900 dark:text-emerald-100">API Key generada</h3>
+            <h3 className="font-bold text-emerald-900 dark:text-emerald-100">
+              {t('plugins.devKeys.generated')}
+            </h3>
           </div>
           <p className="text-sm text-emerald-700 dark:text-emerald-300 mb-4">
-            Guarda el Client Secret ahora. No se puede recuperar despues.
+            {t('plugins.devKeys.saveSecretNow')}
           </p>
           <div className="space-y-3">
             <div>
@@ -93,7 +98,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                   value={newKey.clientId}
                   variant="ghost"
                   iconOnly
-                  label="Copiar Client ID"
+                  label={t('plugins.devKeys.copyClientId')}
                 />
               </div>
             </div>
@@ -109,15 +114,15 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                   value={newKey.clientSecret}
                   variant="ghost"
                   iconOnly
-                  label="Copiar Client Secret"
+                  label={t('plugins.devKeys.copySecret')}
                 />
               </div>
             </div>
           </div>
           <div className="mt-4 p-3 bg-bg-card rounded-lg">
             <p className="text-xs text-emerald-700 dark:text-emerald-300 font-mono">
-              openfactu plugin push --server http://tu-servidor:3000 --client-id {newKey.clientId}{' '}
-              --client-secret {newKey.clientSecret}
+              openfactu plugin push --server http://{t('plugins.devKeys.serverPlaceholder')}:3000
+              --client-id {newKey.clientId} --client-secret {newKey.clientSecret}
             </p>
           </div>
           <Button
@@ -127,27 +132,24 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
             onClick={() => setNewKey(null)}
             className="mt-3"
           >
-            Entendido, ya lo he guardado
+            {t('plugins.devKeys.savedAck')}
           </Button>
         </div>
       )}
 
       {/* Crear nueva key */}
-      <Card
-        title="Credenciales de desarrollo"
-        subtitle="Genera API Keys para desarrollar y subir plugins desde otros equipos."
-      >
+      <Card title={t('plugins.devKeys.title')} subtitle={t('plugins.devKeys.subtitle')}>
         <div className="flex gap-3 mb-6">
           <Input
             value={newKeyName}
             onChange={(e) => setNewKeyName(e.target.value)}
-            placeholder="Nombre de la key (ej: Mi PC de desarrollo)"
+            placeholder={t('plugins.devKeys.namePlaceholder')}
             containerClassName="flex-1"
             onKeyDown={(e) => e.key === 'Enter' && createKey()}
           />
           <Button variant="primary" onClick={createKey} isLoading={creating}>
             {!creating && <Plus size={14} />}
-            {creating ? 'Generando...' : 'Generar Key'}
+            {creating ? t('plugins.devKeys.generating') : t('plugins.devKeys.generate')}
           </Button>
         </div>
 
@@ -161,8 +163,8 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
         ) : keys.length === 0 ? (
           <EmptyState
             icon={<Key size={32} />}
-            title="No hay API Keys generadas"
-            hint="Genera una para poder subir plugins desde otros equipos."
+            title={t('plugins.devKeys.emptyTitle')}
+            hint={t('plugins.devKeys.emptyHint')}
           />
         ) : (
           <div className="space-y-3">
@@ -193,7 +195,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                         value={k.clientId}
                         variant="ghost"
                         iconOnly
-                        label="Copiar Client ID"
+                        label={t('plugins.devKeys.copyClientId')}
                       />
                     </div>
                   </div>
@@ -201,18 +203,20 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                 <div className="flex items-center gap-3">
                   {k.lastUsedAt && (
                     <span className="text-[10px] text-fg-subtle">
-                      Ultimo uso: {new Date(k.lastUsedAt).toLocaleDateString('es-ES')}
+                      {t('plugins.devKeys.lastUsed', { date: formatDate(k.lastUsedAt) })}
                     </span>
                   )}
                   <Badge variant={k.isActive ? 'success' : 'neutral'}>
-                    {k.isActive ? 'Activa' : 'Inactiva'}
+                    {k.isActive ? t('plugins.devKeys.active') : t('plugins.devKeys.inactive')}
                   </Badge>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => toggleKey(k.id)}
-                    title={k.isActive ? 'Desactivar' : 'Activar'}
+                    title={
+                      k.isActive ? t('plugins.devKeys.deactivate') : t('plugins.devKeys.activate')
+                    }
                   >
                     {k.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
                   </Button>
@@ -221,7 +225,7 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                     variant="ghost"
                     size="sm"
                     onClick={() => deleteKey(k.id)}
-                    title="Eliminar"
+                    title={t('plugins.devKeys.delete')}
                   >
                     <Trash2 size={14} />
                   </Button>
@@ -234,16 +238,23 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
 
       {/* Instrucciones */}
       <div className="mt-6 p-5 rounded-lg bg-bg-muted border border-border-default">
-        <h4 className="font-semibold text-sm text-fg-default mb-3">Como usar las API Keys</h4>
+        <h4 className="font-semibold text-sm text-fg-default mb-3">
+          {t('plugins.devKeys.howToTitle')}
+        </h4>
         <div className="space-y-2 text-xs text-fg-muted font-mono">
-          <p># Desde otro ordenador, sube tu plugin al servidor:</p>
+          <p># {t('plugins.devKeys.howToPush')}</p>
           <p className="text-fg-body">
-            openfactu plugin push ./mi-plugin --server http://tu-servidor:3000 --client-id ofk_...
-            --client-secret ofs_...
+            openfactu plugin push ./{t('plugins.devKeys.pluginPlaceholder')} --server http://
+            {t('plugins.devKeys.serverPlaceholder')}:3000 --client-id ofk_... --client-secret
+            ofs_...
           </p>
-          <p className="mt-3"># O enlaza un plugin local para desarrollo:</p>
-          <p className="text-fg-body">openfactu plugin link ./mi-plugin</p>
-          <p className="text-fg-body">openfactu plugin dev mi-plugin</p>
+          <p className="mt-3"># {t('plugins.devKeys.howToLink')}</p>
+          <p className="text-fg-body">
+            openfactu plugin link ./{t('plugins.devKeys.pluginPlaceholder')}
+          </p>
+          <p className="text-fg-body">
+            openfactu plugin dev {t('plugins.devKeys.pluginPlaceholder')}
+          </p>
         </div>
       </div>
     </div>

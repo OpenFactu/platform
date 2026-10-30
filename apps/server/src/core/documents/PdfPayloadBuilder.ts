@@ -10,7 +10,8 @@ import type {
   TaxBreakdownEntry,
   PartnerAddressObject,
 } from '@openfactu/pdf';
-import { amountToSpanishWords } from '../../utils/numberToWords';
+import { amountToWords } from '../../utils/numberToWords';
+import { tr, type Locale } from '../../i18n';
 
 /**
  * Helper que construye un objeto de tablas desde el registry.
@@ -258,6 +259,8 @@ export class PdfPayloadBuilder {
     docType: DocType,
     documentId: string,
     db: any,
+    /** Idioma de las etiquetas, estados y formatos del PDF. */
+    locale: Locale = 'es',
   ): Promise<DocumentPdfPayload> {
     const map = getDocTables(docType);
     const config = map.config;
@@ -556,18 +559,20 @@ export class PdfPayloadBuilder {
       });
 
     // 10. Total en letras
-    const totalInWords = amountToSpanishWords(Number(header.total));
+    const totalInWords = amountToWords(Number(header.total), locale);
 
     const payload: DocumentPdfPayload = {
       doc: {
         id: header.id,
         docCode: formatDocCode(headerRow.seriesPrefix, headerRow.periodCode, header.docNum),
-        date: new Date(header.date).toLocaleDateString('es-ES'),
+        date: new Date(header.date).toLocaleDateString(locale === 'en' ? 'en-GB' : 'es-ES'),
         status: header.status,
-        statusLabel:
+        statusLabel: tr(
+          locale,
           config.statusLabels[header.status] ||
-          DEFAULT_STATUS_LABELS[header.status] ||
-          header.status,
+            DEFAULT_STATUS_LABELS[header.status] ||
+            header.status,
+        ),
         subtotal: Number(header.subtotal),
         taxTotal: Number(header.taxTotal),
         total: Number(header.total),
@@ -589,6 +594,8 @@ export class PdfPayloadBuilder {
         amountPaid: (header as any).amountPaid != null ? Number((header as any).amountPaid) : 0,
         isLocked: (header as any).isLocked || false,
         dueDate: (header as any).dueDate || null,
+        // Facturas: nº de la factura del proveedor (compra) o referencia del cliente (venta).
+        externalRef: (header as any).externalRef || null,
         internalOrder,
       } as any,
       partner: {
@@ -623,7 +630,7 @@ export class PdfPayloadBuilder {
         }),
       } as any,
       lines,
-      generatedAt: new Date().toLocaleString('es-ES'),
+      generatedAt: new Date().toLocaleString(locale === 'en' ? 'en-GB' : 'es-ES'),
     };
 
     // ─── Trazabilidad del documento ───────────────────────────────────
@@ -659,7 +666,7 @@ export class PdfPayloadBuilder {
 
     const hasBatches = lines.some((l: any) => Array.isArray(l.batches) && l.batches.length > 0);
 
-    return { ...payload, docHash, qrPayload, hasBatches } as DocumentPdfPayload;
+    return { ...payload, locale, docHash, qrPayload, hasBatches } as DocumentPdfPayload;
   }
 
   /**

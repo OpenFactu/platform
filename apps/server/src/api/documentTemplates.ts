@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { getRequestLocale } from '../i18n';
 import crypto from 'crypto';
 import fs from 'fs';
 import Handlebars from 'handlebars';
@@ -403,7 +404,7 @@ router.post('/preview', async (req: any, res) => {
     } else {
       try {
         if (sampleDocId) {
-          payload = await PdfPayloadBuilder.build(docType, sampleDocId, req.tenantClient);
+          payload = await PdfPayloadBuilder.build(docType, sampleDocId, req.tenantClient, getRequestLocale(req));
         } else {
           const latestId = req.tenantClient
             ? await PdfPayloadBuilder.findLatestSampleId(docType, req.tenantClient).catch(
@@ -411,7 +412,7 @@ router.post('/preview', async (req: any, res) => {
               )
             : null;
           payload = latestId
-            ? await PdfPayloadBuilder.build(docType, latestId, req.tenantClient).catch(() =>
+            ? await PdfPayloadBuilder.build(docType, latestId, req.tenantClient, getRequestLocale(req)).catch(() =>
                 PdfPayloadBuilder.fixture(docType),
               )
             : PdfPayloadBuilder.fixture(docType);
@@ -599,7 +600,7 @@ router.post('/test-query', async (req: any, res) => {
     let ctxPayload: any = null;
     try {
       if (sampleDocId && isValidDocType(sampleDocType)) {
-        ctxPayload = await PdfPayloadBuilder.build(sampleDocType, sampleDocId, req.tenantClient);
+        ctxPayload = await PdfPayloadBuilder.build(sampleDocType, sampleDocId, req.tenantClient, getRequestLocale(req));
       }
     } catch {
       /* sin contexto */

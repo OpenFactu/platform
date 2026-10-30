@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError } from '@/shared/http';
+import { t } from '@/i18n/i18n';
+import { formatTime } from '@/i18n/format';
 import { timeclockTerminalApi, type KioskConfig } from '../api/timeclockTerminalApi';
 import type { IdentificationView, TimeclockEntry } from '../domain/timeclock';
 import { newTimeclockRequestId } from '../domain/timeclockRequestId';
@@ -53,7 +55,7 @@ export function useKioskIdentification(config: KioskConfig) {
           ignored.current.add(active.current.identificationId);
           accept(null);
           pending.current = null;
-          setFeedback({ ok: false, message: 'Identificación caducada. Vuelve a identificarte.' });
+          setFeedback({ ok: false, message: t('hrTime.kioskId.expired') });
         }
         if (!active.current)
           try {
@@ -91,7 +93,7 @@ export function useKioskIdentification(config: KioskConfig) {
             if (!controller.signal.aborted && version === generation.current)
               setFeedback({
                 ok: false,
-                message: e instanceof Error ? e.message : 'No se puede conectar con el kiosco.',
+                message: e instanceof Error ? e.message : t('hrTime.kioskId.cannotConnect'),
               });
           }
       }
@@ -120,7 +122,7 @@ export function useKioskIdentification(config: KioskConfig) {
         if (mounted.current && version === generation.current)
           setFeedback({
             ok: false,
-            message: e instanceof Error ? e.message : 'No se pudo identificar.',
+            message: e instanceof Error ? e.message : t('hrTime.kioskId.identifyFailed'),
           });
         if (e instanceof ApiError && e.status >= 400 && e.status < 500) pending.current = null;
       } finally {
@@ -150,15 +152,16 @@ export function useKioskIdentification(config: KioskConfig) {
           pausedUntil.current = Date.now() + 3000;
           setFeedback({
             ok: true,
-            message: `Fichaje registrado · ${new Date(result.entry.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`,
+            message: t('hrTime.kioskId.registered', {
+              time: formatTime(result.entry.at, { hour: '2-digit', minute: '2-digit' }),
+            }),
           });
         }
       } catch (e) {
         if (mounted.current && version === generation.current) {
           setFeedback({
             ok: false,
-            message:
-              e instanceof Error ? e.message : 'No se pudo confirmar. Reintenta la misma acción.',
+            message: e instanceof Error ? e.message : t('hrTime.kioskId.confirmFailed'),
           });
           if (e instanceof ApiError && [401, 403, 404, 409, 410].includes(e.status)) {
             ignored.current.add(current.identificationId);
@@ -188,7 +191,7 @@ export function useKioskIdentification(config: KioskConfig) {
       } catch {
         setFeedback({
           ok: false,
-          message: 'No se pudo cerrar. Espera a que caduque la identificación.',
+          message: t('hrTime.kioskId.closeFailed'),
         });
       }
     }

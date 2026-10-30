@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { Button, Input } from '@openfactu/ui';
 import type { WebsiteAsset } from '../domain/website';
@@ -10,6 +11,7 @@ interface Props {
 
 /** Popover compacto para editar la carpeta y las etiquetas de un asset. */
 export const AssetMetaEditor: React.FC<Props> = ({ asset, onSave, onClose }) => {
+  const { t } = useI18n();
   const [folder, setFolder] = useState(asset.folder ?? '');
   const [tagsText, setTagsText] = useState((asset.tags ?? []).join(', '));
 
@@ -18,7 +20,7 @@ export const AssetMetaEditor: React.FC<Props> = ({ asset, onSave, onClose }) => 
       folder: folder.trim() || null,
       tags: tagsText
         .split(',')
-        .map((t) => t.trim())
+        .map((s) => s.trim())
         .filter(Boolean),
     });
     onClose();
@@ -30,25 +32,25 @@ export const AssetMetaEditor: React.FC<Props> = ({ asset, onSave, onClose }) => 
       onClick={(e) => e.stopPropagation()}
     >
       <Input
-        label="Carpeta"
+        label={t('website.media.folder')}
         value={folder}
         onChange={(e) => setFolder(e.target.value)}
-        placeholder="Ej: Servicios"
+        placeholder={t('website.media.folderPlaceholder')}
         inputSize="sm"
       />
       <Input
-        label="Etiquetas (comas)"
+        label={t('website.media.tagsCommas')}
         value={tagsText}
         onChange={(e) => setTagsText(e.target.value)}
-        placeholder="verano, banner"
+        placeholder={t('website.media.tagsPlaceholder')}
         inputSize="sm"
       />
       <div className="flex gap-1.5 mt-auto">
         <Button size="sm" onClick={handleSave} className="flex-1 h-7 text-xs">
-          Guardar
+          {t('website.common.save')}
         </Button>
         <Button size="sm" variant="secondary" onClick={onClose} className="h-7 text-xs">
-          Cancelar
+          {t('website.common.cancel')}
         </Button>
       </div>
     </div>

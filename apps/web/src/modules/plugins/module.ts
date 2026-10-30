@@ -8,16 +8,16 @@ const appsPluginManager = lazy(() =>
 export const appsModule: ModuleManifest = {
   nav: {
     id: 'apps',
-    label: 'Apps',
+    label: 'plugins.nav.apps',
     icon: 'LayoutGrid',
     adminOnly: true,
-    subTabs: [{ id: 'apps-manager', label: 'Aplicaciones', path: '/apps' }],
+    subTabs: [{ id: 'apps-manager', label: 'plugins.nav.applications', path: '/apps' }],
   },
   routes: [
     {
       pattern: '/apps',
       Component: appsPluginManager,
-      title: 'Apps',
+      title: 'plugins.nav.apps',
       iconName: 'LayoutGrid',
       permissionPath: '/apps',
     },

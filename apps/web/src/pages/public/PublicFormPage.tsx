@@ -6,6 +6,7 @@ import { usePublicForm } from '@/modules/forms/hooks/usePublicForm';
 import { FormRunner } from '@/modules/forms/components/render/FormRunner';
 import { ThankYou } from '@/modules/forms/components/render/ThankYou';
 import { themeStyle } from '@/modules/forms/domain/theme';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Formulario abierto al público: /f/:tenantId/:slug (con ?t=token si es una
@@ -18,6 +19,7 @@ export const PublicFormPage: React.FC = () => {
   const token = search.get('t') ?? undefined;
   const editToken = search.get('e') ?? undefined;
   const pf = usePublicForm(tenantId, slug, token, editToken);
+  const { t } = useI18n();
   // Cambia al enviar otra respuesta: monta un FormRunner nuevo, vacío.
   const [round, setRound] = useState(0);
   const { data } = pf;
@@ -45,8 +47,8 @@ export const PublicFormPage: React.FC = () => {
     return shell(
       <EmptyState
         icon={<FileQuestion size={20} />}
-        title="Formulario no disponible"
-        hint="El enlace no es correcto o el formulario ya no existe."
+        title={t('app.publicForm.unavailable')}
+        hint={t('app.publicForm.unavailableHint')}
       />,
     );
   if (!data)
@@ -86,10 +88,14 @@ export const PublicFormPage: React.FC = () => {
 
   return shell(
     <>
-      {data.invitee?.name && <p className="text-sm text-fg-muted">Hola, {data.invitee.name}.</p>}
+      {data.invitee?.name && (
+        <p className="text-sm text-fg-muted">
+          {t('app.publicForm.hello', { name: data.invitee.name })}
+        </p>
+      )}
       {pf.editing && (
         <p className="rounded-xs bg-info-bg px-3 py-2 text-sm text-info-fg">
-          Estás cambiando una respuesta que ya enviaste.
+          {t('app.publicForm.editing')}
         </p>
       )}
       <FormRunner

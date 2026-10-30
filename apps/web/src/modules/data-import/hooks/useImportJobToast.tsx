@@ -22,28 +22,40 @@ import { useTabs } from '@/context/TabsContext';
 import { dataImportApi } from '../api/dataImportApi';
 import { ImportProgressBody } from '../components/ImportProgressBody';
 import type { ImportProgressEvent } from '../types';
+import { t } from '@/i18n/i18n';
+import { formatNumber } from '@/i18n/format';
 
 const toastIdFor = (jobId: string) => `data-import-${jobId}`;
 
 /** Resumen final, en el mismo aviso. */
 function finishedMessage(event: ImportProgressEvent): string {
   if (event.status === 'error') {
-    return `La importación de ${event.objectLabel} falló: ${event.error || 'error desconocido'}`;
+    return t('dataImport.toast.failed', {
+      object: event.objectLabel,
+      error: event.error || t('dataImport.toast.unknownError'),
+    });
   }
   if (event.status === 'undone') {
-    return `Deshecho: ${event.ok.toLocaleString('es-ES')} registros borrados${
-      event.errors > 0 ? `, ${event.errors} no se pudieron borrar` : ''
-    }`;
+    const undone = t('dataImport.toast.undone', { ok: formatNumber(event.ok) });
+    return event.errors > 0
+      ? `${undone}${t('dataImport.toast.undoneErrors', { errors: event.errors })}`
+      : undone;
   }
 
-  const verbo = event.dryRun ? 'Simulación' : 'Importación';
-  const cola = event.status === 'cancelled' ? ' (cancelada)' : '';
-  const base = `${verbo} de ${event.objectLabel}${cola}: ${event.ok.toLocaleString('es-ES')} ${
-    event.dryRun ? 'filas válidas' : 'registros'
-  }`;
+  const base = t(
+    event.status === 'cancelled'
+      ? event.dryRun
+        ? 'dataImport.toast.simulationCancelled'
+        : 'dataImport.toast.importCancelled'
+      : event.dryRun
+        ? 'dataImport.toast.simulation'
+        : 'dataImport.toast.import',
+    { object: event.objectLabel },
+  );
+  const result = `${base}: ${t(event.dryRun ? 'dataImport.toast.validRows' : 'dataImport.toast.records', { ok: formatNumber(event.ok) })}`;
   return event.errors > 0
-    ? `${base} y ${event.errors.toLocaleString('es-ES')} con error`
-    : `${base}, sin errores`;
+    ? t('dataImport.toast.withErrors', { base: result, errors: formatNumber(event.errors) })
+    : t('dataImport.toast.noErrors', { base: result });
 }
 
 export function useImportJobToast(): void {
@@ -53,7 +65,7 @@ export function useImportJobToast(): void {
   const shown = useRef(new Set<string>());
 
   const verInforme = useCallback(
-    (jobId: string) => openTab(`/data-import?job=${jobId}`, { title: 'Importación de datos' }),
+    (jobId: string) => openTab(`/data-import?job=${jobId}`, { title: 'dataImport.nav.title' }),
     [openTab],
   );
 
@@ -73,7 +85,7 @@ export function useImportJobToast(): void {
             event.status === 'undoing'
               ? undefined
               : {
-                  label: 'Cancelar',
+                  label: t('dataImport.toast.cancel'),
                   onClick: () => {
                     dataImportApi.cancel(event.jobId).catch(() => {
                       /* si ya terminó, el aviso final lo dirá igualmente */
@@ -103,7 +115,7 @@ export function useImportJobToast(): void {
         message,
         duration: 10_000,
         dismissible: true,
-        action: { label: 'Ver informe', onClick: () => verInforme(event.jobId) },
+        action: { label: t('dataImport.toast.viewReport'), onClick: () => verInforme(event.jobId) },
       };
 
       // Si el trabajo fue tan corto que no llegó ningún progreso, no hay

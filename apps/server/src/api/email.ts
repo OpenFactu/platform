@@ -10,6 +10,7 @@
  * Requieren ADMIN o SUPERUSER (el contenido SMTP es sensible).
  */
 
+import { getRequestLocale, type Locale } from '../i18n';
 import { Router } from 'express';
 import {
   readConfig,
@@ -175,6 +176,7 @@ async function buildPdfAttachment(
   docType: DocType,
   docId: string,
   tenantClient: any,
+  locale: Locale = 'es',
 ): Promise<{ pdf: Buffer; payload: any; code: string; label: string } | null> {
   const { PdfRenderer, extractMetaFromHtml, DEFAULT_VISUAL_OPTIONS } =
     await import('@openfactu/pdf');
@@ -193,7 +195,7 @@ async function buildPdfAttachment(
     );
   if (!template) return null;
 
-  const payload = await PdfPayloadBuilder.build(docType, docId, tenantClient);
+  const payload = await PdfPayloadBuilder.build(docType, docId, tenantClient, locale);
   const meta = extractMetaFromHtml(template.html) || DEFAULT_VISUAL_OPTIONS;
   const renderOpts = PdfRenderer.renderOptionsFromVisual(meta);
   if ((meta as any).showDocQr || (meta as any).showDocBarcode) {
@@ -228,7 +230,7 @@ router.post('/send-document', async (req: any, res) => {
     if (!VALID_DOCTYPES.includes(docType))
       return res.status(400).json({ error: `docType inválido (${VALID_DOCTYPES.join(', ')})` });
 
-    const built = await buildPdfAttachment(docType, docId, req.tenantClient);
+    const built = await buildPdfAttachment(docType, docId, req.tenantClient, getRequestLocale(req));
     if (!built) return res.status(404).json({ error: 'Sin plantilla default' });
 
     const to = toOverride || built.payload.partner.email;
@@ -309,7 +311,7 @@ router.post('/send-documents', async (req: any, res) => {
         continue;
       }
       try {
-        const built = await buildPdfAttachment(docType, docId, req.tenantClient);
+        const built = await buildPdfAttachment(docType, docId, req.tenantClient, getRequestLocale(req));
         if (!built) {
           results.push({ docType, docId, ok: false, error: 'Sin plantilla default' });
           continue;

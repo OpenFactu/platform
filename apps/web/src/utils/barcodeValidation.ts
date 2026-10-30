@@ -13,6 +13,8 @@
  *  - `reason`: mensaje en español explicando el motivo de invalidez.
  */
 
+import { t } from '@/i18n/i18n';
+
 export type BarcodeFormat = 'EAN-13' | 'EAN-8' | 'UPC-A' | 'Code128' | 'desconocido';
 
 export interface BarcodeValidationResult {
@@ -44,7 +46,7 @@ function computeMod10(digits: string): number {
 export function validateBarcode(raw: string): BarcodeValidationResult {
   const value = (raw ?? '').trim();
   if (!value) {
-    return { valid: false, format: 'desconocido', reason: 'Vacío' };
+    return { valid: false, format: 'desconocido', reason: t('app.barcode.empty') };
   }
   const onlyDigits = /^\d+$/.test(value);
   if (onlyDigits) {
@@ -56,7 +58,7 @@ export function validateBarcode(raw: string): BarcodeValidationResult {
         : {
             valid: false,
             format: 'EAN-13',
-            reason: `Dígito de control inválido (esperado ${expected})`,
+            reason: t('app.barcode.badCheckDigit', { expected }),
             suggested: value.slice(0, 12) + expected,
           };
     }
@@ -68,7 +70,7 @@ export function validateBarcode(raw: string): BarcodeValidationResult {
         : {
             valid: false,
             format: 'EAN-8',
-            reason: `Dígito de control inválido (esperado ${expected})`,
+            reason: t('app.barcode.badCheckDigit', { expected }),
             suggested: value.slice(0, 7) + expected,
           };
     }
@@ -86,7 +88,7 @@ export function validateBarcode(raw: string): BarcodeValidationResult {
       return {
         valid: false,
         format: 'UPC-A',
-        reason: `12 dígitos: como UPC-A el check digit es inválido. Como EAN-13 falta uno (sería ${value}${ean13Check})`,
+        reason: t('app.barcode.twelveDigits', { suggested: `${value}${ean13Check}` }),
         suggested: value + ean13Check,
       };
     }
@@ -96,7 +98,7 @@ export function validateBarcode(raw: string): BarcodeValidationResult {
       return {
         valid: false,
         format: 'UPC-A',
-        reason: `Falta el dígito de control (sería ${value}${upcCheck})`,
+        reason: t('app.barcode.missingCheckDigit', { suggested: `${value}${upcCheck}` }),
         suggested: value + upcCheck,
       };
     }
@@ -106,7 +108,7 @@ export function validateBarcode(raw: string): BarcodeValidationResult {
       return {
         valid: false,
         format: 'EAN-8',
-        reason: `Falta el dígito de control (sería ${value}${eanCheck})`,
+        reason: t('app.barcode.missingCheckDigit', { suggested: `${value}${eanCheck}` }),
         suggested: value + eanCheck,
       };
     }
@@ -114,7 +116,7 @@ export function validateBarcode(raw: string): BarcodeValidationResult {
     return {
       valid: false,
       format: 'desconocido',
-      reason: `Longitud ${value.length} no es estándar (8/12/13)`,
+      reason: t('app.barcode.nonStandardLength', { length: value.length }),
     };
   }
   // No solo dígitos → asumimos Code128 (acepta ASCII imprimible).
@@ -124,7 +126,7 @@ export function validateBarcode(raw: string): BarcodeValidationResult {
   return {
     valid: false,
     format: 'desconocido',
-    reason: 'Contiene caracteres no imprimibles',
+    reason: t('app.barcode.nonPrintable'),
   };
 }
 

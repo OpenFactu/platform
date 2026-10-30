@@ -1,5 +1,5 @@
 import { coreApi } from '@/shared/api';
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Card,
   Button,
@@ -16,6 +16,7 @@ import {
   usePopup,
   Modal,
   Badge,
+  FileDropzone,
 } from '@openfactu/ui';
 import {
   Plus,
@@ -28,6 +29,7 @@ import {
   Table as TableIcon,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { usePlugins } from '@/context/PluginContext';
 import { useTabs } from '@/context/TabsContext';
 import { invalidatePluginFields } from '@/components/plugin-fields';
@@ -66,26 +68,82 @@ interface PackInfo {
 }
 
 const TYPE_OPTIONS: { value: string; label: string; hint: string }[] = [
-  { value: 'TEXT', label: 'Texto', hint: 'Cualquier texto libre.' },
-  { value: 'INTEGER', label: 'Número entero', hint: 'Enteros sin decimales.' },
-  { value: 'DECIMAL', label: 'Número decimal', hint: 'Número con decimales (15,4).' },
-  { value: 'CURRENCY', label: 'Moneda', hint: 'Importe con 4 decimales, formateado.' },
-  { value: 'PERCENT', label: 'Porcentaje', hint: 'Decimal con sufijo %.' },
-  { value: 'BOOLEAN', label: 'Sí / No', hint: 'Checkbox binario.' },
-  { value: 'DATE', label: 'Fecha', hint: 'Una fecha (sin hora).' },
-  { value: 'URL', label: 'URL', hint: 'Enlace http(s).' },
-  { value: 'EMAIL', label: 'Email', hint: 'Dirección de correo válida.' },
-  { value: 'PHONE', label: 'Teléfono', hint: 'Admite +, dígitos, espacios y paréntesis.' },
-  { value: 'COLOR', label: 'Color', hint: 'Color picker, se guarda en hex.' },
-  { value: 'ENUM', label: 'Lista (combobox)', hint: 'Elige entre opciones predefinidas.' },
-  { value: 'MULTISELECT', label: 'Multi-selección', hint: 'Varias opciones.' },
+  {
+    value: 'TEXT',
+    label: 'settingsFields.types.text.label',
+    hint: 'settingsFields.types.text.hint',
+  },
+  {
+    value: 'INTEGER',
+    label: 'settingsFields.types.integer.label',
+    hint: 'settingsFields.types.integer.hint',
+  },
+  {
+    value: 'DECIMAL',
+    label: 'settingsFields.types.decimal.label',
+    hint: 'settingsFields.types.decimal.hint',
+  },
+  {
+    value: 'CURRENCY',
+    label: 'settingsFields.types.currency.label',
+    hint: 'settingsFields.types.currency.hint',
+  },
+  {
+    value: 'PERCENT',
+    label: 'settingsFields.types.percent.label',
+    hint: 'settingsFields.types.percent.hint',
+  },
+  {
+    value: 'BOOLEAN',
+    label: 'settingsFields.types.boolean.label',
+    hint: 'settingsFields.types.boolean.hint',
+  },
+  {
+    value: 'DATE',
+    label: 'settingsFields.types.date.label',
+    hint: 'settingsFields.types.date.hint',
+  },
+  { value: 'URL', label: 'settingsFields.types.url.label', hint: 'settingsFields.types.url.hint' },
+  {
+    value: 'EMAIL',
+    label: 'settingsFields.types.email.label',
+    hint: 'settingsFields.types.email.hint',
+  },
+  {
+    value: 'PHONE',
+    label: 'settingsFields.types.phone.label',
+    hint: 'settingsFields.types.phone.hint',
+  },
+  {
+    value: 'COLOR',
+    label: 'settingsFields.types.color.label',
+    hint: 'settingsFields.types.color.hint',
+  },
+  {
+    value: 'ENUM',
+    label: 'settingsFields.types.enum.label',
+    hint: 'settingsFields.types.enum.hint',
+  },
+  {
+    value: 'MULTISELECT',
+    label: 'settingsFields.types.multiselect.label',
+    hint: 'settingsFields.types.multiselect.hint',
+  },
   {
     value: 'REFERENCE',
-    label: 'Referencia a maestro',
-    hint: 'Selector que busca en otra tabla (p.ej. partner, artículo).',
+    label: 'settingsFields.types.reference.label',
+    hint: 'settingsFields.types.reference.hint',
   },
-  { value: 'FILE', label: 'Fichero / imagen', hint: 'URL o id de adjunto.' },
-  { value: 'JSONB', label: 'JSON', hint: 'Datos estructurados arbitrarios.' },
+  {
+    value: 'FILE',
+    label: 'settingsFields.types.file.label',
+    hint: 'settingsFields.types.file.hint',
+  },
+  {
+    value: 'JSONB',
+    label: 'settingsFields.types.json.label',
+    hint: 'settingsFields.types.json.hint',
+  },
 ];
 
 const ROLE_OPTIONS = ['SUPERUSER', 'ADMIN', 'USER'];
@@ -93,32 +151,32 @@ const ROLE_OPTIONS = ['SUPERUSER', 'ADMIN', 'USER'];
 const WIDTH_OPTIONS = [
   { value: 'third', label: '1/3' },
   { value: 'half', label: '1/2' },
-  { value: 'full', label: 'Completo' },
+  { value: 'full', label: 'settingsFields.widths.full' },
 ];
 
 const TABLE_KIND_OPTIONS = [
-  { value: 'master', label: 'Maestro' },
-  { value: 'document', label: 'Documento' },
+  { value: 'master', label: 'settingsFields.kinds.master' },
+  { value: 'document', label: 'settingsFields.kinds.document' },
 ];
 
 const MENU_MODULE_OPTIONS = [
-  { value: '', label: '(Personalizado — módulo nuevo al final)' },
-  { value: 'home', label: 'Inicio' },
-  { value: 'inventory', label: 'Inventario' },
-  { value: 'sales', label: 'Ventas' },
-  { value: 'purchases', label: 'Compras' },
-  { value: 'accounting', label: 'Contabilidad' },
-  { value: 'hr', label: 'Recursos humanos' },
-  { value: 'reports', label: 'Informes' },
-  { value: 'configuration', label: 'Configuración' },
+  { value: '', label: 'settingsFields.menu.custom' },
+  { value: 'home', label: 'settingsFields.menu.home' },
+  { value: 'inventory', label: 'settingsFields.menu.inventory' },
+  { value: 'sales', label: 'settingsFields.menu.sales' },
+  { value: 'purchases', label: 'settingsFields.menu.purchases' },
+  { value: 'accounting', label: 'settingsFields.menu.accounting' },
+  { value: 'hr', label: 'settingsFields.menu.hr' },
+  { value: 'reports', label: 'settingsFields.menu.reports' },
+  { value: 'configuration', label: 'settingsFields.menu.configuration' },
 ];
 
 /** Etiquetas de las superficies donde puede aparecer un campo. */
 const VISIBLE_IN_LABELS: Record<string, string> = {
-  form: 'Formulario',
-  detail: 'Detalle',
-  list: 'Listado',
-  pdf: 'PDF',
+  form: 'settingsFields.visibleIn.form',
+  detail: 'settingsFields.visibleIn.detail',
+  list: 'settingsFields.visibleIn.list',
+  pdf: 'settingsFields.visibleIn.pdf',
 };
 
 const defaultForm = () => ({
@@ -154,8 +212,10 @@ const defaultForm = () => ({
 export const CustomFields: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
+  const tr = (opts: { value: string; label: string }[]) =>
+    opts.map((o) => ({ ...o, label: t(o.label) }));
   const popup = usePopup();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<FieldRow[]>([]);
   const [allowedTables, setAllowedTables] = useState<string[]>([]);
@@ -206,11 +266,11 @@ export const CustomFields: React.FC = () => {
         coreApi.raw('GET', '/api/user-tables'),
       ]);
       const r = rRes.data;
-      const t = tRes.data;
+      const tables = tRes.data;
       const p = pRes.data;
       const ut = utRes.data;
       setRows(Array.isArray(r) ? r : []);
-      setAllowedTables(Array.isArray(t) ? t : []);
+      setAllowedTables(Array.isArray(tables) ? tables : []);
       setPacks(Array.isArray(p) ? p : []);
       setUserTables(Array.isArray(ut) ? ut : []);
     } finally {
@@ -279,7 +339,7 @@ export const CustomFields: React.FC = () => {
 
   const save = async () => {
     if (!form.tableName || !form.fieldName || !form.fieldType) {
-      toast.error('Tabla, nombre y tipo son obligatorios');
+      toast.error(t('settingsFields.requiredFields'));
       return;
     }
     let options: any = null;
@@ -293,12 +353,12 @@ export const CustomFields: React.FC = () => {
           return { value, label: lbl || value };
         });
       if (options.length === 0) {
-        toast.error('Añade al menos una opción.');
+        toast.error(t('settingsFields.optionRequired'));
         return;
       }
     }
     if (form.fieldType === 'REFERENCE' && !form.refTable) {
-      toast.error('Elige la tabla destino para el campo referencia.');
+      toast.error(t('settingsFields.refTableRequired'));
       return;
     }
     const readRoles = form.readRolesRaw
@@ -345,10 +405,14 @@ export const CustomFields: React.FC = () => {
       const res = await coreApi.raw('POST', '/api/custom-fields', body);
       const data = res.data;
       if (!res.ok) {
-        toast.error(data?.error || 'Error al guardar');
+        toast.error(data?.error || t('settingsFields.saveError'));
         return;
       }
-      toast.success(editingId ? 'Campo actualizado' : `Campo "${data.fieldName}" creado`);
+      toast.success(
+        editingId
+          ? t('settingsFields.fieldUpdated')
+          : t('settingsFields.fieldCreated', { name: data.fieldName }),
+      );
       setShowModal(false);
       invalidatePluginFields();
       await load();
@@ -359,19 +423,22 @@ export const CustomFields: React.FC = () => {
 
   const remove = async (row: FieldRow) => {
     const ok = await popup.confirm({
-      title: 'Eliminar campo',
-      message: `Se eliminará "${row.fieldName}" de ${row.tableName} y se perderán los datos ya guardados en esa columna.`,
+      title: t('settingsFields.deleteFieldTitle'),
+      message: t('settingsFields.deleteFieldMessage', {
+        field: row.fieldName,
+        table: row.tableName,
+      }),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('settingsFields.delete'),
     });
     if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/custom-fields/${row.id}`);
     if (!res.ok) {
       const err = res.data ?? {};
-      toast.error(err.error || 'Error al eliminar');
+      toast.error(err.error || t('settingsFields.deleteError'));
       return;
     }
-    toast.success('Campo eliminado');
+    toast.success(t('settingsFields.fieldDeleted'));
     invalidatePluginFields();
     load();
   };
@@ -380,8 +447,8 @@ export const CustomFields: React.FC = () => {
     // Antes era un window.prompt pidiendo el nombre de la tabla a mano; ahora
     // se elige de la lista real de tablas permitidas.
     const target = await popup.show<string>({
-      title: `Clonar "${row.fieldName}"`,
-      subtitle: 'Elige la tabla destino. El campo se creará allí con la misma definición.',
+      title: t('settingsFields.cloneTitle', { name: row.fieldName }),
+      subtitle: t('settingsFields.cloneSubtitle'),
       maxWidth: 'sm',
       render: (close) => (
         <CloneTargetForm
@@ -397,10 +464,10 @@ export const CustomFields: React.FC = () => {
     });
     if (!res.ok) {
       const err = res.data ?? {};
-      toast.error(err.error || 'Error al clonar');
+      toast.error(err.error || t('settingsFields.cloneError'));
       return;
     }
-    toast.success('Campo clonado');
+    toast.success(t('settingsFields.cloned'));
     invalidatePluginFields();
     load();
   };
@@ -410,7 +477,7 @@ export const CustomFields: React.FC = () => {
     try {
       ({ blob } = await coreApi.getBlob('/api/custom-fields/export'));
     } catch {
-      toast.error('Error al exportar');
+      toast.error(t('settingsFields.exportError'));
       return;
     }
     const url = URL.createObjectURL(blob);
@@ -428,20 +495,20 @@ export const CustomFields: React.FC = () => {
       const res = await coreApi.raw('POST', '/api/custom-fields/import', payload);
       const data = res.data;
       if (!res.ok) {
-        toast.error(data?.error || 'Error al importar');
+        toast.error(data?.error || t('settingsFields.importError'));
         return;
       }
-      toast.success(`Importados ${data.created} campos (${data.skipped} omitidos)`);
+      toast.success(t('settingsFields.imported', { created: data.created, skipped: data.skipped }));
       invalidatePluginFields();
       load();
     } catch {
-      toast.error('JSON inválido');
+      toast.error(t('settingsFields.invalidJson'));
     }
   };
 
   const saveTable = async () => {
     if (!tableForm.name) {
-      toast.error('El nombre es obligatorio');
+      toast.error(t('settingsFields.nameRequired'));
       return;
     }
     const isEdit = !!editingTable;
@@ -449,10 +516,14 @@ export const CustomFields: React.FC = () => {
     const res = await coreApi.raw(isEdit ? 'PATCH' : 'POST', url, tableForm);
     const data = res.data;
     if (!res.ok) {
-      toast.error(data?.error || 'Error al guardar tabla');
+      toast.error(data?.error || t('settingsFields.saveTableError'));
       return;
     }
-    toast.success(isEdit ? 'Tabla actualizada' : `Tabla "${data.tableName}" creada`);
+    toast.success(
+      isEdit
+        ? t('settingsFields.tableUpdated')
+        : t('settingsFields.tableCreated', { name: data.tableName }),
+    );
     setShowTableModal(false);
     setEditingTable(null);
     setTableForm({
@@ -496,19 +567,19 @@ export const CustomFields: React.FC = () => {
 
   const removeTable = async (ut: (typeof userTables)[number]) => {
     const ok = await popup.confirm({
-      title: 'Eliminar tabla',
-      message: `Se eliminará "${ut.label || ut.tableName}" con todos sus registros y campos. No hay marcha atrás.`,
+      title: t('settingsFields.deleteTable'),
+      message: t('settingsFields.deleteTableMessage', { name: ut.label || ut.tableName }),
       tone: 'danger',
-      confirmLabel: 'Eliminar tabla',
+      confirmLabel: t('settingsFields.deleteTable'),
     });
     if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/user-tables/${ut.tableName}`);
     if (!res.ok) {
       const err = res.data ?? {};
-      toast.error(err.error || 'Error al eliminar');
+      toast.error(err.error || t('settingsFields.deleteError'));
       return;
     }
-    toast.success('Tabla eliminada');
+    toast.success(t('settingsFields.tableDeleted'));
     invalidatePluginFields();
     reloadUserTables();
     load();
@@ -524,10 +595,10 @@ export const CustomFields: React.FC = () => {
     const res = await coreApi.raw('POST', `/api/custom-fields/packs/${id}/install`);
     const data = res.data;
     if (!res.ok) {
-      toast.error(data?.error || 'Error');
+      toast.error(data?.error || t('settingsFields.error'));
       return;
     }
-    toast.success(`${data.installed} campos instalados`);
+    toast.success(t('settingsFields.packInstalled', { count: data.installed }));
     setShowPacksModal(false);
     invalidatePluginFields();
     load();
@@ -539,8 +610,8 @@ export const CustomFields: React.FC = () => {
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
       <PageHeader
-        title="Campos personalizados"
-        subtitle="Añade campos propios a cualquier tabla sin escribir código. Aparecen en form, detalle y PDF."
+        title={t('settingsFields.title')}
+        subtitle={t('settingsFields.subtitle')}
         icon={<Wrench size={18} />}
         size="sm"
         divider
@@ -552,7 +623,7 @@ export const CustomFields: React.FC = () => {
               onClick={openCreateTable}
               className="flex items-center gap-2"
             >
-              <TableIcon size={14} /> Nueva tabla
+              <TableIcon size={14} /> {t('settingsFields.newTable')}
             </Button>
             <Button
               type="button"
@@ -560,7 +631,7 @@ export const CustomFields: React.FC = () => {
               onClick={() => setShowPacksModal(true)}
               className="flex items-center gap-2"
             >
-              <Package size={14} /> Packs
+              <Package size={14} /> {t('settingsFields.packs')}
             </Button>
             <Button
               type="button"
@@ -568,30 +639,21 @@ export const CustomFields: React.FC = () => {
               onClick={exportAll}
               className="flex items-center gap-2"
             >
-              <Download size={14} /> Exportar
+              <Download size={14} /> {t('settingsFields.export')}
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2"
-            >
-              <Upload size={14} /> Importar
-            </Button>
-            {/* SE UTILIZA PARA EL INPUT DE ARCHIVO */}
-            <input
-              ref={fileInputRef}
-              type="file"
+            {/* FileDropzone en modo botón: el botón y el <input type="file"> oculto
+                que antes iban por separado. */}
+            <FileDropzone
+              variant="button"
               accept=".json"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) importFile(f);
-                e.currentTarget.value = '';
+              label={t('settingsFields.import')}
+              icon={<Upload size={14} />}
+              onFiles={(files) => {
+                if (files[0]) importFile(files[0]);
               }}
             />
             <Button type="button" onClick={openCreate} className="flex items-center gap-2">
-              <Plus size={14} /> Nuevo campo
+              <Plus size={14} /> {t('settingsFields.newField')}
             </Button>
           </div>
         }
@@ -603,24 +665,24 @@ export const CustomFields: React.FC = () => {
           <div className="flex items-center gap-2">
             <TableIcon size={14} className="text-primary" />
             <span className="text-[10px] font-black uppercase tracking-widest text-fg-body">
-              Tablas de usuario
+              {t('settingsFields.userTables')}
             </span>
             <span className="text-[10px] text-fg-subtle font-semibold">
-              {userTables.length} {userTables.length === 1 ? 'tabla' : 'tablas'}
+              {t('settingsFields.tableCount', { count: userTables.length })}
             </span>
           </div>
           <Button size="sm" onClick={openCreateTable} className="flex items-center gap-1">
-            <Plus size={12} /> Nueva tabla
+            <Plus size={12} /> {t('settingsFields.newTable')}
           </Button>
         </div>
         {userTables.length === 0 ? (
           <EmptyState
             icon={<TableIcon size={18} />}
-            title="Aún no has creado tablas propias"
-            hint="Crea una para tener una entidad nueva con listado, formulario y menú."
+            title={t('settingsFields.noTablesTitle')}
+            hint={t('settingsFields.noTablesHint')}
             action={
               <Button size="sm" onClick={openCreateTable} className="flex items-center gap-1">
-                <Plus size={12} /> Nueva tabla
+                <Plus size={12} /> {t('settingsFields.newTable')}
               </Button>
             }
           />
@@ -641,7 +703,7 @@ export const CustomFields: React.FC = () => {
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
                         onClick={() => openTab(`/u/${pathName}`)}
-                        className="font-semibold text-sm text-fg-default hover:text-blue-600 text-left"
+                        className="font-semibold text-sm text-fg-default hover:text-accent text-left"
                       >
                         {ut.label || pathName}
                       </button>
@@ -649,13 +711,17 @@ export const CustomFields: React.FC = () => {
                         {ut.tableName}
                       </code>
                       <Badge variant={ut.kind === 'document' ? 'info' : 'neutral'}>
-                        {ut.kind === 'document' ? 'Documento' : 'Maestro'}
+                        {ut.kind === 'document'
+                          ? t('settingsFields.kinds.document')
+                          : t('settingsFields.kinds.master')}
                       </Badge>
                       {ut.menuModule && (
-                        <span className="text-[10px] text-fg-subtle">menú: {ut.menuModule}</span>
+                        <span className="text-[10px] text-fg-subtle">
+                          {t('settingsFields.menuValue', { module: ut.menuModule })}
+                        </span>
                       )}
                       <span className="text-[10px] text-fg-subtle">
-                        {count} {count === 1 ? 'campo' : 'campos'}
+                        {t('settingsFields.fieldCount', { count })}
                       </span>
                     </div>
                     {ut.description && (
@@ -667,7 +733,7 @@ export const CustomFields: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => addFieldTo(ut)}
-                    title="Añadir campo"
+                    title={t('settingsFields.addField')}
                   >
                     <Plus size={13} />
                   </Button>
@@ -676,7 +742,7 @@ export const CustomFields: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => openTab(`/u/${pathName}`)}
-                    title="Abrir"
+                    title={t('settingsFields.open')}
                   >
                     <ExternalLink size={13} />
                   </Button>
@@ -685,7 +751,7 @@ export const CustomFields: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => openEditTable(ut)}
-                    title="Editar"
+                    title={t('settingsFields.edit')}
                   >
                     <Edit2 size={13} />
                   </Button>
@@ -694,7 +760,7 @@ export const CustomFields: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => removeTable(ut)}
-                    title="Eliminar tabla"
+                    title={t('settingsFields.deleteTable')}
                   >
                     <Trash2 size={13} />
                   </Button>
@@ -707,7 +773,7 @@ export const CustomFields: React.FC = () => {
 
       <Card bodyClassName="p-3">
         <Input
-          placeholder="Filtrar por tabla, nombre o etiqueta..."
+          placeholder={t('settingsFields.filterPlaceholder')}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
@@ -721,8 +787,8 @@ export const CustomFields: React.FC = () => {
         <Card bodyClassName="p-0">
           <EmptyState
             icon={<Wrench size={18} />}
-            title="Aún no has creado ningún campo personalizado"
-            hint="Crea uno a medida o instala un pack de campos ya preparados."
+            title={t('settingsFields.noFieldsTitle')}
+            hint={t('settingsFields.noFieldsHint')}
             action={
               <div className="flex items-center gap-2">
                 <Button
@@ -730,10 +796,10 @@ export const CustomFields: React.FC = () => {
                   onClick={() => setShowPacksModal(true)}
                   className="flex items-center gap-2"
                 >
-                  <Package size={14} /> Packs
+                  <Package size={14} /> {t('settingsFields.packs')}
                 </Button>
                 <Button onClick={openCreate} className="flex items-center gap-2">
-                  <Plus size={14} /> Nuevo campo
+                  <Plus size={14} /> {t('settingsFields.newField')}
                 </Button>
               </div>
             }
@@ -746,7 +812,7 @@ export const CustomFields: React.FC = () => {
               <div className="px-4 py-2 border-b border-border-subtle text-[11px] font-black uppercase tracking-widest text-fg-body flex items-center gap-2">
                 {tbl}
                 <span className="text-[10px] text-fg-subtle font-semibold">
-                  {list.length} campos
+                  {t('settingsFields.fieldCount', { count: list.length })}
                 </span>
               </div>
               <ul>
@@ -760,7 +826,7 @@ export const CustomFields: React.FC = () => {
                     </code>
                     <button
                       onClick={() => openEdit(r)}
-                      className="text-sm font-semibold text-fg-body flex-1 truncate text-left hover:text-blue-600"
+                      className="text-sm font-semibold text-fg-body flex-1 truncate text-left hover:text-accent"
                     >
                       {r.label}
                       {r.section && (
@@ -770,15 +836,15 @@ export const CustomFields: React.FC = () => {
                       )}
                     </button>
                     <Badge variant="neutral">{r.fieldType}</Badge>
-                    {r.required && <Badge variant="warning">Obligatorio</Badge>}
-                    {r.readOnly && <Badge variant="info">Solo lectura</Badge>}
-                    {r.showInList && <Badge variant="success">En listado</Badge>}
+                    {r.required && <Badge variant="warning">{t('settingsFields.required')}</Badge>}
+                    {r.readOnly && <Badge variant="info">{t('settingsFields.readOnly')}</Badge>}
+                    {r.showInList && <Badge variant="success">{t('settingsFields.inList')}</Badge>}
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => clone(r)}
-                      title="Clonar a otra tabla"
+                      title={t('settingsFields.cloneToTable')}
                     >
                       <Copy size={13} />
                     </Button>
@@ -787,7 +853,7 @@ export const CustomFields: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => remove(r)}
-                      title="Eliminar"
+                      title={t('settingsFields.delete')}
                     >
                       <Trash2 size={13} />
                     </Button>
@@ -802,25 +868,25 @@ export const CustomFields: React.FC = () => {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editingId ? 'Editar campo' : 'Nuevo campo personalizado'}
-        subtitle="Se creará como columna en el schema del tenant."
+        title={editingId ? t('settingsFields.editField') : t('settingsFields.newCustomField')}
+        subtitle={t('settingsFields.fieldModalSubtitle')}
         maxWidth="2xl"
       >
         <div className="space-y-6 pt-4 max-h-[70vh] overflow-y-auto pr-2">
           {/* Identidad */}
-          <Section title="Identidad">
+          <Section title={t('settingsFields.sections.identity')}>
             <Row>
-              <Field label="Tabla">
+              <Field label={t('settingsFields.table')}>
                 {/* Lista de servidor y potencialmente larga → SearchableSelect. */}
                 <SearchableSelect
                   options={allowedTables.map((t) => ({ value: t, label: t }))}
                   value={form.tableName}
                   onChange={(v) => setForm({ ...form, tableName: v })}
                   disabled={!!editingId}
-                  placeholder="(elige una)"
+                  placeholder={t('settingsFields.chooseOne')}
                 />
               </Field>
-              <Field label="Nombre técnico">
+              <Field label={t('settingsFields.technicalName')}>
                 <Input
                   value={form.fieldName}
                   disabled={!!editingId}
@@ -830,27 +896,27 @@ export const CustomFields: React.FC = () => {
               </Field>
             </Row>
             <Row>
-              <Field label="Etiqueta visible">
+              <Field label={t('settingsFields.visibleLabel')}>
                 <Input
                   value={form.label}
                   onChange={(e) => setForm({ ...form, label: e.target.value })}
                 />
               </Field>
-              <Field label="Tipo">
+              <Field label={t('settingsFields.type')}>
                 {/* 16 tipos → SearchableSelect; el `hint` de cada uno se usa
                     como etiqueta secundaria en el listado. */}
                 <SearchableSelect
-                  options={TYPE_OPTIONS.map((t) => ({
-                    value: t.value,
-                    label: t.label,
-                    secondaryLabel: t.hint,
+                  options={TYPE_OPTIONS.map((o) => ({
+                    value: o.value,
+                    label: t(o.label),
+                    secondaryLabel: t(o.hint),
                   }))}
                   value={form.fieldType}
                   onChange={(v) => setForm({ ...form, fieldType: v })}
                   disabled={!!editingId}
                 />
                 <div className="text-[11px] text-fg-muted mt-1">
-                  {TYPE_OPTIONS.find((t) => t.value === form.fieldType)?.hint}
+                  {t(TYPE_OPTIONS.find((o) => o.value === form.fieldType)?.hint || '')}
                 </div>
               </Field>
             </Row>
@@ -858,33 +924,34 @@ export const CustomFields: React.FC = () => {
 
           {/* Opciones por tipo */}
           {['ENUM', 'MULTISELECT'].includes(form.fieldType) && (
-            <Section title="Opciones">
+            <Section title={t('settingsFields.sections.options')}>
               <div className="text-[11px] text-slate-500 mb-1">
-                Una línea por opción — formato <code>value|label</code>.
+                {t('settingsFields.optionsHelp')}
+                <code>value|label</code>.
               </div>
               <Textarea
                 value={form.optionsRaw}
                 onChange={(e) => setForm({ ...form, optionsRaw: e.target.value })}
                 rows={5}
-                placeholder={'low|Baja\nnormal|Normal\nhigh|Alta'}
+                placeholder={t('settingsFields.optionsPlaceholder')}
                 className="font-mono"
               />
             </Section>
           )}
 
           {form.fieldType === 'REFERENCE' && (
-            <Section title="Referencia">
+            <Section title={t('settingsFields.sections.reference')}>
               <Row>
-                <Field label="Tabla destino">
+                <Field label={t('settingsFields.targetTable')}>
                   <SearchableSelect
                     options={allowedTables.map((t) => ({ value: t, label: t }))}
                     value={form.refTable}
                     onChange={(v) => setForm({ ...form, refTable: v })}
-                    placeholder="(elige una)"
+                    placeholder={t('settingsFields.chooseOne')}
                     clearable
                   />
                 </Field>
-                <Field label="Campo a mostrar">
+                <Field label={t('settingsFields.displayField')}>
                   <Input
                     value={form.refDisplayField}
                     onChange={(e) => setForm({ ...form, refDisplayField: e.target.value })}
@@ -896,24 +963,24 @@ export const CustomFields: React.FC = () => {
           )}
 
           {/* Apariencia */}
-          <Section title="Apariencia">
+          <Section title={t('settingsFields.sections.appearance')}>
             <Row>
-              <Field label="Sección (opcional)">
+              <Field label={t('settingsFields.section')}>
                 <Input
                   value={form.section}
                   onChange={(e) => setForm({ ...form, section: e.target.value })}
-                  placeholder="p.ej. Logística"
+                  placeholder={t('settingsFields.sectionPlaceholder')}
                 />
               </Field>
-              <Field label="Anchura">
+              <Field label={t('settingsFields.width')}>
                 <Select
-                  ariaLabel="Anchura"
-                  options={WIDTH_OPTIONS}
+                  ariaLabel={t('settingsFields.width')}
+                  options={tr(WIDTH_OPTIONS)}
                   value={form.width}
                   onChange={(v) => setForm({ ...form, width: v as any })}
                 />
               </Field>
-              <Field label="Orden">
+              <Field label={t('settingsFields.order')}>
                 <NumberInput
                   value={form.displayOrder}
                   onChange={(v) => setForm({ ...form, displayOrder: v ?? 0 })}
@@ -923,30 +990,30 @@ export const CustomFields: React.FC = () => {
               </Field>
             </Row>
             <Row>
-              <Field label="Placeholder">
+              <Field label={t('settingsFields.placeholder')}>
                 <Input
                   value={form.placeholder}
                   onChange={(e) => setForm({ ...form, placeholder: e.target.value })}
                 />
               </Field>
-              <Field label="Valor por defecto">
+              <Field label={t('settingsFields.defaultValue')}>
                 <Input
                   value={form.defaultValue}
                   onChange={(e) => setForm({ ...form, defaultValue: e.target.value })}
-                  placeholder="(opcional)"
+                  placeholder={t('settingsFields.optional')}
                 />
               </Field>
             </Row>
-            <Field label="Texto de ayuda">
+            <Field label={t('settingsFields.helpText')}>
               <Input
                 value={form.helpText}
                 onChange={(e) => setForm({ ...form, helpText: e.target.value })}
-                placeholder="Breve descripción que aparece bajo el input"
+                placeholder={t('settingsFields.helpTextPlaceholder')}
               />
             </Field>
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Visible en
+                {t('settingsFields.visibleInLabel')}
               </label>
               <div className="flex gap-3 flex-wrap">
                 {Object.entries(VISIBLE_IN_LABELS).map(([v, label]) => (
@@ -962,24 +1029,24 @@ export const CustomFields: React.FC = () => {
                         })
                       }
                     />
-                    {label}
+                    {t(label)}
                   </label>
                 ))}
               </div>
             </div>
             <Row>
               <Toggle
-                label="Obligatorio al guardar"
+                label={t('settingsFields.requiredOnSave')}
                 checked={form.required}
                 onChange={(v) => setForm({ ...form, required: v })}
               />
               <Toggle
-                label="Solo lectura"
+                label={t('settingsFields.readOnly')}
                 checked={form.readOnly}
                 onChange={(v) => setForm({ ...form, readOnly: v })}
               />
               <Toggle
-                label="Columna en listado"
+                label={t('settingsFields.listColumn')}
                 checked={form.showInList}
                 onChange={(v) => setForm({ ...form, showInList: v })}
               />
@@ -987,25 +1054,25 @@ export const CustomFields: React.FC = () => {
           </Section>
 
           {/* Validaciones */}
-          <Section title="Validación">
+          <Section title={t('settingsFields.sections.validation')}>
             {['INTEGER', 'DECIMAL', 'CURRENCY', 'PERCENT'].includes(form.fieldType) && (
               <Row>
                 {/* Los límites se guardan con los decimales que admite el tipo:
                     entero 0, porcentaje 2, decimal/moneda 4 (como DECIMAL(15,4)). */}
-                <Field label="Mínimo">
+                <Field label={t('settingsFields.min')}>
                   <NumberInput
                     value={form.min}
                     onChange={(v) => setForm({ ...form, min: v })}
                     precision={boundPrecision}
-                    placeholder="sin límite"
+                    placeholder={t('settingsFields.noLimit')}
                   />
                 </Field>
-                <Field label="Máximo">
+                <Field label={t('settingsFields.max')}>
                   <NumberInput
                     value={form.max}
                     onChange={(v) => setForm({ ...form, max: v })}
                     precision={boundPrecision}
-                    placeholder="sin límite"
+                    placeholder={t('settingsFields.noLimit')}
                   />
                 </Field>
               </Row>
@@ -1013,26 +1080,26 @@ export const CustomFields: React.FC = () => {
             {['TEXT', 'URL', 'EMAIL', 'PHONE'].includes(form.fieldType) && (
               <>
                 <Row>
-                  <Field label="Longitud mín.">
+                  <Field label={t('settingsFields.minLength')}>
                     <NumberInput
                       value={form.minLength}
                       onChange={(v) => setForm({ ...form, minLength: v })}
                       min={0}
                       allowNegative={false}
-                      placeholder="sin límite"
+                      placeholder={t('settingsFields.noLimit')}
                     />
                   </Field>
-                  <Field label="Longitud máx.">
+                  <Field label={t('settingsFields.maxLength')}>
                     <NumberInput
                       value={form.maxLength}
                       onChange={(v) => setForm({ ...form, maxLength: v })}
                       min={0}
                       allowNegative={false}
-                      placeholder="sin límite"
+                      placeholder={t('settingsFields.noLimit')}
                     />
                   </Field>
                 </Row>
-                <Field label="Patrón (regex)">
+                <Field label={t('settingsFields.pattern')}>
                   <Input
                     value={form.pattern}
                     onChange={(e) => setForm({ ...form, pattern: e.target.value })}
@@ -1042,23 +1109,23 @@ export const CustomFields: React.FC = () => {
               </>
             )}
             <Toggle
-              label="Único por tenant"
+              label={t('settingsFields.unique')}
               checked={form.unique}
               onChange={(v) => setForm({ ...form, unique: v })}
             />
           </Section>
 
           {/* Permisos */}
-          <Section title="Permisos">
+          <Section title={t('settingsFields.sections.permissions')}>
             <Row>
-              <Field label={`Puede leer (CSV de roles: ${ROLE_OPTIONS.join(', ')})`}>
+              <Field label={t('settingsFields.canRead', { roles: ROLE_OPTIONS.join(', ') })}>
                 <Input
                   value={form.readRolesRaw}
                   onChange={(e) => setForm({ ...form, readRolesRaw: e.target.value })}
                   placeholder="ADMIN,SUPERUSER"
                 />
               </Field>
-              <Field label="Puede escribir">
+              <Field label={t('settingsFields.canWrite')}>
                 <Input
                   value={form.writeRolesRaw}
                   onChange={(e) => setForm({ ...form, writeRolesRaw: e.target.value })}
@@ -1066,23 +1133,20 @@ export const CustomFields: React.FC = () => {
                 />
               </Field>
             </Row>
-            <div className="text-[11px] text-slate-500">
-              Vacío = todos los roles. Si pones solo "ADMIN" en escritura, un USER no podrá
-              modificarlo (aunque envíe el valor se descarta).
-            </div>
+            <div className="text-[11px] text-slate-500">{t('settingsFields.permissionsHelp')}</div>
           </Section>
 
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Cancelar
+              {t('settingsFields.cancel')}
             </Button>
             <Button onClick={save} disabled={submitting}>
               {submitting ? (
                 <Loader size="sm" variant="white" />
               ) : editingId ? (
-                'Guardar cambios'
+                t('settingsFields.saveChanges')
               ) : (
-                'Crear campo'
+                t('settingsFields.createField')
               )}
             </Button>
           </div>
@@ -1092,8 +1156,8 @@ export const CustomFields: React.FC = () => {
       <Modal
         isOpen={showPacksModal}
         onClose={() => setShowPacksModal(false)}
-        title="Packs de campos predefinidos"
-        subtitle="Añade de golpe varios campos relacionados."
+        title={t('settingsFields.packsTitle')}
+        subtitle={t('settingsFields.packsSubtitle')}
         maxWidth="xl"
       >
         <div className="space-y-3 pt-4">
@@ -1103,11 +1167,11 @@ export const CustomFields: React.FC = () => {
               <div className="flex-1">
                 <div className="font-bold text-fg-default">{p.label}</div>
                 <div className="text-xs text-fg-muted mt-0.5">
-                  {p.count} campos:{' '}
+                  {t('settingsFields.packFields', { count: p.count })}{' '}
                   {p.fields.map((f: any) => `${f.tableName}.${f.fieldName}`).join(', ')}
                 </div>
               </div>
-              <Button onClick={() => installPack(p.id)}>Instalar</Button>
+              <Button onClick={() => installPack(p.id)}>{t('settingsFields.install')}</Button>
             </Card>
           ))}
         </div>
@@ -1119,42 +1183,42 @@ export const CustomFields: React.FC = () => {
           setShowTableModal(false);
           setEditingTable(null);
         }}
-        title={editingTable ? 'Editar tabla' : 'Nueva tabla'}
+        title={editingTable ? t('settingsFields.editTable') : t('settingsFields.newTable')}
         subtitle={
           editingTable
-            ? 'No puedes cambiar el nombre técnico. Para moverla a otro nombre, creas una nueva y migras los datos.'
-            : 'Crea una entidad nueva con listado y form auto-generados. Después añade sus campos desde esta misma página.'
+            ? t('settingsFields.editTableSubtitle')
+            : t('settingsFields.newTableSubtitle')
         }
         maxWidth="md"
       >
         <div className="space-y-4 pt-4">
           <Row>
-            <Field label="Nombre técnico">
+            <Field label={t('settingsFields.technicalName')}>
               <Input
                 value={tableForm.name}
                 onChange={(e) => setTableForm({ ...tableForm, name: e.target.value })}
-                placeholder="visitas"
+                placeholder={t('settingsFields.tableNamePlaceholder')}
                 disabled={!!editingTable}
               />
             </Field>
-            <Field label="Etiqueta visible">
+            <Field label={t('settingsFields.visibleLabel')}>
               <Input
                 value={tableForm.label}
                 onChange={(e) => setTableForm({ ...tableForm, label: e.target.value })}
-                placeholder="Visitas comerciales"
+                placeholder={t('settingsFields.tableLabelPlaceholder')}
               />
             </Field>
           </Row>
           <Row>
-            <Field label="Tipo">
+            <Field label={t('settingsFields.type')}>
               <Select
-                ariaLabel="Tipo de tabla"
-                options={TABLE_KIND_OPTIONS}
+                ariaLabel={t('settingsFields.tableType')}
+                options={tr(TABLE_KIND_OPTIONS)}
                 value={tableForm.kind}
                 onChange={(v) => setTableForm({ ...tableForm, kind: v as 'master' | 'document' })}
               />
             </Field>
-            <Field label="Icono (lucide-react)">
+            <Field label={t('settingsFields.icon')}>
               <Input
                 value={tableForm.iconName}
                 onChange={(e) => setTableForm({ ...tableForm, iconName: e.target.value })}
@@ -1162,26 +1226,28 @@ export const CustomFields: React.FC = () => {
               />
             </Field>
           </Row>
-          <Field label="Módulo del menú">
+          <Field label={t('settingsFields.menuModule')}>
             <Select
-              ariaLabel="Módulo del menú"
-              options={MENU_MODULE_OPTIONS}
+              ariaLabel={t('settingsFields.menuModule')}
+              options={tr(MENU_MODULE_OPTIONS)}
               value={tableForm.menuModule}
               onChange={(v) => setTableForm({ ...tableForm, menuModule: v })}
             />
           </Field>
-          <Field label="Descripción">
+          <Field label={t('settingsFields.description')}>
             <Input
               value={tableForm.description}
               onChange={(e) => setTableForm({ ...tableForm, description: e.target.value })}
-              placeholder="Opcional"
+              placeholder={t('settingsFields.optionalCap')}
             />
           </Field>
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowTableModal(false)}>
-              Cancelar
+              {t('settingsFields.cancel')}
             </Button>
-            <Button onClick={saveTable}>{editingTable ? 'Guardar cambios' : 'Crear tabla'}</Button>
+            <Button onClick={saveTable}>
+              {editingTable ? t('settingsFields.saveChanges') : t('settingsFields.createTable')}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -1233,23 +1299,24 @@ const CloneTargetForm: React.FC<{
   onCancel: () => void;
   onConfirm: (table: string) => void;
 }> = ({ tables, onCancel, onConfirm }) => {
+  const { t } = useI18n();
   const [target, setTarget] = useState(tables[0] || '');
   return (
     <div className="space-y-4">
-      <Field label="Tabla destino">
+      <Field label={t('settingsFields.targetTable')}>
         <SearchableSelect
-          options={tables.map((t) => ({ value: t, label: t }))}
+          options={tables.map((tbl) => ({ value: tbl, label: tbl }))}
           value={target}
           onChange={setTarget}
-          placeholder="(elige una)"
+          placeholder={t('settingsFields.chooseOne')}
         />
       </Field>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancelar
+          {t('settingsFields.cancel')}
         </Button>
         <Button type="button" onClick={() => onConfirm(target)} disabled={!target}>
-          Clonar
+          {t('settingsFields.clone')}
         </Button>
       </div>
     </div>

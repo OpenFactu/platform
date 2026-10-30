@@ -15,6 +15,7 @@ import type { Category } from '../domain/category';
 import type { Item } from '../domain/item';
 import type { Uom } from '../domain/uom';
 import type { Warehouse, Zone } from '../domain/warehouse';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Catálogo de artículos: tabla + alta con wizard (ItemCreateWizard) y edición
@@ -42,15 +43,16 @@ export const Items: React.FC = () => {
   const [duplicateFrom, setDuplicateFrom] = useState<Item | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const toast = useToast();
+  const { t } = useI18n();
 
   // Escáner de código de barras (HID externo o cámara desde bottom-nav móvil)
   useBarcodeScanner(
     React.useCallback(
       (code: string) => {
         setSearchTerm(code);
-        toast.success(`Escaneado: ${code}`);
+        toast.success(t('inventory.items.scanned', { code }));
       },
-      [toast],
+      [toast, t],
     ),
   );
 
@@ -111,7 +113,7 @@ export const Items: React.FC = () => {
      * las columnas cuadren en vertical.
      */
     {
-      header: 'Código / Nombre',
+      header: t('inventory.items.columns.codeName'),
       card: 'title' as const,
       sortable: true,
       sortAccessor: (i: any) => `${i.code} ${i.name}`.toLowerCase(),
@@ -125,7 +127,7 @@ export const Items: React.FC = () => {
       ),
     },
     {
-      header: 'UoM',
+      header: t('inventory.items.columns.uom'),
       card: 'meta' as const,
       sortable: true,
       sortAccessor: (i: any) => uoms.find((u) => u.id === i.uomId)?.code || '',
@@ -137,21 +139,21 @@ export const Items: React.FC = () => {
       },
     },
     {
-      header: 'Gestión',
+      header: t('inventory.items.columns.manageBy'),
       card: 'status' as const,
       accessor: (i: any) =>
         // 'N' (estándar) no se marca: es el caso por defecto y un distintivo en
         // cada fila sería ruido. Solo se señala lo que se sale de la norma.
         i.manageBy === 'B' ? (
-          <Badge variant="warning">Lote</Badge>
+          <Badge variant="warning">{t('inventory.items.batch')}</Badge>
         ) : i.manageBy === 'S' ? (
-          <Badge variant="info">Serie</Badge>
+          <Badge variant="info">{t('inventory.items.serial')}</Badge>
         ) : (
           <span className="text-fg-subtle text-xs">—</span>
         ),
     },
     {
-      header: 'Comprometido',
+      header: t('inventory.items.columns.committed'),
       card: 'hidden' as const,
       align: 'right' as const,
       accessor: (i: any) => (
@@ -161,7 +163,7 @@ export const Items: React.FC = () => {
       ),
     },
     {
-      header: 'Pedido',
+      header: t('inventory.items.columns.ordered'),
       card: 'hidden' as const,
       align: 'right' as const,
       accessor: (i: any) => (
@@ -171,7 +173,7 @@ export const Items: React.FC = () => {
       ),
     },
     {
-      header: 'Disponible',
+      header: t('inventory.items.columns.available'),
       align: 'right' as const,
       accessor: (i: any) => {
         const available = Number(i.stock) - Number(i.committed) + Number(i.ordered);
@@ -187,7 +189,7 @@ export const Items: React.FC = () => {
       },
     },
     {
-      header: 'Precio Base',
+      header: t('inventory.items.columns.basePrice'),
       card: 'meta' as const,
       align: 'right' as const,
       accessor: (i: any) => (
@@ -195,7 +197,7 @@ export const Items: React.FC = () => {
       ),
     },
     {
-      header: 'Stock Total',
+      header: t('inventory.items.columns.totalStock'),
       align: 'right' as const,
       accessor: (i: any) => (
         <span
@@ -218,7 +220,7 @@ export const Items: React.FC = () => {
         <div className="flex items-center justify-end gap-1">
           <LabelPrintButton
             params={{ itemId: i.id }}
-            title="Imprimir etiqueta del artículo"
+            title={t('inventory.items.printLabel')}
             className="p-2 text-fg-subtle hover:text-purple-600 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all"
             triggerLabel={<Tag size={14} />}
           />
@@ -239,14 +241,18 @@ export const Items: React.FC = () => {
   // del hover y en el menú de click derecho, así que los permisos se declaran
   // una vez en lugar de duplicarse entre una columna de botones y el menú.
   const rowActions = (i: any): RowAction[] => [
-    { label: 'Ver Inventario', icon: <Boxes size={14} />, onClick: () => handleViewStock(i) },
     {
-      label: 'Abrir ficha',
+      label: t('inventory.items.viewStock'),
+      icon: <Boxes size={14} />,
+      onClick: () => handleViewStock(i),
+    },
+    {
+      label: t('inventory.items.openDetail'),
       icon: <Settings2 size={14} />,
       onClick: () => openDetail(i),
     },
     {
-      label: 'Duplicar',
+      label: t('inventory.items.duplicate'),
       icon: <Copy size={14} />,
       disabled: !canWrite,
       onClick: () => {
@@ -263,7 +269,7 @@ export const Items: React.FC = () => {
     try {
       setStockDetail(await itemsApi.stockDetail(item.id));
     } catch {
-      toast.error('Error al cargar inventario');
+      toast.error(t('inventory.items.stockLoadError'));
     } finally {
       setStockDetailLoading(false);
     }
@@ -281,8 +287,8 @@ export const Items: React.FC = () => {
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Catálogo de Artículos"
-        subtitle="Gestión de datos maestros de productos y servicios."
+        title={t('inventory.items.title')}
+        subtitle={t('inventory.items.subtitle')}
         icon={<Package size={18} />}
         size="lg"
         actions={
@@ -292,7 +298,7 @@ export const Items: React.FC = () => {
               className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-subtle group-focus-within:text-accent transition-colors"
             />
             <Input
-              placeholder="Buscar por código, nombre o barcode…"
+              placeholder={t('inventory.items.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 pr-10 h-10 w-full shadow-sm"
@@ -300,7 +306,7 @@ export const Items: React.FC = () => {
             <BarcodeScanButton
               onScan={(code) => setSearchTerm(code)}
               className="absolute right-1 top-1/2 -translate-y-1/2 !p-1.5"
-              aria-label="Escanear con cámara"
+              aria-label={t('inventory.items.scanWithCamera')}
             />
           </div>
         }
@@ -311,8 +317,8 @@ export const Items: React.FC = () => {
         <div>
           <Card
             noPadding
-            title="Fichero de Artículos"
-            subtitle={`Mostrando ${filteredItems.length} registros empresariales.`}
+            title={t('inventory.items.listTitle')}
+            subtitle={t('inventory.items.listSubtitle', { count: filteredItems.length })}
             headerAction={
               <Button
                 size="sm"
@@ -323,7 +329,7 @@ export const Items: React.FC = () => {
                 disabled={!canWrite}
                 className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
               >
-                <Plus size={14} /> Nuevo
+                <Plus size={14} /> {t('inventory.items.new')}
               </Button>
             }
           >
@@ -347,8 +353,8 @@ export const Items: React.FC = () => {
       <StockDetailModal
         isOpen={!!selectedStockItem}
         onClose={() => setSelectedStockItem(null)}
-        title={`Detalle de Inventario`}
-        subtitle="Desglose por almacenes y trazabilidad."
+        title={t('inventory.stockDetail.title')}
+        subtitle={t('inventory.itemDetail.stockSubtitle')}
         selectedStockItem={selectedStockItem}
         stockDetail={stockDetail}
         loading={stockDetailLoading}

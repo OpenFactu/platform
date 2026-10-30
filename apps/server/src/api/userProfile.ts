@@ -57,7 +57,7 @@ async function findCurrent(tenantClient: any, userId: string, entityType = ENTIT
 }
 
 /**
- * PATCH /api/users/me — edita datos del perfil (nombre/cargo de firma).
+ * PATCH /api/profile/me — edita datos del perfil (nombre/cargo de firma, idioma).
  */
 router.patch('/me', async (req: any, res) => {
   try {
@@ -68,6 +68,9 @@ router.patch('/me', async (req: any, res) => {
     const payload: any = {};
     if ('signatureName' in req.body) payload.signatureName = req.body.signatureName?.trim() || null;
     if ('signatureRole' in req.body) payload.signatureRole = req.body.signatureRole?.trim() || null;
+    if ('locale' in req.body) {
+      payload.locale = req.body.locale === 'en' || req.body.locale === 'es' ? req.body.locale : null;
+    }
 
     if (Object.keys(payload).length === 0) {
       return res.status(400).json({ error: 'Nada que actualizar' });
@@ -85,6 +88,7 @@ router.patch('/me', async (req: any, res) => {
         signatureName: schema.globalUsers.signatureName,
         signatureRole: schema.globalUsers.signatureRole,
         signatureImageUrl: schema.globalUsers.signatureImageUrl,
+        locale: schema.globalUsers.locale,
       });
     res.json(row);
   } catch (e: any) {

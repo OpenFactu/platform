@@ -2,14 +2,16 @@ import React, { useMemo, useState } from 'react';
 import { Card, SearchInput, Badge, EmptyState, Skeleton } from '@openfactu/ui';
 import { Boxes, ChevronRight, Database } from 'lucide-react';
 import type { ImportGroup, ImportObject } from '../types';
+import { useI18n } from '@/i18n/I18nContext';
 
+/** Claves de i18n; se traducen al pintar. */
 const GROUP_LABELS: Record<ImportGroup, string> = {
-  maestros: 'Datos maestros',
-  stock: 'Stock y precios',
-  documentos: 'Documentos',
-  contabilidad: 'Contabilidad',
-  rrhh: 'Recursos humanos',
-  crm: 'CRM',
+  maestros: 'dataImport.groups.maestros',
+  stock: 'dataImport.groups.stock',
+  documentos: 'dataImport.groups.documentos',
+  contabilidad: 'dataImport.groups.contabilidad',
+  rrhh: 'dataImport.groups.rrhh',
+  crm: 'dataImport.groups.crm',
 };
 
 const GROUP_ORDER: ImportGroup[] = [
@@ -29,6 +31,7 @@ interface Props {
 }
 
 export const StepObject: React.FC<Props> = ({ objects, loading, selected, onSelect }) => {
+  const { t } = useI18n();
   const [term, setTerm] = useState('');
 
   const grouped = useMemo(() => {
@@ -59,8 +62,8 @@ export const StepObject: React.FC<Props> = ({ objects, loading, selected, onSele
     return (
       <EmptyState
         icon={<Database size={32} />}
-        title="No hay nada que puedas importar"
-        hint="Depende de los módulos activos en la empresa y de tus permisos de escritura."
+        title={t('dataImport.object.emptyTitle')}
+        hint={t('dataImport.object.emptyHint')}
       />
     );
   }
@@ -70,21 +73,21 @@ export const StepObject: React.FC<Props> = ({ objects, loading, selected, onSele
       <SearchInput
         value={term}
         onChange={setTerm}
-        placeholder="Buscar qué importar…"
+        placeholder={t('dataImport.object.searchPlaceholder')}
         className="max-w-sm"
       />
 
       {grouped.length === 0 ? (
         <EmptyState
           icon={<Boxes size={28} />}
-          title="Nada coincide con la búsqueda"
-          hint="Prueba con otra palabra."
+          title={t('dataImport.object.noMatchTitle')}
+          hint={t('dataImport.object.noMatchHint')}
         />
       ) : (
         grouped.map(({ group, items }) => (
           <div key={group} className="space-y-2">
             <h3 className="text-[11px] font-bold uppercase tracking-widest text-fg-subtle">
-              {GROUP_LABELS[group]}
+              {t(GROUP_LABELS[group])}
             </h3>
             <div className="grid gap-2 sm:grid-cols-2">
               {items.map((object) => {
@@ -110,14 +113,22 @@ export const StepObject: React.FC<Props> = ({ objects, loading, selected, onSele
                             <span className="text-sm font-semibold text-fg-default truncate">
                               {object.label}
                             </span>
-                            {!object.supportsUpdate && <Badge variant="neutral">solo alta</Badge>}
+                            {!object.supportsUpdate && (
+                              <Badge variant="neutral">{t('dataImport.object.insertOnly')}</Badge>
+                            )}
                           </div>
                           {object.description && (
                             <p className="text-xs text-fg-muted mt-0.5">{object.description}</p>
                           )}
                           <p className="text-[11px] text-fg-subtle mt-1">
-                            {object.fields.length} columnas disponibles
-                            {object.lines ? ` · con ${object.lines.label.toLowerCase()}` : ''}
+                            {t('dataImport.object.columnsAvailable', {
+                              count: object.fields.length,
+                            })}
+                            {object.lines
+                              ? ` · ${t('dataImport.object.withLines', {
+                                  lines: object.lines.label.toLowerCase(),
+                                })}`
+                              : ''}
                           </p>
                         </div>
                         <ChevronRight size={16} className="text-fg-subtle shrink-0 mt-1" />

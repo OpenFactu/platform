@@ -29,6 +29,7 @@ import { useKeiroChat } from '../hooks/useKeiroChat';
 import { DropOverlay } from './DropOverlay';
 import { KeiroChatBody } from './KeiroChatBody';
 import { registerKeiroParts } from './keiroParts';
+import { useI18n } from '@/i18n/I18nContext';
 
 registerKeiroParts();
 
@@ -73,6 +74,7 @@ function loadCorner(): Corner {
 export const ChatLauncherPanel: React.FC = () => {
   const { tabs, activeTabId, openTab } = useTabs();
   const chat = useKeiroChat();
+  const { t } = useI18n();
   const { drop, setChatVisible } = chat;
 
   const [open, setOpen] = useState(false);
@@ -196,7 +198,7 @@ export const ChatLauncherPanel: React.FC = () => {
           onPointerDown={handlePointerDown}
           className={`k-ai-glow hidden md:flex fixed ${CORNER_CLASSES[corner]} z-40 w-14 h-14 rounded-full bg-accent text-accent-fg shadow-lg hover:scale-105 active:scale-95 transition-transform items-center justify-center cursor-grab active:cursor-grabbing`}
           style={{ touchAction: 'none' }}
-          title={`Abrir ${ASSISTANT_NAME} (arrastra para mover)`}
+          title={t('ai.launcher.open', { name: ASSISTANT_NAME })}
         >
           <Bot size={26} />
           <Sparkles
@@ -225,7 +227,7 @@ export const ChatLauncherPanel: React.FC = () => {
                 openTab('/ai/chat');
                 setOpen(false);
               }}
-              title="Abrir a pantalla completa"
+              title={t('ai.launcher.openFullscreen')}
               className="text-fg-subtle hover:text-accent"
             >
               <Maximize2 size={16} />
@@ -243,7 +245,7 @@ export const ChatLauncherPanel: React.FC = () => {
           <div
             role="separator"
             aria-orientation="vertical"
-            aria-label="Cambiar ancho del panel"
+            aria-label={t('ai.launcher.resize')}
             aria-valuemin={MIN_WIDTH}
             aria-valuenow={width}
             tabIndex={0}

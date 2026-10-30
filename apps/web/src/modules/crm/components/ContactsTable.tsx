@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useMemo, useState } from 'react';
 import {
   Badge,
@@ -26,6 +27,7 @@ interface Props {
 
 export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
   const toast = useToast();
+  const { t } = useI18n();
   const popup = usePopup();
   const { canWrite, canDelete } = useCrmPermissions('/crm/contacts');
   const { contacts, loading, error, refresh } = useContacts(partnerId);
@@ -38,14 +40,14 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
       call.followUp
         ? {
             type: 'call',
-            subject: `Llamada con ${call.followUp.name}`,
+            subject: t('crm.contacts.callWith', { name: call.followUp.name }),
             partnerId: call.followUp.partnerId,
             contactId: call.followUp.id,
             dueAt: new Date().toISOString().slice(0, 10),
             doneAt: new Date().toISOString(),
           }
         : null,
-    [call.followUp],
+    [call.followUp, t],
   );
 
   const term = search.trim().toLowerCase();
@@ -63,31 +65,31 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
 
   const remove = async (c: Contact) => {
     const ok = await popup.confirm({
-      title: 'Borrar contacto',
-      message: `¿Borrar a ${c.name}?`,
+      title: t('crm.contacts.deleteTitle'),
+      message: t('crm.contacts.deleteMessage', { name: c.name }),
       tone: 'danger',
-      confirmLabel: 'Borrar',
+      confirmLabel: t('crm.common.delete'),
     });
     if (!ok) return;
     try {
       await contactsApi.remove(c.id);
       refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo borrar');
+      toast.error(err instanceof Error ? err.message : t('crm.errors.deleteFailed'));
     }
   };
 
   const columns: TableColumn<Contact>[] = [
     {
-      header: 'Nombre',
+      header: t('crm.common.name'),
       id: 'name',
       cell: (c) => (
         <span className="inline-flex items-center gap-2">
           {c.name}
-          {c.isMain && <Badge variant="accent">Principal</Badge>}
-          {c.tags?.map((t) => (
-            <Badge key={t} variant="neutral">
-              {t}
+          {c.isMain && <Badge variant="accent">{t('crm.contacts.main')}</Badge>}
+          {c.tags?.map((tag) => (
+            <Badge key={tag} variant="neutral">
+              {tag}
             </Badge>
           ))}
         </span>
@@ -100,15 +102,15 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
       ? []
       : [
           {
-            header: 'Interlocutor',
+            header: t('crm.partnerSelect.label'),
             accessor: 'partnerName',
             sortable: true,
             card: 'subtitle',
           } as TableColumn<Contact>,
         ]),
-    { header: 'Cargo', accessor: (c) => c.role ?? '—' },
+    { header: t('crm.contactForm.role'), accessor: (c) => c.role ?? '—' },
     {
-      header: 'Correo',
+      header: t('crm.common.email'),
       id: 'email',
       cell: (c) =>
         c.email ? (
@@ -124,7 +126,7 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
         ),
     },
     {
-      header: 'Teléfono',
+      header: t('crm.common.phone'),
       id: 'phone',
       cell: (c) => {
         const tel = c.mobile || c.phone;
@@ -154,11 +156,13 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
             <SearchInput
               value={search}
               onChange={setSearch}
-              placeholder="Buscar por nombre, interlocutor, correo…"
+              placeholder={t('crm.contacts.searchPlaceholder')}
             />
           </div>
         ) : (
-          <h3 className="text-xs font-bold uppercase tracking-wider text-fg-muted">Contactos</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-fg-muted">
+            {t('crm.nav.contacts')}
+          </h3>
         )}
         {canWrite && (
           <Button
@@ -167,7 +171,7 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
             variant={standalone ? 'primary' : 'ghost'}
             onClick={() => setDraft({ isMain: contacts.length === 0 })}
           >
-            <Plus size={14} /> Nuevo contacto
+            <Plus size={14} /> {t('crm.contactForm.newTitle')}
           </Button>
         )}
       </div>
@@ -178,11 +182,13 @@ export const ContactsTable: React.FC<Props> = ({ partnerId, standalone }) => {
         errorMessage={error ?? undefined}
         onRetry={refresh}
         onRowClick={canWrite ? setDraft : undefined}
-        emptyMessage="Sin contactos."
-        ariaLabel="Contactos"
+        emptyMessage={t('crm.contacts.empty')}
+        ariaLabel={t('crm.nav.contacts')}
         density={standalone ? 'normal' : 'compact'}
         rowActions={(c) =>
-          canDelete ? [{ label: 'Borrar', onClick: () => remove(c), destructive: true }] : []
+          canDelete
+            ? [{ label: t('crm.common.delete'), onClick: () => remove(c), destructive: true }]
+            : []
         }
       />
       <ActivityForm draft={callDraft} onClose={call.clear} onSaved={() => {}} />

@@ -12,8 +12,10 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { SearchInput } from '@openfactu/ui';
 import Editor, { type OnMount, type BeforeMount } from '@monaco-editor/react';
 import { templatesApi } from '../api';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface SchemaTable {
   schema: string;
@@ -38,11 +40,12 @@ interface Props {
   onClose: () => void;
 }
 
+// `detail` es una clave i18n: se traduce al registrar el autocompletado.
 const PLACEHOLDER_COMPLETIONS = [
-  { label: ':docId', detail: 'ID del documento en render' },
-  { label: ':partnerId', detail: 'ID del partner del documento' },
-  { label: ':companyId', detail: 'ID de la empresa emisora' },
-  { label: ':tenantId', detail: 'ID del tenant actual' },
+  { label: ':docId', detail: 'templates.sql.phDocId' },
+  { label: ':partnerId', detail: 'templates.sql.phPartnerId' },
+  { label: ':companyId', detail: 'templates.sql.phCompanyId' },
+  { label: ':tenantId', detail: 'templates.sql.phTenantId' },
 ];
 
 const SQL_KEYWORD_SNIPPETS = [
@@ -55,12 +58,13 @@ const SQL_KEYWORD_SNIPPETS = [
 
 export const SqlEditorModal: React.FC<Props> = ({
   open,
-  title = 'Editor SQL',
+  title,
   initialSql,
   queryName,
   onSave,
   onClose,
 }) => {
+  const { t: tr } = useI18n();
   const [value, setValue] = useState(initialSql);
   const [schema, setSchema] = useState<SchemaTable[] | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
@@ -89,14 +93,14 @@ export const SqlEditorModal: React.FC<Props> = ({
         if (!cancelled)
           setSchemaError(
             (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-              'No se pudo cargar el esquema',
+              tr('templates.sql.schemaLoadError'),
           );
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, tr]);
 
   // Limpia el completion provider al cerrar para no dejar entradas acumuladas.
   useEffect(() => {
@@ -153,7 +157,7 @@ export const SqlEditorModal: React.FC<Props> = ({
             label: t.name,
             kind: monaco.languages.CompletionItemKind.Class,
             insertText: t.name,
-            detail: `tabla (${t.columns.length} columnas)`,
+            detail: tr('templates.sql.tableDetail', { count: t.columns.length }),
             documentation: {
               value: [
                 '```',
@@ -175,7 +179,7 @@ export const SqlEditorModal: React.FC<Props> = ({
               label: c.name,
               kind: monaco.languages.CompletionItemKind.Field,
               insertText: c.name,
-              detail: `columna · ${c.type}`,
+              detail: tr('templates.sql.columnDetail', { type: c.type }),
               range,
             });
           });
@@ -187,7 +191,7 @@ export const SqlEditorModal: React.FC<Props> = ({
             label: p.label,
             kind: monaco.languages.CompletionItemKind.Variable,
             insertText: p.label,
-            detail: p.detail,
+            detail: tr(p.detail),
             range,
           });
         });
@@ -199,7 +203,7 @@ export const SqlEditorModal: React.FC<Props> = ({
             kind: monaco.languages.CompletionItemKind.Snippet,
             insertText: s,
             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            detail: 'plantilla SQL',
+            detail: tr('templates.sql.snippetDetail'),
             range,
           });
         });
@@ -212,7 +216,7 @@ export const SqlEditorModal: React.FC<Props> = ({
   const onEditorMount: OnMount = (editor, monaco) => {
     editor.addAction({
       id: 'openfactu.format-basic',
-      label: 'Formato básico (uppercase keywords)',
+      label: tr('templates.sql.formatAction'),
       keybindings: [monaco.KeyMod.Shift | monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
       run: () => {
         const text = editor.getValue();
@@ -231,7 +235,7 @@ export const SqlEditorModal: React.FC<Props> = ({
     try {
       const body: any = await templatesApi.testQuery({ name: queryName || 'test', sql: value });
       if (body?.ok === false) {
-        setTestResult({ ok: false, error: body.error || 'Error en la consulta' });
+        setTestResult({ ok: false, error: body.error || tr('templates.sql.queryError') });
       } else {
         setTestResult({
           ok: true,
@@ -245,7 +249,7 @@ export const SqlEditorModal: React.FC<Props> = ({
         ok: false,
         error:
           (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-          'Error de red',
+          tr('templates.sql.networkError'),
       });
     } finally {
       setTesting(false);
@@ -264,20 +268,22 @@ export const SqlEditorModal: React.FC<Props> = ({
       <div className="w-[min(96vw,1200px)] h-[min(92vh,800px)] rounded-lg shadow-2xl bg-bg-card border border-border-default flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
           <div>
-            <div className="text-sm font-semibold text-fg-body">{title}</div>
+            <div className="text-sm font-semibold text-fg-body">
+              {title ?? tr('templates.sql.defaultTitle')}
+            </div>
             <div className="text-[11px] text-fg-muted">
               {schema
-                ? `${schema.length} tablas cargadas · autocompletado activo · Ctrl+Espacio`
+                ? tr('templates.sql.schemaLoaded', { count: schema.length })
                 : schemaError
-                  ? `Sin esquema: ${schemaError}`
-                  : 'Cargando esquema…'}
+                  ? tr('templates.sql.noSchema', { error: schemaError })
+                  : tr('templates.sql.loadingSchema')}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="p-1 text-slate-400 hover:text-fg-body"
-            title="Cerrar (Esc)"
+            title={tr('templates.sql.closeEsc')}
           >
             ✕
           </button>
@@ -324,12 +330,12 @@ export const SqlEditorModal: React.FC<Props> = ({
             disabled={testing}
             className="text-xs px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
           >
-            {testing ? 'Probando…' : '▶ Probar'}
+            {testing ? tr('templates.sql.testing') : tr('templates.sql.test')}
           </button>
           {testResult && testResult.ok && (
             <span className="text-xs text-emerald-600 dark:text-emerald-400">
-              ✓ {testResult.rowCount} fila{testResult.rowCount === 1 ? '' : 's'}
-              {testResult.truncated ? ' (truncado a 1000)' : ''}
+              ✓ {tr('templates.sql.rows', { count: testResult.rowCount ?? 0 })}
+              {testResult.truncated ? tr('templates.sql.truncated') : ''}
             </span>
           )}
           {testResult && !testResult.ok && (
@@ -343,7 +349,7 @@ export const SqlEditorModal: React.FC<Props> = ({
             onClick={onClose}
             className="text-xs px-3 py-1.5 rounded border border-border-strong text-fg-body hover:bg-bg-hover"
           >
-            Cancelar
+            {tr('templates.sql.cancel')}
           </button>
           <button
             type="button"
@@ -353,7 +359,7 @@ export const SqlEditorModal: React.FC<Props> = ({
             }}
             className="text-xs px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white"
           >
-            Guardar
+            {tr('templates.sql.save')}
           </button>
         </div>
 
@@ -400,12 +406,13 @@ const SchemaPanel: React.FC<{
   error: string | null;
   onInsert: (text: string) => void;
 }> = ({ schema, error, onInsert }) => {
+  const { t: tr } = useI18n();
   const [filter, setFilter] = useState('');
   if (error) {
     return <div className="p-3 text-red-500">{error}</div>;
   }
   if (!schema) {
-    return <div className="p-3 text-slate-500">Cargando esquema…</div>;
+    return <div className="p-3 text-slate-500">{tr('templates.sql.loadingSchema')}</div>;
   }
   const filtered = filter
     ? schema.filter(
@@ -416,14 +423,15 @@ const SchemaPanel: React.FC<{
     : schema;
   return (
     <div className="p-2 space-y-2">
-      <input
-        type="text"
+      <SearchInput
         value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        placeholder="Filtrar tablas / columnas…"
-        className="w-full px-2 py-1 rounded border border-border-default bg-bg-card text-xs"
+        onChange={setFilter}
+        placeholder={tr('templates.sql.filterPlaceholder')}
+        clearable
       />
-      <div className="text-[10px] uppercase tracking-wide text-slate-400">Esquema del tenant</div>
+      <div className="text-[10px] uppercase tracking-wide text-slate-400">
+        {tr('templates.sql.tenantSchema')}
+      </div>
       {filtered.map((t) => (
         <details
           key={`${t.schema}.${t.name}`}
@@ -442,7 +450,7 @@ const SchemaPanel: React.FC<{
                 onInsert(`SELECT * FROM ${t.name} LIMIT 50`);
               }}
               className="text-[10px] px-1 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 hover:bg-blue-200"
-              title="Insertar SELECT"
+              title={tr('templates.sql.insertSelect')}
             >
               ★
             </button>

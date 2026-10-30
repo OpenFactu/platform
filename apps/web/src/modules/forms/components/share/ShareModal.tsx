@@ -1,3 +1,5 @@
+import { t } from '@/i18n/i18n';
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useMemo, useState } from 'react';
 import {
   Badge,
@@ -32,14 +34,15 @@ type View = 'link' | 'invite' | 'sent';
 async function copy(text: string, toast: ReturnType<typeof useToast>) {
   try {
     await navigator.clipboard.writeText(text);
-    toast.success('Enlace copiado');
+    toast.success(t('forms.thanks.linkCopied'));
   } catch {
-    toast.error('No se pudo copiar');
+    toast.error(t('forms.thanks.copyFailed'));
   }
 }
 
 /** Compartir: enlace, QR para imprimir e invitaciones por correo con enlace personal. */
 export const ShareModal: React.FC<Props> = ({ form, isOpen, onClose, canWrite, crm }) => {
+  const { t } = useI18n();
   const toast = useToast();
   const fmt = useFormat();
   const { qr, invites, contacts, reloadInvites } = useShare(form.id, isOpen, crm);
@@ -56,8 +59,12 @@ export const ShareModal: React.FC<Props> = ({ form, isOpen, onClose, canWrite, c
     () =>
       contacts
         .filter((c) => !picked.includes(c.id))
-        .map((c) => ({ value: c.id, label: c.name, secondaryLabel: c.email ?? 'sin correo' })),
-    [contacts, picked],
+        .map((c) => ({
+          value: c.id,
+          label: c.name,
+          secondaryLabel: c.email ?? t('forms.share.noEmail'),
+        })),
+    [contacts, picked, t],
   );
 
   const downloadQr = () => {
@@ -78,38 +85,45 @@ export const ShareModal: React.FC<Props> = ({ form, isOpen, onClose, canWrite, c
         send,
       });
       const failed = send ? res.filter((r) => !r.emailed).length : 0;
-      if (failed) toast.error(`${failed} sin correo: copia su enlace en «Enviadas».`);
-      else toast.success(send ? 'Invitaciones enviadas' : 'Enlaces creados');
+      if (failed) toast.error(t('forms.share.failedEmails', { count: failed }));
+      else toast.success(send ? t('forms.share.invitesSent') : t('forms.share.linksCreated'));
       setEmails('');
       setPicked([]);
       reloadInvites();
       setView('sent');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudieron crear');
+      toast.error(err instanceof Error ? err.message : t('forms.share.createFailed'));
     } finally {
       setBusy(false);
     }
   };
 
   const columns: TableColumn<FormInviteRow>[] = [
-    { header: 'Para', id: 'to', accessor: (i) => i.name ?? i.email ?? '—', card: 'title' },
     {
-      header: 'Correo',
+      header: t('forms.share.to'),
+      id: 'to',
+      accessor: (i) => i.name ?? i.email ?? '—',
+      card: 'title',
+    },
+    {
+      header: t('forms.questionType.email'),
       id: 'email',
       accessor: (i) => (i.name ? (i.email ?? '—') : '—'),
       card: 'subtitle',
     },
     {
-      header: 'Estado',
+      header: t('forms.share.status'),
       id: 's',
       card: 'status',
       cell: (i) =>
         i.respondedAt ? (
-          <Badge variant="success">Respondida {fmt.date(i.respondedAt)}</Badge>
+          <Badge variant="success">
+            {t('forms.share.responded', { date: fmt.date(i.respondedAt) })}
+          </Badge>
         ) : i.sentAt ? (
-          <Badge variant="info">Enviada {fmt.date(i.sentAt)}</Badge>
+          <Badge variant="info">{t('forms.share.sentOn', { date: fmt.date(i.sentAt) })}</Badge>
         ) : (
-          <Badge variant="neutral">Pendiente</Badge>
+          <Badge variant="neutral">{t('forms.share.pending')}</Badge>
         ),
     },
     {
@@ -118,29 +132,29 @@ export const ShareModal: React.FC<Props> = ({ form, isOpen, onClose, canWrite, c
       align: 'right',
       cell: (i) => (
         <Button type="button" variant="ghost" size="sm" onClick={() => copy(i.link, toast)}>
-          <Copy size={14} /> Copiar enlace
+          <Copy size={14} /> {t('forms.share.copyLink')}
         </Button>
       ),
     },
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Compartir formulario" size="lg" hideCancel>
+    <Modal isOpen={isOpen} onClose={onClose} title={t('forms.share.title')} size="lg" hideCancel>
       <div className="space-y-4">
         {!form.isActive && (
           <p className="rounded-xs bg-warning-bg px-3 py-2 text-sm text-warning-fg">
-            El formulario no acepta respuestas: quien abra el enlace verá el mensaje de cerrado.
+            {t('forms.share.inactive')}
           </p>
         )}
         <Tabs
           value={view}
           onChange={(k) => setView(k as View)}
           items={[
-            { key: 'link', label: 'Enlace y QR' },
-            ...(canWrite ? [{ key: 'invite', label: 'Invitar' }] : []),
+            { key: 'link', label: t('forms.share.tabs.link') },
+            ...(canWrite ? [{ key: 'invite', label: t('forms.share.tabs.invite') }] : []),
             {
               key: 'sent',
-              label: 'Enviadas',
+              label: t('forms.share.tabs.sent'),
               badge: invites?.length ? (
                 <Badge variant="neutral">{invites.length}</Badge>
               ) : undefined,
@@ -153,28 +167,28 @@ export const ShareModal: React.FC<Props> = ({ form, isOpen, onClose, canWrite, c
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="flex-1 min-w-0">
                 <Input
-                  label="Enlace"
+                  label={t('forms.share.link')}
                   value={form.publicUrl}
                   readOnly
                   onFocus={(e) => e.target.select()}
                 />
               </div>
               <Button type="button" onClick={() => copy(form.publicUrl, toast)}>
-                <Copy size={14} /> Copiar
+                <Copy size={14} /> {t('forms.thanks.copy')}
               </Button>
             </div>
             <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-start">
               {qr ? (
                 <img
                   src={qr}
-                  alt="Código QR del formulario"
+                  alt={t('forms.share.qrAlt')}
                   className="h-44 w-44 rounded-xs border border-border-default bg-white p-1"
                 />
               ) : (
                 <Skeleton className="h-44 w-44" />
               )}
               <div className="space-y-2 text-sm text-fg-muted">
-                <p>Imprímelo en carteles, tickets o mesas: al escanearlo se abre el formulario.</p>
+                <p>{t('forms.share.qrHint')}</p>
                 <Button
                   type="button"
                   variant="secondary"
@@ -182,7 +196,7 @@ export const ShareModal: React.FC<Props> = ({ form, isOpen, onClose, canWrite, c
                   onClick={downloadQr}
                   disabled={!qr}
                 >
-                  <Download size={14} /> Descargar PNG
+                  <Download size={14} /> {t('forms.share.downloadPng')}
                 </Button>
               </div>
             </div>
@@ -192,26 +206,28 @@ export const ShareModal: React.FC<Props> = ({ form, isOpen, onClose, canWrite, c
         {view === 'invite' && (
           <div className="space-y-4">
             <Textarea
-              label="Correos"
+              label={t('forms.share.emails')}
               rows={3}
               value={emails}
               onChange={(e) => setEmails(e.target.value)}
-              placeholder="ana@ejemplo.com, luis@ejemplo.com"
+              placeholder={t('forms.share.emailsPlaceholder')}
               helperText={
                 parsed.length
-                  ? `${parsed.length} dirección(es) válida(s)`
-                  : 'Separadas por comas o saltos de línea.'
+                  ? t('forms.share.validAddresses', { count: parsed.length })
+                  : t('forms.share.emailsHint')
               }
             />
             {crm && (
               <div className="space-y-2">
-                <div className="text-sm font-medium text-fg-body">Contactos del CRM</div>
+                <div className="text-sm font-medium text-fg-body">
+                  {t('forms.share.crmContacts')}
+                </div>
                 <SearchableSelect
-                  ariaLabel="Añadir contacto"
+                  ariaLabel={t('forms.share.addContact')}
                   options={contactOptions}
                   value=""
                   onChange={(v) => v && setPicked((p) => [...p, v])}
-                  placeholder="Busca un contacto"
+                  placeholder={t('forms.share.searchContact')}
                 />
                 {picked.length > 0 && (
                   <div className="flex flex-wrap gap-1">
@@ -222,7 +238,7 @@ export const ShareModal: React.FC<Props> = ({ form, isOpen, onClose, canWrite, c
                           type="button"
                           variant="ghost"
                           size="sm"
-                          aria-label={`Quitar ${byId.get(id)?.name ?? ''}`}
+                          aria-label={t('forms.share.remove', { name: byId.get(id)?.name ?? '' })}
                           onClick={() => setPicked((p) => p.filter((x) => x !== id))}
                           className="h-4 w-4 p-0"
                         >
@@ -232,32 +248,29 @@ export const ShareModal: React.FC<Props> = ({ form, isOpen, onClose, canWrite, c
                     ))}
                   </div>
                 )}
-                <p className="text-xs text-fg-muted">
-                  Sus respuestas quedan ligadas al contacto y a su cliente.
-                </p>
+                <p className="text-xs text-fg-muted">{t('forms.share.linkedHint')}</p>
               </div>
             )}
             <Textarea
-              label="Mensaje (opcional)"
+              label={t('forms.share.message')}
               rows={3}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder={form.intro ?? ''}
             />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <Switch label="Enviar por correo" checked={send} onChange={setSend} />
+              <Switch label={t('forms.share.sendByEmail')} checked={send} onChange={setSend} />
               <Button
                 type="button"
                 onClick={invite}
                 isLoading={busy}
                 disabled={parsed.length + picked.length === 0}
               >
-                <Send size={14} /> {send ? 'Enviar invitaciones' : 'Crear enlaces'}
+                <Send size={14} />{' '}
+                {send ? t('forms.share.sendInvites') : t('forms.share.createLinks')}
               </Button>
             </div>
-            <p className="text-xs text-fg-muted">
-              Cada persona recibe un enlace personal y en «Enviadas» ves quién ha respondido.
-            </p>
+            <p className="text-xs text-fg-muted">{t('forms.share.personalLinkHint')}</p>
           </div>
         )}
 
@@ -266,8 +279,8 @@ export const ShareModal: React.FC<Props> = ({ form, isOpen, onClose, canWrite, c
             columns={columns}
             data={invites ?? []}
             isLoading={invites === null}
-            emptyMessage="Aún no has invitado a nadie."
-            ariaLabel="Invitaciones"
+            emptyMessage={t('forms.share.empty')}
+            ariaLabel={t('forms.share.invitations')}
           />
         )}
       </div>

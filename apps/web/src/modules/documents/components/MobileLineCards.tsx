@@ -1,6 +1,7 @@
 import React from 'react';
 import type { TableColumn } from '@openfactu/ui';
 import { Card } from '@openfactu/ui';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Editor/visor de líneas de documento en móvil.
@@ -31,10 +32,11 @@ function renderCell<T>(col: TableColumn<T>, line: T, idx: number): React.ReactNo
 }
 
 export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
+  const { t } = useI18n();
   if (!lines.length) {
     return (
       <p className="p-6 text-center text-sm font-medium text-fg-subtle">
-        {emptyMessage ?? 'Sin líneas'}
+        {emptyMessage ?? t('doc.lines.noLines')}
       </p>
     );
   }
@@ -56,7 +58,7 @@ export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-black uppercase tracking-widest text-fg-subtle leading-none mb-1.5">
-                {first?.header || 'Artículo'} · L{idx + 1}
+                {first?.header || t('doc.lines.item')} · L{idx + 1}
               </p>
               {first && renderCell(first, line, idx)}
             </div>

@@ -1,3 +1,4 @@
+import { t } from '@/i18n/i18n';
 import { useEffect, useState } from 'react';
 import type { CrmPeriod } from '../api/reportsApi';
 
@@ -20,7 +21,7 @@ export function useCrmReport<T>(load: (p: CrmPeriod) => Promise<T>, period: CrmP
           setState({
             key,
             data: null,
-            error: err instanceof Error ? err.message : 'No se pudo cargar',
+            error: err instanceof Error ? err.message : t('crm.errors.loadFailed'),
           }),
       );
     return () => {

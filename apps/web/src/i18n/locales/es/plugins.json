@@ -1,0 +1,86 @@
+{
+  "plugins": {
+    "nav": {
+      "apps": "Apps",
+      "applications": "Aplicaciones"
+    },
+    "manager": {
+      "title": "Apps",
+      "subtitle": "Activa o desactiva módulos y plugins para esta empresa.",
+      "columns": {
+        "plugin": "Plugin",
+        "table": "Tabla",
+        "field": "Campo",
+        "type": "Tipo",
+        "label": "Etiqueta",
+        "structure": "Estructura"
+      },
+      "generalCategory": "General",
+      "loadError": "Error al cargar datos de plugins",
+      "pluginActivated": "Plugin \"{id}\" activado",
+      "pluginDeactivated": "Plugin \"{id}\" desactivado",
+      "pluginToggleError": "Error al cambiar estado del plugin",
+      "moduleActivated": "Módulo \"{name}\" activado",
+      "moduleDeactivated": "Módulo \"{name}\" desactivado",
+      "moduleToggleError": "Error al cambiar estado del módulo",
+      "tabApps": "Aplicaciones",
+      "tabDev": "Desarrollo",
+      "activeSuffix": "activos",
+      "refresh": "Refrescar",
+      "pluginsHeading": "Plugins",
+      "emptyTitle": "No hay plugins instalados",
+      "emptyHint": "Coloca plugins en la carpeta /plugins/ del servidor.",
+      "fieldsTitle": "Campos de Base de Datos",
+      "fieldsSubtitle": "Campos inyectados por plugins activos en los esquemas de tenant.",
+      "fieldsNotice": "Solo se muestran campos de plugins activos para esta empresa.",
+      "tablesTitle": "Tablas de Plugins",
+      "tablesSubtitle": "Tablas creadas por extensiones activas."
+    },
+    "card": {
+      "activateModule": "Activar módulo",
+      "deactivateModule": "Desactivar módulo",
+      "activatePlugin": "Activar plugin",
+      "deactivatePlugin": "Desactivar plugin",
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "dbExtensions_one": "{count} extensión BD",
+      "dbExtensions_other": "{count} extensiones BD",
+      "uiViews_one": "{count} vista UI",
+      "uiViews_other": "{count} vistas UI"
+    },
+    "view": {
+      "renderError": "Error de Renderizado",
+      "unsupportedType": "El tipo de vista\"{type}\"no es compatible actualmente."
+    },
+    "devKeys": {
+      "nameRequired": "El nombre es obligatorio",
+      "generated": "API Key generada",
+      "generateError": "Error al generar la key",
+      "deleted": "Key eliminada",
+      "deleteError": "Error al eliminar la key",
+      "toggleError": "Error al cambiar el estado de la key",
+      "saveSecretNow": "Guarda el Client Secret ahora. No se puede recuperar despues.",
+      "copyClientId": "Copiar Client ID",
+      "copySecret": "Copiar Client Secret",
+      "serverPlaceholder": "tu-servidor",
+      "pluginPlaceholder": "mi-plugin",
+      "savedAck": "Entendido, ya lo he guardado",
+      "title": "Credenciales de desarrollo",
+      "subtitle": "Genera API Keys para desarrollar y subir plugins desde otros equipos.",
+      "namePlaceholder": "Nombre de la key (ej: Mi PC de desarrollo)",
+      "generating": "Generando...",
+      "generate": "Generar Key",
+      "emptyTitle": "No hay API Keys generadas",
+      "emptyHint": "Genera una para poder subir plugins desde otros equipos.",
+      "lastUsed": "Ultimo uso: {date}",
+      "active": "Activa",
+      "inactive": "Inactiva",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
+      "delete": "Eliminar",
+      "howToTitle": "Como usar las API Keys",
+      "howToPush": "Desde otro ordenador, sube tu plugin al servidor:",
+      "howToLink": "O enlaza un plugin local para desarrollo:"
+    }
+  }
+}

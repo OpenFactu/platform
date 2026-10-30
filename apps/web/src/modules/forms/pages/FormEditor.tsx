@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Badge, Button, EmptyState, PageHeader, SkeletonPage, Switch, Tabs } from '@openfactu/ui';
@@ -16,6 +17,7 @@ const TABS: TabKey[] = ['questions', 'responses', 'settings'];
 
 /** Editor de un formulario, con guardado automático. */
 export const FormEditor: React.FC = () => {
+  const { t } = useI18n();
   const { formId = '' } = useParams();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -33,10 +35,10 @@ export const FormEditor: React.FC = () => {
       <div className="p-4">
         <EmptyState
           icon={<ClipboardList size={18} />}
-          title="Formulario no encontrado"
+          title={t('forms.editor.notFound')}
           action={
             <Button type="button" variant="secondary" onClick={() => navigate('/forms')}>
-              Volver a formularios
+              {t('forms.editor.backToList')}
             </Button>
           }
         />
@@ -59,7 +61,7 @@ export const FormEditor: React.FC = () => {
             // En móvil ya está la flecha de volver de la barra superior.
             className="max-md:hidden"
           >
-            <ArrowLeft size={14} /> Formularios
+            <ArrowLeft size={14} /> {t('forms.nav.list')}
           </Button>
         }
         subtitle={
@@ -68,7 +70,7 @@ export const FormEditor: React.FC = () => {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Switch
-              label="Acepta respuestas"
+              label={t('forms.list.accepting')}
               checked={form.isActive}
               onChange={(isActive) => editor.change({ isActive })}
               disabled={!canWrite}
@@ -79,10 +81,10 @@ export const FormEditor: React.FC = () => {
               size="sm"
               onClick={() => navigate(`/forms/${form.id}/preview`)}
             >
-              <Eye size={14} /> Vista previa
+              <Eye size={14} /> {t('forms.nav.preview')}
             </Button>
             <Button type="button" size="sm" onClick={() => setSharing(true)}>
-              <Share2 size={14} /> Compartir
+              <Share2 size={14} /> {t('forms.editor.share')}
             </Button>
           </div>
         }
@@ -91,15 +93,15 @@ export const FormEditor: React.FC = () => {
             value={tab}
             onChange={(k) => setParams(k === 'questions' ? {} : { tab: k }, { replace: true })}
             items={[
-              { key: 'questions', label: 'Preguntas' },
+              { key: 'questions', label: t('forms.editor.tabs.questions') },
               {
                 key: 'responses',
-                label: 'Respuestas',
+                label: t('forms.settings.responses'),
                 badge: form.responses ? (
                   <Badge variant="accent">{form.responses}</Badge>
                 ) : undefined,
               },
-              { key: 'settings', label: 'Ajustes' },
+              { key: 'settings', label: t('forms.editor.tabs.settings') },
             ]}
           />
         }

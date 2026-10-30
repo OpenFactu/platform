@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -35,6 +36,7 @@ const PRODUCT_TEMPLATE_PATH = '/plantilla-producto';
 
 /** Lista de páginas del site: crear, editar (→ editor), publicar y ver la web. */
 export const Pages: React.FC = () => {
+  const { t } = useI18n();
   const toast = useToast();
   const popup = usePopup();
   const navigate = useNavigate();
@@ -50,7 +52,7 @@ export const Pages: React.FC = () => {
       setSite(s);
       setPages(p);
     } catch {
-      toast.error('Error al cargar la web');
+      toast.error(t('website.pages.loadError'));
     } finally {
       setLoading(false);
     }
@@ -69,27 +71,27 @@ export const Pages: React.FC = () => {
         path: newRow.path.startsWith('/') ? newRow.path : `/${newRow.path}`,
       });
       setNewRow(null);
-      toast.success('Página creada');
+      toast.success(t('website.pages.created'));
       navigate(`/website/editor/${page.id}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al crear la página');
+      toast.error(e instanceof Error ? e.message : t('website.pages.createError'));
     }
   };
 
   const handleDelete = async (page: WebsitePage) => {
     const ok = await popup.confirm({
-      title: 'Eliminar página',
-      message: `¿Eliminar la página "${page.title}"?`,
+      title: t('website.pages.deleteTitle'),
+      message: t('website.pages.deleteMessage', { title: page.title }),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('website.common.delete'),
     });
     if (!ok) return;
     try {
       await websiteApi.deletePage(page.id);
-      toast.success('Página eliminada');
+      toast.success(t('website.pages.deleted'));
       fetchAll();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al eliminar');
+      toast.error(e instanceof Error ? e.message : t('website.media.deleteError'));
     }
   };
 
@@ -109,7 +111,7 @@ export const Pages: React.FC = () => {
     try {
       await Promise.all(next.map((p, i) => websiteApi.updatePage(p.id, { navOrder: i })));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al reordenar');
+      toast.error(e instanceof Error ? e.message : t('website.pages.reorderError'));
       fetchAll();
     }
   };
@@ -120,7 +122,7 @@ export const Pages: React.FC = () => {
       await websiteApi.updatePage(page.id, { showInNav: !page.showInNav });
       fetchAll();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al cambiar visibilidad');
+      toast.error(e instanceof Error ? e.message : t('website.pages.visibilityError'));
     }
   };
 
@@ -130,7 +132,7 @@ export const Pages: React.FC = () => {
     if (existing) return navigate(`/website/editor/${existing.id}`);
     try {
       const page = await websiteApi.createPage({
-        title: 'Plantilla de producto',
+        title: t('website.pages.productTemplate'),
         path: PRODUCT_TEMPLATE_PATH,
       });
       // Diseño de partida: menú + ficha completa (luego se sustituye por piezas si quieren)
@@ -154,10 +156,10 @@ export const Pages: React.FC = () => {
           ],
         } as WebsitePage['blocksDraft'],
       });
-      toast.success('Plantilla creada — al publicarla, todas las fichas /p/… la usarán');
+      toast.success(t('website.pages.templateCreated'));
       navigate(`/website/editor/${page.id}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al crear la plantilla');
+      toast.error(e instanceof Error ? e.message : t('website.pages.templateError'));
     }
   };
 
@@ -165,10 +167,10 @@ export const Pages: React.FC = () => {
     setPublishing(true);
     try {
       const r = await websiteApi.publishAll();
-      toast.success(`Web publicada (${r.pages} páginas)`);
+      toast.success(t('website.pages.sitePublished', { count: r.pages }));
       fetchAll();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al publicar');
+      toast.error(e instanceof Error ? e.message : t('website.editor.publishError'));
     } finally {
       setPublishing(false);
     }
@@ -180,36 +182,40 @@ export const Pages: React.FC = () => {
 
   const columns: TableColumn<WebsitePage>[] = [
     {
-      header: 'Página',
+      header: t('website.pages.page'),
       primary: true,
       cell: (page) => (
         <span className="font-bold text-fg-default text-sm">
           {page.title}
           {page.isHome && (
             <Badge variant="neutral" className="ml-2 text-[10px]">
-              Inicio
+              {t('website.pages.home')}
             </Badge>
           )}
           {page.path === PRODUCT_TEMPLATE_PATH && (
             <Badge variant="info" className="ml-2 text-[10px]">
-              Plantilla de producto
+              {t('website.pages.productTemplate')}
             </Badge>
           )}
         </span>
       ),
     },
-    { header: 'Ruta', accessor: 'path', className: 'font-mono text-xs text-fg-muted' },
     {
-      header: 'Estado',
+      header: t('website.pages.path'),
+      accessor: 'path',
+      className: 'font-mono text-xs text-fg-muted',
+    },
+    {
+      header: t('website.pages.status'),
       cell: (page) =>
         page.status === 'published' ? (
-          <Badge variant="success">Publicada</Badge>
+          <Badge variant="success">{t('website.status.published')}</Badge>
         ) : (
-          <Badge variant="neutral">Borrador</Badge>
+          <Badge variant="neutral">{t('website.status.draft')}</Badge>
         ),
     },
     {
-      header: 'Menú',
+      header: t('website.pages.menu'),
       cell: (page) =>
         page.path === PRODUCT_TEMPLATE_PATH ? null : (
           // La fila entera navega al editor: los controles del menú paran la
@@ -221,7 +227,7 @@ export const Pages: React.FC = () => {
               size="sm"
               onClick={() => handleMove(page, -1)}
               disabled={pages.findIndex((p) => p.id === page.id) === 0}
-              title="Subir en el menú"
+              title={t('website.pages.moveUp')}
             >
               <ArrowUp size={14} />
             </Button>
@@ -231,7 +237,7 @@ export const Pages: React.FC = () => {
               size="sm"
               onClick={() => handleMove(page, 1)}
               disabled={pages.findIndex((p) => p.id === page.id) === pages.length - 1}
-              title="Bajar en el menú"
+              title={t('website.pages.moveDown')}
             >
               <ArrowDown size={14} />
             </Button>
@@ -242,8 +248,8 @@ export const Pages: React.FC = () => {
               onClick={() => handleToggleNav(page)}
               title={
                 page.showInNav === false
-                  ? 'Oculta del menú (visible por URL) — pulsar para mostrar'
-                  : 'Visible en el menú — pulsar para ocultar'
+                  ? t('website.pages.hiddenInMenu')
+                  : t('website.pages.visibleInMenu')
               }
               className={page.showInNav === false ? 'text-fg-subtle' : 'text-accent'}
             >
@@ -256,12 +262,12 @@ export const Pages: React.FC = () => {
 
   const rowActions = (page: WebsitePage): RowAction[] => [
     {
-      label: 'Editar',
+      label: t('website.common.edit'),
       icon: <Pencil size={14} />,
       onClick: () => navigate(`/website/editor/${page.id}`),
     },
     {
-      label: 'Eliminar',
+      label: t('website.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       // La home no se puede borrar: antes era un botón deshabilitado.
@@ -273,11 +279,11 @@ export const Pages: React.FC = () => {
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        eyebrow="Website / Páginas"
-        title={site?.name || 'Mi web'}
+        eyebrow={t('website.pages.eyebrow')}
+        title={site?.name || t('website.pages.mySite')}
         subtitle={
           <>
-            Construye tu web por bloques y publícala en{' '}
+            {t('website.pages.subtitle')}{' '}
             <a
               href={publicUrl}
               target="_blank"
@@ -298,15 +304,15 @@ export const Pages: React.FC = () => {
               variant="secondary"
               onClick={() => window.open(publicUrl, '_blank')}
             >
-              <ExternalLink size={16} className="mr-2" /> Ver web
+              <ExternalLink size={16} className="mr-2" /> {t('website.pages.viewSite')}
             </Button>
             <Button
               type="button"
               variant="secondary"
               onClick={handleProductTemplate}
-              title="Diseña cómo se ven las fichas de producto (/p/…) de la tienda"
+              title={t('website.pages.productTemplateHint')}
             >
-              <Tag size={16} className="mr-2" /> Plantilla de producto
+              <Tag size={16} className="mr-2" /> {t('website.pages.productTemplate')}
             </Button>
             <Button
               type="button"
@@ -314,14 +320,15 @@ export const Pages: React.FC = () => {
               onClick={handlePublishAll}
               disabled={publishing}
             >
-              <Rocket size={16} className="mr-2" /> {publishing ? 'Publicando…' : 'Publicar todo'}
+              <Rocket size={16} className="mr-2" />{' '}
+              {publishing ? t('website.editor.publishing') : t('website.pages.publishAll')}
             </Button>
             <Button
               type="button"
               onClick={() => setNewRow({ title: '', path: '/' })}
               disabled={!!newRow}
             >
-              <Plus size={18} className="mr-2" /> Nueva página
+              <Plus size={18} className="mr-2" /> {t('website.pages.new')}
             </Button>
           </div>
         }
@@ -333,7 +340,7 @@ export const Pages: React.FC = () => {
           data={pages}
           rowActions={rowActions}
           onRowClick={(page) => navigate(`/website/editor/${page.id}`)}
-          emptyMessage="Todavía no hay páginas"
+          emptyMessage={t('website.pages.empty')}
           skeletonRowHeight={24}
           appendRow={
             // El alta rápida ya no es un <tr> con celdas: la Table la pinta
@@ -341,7 +348,7 @@ export const Pages: React.FC = () => {
             newRow ? (
               <div className="flex flex-wrap items-center gap-2 px-4 py-3 bg-bg-muted">
                 <Input
-                  placeholder="Título (Ej: Servicios)"
+                  placeholder={t('website.pages.titlePlaceholder')}
                   value={newRow.title}
                   onChange={(e) => setNewRow({ ...newRow, title: e.target.value })}
                   containerClassName="flex-1 min-w-[180px]"
@@ -357,7 +364,7 @@ export const Pages: React.FC = () => {
                   className="font-mono"
                 />
                 <Button type="button" size="sm" onClick={handleCreate}>
-                  <Save size={14} className="mr-2" /> Crear
+                  <Save size={14} className="mr-2" /> {t('website.pages.create')}
                 </Button>
                 <Button type="button" size="sm" variant="secondary" onClick={() => setNewRow(null)}>
                   <X size={14} />

@@ -12,33 +12,32 @@ const FormPreview = lazy(() =>
 export const formsModule: ModuleManifest = {
   nav: {
     id: 'forms',
-    label: 'Formularios',
+    label: 'forms.nav.label',
     icon: 'ClipboardList',
     featureFlag: 'formsEnabled',
-    description:
-      'Formularios, encuestas y cuestionarios con enlace público: secciones, lógica, archivos y resultados.',
+    description: 'forms.nav.description',
     category: 'Operaciones',
-    subTabs: [{ id: 'forms-list', label: 'Formularios', path: '/forms' }],
+    subTabs: [{ id: 'forms-list', label: 'forms.nav.list', path: '/forms' }],
   },
   routes: [
     {
       pattern: '/forms',
       Component: FormsList,
-      title: 'Formularios',
+      title: 'forms.nav.list',
       iconName: 'ClipboardList',
       permissionPath: '/forms',
     },
     {
       pattern: '/forms/:formId',
       Component: FormEditor,
-      title: 'Formulario',
+      title: 'forms.nav.form',
       iconName: 'ClipboardList',
       permissionPath: '/forms',
     },
     {
       pattern: '/forms/:formId/preview',
       Component: FormPreview,
-      title: 'Vista previa',
+      title: 'forms.nav.preview',
       iconName: 'ClipboardList',
       permissionPath: '/forms',
     },

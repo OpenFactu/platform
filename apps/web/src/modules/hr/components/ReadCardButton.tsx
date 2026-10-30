@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Alert } from '@openfactu/ui';
 import { CreditCard } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   ReaderUsbSession,
   selectReaderPort,
@@ -18,6 +19,7 @@ export function ReadCardButton({
   onRead: (uid: string) => void;
   onReadingChange: (reading: boolean) => void;
 }) {
+  const { t } = useI18n();
   const [reading, setReading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -39,7 +41,7 @@ export function ReadCardButton({
     setReading(true);
     onReadingChange(true);
     setError('');
-    setMessage('Conectando con el lector…');
+    setMessage(t('hrTime.readCard.connecting'));
     let session: ReaderUsbSession | null = null;
     let stage: 'select' | 'open' | 'capture' = 'select';
     try {
@@ -51,14 +53,11 @@ export function ReadCardButton({
       if (abort.signal.aborted) return;
       stage = 'capture';
       const uid = await readCardUid(session, abort.signal, () => {
-        if (alive.current)
-          setMessage(
-            'Acerca una tarjeta al lector. Si ya está apoyada, retírala y vuelve a acercarla. Tienes 30 segundos.',
-          );
+        if (alive.current) setMessage(t('hrTime.readCard.waiting'));
       });
       if (alive.current && !abort.signal.aborted) {
         onRead(uid);
-        setMessage('Tarjeta leída. Pulsa Guardar tarjeta para asignarla a este empleado.');
+        setMessage(t('hrTime.readCard.read'));
       }
     } catch (e) {
       if (alive.current && !abort.signal.aborted) {
@@ -67,7 +66,7 @@ export function ReadCardButton({
           stage === 'capture'
             ? e instanceof Error
               ? e.message
-              : 'No se pudo leer la tarjeta.'
+              : t('hrTime.readCard.readFailed')
             : connectionFailureMessage(e, stage),
         );
       }
@@ -77,7 +76,7 @@ export function ReadCardButton({
       if (alive.current) {
         setReading(false);
         onReadingChange(false);
-        if (abort.signal.aborted) setMessage('Lectura cancelada.');
+        if (abort.signal.aborted) setMessage(t('hrTime.usb.readCancelled'));
       }
     }
   };
@@ -91,7 +90,7 @@ export function ReadCardButton({
           onClick={() => void read()}
         >
           <CreditCard size={16} />
-          {reading ? 'Leyendo tarjeta…' : 'Leer tarjeta'}
+          {reading ? t('hrTime.readCard.reading') : t('hrTime.readCard.readButton')}
         </Button>
         {reading && (
           <Button
@@ -99,17 +98,15 @@ export function ReadCardButton({
             variant="ghost"
             onClick={() => {
               operation.current?.abort();
-              setMessage('Cancelando lectura…');
+              setMessage(t('hrTime.readCard.cancelling'));
             }}
           >
-            Cancelar lectura
+            {t('hrTime.readCard.cancel')}
           </Button>
         )}
       </div>
       <p className="text-xs text-fg-muted">
-        {supported
-          ? 'Conecta el lector por USB a este ordenador. Cierra su configuración USB y el monitor de Arduino. Esta lectura no identifica a nadie en el kiosco.'
-          : 'Para leer por USB, abre esta pantalla en Chrome o Edge de escritorio mediante HTTPS. También puedes introducir el UID manualmente.'}
+        {supported ? t('hrTime.readCard.hintSupported') : t('hrTime.readCard.hintUnsupported')}
       </p>
       {message && (
         <p role="status" aria-live="polite" className="text-sm">

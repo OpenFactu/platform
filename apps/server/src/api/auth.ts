@@ -184,6 +184,7 @@ router.post('/login', async (req, res) => {
         tenantName,
         permissions: effectivePermissions,
         avatarImageUrl: user.avatarImageUrl,
+        locale: user.locale ?? null,
       },
     });
   } catch (error: any) {
@@ -271,6 +272,7 @@ router.post('/switch-tenant', async (req, res) => {
         tenantName: t.name,
         permissions: effectivePermissions,
         avatarImageUrl: user.avatarImageUrl,
+        locale: user.locale ?? null,
       },
     });
   } catch (error: any) {
@@ -351,6 +353,7 @@ router.get('/me', async (req, res) => {
       tenantName,
       permissions: effectivePermissions,
       avatarImageUrl: user.avatarImageUrl,
+      locale: user.locale ?? null,
     });
   } catch (e) {
     res.status(401).json({ error: 'No autorizado' });

@@ -1,0 +1,109 @@
+{
+  "settingsStyleGuide": {
+    "roles": {
+      "text": "Main text, dark backgrounds",
+      "accent": "Main accent, CTAs",
+      "base": "Base background",
+      "section": "Section backgrounds",
+      "dividers": "Dividers",
+      "secondary": "Secondary text"
+    },
+    "semantics": {
+      "success": "Paid · OK",
+      "warning": "Pending · Review",
+      "danger": "Error · Overdue",
+      "info": "Information · Note"
+    },
+    "status": {
+      "paid": "Paid",
+      "pending": "Pending",
+      "overdue": "Overdue"
+    },
+    "cols": {
+      "invoice": "Invoice no.",
+      "client": "Customer",
+      "date": "Issue date",
+      "status": "Status",
+      "amount": "Amount"
+    },
+    "internalUse": "Internal use",
+    "sections": {
+      "identity": "Visual identity",
+      "palette": "Color palette",
+      "typography": "Typography",
+      "components": "UI components",
+      "spacing": "Spacing & Shape",
+      "tokens": "CSS variables"
+    },
+    "monogramVariants": "Monogram variants",
+    "rules": {
+      "correctTitle": "Correct use",
+      "correctBody": "Always use on solid backgrounds. Keep a minimum clear space of 1× the icon size.",
+      "minSizeTitle": "Minimum size",
+      "minSizeBody": "Digital: 24 × 24 px. Print: 8 mm. Below that, legibility is not guaranteed.",
+      "dontTitle": "Don't",
+      "dontBody": "Do not rotate, distort, change colors outside the palette or add effects."
+    },
+    "tealScale": "Primary scale — Teal",
+    "inkScale": "Neutral scale — Ink",
+    "systemColors": "System colors",
+    "semanticsLabel": "Semantic",
+    "displayTitles": "Display / Headings",
+    "bodyUi": "Body / UI",
+    "samples": {
+      "display": "Business management",
+      "h1": "Dashboard",
+      "h2": "Monthly billing summary",
+      "h3": "Latest transactions",
+      "body": "Keirost centralizes all your company processes: invoicing, inventory, accounting and customer management.",
+      "small": "Last updated: 12 Jan 2026 · 14:32"
+    },
+    "buttons": "Buttons",
+    "btn": {
+      "save": "Save",
+      "newInvoice": "New invoice",
+      "export": "Export",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "confirm": "Confirm",
+      "add": "+ Add",
+      "send": "Send",
+      "discard": "Discard"
+    },
+    "badgesLabel": "Statuses · Badges",
+    "badges": {
+      "active": "Active",
+      "draft": "Draft",
+      "review": "In review"
+    },
+    "forms": "Forms",
+    "fields": {
+      "companyName": "Company name",
+      "companyNamePlaceholder": "Example Company Ltd.",
+      "taxId": "Tax ID (NIF)",
+      "amount": "Amount",
+      "amountPlaceholder": "€0.00"
+    },
+    "kpiCards": "KPI cards",
+    "kpi": {
+      "billing": "Billing · month",
+      "billingSub": "January 2026",
+      "billingTrend": "12% vs previous month",
+      "orders": "Open orders",
+      "ordersSub": "23 need attention",
+      "ordersTrend": "5 more than yesterday",
+      "customers": "Active customers",
+      "customersSub": "+8 new this month",
+      "customersTrend": "positive trend"
+    },
+    "dataTable": "Data table",
+    "testToast": "Test toast",
+    "fireToast": "Fire toast",
+    "toggleLoader": "Toggle loader",
+    "loading": "Loading…",
+    "spacingScale": "Spacing scale",
+    "radiusButtons": "Buttons / inputs → 2px",
+    "radiusCards": "Cards / modals → 4–8px",
+    "footer": "BRAND GUIDE v1.0 · 2026 · INTERNAL USE"
+  }
+}

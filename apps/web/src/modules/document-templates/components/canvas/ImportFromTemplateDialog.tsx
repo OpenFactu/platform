@@ -1,6 +1,8 @@
 import { templatesApi } from '../../api';
 import React, { useEffect, useState } from 'react';
+import { SearchInput } from '@openfactu/ui';
 import type { TemplateRow } from '../constants';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   currentId?: string;
@@ -21,6 +23,7 @@ export const ImportFromTemplateDialog: React.FC<Props> = ({
   onPick,
   headers,
 }) => {
+  const { t: tr } = useI18n();
   const [list, setList] = useState<(TemplateRow & { hasCanvas?: boolean })[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -70,7 +73,7 @@ export const ImportFromTemplateDialog: React.FC<Props> = ({
       >
         <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <h2 className="font-bold text-slate-900 dark:text-slate-100">
-            Importar desde otra plantilla
+            {tr('templates.importDialog.title')}
           </h2>
           <button
             onClick={onClose}
@@ -80,21 +83,24 @@ export const ImportFromTemplateDialog: React.FC<Props> = ({
           </button>
         </div>
         <div className="p-3 border-b border-slate-200 dark:border-slate-800">
-          <input
+          <SearchInput
             autoFocus
-            type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nombre o tipo…"
-            className="w-full px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm"
+            onChange={setQuery}
+            placeholder={tr('templates.importDialog.searchPlaceholder')}
+            clearable
           />
         </div>
         <div className="flex-1 overflow-y-auto">
           {loading && (
-            <div className="p-6 text-center text-sm text-slate-400">Cargando plantillas…</div>
+            <div className="p-6 text-center text-sm text-slate-400">
+              {tr('templates.importDialog.loading')}
+            </div>
           )}
           {!loading && filtered.length === 0 && (
-            <div className="p-6 text-center text-sm text-slate-400">Sin plantillas disponibles</div>
+            <div className="p-6 text-center text-sm text-slate-400">
+              {tr('templates.importDialog.empty')}
+            </div>
           )}
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {filtered.map((t) => (
@@ -111,9 +117,7 @@ export const ImportFromTemplateDialog: React.FC<Props> = ({
                   <div className="text-xs text-slate-500 flex items-center gap-2">
                     <span className="font-mono">{t.docType}</span>
                     {!t.hasCanvas && (
-                      <span className="italic">
-                        — sin canvas layout (HTML legacy, no se puede importar)
-                      </span>
+                      <span className="italic">{tr('templates.importDialog.noCanvas')}</span>
                     )}
                   </div>
                 </div>
@@ -123,7 +127,7 @@ export const ImportFromTemplateDialog: React.FC<Props> = ({
                   onClick={() => onPick(t.id)}
                   className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Importar
+                  {tr('templates.importDialog.import')}
                 </button>
               </li>
             ))}

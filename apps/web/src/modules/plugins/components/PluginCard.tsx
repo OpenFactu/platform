@@ -5,6 +5,7 @@ import { PluginIcon } from '@/components/PluginIcon';
 import type { PluginInfo } from '../domain/PluginInfo';
 import type { PluginField } from '../domain/PluginField';
 import type { PluginTable } from '../domain/PluginTable';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface PluginCardProps {
   plugin: PluginInfo;
@@ -23,6 +24,7 @@ export const PluginCard: React.FC<PluginCardProps> = ({
   onToggle,
   isToggling,
 }) => {
+  const { t } = useI18n();
   const extensionCount = fields.length + tables.length;
 
   return (
@@ -61,7 +63,13 @@ export const PluginCard: React.FC<PluginCardProps> = ({
 
           {/* Toggle: Switch porque el cambio se persiste al instante (activa o
               desactiva el plugin en el servidor). */}
-          <span title={plugin.isActive ? 'Desactivar plugin' : 'Activar plugin'}>
+          <span
+            title={
+              plugin.isActive
+                ? t('plugins.card.deactivatePlugin')
+                : t('plugins.card.activatePlugin')
+            }
+          >
             <Switch checked={plugin.isActive} onChange={onToggle} disabled={isToggling} />
           </span>
         </div>
@@ -81,13 +89,13 @@ export const PluginCard: React.FC<PluginCardProps> = ({
           {extensionCount > 0 && (
             <span className="flex items-center gap-1">
               <Database size={12} />
-              {extensionCount} {extensionCount === 1 ? 'extensión' : 'extensiones'} BD
+              {t('plugins.card.dbExtensions', { count: extensionCount })}
             </span>
           )}
           {plugin.ui?.routes?.length > 0 && (
             <span className="flex items-center gap-1">
               <Power size={12} />
-              {plugin.ui.routes.length} {plugin.ui.routes.length === 1 ? 'vista' : 'vistas'} UI
+              {t('plugins.card.uiViews', { count: plugin.ui.routes.length })}
             </span>
           )}
           <span
@@ -95,7 +103,7 @@ export const PluginCard: React.FC<PluginCardProps> = ({
               plugin.isActive ? 'text-success-fg' : 'text-fg-subtle'
             }`}
           >
-            {plugin.isActive ? 'Activo' : 'Inactivo'}
+            {plugin.isActive ? t('plugins.card.active') : t('plugins.card.inactive')}
           </span>
         </div>
       </div>

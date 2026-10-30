@@ -33,6 +33,7 @@ import { useTabs } from '@/context/TabsContext';
 import { useFormat } from '@/hooks/useFormat';
 import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 import type { Shipment, ShipmentEvent, ShipmentPosition } from '../domain/shipment';
 import type { Warehouse as WarehouseType } from '@/modules/inventory/domain/warehouse';
 
@@ -42,6 +43,7 @@ export const ShipmentDetail: React.FC = () => {
   const { openTab } = useTabs();
   const fmt = useFormat();
   const toast = useToast();
+  const { t } = useI18n();
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [positions, setPositions] = useState<ShipmentPosition[]>([]);
   const [events, setEvents] = useState<ShipmentEvent[]>([]);
@@ -154,11 +156,11 @@ export const ShipmentDetail: React.FC = () => {
         cancelDeliveryNote: cancelDn,
       });
       setCancelModal(null);
-      toast.success('Envío cancelado');
+      toast.success(t('logistics.shipmentDetail.cancelled'));
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'No se pudo cancelar');
+      toast.error(msg || t('logistics.shipmentDetail.cancelError'));
     }
   };
 
@@ -181,14 +183,12 @@ export const ShipmentDetail: React.FC = () => {
         reason: pickupModal.reason.trim() || null,
         warehouseId: pickupModal.warehouseId || null,
       });
-      toast.success(
-        `Recogida ${d.code || ''} programada — añádela a una ruta desde el planificador`,
-      );
+      toast.success(t('logistics.shipmentDetail.pickupScheduled', { code: d.code || '' }));
       setPickupModal(null);
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'No se pudo programar la recogida');
+      toast.error(msg || t('logistics.shipmentDetail.pickupError'));
     }
   };
 
@@ -204,15 +204,15 @@ export const ShipmentDetail: React.FC = () => {
       setReturnModal(null);
       toast.success(
         d.deliveryNoteCancelled
-          ? 'Devolución registrada. Albarán anulado y entrada de stock creada.'
+          ? t('logistics.shipmentDetail.returnDnCancelled')
           : d.receiptId
-            ? 'Devolución registrada. GoodsReceipt en borrador. Albarán sigue abierto para reintentar.'
-            : 'Devolución registrada. Crea la entrada de stock a mano.',
+            ? t('logistics.shipmentDetail.returnDraftReceipt')
+            : t('logistics.shipmentDetail.returnManual'),
       );
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'No se pudo marcar como devuelto');
+      toast.error(msg || t('logistics.shipmentDetail.returnError'));
     }
   };
 
@@ -222,11 +222,11 @@ export const ShipmentDetail: React.FC = () => {
     const stage = shipment?.status || 'in_transit';
     try {
       await shipmentsApi.notify(id, { stage });
-      toast.success(`Email enfilado (${stage}). Mira los logs del server.`);
+      toast.success(t('logistics.shipmentDetail.emailQueued', { stage }));
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
       const status = err instanceof ApiError ? err.status : undefined;
-      toast.error(`Error: ${msg || status}`);
+      toast.error(t('logistics.shipmentDetail.errorDetail', { detail: String(msg || status) }));
     }
   };
 
@@ -236,9 +236,9 @@ export const ShipmentDetail: React.FC = () => {
     try {
       await shipmentsApi.update(id, { destinationLat: lat, destinationLng: lng });
       setShipment((prev) => (prev ? { ...prev, destinationLat: lat, destinationLng: lng } : prev));
-      toast.success('Destino actualizado');
+      toast.success(t('logistics.shipmentDetail.destinationUpdated'));
     } catch {
-      toast.error('No se pudo guardar el destino');
+      toast.error(t('logistics.shipmentDetail.destinationError'));
     }
   };
 
@@ -257,7 +257,7 @@ export const ShipmentDetail: React.FC = () => {
   if (!shipment) {
     return (
       <div className="p-4">
-        <p className="text-slate-500">Envío no encontrado.</p>
+        <p className="text-slate-500">{t('logistics.shipmentDetail.notFound')}</p>
       </div>
     );
   }
@@ -274,31 +274,31 @@ export const ShipmentDetail: React.FC = () => {
     // Una recogida invierte el sentido: "entregado" significa que RECOGIMOS
     // el paquete, "en camino" que vamos hacia el cliente a por él.
     const pickupLabels: Record<string, string> = {
-      pending: 'Recogida pendiente',
-      dispatched: 'Asignada a ruta',
-      in_transit: 'De camino a recoger',
-      out_for_delivery: 'Recogiendo hoy',
-      delivered: 'Recogido',
-      postponed: 'Recogida aplazada',
+      pending: t('logistics.shipmentDetail.pickupStatus.pending'),
+      dispatched: t('logistics.shipmentDetail.pickupStatus.dispatched'),
+      in_transit: t('logistics.shipmentDetail.pickupStatus.in_transit'),
+      out_for_delivery: t('logistics.shipmentDetail.pickupStatus.out_for_delivery'),
+      delivered: t('logistics.shipmentDetail.pickupStatus.delivered'),
+      postponed: t('logistics.shipmentDetail.pickupStatus.postponed'),
     };
     const label =
       (isPickup ? pickupLabels[shipment.preparationStatus as string] : undefined) ||
       {
-        draft: 'Borrador',
-        pending: 'Pendiente',
-        picking: 'Preparando',
-        packed: 'Empaquetado',
-        ready: 'Listo',
-        dispatched: 'Despachado',
-        in_transit: 'En tránsito',
-        out_for_delivery: 'En reparto',
-        postponed: 'Aplazado',
-        delivered: 'Entregado',
-        receiving: 'Recepcionando',
-        received: 'Recibido',
-        returned: 'Devuelto',
-        cancelled: 'Cancelado',
-        exception: 'Incidencia',
+        draft: t('logistics.shipmentDetail.status.draft'),
+        pending: t('logistics.shipmentDetail.status.pending'),
+        picking: t('logistics.shipmentDetail.status.picking'),
+        packed: t('logistics.shipmentDetail.status.packed'),
+        ready: t('logistics.shipmentDetail.status.ready'),
+        dispatched: t('logistics.shipmentDetail.status.dispatched'),
+        in_transit: t('logistics.shipmentDetail.status.in_transit'),
+        out_for_delivery: t('logistics.shipmentDetail.status.out_for_delivery'),
+        postponed: t('logistics.shipmentDetail.status.postponed'),
+        delivered: t('logistics.shipmentDetail.status.delivered'),
+        receiving: t('logistics.shipmentDetail.status.receiving'),
+        received: t('logistics.shipmentDetail.status.received'),
+        returned: t('logistics.shipmentDetail.status.returned'),
+        cancelled: t('logistics.shipmentDetail.status.cancelled'),
+        exception: t('logistics.shipmentDetail.status.exception'),
       }[shipment.preparationStatus as string] ||
       shipment.preparationStatus;
     const variant =
@@ -313,11 +313,11 @@ export const ShipmentDetail: React.FC = () => {
   // Mismas acciones que la barra de escritorio, en forma de items para el
   // DropdownMenu del móvil (mismas condiciones de visibilidad).
   const actionItems = [
-    { label: 'Refrescar', icon: <RefreshCw size={14} />, onClick: load },
+    { label: t('logistics.shipmentDetail.refresh'), icon: <RefreshCw size={14} />, onClick: load },
     ...(shipment.status !== 'cancelled' && shipment.status !== 'returned'
       ? [
           {
-            label: '↩ Devolver',
+            label: `↩ ${t('logistics.shipmentDetail.return')}`,
             onClick: () => setReturnModal({ reason: '', cancelDn: false }),
           },
         ]
@@ -325,14 +325,14 @@ export const ShipmentDetail: React.FC = () => {
     ...(!isInbound &&
     shipment.kind !== 'pickup_return' &&
     ['delivered', 'exception'].includes(shipment.status)
-      ? [{ label: '📦 Programar recogida', onClick: openPickupModal }]
+      ? [{ label: `📦 ${t('logistics.shipmentDetail.schedulePickup')}`, onClick: openPickupModal }]
       : []),
     ...(shipment.status !== 'cancelled' &&
     shipment.status !== 'delivered' &&
     shipment.status !== 'returned'
       ? [
           {
-            label: '✕ Cancelar',
+            label: `✕ ${t('logistics.shipmentDetail.cancel')}`,
             destructive: true,
             onClick: () => setCancelModal({ reason: '', cancelDn: false }),
           },
@@ -347,8 +347,12 @@ export const ShipmentDetail: React.FC = () => {
         divider
         title={
           <>
-            {isInbound ? 'Recepción' : isPickup ? 'Recogida' : 'Envío propio'} ·{' '}
-            {shipment.trackingNumber || (shipment.id || '').slice(0, 8)}
+            {isInbound
+              ? t('logistics.shipmentDetail.kind.inbound')
+              : isPickup
+                ? t('logistics.shipmentDetail.kind.pickup')
+                : t('logistics.shipmentDetail.kind.own')}{' '}
+            · {shipment.trackingNumber || (shipment.id || '').slice(0, 8)}
             {/* El Badge de estado va con el título y no en `subtitle`: PageHeader
                 pinta el subtítulo dentro de un <p> y Badge es un <div>, que el
                 navegador cerraría en falso rompiendo la línea. */}
@@ -362,20 +366,26 @@ export const ShipmentDetail: React.FC = () => {
             variant="outline"
             size="sm"
             onClick={() => openTab('/logistics')}
-            title="Volver al centro logístico"
+            title={t('logistics.shipmentDetail.backToHub')}
           >
             <ArrowLeft size={14} />
           </Button>
         }
         subtitle={
           <span className="flex items-center gap-2 flex-wrap">
-            {!isInbound && shipment.driverName && <span>Conductor: {shipment.driverName}</span>}
+            {!isInbound && shipment.driverName && (
+              <span>
+                {t('logistics.shipmentDetail.driverLabel', { name: shipment.driverName })}
+              </span>
+            )}
             {!isInbound && shipment.vehiclePlate && <span>· {shipment.vehiclePlate}</span>}
             {isInbound && shipment.carrier && shipment.carrier !== 'propio' && (
-              <span>Transportista: {shipment.carrier}</span>
+              <span>{t('logistics.shipmentDetail.carrierLabel', { name: shipment.carrier })}</span>
             )}
             {isInbound && shipment.trackingNumber && (
-              <span className="font-mono">Tracking: {shipment.trackingNumber}</span>
+              <span className="font-mono">
+                {t('logistics.shipmentDetail.trackingLabel', { code: shipment.trackingNumber })}
+              </span>
             )}
           </span>
         }
@@ -392,7 +402,7 @@ export const ShipmentDetail: React.FC = () => {
                     onClick={() => setCancelModal({ reason: '', cancelDn: false })}
                     className="flex items-center gap-2 !text-rose-600"
                   >
-                    ✕ Cancelar
+                    ✕ {t('logistics.shipmentDetail.cancel')}
                   </Button>
                 )}
               {shipment.status !== 'cancelled' && shipment.status !== 'returned' && (
@@ -402,7 +412,7 @@ export const ShipmentDetail: React.FC = () => {
                   onClick={() => setReturnModal({ reason: '', cancelDn: false })}
                   className="flex items-center gap-2 !text-amber-700"
                 >
-                  ↩ Devolver
+                  ↩ {t('logistics.shipmentDetail.return')}
                 </Button>
               )}
               {!isInbound &&
@@ -414,7 +424,7 @@ export const ShipmentDetail: React.FC = () => {
                     onClick={openPickupModal}
                     className="flex items-center gap-2 !text-purple-700"
                   >
-                    📦 Programar recogida
+                    📦 {t('logistics.shipmentDetail.schedulePickup')}
                   </Button>
                 )}
               <Button
@@ -423,14 +433,19 @@ export const ShipmentDetail: React.FC = () => {
                 onClick={load}
                 className="flex items-center gap-2"
               >
-                <RefreshCw size={14} /> Refrescar
+                <RefreshCw size={14} /> {t('logistics.shipmentDetail.refresh')}
               </Button>
             </div>
             {/* Móvil: kebab con las mismas acciones. DropdownMenu ya gestiona
                 apertura, cierre al elegir y click fuera. */}
             <div className="md:hidden">
               <DropdownMenu align="end" items={actionItems}>
-                <Button type="button" variant="outline" size="sm" aria-label="Más acciones">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-label={t('logistics.shipmentDetail.moreActions')}
+                >
                   <MoreVertical size={16} />
                 </Button>
               </DropdownMenu>
@@ -461,8 +476,8 @@ export const ShipmentDetail: React.FC = () => {
                   className="absolute z-[9] bg-amber-50 border border-amber-300 text-amber-900 rounded-lg px-3 py-2 text-xs shadow-md"
                   style={{ top: 66, left: 10, right: 10, maxWidth: 380 }}
                 >
-                  <b>Sin pin de destino.</b> Usa el buscador arriba o toca en el mapa para colocarlo
-                  sobre la puerta del cliente.
+                  <b>{t('logistics.shipmentDetail.noPinTitle')}</b>{' '}
+                  {t('logistics.shipmentDetail.noPinHint')}
                 </div>
               )}
             <BaseMap
@@ -483,7 +498,9 @@ export const ShipmentDetail: React.FC = () => {
               {shipment.lastLat != null && shipment.lastLng != null && (
                 <Marker longitude={shipment.lastLng} latitude={shipment.lastLat} anchor="center">
                   <div
-                    title={`Conductor — ${fmt.date(shipment.lastLocationAt)}`}
+                    title={t('logistics.shipmentDetail.driverMarker', {
+                      date: fmt.date(shipment.lastLocationAt),
+                    })}
                     style={{
                       width: 16,
                       height: 16,
@@ -504,7 +521,7 @@ export const ShipmentDetail: React.FC = () => {
                   onDragEnd={(e) => saveDestination(e.lngLat.lat, e.lngLat.lng)}
                 >
                   <div
-                    title="Arrastra el pin para corregirlo"
+                    title={t('logistics.shipmentDetail.dragPin')}
                     style={{
                       fontSize: 26,
                       lineHeight: 1,
@@ -538,10 +555,15 @@ export const ShipmentDetail: React.FC = () => {
                 <PackageCheck size={24} className="text-emerald-600 dark:text-emerald-300" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-base font-black text-fg-default">Recepción de mercancía</h3>
+                <h3 className="text-base font-black text-fg-default">
+                  {t('logistics.shipmentDetail.inbound.title')}
+                </h3>
                 <p className="text-xs text-fg-muted mt-0.5">
-                  El proveedor entrega en tus instalaciones. Verifica cantidades en{' '}
-                  <b>Preparación</b> y pulsa <b>Recibir</b> cuando esté todo conforme.
+                  {t('logistics.shipmentDetail.inbound.hint1')}{' '}
+                  <b>{t('logistics.shipmentDetail.inbound.preparation')}</b>{' '}
+                  {t('logistics.shipmentDetail.inbound.hint2')}{' '}
+                  <b>{t('logistics.shipmentDetail.inbound.receive')}</b>{' '}
+                  {t('logistics.shipmentDetail.inbound.hint3')}
                 </p>
               </div>
             </div>
@@ -549,15 +571,18 @@ export const ShipmentDetail: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border-subtle">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
-                  <Warehouse className="inline mr-1" size={11} /> Punto de recepción
+                  <Warehouse className="inline mr-1" size={11} />{' '}
+                  {t('logistics.shipmentDetail.inbound.receivingPoint')}
                 </div>
                 <div className="text-sm font-semibold text-fg-default">
-                  {shipment.destinationAddress || 'Tu almacén'}
+                  {shipment.destinationAddress ||
+                    t('logistics.shipmentDetail.inbound.yourWarehouse')}
                 </div>
               </div>
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
-                  <TruckIcon className="inline mr-1" size={11} /> Transportista del proveedor
+                  <TruckIcon className="inline mr-1" size={11} />{' '}
+                  {t('logistics.shipmentDetail.inbound.supplierCarrier')}
                 </div>
                 <div className="text-sm font-semibold text-fg-default">
                   {shipment.carrier && shipment.carrier !== 'propio' ? shipment.carrier : '—'}
@@ -570,7 +595,7 @@ export const ShipmentDetail: React.FC = () => {
               </div>
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
-                  Albarán origen
+                  {t('logistics.shipmentDetail.inbound.sourceNote')}
                 </div>
                 <div className="text-xs font-mono text-fg-body">
                   {shipment.sourceDocId ? String(shipment.sourceDocId).slice(0, 8) + '…' : '—'}
@@ -578,10 +603,12 @@ export const ShipmentDetail: React.FC = () => {
               </div>
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
-                  Recepción
+                  {t('logistics.shipmentDetail.inbound.reception')}
                 </div>
                 <div className="text-xs text-fg-body">
-                  {shipment.receivedAt ? fmt.date(shipment.receivedAt) : 'Pendiente de verificar'}
+                  {shipment.receivedAt
+                    ? fmt.date(shipment.receivedAt)
+                    : t('logistics.shipmentDetail.inbound.pendingVerification')}
                 </div>
               </div>
             </div>
@@ -595,15 +622,22 @@ export const ShipmentDetail: React.FC = () => {
             <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
               {isInbound ? (
                 <>
-                  <Warehouse size={11} /> Recepción en
+                  <Warehouse size={11} /> {t('logistics.shipmentDetail.receivingAt')}
                 </>
               ) : (
-                <>📍 {isPickup ? 'Dirección de recogida' : 'Dirección de envío'}</>
+                <>
+                  📍{' '}
+                  {isPickup
+                    ? t('logistics.shipmentDetail.pickupAddress')
+                    : t('logistics.shipmentDetail.shippingAddress')}
+                </>
               )}
             </div>
             <div className="text-sm font-semibold text-fg-default whitespace-pre-line">
               {shipment.destinationAddress || (
-                <span className="text-slate-400 italic font-normal">Sin dirección asignada</span>
+                <span className="text-slate-400 italic font-normal">
+                  {t('logistics.shipmentDetail.noAddress')}
+                </span>
               )}
             </div>
             {shipment.destinationLat != null && shipment.destinationLng != null && (
@@ -622,10 +656,11 @@ export const ShipmentDetail: React.FC = () => {
           {!isInbound && (
             <Card bodyClassName="p-4 space-y-2">
               <div className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-                Reporte de posición
+                {t('logistics.shipmentDetail.positionReport')}
               </div>
               <div className="text-[11px] text-fg-body">
-                La app del conductor (u otro tracker) debe hacer <code>POST</code> con lat/lng a:
+                {t('logistics.shipmentDetail.positionHintBefore')} <code>POST</code>{' '}
+                {t('logistics.shipmentDetail.positionHintAfter')}
               </div>
               <div className="font-mono text-[10px] bg-bg-muted border border-border-default rounded p-2 break-all text-fg-body">
                 {trackUrl}
@@ -633,7 +668,7 @@ export const ShipmentDetail: React.FC = () => {
               <CopyButton
                 value={shipment?.reportToken || ''}
                 variant="secondary"
-                label="Copiar token"
+                label={t('logistics.shipmentDetail.copyToken')}
                 className="w-full"
               />
               <Button
@@ -642,18 +677,20 @@ export const ShipmentDetail: React.FC = () => {
                 onClick={sendTestNotification}
                 className="flex items-center gap-2 w-full mt-2"
               >
-                ✉ Enviar notificación al destinatario
+                ✉ {t('logistics.shipmentDetail.sendNotification')}
               </Button>
             </Card>
           )}
 
           <Card bodyClassName="p-0">
             <div className="px-4 py-2 border-b border-border-subtle text-[10px] font-black uppercase tracking-wider text-slate-500">
-              Eventos ({events.length})
+              {t('logistics.shipmentDetail.events', { count: events.length })}
             </div>
             <ul className="max-h-[300px] overflow-auto">
               {events.length === 0 ? (
-                <li className="px-4 py-3 text-xs text-slate-400">Sin eventos.</li>
+                <li className="px-4 py-3 text-xs text-slate-400">
+                  {t('logistics.shipmentDetail.noEvents')}
+                </li>
               ) : (
                 events.map((e) => (
                   <li
@@ -680,14 +717,14 @@ export const ShipmentDetail: React.FC = () => {
       <Modal
         isOpen={!!cancelModal}
         onClose={() => setCancelModal(null)}
-        title="Cancelar envío"
-        subtitle="Se incluye el motivo en el email al destinatario y en los webhooks."
+        title={t('logistics.shipmentDetail.cancelModal.title')}
+        subtitle={t('logistics.shipmentDetail.cancelModal.subtitle')}
       >
         {cancelModal && (
           <div className="space-y-4">
             <Input
-              label="Motivo (opcional)"
-              placeholder="Ej: cliente pidió cancelar, error en la preparación…"
+              label={t('logistics.shipmentDetail.cancelModal.reason')}
+              placeholder={t('logistics.shipmentDetail.cancelModal.reasonPlaceholder')}
               value={cancelModal.reason}
               onChange={(e) => setCancelModal({ ...cancelModal, reason: e.target.value })}
             />
@@ -701,19 +738,19 @@ export const ShipmentDetail: React.FC = () => {
                   className="mt-1"
                 />
                 <span className="text-xs text-fg-body">
-                  También anular el albarán asociado.
+                  {t('logistics.shipmentDetail.cancelModal.cancelDn')}
                   <span className="block text-[11px] text-slate-500 mt-0.5">
-                    Desmarcado = se mantiene el albarán para trazabilidad y poder re-preparar.
+                    {t('logistics.shipmentDetail.cancelModal.cancelDnHint')}
                   </span>
                 </span>
               </label>
             )}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setCancelModal(null)}>
-                Volver
+                {t('logistics.shipmentDetail.back')}
               </Button>
-              <Button onClick={submitCancel} className="!bg-rose-600 hover:!bg-rose-700">
-                ✕ Cancelar envío
+              <Button variant="danger" onClick={submitCancel}>
+                ✕ {t('logistics.shipmentDetail.cancelModal.title')}
               </Button>
             </div>
           </div>
@@ -724,14 +761,14 @@ export const ShipmentDetail: React.FC = () => {
       <Modal
         isOpen={!!returnModal}
         onClose={() => setReturnModal(null)}
-        title="Registrar devolución"
-        subtitle="Crea una entrada de stock (GoodsReceipt en borrador) con la mercancía devuelta."
+        title={t('logistics.shipmentDetail.returnModal.title')}
+        subtitle={t('logistics.shipmentDetail.returnModal.subtitle')}
       >
         {returnModal && (
           <div className="space-y-4">
             <Input
-              label="Motivo"
-              placeholder="Rechazo del cliente, dañado, dirección errónea…"
+              label={t('logistics.shipmentDetail.reason')}
+              placeholder={t('logistics.shipmentDetail.returnModal.reasonPlaceholder')}
               value={returnModal.reason}
               onChange={(e) => setReturnModal({ ...returnModal, reason: e.target.value })}
             />
@@ -743,20 +780,19 @@ export const ShipmentDetail: React.FC = () => {
                   className="mt-1"
                 />
                 <span className="text-xs text-fg-body">
-                  Devolución definitiva — anular también el albarán.
+                  {t('logistics.shipmentDetail.returnModal.cancelDn')}
                   <span className="block text-[11px] text-slate-500 mt-0.5">
-                    Desmarcado = albarán sigue abierto para poder reintentar el reparto más
-                    adelante.
+                    {t('logistics.shipmentDetail.returnModal.cancelDnHint')}
                   </span>
                 </span>
               </label>
             )}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setReturnModal(null)}>
-                Volver
+                {t('logistics.shipmentDetail.back')}
               </Button>
-              <Button onClick={submitReturn} className="!bg-amber-600 hover:!bg-amber-700">
-                ↩ Registrar devolución
+              <Button variant="accent" onClick={submitReturn}>
+                ↩ {t('logistics.shipmentDetail.returnModal.title')}
               </Button>
             </div>
           </div>
@@ -768,18 +804,19 @@ export const ShipmentDetail: React.FC = () => {
       <Modal
         isOpen={!!pickupModal}
         onClose={() => setPickupModal(null)}
-        title="Programar recogida"
-        subtitle="Se crea un envío de recogida al mismo destino. El conductor verá «Recoger de» en su app y, al recogerlo, se generará la entrada de stock en borrador."
+        title={t('logistics.shipmentDetail.schedulePickup')}
+        subtitle={t('logistics.shipmentDetail.pickupModal.subtitle')}
       >
         {pickupModal && (
           <div className="space-y-4">
             <div className="text-xs text-fg-body rounded-lg bg-bg-muted border border-border-default px-3 py-2">
-              Recoger en: <b>{shipment.destinationAddress || '—'}</b>
+              {t('logistics.shipmentDetail.pickupModal.collectAt')}{' '}
+              <b>{shipment.destinationAddress || '—'}</b>
               {shipment.recipientName ? ` · ${shipment.recipientName}` : ''}
             </div>
             <Input
-              label="Motivo"
-              placeholder="Contenido incorrecto, producto dañado…"
+              label={t('logistics.shipmentDetail.reason')}
+              placeholder={t('logistics.shipmentDetail.pickupModal.reasonPlaceholder')}
               value={pickupModal.reason}
               onChange={(e) => setPickupModal({ ...pickupModal, reason: e.target.value })}
             />
@@ -788,7 +825,7 @@ export const ShipmentDetail: React.FC = () => {
                   El vacío es válido (lo deduce el backend del albarán origen),
                   así que va `clearable`. */}
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Almacén de retorno
+                {t('logistics.shipmentDetail.pickupModal.returnWarehouse')}
               </label>
               <SearchableSelect
                 options={warehouses.map((w: any) => ({
@@ -800,18 +837,18 @@ export const ShipmentDetail: React.FC = () => {
                 onChange={(v) => setPickupModal({ ...pickupModal, warehouseId: v })}
                 placeholder={
                   shipment.deliveryNoteId
-                    ? 'Automático (almacén del albarán origen)'
-                    : '— elige almacén —'
+                    ? t('logistics.shipmentDetail.pickupModal.autoWarehouse')
+                    : t('logistics.shipmentDetail.pickupModal.chooseWarehouse')
                 }
                 clearable
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setPickupModal(null)}>
-                Volver
+                {t('logistics.shipmentDetail.back')}
               </Button>
               <Button onClick={submitPickup} className="!bg-purple-600 hover:!bg-purple-700">
-                📦 Programar recogida
+                📦 {t('logistics.shipmentDetail.schedulePickup')}
               </Button>
             </div>
           </div>

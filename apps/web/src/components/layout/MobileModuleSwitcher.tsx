@@ -5,6 +5,7 @@ import { PluginIcon } from '../PluginIcon';
 import { iconNameFor } from '../../modules/routeLookup';
 import type { SubTab } from '../../modules/registry';
 import { useModuleSubTabs } from './useModuleSubTabs';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Selector de subsecciones para móvil: sustituye a la fila de chips con scroll
@@ -14,6 +15,7 @@ import { useModuleSubTabs } from './useModuleSubTabs';
 export const MobileModuleSwitcher: React.FC<{ fallbackLabel: string }> = ({ fallbackLabel }) => {
   const { active, subTabs, activeId, openTab } = useModuleSubTabs();
   const [open, setOpen] = useState(false);
+  const { t: tr } = useI18n();
 
   // Agrupa respetando el orden de aparición; sin `group` va en un bloque suelto.
   const groups = useMemo(() => {
@@ -49,7 +51,7 @@ export const MobileModuleSwitcher: React.FC<{ fallbackLabel: string }> = ({ fall
         onClick={() => setOpen(true)}
         className="flex min-w-0 items-center gap-1.5 rounded-xs px-1 py-1 hover:bg-bg-hover transition-colors"
         aria-haspopup="dialog"
-        aria-label={`${title}: cambiar de sección`}
+        aria-label={tr('app.header.switchSection', { title })}
       >
         {label}
         <ChevronDown size={14} className="shrink-0 text-fg-muted" />

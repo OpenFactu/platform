@@ -30,6 +30,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate, formatDateTime } from '@/i18n/format';
 import type { Platform } from '../domain/platform';
 import type { StagingArea, StagingAreaItem } from '../domain/stagingArea';
 import type { Package } from '../domain/package';
@@ -41,6 +43,7 @@ export const StagingAreasTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const popup = usePopup();
+  const { t, locale } = useI18n();
   const [rows, setRows] = useState<StagingArea[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -106,22 +109,24 @@ export const StagingAreasTab: React.FC = () => {
       const d = editing
         ? await stagingAreasApi.update(editing.id, form)
         : await stagingAreasApi.create(form);
-      toast.success(editing ? 'Acopio actualizado' : `Acopio ${d.code} creado`);
+      toast.success(
+        editing ? t('logistics.staging.updated') : t('logistics.staging.created', { code: d.code }),
+      );
       setShowModal(false);
       setForm({});
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error');
+      toast.error(msg || t('logistics.common.error'));
     }
   };
 
   const remove = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar acopio',
-      message: '¿Eliminar el acopio?',
+      title: t('logistics.staging.deleteTitle'),
+      message: t('logistics.staging.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('logistics.common.delete'),
     });
     if (!ok) return;
     await stagingAreasApi.remove(id);
@@ -136,7 +141,7 @@ export const StagingAreasTab: React.FC = () => {
       const { blob } = await stagingAreasApi.qrPng(area.id);
       imgUrl = URL.createObjectURL(blob);
     } catch {
-      toast.error('No se pudo cargar el QR');
+      toast.error(t('logistics.staging.qrLoadError'));
     }
     setQrFor({ id: area.id, name: area.name, payload, imgUrl });
   };
@@ -151,12 +156,12 @@ export const StagingAreasTab: React.FC = () => {
     try {
       p = await stagingAreasApi.payload(area.id);
     } catch {
-      toast.error('No se pudo cargar el acopio');
+      toast.error(t('logistics.staging.loadError'));
       return;
     }
     const w = window.open('', '_blank');
     if (!w) {
-      toast.error('El navegador bloqueó la ventana emergente');
+      toast.error(t('logistics.staging.popupBlocked'));
       return;
     }
     const esc = (s: any) =>
@@ -182,10 +187,10 @@ export const StagingAreasTab: React.FC = () => {
         const s = sid !== '__none__' ? shipmentMap.get(sid) : null;
         return `
           <section class="ship">
-            <h3>${s ? `Envío ${esc(s.code || s.id.slice(0, 8))}` : 'Paquetes sin envío'}</h3>
+            <h3>${s ? esc(t('logistics.staging.print.shipment', { code: s.code || s.id.slice(0, 8) })) : esc(t('logistics.staging.print.noShipment'))}</h3>
             ${s?.destinationAddress ? `<div class="addr">${esc(s.destinationAddress)}</div>` : ''}
             <table>
-              <thead><tr><th>Código</th><th>Estado</th><th class="r">Peso</th><th>Sellado</th></tr></thead>
+              <thead><tr><th>${esc(t('logistics.staging.print.code'))}</th><th>${esc(t('logistics.staging.print.status'))}</th><th class="r">${esc(t('logistics.staging.print.weight'))}</th><th>${esc(t('logistics.staging.print.sealed'))}</th></tr></thead>
               <tbody>
                 ${pkgs
                   .map(
@@ -194,7 +199,7 @@ export const StagingAreasTab: React.FC = () => {
                     <td><code>${esc(pk.code)}</code></td>
                     <td>${esc(pk.status)}</td>
                     <td class="r">${pk.weightKg != null ? esc(pk.weightKg) + ' kg' : '—'}</td>
-                    <td>${pk.sealedAt ? esc(new Date(pk.sealedAt).toLocaleString('es-ES')) : '—'}</td>
+                    <td>${pk.sealedAt ? esc(formatDateTime(pk.sealedAt)) : '—'}</td>
                   </tr>`,
                   )
                   .join('')}
@@ -207,13 +212,13 @@ export const StagingAreasTab: React.FC = () => {
     const routesList = (p.routes || [])
       .map(
         (r: any) =>
-          `<li><b>${esc(r.code)}</b> · ${esc(r.name || '—')} · ${esc(r.driverName || '— sin driver —')}${r.vehiclePlate ? ` · ${esc(r.vehiclePlate)}` : ''}</li>`,
+          `<li><b>${esc(r.code)}</b> · ${esc(r.name || '—')} · ${esc(r.driverName || t('logistics.staging.noDriver'))}${r.vehiclePlate ? ` · ${esc(r.vehiclePlate)}` : ''}</li>`,
       )
       .join('');
 
     w.document.write(`<!doctype html>
-<html lang="es"><head><meta charset="utf-8"/>
-<title>Packing list · ${esc(p.staging?.name || '')}</title>
+<html lang="${locale}"><head><meta charset="utf-8"/>
+<title>${esc(t('logistics.staging.print.packingList'))} · ${esc(p.staging?.name || '')}</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color:#0f172a; margin: 0; padding: 24px; }
@@ -237,25 +242,25 @@ export const StagingAreasTab: React.FC = () => {
 </style></head><body>
 <header>
   <div>
-    <h1>Packing list</h1>
+    <h1>${esc(t('logistics.staging.print.packingList'))}</h1>
     <div class="sub">${esc(p.staging?.name || '')} · <code>${esc(p.staging?.code || '')}</code></div>
   </div>
-  <div class="sub">${new Date().toLocaleString('es-ES')}</div>
+  <div class="sub">${formatDateTime(new Date())}</div>
 </header>
 
-<h2>Rutas asignadas</h2>
-${routesList ? `<ul>${routesList}</ul>` : '<div class="sub">— sin ruta asignada todavía —</div>'}
+<h2>${esc(t('logistics.staging.print.assignedRoutes'))}</h2>
+${routesList ? `<ul>${routesList}</ul>` : `<div class="sub">${esc(t('logistics.staging.print.noRoute'))}</div>`}
 
-<h2>Contenido</h2>
-${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
+<h2>${esc(t('logistics.staging.print.contents'))}</h2>
+${shipmentBlocks || `<div class="sub">${esc(t('logistics.staging.print.empty'))}</div>`}
 
 <div class="totals">
-  <b>Total paquetes:</b> ${p.packages?.length || 0} · <b>Peso total:</b> ${totalWeight.toFixed(2)} kg · <b>Envíos:</b> ${p.shipments?.length || 0}
+  <b>${esc(t('logistics.staging.print.totalPackages'))}</b> ${p.packages?.length || 0} · <b>${esc(t('logistics.staging.print.totalWeight'))}</b> ${totalWeight.toFixed(2)} kg · <b>${esc(t('logistics.staging.print.shipments'))}</b> ${p.shipments?.length || 0}
 </div>
 
 <div class="sign">
-  <div>Firma del almacén</div>
-  <div>Firma del transportista</div>
+  <div>${esc(t('logistics.staging.print.warehouseSignature'))}</div>
+  <div>${esc(t('logistics.staging.print.carrierSignature'))}</div>
 </div>
 
 <script>
@@ -276,18 +281,18 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
     try {
       p = await stagingAreasApi.payload(area.id);
     } catch {
-      toast.error('No se pudo cargar el acopio');
+      toast.error(t('logistics.staging.loadError'));
       return;
     }
     const pkgs = (p.packages || []) as any[];
     if (pkgs.length === 0) {
-      toast.error('Este acopio no tiene paquetes');
+      toast.error(t('logistics.staging.noPackages'));
       return;
     }
     const shipMap = new Map<string, any>((p.shipments || []).map((s: any) => [s.id, s]));
     const w = window.open('', '_blank');
     if (!w) {
-      toast.error('El navegador bloqueó la ventana emergente');
+      toast.error(t('logistics.staging.popupBlocked'));
       return;
     }
     const esc = (s: any) =>
@@ -300,39 +305,39 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
       .map((pk) => {
         const s = pk.shipmentId ? shipMap.get(pk.shipmentId) : null;
         const trackingOrId = s ? s.code || s.id.slice(0, 8) : '—';
-        const address = s?.destinationAddress || 'SIN DIRECCIÓN';
+        const address = s?.destinationAddress || t('logistics.staging.print.noAddress');
         const qrPayload = JSON.stringify({ v: 1, type: 'package', id: pk.id, code: pk.code });
         const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrPayload)}`;
         return `
           <section class="label">
             <header>
-              <div class="brand">KEIROST · ENTREGA</div>
+              <div class="brand">KEIROST · ${esc(t('logistics.staging.print.deliveryBrand'))}</div>
               <code>${esc(pk.code)}</code>
             </header>
             <div class="row">
               <img src="${qrSrc}" alt="qr" class="qr"/>
               <div class="info">
-                <div class="field"><span class="k">Envío</span><span class="v mono">${esc(trackingOrId)}</span></div>
-                <div class="field"><span class="k">Peso</span><span class="v">${pk.weightKg != null ? esc(pk.weightKg) + ' kg' : '—'}</span></div>
-                <div class="field"><span class="k">Estado</span><span class="v">${esc(pk.status)}</span></div>
-                <div class="field"><span class="k">Acopio</span><span class="v">${esc(area.name)}</span></div>
+                <div class="field"><span class="k">${esc(t('logistics.staging.print.labelShipment'))}</span><span class="v mono">${esc(trackingOrId)}</span></div>
+                <div class="field"><span class="k">${esc(t('logistics.staging.print.weight'))}</span><span class="v">${pk.weightKg != null ? esc(pk.weightKg) + ' kg' : '—'}</span></div>
+                <div class="field"><span class="k">${esc(t('logistics.staging.print.status'))}</span><span class="v">${esc(pk.status)}</span></div>
+                <div class="field"><span class="k">${esc(t('logistics.staging.print.area'))}</span><span class="v">${esc(area.name)}</span></div>
               </div>
             </div>
             <div class="addr">
-              <div class="addr-label">DESTINO</div>
+              <div class="addr-label">${esc(t('logistics.staging.print.destination'))}</div>
               <div class="addr-text">${esc(address)}</div>
             </div>
             <footer>
-              <span class="ts">${new Date().toLocaleString('es-ES')}</span>
-              <span class="hint">Escanea el QR con la app del repartidor</span>
+              <span class="ts">${formatDateTime(new Date())}</span>
+              <span class="hint">${esc(t('logistics.staging.print.scanHint'))}</span>
             </footer>
           </section>`;
       })
       .join('');
 
     w.document.write(`<!doctype html>
-<html lang="es"><head><meta charset="utf-8"/>
-<title>Etiquetas · ${esc(area.name)}</title>
+<html lang="${locale}"><head><meta charset="utf-8"/>
+<title>${esc(t('logistics.staging.print.labels'))} · ${esc(area.name)}</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; color:#0f172a; background:#f1f5f9; }
@@ -436,14 +441,14 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
         itemId: newItemId,
         expectedQty: newItemQty,
       });
-      toast.success('Artículo añadido');
+      toast.success(t('logistics.staging.itemAdded'));
       setNewItemId('');
       setNewItemQty(null);
       const list = await stagingAreasApi.listItems(itemsFor.id);
       setAreaItems(Array.isArray(list) ? list : []);
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error');
+      toast.error(msg || t('logistics.common.error'));
     }
   };
 
@@ -461,7 +466,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
     <div className="space-y-3">
       <div className="flex items-center justify-end">
         <Button onClick={openCreate} className="flex items-center gap-2">
-          <Plus size={14} /> Nuevo acopio
+          <Plus size={14} /> {t('logistics.staging.new')}
         </Button>
       </div>
 
@@ -473,8 +478,8 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
         <Card>
           <EmptyState
             icon={<Boxes size={24} />}
-            title="Sin acopios"
-            hint="Crea el primero para agrupar paquetes antes de que salgan a ruta."
+            title={t('logistics.staging.emptyTitle')}
+            hint={t('logistics.staging.emptyHint')}
           />
         </Card>
       ) : (
@@ -503,7 +508,9 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                       )}
                     </div>
                     <div className="text-[11px] text-fg-muted mt-0.5 flex gap-3 flex-wrap">
-                      {wh && <span>Almacén: {wh.name}</span>}
+                      {wh && (
+                        <span>{t('logistics.staging.warehouseLabel', { name: wh.name })}</span>
+                      )}
                       {a.address && <span className="truncate max-w-sm">{a.address}</span>}
                     </div>
                   </div>
@@ -514,7 +521,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                     variant="ghost"
                     size="sm"
                     onClick={() => openPackages(a)}
-                    title="Paquetes actualmente en el acopio"
+                    title={t('logistics.staging.packagesHint')}
                     className="shrink-0"
                   >
                     <Boxes size={13} />
@@ -524,7 +531,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                     variant="ghost"
                     size="sm"
                     onClick={() => openQr(a)}
-                    title="QR del acopio"
+                    title={t('logistics.staging.qrHint')}
                     className="shrink-0"
                   >
                     <QrCode size={13} />
@@ -535,28 +542,32 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                     align="end"
                     items={[
                       {
-                        label: 'Artículos esperados',
+                        label: t('logistics.staging.menu.items'),
                         icon: <PackageIcon size={14} />,
                         onClick: () => openItems(a),
                       },
                       {
-                        label: 'Imprimir packing list',
+                        label: t('logistics.staging.menu.packingList'),
                         icon: <Printer size={14} />,
                         onClick: () => openPackingList(a),
                       },
                       {
-                        label: 'Etiquetas (4 por página)',
+                        label: t('logistics.staging.menu.labels4'),
                         icon: <Tag size={14} />,
                         onClick: () => openPackageLabels(a, 4),
                       },
                       {
-                        label: 'Etiquetas (1 por página)',
+                        label: t('logistics.staging.menu.labels1'),
                         icon: <Tag size={14} strokeWidth={2.5} />,
                         onClick: () => openPackageLabels(a, 1),
                       },
-                      { label: 'Editar', icon: <Edit2 size={14} />, onClick: () => openEdit(a) },
                       {
-                        label: 'Eliminar',
+                        label: t('logistics.common.edit'),
+                        icon: <Edit2 size={14} />,
+                        onClick: () => openEdit(a),
+                      },
+                      {
+                        label: t('logistics.common.delete'),
                         icon: <Trash2 size={14} />,
                         onClick: () => remove(a.id),
                         destructive: true,
@@ -567,7 +578,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                       type="button"
                       variant="ghost"
                       size="sm"
-                      title="Más acciones"
+                      title={t('logistics.staging.moreActions')}
                       className="shrink-0"
                     >
                       <MoreVertical size={13} />
@@ -583,7 +594,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editing ? 'Editar acopio' : 'Nuevo acopio'}
+        title={editing ? t('logistics.staging.editTitle') : t('logistics.staging.new')}
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
@@ -591,7 +602,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             {/* Clientes vienen del servidor y son muchos → SearchableSelect (no
                 tiene prop `label`, se conserva el <label> suelto). */}
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Cliente propietario (opcional)
+              {t('logistics.staging.form.owner')}
             </label>
             <SearchableSelect
               options={partners.map((p) => ({
@@ -601,29 +612,36 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
               }))}
               value={form.partnerId || ''}
               onChange={(v) => setForm({ ...form, partnerId: v || null })}
-              placeholder="— acopio compartido (sin cliente) —"
+              placeholder={t('logistics.staging.form.sharedPlaceholder')}
               clearable
             />
             <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-              Déjalo en <b>sin cliente</b> si es un muelle/zona tuya donde agrupas paquetes de{' '}
-              <b>varios clientes</b> (lo más habitual). Solo marca un cliente si es un{' '}
-              <b>acopio de consignación</b> (un armario/estantería en las instalaciones de ese
-              cliente con su stock reservado).
+              {t('logistics.staging.form.ownerHint.p1')}{' '}
+              <b>{t('logistics.staging.form.ownerHint.b1')}</b>{' '}
+              {t('logistics.staging.form.ownerHint.p2')}{' '}
+              <b>{t('logistics.staging.form.ownerHint.b2')}</b>{' '}
+              {t('logistics.staging.form.ownerHint.p3')}{' '}
+              <b>{t('logistics.staging.form.ownerHint.b3')}</b>{' '}
+              {t('logistics.staging.form.ownerHint.p4')}
             </p>
           </div>
           <div>
             <Input
-              label="Nombre (opcional)"
+              label={t('logistics.staging.form.name')}
               value={form.name || ''}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder={
                 form.partnerId
-                  ? `Acopio ${partners.find((p) => p.id === form.partnerId)?.name || ''}`
-                  : 'Déjalo vacío para auto-nombrar'
+                  ? t('logistics.staging.form.namePlaceholderPartner', {
+                      name: partners.find((p) => p.id === form.partnerId)?.name || '',
+                    })
+                  : t('logistics.staging.form.namePlaceholder')
               }
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              Si lo dejas vacío, se generará <b>Acopio &lt;cliente&gt;</b> automáticamente.
+              {t('logistics.staging.form.nameHintBefore')}{' '}
+              <b>{t('logistics.staging.form.nameHintPattern')}</b>{' '}
+              {t('logistics.staging.form.nameHintAfter')}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -631,7 +649,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
               {/* Almacenes y plataformas vienen del servidor →
                   SearchableSelect (sin prop `label`). */}
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Almacén propio
+                {t('logistics.staging.form.ownWarehouse')}
               </label>
               <SearchableSelect
                 options={warehouses.map((w) => ({ value: w.id, label: w.name }))}
@@ -643,7 +661,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             </div>
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Plataforma ajena
+                {t('logistics.staging.form.externalPlatform')}
               </label>
               <SearchableSelect
                 options={platforms.map((p) => ({
@@ -672,21 +690,24 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             </div>
           </div>
           <p className="text-[11px] text-slate-500 -mt-1 leading-relaxed">
-            Elige <b>Almacén propio</b> si es tu muelle/zona, o <b>Plataforma ajena</b> si el acopio
-            vive en un cross-dock o nave alquilada. Puedes dejar ambos vacíos para un acopio neutro.
+            {t('logistics.staging.form.locationHint.p1')}{' '}
+            <b>{t('logistics.staging.form.ownWarehouse')}</b>{' '}
+            {t('logistics.staging.form.locationHint.p2')}{' '}
+            <b>{t('logistics.staging.form.externalPlatform')}</b>{' '}
+            {t('logistics.staging.form.locationHint.p3')}
           </p>
           <Input
-            label="Dirección"
+            label={t('logistics.staging.form.address')}
             value={form.address || ''}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
-            placeholder="Calle Ejemplo 1, 28013 Madrid"
-            helperText="Se geolocaliza automáticamente al guardar para mostrarla en el mapa de repartos."
+            placeholder={t('logistics.staging.form.addressPlaceholder')}
+            helperText={t('logistics.staging.form.addressHelp')}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* `lat`/`lng` son doublePrecision en el servidor: llegan y se
                 envían numéricas, y el campo vacío queda en null. */}
             <NumberInput
-              label="Latitud (opcional)"
+              label={t('logistics.staging.form.latitude')}
               value={form.lat ?? null}
               onChange={(v) => setForm({ ...form, lat: v })}
               precision={6}
@@ -695,7 +716,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
               placeholder="40.4168"
             />
             <NumberInput
-              label="Longitud (opcional)"
+              label={t('logistics.staging.form.longitude')}
               value={form.lng ?? null}
               onChange={(v) => setForm({ ...form, lng: v })}
               precision={6}
@@ -705,14 +726,15 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             />
           </div>
           <p className="text-[11px] text-slate-500 -mt-2">
-            Pega lat/lng de Google Maps si conoces el punto exacto. Si no, se geolocalizará por
-            dirección.
+            {t('logistics.staging.form.coordsHint')}
           </p>
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Cancelar
+              {t('logistics.common.cancel')}
             </Button>
-            <Button onClick={save}>{editing ? 'Guardar' : 'Crear'}</Button>
+            <Button onClick={save}>
+              {editing ? t('logistics.common.save') : t('logistics.common.create')}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -720,8 +742,8 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
       <Modal
         isOpen={!!itemsFor}
         onClose={() => setItemsFor(null)}
-        title={`Artículos · ${itemsFor?.name || ''}`}
-        subtitle="Artículos que se manejan en este acopio. La cantidad objetivo es opcional."
+        title={t('logistics.staging.items.title', { name: itemsFor?.name || '' })}
+        subtitle={t('logistics.staging.items.subtitle')}
         maxWidth="lg"
       >
         {itemsFor && (
@@ -730,7 +752,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
               <div className="flex-1">
                 {/* Artículos del servidor → SearchableSelect (sin `label`). */}
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                  Artículo
+                  {t('logistics.staging.items.item')}
                 </label>
                 <SearchableSelect
                   options={items
@@ -738,12 +760,12 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                     .map((i) => ({ value: i.id, label: i.name, secondaryLabel: i.code }))}
                   value={newItemId}
                   onChange={setNewItemId}
-                  placeholder="— seleccionar —"
+                  placeholder={t('logistics.common.selectPlaceholder')}
                   clearable
                 />
               </div>
               <NumberInput
-                label="Qty esperada"
+                label={t('logistics.staging.items.expectedQty')}
                 value={newItemQty}
                 onChange={setNewItemQty}
                 precision={2}
@@ -752,13 +774,16 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                 containerClassName="w-32"
               />
               <Button type="button" onClick={addItem} disabled={!newItemId}>
-                Añadir
+                {t('logistics.common.add')}
               </Button>
             </div>
 
             {areaItems.length === 0 ? (
               <Card>
-                <EmptyState icon={<PackageIcon size={24} />} title="Sin artículos en este acopio" />
+                <EmptyState
+                  icon={<PackageIcon size={24} />}
+                  title={t('logistics.staging.items.empty')}
+                />
               </Card>
             ) : (
               <Card bodyClassName="p-0">
@@ -778,7 +803,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                         </span>
                         {ai.expectedQty != null && (
                           <span className="text-[11px] text-slate-500">
-                            objetivo: {ai.expectedQty}
+                            {t('logistics.staging.items.target', { qty: ai.expectedQty })}
                           </span>
                         )}
                         <Button
@@ -786,7 +811,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                           variant="ghost"
                           size="sm"
                           onClick={() => removeItem(ai.id)}
-                          title="Quitar"
+                          title={t('logistics.common.remove')}
                         >
                           <Trash2 size={13} />
                         </Button>
@@ -803,8 +828,8 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
       <Modal
         isOpen={!!pkgsFor}
         onClose={() => setPkgsFor(null)}
-        title={`Paquetes en ${pkgsFor?.name || ''}`}
-        subtitle="Paquetes físicos presentes ahora mismo en este acopio."
+        title={t('logistics.staging.packages.title', { name: pkgsFor?.name || '' })}
+        subtitle={t('logistics.staging.packages.subtitle')}
         maxWidth="lg"
       >
         {pkgsFor && (
@@ -813,8 +838,8 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
               <Card>
                 <EmptyState
                   icon={<Boxes size={24} />}
-                  title="Acopio vacío"
-                  hint="No hay paquetes aquí ahora mismo."
+                  title={t('logistics.staging.packages.emptyTitle')}
+                  hint={t('logistics.staging.packages.emptyHint')}
                 />
               </Card>
             ) : (
@@ -833,14 +858,17 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                         <div className="text-[11px] text-fg-muted flex gap-3 flex-wrap">
                           {pk.shipmentId && (
                             <span>
-                              Envío:{' '}
+                              {t('logistics.staging.packages.shipment')}{' '}
                               <span className="font-mono">{String(pk.shipmentId).slice(0, 8)}</span>
                             </span>
                           )}
                           {pk.weightKg != null && <span>· {pk.weightKg} kg</span>}
                           {pk.sealedAt && (
                             <span>
-                              · Sellado {new Date(pk.sealedAt).toLocaleDateString('es-ES')}
+                              ·{' '}
+                              {t('logistics.staging.packages.sealedOn', {
+                                date: formatDate(pk.sealedAt),
+                              })}
                             </span>
                           )}
                         </div>
@@ -852,10 +880,10 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
             )}
             <div className="text-[11px] text-slate-500 pt-2 border-t border-border-subtle flex items-center justify-between">
               <span>
-                Total paquetes: <b>{areaPackages.length}</b>
+                {t('logistics.staging.packages.total')} <b>{areaPackages.length}</b>
               </span>
               <span>
-                Envíos únicos:{' '}
+                {t('logistics.staging.packages.uniqueShipments')}{' '}
                 <b>{new Set(areaPackages.map((p) => p.shipmentId).filter(Boolean)).size}</b>
               </span>
             </div>
@@ -866,8 +894,8 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
       <Modal
         isOpen={!!qrFor}
         onClose={closeQr}
-        title={`QR · ${qrFor?.name || ''}`}
-        subtitle="Imprime y pega en el acopio. El repartidor lo escanea desde la app para obtener su ruta."
+        title={t('logistics.staging.qr.title', { name: qrFor?.name || '' })}
+        subtitle={t('logistics.staging.qr.subtitle')}
         maxWidth="md"
       >
         {qrFor && (
@@ -877,14 +905,14 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                 <img src={qrFor.imgUrl} alt="QR" className="w-80 h-80" />
               ) : (
                 <div className="w-80 h-80 flex items-center justify-center text-slate-400 text-sm">
-                  No se pudo cargar el QR
+                  {t('logistics.staging.qrLoadError')}
                 </div>
               )}
             </div>
             <div className="w-full max-w-md space-y-2">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Rutas asignadas
+                  {t('logistics.staging.qr.assignedRoutes')}
                 </div>
                 {qrFor.payload.routes?.length ? (
                   <ul className="space-y-1.5">
@@ -900,30 +928,36 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                           {r.name || '—'}
                         </span>
                         <span className="text-[11px] text-slate-500 shrink-0">
-                          {r.driverName || '— sin driver —'}
+                          {r.driverName || t('logistics.staging.noDriver')}
                         </span>
                       </li>
                     ))}
                   </ul>
                 ) : (
                   <div className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
-                    Sin ruta asignada todavía
+                    {t('logistics.staging.qr.noRoute')}
                   </div>
                 )}
               </div>
               <div className="flex items-center gap-4 text-[11px] text-slate-500 pt-1">
                 <span>
-                  <b>{qrFor.payload.packages?.length || 0}</b> paquete(s)
+                  <b>{qrFor.payload.packages?.length || 0}</b>{' '}
+                  {t('logistics.staging.qr.packages', {
+                    count: qrFor.payload.packages?.length || 0,
+                  })}
                 </span>
                 <span>
-                  <b>{qrFor.payload.shipments?.length || 0}</b> envío(s)
+                  <b>{qrFor.payload.shipments?.length || 0}</b>{' '}
+                  {t('logistics.staging.qr.shipments', {
+                    count: qrFor.payload.shipments?.length || 0,
+                  })}
                 </span>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-center">
               {qrFor.imgUrl && (
                 <Button type="button" onClick={downloadQr}>
-                  <QrCode size={14} /> Descargar QR
+                  <QrCode size={14} /> {t('logistics.staging.qr.download')}
                 </Button>
               )}
               <Button
@@ -933,7 +967,7 @@ ${shipmentBlocks || '<div class="sub">Acopio vacío.</div>'}
                   qrFor && openPackingList({ id: qrFor.id, name: qrFor.name } as StagingArea)
                 }
               >
-                <Printer size={14} /> Imprimir packing list
+                <Printer size={14} /> {t('logistics.staging.menu.packingList')}
               </Button>
             </div>
           </div>

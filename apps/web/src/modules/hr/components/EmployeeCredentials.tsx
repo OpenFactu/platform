@@ -3,6 +3,8 @@ import { Badge, Button, Card, Input, usePopup, Alert } from '@openfactu/ui';
 import { CreditCard, Download, Plus, QrCode } from 'lucide-react';
 import { timeclockManagementApi as api, type Credential } from '../api/timeclockManagementApi';
 import { ReadCardButton } from './ReadCardButton';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate } from '@/i18n/format';
 
 export function EmployeeCredentials({
   employeeId,
@@ -14,9 +16,10 @@ export function EmployeeCredentials({
   return <CredentialPanel key={employeeId} employeeId={employeeId} canWrite={canWrite} />;
 }
 function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrite: boolean }) {
+  const { t } = useI18n();
   const [rows, setRows] = useState<Credential[]>([]);
   const [uid, setUid] = useState('');
-  const [label, setLabel] = useState('Tarjeta principal');
+  const [label, setLabel] = useState(() => t('hr.credentials.defaultCardLabel'));
   const [qr, setQr] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -51,7 +54,7 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
       await work();
       setRows(await api.credentials(employeeId));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo completar la operación.');
+      setError(e instanceof Error ? e.message : t('hr.credentials.opFailed'));
     } finally {
       setBusy(false);
     }
@@ -60,9 +63,9 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
     if (
       activeQr &&
       !(await popup.confirm({
-        title: 'Regenerar QR',
-        message: 'El QR anterior dejará de funcionar. Entrega el nuevo al empleado.',
-        confirmLabel: 'Regenerar',
+        title: t('hr.credentials.regenTitle'),
+        message: t('hr.credentials.regenMessage'),
+        confirmLabel: t('hr.credentials.regen'),
       }))
     )
       return;
@@ -75,9 +78,12 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
   const revoke = async (row: Credential) => {
     if (
       !(await popup.confirm({
-        title: row.kind === 'qr' ? 'Desactivar QR' : 'Desactivar tarjeta',
-        message: `${row.label} dejará de servir para identificarse en el kiosco.`,
-        confirmLabel: 'Desactivar',
+        title:
+          row.kind === 'qr'
+            ? t('hr.credentials.revokeQrTitle')
+            : t('hr.credentials.revokeCardTitle'),
+        message: t('hr.credentials.revokeMessage', { label: row.label }),
+        confirmLabel: t('hr.credentials.deactivate'),
       }))
     )
       return;
@@ -87,10 +93,7 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
     });
   };
   return (
-    <Card
-      title="Identificación para fichar"
-      subtitle="QR personal y tarjetas que el empleado puede utilizar en el kiosco."
-    >
+    <Card title={t('hr.credentials.title')} subtitle={t('hr.credentials.subtitle')}>
       {error && (
         <Alert tone="danger" role="alert" className="mb-4">
           {error}
@@ -98,25 +101,25 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
       )}
       {loading ? (
         <p className="text-sm text-fg-muted" role="status">
-          Cargando credenciales…
+          {t('hr.credentials.loading')}
         </p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           <section
             className="space-y-4 lg:border-r lg:border-border-subtle lg:pr-6"
-            aria-label="QR personal"
+            aria-label={t('hr.credentials.personalQr')}
           >
             <div className="flex items-center gap-2">
               <QrCode size={18} className="text-fg-muted" />
-              <h3 className="font-semibold text-sm">QR personal</h3>
+              <h3 className="font-semibold text-sm">{t('hr.credentials.personalQr')}</h3>
               <Badge variant={activeQr ? 'success' : 'neutral'}>
-                {activeQr ? 'Activo' : 'Sin QR'}
+                {activeQr ? t('hr.credentials.active') : t('hr.credentials.noQr')}
               </Badge>
             </div>
             {qr ? (
               <div className="space-y-3">
                 <div className="w-48 h-48 bg-white border border-border-subtle">
-                  <img src={qr} width={192} height={192} alt="QR personal de fichaje" />
+                  <img src={qr} width={192} height={192} alt={t('hr.credentials.qrAlt')} />
                 </div>
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                   <a
@@ -125,18 +128,16 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
                     download="qr-fichaje.png"
                   >
                     <Download size={14} />
-                    Descargar
+                    {t('hr.credentials.download')}
                   </a>
                   <button type="button" className="underline" onClick={() => setQr('')}>
-                    Ocultar
+                    {t('hr.credentials.hide')}
                   </button>
                 </div>
               </div>
             ) : (
               <p className="text-sm text-fg-muted leading-relaxed">
-                {activeQr
-                  ? 'El empleado puede mostrarlo desde su móvil o llevarlo impreso.'
-                  : 'Crea un QR para que el empleado se identifique ante la cámara del kiosco.'}
+                {activeQr ? t('hr.credentials.qrHintActive') : t('hr.credentials.qrHintNone')}
               </p>
             )}
             <div className="flex flex-wrap gap-2">
@@ -147,7 +148,7 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
                   disabled={busy}
                   onClick={() => void run(async () => setQr((await api.qr(employeeId)).qrDataUrl))}
                 >
-                  Mostrar QR
+                  {t('hr.credentials.showQr')}
                 </Button>
               )}
               {canWrite && (
@@ -157,7 +158,7 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
                   disabled={busy}
                   onClick={() => void issueQr()}
                 >
-                  {activeQr ? 'Regenerar' : 'Crear QR'}
+                  {activeQr ? t('hr.credentials.regen') : t('hr.credentials.createQr')}
                 </Button>
               )}
               {canWrite && activeQr && (
@@ -167,18 +168,20 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
                   disabled={busy}
                   onClick={() => void revoke(activeQr)}
                 >
-                  Desactivar
+                  {t('hr.credentials.deactivate')}
                 </Button>
               )}
             </div>
           </section>
-          <section className="min-w-0 space-y-4" aria-label="Tarjetas RFID">
+          <section className="min-w-0 space-y-4" aria-label={t('hr.credentials.rfidAria')}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <CreditCard size={18} className="text-fg-muted" />
-                <h3 className="font-semibold text-sm">Tarjetas</h3>
+                <h3 className="font-semibold text-sm">{t('hr.credentials.cards')}</h3>
                 <span className="text-xs text-fg-muted">
-                  {cards.filter((c) => !c.revokedAt).length} activas
+                  {t('hr.credentials.activeCount', {
+                    count: cards.filter((c) => !c.revokedAt).length,
+                  })}
                 </span>
               </div>
               {canWrite && !assigning && (
@@ -190,7 +193,7 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
                   className="gap-1"
                 >
                   <Plus size={14} />
-                  Asignar tarjeta
+                  {t('hr.credentials.assignCard')}
                 </Button>
               )}
             </div>
@@ -205,8 +208,8 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
                       <p className="font-medium text-sm break-words">{row.label}</p>
                       <p className="text-xs text-fg-muted mt-1">
                         {row.revokedAt
-                          ? 'Desactivada'
-                          : 'Asignada el ' + new Date(row.createdAt).toLocaleDateString('es-ES')}
+                          ? t('hr.credentials.revoked')
+                          : t('hr.credentials.assignedOn', { date: formatDate(row.createdAt) })}
                       </p>
                     </div>
                     {canWrite && !row.revokedAt && (
@@ -216,16 +219,14 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
                         disabled={busy}
                         onClick={() => void revoke(row)}
                       >
-                        Desactivar
+                        {t('hr.credentials.deactivate')}
                       </Button>
                     )}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-fg-muted py-2">
-                Todavía no tiene ninguna tarjeta asignada.
-              </p>
+              <p className="text-sm text-fg-muted py-2">{t('hr.credentials.noCards')}</p>
             )}
             {canWrite && assigning && (
               <form
@@ -242,7 +243,7 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
               >
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Input
-                    label="Identificador de la tarjeta (UID)"
+                    label={t('hr.credentials.uid')}
                     value={uid}
                     onChange={(e) => setUid(e.target.value)}
                     placeholder="04A1B2C3"
@@ -250,7 +251,7 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
                     disabled={busy || readingCard}
                   />
                   <Input
-                    label="Nombre de la tarjeta"
+                    label={t('hr.credentials.cardName')}
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                     required
@@ -262,7 +263,7 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
                     type="submit"
                     disabled={busy || readingCard || !uid.trim() || !label.trim()}
                   >
-                    {busy ? 'Guardando…' : 'Guardar tarjeta'}
+                    {busy ? t('hr.credentials.saving') : t('hr.credentials.saveCard')}
                   </Button>
                   <Button
                     type="button"
@@ -274,7 +275,7 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
                       setReadingCard(false);
                     }}
                   >
-                    Cancelar
+                    {t('hr.common.cancel')}
                   </Button>
                 </div>
               </form>

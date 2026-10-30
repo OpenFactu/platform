@@ -1,4 +1,5 @@
 // USB setup stays in the browser: credentials are never sent to a logging service.
+import { t } from '@/i18n/i18n';
 export interface ReaderSerialPort {
   getInfo?(): { usbVendorId?: number; usbProductId?: number };
   readable: ReadableStream<Uint8Array> | null;
@@ -56,53 +57,49 @@ export function validateReaderSetup(config: ReaderSetup): string {
       url.hash ||
       url.pathname !== '/'
     )
-      return 'Usa la dirección HTTPS de Keirost, sin rutas ni credenciales.';
+      return t('hrTime.usb.urlPlain');
     if (
       ['localhost', '[::1]', '0.0.0.0', '[::]', 'localhost.'].includes(url.hostname) ||
       url.hostname.startsWith('127.') ||
       url.hostname.endsWith('.localhost')
     )
-      return 'El lector necesita una dirección de Keirost accesible desde su Wi-Fi; localhost apunta al propio lector.';
-    if (config.serverUrl.length > 256) return 'La dirección del servidor es demasiado larga.';
+      return t('hrTime.usb.urlLocalhost');
+    if (config.serverUrl.length > 256) return t('hrTime.usb.urlTooLong');
     if (!/^[a-z0-9.-]+$/i.test(url.hostname) || !url.hostname.includes('.'))
-      return 'Usa un dominio o una dirección IPv4 accesible desde el lector.';
+      return t('hrTime.usb.urlHost');
   } catch {
-    return 'Introduce la dirección HTTPS de Keirost.';
+    return t('hrTime.usb.urlRequired');
   }
   const bytes = (value: string) => new TextEncoder().encode(value).length;
-  if (!config.ssid || bytes(config.ssid) > 32)
-    return 'Introduce el nombre de la red Wi-Fi (máximo 32 bytes).';
-  if (!config.password && !config.openNetwork)
-    return 'Introduce de nuevo la contraseña Wi-Fi o indica que la red no tiene contraseña.';
+  if (!config.ssid || bytes(config.ssid) > 32) return t('hrTime.usb.ssidRequired');
+  if (!config.password && !config.openNetwork) return t('hrTime.usb.passwordRequired');
   if (config.password && (bytes(config.password) < 8 || bytes(config.password) > 63))
-    return 'La contraseña Wi-Fi debe tener entre 8 y 63 bytes.';
+    return t('hrTime.usb.passwordLength');
   if (
     bytes(config.caCert) > 4096 ||
     (config.caCert && !config.caCert.includes('-----BEGIN CERTIFICATE-----'))
   )
-    return 'El certificado de la instalación debe estar en formato PEM (máximo 4 KB).';
+    return t('hrTime.usb.certFormat');
   return '';
 }
+// Claves de i18n; se traducen al lanzar el error.
 const deviceErrors: Record<string, string> = {
-  BOOT_REQUIRED: 'Mantén pulsado BOOT en el ESP32 al guardar. No pulses EN.',
-  INVALID_CONFIG: 'El lector ha rechazado la configuración. Revisa la red y la dirección HTTPS.',
-  STORAGE_ERROR: 'El lector no pudo guardar la configuración. Vuelve a intentarlo.',
-  CAPTURE_BUSY:
-    'El lector ya está leyendo una tarjeta. Cancela la lectura anterior o espera 30 segundos.',
-  CAPTURE_INVALID: 'La sesión de lectura no es válida. Vuelve a pulsar Leer tarjeta.',
+  BOOT_REQUIRED: 'hrTime.usb.device.bootRequired',
+  INVALID_CONFIG: 'hrTime.usb.device.invalidConfig',
+  STORAGE_ERROR: 'hrTime.usb.device.storageError',
+  CAPTURE_BUSY: 'hrTime.usb.device.captureBusy',
+  CAPTURE_INVALID: 'hrTime.usb.device.captureInvalid',
 };
 export type UsbConnectStage = 'select' | 'open' | 'handshake' | 'firmware';
 export function connectionFailureMessage(error: unknown, stage: UsbConnectStage): string {
   const name = error instanceof Error ? error.name : '';
   if (stage === 'select')
     return name === 'NotFoundError'
-      ? 'No se ha seleccionado un puerto. Marca la fila CP2102 (COM8) y pulsa Conectar.'
-      : 'Chrome no ha permitido seleccionar el USB. Comprueba el permiso de puerto serie de esta página.';
-  if (stage === 'open')
-    return 'Chrome ha encontrado el lector, pero no puede abrir el puerto USB. Cierra el monitor serie de Visual Studio y cualquier otra pestaña conectada al lector.';
-  if (stage === 'firmware')
-    return 'El lector responde, pero necesita el firmware Keirost 0.2 para configurarse desde esta pantalla.';
-  return 'El puerto USB está abierto, pero el lector no responde al saludo. Espera a que arranque y vuelve a conectar.';
+      ? t('hrTime.usb.connect.noPort')
+      : t('hrTime.usb.connect.selectDenied');
+  if (stage === 'open') return t('hrTime.usb.connect.openFailed');
+  if (stage === 'firmware') return t('hrTime.usb.connect.firmwareRequired');
+  return t('hrTime.usb.connect.noHandshake');
 }
 export class ReaderUsbSession {
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
@@ -123,8 +120,7 @@ export class ReaderUsbSession {
     this.opened = true;
     try {
       await this.port.setSignals({ dataTerminalReady: false, requestToSend: false });
-      if (!this.port.readable || !this.port.writable)
-        throw new Error('No se pudo abrir el lector.');
+      if (!this.port.readable || !this.port.writable) throw new Error(t('hrTime.usb.openFailed'));
       this.reader = this.port.readable.getReader();
       this.writer = this.port.writable.getWriter();
       this.pump = this.read();
@@ -156,9 +152,7 @@ export class ReaderUsbSession {
                   if (reply.ok) pending?.resolve(reply);
                   else
                     pending?.reject(
-                      new Error(
-                        deviceErrors[reply.code || ''] || 'El lector ha rechazado la operación.',
-                      ),
+                      new Error(t(deviceErrors[reply.code || ''] || 'hrTime.usb.device.rejected')),
                     );
                 }
               } catch {
@@ -179,7 +173,7 @@ export class ReaderUsbSession {
     } catch {
       /* Report a fixed message below; never echo serial data. */
     } finally {
-      this.pending?.reject(new Error('El lector se ha desconectado. Conéctalo de nuevo.'));
+      this.pending?.reject(new Error(t('hrTime.usb.disconnected')));
       this.pending = null;
     }
   }
@@ -187,25 +181,17 @@ export class ReaderUsbSession {
     command: 'hello' | 'status' | 'configure' | 'capture_start' | 'capture_poll' | 'capture_cancel',
     data: Record<string, unknown> = {},
   ): Promise<ReaderUsbReply> {
-    if (!this.writer || !this.opened) throw new Error('Conecta el lector por USB.');
-    if (this.pending) throw new Error('Espera a que termine la operación anterior.');
+    if (!this.writer || !this.opened) throw new Error(t('hrTime.usb.connectFirst'));
+    if (this.pending) throw new Error(t('hrTime.usb.busy'));
     const id = crypto.randomUUID();
     const bytes = new TextEncoder().encode(
       JSON.stringify({ ...data, protocol: 'keirost-usb-v1', id, command }) + '\n',
     );
-    if (bytes.length > 8192) throw new Error('La configuración es demasiado grande.');
+    if (bytes.length > 8192) throw new Error(t('hrTime.usb.configTooLarge'));
     let timer: ReturnType<typeof setTimeout>;
     const response = new Promise<ReaderUsbReply>((resolve, reject) => {
       this.pending = { id, resolve, reject };
-      timer = setTimeout(
-        () =>
-          reject(
-            new Error(
-              'El lector no responde. Comprueba que tiene el firmware de conexión de Keirost y cierra el monitor de Arduino.',
-            ),
-          ),
-        this.timeoutMs,
-      );
+      timer = setTimeout(() => reject(new Error(t('hrTime.usb.timeout'))), this.timeoutMs);
     });
     let retry: ReturnType<typeof setTimeout> | undefined;
     const send = () => {
@@ -219,7 +205,8 @@ export class ReaderUsbSession {
           if (command === 'hello' && this.pending?.id === id) retry = setTimeout(send, 750);
         })
         .catch(() => {
-          if (this.pending?.id === id) this.pending.reject(new Error('Se ha desconectado el USB.'));
+          if (this.pending?.id === id)
+            this.pending.reject(new Error(t('hrTime.usb.usbDisconnected')));
         })
         .finally(() => outgoing.fill(0));
     };
@@ -234,7 +221,7 @@ export class ReaderUsbSession {
     }
   }
   async close() {
-    this.pending?.reject(new Error('Se ha desconectado el USB.'));
+    this.pending?.reject(new Error(t('hrTime.usb.usbDisconnected')));
     this.pending = null;
     if (this.reader) {
       await this.reader.cancel().catch(() => {});
@@ -257,15 +244,12 @@ export async function readCardUid(
   onWaiting: () => void,
 ): Promise<string> {
   const checkCancelled = () => {
-    if (signal.aborted) throw new Error('Lectura cancelada.');
+    if (signal.aborted) throw new Error(t('hrTime.usb.readCancelled'));
   };
   checkCancelled();
   const hello = await session.request('hello');
   checkCancelled();
-  if (hello.cardCapture !== true)
-    throw new Error(
-      'Hay que actualizar el programa del lector a Keirost 0.2.1 o posterior para leer tarjetas aquí.',
-    );
+  if (hello.cardCapture !== true) throw new Error(t('hrTime.usb.updateForCapture'));
   const captureId = crypto.randomUUID();
   try {
     await session.request('capture_start', { captureId });
@@ -281,12 +265,11 @@ export async function readCardUid(
           typeof reply.uid !== 'string' ||
           !/^(?:[0-9A-F]{8}|[0-9A-F]{14}|[0-9A-F]{20})$/.test(reply.uid)
         )
-          throw new Error('El lector ha devuelto una tarjeta no válida. Vuelve a intentarlo.');
+          throw new Error(t('hrTime.usb.invalidCard'));
         return reply.uid;
       }
       if (reply.captureState === 'expired') break;
-      if (reply.captureState !== 'waiting')
-        throw new Error('El lector ha devuelto una respuesta no válida. Vuelve a intentarlo.');
+      if (reply.captureState !== 'waiting') throw new Error(t('hrTime.usb.invalidReply'));
       await new Promise<void>((resolve) => {
         const finish = () => {
           clearTimeout(timer);
@@ -298,7 +281,7 @@ export async function readCardUid(
         if (signal.aborted) finish();
       });
     }
-    throw new Error('No se ha leído ninguna tarjeta en 30 segundos. Vuelve a intentarlo.');
+    throw new Error(t('hrTime.usb.noCard'));
   } finally {
     // Also cancel when start was accepted but its reply was lost.
     await session.request('capture_cancel', { captureId }).catch(() => {});

@@ -12,6 +12,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { Markdown } from '@/modules/ai/components/Markdown';
+import { useI18n } from '@/i18n/I18nContext';
 
 function isTextPart(part: { type: string }): part is { type: 'text'; text: string } {
   return part.type === 'text';
@@ -20,6 +21,7 @@ function isTextPart(part: { type: string }): part is { type: 'text'; text: strin
 export const TrackingChatWidget: React.FC<{ token: string }> = ({ token }) => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
+  const { t } = useI18n();
   const listRef = useRef<HTMLDivElement>(null);
 
   const transport = useMemo(
@@ -46,7 +48,7 @@ export const TrackingChatWidget: React.FC<{ token: string }> = ({ token }) => {
       <button
         onClick={() => setOpen(true)}
         className="fixed bottom-5 right-5 z-30 w-14 h-14 rounded-full bg-slate-900 text-white shadow-xl flex items-center justify-center active:scale-95 transition hover:bg-slate-800"
-        aria-label="Preguntar a Keiro sobre tu envío"
+        aria-label={t('app.trackingChat.open')}
       >
         <MessageCircle size={22} />
       </button>
@@ -59,12 +61,12 @@ export const TrackingChatWidget: React.FC<{ token: string }> = ({ token }) => {
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-900 text-white sm:rounded-t-3xl">
           <div>
             <div className="text-sm font-black leading-none">Keiro</div>
-            <div className="text-[11px] text-white/70 mt-0.5">Pregúntame sobre tu envío</div>
+            <div className="text-[11px] text-white/70 mt-0.5">{t('app.trackingChat.subtitle')}</div>
           </div>
           <button
             onClick={() => setOpen(false)}
             className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center"
-            aria-label="Cerrar chat"
+            aria-label={t('app.trackingChat.close')}
           >
             <X size={16} />
           </button>
@@ -72,9 +74,7 @@ export const TrackingChatWidget: React.FC<{ token: string }> = ({ token }) => {
 
         <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[240px]">
           {messages.length === 0 && (
-            <p className="text-xs text-slate-400 text-center py-6">
-              Pregúntame por el estado de tu envío o cuéntame si hay algún problema.
-            </p>
+            <p className="text-xs text-slate-400 text-center py-6">{t('app.trackingChat.empty')}</p>
           )}
           {messages.map((m) => {
             const text = m.parts
@@ -100,7 +100,7 @@ export const TrackingChatWidget: React.FC<{ token: string }> = ({ token }) => {
           {busy && (
             <div className="flex justify-start">
               <div className="rounded-2xl px-3 py-2 bg-slate-100 text-slate-400 inline-flex items-center gap-1.5 text-xs">
-                <Loader2 size={12} className="animate-spin" /> Escribiendo…
+                <Loader2 size={12} className="animate-spin" /> {t('app.trackingChat.typing')}
               </div>
             </div>
           )}
@@ -110,7 +110,7 @@ export const TrackingChatWidget: React.FC<{ token: string }> = ({ token }) => {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Escribe tu mensaje…"
+            placeholder={t('app.trackingChat.placeholder')}
             maxLength={1000}
             className="flex-1 text-sm rounded-full border border-slate-200 px-3.5 py-2 outline-none focus:border-slate-400"
           />
@@ -118,7 +118,7 @@ export const TrackingChatWidget: React.FC<{ token: string }> = ({ token }) => {
             type="submit"
             disabled={busy || !input.trim()}
             className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition shrink-0"
-            aria-label="Enviar"
+            aria-label={t('app.trackingChat.send')}
           >
             <Send size={15} />
           </button>

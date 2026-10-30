@@ -25,41 +25,44 @@ import { useAuth } from '@/context/AuthContext';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { Percent, Plus, Pencil, Trash2, RefreshCw, ArrowRightCircle } from 'lucide-react';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatNumber } from '@/i18n/format';
 
 const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
   pending: 'warning',
   paid: 'success',
   cancelled: 'neutral',
 };
+// Etiquetas como claves de i18n; se traducen al pintar.
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendiente',
-  paid: 'Pagado',
-  cancelled: 'Cancelado',
+  pending: 'hrPayroll.commissions.status.pending',
+  paid: 'hrPayroll.commissions.status.paid',
+  cancelled: 'hrPayroll.commissions.status.cancelled',
 };
 
 // Configuración de los desplegables estáticos, en un solo sitio: las
 // `options` se derivan de aquí en lugar de repetir los valores en el JSX.
 const SCOPE_OPTIONS = [
-  { value: 'employee', label: 'Empleado concreto' },
-  { value: 'department', label: 'Departamento' },
-  { value: 'all', label: 'Toda la empresa' },
+  { value: 'employee', label: 'hrPayroll.commissions.scope.employee' },
+  { value: 'department', label: 'hr.common.department' },
+  { value: 'all', label: 'hrPayroll.commissions.scope.all' },
 ];
 const BASIS_OPTIONS = [
-  { value: 'net_amount', label: 'Importe neto (subtotal)' },
-  { value: 'gross_amount', label: 'Importe bruto (total con IVA)' },
-  { value: 'margin', label: 'Margen (futuro)' },
+  { value: 'net_amount', label: 'hrPayroll.commissions.basis.net' },
+  { value: 'gross_amount', label: 'hrPayroll.commissions.basis.gross' },
+  { value: 'margin', label: 'hrPayroll.commissions.basis.margin' },
 ];
 const KIND_OPTIONS = [
-  { value: 'flat_pct', label: 'Porcentaje fijo' },
-  { value: 'tiered', label: 'Por tramos' },
+  { value: 'flat_pct', label: 'hrPayroll.commissions.kind.flat' },
+  { value: 'tiered', label: 'hrPayroll.commissions.kind.tiered' },
 ];
 const STATUS_FILTER_OPTIONS = [
-  { value: '', label: 'Todos' },
+  { value: '', label: 'hr.common.all' },
   ...Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label })),
 ];
 const TABS = [
-  { key: 'rules', label: 'Reglas' },
-  { key: 'accruals', label: 'Acumulados' },
+  { key: 'rules', label: 'hrPayroll.commissions.tabRules' },
+  { key: 'accruals', label: 'hrPayroll.commissions.tabAccruals' },
 ];
 
 /**
@@ -97,6 +100,7 @@ const emptyRule = (): RuleForm => ({
 });
 
 export const Commissions: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const { canWrite, canDelete } = usePagePermissions();
   const toast = useToast();
@@ -177,7 +181,7 @@ export const Commissions: React.FC = () => {
   const saveRule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing?.name) {
-      toast.error('Nombre obligatorio');
+      toast.error(t('hrPayroll.commissions.nameRequired'));
       return;
     }
     const isNew = !editing.id;
@@ -193,16 +197,18 @@ export const Commissions: React.FC = () => {
       setEditing(null);
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
   const removeRule = async (rule: Rule) => {
     const ok = await popup.confirm({
-      title: 'Borrar regla',
-      message: `¿Seguro que quieres borrar la regla "${rule.name}"?`,
+      title: t('hrPayroll.commissions.deleteTitle'),
+      message: t('hrPayroll.commissions.deleteMessage', { name: rule.name }),
       tone: 'danger',
-      confirmLabel: 'Borrar',
+      confirmLabel: t('hr.common.delete'),
     });
     if (!ok) return;
     await commissionsApi.removeRule(rule.id);
@@ -211,9 +217,9 @@ export const Commissions: React.FC = () => {
 
   const recalculate = async () => {
     const ok = await popup.confirm({
-      title: 'Recalcular periodo',
-      message: 'Se recalculan las comisiones del periodo. Sobrescribe los acumulados "pendiente".',
-      confirmLabel: 'Recalcular',
+      title: t('hrPayroll.commissions.recalcTitle'),
+      message: t('hrPayroll.commissions.recalcMessage'),
+      confirmLabel: t('hrPayroll.commissions.recalc'),
     });
     if (!ok) return;
     const start = `${filter.year}-${String(filter.month).padStart(2, '0')}-01`;
@@ -221,10 +227,10 @@ export const Commissions: React.FC = () => {
     const end = `${filter.year}-${String(filter.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     try {
       const d = await commissionsApi.recalculate(start, end);
-      toast.success(`Procesados ${d.processed} documentos`);
+      toast.success(t('hrPayroll.commissions.processed', { count: d.processed }));
       fetchAccruals();
     } catch {
-      toast.error('Error al recalcular');
+      toast.error(t('hrPayroll.commissions.recalcError'));
     }
   };
 
@@ -244,27 +250,30 @@ export const Commissions: React.FC = () => {
       return `${e.firstName} ${e.lastName}`;
     }
     if (r.scope === 'department' && r.departmentId && departmentById[r.departmentId]) {
-      return `Dpto: ${departmentById[r.departmentId].name}`;
+      return t('hrPayroll.commissions.deptPrefix', { name: departmentById[r.departmentId].name });
     }
-    return 'Toda la empresa';
+    return t('hrPayroll.commissions.scope.all');
   };
 
-  const money = (v: unknown) =>
-    `${Number(v || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €`;
+  const money = (v: unknown) => `${formatNumber(Number(v || 0), { minimumFractionDigits: 2 })} €`;
 
   const ruleColumns: TableColumn<Rule>[] = [
-    { header: 'Nombre', accessor: 'name', sortable: true, primary: true },
+    { header: t('hr.common.name'), accessor: 'name', sortable: true, primary: true },
     {
-      header: 'Alcance',
+      header: t('hrPayroll.commissions.scopeLabel'),
       sortable: true,
       sortAccessor: scopeLabel,
       cell: (r) => <span className="text-xs">{scopeLabel(r)}</span>,
     },
     {
-      header: 'Base',
+      header: t('hrPayroll.payrolls.col.base'),
       sortable: true,
       sortAccessor: (r) => r.basis,
-      cell: (r) => <span className="text-xs">{r.basis}</span>,
+      cell: (r) => (
+        <span className="text-xs">
+          {t(BASIS_OPTIONS.find((o) => o.value === r.basis)?.label ?? r.basis)}
+        </span>
+      ),
     },
     {
       header: '%',
@@ -274,10 +283,10 @@ export const Commissions: React.FC = () => {
       cell: (r) => <span className="tabular-nums">{Number(r.pct).toFixed(2)}%</span>,
     },
     {
-      header: 'Activa',
+      header: t('hrPayroll.commissions.activeCol'),
       sortable: true,
       sortAccessor: (r) => (r.isActive ? 1 : 0),
-      cell: (r) => (r.isActive ? 'Sí' : 'No'),
+      cell: (r) => (r.isActive ? t('hr.common.yes') : t('hr.common.no')),
     },
   ];
 
@@ -285,13 +294,13 @@ export const Commissions: React.FC = () => {
   // number, de ahí la conversión al abrir la regla.
   const ruleRowActions = (r: Rule): RowAction[] => [
     {
-      label: 'Editar',
+      label: t('hr.common.edit'),
       icon: <Pencil size={14} />,
       disabled: !canWrite,
       onClick: () => setEditing({ ...r, pct: Number(r.pct ?? 0) }),
     },
     {
-      label: 'Borrar',
+      label: t('hr.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       disabled: !canDelete,
@@ -301,7 +310,7 @@ export const Commissions: React.FC = () => {
 
   const accrualColumns: TableColumn<Accrual>[] = [
     {
-      header: 'Empleado',
+      header: t('hr.common.employee'),
       sortable: true,
       sortAccessor: (a) => {
         const emp = employeeById[a.employeeId];
@@ -318,7 +327,7 @@ export const Commissions: React.FC = () => {
       primary: true,
     },
     {
-      header: 'Periodo',
+      header: t('hrPayroll.payrolls.periodLabel'),
       sortable: true,
       sortAccessor: (a) => a.periodYear * 100 + a.periodMonth,
       cell: (a) => (
@@ -328,7 +337,7 @@ export const Commissions: React.FC = () => {
       ),
     },
     {
-      header: 'Documento',
+      header: t('hrPayroll.commissions.document'),
       cell: (a) => (
         <span className="text-xs font-mono">
           {a.sourceDocType} · {a.sourceDocId.slice(0, 8)}
@@ -336,25 +345,27 @@ export const Commissions: React.FC = () => {
       ),
     },
     {
-      header: 'Base',
+      header: t('hrPayroll.payrolls.col.base'),
       align: 'right',
       sortable: true,
       sortAccessor: (a) => Number(a.base || 0),
       cell: (a) => <span className="tabular-nums">{money(a.base)}</span>,
     },
     {
-      header: 'Comisión',
+      header: t('hrPayroll.commissions.commission'),
       align: 'right',
       sortable: true,
       sortAccessor: (a) => Number(a.amount || 0),
       cell: (a) => <span className="tabular-nums font-bold">{money(a.amount)}</span>,
     },
     {
-      header: 'Estado',
+      header: t('hr.common.status'),
       sortable: true,
       sortAccessor: (a) => a.status,
       cell: (a) => (
-        <Badge variant={STATUS_VARIANT[a.status]}>{STATUS_LABELS[a.status] ?? a.status}</Badge>
+        <Badge variant={STATUS_VARIANT[a.status]}>
+          {STATUS_LABELS[a.status] ? t(STATUS_LABELS[a.status]) : a.status}
+        </Badge>
       ),
     },
   ];
@@ -362,8 +373,8 @@ export const Commissions: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-5">
       <PageHeader
-        title="Comisiones"
-        subtitle="Reglas de comisión sobre ventas atribuidas a comerciales. Volcado a nómina con un click."
+        title={t('hrPayroll.commissions.title')}
+        subtitle={t('hrPayroll.commissions.subtitle')}
         icon={<Percent size={18} />}
         size="lg"
         actions={
@@ -371,7 +382,7 @@ export const Commissions: React.FC = () => {
           // `actions` (a la derecha del título) porque la variante segmented ya
           // se pintaba así, no pegadas al borde inferior.
           <Tabs
-            items={TABS}
+            items={TABS.map((x) => ({ ...x, label: t(x.label) }))}
             value={tab}
             onChange={(k) => setTab(k as 'rules' | 'accruals')}
             variant="segmented"
@@ -384,7 +395,7 @@ export const Commissions: React.FC = () => {
           {canWrite && (
             <div className="flex justify-end">
               <Button size="sm" onClick={() => setEditing(emptyRule())}>
-                <Plus size={14} /> Nueva regla
+                <Plus size={14} /> {t('hrPayroll.commissions.newRule')}
               </Button>
             </div>
           )}
@@ -393,15 +404,15 @@ export const Commissions: React.FC = () => {
               <form onSubmit={saveRule} className="p-6 grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div className="md:col-span-2">
                   <Input
-                    label="Nombre"
+                    label={t('hr.common.name')}
                     value={editing.name || ''}
                     onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                     required
                   />
                 </div>
                 <Select
-                  label="Alcance"
-                  options={SCOPE_OPTIONS}
+                  label={t('hrPayroll.commissions.scopeLabel')}
+                  options={SCOPE_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                   value={editing.scope || 'employee'}
                   onChange={(v) => setEditing({ ...editing, scope: v as Rule['scope'] })}
                 />
@@ -410,13 +421,13 @@ export const Commissions: React.FC = () => {
                     {/* SearchableSelect no tiene prop `label` → se conserva el
                         <label> suelto. */}
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                      Empleado
+                      {t('hr.common.employee')}
                     </label>
                     <SearchableSelect
                       options={employeeOptions}
                       value={editing.employeeId || ''}
                       onChange={(v) => setEditing({ ...editing, employeeId: v })}
-                      placeholder="— elegir —"
+                      placeholder={t('hrTalent.objectives.choose')}
                       clearable
                     />
                   </div>
@@ -424,66 +435,66 @@ export const Commissions: React.FC = () => {
                 {editing.scope === 'department' && (
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                      Departamento
+                      {t('hr.common.department')}
                     </label>
                     <SearchableSelect
                       options={departmentOptions}
                       value={editing.departmentId || ''}
                       onChange={(v) => setEditing({ ...editing, departmentId: v })}
-                      placeholder="— elegir —"
+                      placeholder={t('hrTalent.objectives.choose')}
                       clearable
                     />
                   </div>
                 )}
                 <Select
-                  label="Base"
-                  options={BASIS_OPTIONS}
+                  label={t('hrPayroll.payrolls.col.base')}
+                  options={BASIS_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                   value={editing.basis || 'net_amount'}
                   onChange={(v) => setEditing({ ...editing, basis: v as Rule['basis'] })}
                 />
                 <Select
-                  label="Tipo"
-                  options={KIND_OPTIONS}
+                  label={t('hr.incidents.type')}
+                  options={KIND_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                   value={editing.kind || 'flat_pct'}
                   onChange={(v) => setEditing({ ...editing, kind: v as Rule['kind'] })}
                 />
                 <PercentInput
-                  label="% comisión"
+                  label={t('hrPayroll.commissions.pct')}
                   value={editing.pct}
                   onChange={(v) => setEditing({ ...editing, pct: v })}
                   emptyValue="zero"
                 />
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                    Concepto destino
+                    {t('hrPayroll.commissions.targetConcept')}
                   </label>
                   <SearchableSelect
                     options={conceptOptions}
                     value={editing.payrollConceptId || ''}
                     onChange={(v) => setEditing({ ...editing, payrollConceptId: v || null })}
-                    placeholder='— auto (busca "Comisiones") —'
+                    placeholder={t('hrPayroll.commissions.autoConcept')}
                     clearable
                   />
                 </div>
                 {/* El vacío es válido (vigencia abierta) → clearable. */}
                 <DatePicker
-                  label="Vigencia desde"
+                  label={t('hrPayroll.agreements.validFrom')}
                   value={(editing.validFrom || '').slice(0, 10) || null}
                   onChange={(v) => setEditing({ ...editing, validFrom: v })}
                   clearable
                 />
                 <DatePicker
-                  label="Vigencia hasta"
+                  label={t('hrPayroll.agreements.validTo')}
                   value={(editing.validTo || '').slice(0, 10) || null}
                   onChange={(v) => setEditing({ ...editing, validTo: v })}
                   clearable
                 />
                 <div className="md:col-span-4 flex justify-end gap-2">
                   <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
-                    Cancelar
+                    {t('hr.common.cancel')}
                   </Button>
                   <Button type="submit" disabled={!canWrite}>
-                    Guardar
+                    {t('hr.common.save')}
                   </Button>
                 </div>
               </form>
@@ -496,7 +507,7 @@ export const Commissions: React.FC = () => {
               data={rules}
               rowActions={ruleRowActions}
               onRowClick={(r) => setEditing({ ...r, pct: Number(r.pct ?? 0) })}
-              emptyMessage="Todavía no hay reglas de comisión."
+              emptyMessage={t('hrPayroll.commissions.emptyRules')}
             />
           </Card>
         </>
@@ -508,20 +519,20 @@ export const Commissions: React.FC = () => {
             <div className="p-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Empleado
+                  {t('hr.common.employee')}
                 </label>
                 <SearchableSelect
                   options={employeeOptions}
                   value={filter.employeeId}
                   onChange={(v) => setFilter({ ...filter, employeeId: v })}
-                  placeholder="Todos"
+                  placeholder={t('hr.common.all')}
                   clearable
                 />
               </div>
               {/* Año y mes son parte de la consulta: si se vacía el campo no se
                   toca el filtro (una query con año 0 no devuelve nada). */}
               <NumberInput
-                label="Año"
+                label={t('hr.common.year')}
                 value={filter.year}
                 onChange={(v) => v != null && setFilter({ ...filter, year: v })}
                 min={2000}
@@ -529,20 +540,20 @@ export const Commissions: React.FC = () => {
                 thousandSeparator={false}
               />
               <NumberInput
-                label="Mes"
+                label={t('hr.common.month')}
                 value={filter.month}
                 onChange={(v) => v != null && setFilter({ ...filter, month: v })}
                 min={1}
                 max={12}
               />
               <Select
-                label="Estado"
-                options={STATUS_FILTER_OPTIONS}
+                label={t('hr.common.status')}
+                options={STATUS_FILTER_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                 value={filter.status}
                 onChange={(v) => setFilter({ ...filter, status: v })}
               />
               <Button size="sm" variant="secondary" onClick={recalculate} disabled={!canWrite}>
-                <RefreshCw size={14} /> Recalcular periodo
+                <RefreshCw size={14} /> {t('hrPayroll.commissions.recalcTitle')}
               </Button>
             </div>
           </Card>
@@ -551,12 +562,11 @@ export const Commissions: React.FC = () => {
               className="max-md:p-3"
               columns={accrualColumns}
               data={accruals}
-              emptyMessage={'Sin acumulados. Pulsa "Recalcular periodo".'}
+              emptyMessage={t('hrPayroll.commissions.emptyAccruals')}
             />
           </Card>
           <p className="text-xs text-slate-400 italic flex items-center gap-2">
-            <ArrowRightCircle size={12} /> Los acumulados pendientes se vuelcan a la nómina del
-            empleado/mes desde la página de Nóminas, opción "Importar comisiones".
+            <ArrowRightCircle size={12} /> {t('hrPayroll.commissions.footerHint')}
           </p>
         </>
       )}

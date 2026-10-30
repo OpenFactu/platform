@@ -1,13 +1,14 @@
-import React, { useRef, useState } from 'react';
+import { useI18n } from '@/i18n/I18nContext';
+import React, { useState } from 'react';
 import {
   Badge,
-  Button,
   EmptyState,
   Input,
   Modal,
   SegmentedControl,
   Skeleton,
   usePopup,
+  FileDropzone,
 } from '@openfactu/ui';
 import { Cloud, Folder, HardDrive, ImageOff, Pencil, Search, Trash2, Upload } from 'lucide-react';
 import type { WebsiteAsset } from '../domain/website';
@@ -15,16 +16,18 @@ import { useMediaLibrary } from '../hooks/useMediaLibrary';
 import type { MediaTypeFilter } from '../utils/mediaFilters';
 import { AssetMetaEditor } from './AssetMetaEditor';
 
+/** Claves de i18n (o nombres de marca, que `t` devuelve tal cual). */
 const PROVIDER_LABELS: Record<string, string> = {
-  local: 'Servidor',
+  local: 'website.media.providers.local',
   gdrive: 'Google Drive',
   onedrive: 'OneDrive',
 };
 
+/** `label` es una clave de i18n. */
 const TYPE_TABS: { value: MediaTypeFilter; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'image', label: 'Imágenes' },
-  { value: 'video', label: 'Vídeos' },
+  { value: 'all', label: 'website.media.types.all' },
+  { value: 'image', label: 'website.media.types.image' },
+  { value: 'video', label: 'website.media.types.video' },
 ];
 
 interface Props {
@@ -41,7 +44,7 @@ interface Props {
  * — StorageResolver del server decide) y se sirven por la URL pública del site.
  */
 export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) => {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const { t } = useI18n();
   const popup = usePopup();
   const {
     assets,
@@ -61,10 +64,10 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
   const handleDelete = async (asset: WebsiteAsset, e: React.MouseEvent) => {
     e.stopPropagation();
     const ok = await popup.confirm({
-      title: 'Eliminar archivo',
-      message: `¿Eliminar "${asset.fileName}" de la biblioteca?`,
+      title: t('website.media.deleteTitle'),
+      message: t('website.media.deleteMessage', { name: asset.fileName }),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('website.common.delete'),
     });
     if (!ok) return;
     remove(asset);
@@ -73,7 +76,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
   const toggleTag = (tag: string) => {
     setFilters((f) => ({
       ...f,
-      tags: f.tags.includes(tag) ? f.tags.filter((t) => t !== tag) : [...f.tags, tag],
+      tags: f.tags.includes(tag) ? f.tags.filter((x) => x !== tag) : [...f.tags, tag],
     }));
   };
 
@@ -81,8 +84,8 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
     <Modal
       isOpen={open}
       onClose={onClose}
-      title="Biblioteca de medios"
-      subtitle="Los archivos se guardan en el almacenamiento configurado en Ajustes → Almacenamiento (servidor, Google Drive u OneDrive)."
+      title={t('website.media.title')}
+      subtitle={t('website.media.subtitle')}
       maxWidth="4xl"
     >
       <div className="space-y-3">
@@ -90,31 +93,28 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
           <Input
             value={filters.query}
             onChange={(e) => setFilters((f) => ({ ...f, query: e.target.value }))}
-            placeholder="Buscar por nombre de archivo…"
+            placeholder={t('website.media.searchPlaceholder')}
             leftIcon={<Search size={14} />}
             inputSize="sm"
             containerClassName="flex-1"
           />
           <SegmentedControl<MediaTypeFilter>
-            options={TYPE_TABS}
+            options={TYPE_TABS.map((o) => ({ ...o, label: t(o.label) }))}
             value={filters.type}
             onChange={(v) => setFilters((f) => ({ ...f, type: v }))}
             size="sm"
-            aria-label="Filtrar por tipo de medio"
+            aria-label={t('website.media.filterByType')}
             className="shrink-0"
           />
-          <Button size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-            <Upload size={14} className="mr-2" /> {uploading ? 'Subiendo…' : 'Subir'}
-          </Button>
-          <input
-            ref={fileRef}
-            type="file"
+          <FileDropzone
+            variant="button"
             accept="image/*,video/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              e.target.value = '';
-              if (file) upload(file);
+            label={t('website.media.upload')}
+            icon={<Upload size={14} />}
+            isUploading={uploading}
+            uploadingLabel={t('website.media.uploading')}
+            onFiles={(files) => {
+              if (files[0]) upload(files[0]);
             }}
           />
         </div>
@@ -122,7 +122,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
         {folders.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wide mr-1">
-              Carpeta
+              {t('website.media.folder')}
             </span>
             <button
               type="button"
@@ -133,7 +133,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
                   : 'border-border-default text-slate-500 hover:bg-bg-hover'
               }`}
             >
-              Todas
+              {t('website.media.allFolders')}
             </button>
             {folders.map((folder) => (
               <button
@@ -158,7 +158,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
                   : 'border-border-default text-slate-500 hover:bg-bg-hover'
               }`}
             >
-              Sin carpeta
+              {t('website.media.noFolder')}
             </button>
           </div>
         )}
@@ -166,7 +166,7 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
         {tags.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wide mr-1">
-              Etiquetas
+              {t('website.media.tags')}
             </span>
             {tags.map((tag) => (
               <button
@@ -200,11 +200,11 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
         ) : totalCount === 0 ? (
           <EmptyState
             icon={<ImageOff size={28} />}
-            title="La biblioteca está vacía"
-            hint="Sube tu primer archivo."
+            title={t('website.media.empty')}
+            hint={t('website.media.emptyHint')}
           />
         ) : assets.length === 0 ? (
-          <EmptyState icon={<Search size={28} />} title="Ningún archivo coincide con los filtros" />
+          <EmptyState icon={<Search size={28} />} title={t('website.media.noMatch')} />
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[50vh] overflow-y-auto pr-1">
             {assets.map((asset) => (
@@ -238,7 +238,9 @@ export const MediaLibraryModal: React.FC<Props> = ({ open, onClose, onSelect }) 
                         <Cloud size={10} className="text-sky-500" />
                       )}
                       <Badge variant="neutral" className="text-[9px]">
-                        {PROVIDER_LABELS[asset.provider] ?? asset.provider}
+                        {PROVIDER_LABELS[asset.provider]
+                          ? t(PROVIDER_LABELS[asset.provider])
+                          : asset.provider}
                       </Badge>
                       {asset.folder && (
                         <Badge variant="info" className="text-[9px]">

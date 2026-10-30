@@ -1,6 +1,8 @@
 import React from 'react';
 import { Button } from '@openfactu/ui';
 import { Download, FileSpreadsheet, FileText, File as FileIcon } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
+import { ASSISTANT_NAME } from '../domain/constants';
 
 const ICONS: Record<string, React.ElementType> = {
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': FileSpreadsheet,
@@ -16,6 +18,7 @@ export const FileDownloadCard: React.FC<{ filename: string; mimeType: string; ba
   mimeType,
   base64,
 }) => {
+  const { t } = useI18n();
   const Icon = ICONS[mimeType] || FileIcon;
 
   const handleDownload = () => {
@@ -38,14 +41,16 @@ export const FileDownloadCard: React.FC<{ filename: string; mimeType: string; ba
       </span>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium truncate">{filename}</div>
-        <div className="text-[11px] text-slate-400">Generado por Keiro</div>
+        <div className="text-[11px] text-slate-400">
+          {t('ai.file.generatedBy', { name: ASSISTANT_NAME })}
+        </div>
       </div>
       <Button
         type="button"
         variant="ghost"
         size="sm"
         onClick={handleDownload}
-        title="Descargar"
+        title={t('ai.file.download')}
         className="shrink-0 text-accent"
       >
         <Download size={16} />
