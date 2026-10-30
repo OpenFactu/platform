@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Input, Select, usePopup } from '@openfactu/ui';
+import { Button, Card, Input, Select, usePopup, Alert, CopyButton } from '@openfactu/ui';
 import { timeclockManagementApi as api, type Reader } from '../api/timeclockManagementApi';
 import type { Kiosk } from '../domain/kiosk';
 import { ReaderUsbSetup } from './ReaderUsbSetup';
@@ -91,9 +91,9 @@ export function TimeclockDevices({
         )}
       </div>
       {error && (
-        <p role="alert" className="text-danger">
+        <Alert tone="danger" role="alert">
           {error}
-        </p>
+        </Alert>
       )}
       {provisioning && canWrite && (
         <ReaderUsbSetup
@@ -173,17 +173,15 @@ export function TimeclockDevices({
             Guarda esta configuración en el lector. El token solo se muestra ahora.
           </p>
           <pre className="overflow-x-auto whitespace-pre-wrap break-all text-xs">{secret}</pre>
-          <Button
-            type="button"
+          <CopyButton
+            value={secret}
             variant="secondary"
-            onClick={() => {
-              void navigator.clipboard
-                .writeText(secret)
-                .catch(() => setError('No se pudo copiar. Selecciona la configuración y cópiala.'));
-            }}
-          >
-            Copiar configuración
-          </Button>
+            size="md"
+            label="Copiar configuración"
+            onCopyError={() =>
+              setError('No se pudo copiar. Selecciona la configuración y cópiala.')
+            }
+          />
           <Button type="button" variant="secondary" onClick={() => setSecret('')}>
             Ocultar
           </Button>

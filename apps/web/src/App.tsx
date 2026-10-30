@@ -1,9 +1,10 @@
 import { apiClient } from '@/shared/http';
 import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { GlobalLoader, PopupProvider } from '@openfactu/ui';
+import { PopupProvider } from '@openfactu/ui';
 import { useAuth } from './context/AuthContext';
 import { PageLoading } from './components/PageLoading';
+import { BootLoader } from './components/BootLoader';
 import { TabsProvider } from './context/TabsContext';
 import { MobileNavProvider } from './context/MobileNavContext';
 import { ScannerProvider } from './context/ScannerContext';
@@ -23,6 +24,9 @@ const ResetPassword = lazy(() =>
 );
 const TrackingPage = lazy(() =>
   import('./pages/public/TrackingPage').then((m) => ({ default: m.TrackingPage })),
+);
+const PublicFormPage = lazy(() =>
+  import('./pages/public/PublicFormPage').then((m) => ({ default: m.PublicFormPage })),
 );
 const KioskMode = lazy(() =>
   import('@/modules/hr/pages/KioskMode').then((m) => ({ default: m.KioskMode })),
@@ -62,7 +66,8 @@ function App() {
   // Rutas públicas que deben funcionar sin auth ni wizard — `/track/:token`.
   // El `BrowserRouter` se remonta dentro de cada rama, así que duplicamos el
   // check aquí para el caso "cargando".
-  const publicPath = window.location.pathname.startsWith('/track/');
+  const publicPath =
+    window.location.pathname.startsWith('/track/') || window.location.pathname.startsWith('/f/');
   const kioskPath = window.location.pathname.startsWith('/kiosk');
 
   if (publicPath) {
@@ -71,6 +76,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/track/:token" element={<TrackingPage />} />
+            <Route path="/f/:tenantId/:slug" element={<PublicFormPage />} />
           </Routes>
         </BrowserRouter>
         <DebugPanel />
@@ -95,9 +101,7 @@ function App() {
 
   if (!setupChecked || authLoading) {
     return (
-      <div className="min-h-screen bg-bg-app relative">
-        <GlobalLoader isLoading={true} message="Keirost ERP | Cargando Sistema…" />
-      </div>
+      <BootLoader />
     );
   }
 

@@ -92,7 +92,7 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
     >
       <div className="space-y-6">
         {/* Configuración Nomenclatura */}
-        <div className="grid grid-cols-2 gap-4 p-4 bg-bg-muted rounded-lg border border-border-subtle">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-bg-muted rounded-lg border border-border-subtle">
           <Input
             label="Prefijo"
             placeholder="Ej: B, P, R..."
@@ -112,7 +112,7 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
           <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
             <LayoutGrid size={12} /> Definición de Segmentos
           </p>
-          <div className="grid grid-cols-3 gap-4 border-l-4 border-blue-500 pl-4 py-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-l-4 border-blue-500 pl-4 py-2">
             <SegmentRange label="Pasillo (Aisle)" range={aisleRange} onChange={setAisleRange} />
             <SegmentRange label="Columna (Stack)" range={stackRange} onChange={setStackRange} />
             <SegmentRange label="Nivel (Level)" range={levelRange} onChange={setLevelRange} />

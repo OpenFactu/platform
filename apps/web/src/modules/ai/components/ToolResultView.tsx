@@ -57,7 +57,13 @@ const DataTable: React.FC<{ rows: Row[]; maxRows?: number }> = ({ rows, maxRows 
   }));
   return (
     <div className="max-h-72 overflow-y-auto custom-scrollbar">
-      <Table columns={columns} data={shown} rowKey={(_r, i) => i} density="compact" />
+      <Table
+        responsive="scroll"
+        columns={columns}
+        data={shown}
+        rowKey={(_r, i) => i}
+        density="compact"
+      />
       {rows.length > maxRows && (
         <div className="text-[10px] text-fg-subtle px-2 py-1 bg-bg-muted">
           Mostrando {maxRows} de {rows.length} filas

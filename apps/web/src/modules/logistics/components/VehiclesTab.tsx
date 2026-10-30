@@ -226,7 +226,7 @@ export const VehiclesTab: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Matrícula"
               requiredMark
@@ -241,7 +241,7 @@ export const VehiclesTab: React.FC = () => {
               onChange={(v) => setForm({ ...form, status: v })}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Marca"
               value={form.brand || ''}
@@ -253,7 +253,7 @@ export const VehiclesTab: React.FC = () => {
               onChange={(e) => setForm({ ...form, model: e.target.value })}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Capacidades son doublePrecision en el servidor: llegan como
                 number y se envían como number. El campo vacío sigue siendo
                 null (emptyValue por defecto). */}

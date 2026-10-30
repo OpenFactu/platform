@@ -210,7 +210,7 @@ export const ShiftTemplates: React.FC = () => {
                 )}
               </div>
               {(editing.secondStartTime || editing.secondEndTime) && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input
                     label="Inicio 2º tramo"
                     type="time"
@@ -237,7 +237,13 @@ export const ShiftTemplates: React.FC = () => {
       )}
 
       <Card noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
+        <Table
+          className="max-md:p-3"
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          rowActions={rowActions}
+        />
       </Card>
     </div>
   );

@@ -54,6 +54,12 @@ const EVENT_OPTIONS = [
   { value: 'purchaseDeliveryNote.afterCreate', label: 'Albarán de compra creado' },
   { value: 'partner.afterCreate', label: 'Partner creado' },
   { value: 'item.afterCreate', label: 'Artículo creado' },
+  { value: 'crm.opportunity.created', label: 'CRM · Oportunidad creada' },
+  { value: 'crm.opportunity.stageChanged', label: 'CRM · Oportunidad cambia de etapa' },
+  { value: 'crm.opportunity.won', label: 'CRM · Oportunidad ganada' },
+  { value: 'crm.opportunity.lost', label: 'CRM · Oportunidad perdida' },
+  { value: 'crm.activity.created', label: 'CRM · Actividad registrada' },
+  { value: 'crm.form.submitted', label: 'CRM · Formulario o encuesta respondidos' },
 ];
 
 const TRIGGER_TYPE_OPTIONS = [

@@ -1,0 +1,330 @@
+import React, { useState } from 'react';
+import {
+  Badge,
+  Button,
+  Card,
+  DropdownMenu,
+  Input,
+  Select,
+  Switch,
+  Textarea,
+  Tooltip,
+  cn,
+  type SortableHandleProps,
+} from '@openfactu/ui';
+import { ArrowDown, ArrowUp, Copy, GripHorizontal, MoreVertical, Trash2 } from 'lucide-react';
+import {
+  BRANCHING_TYPES,
+  CHOICE_TYPES,
+  GRID_TYPES,
+  type Question,
+  type QuestionType,
+  type Section,
+} from '@forms-engine';
+import { MAP_TARGET_LABEL, QUESTION_TYPE_GROUPS, QUESTION_TYPE_LABEL } from '../../domain/types';
+import { QuestionField } from '../render/QuestionField';
+import { OptionsEditor } from './OptionsEditor';
+import { FileSettings, GridSettings, RatingSettings, ScaleSettings } from './TypeSettings';
+import { ConditionPanel, CrmPanel, QuizPanel, ValidationPanel } from './LogicPanels';
+import { validationKinds } from '../../domain/validationKinds';
+
+type PanelKey = 'description' | 'validation' | 'condition' | 'branching' | 'crm';
+
+export interface QuestionCardProps {
+  question: Question;
+  active: boolean;
+  onActivate: () => void;
+  onChange: (patch: Partial<Question>) => void;
+  onChangeType: (type: QuestionType) => void;
+  onDuplicate: () => void;
+  onRemove: () => void;
+  /** Mover a la sección anterior/siguiente (undefined si no hay). */
+  onMoveSection?: (dir: -1 | 1) => void;
+  sectionIndex: number;
+  sectionCount: number;
+  sections: Section[];
+  /** Preguntas anteriores, para «Mostrar solo si…». */
+  candidates: Question[];
+  quiz: boolean;
+  crm: boolean;
+  handleProps?: SortableHandleProps;
+  disabled?: boolean;
+}
+
+const TYPE_OPTIONS = QUESTION_TYPE_GROUPS.flat().map((t) => ({
+  value: t,
+  label: QUESTION_TYPE_LABEL[t],
+}));
+
+/** Paneles que ya tienen contenido y por tanto se enseñan abiertos. */
+function initialPanels(q: Question): Set<PanelKey> {
+  const s = new Set<PanelKey>();
+  if (q.description) s.add('description');
+  if (q.validation) s.add('validation');
+  if (q.showIf) s.add('condition');
+  if (q.goTo && Object.keys(q.goTo).length) s.add('branching');
+  if (q.mapTo) s.add('crm');
+  return s;
+}
+
+/**
+ * Tarjeta de pregunta del editor. Plegada enseña la pregunta tal y como se
+ * verá; activa se edita en el sitio, como en Google Forms.
+ */
+export const QuestionCard: React.FC<QuestionCardProps> = (p) => {
+  const { question: q, active, onChange, disabled } = p;
+  const [panels, setPanels] = useState<Set<PanelKey>>(() => initialPanels(q));
+
+  const toggle = (k: PanelKey) => {
+    const next = new Set(panels);
+    if (next.has(k)) {
+      next.delete(k);
+      // Al cerrar un panel se quita lo que configuraba: así no quedan reglas ocultas.
+      if (k === 'description') onChange({ description: undefined });
+      if (k === 'validation') onChange({ validation: undefined });
+      if (k === 'condition') onChange({ showIf: undefined });
+      if (k === 'branching') onChange({ goTo: undefined });
+      if (k === 'crm') onChange({ mapTo: undefined });
+    } else {
+      next.add(k);
+      if (k === 'condition' && p.candidates[0])
+        onChange({ showIf: { questionId: p.candidates[0].id, op: 'answered' } });
+    }
+    setPanels(next);
+  };
+
+  const mark = (on: boolean, label: string) => (on ? `✓ ${label}` : label);
+  const menu = [
+    { label: mark(panels.has('description'), 'Descripción'), onClick: () => toggle('description') },
+    ...(validationKinds(q.type).length
+      ? [
+          {
+            label: mark(panels.has('validation'), 'Validación de la respuesta'),
+            onClick: () => toggle('validation'),
+          },
+        ]
+      : []),
+    {
+      label: mark(panels.has('condition'), 'Mostrar solo si…'),
+      onClick: () => toggle('condition'),
+    },
+    ...(BRANCHING_TYPES.includes(q.type) && p.sectionCount > 1
+      ? [
+          {
+            label: mark(panels.has('branching'), 'Ir a sección según la respuesta'),
+            onClick: () => toggle('branching'),
+          },
+        ]
+      : []),
+    ...(p.crm
+      ? [{ label: mark(panels.has('crm'), 'Guardar en el CRM'), onClick: () => toggle('crm') }]
+      : []),
+    ...(p.onMoveSection && p.sectionIndex > 0
+      ? [
+          {
+            label: 'Mover a la sección anterior',
+            icon: <ArrowUp size={14} />,
+            onClick: () => p.onMoveSection!(-1),
+            separatorBefore: true,
+          },
+        ]
+      : []),
+    ...(p.onMoveSection && p.sectionIndex < p.sectionCount - 1
+      ? [
+          {
+            label: 'Mover a la sección siguiente',
+            icon: <ArrowDown size={14} />,
+            onClick: () => p.onMoveSection!(1),
+            separatorBefore: !(p.sectionIndex > 0),
+          },
+        ]
+      : []),
+  ];
+
+  const tags = [
+    q.showIf && 'Condicional',
+    q.goTo && Object.keys(q.goTo).length && 'Con saltos',
+    p.quiz && q.quiz?.points ? `${q.quiz.points} pt` : null,
+    q.mapTo && `CRM: ${MAP_TARGET_LABEL[q.mapTo]}`,
+  ].filter(Boolean) as string[];
+
+  return (
+    <Card
+      className={cn(
+        'transition-shadow',
+        active ? 'border-l-4 border-l-accent shadow-md' : 'cursor-pointer hover:bg-bg-hover',
+      )}
+      bodyClassName="space-y-4"
+    >
+      {p.handleProps && !disabled && (
+        <div className="flex justify-center -mt-2 -mb-2">
+          <span
+            {...p.handleProps}
+            className={cn(p.handleProps.className, 'px-3 py-1 text-fg-subtle')}
+          >
+            <GripHorizontal size={16} />
+          </span>
+        </div>
+      )}
+
+      {!active ? (
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={`Editar «${q.title || 'Pregunta sin título'}»`}
+          onClick={p.onActivate}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              p.onActivate();
+            }
+          }}
+          className="space-y-3 outline-none"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="text-base font-medium text-fg-default">
+              {q.title || <span className="text-fg-subtle">Pregunta sin título</span>}
+              {q.required && <span className="text-danger-fg"> *</span>}
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {tags.map((t) => (
+                <Badge key={t} variant="neutral">
+                  {t}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          {q.description && (
+            <p className="text-sm text-fg-muted whitespace-pre-wrap">{q.description}</p>
+          )}
+          {/* La vista de la pregunta no se puede usar: solo enseña cómo se verá. */}
+          <div className="pointer-events-none">
+            <QuestionField question={q} answers={{}} onChange={() => {}} disabled />
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col gap-3 md:flex-row md:items-start">
+            <div className="flex-1 min-w-0">
+              <Textarea
+                aria-label="Pregunta"
+                rows={1}
+                value={q.title}
+                onChange={(e) => onChange({ title: e.target.value })}
+                placeholder="Pregunta"
+                autoFocus={!q.title}
+                disabled={disabled}
+              />
+            </div>
+            <div className="md:w-64 shrink-0">
+              <Select
+                ariaLabel="Tipo de pregunta"
+                options={TYPE_OPTIONS}
+                value={q.type}
+                onChange={(t) => p.onChangeType(t as QuestionType)}
+                disabled={disabled}
+              />
+            </div>
+          </div>
+          {panels.has('description') && (
+            <Input
+              aria-label="Descripción"
+              value={q.description ?? ''}
+              onChange={(e) => onChange({ description: e.target.value || undefined })}
+              placeholder="Descripción o ayuda"
+              disabled={disabled}
+            />
+          )}
+
+          {CHOICE_TYPES.includes(q.type) && (
+            <OptionsEditor
+              question={q}
+              onChange={onChange}
+              sections={p.sections}
+              branching={panels.has('branching')}
+              quiz={p.quiz}
+              disabled={disabled}
+            />
+          )}
+          {GRID_TYPES.includes(q.type) && (
+            <GridSettings question={q} onChange={onChange} disabled={disabled} />
+          )}
+          {q.type === 'scale' && (
+            <ScaleSettings question={q} onChange={onChange} disabled={disabled} />
+          )}
+          {q.type === 'rating' && (
+            <RatingSettings question={q} onChange={onChange} disabled={disabled} />
+          )}
+          {q.type === 'file' && (
+            <FileSettings question={q} onChange={onChange} disabled={disabled} />
+          )}
+          {!CHOICE_TYPES.includes(q.type) &&
+            !GRID_TYPES.includes(q.type) &&
+            !['scale', 'rating', 'file'].includes(q.type) && (
+              <div className="pointer-events-none opacity-70">
+                <QuestionField question={q} answers={{}} onChange={() => {}} disabled />
+              </div>
+            )}
+
+          {panels.has('validation') && (
+            <ValidationPanel question={q} onChange={onChange} disabled={disabled} />
+          )}
+          {panels.has('condition') && (
+            <ConditionPanel
+              question={q}
+              onChange={onChange}
+              candidates={p.candidates}
+              disabled={disabled}
+            />
+          )}
+          {p.quiz && <QuizPanel question={q} onChange={onChange} disabled={disabled} />}
+          {panels.has('crm') && <CrmPanel question={q} onChange={onChange} disabled={disabled} />}
+
+          <div className="flex flex-wrap items-center justify-end gap-1 border-t border-border-subtle pt-3">
+            <Tooltip content="Duplicar">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label="Duplicar pregunta"
+                onClick={p.onDuplicate}
+                disabled={disabled}
+              >
+                <Copy size={16} />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Eliminar">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label="Eliminar pregunta"
+                onClick={p.onRemove}
+                disabled={disabled}
+              >
+                <Trash2 size={16} />
+              </Button>
+            </Tooltip>
+            <span className="mx-2 h-6 w-px bg-border-default" aria-hidden />
+            <Switch
+              label="Obligatoria"
+              checked={!!q.required}
+              onChange={(v) => onChange({ required: v || undefined })}
+              disabled={disabled}
+            />
+            <DropdownMenu
+              items={menu}
+              align="end"
+              aria-label="Más opciones de la pregunta"
+              disabled={disabled}
+            >
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xs text-fg-muted hover:bg-bg-hover">
+                <MoreVertical size={16} />
+              </span>
+            </DropdownMenu>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+};

@@ -209,6 +209,8 @@ const CONFIGS: DocumentTypeConfig[] = [
     uiRoute: '/sales/quotes',
     // Aceptar/Rechazar a mano desde la UI (y reabrir si fue un error).
     manualStatusTransitions: { O: ['A', 'R'], A: ['O'], R: ['O'] },
+    // Una oferta abierta se retoca: no ha movido stock ni contabilidad.
+    editableStatuses: ['O'],
   },
 ];
 

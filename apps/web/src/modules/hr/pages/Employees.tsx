@@ -131,9 +131,10 @@ function EmployeeList() {
           onRowClick={open}
           rowActions={rowActions}
           columns={[
-            { header: 'Código', accessor: 'code', sortable: true, primary: true },
+            { header: 'Código', accessor: 'code', sortable: true, primary: true, card: 'subtitle' },
             {
               header: 'Nombre completo',
+              card: 'title',
               cell: (r: Employee) => (
                 <span className="font-medium">
                   {r.firstName} {r.lastName}
@@ -144,11 +145,13 @@ function EmployeeList() {
             },
             {
               header: 'Departamento',
+              card: 'meta',
               cell: (r: Employee) => (r.departmentId ? departmentById[r.departmentId] || '—' : '—'),
             },
             { header: 'Email', accessor: 'email' },
             {
               header: 'Estado',
+              card: 'status',
               cell: (r: Employee) => (
                 <Badge
                   variant={

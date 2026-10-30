@@ -10,7 +10,7 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
-import { Button, Input, SearchableSelect } from '@openfactu/ui';
+import { Button, Input, SearchableSelect, Select } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { DocKind, DocSide, DocStatus } from '@openfactu/common';
 import { LabelPrintButton } from '@/modules/document-templates/components/LabelPrintButton';
@@ -342,8 +342,13 @@ export function buildDetailLineColumns(opts: BuilderOpts): TableColumn<any>[] {
         <LabelPrintButton
           params={{ itemId: l.itemId }}
           title="Imprimir etiqueta del artículo"
-          className="p-1.5 text-fg-subtle hover:text-purple-600 dark:hover:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-500/10 rounded-lg transition-all inline-flex"
-          triggerLabel={<Tag size={13} />}
+          className="inline-flex h-8 w-8 items-center justify-center gap-1.5 p-0 border-transparent bg-transparent text-fg-subtle hover:bg-bg-hover hover:text-accent max-md:h-10 max-md:w-auto max-md:px-3"
+          triggerLabel={
+            <>
+              <Tag size={13} />
+              <span className="md:hidden">Etiqueta</span>
+            </>
+          }
         />
       ) : null,
   });
@@ -691,19 +696,14 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
             className={`flex-1 min-w-0 text-right font-bold tabular-nums h-9 ${locked ? disabledInputCls : ''}`}
           />
           {hasAlternatives ? (
-            <select
-              value={currentUomId}
+            <Select
+              options={availUoms.map((u) => ({ value: String(u.uomId), label: u.code }))}
+              value={String(currentUomId)}
               disabled={locked}
-              onChange={(e) => handleUomChange(e.target.value)}
-              className={`h-9 w-[70px] shrink-0 border border-border-default rounded-lg text-[10px] font-black uppercase tracking-wider text-fg-body bg-bg-card px-1 ${locked ? disabledInputCls : ''}`}
-              title="Unidad de medida"
-            >
-              {availUoms.map((u) => (
-                <option key={u.uomId} value={u.uomId}>
-                  {u.code}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => handleUomChange(v)}
+              className="w-[70px] shrink-0 text-[10px] font-black uppercase"
+              ariaLabel="Unidad de medida"
+            />
           ) : uomCode ? (
             <span className="text-[10px] font-black uppercase tracking-wider text-fg-subtle shrink-0 w-[46px] text-left">
               {uomCode}
@@ -847,20 +847,22 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
               variant="ghost"
               size="sm"
               onClick={() => onDuplicateLine(idx)}
-              className="h-7 w-7 p-0 text-fg-subtle hover:text-primary"
+              className="h-7 w-7 gap-1.5 p-0 border-transparent bg-transparent text-fg-subtle hover:bg-bg-hover hover:text-accent max-md:h-10 max-md:w-auto max-md:px-3"
               title="Duplicar línea"
             >
               <CopyIcon size={14} />
+              <span className="md:hidden">Duplicar</span>
             </Button>
           )}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => actions.removeLine(idx)}
-            className="h-7 w-7 p-0 text-fg-subtle hover:text-rose-500"
+            className="h-7 w-7 gap-1.5 p-0 border-transparent bg-transparent text-fg-subtle hover:bg-[var(--k-danger-bg)] hover:text-[var(--k-danger-fg)] max-md:h-10 max-md:w-auto max-md:px-3"
             title="Eliminar línea"
           >
             <Trash2 size={14} />
+            <span className="md:hidden">Eliminar</span>
           </Button>
         </div>
       );

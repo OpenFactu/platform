@@ -173,7 +173,13 @@ export const IncidentTypes: React.FC = () => {
       )}
 
       <Card noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
+        <Table
+          className="max-md:p-3"
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          rowActions={rowActions}
+        />
       </Card>
     </div>
   );

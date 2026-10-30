@@ -60,13 +60,6 @@ export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
               </p>
               {first && renderCell(first, line, idx)}
             </div>
-            {actionCols.length > 0 && (
-              <div className="shrink-0 self-center flex items-center">
-                {actionCols.map((c, i) => (
-                  <React.Fragment key={i}>{renderCell(c, line, idx)}</React.Fragment>
-                ))}
-              </div>
-            )}
           </div>
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 mt-3">
             {fieldCols.map((col, colIdx) => (
@@ -80,6 +73,13 @@ export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
               </div>
             ))}
           </div>
+          {actionCols.length > 0 && (
+            <div className="mt-3 flex items-center justify-end gap-1 border-t border-border-subtle pt-2">
+              {actionCols.map((c, i) => (
+                <React.Fragment key={i}>{renderCell(c, line, idx)}</React.Fragment>
+              ))}
+            </div>
+          )}
         </Card>
       ))}
     </div>

@@ -15,7 +15,7 @@
 import { templatesApi } from '@/modules/document-templates/api';
 import { apiClient } from '@/shared/http';
 import React, { useEffect, useState } from 'react';
-import { Modal, Button, Select, NumberInput } from '@openfactu/ui';
+import { Alert, Modal, Button, Select, NumberInput } from '@openfactu/ui';
 import { Tag, Printer } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -221,9 +221,9 @@ export const LabelPrintButton: React.FC<Props> = ({
             </>
           )}
           {error && (
-            <div role="alert" className="text-danger-fg whitespace-pre-wrap">
+            <Alert tone="danger" role="alert" className="whitespace-pre-wrap">
               {error}
-            </div>
+            </Alert>
           )}
         </div>
       </Modal>

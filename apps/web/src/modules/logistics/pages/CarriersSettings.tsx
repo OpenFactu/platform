@@ -322,7 +322,7 @@ export const CarriersSettings: React.FC = () => {
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Nombre"
               requiredMark

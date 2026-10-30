@@ -1,6 +1,25 @@
 -- Esquema público de Keirost. GENERADO: no editar a mano.
 -- Sale de schema.ts vía scripts/generate-public-schema.mjs.
 
+CREATE TABLE IF NOT EXISTS "AiConversationProject" (
+	"id" text PRIMARY KEY NOT NULL,
+	"tenantId" text NOT NULL,
+	"userId" text NOT NULL,
+	"title" text NOT NULL,
+	"createdAt" timestamp DEFAULT now() NOT NULL,
+	"updatedAt" timestamp DEFAULT now() NOT NULL
+);
+
+ALTER TABLE "AiConversationProject" ADD COLUMN IF NOT EXISTS "tenantId" text;
+
+ALTER TABLE "AiConversationProject" ADD COLUMN IF NOT EXISTS "userId" text;
+
+ALTER TABLE "AiConversationProject" ADD COLUMN IF NOT EXISTS "title" text;
+
+ALTER TABLE "AiConversationProject" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
+
+ALTER TABLE "AiConversationProject" ADD COLUMN IF NOT EXISTS "updatedAt" timestamp DEFAULT now() NOT NULL;
+
 CREATE TABLE IF NOT EXISTS "AiConversation" (
 	"id" text PRIMARY KEY NOT NULL,
 	"tenantId" text NOT NULL,
@@ -8,6 +27,7 @@ CREATE TABLE IF NOT EXISTS "AiConversation" (
 	"title" text,
 	"messages" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"model" text,
+	"projectId" text,
 	"createdAt" timestamp DEFAULT now() NOT NULL,
 	"updatedAt" timestamp DEFAULT now() NOT NULL
 );
@@ -21,6 +41,8 @@ ALTER TABLE "AiConversation" ADD COLUMN IF NOT EXISTS "title" text;
 ALTER TABLE "AiConversation" ADD COLUMN IF NOT EXISTS "messages" jsonb DEFAULT '[]'::jsonb NOT NULL;
 
 ALTER TABLE "AiConversation" ADD COLUMN IF NOT EXISTS "model" text;
+
+ALTER TABLE "AiConversation" ADD COLUMN IF NOT EXISTS "projectId" text;
 
 ALTER TABLE "AiConversation" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
 

@@ -1,6 +1,6 @@
 import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api';
 import React, { useEffect, useMemo, useState } from 'react';
-import type { TableColumn } from '@openfactu/ui';
+import { Select, type TableColumn } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
 
 /**
@@ -38,21 +38,18 @@ export function useInternalOrderLineColumn(
       header: 'Proyecto',
       width: '220px',
       cell: (line: any, idx: number) => (
-        <select
+        <Select
+          options={[
+            { value: '', label: '— Hereda cabecera —' },
+            ...orders
+              .filter((o) => o.status !== 'closed')
+              .map((o) => ({ value: String(o.id), label: `${o.code} — ${o.name}` })),
+          ]}
           value={line.internalOrderId || ''}
-          onChange={(e) => updateLine(idx, 'internalOrderId', e.target.value || null)}
-          className="min-w-[200px] text-sm px-3 py-2 border border-border-default bg-bg-card font-medium"
-          title="Vacío = hereda el proyecto de cabecera"
-        >
-          <option value="">— Hereda cabecera —</option>
-          {orders
-            .filter((o) => o.status !== 'closed')
-            .map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.code} — {o.name}
-              </option>
-            ))}
-        </select>
+          onChange={(v) => updateLine(idx, 'internalOrderId', v || null)}
+          className="min-w-[200px]"
+          ariaLabel="Proyecto"
+        />
       ),
     }),
     [orders, updateLine],

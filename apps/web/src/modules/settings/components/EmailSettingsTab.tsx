@@ -171,7 +171,7 @@ export const EmailSettingsTab: React.FC = () => {
             <span>Activar envío de correo desde este tenant</span>
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Host">
               <Input
                 value={cfg.host}
@@ -196,7 +196,7 @@ export const EmailSettingsTab: React.FC = () => {
             <span>Conexión segura (TLS directo, puerto 465). Desmarcado = STARTTLS en 587.</span>
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Usuario">
               <Input
                 value={cfg.user}
@@ -215,7 +215,7 @@ export const EmailSettingsTab: React.FC = () => {
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="From">
               <Input
                 value={cfg.fromAddress}

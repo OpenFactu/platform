@@ -41,6 +41,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   const columns: TableColumn<UserRow>[] = [
     {
       header: 'Usuario',
+      card: 'title',
       cell: (u) => (
         <div className="flex items-center gap-3 ">
           {u.avatarImageUrl ? (
@@ -60,10 +61,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
     },
     {
       header: 'Email',
+      card: 'subtitle',
       cell: (u) => <span className="text-sm text-fg-muted">{u.email}</span>,
     },
     {
       header: 'Rol Global',
+      card: 'status',
       cell: (u) => (
         <Badge
           variant={u.role === 'SUPERUSER' ? 'warning' : u.role === 'ADMIN' ? 'info' : 'neutral'}
@@ -120,6 +123,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 
   return (
     <Table
+      className="max-md:p-3"
       columns={columns}
       data={users}
       isLoading={loading}

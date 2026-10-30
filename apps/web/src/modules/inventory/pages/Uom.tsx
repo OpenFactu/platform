@@ -111,8 +111,7 @@ export const Uom: React.FC = () => {
   const esMovil = useIsMobile();
 
   /** Filas de la tabla: las unidades más, si se está creando, la fila de alta. */
-  const rows: any[] =
-    newRow && !esMovil ? [...uoms, { id: NEW_ROW_ID, ...newRow }] : uoms;
+  const rows: any[] = newRow && !esMovil ? [...uoms, { id: NEW_ROW_ID, ...newRow }] : uoms;
 
   const columns: TableColumn<any>[] = [
     {
@@ -379,6 +378,7 @@ export const Uom: React.FC = () => {
         {/* La Table trae cabecera, esqueleto de carga y estado vacío: el
             <table> a mano y sus filas especiales sobraban. */}
         <Table
+          className="max-md:p-3"
           columns={columns}
           data={rows}
           isLoading={loading}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge, Button, PageHeader } from '@openfactu/ui';
 import { ArrowLeft } from 'lucide-react';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 type StatusVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';
 
@@ -21,25 +22,35 @@ export const DocumentDetailLayout: React.FC<Props> = ({
   actions,
   children,
 }) => {
+  const mobile = useIsMobile();
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-300">
       <PageHeader
         size="lg"
         divider
         className="pb-6"
+        // En móvil la flecha va en la misma línea que el antetítulo, no sola
+        // en una fila encima del título.
         breadcrumbs={
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            aria-label="Volver"
-            className="p-2.5 shrink-0 self-start"
-          >
-            <ArrowLeft size={18} />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onBack}
+              aria-label="Volver"
+              className="p-2.5 shrink-0 self-start"
+            >
+              <ArrowLeft size={18} />
+            </Button>
+            {mobile && (
+              <span className="min-w-0 truncate text-[10px] font-mono font-semibold uppercase tracking-[1.5px] text-fg-subtle">
+                {breadcrumb}
+              </span>
+            )}
+          </div>
         }
-        eyebrow={breadcrumb}
+        eyebrow={mobile ? undefined : breadcrumb}
         title={
           <>
             {title}

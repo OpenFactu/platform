@@ -228,6 +228,7 @@ export const ShiftPatterns: React.FC = () => {
       {!editing && (
         <Card className="overflow-hidden" noPadding>
           <Table
+            className="max-md:p-3"
             columns={listColumns}
             data={list}
             rowActions={listRowActions}

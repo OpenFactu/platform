@@ -264,7 +264,13 @@ export const TemplatesList: React.FC<Props> = ({
                 <AlertCircle size={14} /> Sin plantillas para este tipo
               </div>
             ) : (
-              <Table columns={columns} data={rows} rowActions={rowActions} onRowClick={onEdit} />
+              <Table
+                className="max-md:p-3"
+                columns={columns}
+                data={rows}
+                rowActions={rowActions}
+                onRowClick={onEdit}
+              />
             )}
           </Card>
         </div>

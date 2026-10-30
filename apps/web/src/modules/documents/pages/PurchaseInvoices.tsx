@@ -37,7 +37,6 @@ import {
 } from 'lucide-react';
 import { DocumentActionBar } from '../components/DocumentActionBar';
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
-import { DocumentCardList } from '../components/DocumentCardList';
 import { MobileLineCards } from '../components/MobileLineCards';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
@@ -89,7 +88,6 @@ const InvoiceList: React.FC<{
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
-  const isMobile = useIsMobile();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
@@ -130,6 +128,7 @@ const InvoiceList: React.FC<{
   const columns = [
     {
       header: 'Documento',
+      card: 'title' as const,
       sortable: true,
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
@@ -143,12 +142,14 @@ const InvoiceList: React.FC<{
     },
     {
       header: 'Fecha',
+      card: 'meta' as const,
       sortable: true,
       sortAccessor: (item: any) => new Date(item.date).getTime(),
       accessor: (item: any) => fmt.date(item.date),
     },
     {
       header: 'Proveedor',
+      card: 'subtitle' as const,
       accessor: (item: any) => (
         <div>
           <p className="font-bold text-fg-body leading-tight">{item.partnerName}</p>
@@ -197,6 +198,7 @@ const InvoiceList: React.FC<{
     },
     {
       header: 'Estado',
+      card: 'status' as const,
       align: 'center' as const,
       sortable: true,
       sortAccessor: (item: any) => item.status || '',
@@ -265,6 +267,7 @@ const InvoiceList: React.FC<{
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
+          shortcut={false}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           activeFilters={activeFilters}
@@ -298,68 +301,17 @@ const InvoiceList: React.FC<{
           onClear={() => setSelectedKeys(new Set())}
           onSent={() => setSelectedKeys(new Set())}
         />
-        {isMobile ? (
-          <DocumentCardList
-            data={filteredData || []}
-            isLoading={loading}
-            onClick={onDetail}
-            emptyMessage="No hay facturas."
-            title={(item: any) => formatDocCode(item)}
-            subtitle={(item: any) => item.partnerName}
-            status={(item: any) => {
-              if (item.status === 'D') return <Badge variant="warning">Borrador</Badge>;
-              if (item.status === 'O') return <Badge variant="success">Asentado</Badge>;
-              if (item.status === 'X') return <Badge variant="error">Cancelado</Badge>;
-              return <Badge variant="neutral">{item.status}</Badge>;
-            }}
-            fields={[
-              { label: 'Fecha', value: (item: any) => fmt.date(item.date) },
-              {
-                label: 'Total',
-                value: (item: any) => (
-                  <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
-                ),
-              },
-              {
-                label: 'Pago',
-                value: (item: any) => (
-                  <PaymentStatusBadge
-                    status={item.paymentStatus}
-                    isLocked={item.isLocked}
-                    compact
-                  />
-                ),
-              },
-              {
-                label: 'Desde albarán',
-                hidden: (item: any) => !item.baseDocCode,
-                value: (item: any) => item.baseDocCode,
-              },
-            ]}
-            actions={(item: any) => (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleQuickPdf(item.id)}
-                isLoading={downloadingId === item.id}
-                className="h-8 gap-2 text-ink-500 dark:text-ink-400"
-              >
-                <Download size={14} /> PDF
-              </Button>
-            )}
-          />
-        ) : (
-          <Table
-            columns={columns}
-            data={filteredData || []}
-            isLoading={loading}
-            rowActions={rowActions}
-            onRowClick={onDetail}
-            selectable
-            selectedKeys={selectedKeys}
-            onSelectionChange={setSelectedKeys}
-          />
-        )}
+        <Table
+          className="max-md:p-3"
+          columns={columns}
+          data={filteredData || []}
+          isLoading={loading}
+          rowActions={rowActions}
+          onRowClick={onDetail}
+          selectable
+          selectedKeys={selectedKeys}
+          onSelectionChange={setSelectedKeys}
+        />
       </Card>
     </div>
   );
@@ -571,6 +523,7 @@ const InvoiceForm: React.FC<{
           />
         ) : (
           <Table
+            responsive="scroll"
             columns={columns}
             data={state.lines || []}
             emptyMessage="No hay líneas en la factura."
@@ -891,7 +844,7 @@ const InvoiceDetail: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={columns} lines={invoice.lines || []} />
         ) : (
-          <Table columns={columns} data={invoice.lines || []} />
+          <Table responsive="scroll" columns={columns} data={invoice.lines || []} />
         )}
         <DocumentTotalsBlock
           subtotal={invoice.subtotal || 0}

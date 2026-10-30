@@ -227,6 +227,7 @@ export const CollectiveAgreements: React.FC = () => {
 
       <Card className="overflow-hidden" noPadding>
         <Table
+          className="max-md:p-3"
           columns={columns}
           data={rows}
           isLoading={loading}

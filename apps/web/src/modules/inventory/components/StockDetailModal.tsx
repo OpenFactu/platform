@@ -136,6 +136,7 @@ export const StockDetailModal: React.FC<Props> = ({
               <div className="rounded-lg border border-border-default overflow-hidden">
                 <SectionHeader icon={<Warehouse size={12} />}>Stock por Almacén</SectionHeader>
                 <Table
+                  responsive="scroll"
                   className="w-full"
                   density="compact"
                   emptyMessage="Sin existencias físicas en ningún almacén."
@@ -209,6 +210,7 @@ export const StockDetailModal: React.FC<Props> = ({
                 {traceData.length ? (
                   <div className="overflow-auto max-h-[55vh]">
                     <Table
+                      responsive="scroll"
                       className="w-full"
                       density="compact"
                       data={traceData}

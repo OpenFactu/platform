@@ -330,6 +330,7 @@ export const DocumentSeries: React.FC = () => {
 
       <Card className="overflow-hidden border-border-subtle" noPadding>
         <FilterBar
+          shortcut={false}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           activeFilters={activeFilters}
@@ -360,7 +361,13 @@ export const DocumentSeries: React.FC = () => {
             },
           ]}
         />
-        <Table columns={columns} data={filteredData} isLoading={loading} rowActions={rowActions} />
+        <Table
+          className="max-md:p-3"
+          columns={columns}
+          data={filteredData}
+          isLoading={loading}
+          rowActions={rowActions}
+        />
       </Card>
     </div>
   );

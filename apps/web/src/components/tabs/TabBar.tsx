@@ -68,7 +68,7 @@ export const TabBar: React.FC = () => {
         // Tokens y no los hex de fábrica: eran literalmente los valores de
         // --k-line-2 / --bg-app / --border-default, así que la barra no seguía
         // al tema del tenant.
-        className="flex items-stretch h-10 bg-bg-muted border-b border-border-default overflow-x-auto scrollbar-hide shrink-0 z-0"
+        className="hidden md:flex items-stretch h-10 bg-bg-muted border-b border-border-default overflow-x-auto scrollbar-hide shrink-0 z-0"
       >
         {tabs.map((tab) => {
           const Icon = resolveIcon(tab.iconName);

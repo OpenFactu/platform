@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Card, Badge, Button, Input, EmptyState, useToast } from '@openfactu/ui';
-import { Shield, Key, Copy, Trash2, Eye, EyeOff, Plus } from 'lucide-react';
+import { Card, Badge, Button, Input, EmptyState, useToast, CopyButton } from '@openfactu/ui';
+import { Shield, Key, Trash2, Eye, EyeOff, Plus } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 import { devKeysApi } from '../api';
 import type { DevKey } from '../domain/DevKeys';
@@ -12,7 +12,6 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
   const [creating, setCreating] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKey, setNewKey] = useState<{ clientId: string; clientSecret: string } | null>(null);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const fetchKeys = useCallback(async () => {
     setLoading(true);
@@ -69,12 +68,6 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
     }
   };
 
-  const copyToClipboard = (text: string, field: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
-
   return (
     <div>
       {/* Nuevo key generado — mostrar una sola vez */}
@@ -96,18 +89,12 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                 <code className="flex-1 bg-bg-card border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm font-mono text-fg-default select-all">
                   {newKey.clientId}
                 </code>
-                <Button
-                  type="button"
+                <CopyButton
+                  value={newKey.clientId}
                   variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(newKey.clientId, 'clientId')}
-                  title="Copiar Client ID"
-                >
-                  <Copy
-                    size={14}
-                    className={copiedField === 'clientId' ? 'text-emerald-500' : undefined}
-                  />
-                </Button>
+                  iconOnly
+                  label="Copiar Client ID"
+                />
               </div>
             </div>
             <div>
@@ -118,18 +105,12 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                 <code className="flex-1 bg-bg-card border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2 text-sm font-mono text-fg-default select-all">
                   {newKey.clientSecret}
                 </code>
-                <Button
-                  type="button"
+                <CopyButton
+                  value={newKey.clientSecret}
                   variant="ghost"
-                  size="sm"
-                  onClick={() => copyToClipboard(newKey.clientSecret, 'clientSecret')}
-                  title="Copiar Client Secret"
-                >
-                  <Copy
-                    size={14}
-                    className={copiedField === 'clientSecret' ? 'text-emerald-500' : undefined}
-                  />
-                </Button>
+                  iconOnly
+                  label="Copiar Client Secret"
+                />
               </div>
             </div>
           </div>
@@ -208,15 +189,12 @@ export const DevKeysPanel: React.FC<{ token: string | null; user: any }> = ({ to
                     <div className="font-semibold text-sm text-fg-default">{k.name}</div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <code className="text-[11px] text-fg-subtle font-mono">{k.clientId}</code>
-                      <Button
-                        type="button"
+                      <CopyButton
+                        value={k.clientId}
                         variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(k.clientId, k.id)}
-                        title="Copiar Client ID"
-                      >
-                        <Copy size={10} />
-                      </Button>
+                        iconOnly
+                        label="Copiar Client ID"
+                      />
                     </div>
                   </div>
                 </div>

@@ -87,6 +87,7 @@ export const Items: React.FC = () => {
   const columns = [
     {
       header: '',
+      card: 'hidden' as const,
       accessor: (i: any) => {
         const src = Array.isArray(i.webImages) ? i.webImages[0] : undefined;
         return src ? (
@@ -111,6 +112,7 @@ export const Items: React.FC = () => {
      */
     {
       header: 'Código / Nombre',
+      card: 'title' as const,
       sortable: true,
       sortAccessor: (i: any) => `${i.code} ${i.name}`.toLowerCase(),
       accessor: (i: any) => (
@@ -124,6 +126,7 @@ export const Items: React.FC = () => {
     },
     {
       header: 'UoM',
+      card: 'meta' as const,
       sortable: true,
       sortAccessor: (i: any) => uoms.find((u) => u.id === i.uomId)?.code || '',
       accessor: (i: any) => {
@@ -135,6 +138,7 @@ export const Items: React.FC = () => {
     },
     {
       header: 'Gestión',
+      card: 'status' as const,
       accessor: (i: any) =>
         // 'N' (estándar) no se marca: es el caso por defecto y un distintivo en
         // cada fila sería ruido. Solo se señala lo que se sale de la norma.
@@ -148,6 +152,7 @@ export const Items: React.FC = () => {
     },
     {
       header: 'Comprometido',
+      card: 'hidden' as const,
       align: 'right' as const,
       accessor: (i: any) => (
         <span className="text-fg-subtle font-mono text-[11px] tabular-nums">
@@ -157,6 +162,7 @@ export const Items: React.FC = () => {
     },
     {
       header: 'Pedido',
+      card: 'hidden' as const,
       align: 'right' as const,
       accessor: (i: any) => (
         <span className="text-fg-muted font-mono text-[11px] tabular-nums">
@@ -182,6 +188,7 @@ export const Items: React.FC = () => {
     },
     {
       header: 'Precio Base',
+      card: 'meta' as const,
       align: 'right' as const,
       accessor: (i: any) => (
         <span className="font-mono tabular-nums text-fg-body">{i.basePrice}€</span>
@@ -205,6 +212,7 @@ export const Items: React.FC = () => {
       // ahora en el menú de fila.
       header: '',
       id: 'label',
+      card: 'status' as const,
       align: 'right' as const,
       accessor: (i: any) => (
         <div className="flex items-center justify-end gap-1">
@@ -324,6 +332,7 @@ export const Items: React.FC = () => {
                 y texto más grandes) y con la primera columna fija, para no
                 perder de vista el código al desplazarse en horizontal. */}
             <Table
+              className="max-md:p-3"
               columns={allColumns}
               data={filteredItems}
               isLoading={loading}

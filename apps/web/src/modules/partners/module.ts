@@ -2,6 +2,9 @@ import { lazy } from 'react';
 import type { ModuleManifest } from '../types';
 
 const Partners = lazy(() => import('./pages/Partners').then((m) => ({ default: m.Partners })));
+const PartnerDetail = lazy(() =>
+  import('./pages/PartnerDetail').then((m) => ({ default: m.PartnerDetail })),
+);
 const PartnerGroups = lazy(() =>
   import('./pages/PartnerGroups').then((m) => ({ default: m.PartnerGroups })),
 );
@@ -24,6 +27,13 @@ export const partnersModule: ModuleManifest = {
       pattern: '/partners',
       Component: Partners,
       title: 'Directorio',
+      iconName: 'Users',
+      permissionPath: '/partners',
+    },
+    {
+      pattern: '/partners/:partnerId',
+      Component: PartnerDetail,
+      title: 'Ficha de interlocutor',
       iconName: 'Users',
       permissionPath: '/partners',
     },

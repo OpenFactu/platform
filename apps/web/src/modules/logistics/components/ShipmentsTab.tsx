@@ -481,6 +481,7 @@ export const ShipmentsTab: React.FC = () => {
           {/* Paginación de servidor: `rows` es solo la página actual, así que
               se le pasa el `total` real para que calcule las páginas. */}
           <Table
+            className="max-md:p-3"
             columns={columns}
             data={rows}
             isLoading={loading}
@@ -513,7 +514,7 @@ export const ShipmentsTab: React.FC = () => {
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
               Tipo
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button
                 type="button"
                 variant={(form.kind || 'delivery') === 'delivery' ? 'primary' : 'outline'}
@@ -546,7 +547,7 @@ export const ShipmentsTab: React.FC = () => {
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
               Transportista
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Operador
@@ -589,7 +590,7 @@ export const ShipmentsTab: React.FC = () => {
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
               Conductor y vehículo
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
                   Conductor
@@ -719,7 +720,7 @@ export const ShipmentsTab: React.FC = () => {
                 ? 'Contacto en el punto de recogida'
                 : 'Destinatario (opcional)'}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 placeholder="Nombre"
                 value={form.recipientName || ''}

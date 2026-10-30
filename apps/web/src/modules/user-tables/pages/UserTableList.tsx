@@ -189,6 +189,7 @@ export const UserTableList: React.FC = () => {
       ) : (
         <Card noPadding>
           <Table
+            className="max-md:p-3"
             columns={allColumns}
             data={rows}
             rowActions={rowActions}

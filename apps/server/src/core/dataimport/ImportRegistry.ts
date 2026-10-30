@@ -56,7 +56,7 @@ export interface ImportObjectConfig {
   label: string;
   /** Frase corta bajo el nombre en el selector de objeto. */
   description?: string;
-  group: 'maestros' | 'stock' | 'documentos' | 'contabilidad' | 'rrhh';
+  group: 'maestros' | 'stock' | 'documentos' | 'contabilidad' | 'rrhh' | 'crm';
   /** Ruta de permiso del módulo, igual que en `RouteRegistry`/`PERMISSION_GROUPS`. */
   modulePath: string;
   /** Flag de `FlagsConfig` que tiene que estar activo para ofrecer el objeto. */

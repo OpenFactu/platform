@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   LayoutGrid,
 } from 'lucide-react';
-import { Loader, useToast, usePopup } from '@openfactu/ui';
+import { Loader, useToast, usePopup, Select } from '@openfactu/ui';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { CORE_MODULES } from '@/modules';
 import { ModuleCard } from '@/modules/plugins/components/ModuleCard';
@@ -455,28 +455,30 @@ function Step4CompanyDetails({
         />
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <select
-          className={INPUT_CLS}
+        <Select
+          options={[
+            { value: 'ES', label: 'España' },
+            { value: 'PT', label: 'Portugal' },
+            { value: 'FR', label: 'Francia' },
+            { value: 'IT', label: 'Italia' },
+            { value: 'DE', label: 'Alemania' },
+            { value: 'GB', label: 'Reino Unido' },
+            { value: 'US', label: 'Estados Unidos' },
+          ]}
           value={data.country}
-          onChange={(e) => onChange({ country: e.target.value })}
-        >
-          <option value="ES">España</option>
-          <option value="PT">Portugal</option>
-          <option value="FR">Francia</option>
-          <option value="IT">Italia</option>
-          <option value="DE">Alemania</option>
-          <option value="GB">Reino Unido</option>
-          <option value="US">Estados Unidos</option>
-        </select>
-        <select
-          className={INPUT_CLS}
+          onChange={(v) => onChange({ country: v })}
+          ariaLabel="Opción"
+        />
+        <Select
+          options={[
+            { value: 'EUR', label: '€ EUR' },
+            { value: 'USD', label: '$ USD' },
+            { value: 'GBP', label: '£ GBP' },
+          ]}
           value={data.currency}
-          onChange={(e) => onChange({ currency: e.target.value })}
-        >
-          <option value="EUR">€ EUR</option>
-          <option value="USD">$ USD</option>
-          <option value="GBP">£ GBP</option>
-        </select>
+          onChange={(v) => onChange({ currency: v })}
+          ariaLabel="Opción"
+        />
       </div>
       <input
         type="email"

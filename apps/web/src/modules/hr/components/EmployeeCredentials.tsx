@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Badge, Button, Card, Input, usePopup } from '@openfactu/ui';
+import { Badge, Button, Card, Input, usePopup, Alert } from '@openfactu/ui';
 import { CreditCard, Download, Plus, QrCode } from 'lucide-react';
 import { timeclockManagementApi as api, type Credential } from '../api/timeclockManagementApi';
 import { ReadCardButton } from './ReadCardButton';
@@ -92,9 +92,9 @@ function CredentialPanel({ employeeId, canWrite }: { employeeId: string; canWrit
       subtitle="QR personal y tarjetas que el empleado puede utilizar en el kiosco."
     >
       {error && (
-        <p role="alert" className="mb-4 text-sm text-danger">
+        <Alert tone="danger" role="alert" className="mb-4">
           {error}
-        </p>
+        </Alert>
       )}
       {loading ? (
         <p className="text-sm text-fg-muted" role="status">

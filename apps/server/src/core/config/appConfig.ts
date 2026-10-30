@@ -6,6 +6,16 @@ export interface BrandingConfig {
   /** Id del catálogo de fuentes de la web (FONT_OPTIONS); 'sans' es el default. */
   fontFamily: string;
   themeMode: 'light' | 'dark';
+  /** Id de un preset de @openfactu/ui (vacío = colores a medida). */
+  themePreset: string;
+  /** Ajustes finos sobre el tema de @openfactu/ui. Vacío = lo que diga el preset. */
+  radius: '' | 'none' | 'sm' | 'md' | 'lg';
+  density: '' | 'compact' | 'normal' | 'comfortable';
+  /** Escala del texto (0.8–1.4). */
+  textScale: number;
+  /** Id de MOTION_CHARACTERS (sober, smooth, expressive, playful). */
+  motionCharacter: string;
+  motionSpeed: '' | 'none' | 'fast' | 'normal' | 'slow';
 }
 
 export interface FormatConfig {
@@ -64,6 +74,14 @@ export interface FlagsConfig {
    *  tenant (landing builder). Off por defecto — cada empresa lo activa desde
    *  /apps cuando quiera tener web. */
   websiteEnabled: boolean;
+  /** Activa el CRM (oportunidades, contactos y actividades comerciales). Off
+   *  por defecto, como el resto de módulos opcionales. */
+  crmEnabled: boolean;
+  /** Módulo Formularios (formularios y encuestas con enlace público). Off por defecto. */
+  formsEnabled: boolean;
+  /** Ofrecer «Crear Factura» en el presupuesto (facturarlo sin pasar por
+   *  pedido). On por defecto: es como funcionaba hasta ahora. */
+  quoteDirectInvoiceEnabled: boolean;
 }
 
 export const BRANDING_DEFAULTS: BrandingConfig = {
@@ -73,6 +91,12 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   appName: 'Keirost',
   fontFamily: 'sans',
   themeMode: 'light',
+  themePreset: '',
+  radius: '',
+  density: '',
+  textScale: 1,
+  motionCharacter: '',
+  motionSpeed: '',
 };
 
 export const FORMAT_DEFAULTS: FormatConfig = {
@@ -108,6 +132,9 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   hrEnabled: true,
   assistantEnabled: true,
   websiteEnabled: false,
+  crmEnabled: false,
+  formsEnabled: false,
+  quoteDirectInvoiceEnabled: true,
 };
 
 /**

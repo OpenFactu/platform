@@ -352,6 +352,7 @@ export const ChartOfAccounts: React.FC = () => {
 
       <Card className="overflow-hidden border-border-subtle" noPadding>
         <Table
+          className="max-md:p-3"
           columns={columns}
           data={rows}
           isLoading={loading}

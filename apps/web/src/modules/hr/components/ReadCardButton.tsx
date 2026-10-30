@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button } from '@openfactu/ui';
+import { Button, Alert } from '@openfactu/ui';
 import { CreditCard } from 'lucide-react';
 import {
   ReaderUsbSession,
@@ -117,9 +117,9 @@ export function ReadCardButton({
         </p>
       )}
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <Alert tone="danger" role="alert">
           {error}
-        </p>
+        </Alert>
       )}
     </div>
   );

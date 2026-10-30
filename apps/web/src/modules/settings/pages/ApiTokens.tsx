@@ -17,8 +17,9 @@ import {
   PageHeader,
   useToast,
   usePopup,
+  CopyButton,
 } from '@openfactu/ui';
-import { Plus, Trash2, Copy, Key, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Key, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface ApiToken {
@@ -145,15 +146,6 @@ export const ApiTokens: React.FC = () => {
     }
     toast.success('Token revocado');
     load();
-  };
-
-  const copy = async (value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success('Copiado al portapapeles');
-    } catch {
-      toast.error('No se pudo copiar');
-    }
   };
 
   const toggleScope = (id: string) => {
@@ -309,12 +301,7 @@ export const ApiTokens: React.FC = () => {
                 <code className="flex-1 px-3 py-2 bg-bg-muted text-[11px] font-mono rounded break-all">
                   {created.token}
                 </code>
-                <Button
-                  onClick={() => copy(created.token)}
-                  className="flex items-center gap-1 !px-2"
-                >
-                  <Copy size={14} /> Copiar
-                </Button>
+                <CopyButton value={created.token} variant="primary" size="md" />
               </div>
             </div>
             <div className="text-[11px] text-slate-500">

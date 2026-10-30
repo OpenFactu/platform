@@ -97,6 +97,7 @@ export const AlternativeUomsPanel: React.FC<{
       {/* La Table trae cabecera, esqueleto de carga y estado vacío: el <table>
           a mano, el Loader y el div de "sin unidades" sobraban. */}
       <Table
+        responsive="scroll"
         columns={columns}
         data={alternatives}
         isLoading={loading}
@@ -106,7 +107,7 @@ export const AlternativeUomsPanel: React.FC<{
       />
 
       <div className="pt-4 border-t border-border-subtle mt-4">
-        <div className="grid grid-cols-3 gap-2 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider text-fg-subtle mb-1 block">
               Unidad

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useToast } from '@openfactu/ui';
+import { useToast, Select, Textarea } from '@openfactu/ui';
 import {
   ArrowLeft,
   Save,
@@ -2434,28 +2434,21 @@ const PageInspector: React.FC<{
       <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500">Página</div>
       <Section title="Formato">
         <Label>Tamaño</Label>
-        <select
+        <Select
+          options={[
+            { value: 'A4', label: `${PAGE_SIZE_LABELS.A4}` },
+            { value: 'Letter', label: `${PAGE_SIZE_LABELS.Letter}` },
+            { value: 'Ticket80', label: `${PAGE_SIZE_LABELS.Ticket80}` },
+            { value: 'Ticket58', label: `${PAGE_SIZE_LABELS.Ticket58}` },
+            { value: 'Label100x62', label: `${PAGE_SIZE_LABELS.Label100x62}` },
+            { value: 'Label70x37', label: `${PAGE_SIZE_LABELS.Label70x37}` },
+            { value: 'Label50x25', label: `${PAGE_SIZE_LABELS.Label50x25}` },
+            { value: 'Custom', label: `${PAGE_SIZE_LABELS.Custom}` },
+          ]}
           value={layout.pageSize}
-          onChange={(e) => onUpdatePage({ pageSize: e.target.value as PageSize })}
-          className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-        >
-          <optgroup label="Documento">
-            <option value="A4">{PAGE_SIZE_LABELS.A4}</option>
-            <option value="Letter">{PAGE_SIZE_LABELS.Letter}</option>
-          </optgroup>
-          <optgroup label="Tiquets / Recibos">
-            <option value="Ticket80">{PAGE_SIZE_LABELS.Ticket80}</option>
-            <option value="Ticket58">{PAGE_SIZE_LABELS.Ticket58}</option>
-          </optgroup>
-          <optgroup label="Etiquetas">
-            <option value="Label100x62">{PAGE_SIZE_LABELS.Label100x62}</option>
-            <option value="Label70x37">{PAGE_SIZE_LABELS.Label70x37}</option>
-            <option value="Label50x25">{PAGE_SIZE_LABELS.Label50x25}</option>
-          </optgroup>
-          <optgroup label="Otros">
-            <option value="Custom">{PAGE_SIZE_LABELS.Custom}</option>
-          </optgroup>
-        </select>
+          onChange={(v) => onUpdatePage({ pageSize: v as PageSize })}
+          ariaLabel="Opción"
+        />
         {layout.pageSize === 'Custom' && (
           <div className="grid grid-cols-2 gap-2">
             <NumberField
@@ -2988,17 +2981,19 @@ const ParamsSchemaInspector: React.FC<{
               className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
             />
             <div className="grid grid-cols-2 gap-1">
-              <select
+              <Select
+                options={[
+                  { value: 'text', label: 'Texto' },
+                  { value: 'number', label: 'Número' },
+                  { value: 'date', label: 'Fecha' },
+                  { value: 'select', label: 'Lista (elige uno)' },
+                  { value: 'multiselect', label: 'Lista múltiple (varios)' },
+                ]}
                 value={p.type ?? 'text'}
-                onChange={(e) => update(name, { type: e.target.value as ParamDef['type'] })}
-                className="px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-              >
-                <option value="text">Texto</option>
-                <option value="number">Número</option>
-                <option value="date">Fecha</option>
-                <option value="select">Lista (elige uno)</option>
-                <option value="multiselect">Lista múltiple (varios)</option>
-              </select>
+                onChange={(v) => update(name, { type: v as ParamDef['type'] })}
+                className="text-xs"
+                ariaLabel="Opción"
+              />
               <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
                 <input
                   type="checkbox"
@@ -3029,14 +3024,14 @@ const ParamsSchemaInspector: React.FC<{
                   placeholder="Opciones manuales (coma-separadas, o valor|etiqueta)"
                   className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
                 />
-                <textarea
+                <Textarea
                   value={p.optionsQuery ?? ''}
                   onChange={(e) => update(name, { optionsQuery: e.target.value || undefined })}
                   placeholder={
                     'Consulta de opciones (SELECT value, label …). Tiene prioridad sobre las manuales.'
                   }
                   rows={2}
-                  className="w-full px-2 py-1 text-[11px] font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  className="text-[11px] font-mono"
                 />
                 <div className="text-[10px] text-slate-400 leading-snug">
                   La consulta debe devolver columnas <code>value</code> y <code>label</code> (ej.{' '}
@@ -3067,15 +3062,16 @@ const PageNumbersInspector: React.FC<{
       {v.enabled && (
         <>
           <Label>Alineación</Label>
-          <select
+          <Select
+            options={[
+              { value: 'left', label: 'Izquierda' },
+              { value: 'center', label: 'Centro' },
+              { value: 'right', label: 'Derecha' },
+            ]}
             value={v.alignment ?? 'center'}
-            onChange={(e) => patch({ alignment: e.target.value as any })}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="left">Izquierda</option>
-            <option value="center">Centro</option>
-            <option value="right">Derecha</option>
-          </select>
+            onChange={(v) => patch({ alignment: v as any })}
+            ariaLabel="Opción"
+          />
           <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
             El pie se pinta en los últimos 12mm de cada página. Se reserva espacio automáticamente.
           </div>
@@ -3230,18 +3226,15 @@ const SourceColumnPicker: React.FC<{
   return (
     <>
       <Label>Fuente de datos</Label>
-      <select
+      <Select
+        options={[
+          { value: '', label: 'Líneas del documento' },
+          ...queryNames.map((n) => ({ value: `query:${n}`, label: `Consulta: ${n}` })),
+        ]}
         value={source ?? ''}
-        onChange={(e) => onSource(e.target.value || undefined)}
-        className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-      >
-        <option value="">Líneas del documento</option>
-        {queryNames.map((n) => (
-          <option key={n} value={`query:${n}`}>
-            Consulta: {n}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => onSource(v || undefined)}
+        ariaLabel="Fuente de datos"
+      />
       {showPath && (
         <>
           <Label>{pathLabel}</Label>
@@ -3252,18 +3245,16 @@ const SourceColumnPicker: React.FC<{
             className="w-full px-2 py-1 text-xs font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
           />
           {cols.length > 0 && (
-            <select
+            <Select
+              options={[
+                { value: '', label: 'Elegir columna…' },
+                ...cols.map((c) => ({ value: c, label: c })),
+              ]}
               value=""
-              onChange={(e) => e.target.value && onPath(e.target.value)}
-              className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-            >
-              <option value="">Elegir columna…</option>
-              {cols.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => v && onPath(v)}
+              className="text-xs"
+              ariaLabel="Columna"
+            />
           )}
         </>
       )}
@@ -3446,29 +3437,31 @@ const ElementInspector: React.FC<{
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
           />
           <Label>Ajuste</Label>
-          <select
+          <Select
+            options={[
+              { value: 'contain', label: 'Contener (sin recortar)' },
+              { value: 'cover', label: 'Cubrir (rellenar)' },
+              { value: 'fill', label: 'Estirar' },
+            ]}
             value={element.fit ?? 'contain'}
-            onChange={(e) => patch({ fit: e.target.value as any } as any)}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="contain">Contener (sin recortar)</option>
-            <option value="cover">Cubrir (rellenar)</option>
-            <option value="fill">Estirar</option>
-          </select>
+            onChange={(v) => patch({ fit: v as any } as any)}
+            ariaLabel="Opción"
+          />
         </Section>
       )}
 
       {element.kind === 'shape' && (
         <Section title="Forma">
           <Label>Tipo</Label>
-          <select
+          <Select
+            options={[
+              { value: 'line', label: 'Línea' },
+              { value: 'rect', label: 'Rectángulo' },
+            ]}
             value={element.shape}
-            onChange={(e) => patch({ shape: e.target.value as any } as any)}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="line">Línea</option>
-            <option value="rect">Rectángulo</option>
-          </select>
+            onChange={(v) => patch({ shape: v as any } as any)}
+            ariaLabel="Opción"
+          />
           <Label>Color de borde</Label>
           <input
             type="color"
@@ -3505,18 +3498,19 @@ const ElementInspector: React.FC<{
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
           />
           <Label>Formato</Label>
-          <select
+          <Select
+            options={[
+              { value: '', label: 'Sin formato' },
+              { value: 'currency', label: 'Moneda' },
+              { value: 'number', label: 'Número' },
+              { value: 'date', label: 'Fecha' },
+              { value: 'percent', label: 'Porcentaje' },
+              { value: 'address', label: 'Dirección (multilínea)' },
+            ]}
             value={element.format ?? ''}
-            onChange={(e) => patch({ format: (e.target.value || undefined) as any } as any)}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="">Sin formato</option>
-            <option value="currency">Moneda</option>
-            <option value="number">Número</option>
-            <option value="date">Fecha</option>
-            <option value="percent">Porcentaje</option>
-            <option value="address">Dirección (multilínea)</option>
-          </select>
+            onChange={(v) => patch({ format: (v || undefined) as any } as any)}
+            ariaLabel="Opción"
+          />
           <Toggle
             label="Prefijo/sufijo enriquecidos (negritas, colores...)"
             checked={element.rich === true}
@@ -3609,39 +3603,30 @@ const ElementInspector: React.FC<{
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
           />
           <Label>Simbología</Label>
-          <select
+          <Select
+            options={[
+              { value: 'auto', label: 'Auto (detecta EAN-13/UPC-A/EAN-8/ITF-14/Code128)' },
+              { value: 'code128', label: 'Code 128 (alfanumérico)' },
+              { value: 'code39', label: 'Code 39 (industrial)' },
+              { value: 'code93', label: 'Code 93' },
+              { value: 'codabar', label: 'Codabar' },
+              { value: 'interleaved2of5', label: 'Interleaved 2 of 5 (ITF)' },
+              { value: 'ean13', label: 'EAN-13 (13 dígitos)' },
+              { value: 'ean8', label: 'EAN-8 (8 dígitos)' },
+              { value: 'upca', label: 'UPC-A (12 dígitos, USA)' },
+              { value: 'upce', label: 'UPC-E (compacto)' },
+              { value: 'isbn', label: 'ISBN (libros)' },
+              { value: 'itf14', label: 'ITF-14 (cajas)' },
+              { value: 'gs1-128', label: 'GS1-128 (con FNC1)' },
+              { value: 'datamatrix', label: 'Data Matrix' },
+              { value: 'pdf417', label: 'PDF417' },
+              { value: 'qrcode', label: 'QR Code' },
+              { value: 'azteccode', label: 'Aztec' },
+            ]}
             value={element.symbology}
-            onChange={(e) => patch({ symbology: e.target.value as any } as any)}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <optgroup label="Recomendado">
-              <option value="auto">Auto (detecta EAN-13/UPC-A/EAN-8/ITF-14/Code128)</option>
-            </optgroup>
-            <optgroup label="1D — Universales">
-              <option value="code128">Code 128 (alfanumérico)</option>
-              <option value="code39">Code 39 (industrial)</option>
-              <option value="code93">Code 93</option>
-              <option value="codabar">Codabar</option>
-              <option value="interleaved2of5">Interleaved 2 of 5 (ITF)</option>
-            </optgroup>
-            <optgroup label="1D — Retail">
-              <option value="ean13">EAN-13 (13 dígitos)</option>
-              <option value="ean8">EAN-8 (8 dígitos)</option>
-              <option value="upca">UPC-A (12 dígitos, USA)</option>
-              <option value="upce">UPC-E (compacto)</option>
-              <option value="isbn">ISBN (libros)</option>
-            </optgroup>
-            <optgroup label="1D — Logística">
-              <option value="itf14">ITF-14 (cajas)</option>
-              <option value="gs1-128">GS1-128 (con FNC1)</option>
-            </optgroup>
-            <optgroup label="2D — Matriz">
-              <option value="datamatrix">Data Matrix</option>
-              <option value="pdf417">PDF417</option>
-              <option value="qrcode">QR Code</option>
-              <option value="azteccode">Aztec</option>
-            </optgroup>
-          </select>
+            onChange={(v) => patch({ symbology: v as any } as any)}
+            ariaLabel="Opción"
+          />
           <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
             Si el valor no encaja con la simbología elegida (ej. EAN-13 con 12 dígitos), el render
             hace fallback automático a Code 128 para que la etiqueta nunca salga en blanco.
@@ -3698,18 +3683,19 @@ const ElementInspector: React.FC<{
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
           />
           <Label>Operador</Label>
-          <select
+          <Select
+            options={[
+              { value: 'truthy', label: 'Tiene valor (truthy)' },
+              { value: 'falsy', label: 'Está vacío (falsy)' },
+              { value: 'eq', label: '= igual a' },
+              { value: 'neq', label: '≠ distinto de' },
+              { value: 'gt', label: '> mayor que' },
+              { value: 'lt', label: '< menor que' },
+            ]}
             value={element.operator}
-            onChange={(e) => patch({ operator: e.target.value as any } as any)}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="truthy">Tiene valor (truthy)</option>
-            <option value="falsy">Está vacío (falsy)</option>
-            <option value="eq">= igual a</option>
-            <option value="neq">≠ distinto de</option>
-            <option value="gt">&gt; mayor que</option>
-            <option value="lt">&lt; menor que</option>
-          </select>
+            onChange={(v) => patch({ operator: v as any } as any)}
+            ariaLabel="Opción"
+          />
           {element.operator !== 'truthy' && element.operator !== 'falsy' && (
             <>
               <Label>Valor a comparar</Label>
@@ -3756,14 +3742,15 @@ const ElementInspector: React.FC<{
       {element.kind === 'divider' && (
         <Section title="Divisor">
           <Label>Orientación</Label>
-          <select
+          <Select
+            options={[
+              { value: 'horizontal', label: 'Horizontal' },
+              { value: 'vertical', label: 'Vertical' },
+            ]}
             value={element.orientation ?? 'horizontal'}
-            onChange={(e) => patch({ orientation: e.target.value as any } as any)}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="horizontal">Horizontal</option>
-            <option value="vertical">Vertical</option>
-          </select>
+            onChange={(v) => patch({ orientation: v as any } as any)}
+            ariaLabel="Opción"
+          />
           <div className="text-[10px] text-slate-400 leading-snug">
             Grosor, color y estilo de línea se ajustan en la sección Estilo (borde).
           </div>
@@ -3773,17 +3760,18 @@ const ElementInspector: React.FC<{
       {element.kind === 'summary' && (
         <Section title="Resumen / Agregado">
           <Label>Operación</Label>
-          <select
+          <Select
+            options={[
+              { value: 'sum', label: 'Suma' },
+              { value: 'count', label: 'Conteo' },
+              { value: 'avg', label: 'Promedio' },
+              { value: 'min', label: 'Mínimo' },
+              { value: 'max', label: 'Máximo' },
+            ]}
             value={element.op}
-            onChange={(e) => patch({ op: e.target.value as any } as any)}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="sum">Suma</option>
-            <option value="count">Conteo</option>
-            <option value="avg">Promedio</option>
-            <option value="min">Mínimo</option>
-            <option value="max">Máximo</option>
-          </select>
+            onChange={(v) => patch({ op: v as any } as any)}
+            ariaLabel="Opción"
+          />
           <SourceColumnPicker
             source={element.source}
             path={element.path}
@@ -3794,16 +3782,17 @@ const ElementInspector: React.FC<{
             queryColumns={queryColumns}
           />
           <Label>Formato</Label>
-          <select
+          <Select
+            options={[
+              { value: '', label: '—' },
+              { value: 'currency', label: '€ Moneda' },
+              { value: 'number', label: '# Número' },
+              { value: 'percent', label: '% Porcentaje' },
+            ]}
             value={element.format ?? ''}
-            onChange={(e) => patch({ format: (e.target.value || undefined) as any } as any)}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="">—</option>
-            <option value="currency">€ Moneda</option>
-            <option value="number"># Número</option>
-            <option value="percent">% Porcentaje</option>
-          </select>
+            onChange={(v) => patch({ format: (v || undefined) as any } as any)}
+            ariaLabel="Opción"
+          />
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
               <div className="text-[11px] text-slate-500 dark:text-slate-400">Prefijo</div>
@@ -3860,29 +3849,31 @@ const ElementInspector: React.FC<{
             onChange={(v) => patch({ ordered: v } as any)}
           />
           <Label>Marcador</Label>
-          <select
+          <Select
+            options={[
+              { value: 'bullet', label: 'Viñeta' },
+              { value: 'number', label: 'Número' },
+              { value: 'none', label: 'Ninguno' },
+            ]}
             value={element.marker ?? 'bullet'}
-            onChange={(e) => patch({ marker: e.target.value as any } as any)}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="bullet">Viñeta</option>
-            <option value="number">Número</option>
-            <option value="none">Ninguno</option>
-          </select>
+            onChange={(v) => patch({ marker: v as any } as any)}
+            ariaLabel="Opción"
+          />
         </Section>
       )}
 
       {element.kind === 'currentDate' && (
         <Section title="Fecha">
           <Label>Modo</Label>
-          <select
+          <Select
+            options={[
+              { value: 'date', label: 'Solo fecha' },
+              { value: 'datetime', label: 'Fecha y hora' },
+            ]}
             value={element.mode ?? 'date'}
-            onChange={(e) => patch({ mode: e.target.value as any } as any)}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="date">Solo fecha</option>
-            <option value="datetime">Fecha y hora</option>
-          </select>
+            onChange={(v) => patch({ mode: v as any } as any)}
+            ariaLabel="Opción"
+          />
           <Label>Prefijo</Label>
           <input
             value={element.prefix ?? ''}
@@ -3902,29 +3893,31 @@ const ElementInspector: React.FC<{
           {!STYLE_NO_FONT.has(element.kind) && (
             <>
               <Label>Fuente</Label>
-              <select
+              <Select
+                options={[
+                  { value: '', label: 'Por defecto del sistema' },
+                  {
+                    value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                    label: 'Sans-serif',
+                  },
+                  { value: "Georgia, 'Times New Roman', serif", label: 'Serif (Georgia)' },
+                  { value: "'Times New Roman', Times, serif", label: 'Times New Roman' },
+                  { value: 'Arial, Helvetica, sans-serif', label: 'Arial / Helvetica' },
+                  { value: "'Courier New', Courier, monospace", label: 'Courier (mono)' },
+                  { value: "'Trebuchet MS', sans-serif", label: 'Trebuchet' },
+                  { value: 'Verdana, sans-serif', label: 'Verdana' },
+                ]}
                 value={element.style?.fontFamily ?? ''}
-                onChange={(e) =>
+                onChange={(v) =>
                   patch({
                     style: {
                       ...(element.style ?? {}),
-                      fontFamily: e.target.value || undefined,
+                      fontFamily: v || undefined,
                     },
                   } as any)
                 }
-                className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-              >
-                <option value="">Por defecto del sistema</option>
-                <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
-                  Sans-serif
-                </option>
-                <option value="Georgia, 'Times New Roman', serif">Serif (Georgia)</option>
-                <option value="'Times New Roman', Times, serif">Times New Roman</option>
-                <option value="Arial, Helvetica, sans-serif">Arial / Helvetica</option>
-                <option value="'Courier New', Courier, monospace">Courier (mono)</option>
-                <option value="'Trebuchet MS', sans-serif">Trebuchet</option>
-                <option value="Verdana, sans-serif">Verdana</option>
-              </select>
+                ariaLabel="Opción"
+              />
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
@@ -4050,10 +4043,16 @@ const ElementInspector: React.FC<{
           <div className="grid grid-cols-[1fr_70px_70px] gap-2 items-end">
             <label className="block">
               <div className="text-[11px] text-slate-500 dark:text-slate-400">Estilo</div>
-              <select
+              <Select
+                options={[
+                  { value: 'none', label: 'Sin borde' },
+                  { value: 'solid', label: 'Línea' },
+                  { value: 'dashed', label: 'Guiones' },
+                  { value: 'dotted', label: 'Puntos' },
+                ]}
                 value={element.style?.borderStyle ?? 'none'}
-                onChange={(e) => {
-                  const v = e.target.value as 'none' | 'solid' | 'dashed' | 'dotted';
+                onChange={(value) => {
+                  const v = value as 'none' | 'solid' | 'dashed' | 'dotted';
                   patch({
                     style: {
                       ...(element.style ?? {}),
@@ -4065,13 +4064,8 @@ const ElementInspector: React.FC<{
                     },
                   } as any);
                 }}
-                className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-              >
-                <option value="none">Sin borde</option>
-                <option value="solid">Línea</option>
-                <option value="dashed">Guiones</option>
-                <option value="dotted">Puntos</option>
-              </select>
+                ariaLabel="Opción"
+              />
             </label>
             <label className="block">
               <div className="text-[11px] text-slate-500 dark:text-slate-400">Grosor (px)</div>
@@ -4299,10 +4293,13 @@ const LinesTableEditor: React.FC<{
       {(queryNames.length > 0 || isFreeOrLabel) && (
         <>
           <Label>Fuente de datos</Label>
-          <select
+          <Select
+            options={[
+              { value: '', label: 'Líneas del documento' },
+              ...queryNames.map((n) => ({ value: `query:${n}`, label: `Consulta: ${n}` })),
+            ]}
             value={element.source ?? ''}
-            onChange={(e) => {
-              const value = e.target.value;
+            onChange={(value) => {
               if (!value) {
                 onPatch({ source: undefined });
                 return;
@@ -4318,15 +4315,8 @@ const LinesTableEditor: React.FC<{
                 onPatch({ source: value });
               }
             }}
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="">Líneas del documento</option>
-            {queryNames.map((n) => (
-              <option key={n} value={`query:${n}`}>
-                Consulta: {n}
-              </option>
-            ))}
-          </select>
+            ariaLabel="Fuente de datos"
+          />
           {isFreeOrLabel && !queryName && (
             <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-snug">
               En un Documento Libre no hay “líneas” del documento. Elegí una consulta como fuente
@@ -4342,30 +4332,30 @@ const LinesTableEditor: React.FC<{
         </>
       )}
       <Label>Disposición</Label>
-      <select
+      <Select
+        options={[
+          { value: 'table', label: 'Tabla clásica' },
+          { value: 'keyValue', label: 'Lista clave: valor' },
+        ]}
         value={element.layout ?? 'table'}
-        onChange={(e) => onPatch({ layout: e.target.value as LinesTableElement['layout'] })}
-        className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-      >
-        <option value="table">Tabla clásica</option>
-        <option value="keyValue">Lista clave: valor</option>
-      </select>
+        onChange={(v) => onPatch({ layout: v as LinesTableElement['layout'] })}
+        ariaLabel="Opción"
+      />
       {(element.layout ?? 'table') === 'table' && (
         <>
           <Label>Preset</Label>
-          <select
+          <Select
+            options={[
+              { value: 'default', label: 'Por defecto' },
+              { value: 'bordered', label: 'Con bordes' },
+              { value: 'striped', label: 'Filas cebra' },
+              { value: 'compact', label: 'Compacta' },
+              { value: 'borderless', label: 'Sin bordes' },
+            ]}
             value={element.tableStyle ?? 'default'}
-            onChange={(e) =>
-              onPatch({ tableStyle: e.target.value as LinesTableElement['tableStyle'] })
-            }
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
-          >
-            <option value="default">Por defecto</option>
-            <option value="bordered">Con bordes</option>
-            <option value="striped">Filas cebra</option>
-            <option value="compact">Compacta</option>
-            <option value="borderless">Sin bordes</option>
-          </select>
+            onChange={(v) => onPatch({ tableStyle: v as LinesTableElement['tableStyle'] })}
+            ariaLabel="Opción"
+          />
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
               <div className="text-[11px] text-slate-500 dark:text-slate-400">Fondo cabecera</div>
@@ -4466,29 +4456,31 @@ const LinesTableEditor: React.FC<{
               />
             </div>
             <div className="grid grid-cols-2 gap-1">
-              <select
+              <Select
+                options={[
+                  { value: 'left', label: 'Izq' },
+                  { value: 'center', label: 'Centro' },
+                  { value: 'right', label: 'Der' },
+                ]}
                 value={col.align ?? 'left'}
-                onChange={(e) => updateColumn(idx, { align: e.target.value as any })}
-                className="px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-              >
-                <option value="left">Izq</option>
-                <option value="center">Centro</option>
-                <option value="right">Der</option>
-              </select>
-              <select
+                onChange={(v) => updateColumn(idx, { align: v as any })}
+                className="text-xs"
+                ariaLabel="Opción"
+              />
+              <Select
+                options={[
+                  { value: '', label: '—' },
+                  { value: 'currency', label: '€' },
+                  { value: 'number', label: '#' },
+                  { value: 'date', label: '📅' },
+                  { value: 'percent', label: '%' },
+                  { value: 'address', label: '🏠' },
+                ]}
                 value={col.format ?? ''}
-                onChange={(e) =>
-                  updateColumn(idx, { format: (e.target.value || undefined) as any })
-                }
-                className="px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-              >
-                <option value="">—</option>
-                <option value="currency">€</option>
-                <option value="number">#</option>
-                <option value="date">📅</option>
-                <option value="percent">%</option>
-                <option value="address">🏠</option>
-              </select>
+                onChange={(v) => updateColumn(idx, { format: (v || undefined) as any })}
+                className="text-xs"
+                ariaLabel="Opción"
+              />
             </div>
             {lineGroup && (
               <details className="text-[11px]">
@@ -5065,15 +5057,14 @@ const ExpandableTextarea: React.FC<{
   modalTitle?: string;
 }> = ({ value, onChange, rows = 3, mono = false, placeholder, modalTitle = 'Editor' }) => {
   const [expanded, setExpanded] = useState(false);
-  const baseCls = `w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm ${mono ? 'font-mono' : ''}`;
   return (
     <div className="relative">
-      <textarea
+      <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={rows}
         placeholder={placeholder}
-        className={baseCls}
+        className={mono ? 'font-mono' : ''}
       />
       <button
         type="button"

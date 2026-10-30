@@ -5,6 +5,8 @@ ARG VITE_API_URL=http://localhost:3000
 WORKDIR /app
 COPY package*.json ./
 COPY apps/web ./apps/web
+# El motor de formularios es compartido con el servidor (alias @forms-engine en vite.config.ts).
+COPY apps/server/src/core/forms/engine.ts ./apps/server/src/core/forms/engine.ts
 
 RUN npm install
 

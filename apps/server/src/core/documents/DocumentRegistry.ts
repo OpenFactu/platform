@@ -133,6 +133,13 @@ export interface DocumentTypeConfig {
    *  Abierto→Aceptado/Rechazado). Si falta, el endpoint devuelve 404 para
    *  este tipo — los documentos con lógica fiscal/stock no se tocan a mano. */
   manualStatusTransitions?: Record<string, string[]>;
+
+  /**
+   * Estados en los que el documento se puede editar (cabecera y líneas) con
+   * `DocumentEngine.update`. Solo para tipos que no mueven stock ni contabilidad:
+   * reescribir las líneas de uno que sí lo hace exigiría revertir movimientos.
+   */
+  editableStatuses?: string[];
 }
 
 /**

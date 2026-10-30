@@ -14,11 +14,11 @@ import {
   PageHeader,
   SearchableSelect,
   useToast,
+  CopyButton,
 } from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import {
   ArrowLeft,
-  Copy,
   RefreshCw,
   PackageCheck,
   Warehouse,
@@ -143,11 +143,6 @@ export const ShipmentDetail: React.FC = () => {
       });
     }
   }, [shipment?.lastLat, shipment?.lastLng]);
-
-  const copyToken = () => {
-    navigator.clipboard.writeText(shipment?.reportToken || '');
-    toast.success('Token copiado — pégalo en la app del conductor');
-  };
 
   /** Ejecuta la cancelación con los datos del modal. */
   const submitCancel = async () => {
@@ -551,7 +546,7 @@ export const ShipmentDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-subtle">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border-subtle">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">
                   <Warehouse className="inline mr-1" size={11} /> Punto de recepción
@@ -635,14 +630,12 @@ export const ShipmentDetail: React.FC = () => {
               <div className="font-mono text-[10px] bg-bg-muted border border-border-default rounded p-2 break-all text-fg-body">
                 {trackUrl}
               </div>
-              <Button
+              <CopyButton
+                value={shipment?.reportToken || ''}
                 variant="secondary"
-                size="sm"
-                onClick={copyToken}
-                className="flex items-center gap-2 w-full"
-              >
-                <Copy size={12} /> Copiar token
-              </Button>
+                label="Copiar token"
+                className="w-full"
+              />
               <Button
                 variant="secondary"
                 size="sm"

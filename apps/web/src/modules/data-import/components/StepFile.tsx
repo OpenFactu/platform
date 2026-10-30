@@ -128,7 +128,12 @@ export const StepFile: React.FC<Props> = ({
                   </span>
                 </div>
                 <div className="overflow-x-auto">
-                  <Table columns={columns} data={sheet.preview} density="compact" />
+                  <Table
+                    responsive="scroll"
+                    columns={columns}
+                    data={sheet.preview}
+                    density="compact"
+                  />
                 </div>
               </>
             )}

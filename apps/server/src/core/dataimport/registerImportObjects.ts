@@ -15,6 +15,7 @@ import { masterDataObjects } from './objects/masterData';
 import { stockAndPriceObjects } from './objects/stockAndPrices';
 import { accountingObjects } from './objects/accounting';
 import { hrObjects } from './objects/hr';
+import { crmObjects } from './objects/crm';
 import { buildDocumentObjects } from './objects/documents';
 
 export function registerImportObjects(): void {
@@ -24,6 +25,7 @@ export function registerImportObjects(): void {
     ...stockAndPriceObjects,
     ...accountingObjects,
     ...hrObjects,
+    ...crmObjects,
     ...buildDocumentObjects(),
   ];
 

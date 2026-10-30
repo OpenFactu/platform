@@ -277,7 +277,7 @@ export const StorageSettingsTab: React.FC = () => {
             al conectarlo (o al pulsar Guardar si ya estaba conectado).
           </p>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <ProviderCard
               icon={<HardDrive size={18} />}
               label="Local"

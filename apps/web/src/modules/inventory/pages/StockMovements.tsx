@@ -119,6 +119,13 @@ const emptyLine = (): LineInput => ({
   uomId: '',
 });
 
+/** Fecha corta; vacía si falta o no es válida (new Date(null) daría 1/1/1970). */
+const shortDate = (value: unknown): string => {
+  if (!value) return '—';
+  const d = new Date(value as string);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-ES');
+};
+
 export const StockMovements: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
@@ -686,15 +693,15 @@ export const StockMovements: React.FC = () => {
                     <li
                       key={r.id}
                       onClick={() => openView(r)}
-                      className="flex items-center gap-3 px-4 py-2.5 border-b border-border-subtle last:border-0 cursor-pointer hover:bg-bg-hover transition-colors"
+                      className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 border-b border-border-subtle last:border-0 cursor-pointer hover:bg-bg-hover transition-colors"
                     >
                       <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded shrink-0">
                         {r.code}
                       </code>
                       <Badge variant={sc.variant}>{sc.label}</Badge>
-                      <div className="flex-1 min-w-0 text-xs text-fg-body">
+                      <div className="flex-1 min-w-[10rem] text-xs text-fg-body">
                         {kind === 'transfer' ? (
-                          <span className="flex items-center gap-1">
+                          <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
                             {whName(r.fromWarehouseId)}
                             <ArrowRight size={11} className="text-slate-400" />
                             {whName(r.toWarehouseId)}
@@ -706,10 +713,10 @@ export const StockMovements: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-slate-500 shrink-0">
-                        {new Date(r.date).toLocaleDateString('es-ES')}
+                      <span className="text-[11px] text-fg-muted shrink-0">
+                        {shortDate(r.date ?? r.createdAt)}
                       </span>
-                      <div className="flex gap-1 shrink-0">
+                      <div className="flex gap-1 shrink-0 ml-auto">
                         {kind === 'transfer' && r.status === 'draft' && (
                           <Button
                             type="button"
@@ -789,7 +796,7 @@ export const StockMovements: React.FC = () => {
                     {viewing.code}
                   </code>
                   <span className="text-xs text-slate-500">
-                    {new Date(viewing.date).toLocaleDateString('es-ES')}
+                    {shortDate(viewing.date ?? viewing.createdAt)}
                   </span>
                 </div>
                 {kind === 'transfer' ? (
@@ -926,7 +933,12 @@ export const StockMovements: React.FC = () => {
             </div>
             {/* La Table trae cabecera, scroll horizontal y estado vacío: el
                 <table> a mano y la rama de "Sin líneas." sobraban. */}
-            <Table columns={lineColumns} data={viewing.lines || []} emptyMessage="Sin líneas." />
+            <Table
+              className="max-md:p-3"
+              columns={lineColumns}
+              data={viewing.lines || []}
+              emptyMessage="Sin líneas."
+            />
           </Card>
         </div>
       )}
@@ -1092,7 +1104,7 @@ export const StockMovements: React.FC = () => {
                               placeholder="— artículo —"
                             />
                           </div>
-                          <div className="col-span-4 md:col-span-2">
+                          <div className="sm:col-span-4 md:col-span-2">
                             <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
                               Cantidad
                             </label>
@@ -1108,7 +1120,7 @@ export const StockMovements: React.FC = () => {
                               }
                             />
                           </div>
-                          <div className="col-span-4 md:col-span-2">
+                          <div className="sm:col-span-4 md:col-span-2">
                             <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
                               UoM
                             </label>
@@ -1120,7 +1132,7 @@ export const StockMovements: React.FC = () => {
                             </div>
                           </div>
                           {batchRequired && (
-                            <div className="col-span-4 md:col-span-3">
+                            <div className="sm:col-span-4 md:col-span-3">
                               <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
                                 {batchLabel}
                                 <span className="ml-1 text-rose-500">*</span>

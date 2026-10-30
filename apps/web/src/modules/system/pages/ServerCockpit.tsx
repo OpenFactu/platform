@@ -343,6 +343,7 @@ export const ServerCockpit: React.FC = () => {
             </h2>
           </div>
           <Table
+            className="max-md:p-3"
             columns={TENANT_COLUMNS}
             data={m.tenants.schemas}
             rowKey={(t) => t.name}

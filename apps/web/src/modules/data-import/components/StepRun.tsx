@@ -223,6 +223,7 @@ const ErrorTable: React.FC<{ rows: ImportJobRow[] }> = ({ rows }) => {
           el motivo en la última columna.
         </p>
         <Table
+          responsive="scroll"
           density="compact"
           columns={[
             {

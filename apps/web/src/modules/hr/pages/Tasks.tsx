@@ -15,10 +15,11 @@ import {
   PageHeader,
   Select,
   SearchableSelect,
+  Modal,
 } from '@openfactu/ui';
 import type { BadgeProps } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
-import { ListTodo, Plus, Trash2, X, User, Calendar, Clock } from 'lucide-react';
+import { ListTodo, Plus, Trash2, User, Calendar, Clock } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
 // Etiquetas de estado en un solo sitio: de aquí salen las columnas del kanban y
@@ -341,121 +342,99 @@ export const Tasks: React.FC = () => {
         })}
       </div>
 
-      {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <Card className="max-w-2xl w-full" noPadding>
-            <form onSubmit={save} className="p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-line dark:border-ink-700 pb-3">
-                <h2 className="text-base font-bold text-ink-900 dark:text-slate-100">
-                  {editing.id ? `Editar ${editing.code || 'tarea'}` : 'Nueva tarea'}
-                </h2>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditing(null)}
-                  title="Cerrar"
-                >
-                  <X size={18} />
-                </Button>
-              </div>
-              <Input
-                label="Título"
-                value={editing.title || ''}
-                onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                required
+      <Modal
+        isOpen={!!editing}
+        onClose={() => setEditing(null)}
+        title={editing?.id ? `Editar ${editing.code || 'tarea'}` : 'Nueva tarea'}
+        size="2xl"
+        onSubmit={save}
+        primaryAction={{ label: 'Guardar' }}
+      >
+        {editing && (
+          <div className="space-y-4">
+            <Input
+              label="Título"
+              value={editing.title || ''}
+              onChange={(e) => setEditing({ ...editing, title: e.target.value })}
+              required
+            />
+            <Input
+              label="Descripción"
+              value={editing.description || ''}
+              onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+            />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* Listas estáticas y cortas → Select, que sí tiene prop `label`. */}
+              <Select
+                label="Estado"
+                options={STATUS_OPTIONS}
+                value={editing.status || 'todo'}
+                onChange={(v) => setEditing({ ...editing, status: v as Task['status'] })}
               />
-              <Input
-                label="Descripción"
-                value={editing.description || ''}
-                onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+              <Select
+                label="Prioridad"
+                options={PRIORITY_OPTIONS}
+                value={editing.priority || 'normal'}
+                onChange={(v) => setEditing({ ...editing, priority: v as Task['priority'] })}
               />
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {/* Listas estáticas y cortas → Select, que sí tiene prop `label`. */}
-                <Select
-                  label="Estado"
-                  options={STATUS_OPTIONS}
-                  value={editing.status || 'todo'}
-                  onChange={(v) => setEditing({ ...editing, status: v as Task['status'] })}
-                />
-                <Select
-                  label="Prioridad"
-                  options={PRIORITY_OPTIONS}
-                  value={editing.priority || 'normal'}
-                  onChange={(v) => setEditing({ ...editing, priority: v as Task['priority'] })}
-                />
-                <div>
-                  {/* Maestros del servidor → SearchableSelect, que no tiene prop
+              <div>
+                {/* Maestros del servidor → SearchableSelect, que no tiene prop
                       `label`: se conserva el <label> suelto. El vacío es válido
                       → clearable. */}
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
-                    Asignada a
-                  </label>
-                  <SearchableSelect
-                    options={employeeOptions}
-                    value={editing.assigneeId || ''}
-                    onChange={(v) => setEditing({ ...editing, assigneeId: v })}
-                    placeholder="— sin asignar —"
-                    clearable
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
-                    Proyecto
-                  </label>
-                  <SearchableSelect
-                    options={projectOptions}
-                    value={editing.internalOrderId || ''}
-                    onChange={(v) => setEditing({ ...editing, internalOrderId: v })}
-                    placeholder="— ninguno —"
-                    clearable
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <DatePicker
-                  label="Inicio"
-                  value={(editing.startDate || '').slice(0, 10) || null}
-                  onChange={(v) => setEditing({ ...editing, startDate: v ?? '' })}
-                />
-                <DatePicker
-                  label="Fin"
-                  value={(editing.dueDate || '').slice(0, 10) || null}
-                  onChange={(v) => setEditing({ ...editing, dueDate: v ?? '' })}
-                />
-                <Input
-                  label="Estimadas (h)"
-                  type="number"
-                  step="0.5"
-                  value={String(editing.estimatedHours ?? '')}
-                  onChange={(e) => setEditing({ ...editing, estimatedHours: e.target.value })}
-                />
-                <Input
-                  label="Progreso (%)"
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={String(editing.progress ?? 0)}
-                  onChange={(e) => setEditing({ ...editing, progress: Number(e.target.value) })}
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
+                  Asignada a
+                </label>
+                <SearchableSelect
+                  options={employeeOptions}
+                  value={editing.assigneeId || ''}
+                  onChange={(v) => setEditing({ ...editing, assigneeId: v })}
+                  placeholder="— sin asignar —"
+                  clearable
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-3 border-t border-line dark:border-ink-700">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setEditing(null)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" size="sm">
-                  Guardar
-                </Button>
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
+                  Proyecto
+                </label>
+                <SearchableSelect
+                  options={projectOptions}
+                  value={editing.internalOrderId || ''}
+                  onChange={(v) => setEditing({ ...editing, internalOrderId: v })}
+                  placeholder="— ninguno —"
+                  clearable
+                />
               </div>
-            </form>
-          </Card>
-        </div>
-      )}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <DatePicker
+                label="Inicio"
+                value={(editing.startDate || '').slice(0, 10) || null}
+                onChange={(v) => setEditing({ ...editing, startDate: v ?? '' })}
+              />
+              <DatePicker
+                label="Fin"
+                value={(editing.dueDate || '').slice(0, 10) || null}
+                onChange={(v) => setEditing({ ...editing, dueDate: v ?? '' })}
+              />
+              <Input
+                label="Estimadas (h)"
+                type="number"
+                step="0.5"
+                value={String(editing.estimatedHours ?? '')}
+                onChange={(e) => setEditing({ ...editing, estimatedHours: e.target.value })}
+              />
+              <Input
+                label="Progreso (%)"
+                type="number"
+                min={0}
+                max={100}
+                value={String(editing.progress ?? 0)}
+                onChange={(e) => setEditing({ ...editing, progress: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

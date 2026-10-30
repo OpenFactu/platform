@@ -111,7 +111,7 @@ export const AskUserQuestionCard: React.FC<{
                 onClick={() => toggle(opt.label)}
                 className={`text-left px-3 py-1.5 rounded-lg border text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   isSelected
-                    ? 'border-accent bg-accent text-white'
+                    ? 'border-accent bg-accent text-accent-fg'
                     : 'border-border-default bg-bg-card hover:border-accent hover:text-accent'
                 }`}
               >
@@ -121,7 +121,7 @@ export const AskUserQuestionCard: React.FC<{
                 </div>
                 {opt.description && (
                   <div
-                    className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/80' : 'text-slate-400'}`}
+                    className={`text-[10px] mt-0.5 ${isSelected ? 'text-accent-fg/80' : 'text-slate-400'}`}
                   >
                     {opt.description}
                   </div>

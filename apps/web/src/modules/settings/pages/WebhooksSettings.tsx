@@ -252,7 +252,7 @@ export const WebhooksSettings: React.FC = () => {
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
               Eventos a recibir (vacío = todos)
             </label>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {AVAILABLE_EVENTS.map((e) => (
                 <label
                   key={e.value}

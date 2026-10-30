@@ -28,6 +28,20 @@
   --k-radius-lg: 2px;
 }
 
+/*
+ * Parche de @openfactu/ui 0.6.0 (styles/mobile.css:8): en móvil pinta la pestaña
+ * activa de TODAS las `.k-tabs` con `--fg-default`, también la variante
+ * `segmented`, cuyo fondo activo es el acento. En un tema oscuro con acento
+ * claro (Mono oscuro) el texto sale blanco sobre blanco y la opción desaparece.
+ * Se devuelve el color de encima del acento solo a la segmentada, que es la
+ * única que lleva esa clase. Quitar cuando la librería lo corrija.
+ */
+@media (max-width: 767px) {
+  .k-tabs [aria-selected='true'].text-\[color\:var\(--color-accent-fg\)\] {
+    color: var(--color-accent-fg);
+  }
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -353,4 +367,25 @@ html.dark *::-webkit-scrollbar-thumb:hover {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Aurora del fondo de acceso (AuroraBackdrop): deriva lenta, solo transform. */
+@keyframes k-aurora-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(8%, 6%, 0) scale(1.12); }
+}
+@keyframes k-aurora-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50% { transform: translate3d(-10%, 4%, 0) scale(0.92); }
+}
+@keyframes k-aurora-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
+  50% { transform: translate3d(6%, -8%, 0) scale(1.1); }
+}
+.k-aurora { will-change: transform; }
+.k-aurora-1 { animation: k-aurora-a 22s ease-in-out infinite; }
+.k-aurora-2 { animation: k-aurora-b 28s ease-in-out infinite; }
+.k-aurora-3 { animation: k-aurora-c 34s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .k-aurora { animation: none; }
 }

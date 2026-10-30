@@ -49,9 +49,40 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
     hint: 'El histórico de entradas y salidas de cada artículo.',
   },
 
+  // ── Formularios ───────────────────────────────────────────────────────
+  {
+    path: '/forms',
+    label: 'Formularios y encuestas',
+    group: 'Formularios',
+    hint: 'Crearlos, ver y exportar sus respuestas, corregir cuestionarios y compartirlos.',
+  },
+
   // ── Terceros ──────────────────────────────────────────────────────────────
   { path: '/partners', label: 'Interlocutores', group: 'Terceros' },
   { path: '/partner-groups', label: 'Grupos de interlocutores', group: 'Terceros' },
+
+  // ── CRM ───────────────────────────────────────────────────────────────────
+  {
+    path: '/crm/opportunities',
+    label: 'Oportunidades',
+    group: 'CRM',
+    hint: 'El embudo de ventas y sus etapas.',
+  },
+  { path: '/crm/contacts', label: 'Contactos', group: 'CRM' },
+  { path: '/crm/activities', label: 'Actividades comerciales', group: 'CRM' },
+
+  {
+    path: '/crm/reports',
+    label: 'Informes del CRM',
+    group: 'CRM',
+    hint: 'Previsión, embudo, motivos de pérdida, orígenes, actividad por comercial y encuestas.',
+  },
+  {
+    path: '/crm/settings',
+    label: 'Ajustes del CRM',
+    group: 'CRM',
+    hint: 'Motivos de pérdida, orígenes, responsable por defecto y avisos.',
+  },
 
   // ── Ventas ────────────────────────────────────────────────────────────────
   { path: '/sales/quotes', label: 'Presupuestos', group: 'Ventas' },

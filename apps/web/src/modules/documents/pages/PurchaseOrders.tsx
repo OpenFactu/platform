@@ -40,7 +40,6 @@ import { InternalOrderHeaderField } from '@/modules/analytics/components/Interna
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
-import { DocumentCardList } from '../components/DocumentCardList';
 import { MobileLineCards } from '../components/MobileLineCards';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
@@ -92,7 +91,6 @@ const POList: React.FC<{
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
   const fmt = useFormat();
-  const isMobile = useIsMobile();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const handleQuickPdf = async (id: string) => {
@@ -146,12 +144,14 @@ const POList: React.FC<{
     },
     {
       header: 'Fecha',
+      card: 'meta' as const,
       sortable: true,
       sortAccessor: (item: any) => new Date(item.date).getTime(),
       accessor: (item: any) => fmt.date(item.date),
     },
     {
       header: 'Proveedor',
+      card: 'subtitle' as const,
       sortable: true,
       sortAccessor: (item: any) => item.partnerName || '',
       accessor: (item: any) =>
@@ -168,6 +168,7 @@ const POList: React.FC<{
     },
     {
       header: 'Estado',
+      card: 'status' as const,
       align: 'center' as const,
       sortable: true,
       sortAccessor: (item: any) => item.status || '',
@@ -255,6 +256,7 @@ const POList: React.FC<{
 
       <Card className="overflow-hidden" noPadding>
         <FilterBar
+          shortcut={false}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           activeFilters={activeFilters}
@@ -289,57 +291,17 @@ const POList: React.FC<{
           onClear={() => setSelectedKeys(new Set())}
           onSent={() => setSelectedKeys(new Set())}
         />
-        {isMobile ? (
-          <DocumentCardList
-            data={filteredData || []}
-            isLoading={loading}
-            onClick={onDetail}
-            emptyMessage="No hay pedidos."
-            title={(item: any) => formatDocCode(item)}
-            subtitle={(item: any) =>
-              item.partnerName || partners.find((p) => p.id === item.partnerId)?.name || '...'
-            }
-            status={(item: any) => (
-              <>
-                {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
-                {item.status === 'P' && <Badge variant="info">Parcial</Badge>}
-                {item.status === 'C' && <Badge variant="success">Cerrado</Badge>}
-                {item.status === 'X' && <Badge variant="error">Cancelado</Badge>}
-              </>
-            )}
-            fields={[
-              { label: 'Fecha', value: (item: any) => fmt.date(item.date) },
-              {
-                label: 'Total',
-                value: (item: any) => (
-                  <span className="font-black text-fg-default">{fmt.money(item.total)}</span>
-                ),
-              },
-            ]}
-            actions={(item: any) => (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleQuickPdf(item.id)}
-                isLoading={downloadingId === item.id}
-                className="h-8 gap-2 text-ink-500 dark:text-ink-400"
-              >
-                <Download size={14} /> PDF
-              </Button>
-            )}
-          />
-        ) : (
-          <Table
-            columns={columns}
-            data={filteredData || []}
-            isLoading={loading}
-            rowActions={rowActions}
-            onRowClick={onDetail}
-            selectable
-            selectedKeys={selectedKeys}
-            onSelectionChange={setSelectedKeys}
-          />
-        )}
+        <Table
+          className="max-md:p-3"
+          columns={columns}
+          data={filteredData || []}
+          isLoading={loading}
+          rowActions={rowActions}
+          onRowClick={onDetail}
+          selectable
+          selectedKeys={selectedKeys}
+          onSelectionChange={setSelectedKeys}
+        />
       </Card>
     </div>
   );
@@ -456,7 +418,7 @@ const POForm: React.FC<{
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 md:col-span-2 space-y-6 border-t-4 border-t-blue-500">
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Proveedor / Acreedor *
@@ -481,7 +443,7 @@ const POForm: React.FC<{
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
                 Dirección Facturación
@@ -505,7 +467,7 @@ const POForm: React.FC<{
               />
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-6 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-fg-subtle uppercase">
                 Fec. Contabilización
@@ -622,7 +584,7 @@ const POForm: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={columns} lines={state.lines || []} />
         ) : (
-          <Table columns={columns} data={state.lines} />
+          <Table responsive="scroll" columns={columns} data={state.lines} />
         )}
         <div className="p-4 bg-bg-muted flex justify-between items-center border-t border-border-default">
           <Button
@@ -733,7 +695,7 @@ const PODetail: React.FC<{
             )}
           </div>
           {(order.billToAddress || order.shipToAddress) && (
-            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border-subtle">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border-subtle">
               <div>
                 <span className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
                   Facturar a
@@ -791,7 +753,7 @@ const PODetail: React.FC<{
         {isMobile ? (
           <MobileLineCards columns={columns} lines={order.lines || []} />
         ) : (
-          <Table columns={columns} data={order.lines || []} />
+          <Table responsive="scroll" columns={columns} data={order.lines || []} />
         )}
         <DocumentTotalsBlock
           subtotal={order.subtotal}

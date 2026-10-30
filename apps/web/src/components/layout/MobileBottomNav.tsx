@@ -1,98 +1,89 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, ShoppingCart, Truck, Menu, ScanLine } from 'lucide-react';
-import { cn } from '@openfactu/ui';
+import React, { useMemo, useState } from 'react';
+import { BottomNavigation, FloatingActionButton } from '@openfactu/ui';
+import type { BottomNavigationItem, FloatingAction } from '@openfactu/ui';
+import { LayoutDashboard, ScanLine, Search, ShoppingCart, Truck } from 'lucide-react';
 import { useMobileNav } from '../../context/MobileNavContext';
 import { useTabs } from '../../context/TabsContext';
 import { useAuth } from '../../context/AuthContext';
 import { canRead, permissionPathFor } from '../../modules/permissions';
 import { BarcodeCameraModal } from '../scanner/BarcodeCameraModal';
+import { useModuleSubTabs } from './useModuleSubTabs';
 
-interface SlotDef {
-  id: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number }>;
-  path?: string;
-  action?: 'menu';
-}
+/** Alto de la barra (80 px) que `FloatingActionButton` respeta para no taparla. */
+const NAV_HEIGHT = '80px';
 
-const SLOTS: SlotDef[] = [
-  { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard, path: '/' },
-  { id: 'sales', label: 'Ventas', icon: ShoppingCart, path: '/sales/invoices' },
-  // slot central (scan) se inserta aparte para destacarlo
-  { id: 'purchases', label: 'Compras', icon: Truck, path: '/purchases/invoices' },
-  { id: 'menu', label: 'Menú', icon: Menu, action: 'menu' },
+const DESTINATIONS = [
+  { key: 'dashboard', label: 'Inicio', icon: <LayoutDashboard size={21} />, path: '/' },
+  { key: 'sales', label: 'Ventas', icon: <ShoppingCart size={21} />, path: '/sales/invoices' },
+  { key: 'purchases', label: 'Compras', icon: <Truck size={21} />, path: '/purchases/invoices' },
 ];
 
+/** Pantallas donde tiene sentido escanear: artículos y documentos. */
+const SCAN_PREFIXES = ['/sales', '/purchases', '/documents', '/items', '/inventory'];
+
 /**
- * Barra inferior fija, sólo en móvil. 4 accesos rápidos + botón central
- * destacado (teal, elevado) para escanear. El slot "Menú" abre el drawer
- * con el `IconSidebar` completo (vía `MobileNavContext`). Respeta
- * safe-area-inset-bottom para iPhone con home bar.
+ * Navegación inferior, solo en móvil: `BottomNavigation` de @openfactu/ui con
+ * tres accesos rápidos y «Más», que abre el menú completo (vía
+ * `MobileNavContext`). Los accesos se filtran por permisos: quien no pueda ver
+ * las facturas de venta no debe tener un botón que lo devuelva atrás.
+ *
+ * El escáner ya no ocupa el centro: es un `FloatingActionButton` que solo sale
+ * donde hay códigos que leer, con «Escanear» y «Buscar».
  */
 export const MobileBottomNav: React.FC = () => {
   const { toggle } = useMobileNav();
   const { openTab, tabs, activeTabId } = useTabs();
   const { user } = useAuth();
+  const { active } = useModuleSubTabs();
   const activePath = tabs.find((t) => t.id === activeTabId)?.path?.split('?')[0] || '/';
   const [scanOpen, setScanOpen] = useState(false);
 
-  const handleSlot = (s: SlotDef) => {
-    if (s.action === 'menu') toggle();
-    else if (s.path) openTab(s.path);
-  };
+  const items = useMemo<BottomNavigationItem[]>(
+    () =>
+      DESTINATIONS.filter(
+        (d) => d.path === '/' || canRead(user, permissionPathFor(d.path) ?? d.path),
+      ).map((d) => ({ key: d.key, label: d.label, icon: d.icon, onClick: () => openTab(d.path) })),
+    [user, openTab],
+  );
+  const value = DESTINATIONS.find((d) => d.path === activePath)?.key;
 
-  /**
-   * Estos accesos van a rutas fijas, así que hay que comprobarlas: quien no
-   * pueda ver las facturas de venta no debe tener un botón que le lleve a que
-   * lo echen de vuelta. El de inicio y el del menú siempre están.
-   */
-  const renderSlot = (s: SlotDef) => {
-    const Icon = s.icon;
-    const isActive = s.path && s.path === activePath;
-    if (s.path && !canRead(user, permissionPathFor(s.path) ?? s.path)) {
-      // Hueco vacío para no descolocar el botón central del escáner.
-      return <div key={s.id} className="flex-1" aria-hidden />;
-    }
-    return (
-      <button
-        key={s.id}
-        onClick={() => handleSlot(s)}
-        className={cn(
-          'flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-colors',
-          isActive ? 'text-accent' : 'text-fg-muted hover:text-accent',
-        )}
-        aria-label={s.label}
-      >
-        <Icon size={20} />
-        <span className="text-[10px] font-bold tracking-wider uppercase">{s.label}</span>
-      </button>
-    );
-  };
+  const canScan = active?.id === 'inventory' || SCAN_PREFIXES.some((p) => activePath.startsWith(p));
+  const actions: FloatingAction[] = [
+    {
+      id: 'scan',
+      label: 'Escanear código',
+      icon: <ScanLine size={19} />,
+      onClick: () => setScanOpen(true),
+    },
+    {
+      id: 'search',
+      label: 'Buscar',
+      icon: <Search size={19} />,
+      // El buscador global (Ctrl+K) escucha el teclado: se le pide que abra.
+      onClick: () =>
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })),
+    },
+  ];
 
   return (
     <>
-      <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-bg-card border-t border-border-default"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-        aria-label="Navegación inferior"
-      >
-        <div className="relative flex items-stretch h-16">
-          {renderSlot(SLOTS[0])}
-          {renderSlot(SLOTS[1])}
-          {/* Slot central — escáner */}
-          <div className="flex-1 flex items-start justify-center relative">
-            <button
-              onClick={() => setScanOpen(true)}
-              aria-label="Escanear código de barras"
-              className="absolute -top-5 w-14 h-14 rounded-full bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/40 border-4 border-bg-card active:scale-95 transition-transform"
-            >
-              <ScanLine size={24} />
-            </button>
-          </div>
-          {renderSlot(SLOTS[2])}
-          {renderSlot(SLOTS[3])}
-        </div>
-      </nav>
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-30">
+        <BottomNavigation
+          items={items}
+          value={value}
+          onOpenMenu={toggle}
+          menuLabel="Más"
+          ariaLabel="Navegación inferior"
+        />
+      </div>
+      {canScan && (
+        <FloatingActionButton
+          className="md:hidden"
+          actions={actions}
+          label="Acciones rápidas"
+          style={{ ['--k-mobile-navigation-height' as string]: NAV_HEIGHT }}
+        />
+      )}
       <BarcodeCameraModal open={scanOpen} onClose={() => setScanOpen(false)} />
     </>
   );

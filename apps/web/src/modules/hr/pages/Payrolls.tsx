@@ -20,6 +20,7 @@ import {
   SearchableSelect,
   NumberInput,
   CurrencyInput,
+  Modal,
 } from '@openfactu/ui';
 import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -30,7 +31,6 @@ import {
   CheckCircle,
   Trash2,
   ListPlus,
-  X,
   FileText,
   ChevronLeft,
   ChevronRight,
@@ -457,396 +457,368 @@ export const Payrolls: React.FC = () => {
         }
       />
 
-      {creating && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <Card className="max-w-xl w-full" noPadding>
-            <form onSubmit={handleCreate} className="p-6 space-y-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Plus size={18} /> Nueva nómina
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Sólo elige empleado y mes. Las líneas (salario base, pluses, IRPF, SS) se
-                    rellenan automáticamente y luego puedes ajustarlas.
-                  </p>
-                </div>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setCreating(false)}>
-                  <X size={20} />
-                </Button>
-              </div>
-
-              <div>
-                {/* SearchableSelect no tiene prop `label`, así que se conserva
+      <Modal
+        isOpen={creating}
+        onClose={() => setCreating(false)}
+        icon={<Plus size={18} />}
+        title="Nueva nómina"
+        subtitle="Sólo elige empleado y mes. Las líneas (salario base, pluses, IRPF, SS) se rellenan automáticamente y luego puedes ajustarlas."
+        size="xl"
+        onSubmit={handleCreate}
+        primaryAction={{ label: 'Crear y abrir líneas', disabled: !canWrite }}
+      >
+        <div className="space-y-5">
+          <div>
+            {/* SearchableSelect no tiene prop `label`, así que se conserva
                     el <label> suelto. El `required` del <select> nativo era
                     redundante: handleCreate ya avisa si no hay empleado. */}
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Empleado
-                </label>
-                <SearchableSelect
-                  options={employeeOptions}
-                  value={form.employeeId}
-                  onChange={(v) => setForm({ ...form, employeeId: v })}
-                  placeholder="— seleccionar —"
-                />
-              </div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+              Empleado
+            </label>
+            <SearchableSelect
+              options={employeeOptions}
+              value={form.employeeId}
+              onChange={(v) => setForm({ ...form, employeeId: v })}
+              placeholder="— seleccionar —"
+            />
+          </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Periodo
-                </label>
-                <div className="flex items-center gap-2 mb-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    title="Mes anterior"
-                    onClick={() => {
-                      const d = new Date(form.periodYear, form.periodMonth - 2, 1);
-                      setForm({
-                        ...form,
-                        periodYear: d.getFullYear(),
-                        periodMonth: d.getMonth() + 1,
-                      });
-                    }}
-                  >
-                    <ChevronLeft size={14} />
-                  </Button>
-                  <div className="flex-1 text-center text-sm font-bold tabular-nums">
-                    {MONTHS[form.periodMonth - 1]} {form.periodYear}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    title="Mes siguiente"
-                    onClick={() => {
-                      const d = new Date(form.periodYear, form.periodMonth, 1);
-                      setForm({
-                        ...form,
-                        periodYear: d.getFullYear(),
-                        periodMonth: d.getMonth() + 1,
-                      });
-                    }}
-                  >
-                    <ChevronRight size={14} />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-6 gap-1">
-                  {MONTHS.map((m, i) => (
-                    <Button
-                      key={i}
-                      type="button"
-                      size="sm"
-                      variant={form.periodMonth === i + 1 ? 'primary' : 'secondary'}
-                      onClick={() => setForm({ ...form, periodMonth: i + 1 })}
-                    >
-                      {m}
-                    </Button>
-                  ))}
-                </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+              Periodo
+            </label>
+            <div className="flex items-center gap-2 mb-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                title="Mes anterior"
+                onClick={() => {
+                  const d = new Date(form.periodYear, form.periodMonth - 2, 1);
+                  setForm({
+                    ...form,
+                    periodYear: d.getFullYear(),
+                    periodMonth: d.getMonth() + 1,
+                  });
+                }}
+              >
+                <ChevronLeft size={14} />
+              </Button>
+              <div className="flex-1 text-center text-sm font-bold tabular-nums">
+                {MONTHS[form.periodMonth - 1]} {form.periodYear}
               </div>
-
-              <div className="rounded-lg border border-border-default p-3 space-y-2">
-                {/* Campos del formulario (se aplican al crear, no al instante):
-                    Checkbox, que no tiene prop `label` — se conserva el <label>. */}
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={form.autoSalary}
-                    onChange={(checked) => setForm({ ...form, autoSalary: checked })}
-                    className="mt-0.5"
-                  />
-                  <div>
-                    <div className="text-sm font-bold">Prellenar salario base del contrato</div>
-                    <div className="text-xs text-slate-500">
-                      Toma <code>grossSalary / paymentsPerYear</code> del contrato activo y lo añade
-                      como línea "Salario base".
-                    </div>
-                  </div>
-                </label>
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <Checkbox
-                    checked={form.autoTaxes}
-                    onChange={(checked) => setForm({ ...form, autoTaxes: checked })}
-                    className="mt-0.5"
-                  />
-                  <div>
-                    <div className="text-sm font-bold">Generar IRPF y SS automáticamente</div>
-                    <div className="text-xs text-slate-500">
-                      Añade los conceptos "% de base" del catálogo (IRPF, SS empleado, SS empresa).
-                    </div>
-                  </div>
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                title="Mes siguiente"
+                onClick={() => {
+                  const d = new Date(form.periodYear, form.periodMonth, 1);
+                  setForm({
+                    ...form,
+                    periodYear: d.getFullYear(),
+                    periodMonth: d.getMonth() + 1,
+                  });
+                }}
+              >
+                <ChevronRight size={14} />
+              </Button>
+            </div>
+            <div className="grid grid-cols-6 gap-1">
+              {MONTHS.map((m, i) => (
                 <Button
+                  key={i}
                   type="button"
-                  variant="secondary"
                   size="sm"
-                  onClick={() => setCreating(false)}
+                  variant={form.periodMonth === i + 1 ? 'primary' : 'secondary'}
+                  onClick={() => setForm({ ...form, periodMonth: i + 1 })}
                 >
-                  Cancelar
+                  {m}
                 </Button>
-                <Button type="submit" size="sm" disabled={!canWrite}>
-                  Crear y abrir líneas
-                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border-default p-3 space-y-2">
+            {/* Campos del formulario (se aplican al crear, no al instante):
+                    Checkbox, que no tiene prop `label` — se conserva el <label>. */}
+            <label className="flex items-start gap-2 cursor-pointer">
+              <Checkbox
+                checked={form.autoSalary}
+                onChange={(checked) => setForm({ ...form, autoSalary: checked })}
+                className="mt-0.5"
+              />
+              <div>
+                <div className="text-sm font-bold">Prellenar salario base del contrato</div>
+                <div className="text-xs text-slate-500">
+                  Toma <code>grossSalary / paymentsPerYear</code> del contrato activo y lo añade
+                  como línea "Salario base".
+                </div>
               </div>
-            </form>
-          </Card>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <Checkbox
+                checked={form.autoTaxes}
+                onChange={(checked) => setForm({ ...form, autoTaxes: checked })}
+                className="mt-0.5"
+              />
+              <div>
+                <div className="text-sm font-bold">Generar IRPF y SS automáticamente</div>
+                <div className="text-xs text-slate-500">
+                  Añade los conceptos "% de base" del catálogo (IRPF, SS empleado, SS empresa).
+                </div>
+              </div>
+            </label>
+          </div>
         </div>
-      )}
+      </Modal>
 
       <Card className="overflow-hidden border-border-subtle" noPadding>
-        <Table columns={columns} data={rows} isLoading={loading} rowActions={rowActions} />
+        <Table
+          className="max-md:p-3"
+          columns={columns}
+          data={rows}
+          isLoading={loading}
+          rowActions={rowActions}
+        />
       </Card>
 
-      {editLines && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <Card className="max-w-4xl w-full max-h-[85vh] overflow-auto p-6" noPadding>
-            <div className="p-6 space-y-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <ListPlus size={20} />
-                    Editar líneas / pluses
-                  </h2>
-                  <p className="text-sm text-fg-muted">
-                    {empMap[editLines.employeeId]
-                      ? `${empMap[editLines.employeeId].firstName} ${empMap[editLines.employeeId].lastName}`
-                      : editLines.employeeId}
-                    {' — '}
-                    {MONTHS[editLines.periodMonth - 1]} {editLines.periodYear}
-                  </p>
-                </div>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setEditLines(null)}>
-                  <X size={20} />
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {/* Actúa como acción, no como campo: el valor vuelve siempre a
+      <Modal
+        isOpen={!!editLines}
+        onClose={() => setEditLines(null)}
+        icon={<ListPlus size={20} />}
+        title="Editar líneas / pluses"
+        subtitle={
+          editLines
+            ? `${
+                empMap[editLines.employeeId]
+                  ? `${empMap[editLines.employeeId].firstName} ${empMap[editLines.employeeId].lastName}`
+                  : editLines.employeeId
+              } — ${MONTHS[editLines.periodMonth - 1]} ${editLines.periodYear}`
+            : undefined
+        }
+        size="4xl"
+        hideCancel
+        primaryAction={{ label: 'Cerrar', onClick: () => setEditLines(null) }}
+      >
+        {editLines && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              {/* Actúa como acción, no como campo: el valor vuelve siempre a
                     vacío tras añadir la línea. */}
-                <SearchableSelect
-                  options={conceptOptions}
-                  value=""
-                  onChange={(v) => {
-                    if (v) addLine(v);
-                  }}
-                  placeholder="— añadir concepto del catálogo —"
-                  className="flex-1"
-                  disabled={!canWrite}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="whitespace-nowrap"
-                  disabled={!canWrite}
-                  onClick={async () => {
-                    if (!editLines) return;
-                    try {
-                      const d = await payrollsApi.autoDeductions(editLines.id);
-                      if (d.created === 0) {
-                        toast.success('IRPF/SS ya estaban añadidos. Recalculado.');
-                      } else {
-                        toast.success(`Añadidos ${d.created} conceptos automáticos`);
-                      }
-                      await refreshLines(editLines.id);
-                    } catch (err) {
-                      toast.error(
-                        err instanceof ApiError
-                          ? ((err.body as any)?.error ?? err.message)
-                          : 'No hay conceptos IRPF/SS en el catálogo',
+              <SearchableSelect
+                options={conceptOptions}
+                value=""
+                onChange={(v) => {
+                  if (v) addLine(v);
+                }}
+                placeholder="— añadir concepto del catálogo —"
+                className="flex-1"
+                disabled={!canWrite}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="whitespace-nowrap"
+                disabled={!canWrite}
+                onClick={async () => {
+                  if (!editLines) return;
+                  try {
+                    const d = await payrollsApi.autoDeductions(editLines.id);
+                    if (d.created === 0) {
+                      toast.success('IRPF/SS ya estaban añadidos. Recalculado.');
+                    } else {
+                      toast.success(`Añadidos ${d.created} conceptos automáticos`);
+                    }
+                    await refreshLines(editLines.id);
+                  } catch (err) {
+                    toast.error(
+                      err instanceof ApiError
+                        ? ((err.body as any)?.error ?? err.message)
+                        : 'No hay conceptos IRPF/SS en el catálogo',
+                    );
+                  }
+                }}
+                title="Añade IRPF y SS Empleado/Empresa automáticamente del catálogo"
+              >
+                Auto IRPF/SS
+              </Button>
+              <Button
+                type="button"
+                variant="accent"
+                size="sm"
+                className="whitespace-nowrap"
+                disabled={!canWrite}
+                onClick={async () => {
+                  if (!editLines) return;
+                  try {
+                    const d = await commissionsApi.importToPayroll(editLines.id);
+                    if (d.imported === 0) {
+                      toast.success('No hay comisiones pendientes para este periodo');
+                    } else {
+                      toast.success(
+                        `Importadas ${d.imported} comisiones · ${Number(d.total).toFixed(2)} €`,
                       );
                     }
-                  }}
-                  title="Añade IRPF y SS Empleado/Empresa automáticamente del catálogo"
-                >
-                  Auto IRPF/SS
-                </Button>
-                <Button
-                  type="button"
-                  variant="accent"
-                  size="sm"
-                  className="whitespace-nowrap"
-                  disabled={!canWrite}
-                  onClick={async () => {
-                    if (!editLines) return;
-                    try {
-                      const d = await commissionsApi.importToPayroll(editLines.id);
-                      if (d.imported === 0) {
-                        toast.success('No hay comisiones pendientes para este periodo');
-                      } else {
-                        toast.success(
-                          `Importadas ${d.imported} comisiones · ${Number(d.total).toFixed(2)} €`,
-                        );
-                      }
-                      await refreshLines(editLines.id);
-                    } catch (err) {
-                      toast.error(
-                        err instanceof ApiError
-                          ? ((err.body as any)?.error ?? err.message)
-                          : 'Error',
-                      );
-                    }
-                  }}
-                  title="Vuelca las comisiones del periodo del empleado a esta nómina como línea de devengo"
-                >
-                  Importar comisiones
-                </Button>
-              </div>
+                    await refreshLines(editLines.id);
+                  } catch (err) {
+                    toast.error(
+                      err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error',
+                    );
+                  }
+                }}
+                title="Vuelca las comisiones del periodo del empleado a esta nómina como línea de devengo"
+              >
+                Importar comisiones
+              </Button>
+            </div>
 
-              {/* Aviso si hay devengos pero faltan deducciones de impuestos */}
-              {(() => {
-                const hasEarnings = lines.some((l: any) => l.type === 'earning');
-                const hasIrpf = lines.some(
-                  (l: any) => /irpf/i.test(l.concept || '') && l.type === 'deduction',
+            {/* Aviso si hay devengos pero faltan deducciones de impuestos */}
+            {(() => {
+              const hasEarnings = lines.some((l: any) => l.type === 'earning');
+              const hasIrpf = lines.some(
+                (l: any) => /irpf/i.test(l.concept || '') && l.type === 'deduction',
+              );
+              const hasSs = lines.some(
+                (l: any) =>
+                  l.type === 'deduction' &&
+                  (/^ss/i.test(l.concept || '') || /seguridad social/i.test(l.concept || '')),
+              );
+              if (hasEarnings && (!hasIrpf || !hasSs)) {
+                return (
+                  <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-300">
+                    ⚠ Esta nómina tiene devengos pero le falta {!hasIrpf && <b>IRPF</b>}
+                    {!hasIrpf && !hasSs && ' y '}
+                    {!hasSs && <b>SS Empleado</b>}. El neto que ves no es real. Pulsa "Auto IRPF/SS"
+                    o añade los conceptos manualmente.
+                  </div>
                 );
-                const hasSs = lines.some(
-                  (l: any) =>
-                    l.type === 'deduction' &&
-                    (/^ss/i.test(l.concept || '') || /seguridad social/i.test(l.concept || '')),
-                );
-                if (hasEarnings && (!hasIrpf || !hasSs)) {
+              }
+              return null;
+            })()}
+
+            {linesLoading ? (
+              <div className="text-center text-sm text-slate-400 py-6">Cargando…</div>
+            ) : lines.length === 0 ? (
+              <div className="text-center text-sm text-slate-400 py-6 italic">
+                Esta nómina aún no tiene líneas. Añade conceptos del catálogo o pulsa "Auto
+                IRPF/SS".
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {(
+                  [
+                    {
+                      key: 'earning',
+                      title: '➕ Devengos',
+                      desc: 'Lo que cobra el empleado (salario, pluses, horas extra…)',
+                      tone: 'emerald',
+                    },
+                    {
+                      key: 'deduction',
+                      title: '➖ Deducciones',
+                      desc: 'Lo que se le retiene (IRPF, SS empleado, anticipos…)',
+                      tone: 'rose',
+                    },
+                    {
+                      key: 'employer_cost',
+                      title: '🏢 Coste empresa',
+                      desc: 'Aportaciones que paga la empresa (SS empresa)',
+                      tone: 'indigo',
+                    },
+                  ] as const
+                ).map((grp) => {
+                  const grpLines = lines.filter((l: any) => l.type === grp.key);
                   return (
-                    <div className="px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-300">
-                      ⚠ Esta nómina tiene devengos pero le falta {!hasIrpf && <b>IRPF</b>}
-                      {!hasIrpf && !hasSs && ' y '}
-                      {!hasSs && <b>SS Empleado</b>}. El neto que ves no es real. Pulsa "Auto
-                      IRPF/SS" o añade los conceptos manualmente.
+                    <div
+                      key={grp.key}
+                      className="rounded-lg border border-border-default overflow-hidden"
+                    >
+                      <div
+                        className={
+                          'px-3 py-2 text-xs font-bold flex items-center justify-between ' +
+                          (grp.tone === 'emerald'
+                            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                            : grp.tone === 'rose'
+                              ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300'
+                              : 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300')
+                        }
+                      >
+                        <span>{grp.title}</span>
+                        <span className="font-normal text-[10px] opacity-80">{grp.desc}</span>
+                      </div>
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="text-left text-xs text-slate-500 border-b">
+                            <th className="py-2 px-3">Concepto</th>
+                            <th className="py-2 pr-2 text-right w-20">Cant.</th>
+                            <th className="py-2 pr-2 text-right w-24">€/%</th>
+                            <th className="py-2 pr-2 text-right w-24">Base</th>
+                            <th className="py-2 pr-2 text-right w-28">Importe</th>
+                            <th className="py-2 pr-2 w-8"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {grpLines.length === 0 && (
+                            <tr>
+                              <td
+                                colSpan={6}
+                                className="py-3 px-3 text-center text-xs text-slate-400 italic"
+                              >
+                                {grp.key === 'earning'
+                                  ? 'Aún no hay devengos. Añade "Salario base" desde el desplegable de arriba para que el bruto sea > 0 y los % se calculen.'
+                                  : grp.key === 'deduction'
+                                    ? 'Aún no hay deducciones. Pulsa "Auto IRPF/SS".'
+                                    : 'Aún no hay aportaciones de empresa.'}
+                              </td>
+                            </tr>
+                          )}
+                          {grpLines.map((l: any) => (
+                            <PayrollLineRow
+                              key={l.id}
+                              line={l}
+                              onUpdate={updateLine}
+                              onDelete={deleteLine}
+                              canWrite={canWrite}
+                              canDelete={canDelete}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   );
-                }
-                return null;
-              })()}
-
-              {linesLoading ? (
-                <div className="text-center text-sm text-slate-400 py-6">Cargando…</div>
-              ) : lines.length === 0 ? (
-                <div className="text-center text-sm text-slate-400 py-6 italic">
-                  Esta nómina aún no tiene líneas. Añade conceptos del catálogo o pulsa "Auto
-                  IRPF/SS".
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {(
-                    [
-                      {
-                        key: 'earning',
-                        title: '➕ Devengos',
-                        desc: 'Lo que cobra el empleado (salario, pluses, horas extra…)',
-                        tone: 'emerald',
-                      },
-                      {
-                        key: 'deduction',
-                        title: '➖ Deducciones',
-                        desc: 'Lo que se le retiene (IRPF, SS empleado, anticipos…)',
-                        tone: 'rose',
-                      },
-                      {
-                        key: 'employer_cost',
-                        title: '🏢 Coste empresa',
-                        desc: 'Aportaciones que paga la empresa (SS empresa)',
-                        tone: 'indigo',
-                      },
-                    ] as const
-                  ).map((grp) => {
-                    const grpLines = lines.filter((l: any) => l.type === grp.key);
-                    return (
-                      <div
-                        key={grp.key}
-                        className="rounded-lg border border-border-default overflow-hidden"
-                      >
-                        <div
-                          className={
-                            'px-3 py-2 text-xs font-bold flex items-center justify-between ' +
-                            (grp.tone === 'emerald'
-                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                              : grp.tone === 'rose'
-                                ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300'
-                                : 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300')
-                          }
-                        >
-                          <span>{grp.title}</span>
-                          <span className="font-normal text-[10px] opacity-80">{grp.desc}</span>
-                        </div>
-                        <table className="w-full text-sm border-collapse">
-                          <thead>
-                            <tr className="text-left text-xs text-slate-500 border-b">
-                              <th className="py-2 px-3">Concepto</th>
-                              <th className="py-2 pr-2 text-right w-20">Cant.</th>
-                              <th className="py-2 pr-2 text-right w-24">€/%</th>
-                              <th className="py-2 pr-2 text-right w-24">Base</th>
-                              <th className="py-2 pr-2 text-right w-28">Importe</th>
-                              <th className="py-2 pr-2 w-8"></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {grpLines.length === 0 && (
-                              <tr>
-                                <td
-                                  colSpan={6}
-                                  className="py-3 px-3 text-center text-xs text-slate-400 italic"
-                                >
-                                  {grp.key === 'earning'
-                                    ? 'Aún no hay devengos. Añade "Salario base" desde el desplegable de arriba para que el bruto sea > 0 y los % se calculen.'
-                                    : grp.key === 'deduction'
-                                      ? 'Aún no hay deducciones. Pulsa "Auto IRPF/SS".'
-                                      : 'Aún no hay aportaciones de empresa.'}
-                                </td>
-                              </tr>
-                            )}
-                            {grpLines.map((l: any) => (
-                              <PayrollLineRow
-                                key={l.id}
-                                line={l}
-                                onUpdate={updateLine}
-                                onDelete={deleteLine}
-                                canWrite={canWrite}
-                                canDelete={canDelete}
-                              />
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm pt-3 border-t">
-                <div>
-                  <div className="text-xs text-slate-400">Bruto</div>
-                  <div className="font-bold">{Number(editLines.gross).toFixed(2)} €</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400">IRPF</div>
-                  <div className="font-bold">{Number(editLines.irpfAmount).toFixed(2)} €</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400">SS Trab.</div>
-                  <div className="font-bold">{Number(editLines.ssEmployee).toFixed(2)} €</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400">SS Empresa</div>
-                  <div className="font-bold">{Number(editLines.ssEmployer).toFixed(2)} €</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400">Neto</div>
-                  <div className="font-black text-emerald-600">
-                    {Number(editLines.netPay).toFixed(2)} €
-                  </div>
-                </div>
+                })}
               </div>
+            )}
 
-              <div className="flex justify-end pt-2">
-                <Button onClick={() => setEditLines(null)}>Cerrar</Button>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm pt-3 border-t">
+              <div>
+                <div className="text-xs text-slate-400">Bruto</div>
+                <div className="font-bold">{Number(editLines.gross).toFixed(2)} €</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400">IRPF</div>
+                <div className="font-bold">{Number(editLines.irpfAmount).toFixed(2)} €</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400">SS Trab.</div>
+                <div className="font-bold">{Number(editLines.ssEmployee).toFixed(2)} €</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400">SS Empresa</div>
+                <div className="font-bold">{Number(editLines.ssEmployer).toFixed(2)} €</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400">Neto</div>
+                <div className="font-black text-emerald-600">
+                  {Number(editLines.netPay).toFixed(2)} €
+                </div>
               </div>
             </div>
-          </Card>
-        </div>
-      )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

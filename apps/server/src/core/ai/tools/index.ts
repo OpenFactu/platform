@@ -46,11 +46,12 @@ import { buildFileGenTools } from './fileGenTools';
 import { buildDocumentTemplateTools } from './documentTemplateTools';
 import { buildErpReadTools } from './erpEntityTools';
 import { buildDriverTools } from './driverTools';
+import { buildCrmActionTools, buildCrmReadTools } from './crmTools';
 import { AiToolRegistry } from '../AiToolRegistry';
 
 export type { ChatToolContext } from './util';
 
-const DOC_TYPE_IDS = ['SINV', 'PINV', 'SO', 'PO', 'SDN', 'PDN'] as const;
+const DOC_TYPE_IDS = ['SINV', 'PINV', 'SO', 'PO', 'SDN', 'PDN', 'SQ'] as const;
 
 /** Poda las filas de un header de documento a un subconjunto útil y estable. */
 function pruneDocRow(row: any, statusLabels: Record<string, string>) {
@@ -92,7 +93,7 @@ export function buildChatTools(ctx: ChatToolContext, options: BuildChatToolsOpti
   const tools: Record<string, any> = {
     list_documents: tool({
       description:
-        'Lista documentos de un tipo (SINV=factura venta, PINV=factura compra, SO=pedido venta, PO=pedido compra, SDN=albarán venta, PDN=albarán compra), con filtros opcionales. Ordenados por fecha descendente.',
+        'Lista documentos de un tipo (SINV=factura venta, PINV=factura compra, SO=pedido venta, PO=pedido compra, SDN=albarán venta, PDN=albarán compra, SQ=presupuesto), con filtros opcionales. Ordenados por fecha descendente.',
       inputSchema: z.object({
         docType: z.enum(DOC_TYPE_IDS),
         status: z.string().optional().describe('Código de estado exacto (p.ej. D, P, C)'),
@@ -293,6 +294,7 @@ export function buildChatTools(ctx: ChatToolContext, options: BuildChatToolsOpti
     // Lectura para resolver ids de las acciones ERP (create_stock_transfer,
     // create_goods_receipt, create_employee) — sin confirmación.
     ...buildErpReadTools(ctx),
+    ...buildCrmReadTools(ctx),
 
     // Rutas propias del conductor — sin gate de módulo, el alcance se
     // resuelve server-side desde ctx.user.id (ver driverTools.ts). Sin esto,
@@ -394,6 +396,7 @@ export function buildChatTools(ctx: ChatToolContext, options: BuildChatToolsOpti
   // Acciones con confirmación (Fase 3) — de momento solo para admins del chat interno.
   if (includeActions) {
     Object.assign(tools, buildActionTools(ctx));
+    Object.assign(tools, buildCrmActionTools(ctx));
   }
 
   // Tools aportadas por plugins ("skills") — mismo gate que las de acción del

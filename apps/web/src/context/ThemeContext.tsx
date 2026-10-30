@@ -1,4 +1,11 @@
-import { resolveTheme } from '@openfactu/ui';
+import {
+  applyTheme,
+  contrastRatio,
+  fontOptionFor,
+  getThemePreset,
+  googleFontsUrl,
+  type ThemeInput,
+} from '@openfactu/ui';
 import { coreApi } from '@/shared/api';
 import React, {
   createContext,
@@ -6,9 +13,11 @@ import React, {
   useContext,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
 } from 'react';
 import { useAuth } from './AuthContext';
+import { brandingToThemeInput } from './brandingTheme';
 
 export interface BrandingConfig {
   colorPrimary: string;
@@ -18,6 +27,16 @@ export interface BrandingConfig {
   /** Id de una entrada de FONT_OPTIONS; valores desconocidos caen a 'sans'. */
   fontFamily: string;
   themeMode: 'light' | 'dark';
+  /** Id de un preset de @openfactu/ui (vacío = colores a medida). */
+  themePreset: string;
+  /** Ajustes finos sobre el tema. Vacío = lo que diga el preset (ver brandingTheme.ts). */
+  radius: '' | 'none' | 'sm' | 'md' | 'lg';
+  density: '' | 'compact' | 'normal' | 'comfortable';
+  /** Escala del texto (0.8–1.4). */
+  textScale: number;
+  /** Id de MOTION_CHARACTERS de @openfactu/ui. */
+  motionCharacter: string;
+  motionSpeed: '' | 'none' | 'fast' | 'normal' | 'slow';
 }
 
 export interface FormatConfig {
@@ -61,6 +80,12 @@ export interface FlagsConfig {
   reportsEnabled: boolean;
   hrEnabled: boolean;
   assistantEnabled: boolean;
+  /** CRM: oportunidades, contactos y actividades. Opcional, off por defecto. */
+  crmEnabled: boolean;
+  /** Formularios y encuestas con enlace público (módulo propio, se activa en Aplicaciones). */
+  formsEnabled: boolean;
+  /** Ofrecer «Crear Factura» en el presupuesto (facturarlo sin pasar por pedido). */
+  quoteDirectInvoiceEnabled: boolean;
 }
 
 // Defaults de la marca Keirost — paleta teal + ink (brand guide v1.0).
@@ -74,6 +99,12 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   appName: 'Keirost',
   fontFamily: 'sans',
   themeMode: 'light',
+  themePreset: '',
+  radius: '',
+  density: '',
+  textScale: 1,
+  motionCharacter: '',
+  motionSpeed: '',
 };
 
 export const FORMAT_DEFAULTS: FormatConfig = {
@@ -108,103 +139,23 @@ export const FLAGS_DEFAULTS: FlagsConfig = {
   reportsEnabled: true,
   hrEnabled: true,
   assistantEnabled: true,
+  crmEnabled: false,
+  formsEnabled: false,
+  quoteDirectInvoiceEnabled: true,
 };
 
-export interface ThemePreset {
-  id: string;
-  label: string;
-  description: string;
-  colorPrimary: string;
-  colorAccent: string;
-  themeMode: 'light' | 'dark';
+/** Colores y modo con los que se muestra un preset en los selectores. */
+export function presetSwatch(preset: { theme: ThemeInput }) {
+  return {
+    colorPrimary: preset.theme.colors?.primary ?? BRANDING_DEFAULTS.colorPrimary,
+    colorAccent: preset.theme.colors?.accent ?? BRANDING_DEFAULTS.colorAccent,
+    themeMode: (preset.theme.mode ?? 'light') as 'light' | 'dark',
+  };
 }
 
-// Presets de tema inspirados en las variantes del logo del brand guide v1.0.
-// "custom" se asigna automáticamente cuando el usuario edita un color a mano.
-export const THEME_PRESETS: ThemePreset[] = [
-  {
-    id: 'keirost-classic',
-    label: 'Keirost Clásico',
-    description: 'Ink + Teal — el predeterminado del brand guide.',
-    colorPrimary: '#0A1628',
-    colorAccent: '#0D9488',
-    themeMode: 'light',
-  },
-  {
-    id: 'keirost-teal',
-    label: 'Teal Fuerte',
-    description: 'Teal protagonista, ink secundario. Para marcas activas.',
-    colorPrimary: '#0D9488',
-    colorAccent: '#0A6E63',
-    themeMode: 'light',
-  },
-  {
-    id: 'keirost-slate',
-    label: 'Slate Monocromo',
-    description: 'Gris neutro, sin acento de marca. Look discreto.',
-    colorPrimary: '#1E293B',
-    colorAccent: '#64748B',
-    themeMode: 'light',
-  },
-  {
-    id: 'keirost-midnight',
-    label: 'Midnight',
-    description: 'Base oscura con acento teal. Ideal para salas de control.',
-    colorPrimary: '#0A1628',
-    colorAccent: '#0D9488',
-    themeMode: 'dark',
-  },
-  {
-    id: 'keirost-carbon',
-    label: 'Carbon',
-    description: 'Grafito profundo con acento ámbar. Sobrio, industrial.',
-    colorPrimary: '#18181B',
-    colorAccent: '#F59E0B',
-    themeMode: 'dark',
-  },
-  {
-    id: 'keirost-deep-ocean',
-    label: 'Deep Ocean',
-    description: 'Azul abisal con acento cyan. Fresco y tecnológico.',
-    colorPrimary: '#0C1E3A',
-    colorAccent: '#22D3EE',
-    themeMode: 'dark',
-  },
-  {
-    id: 'keirost-forest',
-    label: 'Forest',
-    description: 'Verde bosque con acento lima. Natural, calmado.',
-    colorPrimary: '#0F1F1A',
-    colorAccent: '#84CC16',
-    themeMode: 'dark',
-  },
-  {
-    id: 'keirost-plum',
-    label: 'Plum',
-    description: 'Ciruela oscuro con acento rosa. Elegante y contrastado.',
-    colorPrimary: '#1E102C',
-    colorAccent: '#EC4899',
-    themeMode: 'dark',
-  },
-  {
-    id: 'keirost-nebula',
-    label: 'Nebula',
-    description: 'Azul noche con acento violeta. Inmersivo, premium.',
-    colorPrimary: '#0F1430',
-    colorAccent: '#8B5CF6',
-    themeMode: 'dark',
-  },
-];
-
-/** Devuelve el id del preset que coincide con branding actual, o 'custom'. */
+/** Id del preset activo, o 'custom' si los colores se ajustaron a mano. */
 export function detectPreset(b: BrandingConfig): string {
-  const match = THEME_PRESETS.find(
-    (p) =>
-      p.colorPrimary.toLowerCase() === b.colorPrimary.toLowerCase() &&
-      p.colorAccent.toLowerCase() === b.colorAccent.toLowerCase() &&
-      p.themeMode === b.themeMode,
-  );
-  return match?.id ?? 'custom';
+  return b.themePreset && getThemePreset(b.themePreset) ? b.themePreset : 'custom';
 }
 
 interface ThemeContextType {
@@ -246,74 +197,9 @@ function contrastingFgRgb(rgb: [number, number, number]): [number, number, numbe
   return luminance > 0.6 ? [15, 23, 42] : [255, 255, 255];
 }
 
-export interface FontOption {
-  id: string;
-  label: string;
-  /** Spec `family=` de fonts.googleapis.com/css2. Ausente = fuente ya cargada o del sistema. */
-  google?: string;
-  /** Stack para --font-sans (cuerpo, tablas, formularios). */
-  sans: string;
-  /** Stack para --font-display (títulos, KPIs). */
-  display: string;
-}
-
-/**
- * Catálogo de familias tipográficas del branding. La opción 'sans' es la marca
- * Keirost por defecto (DM Sans + Space Grotesk, definidas en index.css); el
- * resto pisa --font-sans y --font-display a la vez para que el cambio afecte a
- * TODA la app. --font-mono (código) no se toca nunca.
- */
-export const FONT_OPTIONS: FontOption[] = [
-  {
-    id: 'sans',
-    label: 'Keirost — DM Sans (por defecto)',
-    sans: "'DM Sans', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
-    display: "'Space Grotesk', system-ui, sans-serif",
-  },
-  {
-    id: 'roboto',
-    label: 'Roboto',
-    google: 'Roboto:wght@300;400;500;700',
-    sans: "'Roboto', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
-    display: "'Roboto', system-ui, sans-serif",
-  },
-  {
-    id: 'roboto-flex',
-    label: 'Roboto Flex (estilo Google)',
-    google: 'Roboto+Flex:opsz,wght@8..144,300..800',
-    sans: "'Roboto Flex', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
-    display: "'Roboto Flex', system-ui, sans-serif",
-  },
-  {
-    id: 'geist',
-    label: 'Geist',
-    google: 'Geist:wght@300..800',
-    sans: "'Geist', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif",
-    display: "'Geist', system-ui, sans-serif",
-  },
-  {
-    id: 'serif',
-    label: 'Serif (Georgia)',
-    sans: "Georgia, 'Times New Roman', Times, serif",
-    display: "Georgia, 'Times New Roman', Times, serif",
-  },
-  {
-    id: 'mono',
-    label: 'Monospace',
-    sans: "'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace",
-    display: "'SFMono-Regular', Menlo, Monaco, 'Courier New', monospace",
-  },
-];
-
-export function fontOptionFor(id: string | undefined): FontOption {
-  return FONT_OPTIONS.find((f) => f.id === id) || FONT_OPTIONS[0];
-}
-
-export function googleFontsUrl(font: FontOption): string | null {
-  return font.google
-    ? `https://fonts.googleapis.com/css2?family=${font.google}&display=swap`
-    : null;
-}
+// El catálogo de fuentes es el de la librería: así el id que se guarda es el
+// mismo que entiende `resolveTheme` (typography.fontFamily).
+export { FONT_OPTIONS, fontOptionFor, googleFontsUrl, type FontOption } from '@openfactu/ui';
 
 const CACHE_KEY = 'openfactu_theme';
 
@@ -322,23 +208,18 @@ interface CachedTheme {
   branding?: BrandingConfig;
   format?: FormatConfig;
   flags?: FlagsConfig;
-  colorPrimaryRgb?: string;
-  colorPrimaryHoverRgb?: string;
-  colorPrimaryFgRgb?: string;
-  colorAccentRgb?: string;
-  colorAccentFgRgb?: string;
-  // Legacy flat fields (compat con script inline en index.html)
+  // Lo que lee el script inline de index.html para pintar el tema antes de
+  // montar React: todas las variables y atributos que dejó el último tema.
   themeMode?: BrandingConfig['themeMode'];
   appName?: string;
+  vars?: Record<string, string>;
+  attrs?: Record<string, string>;
+  fontUrl?: string;
+  // Formato anterior (solo para leerlo: readCachedBranding)
   colorPrimary?: string;
   colorAccent?: string;
   fontFamily?: BrandingConfig['fontFamily'];
   logoUrl?: string;
-  // Fuente precomputada (ausente con la opción por defecto) para que el script
-  // inline de index.html la aplique antes de montar React, como los *Rgb.
-  fontSans?: string;
-  fontDisplay?: string;
-  fontUrl?: string;
 }
 
 function readCache(): CachedTheme | null {
@@ -442,126 +323,68 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     reload();
   }, [reload]);
 
-  // Aplicar branding a :root SÍNCRONAMENTE antes del paint para evitar flashes
+  const themeAppliedOnce = useRef(false);
+
+  // Aplicar branding a :root SÍNCRONAMENTE antes del paint para evitar flashes.
+  // Todo el tema lo escribe `applyTheme` de @openfactu/ui: colores, superficies,
+  // fuente (y su <link> de Google Fonts), radios, densidad, movimiento,
+  // cristal… La app solo añade lo que la librería no sabe (abajo).
   useLayoutEffect(() => {
     const root = document.documentElement;
-
-    const primaryRgb = hexToRgb(branding.colorPrimary);
-    const primaryHoverRgb = darkenRgb(primaryRgb, 0.1);
-    const primaryFgRgb = contrastingFgRgb(primaryRgb);
-    const accentRgb = hexToRgb(branding.colorAccent);
-    const accentFgRgb = contrastingFgRgb(accentRgb);
-
-    const primaryRgbStr = rgbToSpaceString(primaryRgb);
-    const primaryHoverRgbStr = rgbToSpaceString(primaryHoverRgb);
-    const primaryFgRgbStr = rgbToSpaceString(primaryFgRgb);
-    const accentRgbStr = rgbToSpaceString(accentRgb);
-    const accentFgRgbStr = rgbToSpaceString(accentFgRgb);
-
-    root.style.setProperty('--color-primary-rgb', primaryRgbStr);
-    root.style.setProperty('--color-primary-hover-rgb', primaryHoverRgbStr);
-    root.style.setProperty('--color-primary-fg-rgb', primaryFgRgbStr);
-    root.style.setProperty('--color-accent-rgb', accentRgbStr);
-    root.style.setProperty('--color-accent-fg-rgb', accentFgRgbStr);
-
-    const font = fontOptionFor(branding.fontFamily);
-    if (font.id === 'sans') {
-      // Defaults de index.css (DM Sans + Space Grotesk)
-      root.style.removeProperty('--font-sans');
-      root.style.removeProperty('--font-display');
-    } else {
-      root.style.setProperty('--font-sans', font.sans);
-      root.style.setProperty('--font-display', font.display);
-    }
-    const fontUrl = googleFontsUrl(font);
-    let fontLink = document.head.querySelector<HTMLLinkElement>('link[data-tenant-font]');
-    if (fontUrl) {
-      if (!fontLink) {
-        fontLink = document.createElement('link');
-        fontLink.rel = 'stylesheet';
-        fontLink.setAttribute('data-tenant-font', '');
-        document.head.appendChild(fontLink);
-      }
-      if (fontLink.href !== fontUrl) fontLink.href = fontUrl;
-    } else if (fontLink) {
-      fontLink.remove();
-    }
-
     document.title = branding.appName;
-    root.classList.toggle('dark', branding.themeMode === 'dark');
 
-    // Superficies, textos, bordes y escala del acento derivados del tema por
-    // `resolveTheme` de @openfactu/ui, que es quien conoce la fórmula. Antes se
-    // derivaban aquí a mano y sólo tres (--bg-app, --bg-card, --border-default),
-    // así que todo lo que usara --bg-muted, --bg-hover, --fg-body, --fg-subtle,
-    // --border-subtle/-strong o la escala --k-teal-* se quedaba con el azul y el
-    // verde de fábrica: en un preset morado o grafito se veía fuera de sitio.
-    const resolved = resolveTheme({
-      mode: branding.themeMode,
-      colors: { primary: branding.colorPrimary, accent: branding.colorAccent },
+    const resolved = applyTheme(brandingToThemeInput(branding), undefined, {
+      transition: themeAppliedOnce.current,
     });
+    themeAppliedOnce.current = true;
+    // Restos de cuando la app ponía la fuente por su cuenta.
+    document.head.querySelector('link[data-tenant-font]')?.remove();
+
+    // En oscuro, un color principal casi igual que las superficies (Carbon,
+    // Midnight, Forest, Plum…) deja los botones `bg-primary` invisibles sobre
+    // las tarjetas. Si no contrasta (< 3:1), esos botones pasan al acento.
+    // Va después de `applyTheme`, que es quien escribe estas variables.
     const c = resolved.colors;
-    const surfaceVars: Record<string, string> = {
-      '--bg-app': c.bgApp,
-      '--bg-card': c.bgCard,
-      '--bg-sidebar': c.bgSidebar,
-      '--bg-muted': c.bgMuted,
-      '--bg-hover': c.bgHover,
-      '--fg-default': c.fgDefault,
-      '--fg-body': c.fgBody,
-      '--fg-muted': c.fgMuted,
-      '--fg-subtle': c.fgSubtle,
-      '--border-default': c.borderDefault,
-      '--border-subtle': c.borderSubtle,
-      '--border-strong': c.borderStrong,
-      // La escala del acento: --k-accent-* es el nombre semántico y --k-teal-* el
-      // histórico. Los componentes usan ambos, así que se escriben los dos.
-      '--k-accent-50': c.accentScale[50],
-      '--k-accent-100': c.accentScale[100],
-      '--k-accent-500': c.accentScale[500],
-      '--k-accent-600': c.accentScale[600],
-      '--k-accent-900': c.accentScale[900],
-      '--k-teal-50': c.accentScale[50],
-      '--k-teal-100': c.accentScale[100],
-      '--k-teal-500': c.accentScale[500],
-      '--k-teal-600': c.accentScale[600],
-      '--k-teal-900': c.accentScale[900],
-    };
-    for (const [name, value] of Object.entries(surfaceVars)) {
-      root.style.setProperty(name, value);
+    if (resolved.mode === 'dark') {
+      const primary = hexToRgb(c.primary);
+      if (contrastRatio(primary, hexToRgb(c.bgCard)) < 3) {
+        const accent = hexToRgb(c.accent);
+        root.style.setProperty('--color-primary-rgb', rgbToSpaceString(accent));
+        root.style.setProperty(
+          '--color-primary-hover-rgb',
+          rgbToSpaceString(darkenRgb(accent, 0.1)),
+        );
+        root.style.setProperty(
+          '--color-primary-fg-rgb',
+          rgbToSpaceString(contrastingFgRgb(accent)),
+        );
+      }
     }
 
-    if (branding.themeMode === 'dark') {
-      // Que <html> vea el fondo correcto antes del siguiente pintado, para no
-      // enseñar el #0A1628 del anti-FOUC de index.css.
-      root.style.background = c.bgApp;
-    } else {
-      root.style.removeProperty('background');
-    }
-
-    // Persistir cache con las tres secciones completas + RGB precomputados
-    // para que el script inline en index.html aplique el tema antes de React.
+    // Persistir cache con las tres secciones completas + el tema ya escrito,
+    // para que el script inline en index.html lo aplique antes de React.
     try {
+      const vars: Record<string, string> = {};
+      for (let i = 0; i < root.style.length; i++) {
+        const name = root.style[i];
+        if (name.startsWith('--') && name !== '--k-theme-transition') {
+          vars[name] = root.style.getPropertyValue(name);
+        }
+      }
+      const attrs: Record<string, string> = {};
+      for (const attr of Array.from(root.attributes)) {
+        if (attr.name.startsWith('data-k-')) attrs[attr.name] = attr.value;
+      }
       const payload: CachedTheme = {
         tenantId: user?.tenantId,
         branding,
         format,
         flags,
-        // Flat fields (legacy) para el script inline en index.html
-        themeMode: branding.themeMode,
+        themeMode: resolved.mode,
         appName: branding.appName,
-        colorPrimary: branding.colorPrimary,
-        colorAccent: branding.colorAccent,
-        fontFamily: branding.fontFamily,
-        logoUrl: branding.logoUrl,
-        colorPrimaryRgb: primaryRgbStr,
-        colorPrimaryHoverRgb: primaryHoverRgbStr,
-        colorPrimaryFgRgb: primaryFgRgbStr,
-        colorAccentRgb: accentRgbStr,
-        colorAccentFgRgb: accentFgRgbStr,
-        ...(font.id !== 'sans'
-          ? { fontSans: font.sans, fontDisplay: font.display, fontUrl: fontUrl || undefined }
-          : {}),
+        vars,
+        attrs,
+        fontUrl: googleFontsUrl(fontOptionFor(resolved.typography.fontFamily)) || undefined,
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
     } catch {
@@ -571,13 +394,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const applyPreset = useCallback(
     async (presetId: string) => {
-      const preset = THEME_PRESETS.find((p) => p.id === presetId);
+      const preset = getThemePreset(presetId);
       if (!preset) return;
-      await update('branding', {
-        colorPrimary: preset.colorPrimary,
-        colorAccent: preset.colorAccent,
-        themeMode: preset.themeMode,
-      });
+      await update('branding', { ...presetSwatch(preset), themePreset: preset.id });
     },
     [update],
   );

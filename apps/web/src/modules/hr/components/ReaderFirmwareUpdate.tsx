@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Card, Progress } from '@openfactu/ui';
+import { Button, Card, Progress, Alert } from '@openfactu/ui';
 import type { Reader } from '../api/timeclockManagementApi';
 import {
   firmwareApi,
@@ -179,9 +179,9 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
           </p>
         )}
         {stateError && (
-          <p role="alert" className="text-danger">
+          <Alert tone="danger" role="alert">
             {stateError}
-          </p>
+          </Alert>
         )}
         <p className="text-sm text-fg-muted">
           USB: conecta el lector y cierra el monitor Arduino. Necesitas Chrome o Edge de escritorio.
@@ -221,15 +221,15 @@ export function ReaderFirmwareUpdate({ reader, onClose }: { reader: Reader; onCl
           </p>
         )}
         {status === 'failed' && (
-          <p role="alert" className="text-danger">
+          <Alert tone="danger" role="alert">
             El lector no pudo instalar la versión. Conserva la anterior; comprueba la conexión y
             vuelve a intentarlo.
-          </p>
+          </Alert>
         )}
         {error && (
-          <p role="alert" className="text-danger">
+          <Alert tone="danger" role="alert">
             {error}
-          </p>
+          </Alert>
         )}
       </div>
     </Card>

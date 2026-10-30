@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Card, Input } from '@openfactu/ui';
+import { Button, Card, Input, Alert } from '@openfactu/ui';
 import { CreditCard, Image, Palette } from 'lucide-react';
 import { kiosksApi } from '../api/kiosksApi';
 import {
@@ -200,7 +200,7 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
                   <p className="text-sm text-slate-300">
                     Identifícate para registrar tu entrada, salida o pausa.
                   </p>
-                  <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-center text-xs">
                     <span className="rounded border border-slate-600 bg-slate-800 p-3">
                       Usar mi QR
                     </span>
@@ -219,9 +219,9 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
         </form>
       ) : null}
       {error && (
-        <p role="alert" className="mt-4 text-sm text-danger">
+        <Alert tone="danger" role="alert" className="mt-4">
           {error}
-        </p>
+        </Alert>
       )}
       {saved && (
         <p role="status" className="mt-4 text-sm text-success">

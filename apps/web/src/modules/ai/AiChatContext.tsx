@@ -40,7 +40,8 @@ interface AiChatContextValue {
   headers: Record<string, string>;
   send: (text: string, files?: FileUIPart[]) => void;
   loadConversation: (id: string) => Promise<void>;
-  newConversation: () => void;
+  /** Empieza una conversación vacía; con `projectId`, se guardará dentro de ese proyecto. */
+  newConversation: (projectId?: string) => void;
   setChatVisible: (visible: boolean) => void;
   refreshModels: () => Promise<void>;
 }
@@ -67,6 +68,8 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
   const [selectedModel, setSelectedModel] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
+  // Proyecto en el que se guardará la conversación nueva (solo hasta su primer guardado).
+  const pendingProjectRef = useRef<string | null>(null);
   const [messageTimings, setMessageTimings] = useState<Record<string, number>>({});
   const isChatVisibleRef = useRef(false);
 
@@ -145,7 +148,11 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await coreApi.raw('PUT', `/api/ai/conversations/${id}`, {
         messages,
         model: selectedModel || availableModels.current || undefined,
+        ...(!conversationId && pendingProjectRef.current
+          ? { projectId: pendingProjectRef.current }
+          : {}),
       });
+      pendingProjectRef.current = null;
     } catch {
       /* sin conexión o error del server — no interrumpe el chat */
     }
@@ -191,6 +198,7 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const data = res.data;
       setMessages(Array.isArray(data.messages) ? data.messages : []);
       setConversationId(data.id);
+      pendingProjectRef.current = null;
       // Solo aplicamos el modelo guardado si sigue siendo válido para el
       // proveedor ACTIVO ahora mismo — una conversación vieja pudo guardarse
       // con un modelo de un proveedor que ya no está configurado.
@@ -205,9 +213,10 @@ export const AiChatProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  const newConversation = () => {
+  const newConversation = (projectId?: string) => {
     setMessages([]);
     setConversationId(null);
+    pendingProjectRef.current = projectId ?? null;
   };
 
   const setChatVisible = useCallback((visible: boolean) => {

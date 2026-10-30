@@ -128,7 +128,7 @@ const CheckboxRow: React.FC<{
 );
 
 const Grid2: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="grid grid-cols-2 gap-3">{children}</div>
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{children}</div>
 );
 
 // -------------------- Main form --------------------

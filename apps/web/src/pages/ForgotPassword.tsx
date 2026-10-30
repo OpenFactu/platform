@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, Loader2, CheckCircle2, Send } from 'lucide-react';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
-import { IsoField } from '../components/login/IsoField';
+import { AuroraBackdrop } from '../components/login/AuroraBackdrop';
 
 /**
  * Página pública de recuperación de contraseña. Pide el email y llama a
@@ -32,9 +32,7 @@ export const ForgotPassword: React.FC = () => {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#0A1628] font-sans relative overflow-hidden px-4">
       <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0A1628] via-[#0A1628] to-[#08524A]" />
-        <IsoField />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1628]/80 via-transparent to-[#0A1628]/40" />
+        <AuroraBackdrop />
       </div>
 
       <div className="w-full max-w-md space-y-6 animate-in fade-in zoom-in-95 duration-500 bg-white/95 dark:bg-[#1A2535]/90 backdrop-blur-md border border-white/40 dark:border-white/10 rounded-[4px] p-6 md:p-8 shadow-2xl relative z-10">

@@ -22,6 +22,7 @@ import {
   type ActionContext,
 } from './actionExecutors';
 import { HookManager } from '../plugins/HookManager';
+import { CRM_EVENTS } from '../crm/events';
 
 const WHITELIST_EVENTS = [
   'salesInvoice.afterCreate',
@@ -34,6 +35,8 @@ const WHITELIST_EVENTS = [
   'purchaseDeliveryNote.afterCreate',
   'partner.afterCreate',
   'item.afterCreate',
+  ...CRM_EVENTS,
+  'forms.response.created',
 ] as const;
 
 class AutomationRunnerImpl {

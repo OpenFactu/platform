@@ -15,11 +15,12 @@ import {
   Tabs,
   Table,
   PageHeader,
+  Modal,
 } from '@openfactu/ui';
 import type { BadgeProps, TableColumn, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
-import { ClipboardCheck, Plus, Pencil, Trash2, X, Save, CheckCircle } from 'lucide-react';
+import { ClipboardCheck, Plus, Pencil, Trash2, Save, CheckCircle } from 'lucide-react';
 import { ApiError } from '@/shared/http';
 
 const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
@@ -411,6 +412,7 @@ export const Evaluations: React.FC = () => {
           )}
           <Card className="overflow-hidden" noPadding>
             <Table
+              className="max-md:p-3"
               columns={cycleColumns}
               data={cycles}
               rowActions={cycleRowActions}
@@ -452,6 +454,7 @@ export const Evaluations: React.FC = () => {
               />
             </div>
             <Table
+              className="max-md:p-3"
               columns={evaluationColumns}
               data={evaluations}
               rowActions={evaluationRowActions}
@@ -517,6 +520,7 @@ export const Evaluations: React.FC = () => {
           )}
           <Card className="overflow-hidden" noPadding>
             <Table
+              className="max-md:p-3"
               columns={competencyColumns}
               data={competencies}
               rowActions={competencyRowActions}
@@ -528,116 +532,103 @@ export const Evaluations: React.FC = () => {
       )}
 
       {/* Modal de puntuación */}
-      {scoreEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <Card className="max-w-3xl w-full max-h-[85vh] overflow-auto" noPadding>
-            <div className="p-6 space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold">Puntuar evaluación</h2>
-                  <p className="text-xs text-slate-500">
-                    {scoreEditing.emp?.firstName} {scoreEditing.emp?.lastName}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setScoreEditing(null)}
-                  className="text-slate-400 hover:text-slate-700"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-slate-500 border-b">
-                    <th className="p-2">Competencia</th>
-                    <th className="p-2 text-right">Auto</th>
-                    <th className="p-2 text-right">Manager</th>
-                    <th className="p-2">Notas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scores.map((s, i) => {
-                    const c = competencies.find((c) => c.id === s.competencyId);
-                    return (
-                      <tr key={s.competencyId} className="border-b">
-                        <td className="p-2 font-medium">
-                          {c?.name}{' '}
-                          <span className="text-xs text-slate-400">
-                            ×{Number(c?.weight || 1).toFixed(1)}
-                          </span>
-                        </td>
-                        <td className="p-2 text-right">
-                          <input
-                            type="number"
-                            min={0}
-                            max={c?.scaleMax || 5}
-                            step={0.5}
-                            value={s.scoreSelf ?? ''}
-                            onChange={(e) => {
-                              const next = [...scores];
-                              next[i] = {
-                                ...s,
-                                scoreSelf:
-                                  e.target.value === '' ? undefined : Number(e.target.value),
-                              };
-                              setScores(next);
-                            }}
-                            className="w-20 text-right px-2 py-1 rounded border border-border-default bg-transparent"
-                          />
-                        </td>
-                        <td className="p-2 text-right">
-                          <input
-                            type="number"
-                            min={0}
-                            max={c?.scaleMax || 5}
-                            step={0.5}
-                            value={s.scoreManager ?? ''}
-                            onChange={(e) => {
-                              const next = [...scores];
-                              next[i] = {
-                                ...s,
-                                scoreManager:
-                                  e.target.value === '' ? undefined : Number(e.target.value),
-                              };
-                              setScores(next);
-                            }}
-                            className="w-20 text-right px-2 py-1 rounded border border-border-default bg-transparent"
-                          />
-                        </td>
-                        <td className="p-2">
-                          <input
-                            type="text"
-                            value={s.comments || ''}
-                            onChange={(e) => {
-                              const next = [...scores];
-                              next[i] = { ...s, comments: e.target.value };
-                              setScores(next);
-                            }}
-                            className="w-full px-2 py-1 rounded border border-border-default bg-transparent"
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              <div className="flex justify-between gap-2 pt-3 border-t">
-                <Button size="sm" variant="danger" onClick={closeEvaluation} disabled={!canWrite}>
-                  <CheckCircle size={14} /> Cerrar evaluación (calcula final)
-                </Button>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => setScoreEditing(null)}>
-                    Cerrar
-                  </Button>
-                  <Button size="sm" onClick={saveScores} disabled={!canWrite}>
-                    <Save size={14} /> Guardar
-                  </Button>
-                </div>
-              </div>
+      <Modal
+        isOpen={!!scoreEditing}
+        onClose={() => setScoreEditing(null)}
+        title="Puntuar evaluación"
+        subtitle={`${scoreEditing?.emp?.firstName ?? ''} ${scoreEditing?.emp?.lastName ?? ''}`.trim()}
+        size="3xl"
+        hideCancel
+        footer={
+          <div className="flex w-full justify-between gap-2">
+            <Button size="sm" variant="danger" onClick={closeEvaluation} disabled={!canWrite}>
+              <CheckCircle size={14} /> Cerrar evaluación (calcula final)
+            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setScoreEditing(null)}>
+                Cerrar
+              </Button>
+              <Button size="sm" onClick={saveScores} disabled={!canWrite}>
+                <Save size={14} /> Guardar
+              </Button>
             </div>
-          </Card>
-        </div>
-      )}
+          </div>
+        }
+      >
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-slate-500 border-b">
+              <th className="p-2">Competencia</th>
+              <th className="p-2 text-right">Auto</th>
+              <th className="p-2 text-right">Manager</th>
+              <th className="p-2">Notas</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scores.map((s, i) => {
+              const c = competencies.find((c) => c.id === s.competencyId);
+              return (
+                <tr key={s.competencyId} className="border-b">
+                  <td className="p-2 font-medium">
+                    {c?.name}{' '}
+                    <span className="text-xs text-slate-400">
+                      ×{Number(c?.weight || 1).toFixed(1)}
+                    </span>
+                  </td>
+                  <td className="p-2 text-right">
+                    <input
+                      type="number"
+                      min={0}
+                      max={c?.scaleMax || 5}
+                      step={0.5}
+                      value={s.scoreSelf ?? ''}
+                      onChange={(e) => {
+                        const next = [...scores];
+                        next[i] = {
+                          ...s,
+                          scoreSelf: e.target.value === '' ? undefined : Number(e.target.value),
+                        };
+                        setScores(next);
+                      }}
+                      className="w-20 text-right px-2 py-1 rounded border border-border-default bg-transparent"
+                    />
+                  </td>
+                  <td className="p-2 text-right">
+                    <input
+                      type="number"
+                      min={0}
+                      max={c?.scaleMax || 5}
+                      step={0.5}
+                      value={s.scoreManager ?? ''}
+                      onChange={(e) => {
+                        const next = [...scores];
+                        next[i] = {
+                          ...s,
+                          scoreManager: e.target.value === '' ? undefined : Number(e.target.value),
+                        };
+                        setScores(next);
+                      }}
+                      className="w-20 text-right px-2 py-1 rounded border border-border-default bg-transparent"
+                    />
+                  </td>
+                  <td className="p-2">
+                    <input
+                      type="text"
+                      value={s.comments || ''}
+                      onChange={(e) => {
+                        const next = [...scores];
+                        next[i] = { ...s, comments: e.target.value };
+                        setScores(next);
+                      }}
+                      className="w-full px-2 py-1 rounded border border-border-default bg-transparent"
+                    />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Modal>
     </div>
   );
 };

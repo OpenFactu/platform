@@ -303,6 +303,7 @@ export const Categories: React.FC = () => {
         {/* La Table trae cabecera, esqueleto de carga y estado vacío: el
             <table> a mano y sus filas especiales sobraban. */}
         <Table
+          className="max-md:p-3"
           columns={columns}
           data={rows}
           isLoading={loading}

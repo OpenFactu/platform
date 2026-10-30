@@ -189,6 +189,22 @@ export const aiConversations = pgTable('AiConversation', {
   messages: jsonb('messages').notNull().default([]),
   /** Último modelo usado en esta conversación — informativo, para el historial. */
   model: text('model'),
+  /** Proyecto (carpeta) al que pertenece, o null si va suelta. */
+  projectId: text('projectId'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+/**
+ * Proyectos del chat: carpetas con las que cada usuario agrupa sus
+ * conversaciones. Como las conversaciones, van acotadas por tenantId + userId.
+ * Borrar un proyecto no borra sus conversaciones: quedan sin proyecto.
+ */
+export const aiConversationProjects = pgTable('AiConversationProject', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenantId').notNull(),
+  userId: text('userId').notNull(),
+  title: text('title').notNull(),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
@@ -1412,6 +1428,10 @@ export const salesQuotes = pgTable('SalesQuote', {
   date: timestamp('date').notNull(),
   documentDate: timestamp('documentDate'),
   validUntil: timestamp('validUntil'),
+  // Mig 075 — oportunidad del CRM de la que sale, y aviso de caducidad ya enviado.
+  // Sin .references(): Opportunity se declara más abajo en este fichero.
+  opportunityId: text('opportunityId'),
+  expiryNotifiedAt: timestamp('expiryNotifiedAt'),
   status: text('status').default('O').notNull(),
   billToAddress: text('billToAddress'),
   shipToAddress: text('shipToAddress'),
@@ -2038,8 +2058,177 @@ export const contacts = pgTable('Contact', {
   mobile: text('mobile'),
   isMain: boolean('isMain').default(false).notNull(),
   notes: text('notes'),
+  /** Etiquetas libres del CRM (mig 076). */
+  tags: jsonb('tags').$type<string[]>().default([]).notNull(),
   createdAt: timestamp('createdAt').defaultNow(),
   updatedAt: timestamp('updatedAt').defaultNow(),
+});
+
+// ════════════════════════════════════════════════════════════════════
+// Mig 073 — CRM básico (los contactos son la tabla "Contact" de arriba)
+// ════════════════════════════════════════════════════════════════════
+
+export const opportunityStages = pgTable('OpportunityStage', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  sortOrder: integer('sortOrder').default(0).notNull(),
+  probability: integer('probability').default(0).notNull(),
+  /** 'open' | 'won' | 'lost' — las etapas cerradas fijan closedAt en la oportunidad. */
+  kind: text('kind').default('open').notNull(),
+  // Mig 079 — al entrar en la etapa se crea esta actividad para el responsable.
+  followUpType: text('followUpType'),
+  followUpDays: integer('followUpDays'),
+  followUpSubject: text('followUpSubject'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const opportunities = pgTable('Opportunity', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  /** Null mientras sea un prospecto sin ficha de cliente (mig 077). */
+  partnerId: text('partnerId').references(() => businessPartners.id, { onDelete: 'cascade' }),
+  contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
+  // Datos del prospecto (mig 077): se conservan tras convertirlo en cliente.
+  prospectName: text('prospectName'),
+  prospectCompany: text('prospectCompany'),
+  prospectEmail: text('prospectEmail'),
+  prospectPhone: text('prospectPhone'),
+  stageId: text('stageId')
+    .references(() => opportunityStages.id)
+    .notNull(),
+  amount: decimal('amount', { precision: 15, scale: 4 }).default('0').notNull(),
+  expectedCloseDate: date('expectedCloseDate'),
+  ownerUserId: text('ownerUserId'),
+  notes: text('notes'),
+  closedAt: timestamp('closedAt'),
+  // Mig 074
+  source: text('source'),
+  lostReason: text('lostReason'),
+  /** Fecha de la última actividad registrada: alimenta «oportunidades paradas». */
+  lastActivityAt: timestamp('lastActivityAt'),
+  /** Etiquetas libres (mig 076). */
+  tags: jsonb('tags').$type<string[]>().default([]).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+/** Productos de interés de una oportunidad (mig 075). */
+export const opportunityLines = pgTable('OpportunityLine', {
+  id: text('id').primaryKey(),
+  opportunityId: text('opportunityId')
+    .references(() => opportunities.id, { onDelete: 'cascade' })
+    .notNull(),
+  itemId: text('itemId').references(() => items.id, { onDelete: 'set null' }),
+  description: text('description'),
+  quantity: decimal('quantity', { precision: 15, scale: 4 }).default('1').notNull(),
+  price: decimal('price', { precision: 15, scale: 4 }).default('0').notNull(),
+  discount: decimal('discount', { precision: 5, scale: 2 }).default('0').notNull(),
+  sortOrder: integer('sortOrder').default(0).notNull(),
+});
+
+// ════════════════════════════════════════════════════════════════════
+// Mig 078 / 080 — Formularios y encuestas (módulo propio desde la 080;
+// antes eran CrmForm, CrmFormInvite y CrmFormResponse)
+// ════════════════════════════════════════════════════════════════════
+
+export const forms = pgTable('Form', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  /** 'form' | 'survey' (solo cambia la plantilla de partida y las pestañas). */
+  kind: text('kind').default('form').notNull(),
+  /** Parte final del enlace público /f/:tenantId/:slug. */
+  slug: text('slug').notNull().unique(),
+  title: text('title'),
+  intro: text('intro'),
+  /** v1 (lista plana de campos). Solo se lee: la v2 vive en `definition`. */
+  fields: jsonb('fields').$type<any[]>().default([]).notNull(),
+  /** Secciones, preguntas y lógica (core/forms/engine.ts → FormDefinition). */
+  definition: jsonb('definition').$type<any>(),
+  /** Ajustes de respuestas, cuestionario y CRM (core/forms/settings.ts). */
+  settings: jsonb('settings').$type<Record<string, any>>().default({}).notNull(),
+  /** Color de acento, fondo e imagen de cabecera. */
+  theme: jsonb('theme').$type<Record<string, any>>().default({}).notNull(),
+  /** Acepta respuestas. */
+  isActive: boolean('isActive').default(true).notNull(),
+  ownerUserId: text('ownerUserId'),
+  createdBy: text('createdBy'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+export const formInvites = pgTable('FormInvite', {
+  id: text('id').primaryKey(),
+  formId: text('formId')
+    .references(() => forms.id, { onDelete: 'cascade' })
+    .notNull(),
+  /** Con CRM: contacto y cliente; sin él, solo la dirección. */
+  contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
+  partnerId: text('partnerId').references(() => businessPartners.id, { onDelete: 'set null' }),
+  email: text('email'),
+  token: text('token').notNull().unique(),
+  sentAt: timestamp('sentAt'),
+  respondedAt: timestamp('respondedAt'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const formResponses = pgTable('FormResponse', {
+  id: text('id').primaryKey(),
+  formId: text('formId')
+    .references(() => forms.id, { onDelete: 'cascade' })
+    .notNull(),
+  inviteId: text('inviteId').references(() => formInvites.id, { onDelete: 'set null' }),
+  answers: jsonb('answers').$type<Record<string, any>>().default({}).notNull(),
+  respondentEmail: text('respondentEmail'),
+  partnerId: text('partnerId').references(() => businessPartners.id, { onDelete: 'set null' }),
+  contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
+  opportunityId: text('opportunityId').references(() => opportunities.id, {
+    onDelete: 'set null',
+  }),
+  // Cuestionario: nota y puntos puestos a mano por pregunta.
+  score: decimal('score', { precision: 10, scale: 2 }),
+  maxScore: decimal('maxScore', { precision: 10, scale: 2 }),
+  grades: jsonb('grades').$type<Record<string, number>>().default({}).notNull(),
+  gradedAt: timestamp('gradedAt'),
+  /** Enlace para que quien respondió edite su respuesta. */
+  editToken: text('editToken'),
+  /** Marca del navegador, para «una respuesta por persona» sin pedir correo. */
+  browserKey: text('browserKey'),
+  status: text('status').default('complete').notNull(),
+  meta: jsonb('meta').$type<Record<string, any>>().default({}).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt'),
+});
+
+/** Cada cambio de etapa, para medir conversión y tiempos del embudo (mig 074). */
+export const opportunityStageHistory = pgTable('OpportunityStageHistory', {
+  id: text('id').primaryKey(),
+  opportunityId: text('opportunityId')
+    .references(() => opportunities.id, { onDelete: 'cascade' })
+    .notNull(),
+  fromStageId: text('fromStageId').references(() => opportunityStages.id, { onDelete: 'set null' }),
+  toStageId: text('toStageId').references(() => opportunityStages.id, { onDelete: 'set null' }),
+  userId: text('userId'),
+  changedAt: timestamp('changedAt').defaultNow().notNull(),
+});
+
+export const crmActivities = pgTable('CrmActivity', {
+  id: text('id').primaryKey(),
+  /** 'call' | 'meeting' | 'email' | 'note' | 'task' */
+  type: text('type').notNull(),
+  subject: text('subject').notNull(),
+  body: text('body'),
+  partnerId: text('partnerId').references(() => businessPartners.id, { onDelete: 'cascade' }),
+  contactId: text('contactId').references(() => contacts.id, { onDelete: 'set null' }),
+  opportunityId: text('opportunityId').references(() => opportunities.id, {
+    onDelete: 'cascade',
+  }),
+  dueAt: timestamp('dueAt'),
+  doneAt: timestamp('doneAt'),
+  /** Aviso de vencimiento ya enviado al responsable (mig 076). */
+  notifiedAt: timestamp('notifiedAt'),
+  ownerUserId: text('ownerUserId'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
 export const payments = pgTable('Payment', {

@@ -175,7 +175,7 @@ export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, 
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Input
               label="Nombre receptor"
               value={name}

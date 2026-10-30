@@ -9,7 +9,7 @@ import type { ShiftAssignment, ShiftTemplate } from '../domain/shift';
 import type { Employee } from '../domain/employee';
 import type { Incident, IncidentType } from '../domain/incident';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, useToast, PageHeader, Tabs, Checkbox } from '@openfactu/ui';
+import { Card, Button, Input, useToast, PageHeader, Tabs, Checkbox, Modal } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
 import {
@@ -18,7 +18,6 @@ import {
   ChevronRight,
   CalendarCheck,
   Plus,
-  X,
   Clock,
   Trash2,
   Pencil,
@@ -649,267 +648,254 @@ export const Planning: React.FC = () => {
       </div>
 
       {/* Modal crear / editar */}
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <Card className="max-w-lg w-full" noPadding>
-            <div className="p-6 space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    {modal.kind === 'edit' ? <Pencil size={18} /> : <Plus size={18} />}
-                    {modal.kind === 'edit' ? 'Editar turno' : 'Nuevo turno'}
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    {employees.find((e) => e.id === modal.employeeId)?.firstName}{' '}
-                    {employees.find((e) => e.id === modal.employeeId)?.lastName} ·{' '}
-                    {new Date(modal.date).toLocaleDateString('es-ES', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'short',
-                    })}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setModal(null)}
-                  title="Cerrar"
-                >
-                  <X size={20} />
+      <Modal
+        isOpen={!!modal}
+        onClose={() => setModal(null)}
+        icon={modal?.kind === 'edit' ? <Pencil size={18} /> : <Plus size={18} />}
+        title={modal?.kind === 'edit' ? 'Editar turno' : 'Nuevo turno'}
+        subtitle={
+          modal
+            ? `${employees.find((e) => e.id === modal.employeeId)?.firstName ?? ''} ${
+                employees.find((e) => e.id === modal.employeeId)?.lastName ?? ''
+              } · ${new Date(modal.date).toLocaleDateString('es-ES', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+              })}`
+            : undefined
+        }
+        size="lg"
+        hideCancel
+        footer={
+          modal && (
+            <div className="flex w-full items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {modal.kind === 'edit' && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={cancelAssign}
+                      disabled={!canWrite}
+                    >
+                      <Ban size={14} /> Cancelar turno
+                    </Button>
+                    <Button size="sm" variant="danger" onClick={removeAssign} disabled={!canDelete}>
+                      <Trash2 size={14} /> Borrar
+                    </Button>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={() => setModal(null)}>
+                  Cerrar
+                </Button>
+                <Button size="sm" onClick={submitForm} disabled={!canWrite}>
+                  <Save size={14} /> {modal.kind === 'edit' ? 'Guardar' : 'Crear'}
                 </Button>
               </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">
-                  Plantilla
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {/* Muestras de color: el relleno lo manda el color de la
+            </div>
+          )
+        }
+      >
+        {modal && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">
+                Plantilla
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {/* Muestras de color: el relleno lo manda el color de la
                       plantilla, así que el `style` inline se conserva sobre el
                       Button. */}
-                  {templates
-                    .filter((t: any) => t.isActive)
-                    .map((t: any) => (
-                      <Button
-                        key={t.id}
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onPickTemplate(t.id)}
-                        className={
-                          'px-3 py-1.5 rounded-lg text-xs font-bold border-2 ' +
-                          (form.shiftTemplateId === t.id
-                            ? 'border-indigo-500 ring-2 ring-indigo-300/50'
-                            : 'border-border-default hover:border-slate-300')
-                        }
-                        style={{
-                          background:
-                            form.shiftTemplateId === t.id ? t.color || '#6366F1' : 'transparent',
-                          color: form.shiftTemplateId === t.id ? 'white' : undefined,
-                        }}
-                      >
-                        {t.code} · {t.startTime}–{t.endTime}
-                      </Button>
-                    ))}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setForm((f) => ({ ...f, shiftTemplateId: '' }))}
-                    className={
-                      'px-3 py-1.5 rounded-lg text-xs font-bold border-2 ' +
-                      (!form.shiftTemplateId
-                        ? 'border-slate-500 bg-bg-muted'
-                        : 'border-dashed border-border-strong hover:border-slate-400')
-                    }
-                  >
-                    Personalizado
-                  </Button>
-                  {templates.length === 0 && (
-                    <p className="text-xs text-slate-400 italic">
-                      No hay plantillas. Crea una en Plantillas de turno.
-                    </p>
-                  )}
-                </div>
-                {modal.kind === 'edit' &&
-                  (() => {
-                    const tpl: any = form.shiftTemplateId ? tplMap[form.shiftTemplateId] : null;
-                    if (!tpl?.secondStartTime || !tpl?.secondEndTime) return null;
-                    return (
-                      <div className="mt-3 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
-                        <CopyPlus size={14} /> Estás editando un <b>único tramo</b>. El otro tramo
-                        es un turno aparte: ciérralo y haz click sobre él en la planificación.
-                      </div>
-                    );
-                  })()}
-              </div>
-
-              {/* Tramo 1 */}
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-black">
-                    ①
-                  </span>
-                  Tramo {modal.kind === 'create' && form.secondEnabled ? '1 (mañana)' : ''}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Inicio"
-                    type="datetime-local"
-                    value={form.startAt.slice(0, 16)}
-                    onChange={(e) => setForm({ ...form, startAt: e.target.value })}
-                  />
-                  <Input
-                    label="Fin"
-                    type="datetime-local"
-                    value={form.endAt.slice(0, 16)}
-                    onChange={(e) => setForm({ ...form, endAt: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {/* Tramo 2 (sólo en creación) */}
-              {modal.kind === 'create' && (
-                <div className="rounded-lg border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/40 dark:bg-amber-500/5 p-3">
-                  {/* Campo del formulario (se persiste al crear) → Checkbox, que
-                      no tiene prop `label`: se conserva el <label> envolvente. */}
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox
-                      checked={form.secondEnabled}
-                      onChange={(checked) => {
-                        const date = modal.date;
-                        const tpl: any = form.shiftTemplateId ? tplMap[form.shiftTemplateId] : null;
-                        const defS = tpl?.secondStartTime || form.endAt.slice(11, 16) || '16:00';
-                        const defE = tpl?.secondEndTime || '20:00';
-                        setForm((f) => ({
-                          ...f,
-                          secondEnabled: checked,
-                          secondStartAt: checked ? `${date}T${defS}:00` : '',
-                          secondEndAt: checked ? `${date}T${defE}:00` : '',
-                        }));
+                {templates
+                  .filter((t: any) => t.isActive)
+                  .map((t: any) => (
+                    <Button
+                      key={t.id}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onPickTemplate(t.id)}
+                      className={
+                        'px-3 py-1.5 rounded-lg text-xs font-bold border-2 ' +
+                        (form.shiftTemplateId === t.id
+                          ? 'border-indigo-500 ring-2 ring-indigo-300/50'
+                          : 'border-border-default hover:border-slate-300')
+                      }
+                      style={{
+                        background:
+                          form.shiftTemplateId === t.id ? t.color || '#6366F1' : 'transparent',
+                        color: form.shiftTemplateId === t.id ? 'white' : undefined,
                       }}
-                    />
-                    <CopyPlus size={14} className="text-amber-600" />
-                    <span className="text-sm font-bold">Turno partido (2º tramo)</span>
-                  </label>
-                  {form.secondEnabled && (
-                    <>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-3 mb-2 flex items-center gap-1.5">
-                        <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">
-                          ②
-                        </span>
-                        Tramo 2 (tarde)
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Input
-                          label="Inicio 2º"
-                          type="datetime-local"
-                          value={form.secondStartAt.slice(0, 16)}
-                          onChange={(e) => setForm({ ...form, secondStartAt: e.target.value })}
-                        />
-                        <Input
-                          label="Fin 2º"
-                          type="datetime-local"
-                          value={form.secondEndAt.slice(0, 16)}
-                          onChange={(e) => setForm({ ...form, secondEndAt: e.target.value })}
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
+                    >
+                      {t.code} · {t.startTime}–{t.endTime}
+                    </Button>
+                  ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setForm((f) => ({ ...f, shiftTemplateId: '' }))}
+                  className={
+                    'px-3 py-1.5 rounded-lg text-xs font-bold border-2 ' +
+                    (!form.shiftTemplateId
+                      ? 'border-slate-500 bg-bg-muted'
+                      : 'border-dashed border-border-strong hover:border-slate-400')
+                  }
+                >
+                  Personalizado
+                </Button>
+                {templates.length === 0 && (
+                  <p className="text-xs text-slate-400 italic">
+                    No hay plantillas. Crea una en Plantillas de turno.
+                  </p>
+                )}
+              </div>
+              {modal.kind === 'edit' &&
+                (() => {
+                  const tpl: any = form.shiftTemplateId ? tplMap[form.shiftTemplateId] : null;
+                  if (!tpl?.secondStartTime || !tpl?.secondEndTime) return null;
+                  return (
+                    <div className="mt-3 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-700 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                      <CopyPlus size={14} /> Estás editando un <b>único tramo</b>. El otro tramo es
+                      un turno aparte: ciérralo y haz click sobre él en la planificación.
+                    </div>
+                  );
+                })()}
+            </div>
 
+            {/* Tramo 1 */}
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-black">
+                  ①
+                </span>
+                Tramo {modal.kind === 'create' && form.secondEnabled ? '1 (mañana)' : ''}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <Input
-                  label="Pausa (min)"
-                  type="number"
-                  min={0}
-                  value={form.breakMinutes}
-                  onChange={(e) => setForm({ ...form, breakMinutes: Number(e.target.value) || 0 })}
+                  label="Inicio"
+                  type="datetime-local"
+                  value={form.startAt.slice(0, 16)}
+                  onChange={(e) => setForm({ ...form, startAt: e.target.value })}
                 />
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">
-                    Horas netas
-                  </label>
-                  {(() => {
-                    const split = modal.kind === 'create' && form.secondEnabled;
-                    const h1 =
-                      form.startAt && form.endAt
-                        ? Math.max(
-                            0,
-                            (new Date(form.endAt).getTime() - new Date(form.startAt).getTime()) /
-                              3_600_000 -
-                              (form.breakMinutes || 0) / 60,
-                          )
-                        : 0;
-                    let h2 = 0;
-                    if (split && form.secondStartAt && form.secondEndAt) {
-                      h2 = Math.max(
-                        0,
-                        (new Date(form.secondEndAt).getTime() -
-                          new Date(form.secondStartAt).getTime()) /
-                          3_600_000,
-                      );
-                    }
-                    const total = h1 + h2;
-                    return (
-                      <div className="px-3 py-2 rounded-lg bg-bg-muted">
-                        <div className="text-lg font-black tabular-nums">{total.toFixed(2)} h</div>
-                        {split && (
-                          <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold tabular-nums mt-0.5">
-                            ① {h1.toFixed(2)}h + ② {h2.toFixed(2)}h
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-                <div className="col-span-2">
-                  <Input
-                    label="Notas"
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-border-default">
-                <div className="flex items-center gap-2">
-                  {modal.kind === 'edit' && (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={cancelAssign}
-                        disabled={!canWrite}
-                      >
-                        <Ban size={14} /> Cancelar turno
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={removeAssign}
-                        disabled={!canDelete}
-                      >
-                        <Trash2 size={14} /> Borrar
-                      </Button>
-                    </>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => setModal(null)}>
-                    Cerrar
-                  </Button>
-                  <Button size="sm" onClick={submitForm} disabled={!canWrite}>
-                    <Save size={14} /> {modal.kind === 'edit' ? 'Guardar' : 'Crear'}
-                  </Button>
-                </div>
+                <Input
+                  label="Fin"
+                  type="datetime-local"
+                  value={form.endAt.slice(0, 16)}
+                  onChange={(e) => setForm({ ...form, endAt: e.target.value })}
+                />
               </div>
             </div>
-          </Card>
-        </div>
-      )}
+
+            {/* Tramo 2 (sólo en creación) */}
+            {modal.kind === 'create' && (
+              <div className="rounded-lg border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/40 dark:bg-amber-500/5 p-3">
+                {/* Campo del formulario (se persiste al crear) → Checkbox, que
+                      no tiene prop `label`: se conserva el <label> envolvente. */}
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={form.secondEnabled}
+                    onChange={(checked) => {
+                      const date = modal.date;
+                      const tpl: any = form.shiftTemplateId ? tplMap[form.shiftTemplateId] : null;
+                      const defS = tpl?.secondStartTime || form.endAt.slice(11, 16) || '16:00';
+                      const defE = tpl?.secondEndTime || '20:00';
+                      setForm((f) => ({
+                        ...f,
+                        secondEnabled: checked,
+                        secondStartAt: checked ? `${date}T${defS}:00` : '',
+                        secondEndAt: checked ? `${date}T${defE}:00` : '',
+                      }));
+                    }}
+                  />
+                  <CopyPlus size={14} className="text-amber-600" />
+                  <span className="text-sm font-bold">Turno partido (2º tramo)</span>
+                </label>
+                {form.secondEnabled && (
+                  <>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-3 mb-2 flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">
+                        ②
+                      </span>
+                      Tramo 2 (tarde)
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        label="Inicio 2º"
+                        type="datetime-local"
+                        value={form.secondStartAt.slice(0, 16)}
+                        onChange={(e) => setForm({ ...form, secondStartAt: e.target.value })}
+                      />
+                      <Input
+                        label="Fin 2º"
+                        type="datetime-local"
+                        value={form.secondEndAt.slice(0, 16)}
+                        onChange={(e) => setForm({ ...form, secondEndAt: e.target.value })}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Pausa (min)"
+                type="number"
+                min={0}
+                value={form.breakMinutes}
+                onChange={(e) => setForm({ ...form, breakMinutes: Number(e.target.value) || 0 })}
+              />
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-500 mb-1.5 tracking-wider">
+                  Horas netas
+                </label>
+                {(() => {
+                  const split = modal.kind === 'create' && form.secondEnabled;
+                  const h1 =
+                    form.startAt && form.endAt
+                      ? Math.max(
+                          0,
+                          (new Date(form.endAt).getTime() - new Date(form.startAt).getTime()) /
+                            3_600_000 -
+                            (form.breakMinutes || 0) / 60,
+                        )
+                      : 0;
+                  let h2 = 0;
+                  if (split && form.secondStartAt && form.secondEndAt) {
+                    h2 = Math.max(
+                      0,
+                      (new Date(form.secondEndAt).getTime() -
+                        new Date(form.secondStartAt).getTime()) /
+                        3_600_000,
+                    );
+                  }
+                  const total = h1 + h2;
+                  return (
+                    <div className="px-3 py-2 rounded-lg bg-bg-muted">
+                      <div className="text-lg font-black tabular-nums">{total.toFixed(2)} h</div>
+                      {split && (
+                        <div className="text-[10px] text-amber-600 dark:text-amber-400 font-bold tabular-nums mt-0.5">
+                          ① {h1.toFixed(2)}h + ② {h2.toFixed(2)}h
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+              <div className="col-span-2">
+                <Input
+                  label="Notas"
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

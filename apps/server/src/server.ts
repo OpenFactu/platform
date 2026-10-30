@@ -26,6 +26,20 @@ import itemsRouter from './api/items';
 import categoriesRouter from './api/categories';
 import uomRouter from './api/uom';
 import partnersRouter from './api/partners';
+import crmContactsRouter from './api/crm/contacts';
+import crmOpportunitiesRouter from './api/crm/opportunities';
+import crmStagesRouter from './api/crm/stages';
+import crmActivitiesRouter from './api/crm/activities';
+import crmSettingsRouter from './api/crm/settings';
+import crmPartnersRouter from './api/crm/partners';
+import formsRouter from './api/forms';
+import { startFormsCron } from './core/forms/formsCron';
+import crmReportsRouter from './api/crm/reports';
+import publicFormsRouter from './api/publicForms';
+import membersRouter from './api/members';
+import { registerCrmQuoteListener } from './core/crm/quoteListener';
+import { registerCrmLeadListener } from './core/crm/leads';
+import { startCrmCron } from './core/crm/crmCron';
 import pricelistsRouter from './api/pricelists';
 import zonesRouter from './api/zones';
 import warehousesRouter from './api/warehouses';
@@ -187,6 +201,7 @@ app.get('/metrics', async (_req, res) => {
 mountPublic(app, '/api/setup', 'alta inicial de la instalación', setupRouter);
 mountPublic(app, '/api/auth', 'login y recuperación de contraseña', authRouter);
 mountPublic(app, '/api/logistics', 'seguimiento de envío por token', publicTrackRouter);
+mountPublic(app, '/api/public/forms', 'formularios y encuestas públicos', publicFormsRouter);
 // Webs públicas de tenants (módulo Website) — sin auth; resuelve por slug.
 // El middleware de Host atiende subdominios/dominios propios registrados en
 // WebsiteHost y no toca el resto de peticiones (cache TTL 60s, incl. negativos).
@@ -253,6 +268,26 @@ mountShared(
 mountApi(app, '/api/carriers', '/settings/carriers', carriersRouter);
 mountApi(app, '/api/webhooks', '/settings/webhooks', webhooksRouter);
 mountApi(app, '/api/partnerGroups', '/partner-groups', partnerGroupsRouter);
+mountApi(app, '/api/crm/contacts', '/crm/contacts', crmContactsRouter);
+mountApi(app, '/api/crm/opportunities', '/crm/opportunities', crmOpportunitiesRouter);
+// Las etapas van con el embudo: quien ve oportunidades necesita leerlas para pintar el tablero.
+mountApi(app, '/api/crm/stages', '/crm/opportunities', crmStagesRouter);
+mountApi(app, '/api/crm/activities', '/crm/activities', crmActivitiesRouter);
+// Ficha 360: cifras y línea de tiempo; dentro se recorta por permiso de cada documento.
+mountApi(app, '/api/crm/partners', '/crm/activities', crmPartnersRouter);
+mountApi(app, '/api/forms', '/forms', formsRouter);
+mountApi(app, '/api/crm/reports', '/crm/reports', crmReportsRouter);
+// Leer los ajustes lo necesita cualquier formulario del CRM (motivos, orígenes);
+// el PUT exige /crm/settings dentro del router.
+mountShared(
+  app,
+  '/api/crm/settings',
+  'catálogos del CRM que usan sus formularios',
+  crmSettingsRouter,
+);
+mountShared(app, '/api/members', 'nombres de los miembros para elegir responsable', membersRouter);
+registerCrmQuoteListener();
+registerCrmLeadListener();
 mountApi(app, '/api/periods', '/accounting-periods', periodsRouter);
 mountApi(app, '/api/chart-of-accounts', '/chart-of-accounts', chartOfAccountsRouter);
 mountApi(app, '/api/cost-centers', '/cost-centers', costCentersRouter);
@@ -511,6 +546,11 @@ const start = async () => {
     // Cron de cierre de período — notifica a los admins cuando un periodo
     // vence pero NO cierra automáticamente (requiere confirmación UI).
     startPeriodCloseCron();
+
+    // Avisos del CRM (presupuestos caducados, recordatorios…) — solo empresas con el CRM activo.
+    startCrmCron();
+    // Limpieza de archivos subidos a formularios que nunca se enviaron.
+    startFormsCron();
 
     // Cron de backups automáticos — ejecuta los backups programados por
     // tenant (sección `backup` de SystemConfig) y aplica retención.

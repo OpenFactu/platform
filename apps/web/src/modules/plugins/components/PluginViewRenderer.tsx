@@ -42,7 +42,7 @@ export const PluginViewRenderer: React.FC<PluginViewRendererProps> = ({
       <div className="p-8 space-y-6">
         <PageHeader title={title} size="md" />
         <Card>
-          <Table columns={config.columns} data={data} isLoading={loading} />
+          <Table responsive="scroll" columns={config.columns} data={data} isLoading={loading} />
         </Card>
       </div>
     );

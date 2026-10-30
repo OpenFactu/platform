@@ -491,6 +491,7 @@ export const Commissions: React.FC = () => {
           )}
           <Card className="overflow-hidden" noPadding>
             <Table
+              className="max-md:p-3"
               columns={ruleColumns}
               data={rules}
               rowActions={ruleRowActions}
@@ -547,6 +548,7 @@ export const Commissions: React.FC = () => {
           </Card>
           <Card className="overflow-hidden" noPadding>
             <Table
+              className="max-md:p-3"
               columns={accrualColumns}
               data={accruals}
               emptyMessage={'Sin acumulados. Pulsa "Recalcular periodo".'}

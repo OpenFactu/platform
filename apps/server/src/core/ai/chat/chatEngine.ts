@@ -147,6 +147,40 @@ function stripReasoning(messages: any[]): any[] {
   );
 }
 
+/**
+ * Con la API Responses de OpenAI, cada parte de texto del asistente trae en
+ * `providerOptions.openai.itemId` el id de su mensaje, y OpenAI exige entonces
+ * que viaje también el elemento de razonamiento asociado. Como el razonamiento
+ * se poda (ver `pruneMessages` más abajo), reenviar ese id produce
+ * "Item 'msg_…' of type 'message' was provided without its required
+ * 'reasoning' item". Sin el id, el texto se envía como contenido normal.
+ */
+function stripProviderItemIds(messages: any[]): any[] {
+  return messages.map((m) => {
+    if (m.role !== 'assistant' || !Array.isArray(m.content)) return m;
+    return {
+      ...m,
+      content: m.content.map((part: any) => {
+        const options = part?.providerOptions;
+        if (!options || typeof options !== 'object') return part;
+        const cleaned: Record<string, unknown> = {};
+        for (const [provider, value] of Object.entries(options)) {
+          if (value && typeof value === 'object') {
+            const { itemId: _itemId, reasoningEncryptedContent: _enc, ...rest } = value as any;
+            if (Object.keys(rest).length > 0) cleaned[provider] = rest;
+          } else {
+            cleaned[provider] = value;
+          }
+        }
+        const { providerOptions: _drop, ...withoutOptions } = part;
+        return Object.keys(cleaned).length > 0
+          ? { ...withoutOptions, providerOptions: cleaned }
+          : withoutOptions;
+      }),
+    };
+  });
+}
+
 export async function streamChat(
   ctx: ChatToolContext & { messages: UIMessage[]; modelOverride?: string },
 ) {
@@ -182,11 +216,13 @@ export async function streamChat(
   // inválido y streamText revienta con "Invalid prompt: the messages do not
   // match the ModelMessage[] schema" en todos los turnos siguientes de esa
   // conversación. Con la opción, esas partes huérfanas se descartan.
-  const modelMessages = pruneMessages({
-    messages: await convertToModelMessages(ctx.messages, { ignoreIncompleteToolCalls: true }),
-    reasoning: 'all',
-    toolCalls: 'before-last-2-messages',
-  });
+  const modelMessages = stripProviderItemIds(
+    pruneMessages({
+      messages: await convertToModelMessages(ctx.messages, { ignoreIncompleteToolCalls: true }),
+      reasoning: 'all',
+      toolCalls: 'before-last-2-messages',
+    }),
+  );
   // Se construye UNA vez y se reutiliza: el system prompt necesita saber
   // exactamente qué tools quedaron registradas (tras el filtro de permisos
   // en buildChatTools) para no describir capacidades que no están
@@ -199,7 +235,7 @@ export async function streamChat(
     tools,
     stopWhen: stepCountIs(MAX_STEPS),
     maxOutputTokens: MAX_OUTPUT_TOKENS,
-    prepareStep: ({ messages }) => ({ messages: stripReasoning(messages) }),
+    prepareStep: ({ messages }) => ({ messages: stripProviderItemIds(stripReasoning(messages)) }),
     abortSignal: AbortSignal.timeout(300_000),
   });
 }

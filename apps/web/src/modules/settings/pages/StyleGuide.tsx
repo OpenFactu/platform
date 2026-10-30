@@ -470,7 +470,7 @@ export const StyleGuide: React.FC = () => {
           </div>
 
           <Label>Tabla de datos</Label>
-          <Table columns={tableColumns as any} data={tableData} />
+          <Table responsive="scroll" columns={tableColumns as any} data={tableData} />
 
           <div className="mt-6 flex gap-2 items-center">
             <Button variant="outline" size="sm" onClick={() => toast.success('Toast de prueba')}>
