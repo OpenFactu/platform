@@ -22,7 +22,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@openfactu/common": "^0.2.1",
     "@openfactu/pdf": "^0.2.0",
-    "@openfactu/site-builder": "^0.1.0",
+    "@openfactu/site-builder": "^0.2.0",
     "@types/adm-zip": "^0.5.8",
     "@types/multer": "^2.2.0",
     "@types/nodemailer": "^6.4.23",
