@@ -1,7 +1,8 @@
 import React from 'react';
-import { DatePicker, Input, Select, cn, Textarea } from '@openfactu/ui';
+import { Checkbox, ColorInput, DatePicker, Input, Select, cn, Textarea } from '@openfactu/ui';
 import type { PluginFieldDef } from './types';
 import { ReferenceSelect } from './ReferenceSelect';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   def: PluginFieldDef;
@@ -25,20 +26,18 @@ export const PluginFieldInput: React.FC<Props> = ({
 }) => {
   const isDisabled = disabled || (respectReadOnly && !!def.readOnly);
   const ph = def.placeholder || '';
+  const { t } = useI18n();
 
   switch (def.fieldType) {
     case 'BOOLEAN':
       return (
-        <label className={cn('flex items-center gap-2 h-9 cursor-pointer select-none', className)}>
-          <input
-            type="checkbox"
-            checked={!!value}
-            onChange={(e) => onChange(e.target.checked)}
-            disabled={isDisabled}
-            className="w-4 h-4 accent-primary rounded"
-          />
-          <span className="text-xs font-semibold text-fg-body">{value ? 'Sí' : 'No'}</span>
-        </label>
+        <Checkbox
+          checked={!!value}
+          onChange={(v) => onChange(v)}
+          disabled={isDisabled}
+          label={value ? t('app.common.yes') : t('app.common.no')}
+          containerClassName={cn('h-9', className)}
+        />
       );
 
     case 'DATE':
@@ -89,7 +88,7 @@ export const PluginFieldInput: React.FC<Props> = ({
           onChange={(v) => onChange(v || null)}
           disabled={isDisabled}
           className={className}
-          ariaLabel={def.label ?? 'Opción'}
+          ariaLabel={def.label ?? t('app.pluginFields.option')}
         />
       );
 
@@ -115,7 +114,7 @@ export const PluginFieldInput: React.FC<Props> = ({
                 className={cn(
                   'text-xs px-2 py-1 rounded-full border transition-colors',
                   on
-                    ? 'bg-primary text-white border-primary'
+                    ? 'bg-primary text-primary-fg border-primary'
                     : 'bg-bg-card border-border-default text-fg-body hover:border-primary',
                 )}
               >
@@ -143,23 +142,13 @@ export const PluginFieldInput: React.FC<Props> = ({
 
     case 'COLOR':
       return (
-        <div className={cn('flex items-center gap-2', className)}>
-          <input
-            type="color"
-            value={value || '#000000'}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={isDisabled}
-            className="h-9 w-12 rounded-lg border border-border-default bg-white cursor-pointer disabled:opacity-50"
-          />
-          <Input
-            type="text"
-            value={value || ''}
-            onChange={(e) => onChange(e.target.value)}
-            disabled={isDisabled}
-            placeholder="#0D9488"
-            className="font-mono flex-1"
-          />
-        </div>
+        // ColorInput ya trae la muestra, el selector y el campo hex.
+        <ColorInput
+          value={value || ''}
+          onChange={(v) => onChange(v)}
+          disabled={isDisabled}
+          containerClassName={className}
+        />
       );
 
     case 'REFERENCE':
@@ -181,7 +170,7 @@ export const PluginFieldInput: React.FC<Props> = ({
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           disabled={isDisabled}
-          placeholder={ph || 'URL o id del adjunto'}
+          placeholder={ph || t('app.pluginFields.attachmentPlaceholder')}
           className={className}
         />
       );

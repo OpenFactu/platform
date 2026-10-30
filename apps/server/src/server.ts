@@ -130,6 +130,7 @@ import geoRouter from './api/geo';
 import factuApiRouter from './api/factuapi';
 import documentRouter from './api/documentos/documentRouter';
 import { tenantContextMiddleware } from './api/middleware/tenantContext';
+import { i18nMiddleware } from './i18n';
 import { MigrationManager } from './core/tenant/MigrationManager';
 import { startPeriodCloseCron } from './core/cron/periodCloseCron';
 import { startBackupCron } from './core/cron/backupCron';
@@ -162,6 +163,8 @@ app.use(cors());
 // otro upload inline que pudiera aparecer en el futuro.
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+// Idioma de la petición (Accept-Language) y traducción de los mensajes de error.
+app.use(i18nMiddleware);
 // Contador global de peticiones — alimenta el cockpit (/api/system/metrics).
 // Va antes de las rutas para contar absolutamente todo, incluidos 404.
 app.use(requestCounterMiddleware);

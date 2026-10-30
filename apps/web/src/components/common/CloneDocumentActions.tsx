@@ -2,6 +2,8 @@ import React from 'react';
 import { Button } from '@openfactu/ui';
 import { Copy, ClipboardPaste } from 'lucide-react';
 import { useDocumentClone, type CloneDocType } from '../../hooks/useDocumentClone';
+import { ResponsiveActions } from './ResponsiveActions';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   docType: CloneDocType;
@@ -28,36 +30,65 @@ export const CloneDocumentActions: React.FC<Props> = ({
   size = 16,
 }) => {
   const clone = useDocumentClone(docType);
+  const { t } = useI18n();
   const showCopy = (show === 'both' || show === 'copy') && !!doc;
   const showPaste = (show === 'both' || show === 'paste') && !!onPaste;
+  const paste = async () => {
+    const data = await clone.read();
+    if (data) await onPaste?.(data);
+  };
 
+  // En móvil, al botón flotante de la pantalla.
   return (
-    <div className="flex items-center gap-2 whitespace-nowrap">
-      {showCopy && (
-        <Button
-          variant="secondary"
-          onClick={() => clone.copy(doc)}
-          className="flex items-center gap-2 whitespace-nowrap"
-          title="Copiar al portapapeles para duplicar en otro listado"
-        >
-          <Copy size={size} />
-          Copiar
-        </Button>
-      )}
-      {showPaste && (
-        <Button
-          variant="secondary"
-          onClick={async () => {
-            const data = await clone.read();
-            if (data) await onPaste?.(data);
-          }}
-          className="flex items-center gap-2 whitespace-nowrap"
-          title="Pegar documento copiado → se crea un duplicado en borrador"
-        >
-          <ClipboardPaste size={size} />
-          Pegar
-        </Button>
-      )}
-    </div>
+    <ResponsiveActions
+      source="secondary:clone"
+      actions={[
+        ...(showCopy
+          ? [
+              {
+                id: 'copy',
+                label: t('app.clone.copyDocument'),
+                icon: <Copy size={19} />,
+                onClick: () => clone.copy(doc),
+              },
+            ]
+          : []),
+        ...(showPaste
+          ? [
+              {
+                id: 'paste',
+                label: t('app.clone.pasteDocument'),
+                icon: <ClipboardPaste size={19} />,
+                onClick: paste,
+              },
+            ]
+          : []),
+      ]}
+    >
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        {showCopy && (
+          <Button
+            variant="secondary"
+            onClick={() => clone.copy(doc)}
+            className="flex items-center gap-2 whitespace-nowrap"
+            title={t('app.clone.copyHint')}
+          >
+            <Copy size={size} />
+            {t('app.clone.copy')}
+          </Button>
+        )}
+        {showPaste && (
+          <Button
+            variant="secondary"
+            onClick={paste}
+            className="flex items-center gap-2 whitespace-nowrap"
+            title={t('app.clone.pasteHint')}
+          >
+            <ClipboardPaste size={size} />
+            {t('app.clone.paste')}
+          </Button>
+        )}
+      </div>
+    </ResponsiveActions>
   );
 };

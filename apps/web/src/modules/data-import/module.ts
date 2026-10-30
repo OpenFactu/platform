@@ -18,7 +18,7 @@ export const dataImportModule: ModuleManifest = {
     {
       pattern: '/data-import',
       Component: DataImport,
-      title: 'Importación de datos',
+      title: 'dataImport.nav.title',
       iconName: 'Upload',
       permissionPath: '/data-import',
     },

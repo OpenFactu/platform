@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Input } from '@openfactu/ui';
 import { validateTaxId } from '@openfactu/common';
 import { useGeo } from '../../hooks/useGeo';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   countryCode: string;
@@ -12,6 +13,7 @@ interface Props {
 
 export const TaxIdInput: React.FC<Props> = ({ countryCode, value, onChange, disabled }) => {
   const { getCountry } = useGeo();
+  const { t } = useI18n();
   const country = getCountry(countryCode);
   const [touched, setTouched] = useState(false);
   const valid = value ? validateTaxId(value, country || undefined) : true;
@@ -37,7 +39,10 @@ export const TaxIdInput: React.FC<Props> = ({ countryCode, value, onChange, disa
       status={touched && !!value && valid ? 'success' : 'default'}
       error={
         showError
-          ? `Formato inválido para ${country?.name || countryCode}. Ejemplo: ${country?.taxIdExample}`
+          ? t('app.geo.invalidTaxId', {
+              country: country?.name || countryCode,
+              example: country?.taxIdExample ?? '',
+            })
           : undefined
       }
     />

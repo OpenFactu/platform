@@ -25,12 +25,14 @@ import {
 import { Plus, Trash2, Edit2, Truck, Plug, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 import type { Carrier, CarrierAccount, CarrierAdapterInfo } from '../domain/carrier';
 
 export const CarriersSettings: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [adapters, setAdapters] = useState<CarrierAdapterInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,27 +98,27 @@ export const CarriersSettings: React.FC = () => {
 
   const saveCarrier = async () => {
     if (!form.name) {
-      toast.error('El nombre es obligatorio');
+      toast.error(t('logistics.carriers.nameRequired'));
       return;
     }
     try {
       if (editing) await carriersApi.update(editing.id, form);
       else await carriersApi.create(form);
-      toast.success(editing ? 'Carrier actualizado' : 'Carrier creado');
+      toast.success(editing ? t('logistics.carriers.updated') : t('logistics.carriers.created'));
       setShowCarrierModal(false);
       loadCarriers();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error');
+      toast.error(msg || t('logistics.common.error'));
     }
   };
 
   const removeCarrier = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar transportista',
-      message: '¿Eliminar el transportista y todas sus cuentas?',
+      title: t('logistics.carriers.deleteTitle'),
+      message: t('logistics.carriers.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('logistics.common.delete'),
     });
     if (!ok) return;
     await carriersApi.remove(id);
@@ -132,26 +134,26 @@ export const CarriersSettings: React.FC = () => {
   const saveAccount = async () => {
     if (!accountCarrier) return;
     if (!accountForm.name) {
-      toast.error('Nombre obligatorio');
+      toast.error(t('logistics.carriers.accountNameRequired'));
       return;
     }
     try {
       await carriersApi.createAccount(accountCarrier.id, accountForm);
-      toast.success('Cuenta creada');
+      toast.success(t('logistics.carriers.accountCreated'));
       setShowAccountModal(false);
       loadAccounts(accountCarrier.id);
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'Error');
+      toast.error(msg || t('logistics.common.error'));
     }
   };
 
   const removeAccount = async (id: string, carrierId: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar cuenta',
-      message: '¿Eliminar la cuenta del transportista?',
+      title: t('logistics.carriers.deleteAccountTitle'),
+      message: t('logistics.carriers.deleteAccountMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('logistics.common.delete'),
     });
     if (!ok) return;
     await carriersApi.removeAccount(id);
@@ -162,19 +164,23 @@ export const CarriersSettings: React.FC = () => {
     try {
       const d = await carriersApi.testAccount(id);
       if (d.ok) {
-        toast.success(`OK — tracking de prueba: ${d.trackingNumber || '(ninguno)'}`);
+        toast.success(
+          t('logistics.carriers.testOk', {
+            tracking: d.trackingNumber || t('logistics.carriers.none'),
+          }),
+        );
       } else if (d.manual) {
-        toast.error('Carrier manual — sin conexión que probar');
+        toast.error(t('logistics.carriers.testManual'));
       } else {
-        toast.error(d.error || 'Fallo al probar');
+        toast.error(d.error || t('logistics.carriers.testFailed'));
       }
     } catch {
-      toast.error('Fallo al probar');
+      toast.error(t('logistics.carriers.testFailed'));
     }
   };
 
   const adapterOpts = [
-    { value: '', label: '— sin adapter (manual) —' },
+    { value: '', label: t('logistics.carriers.noAdapter') },
     ...adapters.map((a) => ({ value: a.id, label: a.name })),
   ];
   const selectedAdapter = adapters.find((a) => a.id === accountCarrier?.adapterId);
@@ -182,14 +188,14 @@ export const CarriersSettings: React.FC = () => {
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
       <PageHeader
-        title="Transportistas"
-        subtitle="Da de alta cualquier transportista. Si existe un adapter en el core puedes conectarlo; si no, queda como gestión manual."
+        title={t('logistics.carriers.title')}
+        subtitle={t('logistics.carriers.subtitle')}
         icon={<Truck size={18} />}
         size="sm"
         divider
         actions={
           <Button type="button" onClick={openNewCarrier} className="flex items-center gap-2">
-            <Plus size={14} /> Nuevo
+            <Plus size={14} /> {t('logistics.carriers.new')}
           </Button>
         }
       />
@@ -200,7 +206,7 @@ export const CarriersSettings: React.FC = () => {
         </div>
       ) : carriers.length === 0 ? (
         <Card bodyClassName="py-10 text-center text-sm text-slate-500">
-          Sin transportistas. Crea el primero — puede ser de cualquier empresa.
+          {t('logistics.carriers.empty')}
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -219,13 +225,17 @@ export const CarriersSettings: React.FC = () => {
                             {c.code}
                           </code>
                         )}
-                        {!c.isActive && <Badge variant="neutral">Inactivo</Badge>}
+                        {!c.isActive && (
+                          <Badge variant="neutral">{t('logistics.carriers.inactive')}</Badge>
+                        )}
                         {adapter ? (
                           <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
                             <Plug size={11} /> {adapter.name}
                           </span>
                         ) : (
-                          <span className="text-[11px] text-slate-400">Manual</span>
+                          <span className="text-[11px] text-slate-400">
+                            {t('logistics.carriers.manual')}
+                          </span>
                         )}
                       </div>
                       {c.notes && (
@@ -237,7 +247,7 @@ export const CarriersSettings: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => openEditCarrier(c)}
-                      title="Editar"
+                      title={t('logistics.common.edit')}
                     >
                       <Edit2 size={13} />
                     </Button>
@@ -246,7 +256,7 @@ export const CarriersSettings: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => removeCarrier(c.id)}
-                      title="Eliminar"
+                      title={t('logistics.common.delete')}
                     >
                       <Trash2 size={13} />
                     </Button>
@@ -255,7 +265,7 @@ export const CarriersSettings: React.FC = () => {
                     <div className="px-4 pb-3 bg-bg-muted">
                       <div className="flex items-center justify-between mb-2 pt-2">
                         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                          Cuentas
+                          {t('logistics.carriers.accounts')}
                         </div>
                         <Button
                           type="button"
@@ -263,12 +273,12 @@ export const CarriersSettings: React.FC = () => {
                           size="sm"
                           onClick={() => openNewAccount(c)}
                         >
-                          <Plus size={12} /> Añadir cuenta
+                          <Plus size={12} /> {t('logistics.carriers.addAccount')}
                         </Button>
                       </div>
                       {accounts.filter((a) => a.carrierId === c.id).length === 0 ? (
                         <div className="text-[11px] text-slate-500 italic py-2">
-                          Sin cuentas creadas.
+                          {t('logistics.carriers.noAccounts')}
                         </div>
                       ) : (
                         <ul className="space-y-1">
@@ -280,24 +290,32 @@ export const CarriersSettings: React.FC = () => {
                                 className="flex items-center gap-2 px-2 py-1.5 rounded bg-bg-card text-xs"
                               >
                                 <span className="font-semibold">{a.name}</span>
-                                {a.sandbox && <Badge variant="warning">sandbox</Badge>}
-                                {a.isDefault && <Badge variant="info">default</Badge>}
+                                {a.sandbox && (
+                                  <Badge variant="warning">
+                                    {t('logistics.carriers.sandboxBadge')}
+                                  </Badge>
+                                )}
+                                {a.isDefault && (
+                                  <Badge variant="info">
+                                    {t('logistics.carriers.defaultBadge')}
+                                  </Badge>
+                                )}
                                 <div className="flex-1" />
                                 <Button
                                   type="button"
                                   variant="secondary"
                                   size="sm"
                                   onClick={() => testAccount(a.id)}
-                                  title="Probar conexión"
+                                  title={t('logistics.carriers.testConnection')}
                                 >
-                                  <CheckCircle2 size={11} /> Probar
+                                  <CheckCircle2 size={11} /> {t('logistics.carriers.test')}
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => removeAccount(a.id, c.id)}
-                                  title="Eliminar cuenta"
+                                  title={t('logistics.carriers.deleteAccountTitle')}
                                 >
                                   <Trash2 size={12} />
                                 </Button>
@@ -318,20 +336,20 @@ export const CarriersSettings: React.FC = () => {
       <Modal
         isOpen={showCarrierModal}
         onClose={() => setShowCarrierModal(false)}
-        title={editing ? 'Editar transportista' : 'Nuevo transportista'}
+        title={editing ? t('logistics.carriers.editTitle') : t('logistics.carriers.newTitle')}
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
-              label="Nombre"
+              label={t('logistics.carriers.name')}
               requiredMark
               value={form.name || ''}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Seur, DHL, Transporte propio…"
+              placeholder={t('logistics.carriers.namePlaceholder')}
             />
             <Input
-              label="Código (opcional)"
+              label={t('logistics.carriers.code')}
               value={form.code || ''}
               onChange={(e) => setForm({ ...form, code: e.target.value })}
               placeholder="SEUR"
@@ -339,21 +357,20 @@ export const CarriersSettings: React.FC = () => {
           </div>
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-              Integración (opcional)
+              {t('logistics.carriers.integration')}
             </label>
             <SearchableSelect
               options={adapterOpts}
               value={form.adapterId || ''}
               onChange={(v) => setForm({ ...form, adapterId: v || null })}
-              placeholder="— seleccionar —"
+              placeholder={t('logistics.common.selectPlaceholder')}
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              Si no eliges adapter, el carrier funciona en modo manual — tracking libre, sin
-              llamadas externas.
+              {t('logistics.carriers.integrationHint')}
             </p>
           </div>
           <Input
-            label="Notas"
+            label={t('logistics.carriers.notes')}
             value={form.notes || ''}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
@@ -364,13 +381,13 @@ export const CarriersSettings: React.FC = () => {
               checked={form.isActive !== false}
               onChange={(v) => setForm({ ...form, isActive: v })}
             />
-            Activo
+            {t('logistics.carriers.active')}
           </label>
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowCarrierModal(false)}>
-              Cancelar
+              {t('logistics.common.cancel')}
             </Button>
-            <Button onClick={saveCarrier}>Guardar</Button>
+            <Button onClick={saveCarrier}>{t('logistics.common.save')}</Button>
           </div>
         </div>
       </Modal>
@@ -379,21 +396,25 @@ export const CarriersSettings: React.FC = () => {
       <Modal
         isOpen={showAccountModal}
         onClose={() => setShowAccountModal(false)}
-        title={accountCarrier ? `Nueva cuenta · ${accountCarrier.name}` : 'Nueva cuenta'}
+        title={
+          accountCarrier
+            ? t('logistics.carriers.newAccountFor', { name: accountCarrier.name })
+            : t('logistics.carriers.newAccount')
+        }
         maxWidth="md"
       >
         <div className="space-y-3 pt-4">
           <Input
-            label="Nombre de la cuenta"
+            label={t('logistics.carriers.accountName')}
             requiredMark
             value={accountForm.name || ''}
             onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })}
-            placeholder="Producción, staging, cuenta secundaria…"
+            placeholder={t('logistics.carriers.accountNamePlaceholder')}
           />
           {selectedAdapter && selectedAdapter.credentialFields.length > 0 && (
             <div className="space-y-2 pt-2 border-t border-border-subtle">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                Credenciales ({selectedAdapter.name})
+                {t('logistics.carriers.credentials', { name: selectedAdapter.name })}
               </div>
               {selectedAdapter.credentialFields.map((f) => (
                 <div key={f.key}>
@@ -435,7 +456,7 @@ export const CarriersSettings: React.FC = () => {
           )}
           {!selectedAdapter && accountCarrier && (
             <div className="text-[11px] text-slate-500 bg-bg-muted rounded px-3 py-2">
-              Este carrier es manual. La cuenta servirá solo como etiqueta organizativa.
+              {t('logistics.carriers.manualAccountHint')}
             </div>
           )}
           <label className="flex items-center gap-2 text-sm">
@@ -443,20 +464,20 @@ export const CarriersSettings: React.FC = () => {
               checked={!!accountForm.sandbox}
               onChange={(v) => setAccountForm({ ...accountForm, sandbox: v })}
             />
-            Sandbox (pruebas)
+            {t('logistics.carriers.sandbox')}
           </label>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox
               checked={!!accountForm.isDefault}
               onChange={(v) => setAccountForm({ ...accountForm, isDefault: v })}
             />
-            Cuenta por defecto
+            {t('logistics.carriers.defaultAccount')}
           </label>
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowAccountModal(false)}>
-              Cancelar
+              {t('logistics.common.cancel')}
             </Button>
-            <Button onClick={saveAccount}>Crear</Button>
+            <Button onClick={saveAccount}>{t('logistics.common.create')}</Button>
           </div>
         </div>
       </Modal>

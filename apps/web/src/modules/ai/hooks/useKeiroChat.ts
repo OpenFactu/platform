@@ -6,6 +6,7 @@ import { toAIMessages } from '../domain/toAIMessages';
 import { findPendingQuestion } from '../domain/pendingQuestion';
 import { useComposerState } from './useComposerState';
 import { useFileDropZone } from './useFileDropZone';
+import { useI18n } from '@/i18n/I18nContext';
 
 /** ~4 caracteres/token — heurística estándar, solo como fallback visible con "~". */
 export const estimateTokens = (m: { parts: Array<{ type: string; text?: string }> }) => {
@@ -26,6 +27,7 @@ export const CONTEXT_LIMIT_FALLBACK = 128000;
  */
 export function useKeiroChat() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const ctx = useAiChatContext();
   const {
     chat: { messages, error, stop, regenerate, addToolApprovalResponse },
@@ -51,19 +53,21 @@ export function useKeiroChat() {
         userAvatarUrl: user?.avatarImageUrl,
         estimateTokens,
       }),
-    [messages, messageTimings, user?.avatarImageUrl],
+    // `t`: las etiquetas se redactan al traducir, hay que rehacerlas al cambiar de idioma.
+    [messages, messageTimings, user?.avatarImageUrl, t],
   );
   const pendingQuestion = findPendingQuestion(messages);
 
   const run: AIRun = error
     ? {
         status: 'error',
-        error: `${error.message || 'Error en el chat'}${
-          error.message?.includes('desactivado') ? ' — actívalo en Ajustes → Empresa → IA.' : ''
+        // El mensaje viene del servidor ya traducido: «desactivado» o «disabled».
+        error: `${error.message || t('ai.chat.error')}${
+          /desactivado|disabled/.test(error.message ?? '') ? t('ai.chat.disabledHint') : ''
         }`,
       }
     : status === 'submitted'
-      ? { status: 'submitting', label: 'Pensando…' }
+      ? { status: 'submitting', label: t('ai.chat.thinking') }
       : status === 'streaming'
         ? { status: 'streaming' }
         : { status: 'idle' };
@@ -73,7 +77,7 @@ export function useKeiroChat() {
     () => [
       ...composer.attachments.map((a, i) => ({
         id: `img-${i}`,
-        name: a.filename || 'imagen adjunta',
+        name: a.filename || t('ai.messages.attachedImage'),
         mediaType: a.mediaType || 'image/png',
         url: a.url,
       })),
@@ -86,14 +90,14 @@ export function useKeiroChat() {
         ? [
             {
               id: 'extracting',
-              name: 'Leyendo documento…',
+              name: t('ai.chat.readingDocument'),
               mediaType: 'text/plain',
               status: 'uploading' as const,
             },
           ]
         : []),
     ],
-    [composer.attachments, composer.documents, composer.extractingDocs],
+    [composer.attachments, composer.documents, composer.extractingDocs, t],
   );
   const draft: AIDraft = { text: composer.input, attachments: draftAttachments };
 

@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, CreditCard, Link2, ScrollText } from 'lucide-react'
 import { useTabs } from '../../context/TabsContext';
 import { useFormat } from '../../hooks/useFormat';
 import { DocType, DOC_TYPE_LABELS, DOC_TYPE_ROUTES } from '@openfactu/common';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface DocRef {
   type: DocType;
@@ -33,8 +34,8 @@ interface Props {
 }
 
 const JOURNAL_LABEL: Record<string, string> = {
-  posted: 'Asentado',
-  reversed: 'Reversado',
+  posted: 'app.trace.posted',
+  reversed: 'app.trace.reversed',
 };
 
 /** Un eslabón de la cadena: punto sobre la línea vertical + ficha del documento. */
@@ -121,6 +122,14 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
   const { openTab } = useTabs();
   const fmt = useFormat();
   const toast = useToast();
+  const { t } = useI18n();
+  // Etiqueta del tipo en el idioma activo; los tipos que no conocemos caen a
+  // la del paquete común.
+  const docLabel = (ty: DocType) => {
+    const key = `app.docTypes.${ty}`;
+    const text = t(key);
+    return text === key ? DOC_TYPE_LABELS[ty] : text;
+  };
   const [data, setData] = useState<LinkedData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -132,7 +141,7 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
         if (d.error) toast.error(d.error);
         else setData(d);
       })
-      .catch(() => toast.error('Error al cargar trazabilidad'))
+      .catch(() => toast.error(t('app.trace.loadError')))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, id]);
@@ -177,8 +186,8 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
     return (
       <EmptyState
         icon={<Link2 size={28} />}
-        title="Sin documentos enlazados"
-        hint="Cuando este documento origine otro o se genere desde uno, aquí aparecerá la cadena completa."
+        title={t('app.trace.emptyTitle')}
+        hint={t('app.trace.emptyHintPopup')}
       />
     );
   }
@@ -188,13 +197,13 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
       {origins.length > 0 && (
         <section>
           <GroupTitle icon={<ArrowUp size={12} />}>
-            Viene de ({origins.length} {origins.length === 1 ? 'documento' : 'documentos'})
+            {t('app.trace.comesFrom', { count: origins.length })}
           </GroupTitle>
           <ul>
             {origins.map((d) => (
               <ChainRow
                 key={`${d.type}:${d.id}`}
-                eyebrow={DOC_TYPE_LABELS[d.type]}
+                eyebrow={docLabel(d.type)}
                 code={d.code}
                 meta={docMeta(d)}
                 right={d.status ? <Badge variant="neutral">{d.status}</Badge> : undefined}
@@ -206,11 +215,11 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
       )}
 
       <section>
-        <GroupTitle icon={<Link2 size={12} />}>Este documento</GroupTitle>
+        <GroupTitle icon={<Link2 size={12} />}>{t('app.trace.thisDocument')}</GroupTitle>
         <ul>
           <ChainRow
-            eyebrow={DOC_TYPE_LABELS[type]}
-            code={currentCode || '(actual)'}
+            eyebrow={docLabel(type)}
+            code={currentCode || t('app.trace.current')}
             tone="current"
           />
         </ul>
@@ -219,13 +228,13 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
       {derived.length > 0 && (
         <section>
           <GroupTitle icon={<ArrowDown size={12} />}>
-            Ha generado ({derived.length} {derived.length === 1 ? 'documento' : 'documentos'})
+            {t('app.trace.generated', { count: derived.length })}
           </GroupTitle>
           <ul>
             {derived.map((d) => (
               <ChainRow
                 key={`${d.type}:${d.id}`}
-                eyebrow={DOC_TYPE_LABELS[d.type]}
+                eyebrow={docLabel(d.type)}
                 code={d.code}
                 meta={docMeta(d)}
                 right={d.status ? <Badge variant="neutral">{d.status}</Badge> : undefined}
@@ -238,15 +247,20 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
 
       {(payments.length > 0 || journalEntries.length > 0) && (
         <section>
-          <GroupTitle icon={<CreditCard size={12} />}>Cobros y contabilidad</GroupTitle>
+          <GroupTitle icon={<CreditCard size={12} />}>
+            {t('app.trace.paymentsAndAccounting')}
+          </GroupTitle>
           <ul>
             {payments.map((p) => (
               <ChainRow
                 key={p.id}
                 tone="success"
-                eyebrow="Cobro / pago"
+                eyebrow={t('app.trace.payment')}
                 code={fmt.money(p.amount)}
-                meta={[fmt.date(p.date), p.reference ? `Ref ${p.reference}` : null]
+                meta={[
+                  fmt.date(p.date),
+                  p.reference ? t('app.trace.ref', { ref: p.reference }) : null,
+                ]
                   .filter(Boolean)
                   .join(' · ')}
               />
@@ -255,12 +269,12 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
               <ChainRow
                 key={j.id}
                 tone="info"
-                eyebrow="Asiento contable"
-                code={`Nº ${j.number || '—'}`}
+                eyebrow={t('app.trace.journalEntryLabel')}
+                code={t('app.trace.numberShort', { number: j.number || '—' })}
                 meta={j.date ? fmt.date(j.date) : undefined}
                 right={
                   <Badge variant={j.status === 'posted' ? 'success' : 'neutral'}>
-                    {JOURNAL_LABEL[j.status] || 'Borrador'}
+                    {t(JOURNAL_LABEL[j.status] || 'app.trace.draft')}
                   </Badge>
                 }
               />

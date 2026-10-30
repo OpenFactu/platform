@@ -1,0 +1,208 @@
+{
+  "settingsFields": {
+    "types": {
+      "text": {
+        "label": "Texto",
+        "hint": "Cualquier texto libre."
+      },
+      "integer": {
+        "label": "Número entero",
+        "hint": "Enteros sin decimales."
+      },
+      "decimal": {
+        "label": "Número decimal",
+        "hint": "Número con decimales (15,4)."
+      },
+      "currency": {
+        "label": "Moneda",
+        "hint": "Importe con 4 decimales, formateado."
+      },
+      "percent": {
+        "label": "Porcentaje",
+        "hint": "Decimal con sufijo %."
+      },
+      "boolean": {
+        "label": "Sí / No",
+        "hint": "Checkbox binario."
+      },
+      "date": {
+        "label": "Fecha",
+        "hint": "Una fecha (sin hora)."
+      },
+      "url": {
+        "label": "URL",
+        "hint": "Enlace http(s)."
+      },
+      "email": {
+        "label": "Email",
+        "hint": "Dirección de correo válida."
+      },
+      "phone": {
+        "label": "Teléfono",
+        "hint": "Admite +, dígitos, espacios y paréntesis."
+      },
+      "color": {
+        "label": "Color",
+        "hint": "Color picker, se guarda en hex."
+      },
+      "enum": {
+        "label": "Lista (combobox)",
+        "hint": "Elige entre opciones predefinidas."
+      },
+      "multiselect": {
+        "label": "Multi-selección",
+        "hint": "Varias opciones."
+      },
+      "file": {
+        "label": "Fichero / imagen",
+        "hint": "URL o id de adjunto."
+      },
+      "json": {
+        "label": "JSON",
+        "hint": "Datos estructurados arbitrarios."
+      },
+      "reference": {
+        "label": "Referencia a maestro",
+        "hint": "Selector que busca en otra tabla (p.ej. partner, artículo)."
+      }
+    },
+    "widths": {
+      "full": "Completo"
+    },
+    "kinds": {
+      "master": "Maestro",
+      "document": "Documento"
+    },
+    "menu": {
+      "custom": "(Personalizado — módulo nuevo al final)",
+      "home": "Inicio",
+      "inventory": "Inventario",
+      "sales": "Ventas",
+      "purchases": "Compras",
+      "accounting": "Contabilidad",
+      "hr": "Recursos humanos",
+      "reports": "Informes",
+      "configuration": "Configuración"
+    },
+    "visibleIn": {
+      "form": "Formulario",
+      "detail": "Detalle",
+      "list": "Listado",
+      "pdf": "PDF"
+    },
+    "requiredFields": "Tabla, nombre y tipo son obligatorios",
+    "optionRequired": "Añade al menos una opción.",
+    "refTableRequired": "Elige la tabla destino para el campo referencia.",
+    "saveError": "Error al guardar",
+    "fieldUpdated": "Campo actualizado",
+    "fieldCreated": "Campo \"{name}\" creado",
+    "deleteFieldTitle": "Eliminar campo",
+    "deleteFieldMessage": "Se eliminará \"{field}\" de {table} y se perderán los datos ya guardados en esa columna.",
+    "delete": "Eliminar",
+    "deleteError": "Error al eliminar",
+    "fieldDeleted": "Campo eliminado",
+    "cloneTitle": "Clonar \"{name}\"",
+    "cloneSubtitle": "Elige la tabla destino. El campo se creará allí con la misma definición.",
+    "cloneError": "Error al clonar",
+    "cloned": "Campo clonado",
+    "exportError": "Error al exportar",
+    "importError": "Error al importar",
+    "imported": "Importados {created} campos ({skipped} omitidos)",
+    "invalidJson": "JSON inválido",
+    "nameRequired": "El nombre es obligatorio",
+    "saveTableError": "Error al guardar tabla",
+    "tableUpdated": "Tabla actualizada",
+    "tableCreated": "Tabla \"{name}\" creada",
+    "deleteTable": "Eliminar tabla",
+    "deleteTableMessage": "Se eliminará \"{name}\" con todos sus registros y campos. No hay marcha atrás.",
+    "tableDeleted": "Tabla eliminada",
+    "error": "Error",
+    "packInstalled": "{count} campos instalados",
+    "title": "Campos personalizados",
+    "subtitle": "Añade campos propios a cualquier tabla sin escribir código. Aparecen en form, detalle y PDF.",
+    "newTable": "Nueva tabla",
+    "packs": "Packs",
+    "export": "Exportar",
+    "import": "Importar",
+    "newField": "Nuevo campo",
+    "userTables": "Tablas de usuario",
+    "tableCount_one": "{count} tabla",
+    "tableCount_other": "{count} tablas",
+    "noTablesTitle": "Aún no has creado tablas propias",
+    "noTablesHint": "Crea una para tener una entidad nueva con listado, formulario y menú.",
+    "menuValue": "menú: {module}",
+    "fieldCount_one": "{count} campo",
+    "fieldCount_other": "{count} campos",
+    "addField": "Añadir campo",
+    "open": "Abrir",
+    "edit": "Editar",
+    "filterPlaceholder": "Filtrar por tabla, nombre o etiqueta...",
+    "noFieldsTitle": "Aún no has creado ningún campo personalizado",
+    "noFieldsHint": "Crea uno a medida o instala un pack de campos ya preparados.",
+    "required": "Obligatorio",
+    "readOnly": "Solo lectura",
+    "inList": "En listado",
+    "cloneToTable": "Clonar a otra tabla",
+    "editField": "Editar campo",
+    "newCustomField": "Nuevo campo personalizado",
+    "fieldModalSubtitle": "Se creará como columna en el schema del tenant.",
+    "sections": {
+      "identity": "Identidad",
+      "options": "Opciones",
+      "reference": "Referencia",
+      "appearance": "Apariencia",
+      "validation": "Validación",
+      "permissions": "Permisos"
+    },
+    "table": "Tabla",
+    "chooseOne": "(elige una)",
+    "technicalName": "Nombre técnico",
+    "visibleLabel": "Etiqueta visible",
+    "type": "Tipo",
+    "optionsHelp": "Una línea por opción — formato ",
+    "optionsPlaceholder": "low|Baja\nnormal|Normal\nhigh|Alta",
+    "targetTable": "Tabla destino",
+    "displayField": "Campo a mostrar",
+    "section": "Sección (opcional)",
+    "sectionPlaceholder": "p.ej. Logística",
+    "width": "Anchura",
+    "order": "Orden",
+    "placeholder": "Placeholder",
+    "defaultValue": "Valor por defecto",
+    "optional": "(opcional)",
+    "helpText": "Texto de ayuda",
+    "helpTextPlaceholder": "Breve descripción que aparece bajo el input",
+    "visibleInLabel": "Visible en",
+    "requiredOnSave": "Obligatorio al guardar",
+    "listColumn": "Columna en listado",
+    "min": "Mínimo",
+    "max": "Máximo",
+    "noLimit": "sin límite",
+    "minLength": "Longitud mín.",
+    "maxLength": "Longitud máx.",
+    "pattern": "Patrón (regex)",
+    "unique": "Único por tenant",
+    "canRead": "Puede leer (CSV de roles: {roles})",
+    "canWrite": "Puede escribir",
+    "permissionsHelp": "Vacío = todos los roles. Si pones solo \"ADMIN\" en escritura, un USER no podrá modificarlo (aunque envíe el valor se descarta).",
+    "saveChanges": "Guardar cambios",
+    "createField": "Crear campo",
+    "packsTitle": "Packs de campos predefinidos",
+    "packsSubtitle": "Añade de golpe varios campos relacionados.",
+    "packFields": "{count} campos:",
+    "install": "Instalar",
+    "editTable": "Editar tabla",
+    "editTableSubtitle": "No puedes cambiar el nombre técnico. Para moverla a otro nombre, creas una nueva y migras los datos.",
+    "newTableSubtitle": "Crea una entidad nueva con listado y form auto-generados. Después añade sus campos desde esta misma página.",
+    "tableNamePlaceholder": "visitas",
+    "tableLabelPlaceholder": "Visitas comerciales",
+    "tableType": "Tipo de tabla",
+    "icon": "Icono (lucide-react)",
+    "menuModule": "Módulo del menú",
+    "description": "Descripción",
+    "optionalCap": "Opcional",
+    "createTable": "Crear tabla",
+    "cancel": "Cancelar",
+    "clone": "Clonar"
+  }
+}

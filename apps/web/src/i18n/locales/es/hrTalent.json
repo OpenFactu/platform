@@ -1,0 +1,143 @@
+{
+  "hrTalent": {
+    "evaluations": {
+      "status": {
+        "draft": "Borrador",
+        "active": "Activo",
+        "closed": "Cerrado",
+        "pending": "Pendiente",
+        "selfDone": "Autoevaluado",
+        "managerDone": "Evaluado"
+      },
+      "tabCycles": "Ciclos",
+      "tabCompetencies": "Competencias",
+      "cycleRequired": "Nombre y fechas obligatorios",
+      "scoresSaved": "Puntuaciones guardadas",
+      "closed": "Evaluación cerrada",
+      "closeFailed": "No se pudo cerrar",
+      "open": "Abrir",
+      "finalScore": "Score final",
+      "score": "Puntuar",
+      "scale": "Escala",
+      "editCompetency": "Editar competencia",
+      "title": "Evaluaciones",
+      "subtitle": "Ciclos de evaluación con competencias ponderadas. Al cerrar una evaluación se calcula la puntuación final como Σ(score × peso) / Σpeso.",
+      "newCycle": "Nuevo ciclo",
+      "emptyCycles": "Todavía no hay ciclos de evaluación.",
+      "addEmployee": "Añadir empleado al ciclo",
+      "chooseEmployee": "— elegir empleado —",
+      "emptyEvaluations": "Aún no hay empleados en este ciclo.",
+      "newCompetency": "Nueva competencia",
+      "scaleN": "Escala (1..N)",
+      "emptyCompetencies": "Todavía no hay competencias definidas.",
+      "scoreTitle": "Puntuar evaluación",
+      "closeEvaluation": "Cerrar evaluación (calcula final)",
+      "competency": "Competencia",
+      "self": "Auto",
+      "manager": "Manager",
+      "selfAria": "Autoevaluación",
+      "managerAria": "Valoración del responsable",
+      "comments": "Comentarios"
+    },
+    "gantt": {
+      "title": "Calendario de tareas",
+      "subtitle": "Arrastra una tarea a otro día u hora para reprogramarla",
+      "allProjects": "Todos los proyectos",
+      "empty": "No hay tareas en estas fechas",
+      "assignedOptional": "Asignada a (opcional)",
+      "quickHint": "Se creará sin fechas. Arrástrala desde \"Sin programar\" a un día del calendario para programarla.",
+      "editInTasks": "Editar en Tareas",
+      "estimated": "Estimadas",
+      "assigned": "Asignada"
+    },
+    "objectives": {
+      "status": {
+        "pending": "Pendiente",
+        "inProgress": "En curso",
+        "achieved": "Conseguido",
+        "missed": "No alcanzado"
+      },
+      "required": "Empleado y título obligatorios",
+      "deleteTitle": "Borrar objetivo",
+      "deleteMessage": "¿Borrar el objetivo \"{title}\"?",
+      "metric": "Métrica",
+      "progress": "Progreso",
+      "due": "Vence",
+      "title": "Objetivos SMART",
+      "subtitle": "Objetivos por empleado con métrica medible y progreso.",
+      "new": "Nuevo objetivo",
+      "countSuffix": "objetivos",
+      "choose": "— elegir —",
+      "metricFree": "Métrica (texto libre)",
+      "target": "Objetivo",
+      "achieved": "Conseguido",
+      "weight": "Peso",
+      "dueDate": "Fecha límite",
+      "empty": "No hay objetivos que cumplan los filtros actuales."
+    },
+    "performance": {
+      "title": "Rendimiento",
+      "exportTitle": "Rendimiento · {from} a {to}",
+      "x": {
+        "contracted": "h. Contratadas",
+        "planned": "h. Planificadas",
+        "clocked": "h. Fichadas",
+        "overtime": "h. Extra",
+        "compliance": "% Cumplimiento",
+        "absence": "Días absentismo"
+      },
+      "contracted": "Contratadas",
+      "planned": "Planificadas",
+      "clocked": "Fichadas",
+      "overtime": "Extras",
+      "complianceShort": "% Cumplim.",
+      "absence": "Absentismo",
+      "incidents": "Incidencias",
+      "noIncidents": "sin incidencias",
+      "subtitle": "Productividad por empleado: contratadas vs planificadas vs fichadas, % cumplimiento, horas extra, mapa de incidencias.",
+      "days_one": "{count} días",
+      "days_other": "{count} días",
+      "avgCompliance": "% cumplimiento medio:",
+      "empty": "No hay datos de productividad para los filtros actuales."
+    },
+    "taskCalendar": {
+      "saveFailed": "No se pudo guardar",
+      "created": "Tarea creada · arrástrala a un día para programarla",
+      "createFailed": "No se pudo crear"
+    },
+    "tasks": {
+      "status": {
+        "backlog": "Backlog",
+        "todo": "Por hacer",
+        "in_progress": "En curso",
+        "blocked": "Bloqueada",
+        "done": "Hecha",
+        "cancelled": "Cancelada"
+      },
+      "priority": {
+        "low": "Baja",
+        "normal": "Normal",
+        "high": "Alta",
+        "urgent": "Urgente"
+      },
+      "titleRequired": "Título obligatorio",
+      "deleteTitle": "Borrar tarea",
+      "deleteMessage": "¿Borrar la tarea {code}?",
+      "title": "Tareas",
+      "subtitle": "Planificador ligero · arrastra una tarea a otra columna para cambiar de estado",
+      "new": "Nueva tarea",
+      "assignedTo": "Asignada a",
+      "count_one": "{count} tarea",
+      "count_other": "{count} tareas",
+      "kanbanAria": "Tareas por estado",
+      "editTitle": "Editar {code}",
+      "taskWord": "tarea",
+      "titleField": "Título",
+      "priorityLabel": "Prioridad",
+      "unassigned": "— sin asignar —",
+      "none": "— ninguno —",
+      "estimatedHours": "Estimadas (h)",
+      "progress": "Progreso (%)"
+    }
+  }
+}

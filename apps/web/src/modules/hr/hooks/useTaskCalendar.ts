@@ -7,6 +7,7 @@ import type { Employee } from '../domain/employee';
 import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api/internalOrdersApi';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/shared/http';
+import { t } from '@/i18n/i18n';
 
 /**
  * Datos del calendario de tareas: qué se pide al servidor según la ventana
@@ -176,7 +177,7 @@ export function useTaskCalendar() {
         await tasksApi.update(id, body);
         return true;
       } catch {
-        toast.error('No se pudo guardar');
+        toast.error(t('hrTalent.taskCalendar.saveFailed'));
         return false;
       }
     },
@@ -244,13 +245,13 @@ export function useTaskCalendar() {
           assigneeId: assigneeId || null,
         });
         refrescar();
-        toast.success('Tarea creada · arrástrala a un día para programarla');
+        toast.success(t('hrTalent.taskCalendar.created'));
         return true;
       } catch (err) {
         toast.error(
           err instanceof ApiError
             ? ((err.body as { error?: string } | undefined)?.error ?? err.message)
-            : 'No se pudo crear',
+            : t('hrTalent.taskCalendar.createFailed'),
         );
         return false;
       }

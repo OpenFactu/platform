@@ -2,6 +2,8 @@ import React from 'react';
 import { Button, Card, FileDropzone, SegmentedControl, Table, Badge } from '@openfactu/ui';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import type { ImportObject, UploadResult, UploadedSheet } from '../types';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate, formatNumber } from '@/i18n/format';
 
 interface Props {
   object: ImportObject;
@@ -26,6 +28,7 @@ export const StepFile: React.FC<Props> = ({
   onChooseLinesSheet,
   onDownloadTemplate,
 }) => {
+  const { t } = useI18n();
   const columns =
     sheet?.headers.map((h) => ({
       header: h,
@@ -39,17 +42,19 @@ export const StepFile: React.FC<Props> = ({
           <FileSpreadsheet size={20} className="text-fg-muted shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-fg-default">
-              ¿No tienes el fichero preparado?
+              {t('dataImport.file.noFileTitle')}
             </p>
             <p className="text-xs text-fg-muted">
-              Descarga la plantilla de {object.label.toLowerCase()}: trae las columnas, una fila de
-              ejemplo y una hoja con qué espera cada campo.
+              {t('dataImport.file.templateHint', { object: object.label.toLowerCase() })}
               {object.lines &&
-                ` Las ${object.lines.label.toLowerCase()} van en su propia pestaña del mismo fichero, unidas a su cabecera por la columna "${object.lines.groupBy}".`}
+                ` ${t('dataImport.file.templateLinesHint', {
+                  lines: object.lines.label.toLowerCase(),
+                  column: object.lines.groupBy,
+                })}`}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={onDownloadTemplate} className="gap-1.5">
-            <Download size={14} /> Plantilla
+            <Download size={14} /> {t('dataImport.file.template')}
           </Button>
         </div>
       </Card>
@@ -60,9 +65,9 @@ export const StepFile: React.FC<Props> = ({
         maxSizeMb={25}
         maxFiles={1}
         isUploading={uploading}
-        uploadingLabel="Leyendo el fichero…"
-        label="Arrastra aquí el Excel o el CSV"
-        hint="Excel (.xlsx, .xls) o texto delimitado (.csv, .tsv). Hasta 25 MB."
+        uploadingLabel={t('dataImport.file.reading')}
+        label={t('dataImport.file.dropLabel')}
+        hint={t('dataImport.file.dropHint')}
       />
 
       {upload && sheet && (
@@ -72,21 +77,24 @@ export const StepFile: React.FC<Props> = ({
               <div>
                 <p className="text-sm font-semibold text-fg-default">{upload.fileName}</p>
                 <p className="text-xs text-fg-muted">
-                  {sheet.totalRows.toLocaleString('es-ES')} filas · {sheet.headers.length} columnas
+                  {t('dataImport.file.rowsColumns', {
+                    rows: formatNumber(sheet.totalRows),
+                    columns: sheet.headers.length,
+                  })}
                 </p>
               </div>
               {upload.sheets.length > 1 && (
                 <div className="flex flex-col gap-1.5 sm:items-end">
                   <label className="flex items-center gap-2">
                     <span className="text-[11px] text-fg-subtle">
-                      {object.lines ? 'Cabeceras' : 'Hoja'}
+                      {object.lines ? t('dataImport.file.headers') : t('dataImport.file.sheet')}
                     </span>
                     <SegmentedControl
                       size="sm"
                       value={sheet.name}
                       onChange={onChooseSheet}
                       options={upload.sheets.map((s) => ({ value: s.name, label: s.name }))}
-                      aria-label="Hoja de cabeceras"
+                      aria-label={t('dataImport.file.headersSheet')}
                     />
                   </label>
 
@@ -100,7 +108,7 @@ export const StepFile: React.FC<Props> = ({
                         options={upload.sheets
                           .filter((s) => s.name !== sheet.name)
                           .map((s) => ({ value: s.name, label: s.name }))}
-                        aria-label="Hoja de líneas"
+                        aria-label={t('dataImport.file.linesSheet')}
                       />
                     </label>
                   )}
@@ -110,21 +118,23 @@ export const StepFile: React.FC<Props> = ({
 
             {object.lines && upload.sheets.length < 2 && (
               <div className="rounded-sm border border-warning/40 bg-warning-bg px-3 py-2 text-xs text-fg-body">
-                Este fichero solo tiene una hoja. {object.label} necesita dos: una con las cabeceras
-                y otra con las {object.lines.label.toLowerCase()}.
+                {t('dataImport.file.oneSheetOnly', {
+                  object: object.label,
+                  lines: object.lines.label.toLowerCase(),
+                })}
               </div>
             )}
 
             {sheet.totalRows === 0 ? (
               <div className="rounded-sm border border-warning/40 bg-warning-bg px-3 py-2 text-xs text-fg-body">
-                Esta hoja no tiene ninguna fila de datos bajo la cabecera.
+                {t('dataImport.file.noRows')}
               </div>
             ) : (
               <>
                 <div className="flex items-center gap-2">
-                  <Badge variant="neutral">Vista previa</Badge>
+                  <Badge variant="neutral">{t('dataImport.file.preview')}</Badge>
                   <span className="text-[11px] text-fg-subtle">
-                    Primeras {sheet.preview.length} filas, tal y como se han leído.
+                    {t('dataImport.file.previewHint', { count: sheet.preview.length })}
                   </span>
                 </div>
                 <div className="overflow-x-auto">
@@ -146,6 +156,6 @@ export const StepFile: React.FC<Props> = ({
 
 function formatCell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  if (value instanceof Date) return value.toLocaleDateString('es-ES');
+  if (value instanceof Date) return formatDate(value);
   return String(value);
 }

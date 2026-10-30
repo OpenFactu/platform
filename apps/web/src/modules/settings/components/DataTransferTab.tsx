@@ -19,13 +19,16 @@ import {
   FileDropzone,
   SearchableSelect,
   useToast,
+  Progress,
 } from '@openfactu/ui';
 import { Download, Upload, FileSpreadsheet, AlertTriangle, Trash2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 
 export const DataTransferTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   // ADMIN exporta su propio tenant, SUPERUSER cualquiera. Otros roles bloqueados.
   const role = user?.role;
   const canUse = role === 'ADMIN' || role === 'SUPERUSER';
@@ -76,7 +79,7 @@ export const DataTransferTab: React.FC = () => {
   const doDelete = async () => {
     if (!deleteTenant) return;
     if (deleteConfirmText !== deleteTenant.name) {
-      toast.error('El nombre no coincide');
+      toast.error(t('settingsCompany.dataTransfer.nameMismatch'));
       return;
     }
     setDeleting(true);
@@ -86,12 +89,16 @@ export const DataTransferTab: React.FC = () => {
       });
       const body = res.data ?? {};
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-      toast.success(`Empresa "${deleteTenant.name}" eliminada`);
+      toast.success(t('settingsCompany.dataTransfer.deleted', { name: deleteTenant.name }));
       setDeleteConfirmText('');
       setDeleteTenantId('');
       await loadTenants();
     } catch (e) {
-      toast.error(`Error al eliminar: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(
+        t('settingsCompany.dataTransfer.deleteError', {
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
     } finally {
       setDeleting(false);
     }
@@ -138,9 +145,14 @@ export const DataTransferTab: React.FC = () => {
       a.download = suggestedName;
       a.click();
       setTimeout(() => URL.revokeObjectURL(u), 30_000);
-      toast.success(`${label} listo`);
+      toast.success(t('settingsCompany.dataTransfer.ready', { label: t(label) }));
     } catch (e) {
-      toast.error(`Error en ${label}: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(
+        t('settingsCompany.dataTransfer.downloadError', {
+          label: t(label),
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
     } finally {
       setBusy(null);
       setProgress(null);
@@ -154,11 +166,11 @@ export const DataTransferTab: React.FC = () => {
    */
   const doImport = () => {
     if (!importFile) {
-      toast.error('Elige un fichero .zip antes');
+      toast.error(t('settingsCompany.dataTransfer.chooseZip'));
       return;
     }
     if (!importName.trim()) {
-      toast.error('Indica el nombre de la nueva empresa');
+      toast.error(t('settingsCompany.dataTransfer.nameRequired'));
       return;
     }
     setBusy('import');
@@ -179,21 +191,29 @@ export const DataTransferTab: React.FC = () => {
       try {
         const body = JSON.parse(xhr.responseText || '{}');
         if (xhr.status >= 200 && xhr.status < 300) {
-          toast.success(`Empresa "${importName}" importada (id: ${body.tenantId})`);
+          toast.success(
+            t('settingsCompany.dataTransfer.imported', { name: importName, id: body.tenantId }),
+          );
           setImportFile(null);
           setImportName('');
         } else {
-          toast.error(`Importación falló: ${body?.error || `HTTP ${xhr.status}`}`);
+          toast.error(
+            t('settingsCompany.dataTransfer.importFailed', {
+              error: body?.error || `HTTP ${xhr.status}`,
+            }),
+          );
         }
       } catch {
-        toast.error(`Importación falló: HTTP ${xhr.status}`);
+        toast.error(
+          t('settingsCompany.dataTransfer.importFailed', { error: `HTTP ${xhr.status}` }),
+        );
       } finally {
         setBusy(null);
         setProgress(null);
       }
     };
     xhr.onerror = () => {
-      toast.error('Error de red al importar');
+      toast.error(t('settingsCompany.dataTransfer.networkError'));
       setBusy(null);
       setProgress(null);
     };
@@ -208,8 +228,8 @@ export const DataTransferTab: React.FC = () => {
         <div className="p-6 flex items-start gap-3 text-sm text-amber-800 dark:text-amber-200">
           <AlertTriangle size={18} className="shrink-0 mt-0.5" />
           <div>
-            <strong>Acceso restringido.</strong> Necesitas rol ADMIN o SUPERUSER para importar y
-            exportar empresas.
+            <strong>{t('settingsCompany.dataTransfer.restrictedTitle')}</strong>{' '}
+            {t('settingsCompany.dataTransfer.restrictedBody')}
           </div>
         </div>
       </Card>
@@ -222,12 +242,12 @@ export const DataTransferTab: React.FC = () => {
         <div className="p-6 space-y-3">
           <div className="flex items-center gap-2 text-fg-body">
             <Download size={18} />
-            <h2 className="text-lg font-bold">Exportar empresa</h2>
+            <h2 className="text-lg font-bold">{t('settingsCompany.dataTransfer.exportCompany')}</h2>
           </div>
           <p className="text-sm text-fg-muted leading-snug">
-            Descarga un fichero <code>.zip</code> con el esquema, datos y adjuntos locales de la
-            empresa elegida. Útil para backups o para mover la empresa a otra instalación de
-            Keirost.
+            {t('settingsCompany.dataTransfer.exportHelpBefore')}
+            <code>.zip</code>
+            {t('settingsCompany.dataTransfer.exportHelpAfter')}
           </p>
           <div className="flex items-center gap-2">
             {/* Lista dinámica de servidor → SearchableSelect. */}
@@ -236,7 +256,7 @@ export const DataTransferTab: React.FC = () => {
                 options={tenants.map((t) => ({ value: t.id, label: t.name }))}
                 value={exportTenantId}
                 onChange={setExportTenantId}
-                placeholder="— Elige una empresa —"
+                placeholder={t('settingsCompany.dataTransfer.chooseCompany')}
               />
             </div>
             <Button
@@ -244,23 +264,24 @@ export const DataTransferTab: React.FC = () => {
                 downloadFile(
                   `/api/admin/tenants/${exportTenantId}/export?includeUploads=${includeUploads ? 'true' : 'false'}`,
                   `tenant_${exportTenantId}.zip`,
-                  'Exportar empresa',
+                  'settingsCompany.dataTransfer.exportCompany',
                 )
               }
-              disabled={!exportTenantId || busy === 'Exportar empresa'}
+              disabled={!exportTenantId || busy === 'settingsCompany.dataTransfer.exportCompany'}
             >
               <Download size={14} className="mr-2" />
-              {busy === 'Exportar empresa' ? 'Exportando…' : 'Exportar'}
+              {busy === 'settingsCompany.dataTransfer.exportCompany'
+                ? t('settingsCompany.dataTransfer.exporting')
+                : t('settingsCompany.dataTransfer.export')}
             </Button>
           </div>
           <label className="flex items-center gap-2 text-xs text-fg-body cursor-pointer">
             <Checkbox checked={includeUploads} onChange={setIncludeUploads} />
-            <span>
-              Incluir archivos adjuntos (storage/uploads). Desactiva si solo quieres datos y el zip
-              pesa demasiado.
-            </span>
+            <span>{t('settingsCompany.dataTransfer.includeUploads')}</span>
           </label>
-          {busy === 'Exportar empresa' && progress && <ProgressBar progress={progress} />}
+          {busy === 'settingsCompany.dataTransfer.exportCompany' && progress && (
+            <ProgressBar progress={progress} />
+          )}
         </div>
       </Card>
 
@@ -268,16 +289,14 @@ export const DataTransferTab: React.FC = () => {
         <div className="p-6 space-y-3">
           <div className="flex items-center gap-2 text-fg-body">
             <Upload size={18} />
-            <h2 className="text-lg font-bold">Importar empresa desde .zip</h2>
+            <h2 className="text-lg font-bold">{t('settingsCompany.dataTransfer.importTitle')}</h2>
           </div>
           <p className="text-sm text-fg-muted leading-snug">
-            Crea una empresa nueva a partir de un export. Puedes elegir un nombre distinto al
-            original — se aplicará al nuevo schema y al display name. Útil para tener una copia de
-            debug ("Empresa-test", "Empresa-2026", etc.) sin tocar la original.
+            {t('settingsCompany.dataTransfer.importHelp')}
           </p>
           <Input
-            label="Nombre de la nueva empresa"
-            placeholder="Ej: ACME Test"
+            label={t('settingsCompany.dataTransfer.newName')}
+            placeholder={t('settingsCompany.dataTransfer.newNamePlaceholder')}
             value={importName}
             onChange={(e) => setImportName(e.target.value)}
           />
@@ -285,17 +304,19 @@ export const DataTransferTab: React.FC = () => {
               arrastrar el .zip y muestra el archivo elegido con su tamaño. */}
           <FileDropzone
             accept=".zip"
-            label="Arrastra el .zip del export o haz clic para elegirlo"
-            hint="Un único fichero .zip generado por «Exportar empresa»"
+            label={t('settingsCompany.dataTransfer.dropLabel')}
+            hint={t('settingsCompany.dataTransfer.dropHint')}
             files={importFile ? [importFile] : []}
             onFiles={(files) => setImportFile(files[0] ?? null)}
             onRemoveFile={() => setImportFile(null)}
-            onReject={() => toast.error('Solo se acepta un fichero .zip')}
+            onReject={() => toast.error(t('settingsCompany.dataTransfer.onlyZip'))}
             disabled={busy === 'import'}
           />
           <Button onClick={doImport} disabled={busy === 'import' || !importFile}>
             <Upload size={14} className="mr-2" />
-            {busy === 'import' ? 'Importando…' : 'Importar empresa'}
+            {busy === 'import'
+              ? t('settingsCompany.dataTransfer.importing')
+              : t('settingsCompany.dataTransfer.import')}
           </Button>
           {busy === 'import' && progress && <ProgressBar progress={progress} />}
         </div>
@@ -305,27 +326,29 @@ export const DataTransferTab: React.FC = () => {
         <div className="p-6 space-y-3">
           <div className="flex items-center gap-2 text-fg-body">
             <FileSpreadsheet size={18} />
-            <h2 className="text-lg font-bold">Exportar datos en CSV (otro ERP)</h2>
+            <h2 className="text-lg font-bold">{t('settingsCompany.dataTransfer.csvTitle')}</h2>
           </div>
           <p className="text-sm text-fg-muted leading-snug">
-            Descarga un zip con un CSV por cada entidad principal (clientes, items, facturas,
-            albaranes, pedidos…). Formato genérico para que cualquier otro ERP importe los datos.
-            Una vez exportado, ya no es responsabilidad nuestra cómo los procesa el destino.
+            {t('settingsCompany.dataTransfer.csvHelp')}
           </p>
           <Button
             onClick={() =>
               downloadFile(
                 `/api/admin/tenants/${exportTenantId}/export-data`,
                 `erp_data_${exportTenantId}.zip`,
-                'Exportar CSV',
+                'settingsCompany.dataTransfer.exportCsv',
               )
             }
-            disabled={!exportTenantId || busy === 'Exportar CSV'}
+            disabled={!exportTenantId || busy === 'settingsCompany.dataTransfer.exportCsv'}
           >
             <FileSpreadsheet size={14} className="mr-2" />
-            {busy === 'Exportar CSV' ? 'Exportando…' : 'Exportar CSV'}
+            {busy === 'settingsCompany.dataTransfer.exportCsv'
+              ? t('settingsCompany.dataTransfer.exporting')
+              : t('settingsCompany.dataTransfer.exportCsv')}
           </Button>
-          {busy === 'Exportar CSV' && progress && <ProgressBar progress={progress} />}
+          {busy === 'settingsCompany.dataTransfer.exportCsv' && progress && (
+            <ProgressBar progress={progress} />
+          )}
         </div>
       </Card>
 
@@ -334,13 +357,12 @@ export const DataTransferTab: React.FC = () => {
           <div className="p-6 space-y-3 border-2 border-rose-200 dark:border-rose-900 rounded-lg -m-px">
             <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
               <Trash2 size={18} />
-              <h2 className="text-lg font-bold">Zona de peligro — Eliminar empresa</h2>
+              <h2 className="text-lg font-bold">{t('settingsCompany.dataTransfer.dangerTitle')}</h2>
             </div>
             <p className="text-sm text-fg-muted leading-snug">
-              Borra la empresa elegida de forma <strong>permanente</strong>: su schema completo
-              (documentos, stock, contabilidad, usuarios asociados…) y sus archivos locales. No hay
-              marcha atrás salvo que tengas un backup — expórtala o haz un backup primero si no
-              estás seguro.
+              {t('settingsCompany.dataTransfer.dangerBefore')}
+              <strong>{t('settingsCompany.dataTransfer.dangerStrong')}</strong>
+              {t('settingsCompany.dataTransfer.dangerAfter')}
             </p>
             {/* `clearable`: dejarlo sin empresa elegida es un estado válido (y el
                 más seguro) en la zona de peligro. */}
@@ -351,13 +373,13 @@ export const DataTransferTab: React.FC = () => {
                 setDeleteTenantId(v);
                 setDeleteConfirmText('');
               }}
-              placeholder="— Elige una empresa —"
+              placeholder={t('settingsCompany.dataTransfer.chooseCompany')}
               clearable
             />
             {deleteTenant && (
               <>
                 <p className="text-xs text-fg-body">
-                  Para confirmar, escribe el nombre exacto de la empresa:{' '}
+                  {t('settingsCompany.dataTransfer.confirmName')}{' '}
                   <code className="font-bold">{deleteTenant.name}</code>
                 </p>
                 <Input
@@ -371,7 +393,9 @@ export const DataTransferTab: React.FC = () => {
                   disabled={deleting || deleteConfirmText !== deleteTenant.name}
                 >
                   <Trash2 size={14} className="mr-2" />
-                  {deleting ? 'Eliminando…' : `Eliminar "${deleteTenant.name}" definitivamente`}
+                  {deleting
+                    ? t('settingsCompany.dataTransfer.deleting')
+                    : t('settingsCompany.dataTransfer.deleteForever', { name: deleteTenant.name })}
                 </Button>
               </>
             )}
@@ -389,23 +413,19 @@ export const DataTransferTab: React.FC = () => {
 const ProgressBar: React.FC<{
   progress: { pct: number; loadedMB: number; totalMB: number };
 }> = ({ progress }) => {
+  const { t } = useI18n();
   const determinate = progress.totalMB > 0;
   return (
     <div className="space-y-1">
-      <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-        {determinate ? (
-          <div
-            className="h-full bg-blue-600 transition-all"
-            style={{ width: `${progress.pct}%` }}
-          />
-        ) : (
-          <div className="h-full w-1/3 bg-blue-600 animate-pulse" />
-        )}
-      </div>
+      <Progress
+        size="sm"
+        value={determinate ? progress.pct : undefined}
+        indeterminate={!determinate}
+      />
       <div className="text-[10px] text-fg-muted font-mono">
         {determinate
           ? `${progress.loadedMB.toFixed(1)} / ${progress.totalMB.toFixed(1)} MB · ${progress.pct}%`
-          : `${progress.loadedMB.toFixed(1)} MB transferidos…`}
+          : t('settingsCompany.dataTransfer.transferred', { mb: progress.loadedMB.toFixed(1) })}
       </div>
     </div>
   );

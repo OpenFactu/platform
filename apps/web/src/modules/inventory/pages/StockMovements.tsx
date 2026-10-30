@@ -52,47 +52,52 @@ import type { StockDocKind } from '../domain/stockMovement';
 import type { Warehouse, Zone } from '../domain/warehouse';
 import type { Item } from '../domain/item';
 import type { Uom } from '../domain/uom';
+import { useI18n } from '@/i18n/I18nContext';
+import { intlLocale } from '@/i18n/i18n';
 
 type Kind = StockDocKind;
 
 const KIND_CFG = {
   transfer: {
-    label: 'Traspasos',
+    label: 'inventory.stockMovements.kinds.transfer.label',
     Icon: ArrowRightLeft,
-    newTitle: 'Nuevo traspaso',
+    newTitle: 'inventory.stockMovements.kinds.transfer.newTitle',
+    viewTitle: 'inventory.stockMovements.kinds.transfer.viewTitle',
   },
   receipt: {
-    label: 'Entradas',
+    label: 'inventory.stockMovements.kinds.receipt.label',
     Icon: ArrowDownToLine,
-    newTitle: 'Nueva entrada',
+    newTitle: 'inventory.stockMovements.kinds.receipt.newTitle',
+    viewTitle: 'inventory.stockMovements.kinds.receipt.viewTitle',
   },
   issue: {
-    label: 'Salidas',
+    label: 'inventory.stockMovements.kinds.issue.label',
     Icon: ArrowUpFromLine,
-    newTitle: 'Nueva salida',
+    newTitle: 'inventory.stockMovements.kinds.issue.newTitle',
+    viewTitle: 'inventory.stockMovements.kinds.issue.viewTitle',
   },
 } as const;
 
 /** Motivos del documento por tipo — entradas y salidas tienen los suyos. */
 const TYPE_OPTS: Record<'receipt' | 'issue', Array<{ value: string; label: string }>> = {
   receipt: [
-    { value: 'internal', label: 'Recepción interna' },
-    { value: 'return', label: 'Devolución' },
-    { value: 'adjustment', label: 'Ajuste positivo' },
+    { value: 'internal', label: 'inventory.stockMovements.types.receiptInternal' },
+    { value: 'return', label: 'inventory.stockMovements.types.return' },
+    { value: 'adjustment', label: 'inventory.stockMovements.types.positiveAdjustment' },
   ],
   issue: [
-    { value: 'internal', label: 'Salida interna' },
-    { value: 'scrap', label: 'Scrap / merma' },
-    { value: 'adjustment', label: 'Ajuste negativo' },
+    { value: 'internal', label: 'inventory.stockMovements.types.issueInternal' },
+    { value: 'scrap', label: 'inventory.stockMovements.types.scrap' },
+    { value: 'adjustment', label: 'inventory.stockMovements.types.negativeAdjustment' },
   ],
 };
 
 const STATUS_COPY: Record<string, { label: string; variant: any }> = {
-  draft: { label: 'Borrador', variant: 'neutral' },
-  sent: { label: 'Enviado', variant: 'info' },
-  received: { label: 'Recibido', variant: 'success' },
-  posted: { label: 'Posteado', variant: 'success' },
-  cancelled: { label: 'Cancelado', variant: 'danger' },
+  draft: { label: 'inventory.stockMovements.status.draft', variant: 'neutral' },
+  sent: { label: 'inventory.stockMovements.status.sent', variant: 'info' },
+  received: { label: 'inventory.stockMovements.status.received', variant: 'success' },
+  posted: { label: 'inventory.stockMovements.status.posted', variant: 'success' },
+  cancelled: { label: 'inventory.stockMovements.status.cancelled', variant: 'danger' },
 };
 
 /**
@@ -123,13 +128,14 @@ const emptyLine = (): LineInput => ({
 const shortDate = (value: unknown): string => {
   if (!value) return '—';
   const d = new Date(value as string);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-ES');
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString(intlLocale());
 };
 
 export const StockMovements: React.FC = () => {
   const { user } = useAuth();
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
   const [kind, setKind] = useState<Kind>('transfer');
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -221,7 +227,7 @@ export const StockMovements: React.FC = () => {
     try {
       full = await stockDocsApi.get(kind, row.id);
     } catch {
-      toast.error('No se pudo cargar el documento');
+      toast.error(t('inventory.stockMovements.loadDocError'));
       return;
     }
     setViewing(full);
@@ -329,7 +335,7 @@ export const StockMovements: React.FC = () => {
         item = await stockApi.itemByBarcode(code);
       } catch (e) {
         if (e instanceof ApiError) {
-          toast.error(`Código "${code}" no encontrado en el catálogo`);
+          toast.error(t('inventory.stockMovements.codeNotFound', { code }));
           return;
         }
         throw e;
@@ -375,7 +381,7 @@ export const StockMovements: React.FC = () => {
       if (navigator.vibrate) navigator.vibrate(60);
       toast.success(`+ ${item.name}`);
     } catch {
-      toast.error('Fallo al resolver el código');
+      toast.error(t('inventory.stockMovements.scanError'));
     }
   };
 
@@ -383,20 +389,20 @@ export const StockMovements: React.FC = () => {
     // ── Cabecera ──────────────────────────────────────────────────────
     if (kind === 'transfer') {
       if (!form.fromWarehouseId) {
-        toast.error('Selecciona el almacén origen');
+        toast.error(t('inventory.stockMovements.validation.fromWarehouse'));
         return;
       }
       if (!form.toWarehouseId) {
-        toast.error('Selecciona el almacén destino');
+        toast.error(t('inventory.stockMovements.validation.toWarehouse'));
         return;
       }
       if (form.fromWarehouseId === form.toWarehouseId) {
-        toast.error('Origen y destino no pueden ser el mismo almacén');
+        toast.error(t('inventory.stockMovements.validation.sameWarehouse'));
         return;
       }
     } else {
       if (!form.warehouseId) {
-        toast.error('Selecciona el almacén');
+        toast.error(t('inventory.stockMovements.validation.warehouse'));
         return;
       }
     }
@@ -404,7 +410,7 @@ export const StockMovements: React.FC = () => {
     // ── Líneas ────────────────────────────────────────────────────────
     const withItem = lines.filter((l) => l.itemId);
     if (withItem.length === 0) {
-      toast.error('Añade al menos una línea con artículo');
+      toast.error(t('inventory.stockMovements.validation.noLines'));
       return;
     }
     const seenSerials = new Set<string>();
@@ -427,19 +433,31 @@ export const StockMovements: React.FC = () => {
       // todavía (p.ej. items cargados asíncronos).
       const qty = m === 'S' ? 1 : Number(l.quantity);
       if (!Number.isFinite(qty) || qty <= 0) {
-        toast.error(`Línea ${i + 1} (${it?.name || 'artículo'}): cantidad inválida`);
+        toast.error(
+          t('inventory.stockMovements.validation.invalidQty', {
+            line: i + 1,
+            item: it?.name || t('inventory.stockMovements.validation.itemFallback'),
+          }),
+        );
         return;
       }
       if ((m === 'B' || m === 'S') && !l.batchNum.trim()) {
         toast.error(
-          `${it?.name || 'Artículo'} se gestiona por ${m === 'S' ? 'número de serie' : 'lote'} — obligatorio rellenarlo.`,
+          t(
+            m === 'S'
+              ? 'inventory.stockMovements.validation.serialRequired'
+              : 'inventory.stockMovements.validation.batchRequired',
+            { item: it?.name || t('inventory.stockMovements.validation.itemFallbackCap') },
+          ),
         );
         return;
       }
       if (m === 'S') {
         const key = `${l.itemId}::${l.batchNum.trim()}`;
         if (seenSerials.has(key)) {
-          toast.error(`La serie "${l.batchNum.trim()}" aparece repetida en el documento.`);
+          toast.error(
+            t('inventory.stockMovements.validation.duplicateSerial', { serial: l.batchNum.trim() }),
+          );
           return;
         }
         seenSerials.add(key);
@@ -461,10 +479,10 @@ export const StockMovements: React.FC = () => {
     try {
       d = await stockDocsApi.create(kind, body);
     } catch (e) {
-      toast.error((e instanceof Error && e.message) || 'Error');
+      toast.error((e instanceof Error && e.message) || t('inventory.stockMovements.error'));
       return;
     }
-    toast.success(`Creado ${d.code}`);
+    toast.success(t('inventory.stockMovements.created', { code: d.code }));
     cancelCreate();
     load();
   };
@@ -473,10 +491,10 @@ export const StockMovements: React.FC = () => {
     try {
       await stockDocsApi.send(kind, id);
     } catch (e) {
-      toast.error((e instanceof Error && e.message) || 'No se pudo enviar');
+      toast.error((e instanceof Error && e.message) || t('inventory.stockMovements.sendError'));
       return;
     }
-    toast.success('Enviado — stock descontado del origen');
+    toast.success(t('inventory.stockMovements.sent'));
     load();
   };
 
@@ -484,10 +502,10 @@ export const StockMovements: React.FC = () => {
     try {
       await stockDocsApi.receive(kind, id);
     } catch (e) {
-      toast.error((e instanceof Error && e.message) || 'No se pudo recibir');
+      toast.error((e instanceof Error && e.message) || t('inventory.stockMovements.receiveError'));
       return;
     }
-    toast.success('Recibido — stock sumado al destino');
+    toast.success(t('inventory.stockMovements.received'));
     load();
   };
 
@@ -495,10 +513,10 @@ export const StockMovements: React.FC = () => {
     try {
       await stockDocsApi.post(kind, id);
     } catch (e) {
-      toast.error((e instanceof Error && e.message) || 'No se pudo postear');
+      toast.error((e instanceof Error && e.message) || t('inventory.stockMovements.postError'));
       return;
     }
-    toast.success('Posteado — stock actualizado');
+    toast.success(t('inventory.stockMovements.posted'));
     load();
   };
 
@@ -521,16 +539,16 @@ export const StockMovements: React.FC = () => {
 
   const remove = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar documento',
-      message: '¿Seguro que quieres eliminar el documento? Esta acción no se puede deshacer.',
+      title: t('inventory.stockMovements.deleteTitle'),
+      message: t('inventory.stockMovements.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('inventory.stockMovements.delete'),
     });
     if (!ok) return;
     try {
       await stockDocsApi.remove(kind, id);
     } catch (e) {
-      toast.error((e instanceof Error && e.message) || 'No se pudo eliminar');
+      toast.error((e instanceof Error && e.message) || t('inventory.stockMovements.deleteError'));
     }
     load();
   };
@@ -564,10 +582,10 @@ export const StockMovements: React.FC = () => {
     const zoneCols: TableColumn<any>[] =
       kind === 'transfer'
         ? [
-            { header: 'Zona origen', cell: (l) => zoneName(l.fromZoneId) },
-            { header: 'Zona destino', cell: (l) => zoneName(l.toZoneId) },
+            { header: t('inventory.stockMovements.fromZone'), cell: (l) => zoneName(l.fromZoneId) },
+            { header: t('inventory.stockMovements.toZone'), cell: (l) => zoneName(l.toZoneId) },
           ]
-        : [{ header: 'Zona', cell: (l) => zoneName(l.zoneId) }];
+        : [{ header: t('inventory.stockMovements.zone'), cell: (l) => zoneName(l.zoneId) }];
     return [
       {
         header: '#',
@@ -575,7 +593,7 @@ export const StockMovements: React.FC = () => {
         cell: (l) => <span className="text-fg-subtle">{l.lineNum}</span>,
       },
       {
-        header: 'Artículo',
+        header: t('inventory.stockMovements.item'),
         cell: (l) => {
           const it = itemsById.get(l.itemId);
           return (
@@ -587,12 +605,12 @@ export const StockMovements: React.FC = () => {
         },
       },
       {
-        header: 'Cantidad',
+        header: t('inventory.stockMovements.quantity'),
         align: 'right',
         cell: (l) => <span className="font-mono">{l.quantity}</span>,
       },
       {
-        header: 'UoM',
+        header: t('inventory.stockMovements.uom'),
         cell: (l) => {
           const it = itemsById.get(l.itemId);
           const uom = l.uomId ? uomsById.get(l.uomId) : it?.uomId ? uomsById.get(it.uomId) : null;
@@ -600,7 +618,7 @@ export const StockMovements: React.FC = () => {
         },
       },
       {
-        header: 'Lote / Serie',
+        header: t('inventory.stockMovements.batchSerial'),
         cell: (l) =>
           l.batchNum ? (
             <code className="text-[11px] font-mono bg-bg-muted px-1.5 py-0.5 rounded">
@@ -612,24 +630,28 @@ export const StockMovements: React.FC = () => {
       },
       ...zoneCols,
     ];
-  }, [kind, itemsById, uomsById, zones]);
+  }, [kind, itemsById, uomsById, zones, t]);
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
       <PageHeader
         title={
           creating
-            ? cfg.newTitle
+            ? t(cfg.newTitle)
             : viewing
-              ? `${cfg.label.slice(0, -1)} ${viewing.code}`
-              : 'Movimientos de stock'
+              ? t(cfg.viewTitle, { code: viewing.code })
+              : t('inventory.stockMovements.title')
         }
         subtitle={
           creating
-            ? 'Rellena la cabecera y las líneas. Los artículos gestionados por lote/serie exigen el número.'
+            ? t('inventory.stockMovements.createSubtitle')
             : viewing
-              ? `Detalle del documento — estado: ${STATUS_COPY[viewing.status]?.label || viewing.status}`
-              : 'Traspasos, entradas y salidas internas — con trazabilidad por zona, lote y unidad de medida.'
+              ? t('inventory.stockMovements.viewSubtitle', {
+                  status: STATUS_COPY[viewing.status]
+                    ? t(STATUS_COPY[viewing.status].label)
+                    : viewing.status,
+                })
+              : t('inventory.stockMovements.subtitle')
         }
         icon={<ArrowRightLeft size={18} />}
         size="sm"
@@ -642,7 +664,7 @@ export const StockMovements: React.FC = () => {
               variant="outline"
               size="sm"
               onClick={creating ? cancelCreate : closeView}
-              title="Volver al listado"
+              title={t('inventory.stockMovements.backToList')}
               className="w-fit"
             >
               <ArrowLeft size={14} />
@@ -653,7 +675,7 @@ export const StockMovements: React.FC = () => {
           !creating &&
           !viewing && (
             <Button type="button" onClick={openCreate} className="flex items-center gap-2">
-              <Plus size={14} /> {cfg.newTitle}
+              <Plus size={14} /> {t(cfg.newTitle)}
             </Button>
           )
         }
@@ -669,7 +691,7 @@ export const StockMovements: React.FC = () => {
               onChange={(k) => setKind(k as Kind)}
               items={(Object.keys(KIND_CFG) as Kind[]).map((k) => {
                 const { label, Icon } = KIND_CFG[k];
-                return { key: k, label, icon: <Icon size={13} /> };
+                return { key: k, label: t(label), icon: <Icon size={13} /> };
               })}
             />
           ) : undefined
@@ -683,7 +705,9 @@ export const StockMovements: React.FC = () => {
               <Loader />
             </div>
           ) : rows.length === 0 ? (
-            <Card bodyClassName="py-10 text-center text-sm text-slate-500">Sin documentos.</Card>
+            <Card bodyClassName="py-10 text-center text-sm text-slate-500">
+              {t('inventory.stockMovements.noDocuments')}
+            </Card>
           ) : (
             <Card bodyClassName="p-0">
               <ul>
@@ -698,7 +722,7 @@ export const StockMovements: React.FC = () => {
                       <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded shrink-0">
                         {r.code}
                       </code>
-                      <Badge variant={sc.variant}>{sc.label}</Badge>
+                      <Badge variant={sc.variant}>{t(sc.label)}</Badge>
                       <div className="flex-1 min-w-[10rem] text-xs text-fg-body">
                         {kind === 'transfer' ? (
                           <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5">
@@ -728,7 +752,7 @@ export const StockMovements: React.FC = () => {
                             }}
                             className="gap-1"
                           >
-                            <Send size={11} /> Enviar
+                            <Send size={11} /> {t('inventory.stockMovements.send')}
                           </Button>
                         )}
                         {kind === 'transfer' && r.status === 'sent' && (
@@ -741,7 +765,7 @@ export const StockMovements: React.FC = () => {
                             }}
                             className="gap-1"
                           >
-                            <CheckCircle2 size={11} /> Recibir
+                            <CheckCircle2 size={11} /> {t('inventory.stockMovements.receive')}
                           </Button>
                         )}
                         {kind !== 'transfer' && r.status === 'draft' && (
@@ -754,7 +778,7 @@ export const StockMovements: React.FC = () => {
                             }}
                             className="gap-1"
                           >
-                            <CheckCircle2 size={11} /> Postear
+                            <CheckCircle2 size={11} /> {t('inventory.stockMovements.post')}
                           </Button>
                         )}
                         {r.status !== 'posted' && r.status !== 'received' && (
@@ -766,7 +790,7 @@ export const StockMovements: React.FC = () => {
                               e.stopPropagation();
                               remove(r.id);
                             }}
-                            title="Eliminar"
+                            title={t('inventory.stockMovements.delete')}
                           >
                             <Trash2 size={12} />
                           </Button>
@@ -790,7 +814,9 @@ export const StockMovements: React.FC = () => {
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <Badge variant={STATUS_COPY[viewing.status]?.variant || 'neutral'}>
-                    {STATUS_COPY[viewing.status]?.label || viewing.status}
+                    {STATUS_COPY[viewing.status]
+                      ? t(STATUS_COPY[viewing.status].label)
+                      : viewing.status}
                   </Badge>
                   <code className="px-1.5 py-0.5 bg-bg-muted text-xs font-mono rounded">
                     {viewing.code}
@@ -807,7 +833,8 @@ export const StockMovements: React.FC = () => {
                   </div>
                 ) : (
                   <div className="text-sm text-fg-body">
-                    Almacén: <b>{whName(viewing.warehouseId)}</b>
+                    {t('inventory.stockMovements.warehouseLabel')}{' '}
+                    <b>{whName(viewing.warehouseId)}</b>
                     {viewing.type && (
                       <span className="ml-2 text-slate-400 text-xs">· {viewing.type}</span>
                     )}
@@ -830,7 +857,7 @@ export const StockMovements: React.FC = () => {
                     }}
                     className="flex items-center gap-2"
                   >
-                    <Send size={13} /> Enviar
+                    <Send size={13} /> {t('inventory.stockMovements.send')}
                   </Button>
                 )}
                 {kind === 'transfer' && viewing.status === 'sent' && (
@@ -841,7 +868,7 @@ export const StockMovements: React.FC = () => {
                     }}
                     className="flex items-center gap-2"
                   >
-                    <CheckCircle2 size={13} /> Recibir
+                    <CheckCircle2 size={13} /> {t('inventory.stockMovements.receive')}
                   </Button>
                 )}
                 {kind !== 'transfer' && viewing.status === 'draft' && (
@@ -852,7 +879,7 @@ export const StockMovements: React.FC = () => {
                     }}
                     className="flex items-center gap-2"
                   >
-                    <CheckCircle2 size={13} /> Postear
+                    <CheckCircle2 size={13} /> {t('inventory.stockMovements.post')}
                   </Button>
                 )}
                 {viewing.status !== 'posted' && viewing.status !== 'received' && (
@@ -860,24 +887,26 @@ export const StockMovements: React.FC = () => {
                     variant="secondary"
                     onClick={async () => {
                       const ok = await popup.confirm({
-                        title: 'Eliminar documento',
-                        message:
-                          '¿Seguro que quieres eliminar el documento? Esta acción no se puede deshacer.',
+                        title: t('inventory.stockMovements.deleteTitle'),
+                        message: t('inventory.stockMovements.deleteMessage'),
                         tone: 'danger',
-                        confirmLabel: 'Eliminar',
+                        confirmLabel: t('inventory.stockMovements.delete'),
                       });
                       if (!ok) return;
                       try {
                         await stockDocsApi.remove(kind, viewing.id);
                       } catch (e) {
-                        toast.error((e instanceof Error && e.message) || 'No se pudo eliminar');
+                        toast.error(
+                          (e instanceof Error && e.message) ||
+                            t('inventory.stockMovements.deleteError'),
+                        );
                       }
                       closeView();
                       load();
                     }}
                     className="flex items-center gap-2 !text-rose-600"
                   >
-                    <Trash2 size={13} /> Eliminar
+                    <Trash2 size={13} /> {t('inventory.stockMovements.delete')}
                   </Button>
                 )}
               </div>
@@ -887,39 +916,39 @@ export const StockMovements: React.FC = () => {
             <div className="mt-4 pt-4 border-t border-border-subtle grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Creado
+                  {t('inventory.stockMovements.timeline.created')}
                 </div>
                 <div className="text-fg-body">
-                  {new Date(viewing.createdAt).toLocaleString('es-ES')}
+                  {new Date(viewing.createdAt).toLocaleString(intlLocale())}
                 </div>
               </div>
               {viewing.sentAt && (
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Enviado
+                    {t('inventory.stockMovements.timeline.sent')}
                   </div>
                   <div className="text-fg-body">
-                    {new Date(viewing.sentAt).toLocaleString('es-ES')}
+                    {new Date(viewing.sentAt).toLocaleString(intlLocale())}
                   </div>
                 </div>
               )}
               {viewing.receivedAt && (
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Recibido
+                    {t('inventory.stockMovements.timeline.received')}
                   </div>
                   <div className="text-fg-body">
-                    {new Date(viewing.receivedAt).toLocaleString('es-ES')}
+                    {new Date(viewing.receivedAt).toLocaleString(intlLocale())}
                   </div>
                 </div>
               )}
               {viewing.postedAt && (
                 <div>
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Posteado
+                    {t('inventory.stockMovements.timeline.posted')}
                   </div>
                   <div className="text-fg-body">
-                    {new Date(viewing.postedAt).toLocaleString('es-ES')}
+                    {new Date(viewing.postedAt).toLocaleString(intlLocale())}
                   </div>
                 </div>
               )}
@@ -929,7 +958,7 @@ export const StockMovements: React.FC = () => {
           {/* Líneas */}
           <Card bodyClassName="p-0">
             <div className="px-4 py-2 border-b border-border-subtle text-[10px] font-black uppercase tracking-wider text-fg-subtle">
-              Líneas ({viewing.lines?.length || 0})
+              {t('inventory.stockMovements.linesCount', { count: viewing.lines?.length || 0 })}
             </div>
             {/* La Table trae cabecera, scroll horizontal y estado vacío: el
                 <table> a mano y la rama de "Sin líneas." sobraban. */}
@@ -937,7 +966,7 @@ export const StockMovements: React.FC = () => {
               className="max-md:p-3"
               columns={lineColumns}
               data={viewing.lines || []}
-              emptyMessage="Sin líneas."
+              emptyMessage={t('inventory.stockMovements.noLines')}
             />
           </Card>
         </div>
@@ -952,24 +981,24 @@ export const StockMovements: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                    Almacén origen
+                    {t('inventory.stockMovements.fromWarehouse')}
                   </label>
                   <SearchableSelect
                     options={whOpts}
                     value={form.fromWarehouseId || ''}
                     onChange={(v) => setForm({ ...form, fromWarehouseId: v })}
-                    placeholder="— seleccionar —"
+                    placeholder={t('inventory.stockMovements.selectPlaceholder')}
                   />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                    Almacén destino
+                    {t('inventory.stockMovements.toWarehouse')}
                   </label>
                   <SearchableSelect
                     options={whOpts}
                     value={form.toWarehouseId || ''}
                     onChange={(v) => setForm({ ...form, toWarehouseId: v })}
-                    placeholder="— seleccionar —"
+                    placeholder={t('inventory.stockMovements.selectPlaceholder')}
                   />
                 </div>
               </div>
@@ -977,24 +1006,27 @@ export const StockMovements: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                    Almacén
+                    {t('inventory.stockMovements.warehouse')}
                   </label>
                   <SearchableSelect
                     options={whOpts}
                     value={form.warehouseId || ''}
                     onChange={(v) => setForm({ ...form, warehouseId: v })}
-                    placeholder="— seleccionar —"
+                    placeholder={t('inventory.stockMovements.selectPlaceholder')}
                   />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                    Motivo
+                    {t('inventory.stockMovements.reason')}
                   </label>
                   {/* La etiqueta se queda fuera (mismo estilo que los demás
                       campos de la cabecera); el nombre accesible va en ariaLabel. */}
                   <Select
-                    ariaLabel="Motivo"
-                    options={TYPE_OPTS[kind === 'receipt' ? 'receipt' : 'issue']}
+                    ariaLabel={t('inventory.stockMovements.reason')}
+                    options={TYPE_OPTS[kind === 'receipt' ? 'receipt' : 'issue'].map((o) => ({
+                      ...o,
+                      label: t(o.label),
+                    }))}
                     value={form.type || 'internal'}
                     onChange={(v) => setForm({ ...form, type: v })}
                   />
@@ -1006,20 +1038,20 @@ export const StockMovements: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Líneas
+                  {t('inventory.stockMovements.lines')}
                 </label>
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     size="sm"
                     onClick={() => setScanOpen(true)}
-                    title="Escanear código de barras"
+                    title={t('inventory.stockMovements.scanBarcode')}
                     className="gap-1"
                   >
-                    <ScanLine size={12} /> Escanear
+                    <ScanLine size={12} /> {t('inventory.stockMovements.scan')}
                   </Button>
                   <Button type="button" variant="ghost" size="sm" onClick={addLine}>
-                    <Plus size={12} className="mr-1" /> Añadir línea
+                    <Plus size={12} className="mr-1" /> {t('inventory.stockMovements.addLine')}
                   </Button>
                 </div>
               </div>
@@ -1061,7 +1093,7 @@ export const StockMovements: React.FC = () => {
                           return {
                             value: sz.zoneId,
                             label: z?.name || sz.zoneId,
-                            secondaryLabel: `${sz.stock} ud.`,
+                            secondaryLabel: t('inventory.stockMovements.units', { qty: sz.stock }),
                           };
                         })
                       : [];
@@ -1069,7 +1101,9 @@ export const StockMovements: React.FC = () => {
                   const managedBy = item?.manageBy || 'N';
                   const uom = l.uomId ? uomsById.get(l.uomId) : null;
                   const batchLabel =
-                    managedBy === 'S' ? 'Nº de serie' : managedBy === 'B' ? 'Lote' : 'Lote';
+                    managedBy === 'S'
+                      ? t('inventory.stockMovements.serialNo')
+                      : t('inventory.stockMovements.batch');
                   const batchRequired = managedBy === 'B' || managedBy === 'S';
                   const batchMissing = batchRequired && !l.batchNum.trim();
                   const forceQty1 = managedBy === 'S';
@@ -1085,15 +1119,15 @@ export const StockMovements: React.FC = () => {
                         <div className="flex-1 grid grid-cols-12 gap-2">
                           <div className="col-span-12 md:col-span-5">
                             <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5 flex items-center gap-1.5">
-                              Artículo
+                              {t('inventory.stockMovements.item')}
                               {managedBy === 'B' && (
                                 <span className="normal-case tracking-normal px-1.5 py-0 rounded bg-amber-100 text-amber-800 text-[9px] font-bold">
-                                  Gestión por lotes
+                                  {t('inventory.stockMovements.managedByBatch')}
                                 </span>
                               )}
                               {managedBy === 'S' && (
                                 <span className="normal-case tracking-normal px-1.5 py-0 rounded bg-indigo-100 text-indigo-800 text-[9px] font-bold">
-                                  Gestión por serie
+                                  {t('inventory.stockMovements.managedBySerial')}
                                 </span>
                               )}
                             </label>
@@ -1101,12 +1135,12 @@ export const StockMovements: React.FC = () => {
                               options={itemOpts}
                               value={l.itemId}
                               onChange={(v) => onItemPicked(i, v)}
-                              placeholder="— artículo —"
+                              placeholder={t('inventory.stockMovements.itemPlaceholder')}
                             />
                           </div>
                           <div className="sm:col-span-4 md:col-span-2">
                             <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                              Cantidad
+                              {t('inventory.stockMovements.quantity')}
                             </label>
                             <Input
                               type="number"
@@ -1116,17 +1150,17 @@ export const StockMovements: React.FC = () => {
                               onChange={(e) => updateLine(i, { quantity: e.target.value })}
                               placeholder="0"
                               title={
-                                forceQty1 ? 'Artículo por serie — una línea por unidad' : undefined
+                                forceQty1 ? t('inventory.stockMovements.serialQtyHint') : undefined
                               }
                             />
                           </div>
                           <div className="sm:col-span-4 md:col-span-2">
                             <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                              UoM
+                              {t('inventory.stockMovements.uom')}
                             </label>
                             <div
                               className="h-10 rounded-lg border border-border-default bg-bg-muted text-sm px-3 flex items-center text-fg-body"
-                              title="Unidad del artículo"
+                              title={t('inventory.stockMovements.itemUnit')}
                             >
                               {uom ? uom.code : '—'}
                             </div>
@@ -1142,10 +1176,16 @@ export const StockMovements: React.FC = () => {
                                 const knownOpts = known.map((b) => {
                                   const parts: string[] = [];
                                   if (typeof b.quantity === 'number')
-                                    parts.push(`${b.quantity} ud.`);
+                                    parts.push(
+                                      t('inventory.stockMovements.units', { qty: b.quantity }),
+                                    );
                                   if (b.expiryDate)
                                     parts.push(
-                                      `cad. ${new Date(b.expiryDate).toLocaleDateString('es-ES')}`,
+                                      t('inventory.stockMovements.expiresShort', {
+                                        date: new Date(b.expiryDate).toLocaleDateString(
+                                          intlLocale(),
+                                        ),
+                                      }),
                                     );
                                   return {
                                     value: b.batchNum,
@@ -1166,9 +1206,11 @@ export const StockMovements: React.FC = () => {
                                           value: '__new__',
                                           label:
                                             managedBy === 'S'
-                                              ? '＋ Nueva serie…'
-                                              : '＋ Nuevo lote…',
-                                          secondaryLabel: 'Introducir manualmente',
+                                              ? t('inventory.stockMovements.newSerial')
+                                              : t('inventory.stockMovements.newBatch'),
+                                          secondaryLabel: t(
+                                            'inventory.stockMovements.enterManually',
+                                          ),
                                         },
                                       ]
                                     : []),
@@ -1181,7 +1223,7 @@ export const StockMovements: React.FC = () => {
                                         {
                                           value: l.batchNum,
                                           label: l.batchNum,
-                                          secondaryLabel: 'histórico',
+                                          secondaryLabel: t('inventory.stockMovements.historical'),
                                         },
                                       ]
                                     : []),
@@ -1204,8 +1246,8 @@ export const StockMovements: React.FC = () => {
                                         if (v === '__new__') {
                                           const entered = window.prompt(
                                             managedBy === 'S'
-                                              ? 'Número de serie'
-                                              : 'Número de lote',
+                                              ? t('inventory.stockMovements.serialNumberPrompt')
+                                              : t('inventory.stockMovements.batchNumberPrompt'),
                                             l.batchNum || '',
                                           );
                                           if (entered !== null) {
@@ -1215,12 +1257,17 @@ export const StockMovements: React.FC = () => {
                                           updateLine(i, { batchNum: v });
                                         }
                                       }}
-                                      placeholder={batchRequired ? 'Obligatorio' : '(opcional)'}
+                                      placeholder={
+                                        batchRequired
+                                          ? t('inventory.stockMovements.required')
+                                          : t('inventory.stockMovements.optional')
+                                      }
                                     />
                                     {noKnown && (
                                       <p className="text-[10px] text-amber-600 mt-0.5">
-                                        Sin {managedBy === 'S' ? 'series' : 'lotes'} disponibles de
-                                        este artículo.
+                                        {managedBy === 'S'
+                                          ? t('inventory.stockMovements.noSerialsAvailable')
+                                          : t('inventory.stockMovements.noBatchesAvailable')}
                                       </p>
                                     )}
                                   </div>
@@ -1233,13 +1280,13 @@ export const StockMovements: React.FC = () => {
                           {(() => {
                             const stateMsg =
                               sourceZoneState === 'no-warehouse'
-                                ? 'Selecciona primero el almacén en la cabecera.'
+                                ? t('inventory.stockMovements.zoneState.noWarehouse')
                                 : sourceZoneState === 'no-item'
-                                  ? 'Elige el artículo para ver las zonas con stock.'
+                                  ? t('inventory.stockMovements.zoneState.noItem')
                                   : sourceZoneState === 'loading'
-                                    ? 'Cargando zonas con stock…'
+                                    ? t('inventory.stockMovements.zoneState.loading')
                                     : sourceZoneState === 'empty'
-                                      ? 'Sin stock de este artículo en el almacén — no puedes sacar/mover.'
+                                      ? t('inventory.stockMovements.zoneState.empty')
                                       : null;
                             const msgNode = stateMsg ? (
                               <p
@@ -1259,7 +1306,7 @@ export const StockMovements: React.FC = () => {
                                 <>
                                   <div className="col-span-12 md:col-span-6">
                                     <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                                      Zona origen
+                                      {t('inventory.stockMovements.fromZone')}
                                     </label>
                                     <SearchableSelect
                                       options={sourceZoneOpts}
@@ -1272,11 +1319,11 @@ export const StockMovements: React.FC = () => {
                                   </div>
                                   <div className="col-span-12 md:col-span-6">
                                     <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                                      Zona destino
+                                      {t('inventory.stockMovements.toZone')}
                                     </label>
                                     <SearchableSelect
                                       options={[
-                                        { value: '', label: '— sin zona —' },
+                                        { value: '', label: t('inventory.stockMovements.noZone') },
                                         ...toZoneOpts,
                                       ]}
                                       value={l.toZoneId}
@@ -1285,7 +1332,7 @@ export const StockMovements: React.FC = () => {
                                     />
                                     {!form.toWarehouseId && (
                                       <p className="text-[10px] text-rose-600 mt-0.5">
-                                        Selecciona primero el almacén destino en la cabecera.
+                                        {t('inventory.stockMovements.zoneState.noToWarehouse')}
                                       </p>
                                     )}
                                   </div>
@@ -1296,7 +1343,7 @@ export const StockMovements: React.FC = () => {
                               return (
                                 <div className="col-span-12 md:col-span-12">
                                   <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                                    Zona
+                                    {t('inventory.stockMovements.zone')}
                                   </label>
                                   <SearchableSelect
                                     options={sourceZoneOpts}
@@ -1313,17 +1360,20 @@ export const StockMovements: React.FC = () => {
                             return (
                               <div className="col-span-12 md:col-span-12">
                                 <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                                  Zona
+                                  {t('inventory.stockMovements.zone')}
                                 </label>
                                 <SearchableSelect
-                                  options={[{ value: '', label: '— sin zona —' }, ...zoneOpts]}
+                                  options={[
+                                    { value: '', label: t('inventory.stockMovements.noZone') },
+                                    ...zoneOpts,
+                                  ]}
                                   value={l.zoneId}
                                   onChange={(v) => updateLine(i, { zoneId: v })}
                                   placeholder="—"
                                 />
                                 {!form.warehouseId && (
                                   <p className="text-[10px] text-rose-600 mt-0.5">
-                                    Selecciona primero el almacén en la cabecera.
+                                    {t('inventory.stockMovements.zoneState.noWarehouse')}
                                   </p>
                                 )}
                               </div>
@@ -1336,7 +1386,7 @@ export const StockMovements: React.FC = () => {
                           size="sm"
                           onClick={() => removeLine(i)}
                           disabled={lines.length === 1}
-                          title="Quitar línea"
+                          title={t('inventory.stockMovements.removeLine')}
                           className="mt-1 shrink-0"
                         >
                           <Trash2 size={13} />
@@ -1351,21 +1401,21 @@ export const StockMovements: React.FC = () => {
             {/* Notas */}
             <div>
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                Notas
+                {t('inventory.stockMovements.notes')}
               </label>
               <Textarea
                 rows={2}
                 value={form.notes || ''}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="Opcional — observaciones para el almacén."
+                placeholder={t('inventory.stockMovements.notesPlaceholder')}
               />
             </div>
 
             <div className="flex justify-end gap-2 pt-3 mt-2 border-t border-border-subtle">
               <Button variant="secondary" onClick={cancelCreate}>
-                Cancelar
+                {t('inventory.stockMovements.cancel')}
               </Button>
-              <Button onClick={create}>Crear borrador</Button>
+              <Button onClick={create}>{t('inventory.stockMovements.createDraft')}</Button>
             </div>
           </div>
         </Card>

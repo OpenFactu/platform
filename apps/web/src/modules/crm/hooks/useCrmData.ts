@@ -1,3 +1,4 @@
+import { t } from '@/i18n/i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { partnersApi } from '@/modules/partners/api';
@@ -43,7 +44,7 @@ function useLoad<T>(load: () => Promise<T>, initial: T, key: string) {
         setError(null);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Error al cargar');
+        if (!cancelled) setError(err instanceof Error ? err.message : t('crm.errors.load'));
       })
       .finally(() => {
         if (!cancelled) setLoadedKey(requestKey);

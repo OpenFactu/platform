@@ -3,6 +3,7 @@ import { Trash2, Plus, AlertCircle, CheckCircle2, ChevronRight, Barcode } from '
 import { useAuth } from '@/context/AuthContext';
 import { useEffect, useState } from 'react';
 import { Button, cn, DatePicker, Input, Modal, SearchableSelect } from '@openfactu/ui';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface BatchDetail {
   batchNum: string;
@@ -45,6 +46,7 @@ export const BatchSelectionModal: React.FC<Props> = ({
   const [availableBatches, setAvailableBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const { token, user } = useAuth();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (isSale && itemId && isOpen && token) {
@@ -89,20 +91,24 @@ export const BatchSelectionModal: React.FC<Props> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Asignación de ${manageBy === 'B' ? 'Lotes' : 'Series'}: ${itemName}`}
+      title={
+        manageBy === 'B'
+          ? t('inventory.batchSelection.titleBatches', { item: itemName })
+          : t('inventory.batchSelection.titleSerials', { item: itemName })
+      }
       maxWidth="2xl"
     >
       <div className="space-y-6 p-1 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
         <div className="flex items-center justify-between bg-bg-muted p-4 rounded-lg border border-border-default">
           <div>
             <p className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
-              Cantidad Requerida
+              {t('inventory.batchSelection.requiredQty')}
             </p>
             <p className="text-2xl font-black text-fg-default">{targetQuantity}</p>
           </div>
           <div className="text-right">
             <p className="text-[10px] font-black text-fg-subtle uppercase tracking-wider">
-              Total Asignado
+              {t('inventory.batchSelection.totalAssigned')}
             </p>
             <div
               className={`flex items-center gap-2 text-2xl font-black ${isBalanced ? 'text-green-600' : 'text-amber-500'}`}
@@ -120,9 +126,15 @@ export const BatchSelectionModal: React.FC<Props> = ({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="text-[10px] font-black text-fg-subtle uppercase border-b">
-                <th className="pb-2">{manageBy === 'B' ? 'Número de Lote' : 'Número de Serie'}</th>
-                <th className="pb-2 w-32 text-center">Cantidad</th>
-                {manageBy === 'B' && <th className="pb-2 w-48">F. Caducidad</th>}
+                <th className="pb-2">
+                  {manageBy === 'B'
+                    ? t('inventory.batchSelection.batchNumber')
+                    : t('inventory.batchSelection.serialNumber')}
+                </th>
+                <th className="pb-2 w-32 text-center">{t('inventory.batchSelection.quantity')}</th>
+                {manageBy === 'B' && (
+                  <th className="pb-2 w-48">{t('inventory.batchSelection.expiryDate')}</th>
+                )}
                 <th className="pb-2 w-10"></th>
               </tr>
             </thead>
@@ -135,21 +147,30 @@ export const BatchSelectionModal: React.FC<Props> = ({
                         options={availableBatches.map((ab) => ({
                           value: ab.batchNum,
                           label: ab.batchNum,
-                          secondaryLabel: `Disp: ${ab.quantity} · ${
-                            ab.warehouseName
+                          secondaryLabel: t('inventory.batchSelection.availableAt', {
+                            qty: ab.quantity,
+                            location: ab.warehouseName
                               ? `${ab.warehouseName}${ab.zoneName ? ` - ${ab.zoneName}` : ''}`
-                              : 'Ubicación desconocida'
-                          }`,
+                              : t('inventory.batchSelection.unknownLocation'),
+                          }),
                         }))}
                         value={d.batchNum}
                         onChange={(v) => updateLine(idx, 'batchNum', v)}
                         clearable
                         loading={loading}
-                        placeholder={`Seleccionar ${manageBy === 'B' ? 'lote' : 'serie'}...`}
+                        placeholder={
+                          manageBy === 'B'
+                            ? t('inventory.batchSelection.selectBatch')
+                            : t('inventory.batchSelection.selectSerial')
+                        }
                       />
                     ) : (
                       <Input
-                        placeholder={manageBy === 'B' ? 'Lote...' : 'Serie...'}
+                        placeholder={
+                          manageBy === 'B'
+                            ? t('inventory.batchSelection.batchPlaceholder')
+                            : t('inventory.batchSelection.serialPlaceholder')
+                        }
                         value={d.batchNum}
                         onChange={(e) => updateLine(idx, 'batchNum', e.target.value)}
                         disabled={readOnly}
@@ -190,7 +211,7 @@ export const BatchSelectionModal: React.FC<Props> = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => removeLine(idx)}
-                        title="Quitar línea"
+                        title={t('inventory.batchSelection.removeLine')}
                       >
                         <Trash2 size={16} />
                       </Button>
@@ -207,8 +228,10 @@ export const BatchSelectionModal: React.FC<Props> = ({
               size="sm"
               className="mt-4 w-full border-dashed border-2 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10"
             >
-              <Plus size={14} className="mr-2" /> Añadir{' '}
-              {manageBy === 'B' ? 'otro Lote' : 'otra Serie'}
+              <Plus size={14} className="mr-2" />{' '}
+              {manageBy === 'B'
+                ? t('inventory.batchSelection.addBatch')
+                : t('inventory.batchSelection.addSerial')}
             </Button>
           )}
         </div>
@@ -216,18 +239,18 @@ export const BatchSelectionModal: React.FC<Props> = ({
         <div className="flex justify-end gap-3 pt-4 border-t">
           {readOnly ? (
             <Button onClick={onClose} className="px-10">
-              Cerrar
+              {t('inventory.batchSelection.close')}
             </Button>
           ) : (
             <>
               <Button variant="secondary" onClick={onClose}>
-                Cancelar
+                {t('inventory.batchSelection.cancel')}
               </Button>
               <Button
                 onClick={handleConfirm}
                 disabled={!isBalanced || details.some((d) => !d.batchNum)}
               >
-                Confirmar Asignación
+                {t('inventory.batchSelection.confirm')}
               </Button>
             </>
           )}

@@ -14,12 +14,15 @@ import {
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate, formatNumber } from '@/i18n/format';
 import { Calendar, Plus, Trash2, Lock, AlertTriangle } from 'lucide-react';
 import { periodsApi } from '../api';
 import type { AccountingPeriod } from '../domain/accounting';
 
 export const AccountingPeriods: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -71,9 +74,13 @@ export const AccountingPeriods: React.FC = () => {
       setStartDate('');
       setEndDate('');
       fetchPeriods();
-      toast.success('Periodo creado correctamente');
+      toast.success(t('accounting.periods.created'));
     } catch (err) {
-      toast.error(err instanceof Error ? `Error: ${err.message}` : 'Error al crear Periodo');
+      toast.error(
+        err instanceof Error
+          ? t('accounting.common.errorWithMessage', { message: err.message })
+          : t('accounting.periods.createError'),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -84,14 +91,13 @@ export const AccountingPeriods: React.FC = () => {
     try {
       preview = await periodsApi.closePreview(periodId);
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'No se pudo obtener preview');
+      toast.error((err instanceof Error && err.message) || t('accounting.periods.previewError'));
       return;
     }
 
     const confirmed = await popup.show<boolean>({
-      title: `Cerrar período ${preview.period?.code}`,
-      subtitle:
-        'Revisa el asiento de regularización y la apertura del siguiente período antes de confirmar. Esta acción es irreversible.',
+      title: t('accounting.periods.closeTitle', { code: preview.period?.code ?? '' }),
+      subtitle: t('accounting.periods.closeSubtitle'),
       tone: 'warning',
       maxWidth: '3xl',
       render: (close) => (
@@ -107,10 +113,10 @@ export const AccountingPeriods: React.FC = () => {
 
     try {
       await periodsApi.close(periodId);
-      toast.success('Período cerrado y nuevo período creado');
+      toast.success(t('accounting.periods.closed'));
       fetchPeriods();
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Error al cerrar período');
+      toast.error((err instanceof Error && err.message) || t('accounting.periods.closeError'));
     }
   };
 
@@ -118,37 +124,37 @@ export const AccountingPeriods: React.FC = () => {
     try {
       await periodsApi.remove(id);
       fetchPeriods();
-      toast.success('Periodo eliminado');
+      toast.success(t('accounting.periods.deleted'));
     } catch (err) {
-      toast.error('Error al eliminar');
+      toast.error(t('accounting.common.errorDeleting'));
     }
   };
 
   const columns = [
     {
-      header: 'Código',
+      header: t('accounting.common.code'),
       sortable: true,
       sortAccessor: (item: any) => item.code || '',
       accessor: 'code',
     },
     {
-      header: 'Nombre',
+      header: t('accounting.common.name'),
       sortable: true,
       sortAccessor: (item: any) => item.name || '',
       accessor: 'name',
     },
-    { header: 'Inicio', cell: (c: any) => new Date(c.startDate).toLocaleDateString() },
-    { header: 'Fin', cell: (c: any) => new Date(c.endDate).toLocaleDateString() },
+    { header: t('accounting.periods.start'), cell: (c: any) => formatDate(c.startDate) },
+    { header: t('accounting.periods.end'), cell: (c: any) => formatDate(c.endDate) },
     {
-      header: 'Estado',
+      header: t('accounting.common.status'),
       cell: (c: any) => {
         const overdue = c.status === 'O' && new Date(c.endDate) < new Date();
         return overdue ? (
-          <Badge variant="warning">Pendiente cierre</Badge>
+          <Badge variant="warning">{t('accounting.periods.pendingClose')}</Badge>
         ) : c.status === 'O' ? (
-          <Badge variant="success">Abierto</Badge>
+          <Badge variant="success">{t('accounting.periods.open')}</Badge>
         ) : (
-          <Badge variant="neutral">Cerrado</Badge>
+          <Badge variant="neutral">{t('accounting.periods.closedStatus')}</Badge>
         );
       },
     },
@@ -161,14 +167,14 @@ export const AccountingPeriods: React.FC = () => {
     ...(c.status === 'O' && canWrite
       ? [
           {
-            label: 'Cerrar período',
+            label: t('accounting.periods.closeAction'),
             icon: <Lock size={14} />,
             onClick: () => openClosePreview(c.id),
           },
         ]
       : []),
     {
-      label: 'Eliminar',
+      label: t('accounting.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       disabled: !canDelete,
@@ -179,8 +185,8 @@ export const AccountingPeriods: React.FC = () => {
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Periodos Contables"
-        subtitle="Define los ejercicios o años fiscales para acotar la contabilidad y series."
+        title={t('accounting.periods.title')}
+        subtitle={t('accounting.periods.subtitle')}
         icon={<Calendar size={18} />}
         size="lg"
       />
@@ -189,7 +195,7 @@ export const AccountingPeriods: React.FC = () => {
         <form onSubmit={handleSubmit} className="p-6 flex flex-col md:flex-row gap-4 items-center">
           <div className="flex-[1]">
             <Input
-              placeholder="Code (Ej: 2024)"
+              placeholder={t('accounting.periods.codePlaceholder')}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               required
@@ -197,7 +203,7 @@ export const AccountingPeriods: React.FC = () => {
           </div>
           <div className="flex-[2]">
             <Input
-              placeholder="Nombre (Ej: Ejercicio 2024)"
+              placeholder={t('accounting.periods.namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -215,7 +221,7 @@ export const AccountingPeriods: React.FC = () => {
             className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all"
           >
             {isSubmitting ? <Loader size="sm" variant="white" /> : <Plus size={18} />}
-            Crear
+            {t('accounting.common.create')}
           </Button>
         </form>
       </Card>
@@ -239,33 +245,35 @@ interface ClosePreviewBodyProps {
   onConfirm: () => void;
 }
 
-/** Líneas del asiento de regularización que se propone al cerrar el período. */
-const previewColumns: TableColumn<any>[] = [
-  {
-    header: 'Cuenta',
-    cell: (l) => <span className="font-mono text-xs">{l.accountId}</span>,
-  },
-  { header: 'Descripción', accessor: 'description' },
-  {
-    header: 'Debe',
-    align: 'right',
-    cell: (l) => (Number(l.debit) > 0 ? Number(l.debit).toFixed(2) : ''),
-  },
-  {
-    header: 'Haber',
-    align: 'right',
-    cell: (l) => (Number(l.credit) > 0 ? Number(l.credit).toFixed(2) : ''),
-  },
-];
-
 const ClosePreviewBody: React.FC<ClosePreviewBodyProps> = ({ preview, onCancel, onConfirm }) => {
+  const { t } = useI18n();
+
+  /** Líneas del asiento de regularización que se propone al cerrar el período. */
+  const previewColumns: TableColumn<any>[] = [
+    {
+      header: t('accounting.common.account'),
+      cell: (l) => <span className="font-mono text-xs">{l.accountId}</span>,
+    },
+    { header: t('accounting.common.description'), accessor: 'description' },
+    {
+      header: t('accounting.common.debit'),
+      align: 'right',
+      cell: (l) => (Number(l.debit) > 0 ? Number(l.debit).toFixed(2) : ''),
+    },
+    {
+      header: t('accounting.common.credit'),
+      align: 'right',
+      cell: (l) => (Number(l.credit) > 0 ? Number(l.credit).toFixed(2) : ''),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {preview.blockers?.length > 0 && (
         <div className="border border-danger/30 bg-danger-bg rounded-lg p-4 space-y-1">
           <div className="flex items-center gap-2 font-semibold text-danger-fg">
             <AlertTriangle size={16} />
-            Bloqueadores:
+            {t('accounting.periods.blockers')}
           </div>
           <ul className="list-disc ml-6 text-sm text-danger-fg">
             {preview.blockers.map((b: string, i: number) => (
@@ -277,9 +285,9 @@ const ClosePreviewBody: React.FC<ClosePreviewBodyProps> = ({ preview, onCancel, 
 
       <div>
         <h3 className="font-bold mb-2">
-          Regularización — Resultado:{' '}
+          {t('accounting.periods.regularizationResult')}{' '}
           <span className={preview.resultAmount >= 0 ? 'text-success-fg' : 'text-danger-fg'}>
-            {Number(preview.resultAmount).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €
+            {formatNumber(Number(preview.resultAmount), { minimumFractionDigits: 2 })} €
           </span>
         </h3>
         {/* La Table ya trae cabecera y estado vacío: el <table> a mano y el
@@ -290,28 +298,27 @@ const ClosePreviewBody: React.FC<ClosePreviewBodyProps> = ({ preview, onCancel, 
             columns={previewColumns}
             data={preview.regularizationLines || []}
             rowKey={(_l, i) => i}
-            emptyMessage="Sin resultados a regularizar."
+            emptyMessage={t('accounting.periods.noRegularization')}
           />
         </Card>
       </div>
 
       <div>
         <h3 className="font-bold mb-2">
-          Siguiente período: <code>{preview.nextPeriodCode}</code> ({preview.nextPeriodStart} →{' '}
-          {preview.nextPeriodEnd})
+          {t('accounting.periods.nextPeriod')} <code>{preview.nextPeriodCode}</code> (
+          {preview.nextPeriodStart} → {preview.nextPeriodEnd})
         </h3>
         <p className="text-sm text-fg-muted mb-2">
-          Se generará asiento de apertura con {preview.openingLines?.length || 0} línea(s) de
-          saldos.
+          {t('accounting.periods.openingLines', { count: preview.openingLines?.length || 0 })}
         </p>
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
         <Button type="button" variant="secondary" onClick={onCancel}>
-          Cancelar
+          {t('accounting.common.cancel')}
         </Button>
         <Button type="button" onClick={onConfirm} disabled={preview.blockers?.length > 0}>
-          Confirmar cierre
+          {t('accounting.periods.confirmClose')}
         </Button>
       </div>
     </div>

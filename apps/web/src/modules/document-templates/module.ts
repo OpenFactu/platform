@@ -19,14 +19,14 @@ export const documentTemplatesModule: ModuleManifest = {
     {
       pattern: '/document-templates',
       Component: DocumentTemplates,
-      title: 'Plantillas PDF',
+      title: 'templates.nav.pdfTemplates',
       iconName: 'FileCode',
       permissionPath: '/document-templates',
     },
     {
       pattern: '/document-templates/:id/designer',
       Component: DocumentTemplateDesigner,
-      title: 'Diseñador de plantilla',
+      title: 'templates.nav.designer',
       iconName: 'FileCode',
       permissionPath: '/document-templates',
     },

@@ -16,6 +16,8 @@ import {
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate } from '@/i18n/format';
 import { ScrollText, Plus, Trash2, Pencil, CheckCircle, Undo2 } from 'lucide-react';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 import { journalEntriesApi, chartOfAccountsApi, periodsApi } from '../api';
@@ -46,15 +48,16 @@ interface Entry {
   lines?: Line[];
 }
 
+/** Claves i18n del origen del asiento: se traducen al pintar. */
 const SOURCE_LABELS: Record<string, string> = {
-  manual: 'Manual',
-  sales_invoice: 'Factura venta',
-  purchase_invoice: 'Factura compra',
-  payment: 'Pago',
-  payroll: 'Nómina',
-  period_close: 'Cierre',
-  period_open: 'Apertura',
-  reversal: 'Reversión',
+  manual: 'accounting.journal.sources.manual',
+  sales_invoice: 'accounting.journal.sources.salesInvoice',
+  purchase_invoice: 'accounting.journal.sources.purchaseInvoice',
+  payment: 'accounting.journal.sources.payment',
+  payroll: 'accounting.journal.sources.payroll',
+  period_close: 'accounting.journal.sources.periodClose',
+  period_open: 'accounting.journal.sources.periodOpen',
+  reversal: 'accounting.journal.sources.reversal',
 };
 
 const STATUS_VARIANT: Record<string, any> = {
@@ -63,13 +66,14 @@ const STATUS_VARIANT: Record<string, any> = {
   reversed: 'warning',
 };
 const STATUS_LABEL: Record<string, string> = {
-  draft: 'Borrador',
-  posted: 'Asentado',
-  reversed: 'Reversado',
+  draft: 'accounting.journal.statuses.draft',
+  posted: 'accounting.journal.statuses.posted',
+  reversed: 'accounting.journal.statuses.reversed',
 };
 
 export const JournalEntries: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -100,7 +104,7 @@ export const JournalEntries: React.FC = () => {
       setAccounts(Array.isArray(r2) ? r2 : []);
       setPeriods(Array.isArray(r3) ? r3 : []);
     } catch {
-      toast.error('Error al cargar asientos');
+      toast.error(t('accounting.journal.loadError'));
     } finally {
       setLoading(false);
     }
@@ -172,11 +176,11 @@ export const JournalEntries: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!header.periodId) {
-      toast.error('Debes elegir un período');
+      toast.error(t('accounting.journal.periodRequired'));
       return;
     }
     if (lines.length < 2) {
-      toast.error('Un asiento necesita al menos 2 líneas');
+      toast.error(t('accounting.journal.minLines'));
       return;
     }
     // Antes lo cubría el `required` del <select> nativo de la línea. SearchableSelect
@@ -184,12 +188,15 @@ export const JournalEntries: React.FC = () => {
     // enviaría con líneas sin cuenta.
     const sinCuenta = lines.findIndex((l) => !l.accountId);
     if (sinCuenta !== -1) {
-      toast.error(`La línea ${sinCuenta + 1} no tiene cuenta`);
+      toast.error(t('accounting.journal.lineWithoutAccount', { line: sinCuenta + 1 }));
       return;
     }
     if (!balanced) {
       toast.error(
-        `Asiento descuadrado: debe ${totalDebit.toFixed(2)} ≠ haber ${totalCredit.toFixed(2)}`,
+        t('accounting.journal.unbalanced', {
+          debit: totalDebit.toFixed(2),
+          credit: totalCredit.toFixed(2),
+        }),
       );
       return;
     }
@@ -201,11 +208,11 @@ export const JournalEntries: React.FC = () => {
       // se pueden eliminar y recrear si hace falta.
       if (editing) await journalEntriesApi.update(editing.id, body);
       else await journalEntriesApi.create(body);
-      toast.success('Asiento creado en borrador');
+      toast.success(t('accounting.journal.createdDraft'));
       closeForm();
       fetchAll();
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Error al guardar');
+      toast.error((err instanceof Error && err.message) || t('accounting.common.errorSaving'));
     } finally {
       setSubmitting(false);
     }
@@ -214,47 +221,52 @@ export const JournalEntries: React.FC = () => {
   const handlePost = async (id: string) => {
     try {
       const data = await journalEntriesApi.post(id);
-      toast.success(`Asiento nº ${data.number} posteado`);
+      toast.success(t('accounting.journal.posted', { number: data.number ?? '' }));
       fetchAll();
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Error al postear');
+      toast.error((err instanceof Error && err.message) || t('accounting.journal.postError'));
     }
   };
 
   const handleReverse = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Reversar asiento',
-      message:
-        'Se creará un contra-asiento que invierte debe y haber, y el original quedará marcado como reversado.',
+      title: t('accounting.journal.reverseTitle'),
+      message: t('accounting.journal.reverseMessage'),
       tone: 'warning',
-      confirmLabel: 'Reversar',
+      confirmLabel: t('accounting.journal.reverse'),
     });
     if (!ok) return;
     try {
       await journalEntriesApi.reverse(id);
-      toast.success('Reversión creada y posteada');
+      toast.success(t('accounting.journal.reversed'));
       fetchAll();
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Error al reversar');
+      toast.error((err instanceof Error && err.message) || t('accounting.journal.reverseError'));
     }
   };
 
   const columns: TableColumn<Entry>[] = [
     {
-      header: 'Nº',
+      header: t('accounting.journal.number'),
       cell: (r: Entry) =>
         r.status === 'draft' ? <span className="text-fg-subtle">—</span> : <b>{r.number}</b>,
     },
-    { header: 'Fecha', cell: (r: Entry) => new Date(r.date).toLocaleDateString() },
-    { header: 'Concepto', accessor: 'description' },
+    { header: t('accounting.common.date'), cell: (r: Entry) => formatDate(r.date) },
+    { header: t('accounting.common.concept'), accessor: 'description' },
     {
-      header: 'Origen',
-      cell: (r: Entry) => <Badge variant="info">{SOURCE_LABELS[r.source] || r.source}</Badge>,
+      header: t('accounting.journal.source'),
+      cell: (r: Entry) => (
+        <Badge variant="info">
+          {SOURCE_LABELS[r.source] ? t(SOURCE_LABELS[r.source]) : r.source}
+        </Badge>
+      ),
     },
     {
-      header: 'Estado',
+      header: t('accounting.common.status'),
       cell: (r: Entry) => (
-        <Badge variant={STATUS_VARIANT[r.status] || 'neutral'}>{STATUS_LABEL[r.status]}</Badge>
+        <Badge variant={STATUS_VARIANT[r.status] || 'neutral'}>
+          {STATUS_LABEL[r.status] ? t(STATUS_LABEL[r.status]) : r.status}
+        </Badge>
       ),
     },
   ];
@@ -264,12 +276,28 @@ export const JournalEntries: React.FC = () => {
   // (draft / posted) y de permiso se declaran una vez en lugar de duplicarse.
   const rowActions = (r: Entry): RowAction[] => [
     ...(r.status === 'draft' && canWrite
-      ? [{ label: 'Postear', icon: <CheckCircle size={14} />, onClick: () => handlePost(r.id) }]
+      ? [
+          {
+            label: t('accounting.journal.post'),
+            icon: <CheckCircle size={14} />,
+            onClick: () => handlePost(r.id),
+          },
+        ]
       : []),
     ...(r.status === 'posted' && canWrite
-      ? [{ label: 'Reversar', icon: <Undo2 size={14} />, onClick: () => handleReverse(r.id) }]
+      ? [
+          {
+            label: t('accounting.journal.reverse'),
+            icon: <Undo2 size={14} />,
+            onClick: () => handleReverse(r.id),
+          },
+        ]
       : []),
-    { label: 'Ver / Editar', icon: <Pencil size={14} />, onClick: () => openEdit(r) },
+    {
+      label: t('accounting.journal.viewEdit'),
+      icon: <Pencil size={14} />,
+      onClick: () => openEdit(r),
+    },
   ];
 
   const formOpen = editing !== null || lines.length > 0;
@@ -278,15 +306,15 @@ export const JournalEntries: React.FC = () => {
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Asientos contables"
-        subtitle="Doble partida. Los asientos posteados son inmutables — para corregir se reversan."
+        title={t('accounting.journal.title')}
+        subtitle={t('accounting.journal.subtitle')}
         icon={<ScrollText size={18} />}
         size="lg"
         actions={
           canWrite && (
             <Button type="button" onClick={openCreate} className="flex items-center gap-2">
               <Plus size={18} />
-              Nuevo asiento
+              {t('accounting.journal.new')}
             </Button>
           )
         }
@@ -297,26 +325,26 @@ export const JournalEntries: React.FC = () => {
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <DatePicker
-                label="Fecha"
+                label={t('accounting.common.date')}
                 value={(header.date as string) || null}
                 onChange={(v) => setHeader({ ...header, date: v ?? '' })}
                 disabled={isReadOnly}
                 required
               />
               <Select
-                label="Período"
+                label={t('accounting.journal.period')}
                 options={periods.map((p) => ({
                   value: p.id,
-                  label: `${p.code} — ${p.name}${p.status !== 'O' ? ' (cerrado)' : ''}`,
+                  label: `${p.code} — ${p.name}${p.status !== 'O' ? ` ${t('accounting.journal.closedSuffix')}` : ''}`,
                   disabled: p.status !== 'O',
                 }))}
                 value={header.periodId || ''}
                 onChange={(v) => setHeader({ ...header, periodId: v })}
                 disabled={isReadOnly}
-                placeholder="— seleccionar —"
+                placeholder={t('accounting.common.selectPlaceholder')}
               />
               <Input
-                label="Concepto"
+                label={t('accounting.common.concept')}
                 value={(header.description as string) || ''}
                 onChange={(e) => setHeader({ ...header, description: e.target.value })}
                 disabled={isReadOnly}
@@ -331,10 +359,10 @@ export const JournalEntries: React.FC = () => {
                 <thead className="bg-bg-muted text-fg-body">
                   <tr>
                     <th className="p-2 text-left">#</th>
-                    <th className="p-2 text-left">Cuenta</th>
-                    <th className="p-2 text-left">Descripción</th>
-                    <th className="p-2 text-right">Debe</th>
-                    <th className="p-2 text-right">Haber</th>
+                    <th className="p-2 text-left">{t('accounting.common.account')}</th>
+                    <th className="p-2 text-left">{t('accounting.common.description')}</th>
+                    <th className="p-2 text-right">{t('accounting.common.debit')}</th>
+                    <th className="p-2 text-right">{t('accounting.common.credit')}</th>
                     <th className="p-2"></th>
                   </tr>
                 </thead>
@@ -388,7 +416,7 @@ export const JournalEntries: React.FC = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => removeLine(i)}
-                            title="Quitar línea"
+                            title={t('accounting.journal.removeLine')}
                           >
                             <Trash2 size={14} />
                           </Button>
@@ -400,7 +428,7 @@ export const JournalEntries: React.FC = () => {
                 <tfoot className="bg-bg-muted font-semibold">
                   <tr>
                     <td colSpan={3} className="p-2 text-right">
-                      Totales:
+                      {t('accounting.journal.totals')}
                     </td>
                     <td className="p-2 text-right">{totalDebit.toFixed(2)}</td>
                     <td className="p-2 text-right">{totalCredit.toFixed(2)}</td>
@@ -418,7 +446,7 @@ export const JournalEntries: React.FC = () => {
                 <div className="p-2 bg-bg-muted border-t border-border-default">
                   <Button type="button" variant="ghost" size="sm" onClick={addLine}>
                     <Plus size={14} className="mr-1" />
-                    Añadir línea
+                    {t('accounting.journal.addLine')}
                   </Button>
                 </div>
               )}
@@ -433,11 +461,11 @@ export const JournalEntries: React.FC = () => {
 
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={closeForm}>
-                {isReadOnly ? 'Cerrar' : 'Cancelar'}
+                {isReadOnly ? t('accounting.common.close') : t('accounting.common.cancel')}
               </Button>
               {!isReadOnly && (
                 <Button type="submit" disabled={submitting || !balanced}>
-                  Guardar borrador
+                  {t('accounting.journal.saveDraft')}
                 </Button>
               )}
             </div>

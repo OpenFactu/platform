@@ -23,10 +23,11 @@ export interface IdentificationView {
   allowedActions: TimeclockEntry['kind'][];
   expiresAt: string;
 }
+/** Claves de i18n: tradúcelas al pintar con `t(WORK_STATE_LABEL[s])`. */
 export const WORK_STATE_LABEL = {
-  closed: 'Sin jornada abierta',
-  working: 'Trabajando',
-  on_break: 'En pausa',
+  closed: 'hr.workState.closed',
+  working: 'hr.workState.working',
+  on_break: 'hr.workState.onBreak',
 };
 
 /** Fila del export de fichajes (usada por Timeclock.tsx para generar el .xlsx en cliente). */

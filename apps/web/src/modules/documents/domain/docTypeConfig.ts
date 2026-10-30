@@ -18,6 +18,7 @@ import {
   DOC_TYPE_LABELS,
   decomposeDocType,
 } from '@openfactu/common';
+import { t } from '@/i18n/i18n';
 import { getCachedDocType } from './docTypeRegistry';
 
 export interface DocTypeConfig {
@@ -30,44 +31,76 @@ export interface DocTypeConfig {
   statusOptions: { label: string; value: string }[];
 }
 
-/** Mismas etiquetas de estado que usa `statusBadgeProps` en documentLineCells.tsx. */
+/**
+ * Mismas etiquetas de estado que usa `statusBadgeProps` en documentLineCells.tsx.
+ * Guardan la CLAVE de i18n; `buildConfig` las traduce al construir.
+ */
 const STATUS_OPTIONS_BY_KIND: Record<DocKind, { label: string; value: string }[]> = {
   [DocKind.Invoice]: [
-    { label: 'Borrador', value: 'D' },
-    { label: 'Asentado', value: DocStatus.Open },
-    { label: 'Cancelado', value: DocStatus.Cancelled },
+    { label: 'doc.status.draft', value: 'D' },
+    { label: 'doc.status.posted', value: DocStatus.Open },
+    { label: 'doc.status.cancelled', value: DocStatus.Cancelled },
   ],
   [DocKind.Order]: [
-    { label: 'Abierto', value: DocStatus.Open },
-    { label: 'Parcial', value: DocStatus.Partial },
-    { label: 'Cerrado', value: DocStatus.Closed },
-    { label: 'Cancelado', value: DocStatus.Cancelled },
+    { label: 'doc.status.open', value: DocStatus.Open },
+    { label: 'doc.status.partial', value: DocStatus.Partial },
+    { label: 'doc.status.closed', value: DocStatus.Closed },
+    { label: 'doc.status.cancelled', value: DocStatus.Cancelled },
   ],
   [DocKind.DeliveryNote]: [
-    { label: 'Abierto', value: DocStatus.Open },
-    { label: 'Facturado', value: DocStatus.Closed },
-    { label: 'Cancelado', value: DocStatus.Cancelled },
+    { label: 'doc.status.open', value: DocStatus.Open },
+    { label: 'doc.status.invoiced', value: DocStatus.Closed },
+    { label: 'doc.status.cancelled', value: DocStatus.Cancelled },
   ],
 };
 
 const PARTNER_LABEL_BY_DOC_TYPE: Record<DocType, { label: string; placeholder: string }> = {
-  [DocType.SalesOrder]: { label: 'Cliente', placeholder: 'Buscar cliente...' },
-  [DocType.SalesDeliveryNote]: { label: 'Cliente', placeholder: 'Buscar cliente...' },
-  [DocType.SalesInvoice]: { label: 'Cliente', placeholder: 'Buscar cliente...' },
-  [DocType.PurchaseOrder]: { label: 'Proveedor', placeholder: 'Buscar proveedor...' },
-  [DocType.PurchaseDeliveryNote]: { label: 'Proveedor', placeholder: 'Buscar proveedor...' },
-  [DocType.PurchaseInvoice]: { label: 'Proveedor', placeholder: 'Buscar proveedor...' },
+  [DocType.SalesOrder]: {
+    label: 'doc.partner.customer',
+    placeholder: 'doc.partner.searchCustomer',
+  },
+  [DocType.SalesDeliveryNote]: {
+    label: 'doc.partner.customer',
+    placeholder: 'doc.partner.searchCustomer',
+  },
+  [DocType.SalesInvoice]: {
+    label: 'doc.partner.customer',
+    placeholder: 'doc.partner.searchCustomer',
+  },
+  [DocType.PurchaseOrder]: {
+    label: 'doc.partner.supplier',
+    placeholder: 'doc.partner.searchSupplier',
+  },
+  [DocType.PurchaseDeliveryNote]: {
+    label: 'doc.partner.supplier',
+    placeholder: 'doc.partner.searchSupplier',
+  },
+  [DocType.PurchaseInvoice]: {
+    label: 'doc.partner.supplier',
+    placeholder: 'doc.partner.searchSupplier',
+  },
+};
+
+// DOC_TYPE_LABELS de @openfactu/common viene en español: para los 6 tipos core
+// se usa una clave local (los tipos del servidor traen ya su nombre).
+const LABEL_BY_DOC_TYPE: Record<DocType, string> = {
+  [DocType.SalesOrder]: 'doc.types.SO',
+  [DocType.SalesDeliveryNote]: 'doc.types.SDN',
+  [DocType.SalesInvoice]: 'doc.types.SINV',
+  [DocType.PurchaseOrder]: 'doc.types.PO',
+  [DocType.PurchaseDeliveryNote]: 'doc.types.PDN',
+  [DocType.PurchaseInvoice]: 'doc.types.PINV',
 };
 
 // DOC_TYPE_LABELS son sustantivos compuestos ("Pedido Venta") — pluralizar
 // pegando una 's' da "Pedido Ventas" (mal). Tabla explícita en su lugar.
 const LABEL_PLURAL_BY_DOC_TYPE: Record<DocType, string> = {
-  [DocType.SalesOrder]: 'Pedidos Venta',
-  [DocType.SalesDeliveryNote]: 'Albaranes Venta',
-  [DocType.SalesInvoice]: 'Facturas Venta',
-  [DocType.PurchaseOrder]: 'Pedidos Compra',
-  [DocType.PurchaseDeliveryNote]: 'Albaranes Compra',
-  [DocType.PurchaseInvoice]: 'Facturas Compra',
+  [DocType.SalesOrder]: 'doc.typesPlural.SO',
+  [DocType.SalesDeliveryNote]: 'doc.typesPlural.SDN',
+  [DocType.SalesInvoice]: 'doc.typesPlural.SINV',
+  [DocType.PurchaseOrder]: 'doc.typesPlural.PO',
+  [DocType.PurchaseDeliveryNote]: 'doc.typesPlural.PDN',
+  [DocType.PurchaseInvoice]: 'doc.typesPlural.PINV',
 };
 
 function buildConfig(docType: DocType): DocTypeConfig {
@@ -76,11 +109,11 @@ function buildConfig(docType: DocType): DocTypeConfig {
   return {
     docType,
     apiEndpoint: DOC_TYPE_API_ENDPOINTS[docType],
-    label: DOC_TYPE_LABELS[docType],
-    labelPlural: LABEL_PLURAL_BY_DOC_TYPE[docType],
-    partnerLabel: partner.label,
-    partnerPlaceholder: partner.placeholder,
-    statusOptions: STATUS_OPTIONS_BY_KIND[kind],
+    label: LABEL_BY_DOC_TYPE[docType] ? t(LABEL_BY_DOC_TYPE[docType]) : DOC_TYPE_LABELS[docType],
+    labelPlural: t(LABEL_PLURAL_BY_DOC_TYPE[docType]),
+    partnerLabel: t(partner.label),
+    partnerPlaceholder: t(partner.placeholder),
+    statusOptions: STATUS_OPTIONS_BY_KIND[kind].map((o) => ({ ...o, label: t(o.label) })),
   };
 }
 
@@ -96,8 +129,8 @@ export const DOC_TYPE_CONFIGS: Record<DocType, DocTypeConfig> = Object.fromEntri
  * llamador debe guardar contra ello (Documents.tsx ya lo hace).
  */
 export function getDocTypeConfig(dt: DocType): DocTypeConfig {
-  const staticCfg = DOC_TYPE_CONFIGS[dt];
-  if (staticCfg) return staticCfg;
+  // Se reconstruye en cada llamada para que las etiquetas sigan al idioma activo.
+  if (DOC_TYPE_CONFIGS[dt]) return buildConfig(dt);
   const server = getCachedDocType(dt);
   if (server) {
     return {

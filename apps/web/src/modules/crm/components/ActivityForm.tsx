@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { DatePicker, Input, Modal, Select, Switch, Textarea, useToast } from '@openfactu/ui';
 import { PartnerSelect } from './PartnerSelect';
@@ -17,6 +18,7 @@ interface Props {
 
 export const ActivityForm: React.FC<Props> = ({ draft, askPartner, onClose, onSaved }) => {
   const toast = useToast();
+  const { t } = useI18n();
   const [form, setForm] = useState<ActivityDraft>({});
   const [saving, setSaving] = useState(false);
 
@@ -33,11 +35,11 @@ export const ActivityForm: React.FC<Props> = ({ draft, askPartner, onClose, onSa
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.subject?.trim()) {
-      toast.error('El asunto es obligatorio');
+      toast.error(t('crm.activityForm.subjectRequired'));
       return;
     }
     if (!linked && !form.partnerId) {
-      toast.error('Elige el interlocutor');
+      toast.error(t('crm.activityForm.partnerRequired'));
       return;
     }
     setSaving(true);
@@ -58,7 +60,7 @@ export const ActivityForm: React.FC<Props> = ({ draft, askPartner, onClose, onSa
       onSaved();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo guardar');
+      toast.error(err instanceof Error ? err.message : t('crm.errors.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -68,21 +70,21 @@ export const ActivityForm: React.FC<Props> = ({ draft, askPartner, onClose, onSa
     <Modal
       isOpen={!!draft}
       onClose={onClose}
-      title={form.id ? 'Editar actividad' : 'Nueva actividad'}
+      title={form.id ? t('crm.activityForm.editTitle') : t('crm.activityForm.newTitle')}
       size="lg"
       onSubmit={save}
-      primaryAction={{ label: 'Guardar', type: 'submit', isLoading: saving }}
+      primaryAction={{ label: t('crm.common.save'), type: 'submit', isLoading: saving }}
     >
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-[10rem_1fr] gap-3">
           <Select
-            label="Tipo"
-            options={ACTIVITY_TYPE_OPTIONS}
+            label={t('crm.activityForm.type')}
+            options={ACTIVITY_TYPE_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
             value={form.type ?? 'call'}
             onChange={(v) => set({ type: v as ActivityType })}
           />
           <Input
-            label="Asunto"
+            label={t('crm.activityForm.subject')}
             value={form.subject ?? ''}
             onChange={(e) => set({ subject: e.target.value })}
             required
@@ -92,20 +94,20 @@ export const ActivityForm: React.FC<Props> = ({ draft, askPartner, onClose, onSa
           <PartnerSelect value={form.partnerId ?? ''} onChange={(v) => set({ partnerId: v })} />
         )}
         <Textarea
-          label="Detalle"
+          label={t('crm.activityForm.detail')}
           rows={3}
           value={form.body ?? ''}
           onChange={(e) => set({ body: e.target.value })}
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
           <DatePicker
-            label="Fecha"
+            label={t('crm.common.date')}
             value={form.dueAt ? form.dueAt.slice(0, 10) : null}
             onChange={(v) => set({ dueAt: v ?? null })}
           />
           <OwnerSelect value={form.ownerUserId} onChange={(v) => set({ ownerUserId: v })} />
           <Switch
-            label="Ya está hecha"
+            label={t('crm.activityForm.alreadyDone')}
             checked={!!form.done}
             onChange={(checked) => set({ done: checked })}
           />

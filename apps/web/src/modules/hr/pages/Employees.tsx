@@ -9,12 +9,14 @@ import { employeesApi, departmentsApi } from '../api';
 import type { Employee } from '../domain/employee';
 import { EmployeeCreateWizard } from '../components/EmployeeCreateWizard';
 import { EMPLOYEE_STATUS_LABEL } from '../domain/employee';
+import { useI18n } from '@/i18n/I18nContext';
 
 export function Employees() {
   const { user } = useAuth();
   return <EmployeeList key={user?.tenantId} />;
 }
 function EmployeeList() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -43,7 +45,7 @@ function EmployeeList() {
         }
       })
       .catch(() => {
-        if (active) toast.error('No se pudo cargar el personal');
+        if (active) toast.error(t('hr.employees.loadFailed'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -71,24 +73,30 @@ function EmployeeList() {
     if (
       !canDelete ||
       !(await popup.confirm({
-        title: 'Eliminar empleado',
-        message: `¿Quieres eliminar a ${employee.firstName} ${employee.lastName}?`,
-        confirmLabel: 'Eliminar',
+        title: t('hr.employees.deleteTitle'),
+        message: t('hr.employees.deleteMessage', {
+          name: `${employee.firstName} ${employee.lastName}`,
+        }),
+        confirmLabel: t('hr.common.delete'),
       }))
     )
       return;
     try {
       await employeesApi.remove(employee.id);
       setRows((previous) => previous.filter((r) => r.id !== employee.id));
-      toast.success('Empleado eliminado');
+      toast.success(t('hr.employees.deleted'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar el empleado');
+      toast.error(e instanceof Error ? e.message : t('hr.employees.deleteFailed'));
     }
   };
   const rowActions = (employee: Employee): RowAction[] => [
-    { label: 'Abrir ficha', icon: <ArrowUpRight size={14} />, onClick: () => open(employee) },
     {
-      label: 'Eliminar',
+      label: t('hr.employees.open'),
+      icon: <ArrowUpRight size={14} />,
+      onClick: () => open(employee),
+    },
+    {
+      label: t('hr.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       disabled: !canDelete,
@@ -98,15 +106,15 @@ function EmployeeList() {
   return (
     <div className="p-4 w-full space-y-6">
       <PageHeader
-        title="Empleados"
-        subtitle="Gestiona los datos, el acceso y las credenciales de tu equipo."
+        title={t('hr.employees.title')}
+        subtitle={t('hr.employees.subtitle')}
         icon={<UserRound size={18} />}
         size="lg"
         actions={
           canWrite && (
             <Button onClick={() => setCreating(true)} className="gap-2">
               <Plus size={16} />
-              Nuevo empleado
+              {t('hr.employeeWizard.title')}
             </Button>
           )
         }
@@ -115,14 +123,14 @@ function EmployeeList() {
         <div className="p-4 flex flex-wrap gap-4 items-center justify-between border-b border-border-subtle">
           <div className="w-full sm:max-w-sm">
             <Input
-              aria-label="Buscar empleados"
-              placeholder="Buscar por nombre, código o departamento…"
+              aria-label={t('hr.employees.searchAria')}
+              placeholder={t('hr.employees.searchPlaceholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
           <span className="text-sm text-fg-muted">
-            {filtered.length} {filtered.length === 1 ? 'empleado' : 'empleados'}
+            {t('hr.employees.count', { count: filtered.length })}
           </span>
         </div>
         <Table
@@ -131,9 +139,15 @@ function EmployeeList() {
           onRowClick={open}
           rowActions={rowActions}
           columns={[
-            { header: 'Código', accessor: 'code', sortable: true, primary: true, card: 'subtitle' },
             {
-              header: 'Nombre completo',
+              header: t('hr.common.code'),
+              accessor: 'code',
+              sortable: true,
+              primary: true,
+              card: 'subtitle',
+            },
+            {
+              header: t('hr.employees.fullName'),
               card: 'title',
               cell: (r: Employee) => (
                 <span className="font-medium">
@@ -144,13 +158,13 @@ function EmployeeList() {
               sortAccessor: (r: Employee) => `${r.lastName} ${r.firstName}`,
             },
             {
-              header: 'Departamento',
+              header: t('hr.common.department'),
               card: 'meta',
               cell: (r: Employee) => (r.departmentId ? departmentById[r.departmentId] || '—' : '—'),
             },
-            { header: 'Email', accessor: 'email' },
+            { header: t('hr.employees.email'), accessor: 'email' },
             {
-              header: 'Estado',
+              header: t('hr.common.status'),
               card: 'status',
               cell: (r: Employee) => (
                 <Badge
@@ -158,7 +172,7 @@ function EmployeeList() {
                     r.status === 'active' ? 'success' : r.status === 'leave' ? 'warning' : 'neutral'
                   }
                 >
-                  {EMPLOYEE_STATUS_LABEL[r.status]}
+                  {t(EMPLOYEE_STATUS_LABEL[r.status])}
                 </Badge>
               ),
             },

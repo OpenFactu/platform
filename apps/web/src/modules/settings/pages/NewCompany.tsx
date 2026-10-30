@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Button, Input, PageHeader, Select, useToast } from '@openfactu/ui';
 import { Building, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { CountrySelect } from '@/components/geo/CountrySelect';
 import { RegionSelect } from '@/components/geo/RegionSelect';
 import { SubRegionSelect } from '@/components/geo/SubRegionSelect';
@@ -56,6 +57,7 @@ const EMPTY: FormState = {
 export const NewCompany: React.FC = () => {
   const { token, switchTenant } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [data, setData] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -65,22 +67,24 @@ export const NewCompany: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!data.name.trim()) {
-      toast.error('El nombre de la empresa es obligatorio');
+      toast.error(t('settings.newCompany.nameRequired'));
       return;
     }
     setSaving(true);
     try {
       const res = await coreApi.raw('POST', '/api/tenants', data);
       if (!res.ok) {
-        const err = res.data ?? { error: 'Error al crear empresa' };
-        throw new Error(err.error || 'Error al crear empresa');
+        const err = res.data ?? { error: t('settings.newCompany.createError') };
+        throw new Error(err.error || t('settings.newCompany.createError'));
       }
       const created = res.data;
       await switchTenant(created.id);
-      toast.success('Empresa creada y activada');
+      toast.success(t('settings.newCompany.created'));
       navigate('/');
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al crear empresa');
+      toast.error(
+        (e instanceof Error ? e.message : undefined) || t('settings.newCompany.createError'),
+      );
     } finally {
       setSaving(false);
     }
@@ -89,8 +93,8 @@ export const NewCompany: React.FC = () => {
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
       <PageHeader
-        title="Nueva Empresa"
-        subtitle="Se creará un nuevo esquema con los datos maestros por defecto."
+        title={t('settings.newCompany.title')}
+        subtitle={t('settings.newCompany.subtitle')}
         icon={<Building size={18} />}
         size="md"
         breadcrumbs={
@@ -99,7 +103,7 @@ export const NewCompany: React.FC = () => {
             variant="secondary"
             size="sm"
             onClick={() => navigate(-1)}
-            title="Volver"
+            title={t('settings.newCompany.back')}
             className="w-fit"
           >
             <ArrowLeft size={18} />
@@ -110,11 +114,11 @@ export const NewCompany: React.FC = () => {
       <Card>
         <div className="p-6 space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
-            País e identificación
+            {t('settings.newCompany.sectionIdentification')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <CountrySelect
-              label="País"
+              label={t('settings.newCompany.country')}
               value={data.country}
               onChange={(code) =>
                 setData((prev) => ({
@@ -128,7 +132,7 @@ export const NewCompany: React.FC = () => {
               }
             />
             <Input
-              label="Nombre de la empresa *"
+              label={t('settings.newCompany.name')}
               value={data.name}
               onChange={(e) => set('name', e.target.value)}
             />
@@ -145,9 +149,11 @@ export const NewCompany: React.FC = () => {
 
       <Card>
         <div className="p-6 space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">Domicilio</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
+            {t('settings.newCompany.sectionAddress')}
+          </h2>
           <Input
-            label="Dirección"
+            label={t('settings.newCompany.address')}
             value={data.address}
             onChange={(e) => set('address', e.target.value)}
           />
@@ -194,10 +200,12 @@ export const NewCompany: React.FC = () => {
 
       <Card>
         <div className="p-6 space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">Contacto</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
+            {t('settings.newCompany.sectionContact')}
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Email"
+              label={t('settings.newCompany.email')}
               type="email"
               value={data.email}
               onChange={(e) => set('email', e.target.value)}
@@ -209,7 +217,7 @@ export const NewCompany: React.FC = () => {
             />
             <div className="md:col-span-2">
               <Input
-                label="Web"
+                label={t('settings.newCompany.website')}
                 value={data.website}
                 onChange={(e) => set('website', e.target.value)}
                 placeholder="https://miempresa.com"
@@ -221,16 +229,18 @@ export const NewCompany: React.FC = () => {
 
       <Card>
         <div className="p-6 space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">Preferencias</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
+            {t('settings.newCompany.sectionPreferences')}
+          </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
-              label="Moneda"
+              label={t('settings.newCompany.currency')}
               options={CURRENCY_OPTIONS}
               value={data.currency}
               onChange={(v) => set('currency', v)}
             />
             <Input
-              label="Inicio del año fiscal (MM-DD)"
+              label={t('settings.newCompany.fiscalYearStart')}
               value={data.fiscalYearStart}
               onChange={(e) => set('fiscalYearStart', e.target.value)}
               placeholder="01-01"
@@ -241,11 +251,11 @@ export const NewCompany: React.FC = () => {
 
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={() => navigate(-1)} disabled={saving}>
-          Cancelar
+          {t('settings.newCompany.cancel')}
         </Button>
         <Button onClick={handleSubmit} disabled={saving}>
           <CheckCircle2 size={16} className="mr-2" />
-          {saving ? 'Creando...' : 'Crear empresa'}
+          {saving ? t('settings.newCompany.creating') : t('settings.newCompany.create')}
         </Button>
       </div>
     </div>

@@ -21,9 +21,11 @@ import { StepMapping } from '../components/StepMapping';
 import { StepMode } from '../components/StepMode';
 import { StepRun } from '../components/StepRun';
 import { JobHistory } from '../components/JobHistory';
+import { useI18n } from '@/i18n/I18nContext';
 
 export const DataImport: React.FC = () => {
   const wizard = useImportWizard();
+  const { t } = useI18n();
   const [params, setParams] = useSearchParams();
   const [tab, setTab] = useState<'wizard' | 'history'>('wizard');
 
@@ -54,8 +56,8 @@ export const DataImport: React.FC = () => {
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
       <PageHeader
-        title="Importación de datos"
-        subtitle="Sube un Excel o un CSV y cárgalo en Keirost pasando por las mismas validaciones que si lo teclearas."
+        title={t('dataImport.page.title')}
+        subtitle={t('dataImport.page.subtitle')}
         icon={<Upload size={18} />}
         size="md"
         divider
@@ -65,8 +67,8 @@ export const DataImport: React.FC = () => {
         value={tab}
         onChange={(v) => setTab(v as 'wizard' | 'history')}
         items={[
-          { key: 'wizard', label: 'Asistente' },
-          { key: 'history', label: 'Histórico' },
+          { key: 'wizard', label: t('dataImport.page.tabWizard') },
+          { key: 'history', label: t('dataImport.page.tabHistory') },
         ]}
       />
 
@@ -104,6 +106,7 @@ const Stepper: React.FC<{
   object: boolean;
   onGoTo: (step: WizardStep) => void;
 }> = ({ current, object, onGoTo }) => {
+  const { t } = useI18n();
   const currentIndex = STEP_ORDER.indexOf(current);
 
   return (
@@ -149,7 +152,7 @@ const Stepper: React.FC<{
               >
                 {done ? <Check size={12} strokeWidth={3} /> : i + 1}
               </span>
-              {STEP_LABELS[step]}
+              {t(STEP_LABELS[step])}
             </button>
           </React.Fragment>
         );
@@ -165,6 +168,7 @@ const StepBody: React.FC<{
   onLaunch: (dryRun: boolean) => void;
   onRestart: () => void;
 }> = ({ wizard, step, jobId, onLaunch, onRestart }) => {
+  const { t } = useI18n();
   if (step === 'object') {
     return (
       <StepObject
@@ -209,9 +213,7 @@ const StepBody: React.FC<{
   if (!wizard.sheet) {
     return (
       <Card>
-        <div className="p-6 text-sm text-fg-muted">
-          Vuelve al paso del fichero: no hay ninguno cargado.
-        </div>
+        <div className="p-6 text-sm text-fg-muted">{t('dataImport.page.noFile')}</div>
       </Card>
     );
   }
@@ -252,6 +254,7 @@ const WizardFooter: React.FC<{
   wizard: ReturnType<typeof useImportWizard>;
   step: WizardStep;
 }> = ({ wizard, step }) => {
+  const { t } = useI18n();
   if (step === 'run') return null;
 
   return (
@@ -262,10 +265,10 @@ const WizardFooter: React.FC<{
         disabled={step === 'object'}
         className="gap-1.5"
       >
-        <ArrowLeft size={15} /> Atrás
+        <ArrowLeft size={15} /> {t('dataImport.page.back')}
       </Button>
       <Button onClick={wizard.goNext} disabled={!wizard.canContinue} className="gap-1.5">
-        {step === 'mode' ? 'Simular e importar' : 'Continuar'}
+        {step === 'mode' ? t('dataImport.page.simulateAndImport') : t('dataImport.page.continue')}
         <ArrowRight size={15} />
       </Button>
     </div>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Button, Modal, useToast } from '@openfactu/ui';
-import { ArrowRight, Check } from 'lucide-react';
+import { Button, Modal, Stepper, useToast } from '@openfactu/ui';
+import { Check } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
 import { employeesApi } from '../api/employeesApi';
 import { EmployeePersonalFields, EmployeeWorkFields, type EmployeeValues } from './EmployeeFields';
 import type { Employee } from '../domain/employee';
@@ -19,6 +20,7 @@ export function EmployeeCreateWizard({
   const [step, setStep] = useState(1);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
+  const { t } = useI18n();
   const set = (key: keyof Employee, value: unknown) => setValues((v) => ({ ...v, [key]: value }));
   const ready = !!values.firstName?.trim() && !!values.lastName?.trim();
   const create = async () => {
@@ -26,9 +28,9 @@ export function EmployeeCreateWizard({
     setBusy(true);
     try {
       onCreated(await employeesApi.create(values));
-      toast.success('Empleado creado');
+      toast.success(t('hr.employeeWizard.created'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo crear el empleado.');
+      toast.error(e instanceof Error ? e.message : t('hr.employeeWizard.createFailed'));
     } finally {
       setBusy(false);
     }
@@ -39,28 +41,21 @@ export function EmployeeCreateWizard({
       onClose={() => {
         if (!busy) onClose();
       }}
-      title="Nuevo empleado"
+      title={t('hr.employeeWizard.title')}
       size="lg"
     >
       <div className="space-y-6">
-        <div className="flex flex-wrap items-center gap-3 border-b border-border-subtle pb-4">
-          <Button
-            type="button"
-            variant={step === 1 ? 'primary' : 'ghost'}
-            onClick={() => setStep(1)}
-          >
-            1 · Datos personales
-          </Button>
-          <ArrowRight size={14} className="text-fg-subtle" />
-          <Button
-            type="button"
-            variant={step === 2 ? 'primary' : 'ghost'}
-            disabled={!ready}
-            onClick={() => setStep(2)}
-          >
-            2 · Organización
-          </Button>
-        </div>
+        <Stepper
+          className="border-b border-border-subtle pb-4"
+          aria-label={t('hr.employeeWizard.stepsAria')}
+          current={step - 1}
+          allowForward={ready}
+          steps={[
+            { id: 'personal', label: t('hr.employeeWizard.stepPersonal') },
+            { id: 'org', label: t('hr.employeeWizard.stepOrg') },
+          ]}
+          onStepClick={(_, i) => setStep(i + 1)}
+        />
         {step === 1 ? (
           <EmployeePersonalFields values={values} set={set} />
         ) : (
@@ -71,12 +66,10 @@ export function EmployeeCreateWizard({
             costCenters={costCenters}
           />
         )}
-        <p className="text-sm text-fg-muted">
-          Después podrás asignar el usuario, el PIN y las tarjetas desde su ficha.
-        </p>
+        <p className="text-sm text-fg-muted">{t('hr.employeeWizard.hint')}</p>
         <div className="flex flex-wrap justify-end gap-2 border-t border-border-subtle pt-4">
           <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
-            Cancelar
+            {t('hr.common.cancel')}
           </Button>
           {step === 1 && (
             <Button
@@ -85,12 +78,12 @@ export function EmployeeCreateWizard({
               disabled={!ready || busy}
               onClick={() => setStep(2)}
             >
-              Continuar
+              {t('hr.employeeWizard.continue')}
             </Button>
           )}
           <Button type="button" disabled={!ready || busy} onClick={() => void create()}>
             <Check size={14} className="mr-2" />
-            {busy ? 'Creando…' : 'Crear y abrir ficha'}
+            {busy ? t('hr.employeeWizard.creating') : t('hr.employeeWizard.createAndOpen')}
           </Button>
         </div>
       </div>

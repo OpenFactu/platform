@@ -1,7 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTabs } from '@/context/TabsContext';
-import { Card, Button, Input, PageHeader, useToast, SearchableSelect, cn } from '@openfactu/ui';
+import {
+  Card,
+  Button,
+  Checkbox,
+  Input,
+  PageHeader,
+  useToast,
+  SearchableSelect,
+  cn,
+} from '@openfactu/ui';
 import { ArrowLeft, Save, PanelRightOpen, PanelRightClose, LayoutTemplate } from 'lucide-react';
 import {
   buildVisualTemplate,
@@ -20,6 +29,7 @@ import { compileCanvas } from './canvas/compileCanvas';
 import { buildSimpleLabelLayout, defaultSimpleArticleSettings } from './canvas/buildSimpleLabel';
 import { createEmptyLayout, type CanvasLayout } from './canvas/types';
 import { templatesApi } from '../api';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Layout-semilla para una plantilla nueva sin documento ligado:
@@ -42,6 +52,7 @@ interface Props {
 
 export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, token, tenantId }) => {
   const toast = useToast();
+  const { t } = useI18n();
   const DOC_TYPE_OPTIONS = useDocTypeOptions();
   const navigate = useNavigate();
   const { openTab } = useTabs();
@@ -53,7 +64,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   // la regeneración para que el preview muestre el diseño real.
   const isCanvasTemplate = (template as any)?.legacyHtml === false;
 
-  const [name, setName] = useState(template?.name || 'Nueva plantilla');
+  const [name, setName] = useState(template?.name || t('templates.editor.defaultName'));
   const [docType, setDocType] = useState<DocType>(template?.docType || 'SINV');
   const [isDefault, setIsDefault] = useState(!!template?.isDefault);
   // FREE y LABEL no tienen modo visual: el editor de visualOptions asume un documento
@@ -123,9 +134,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
   const switchToAdvanced = () => setMode('advanced');
   const switchToVisual = () => {
     if (mode === 'visual') return;
-    const ok = confirm(
-      'Cambiar a modo Visual regenerará el HTML a partir del formulario y perderás los cambios manuales. ¿Continuar?',
-    );
+    const ok = confirm(t('templates.editor.switchToVisualConfirm'));
     if (!ok) return;
     setMode('visual');
   };
@@ -141,7 +150,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
         payload.legacyHtml = false;
       }
       await onSave(payload);
-      toast.success('Plantilla guardada');
+      toast.success(t('templates.editor.saved'));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : undefined);
     } finally {
@@ -176,7 +185,9 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
       });
       openTab(`/document-templates/${id}/designer`);
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'No se pudo abrir el diseñador');
+      toast.error(
+        (e instanceof Error ? e.message : undefined) || t('templates.editor.openDesignerError'),
+      );
     } finally {
       setSaving(false);
     }
@@ -186,11 +197,11 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
     <div className="h-full flex flex-col overflow-hidden p-6 gap-4 animate-in fade-in duration-300">
       {/* Header */}
       <PageHeader
-        title={template ? 'Editar Plantilla' : 'Nueva Plantilla'}
+        title={template ? t('templates.editor.editTitle') : t('templates.editor.newTitle')}
         subtitle={
           mode === 'visual'
-            ? 'Personaliza colores, logo y secciones desde el formulario. No necesitas saber HTML.'
-            : 'Editor HTML avanzado con variables Handlebars. Vista previa en vivo.'
+            ? t('templates.editor.subtitleVisual')
+            : t('templates.editor.subtitleAdvanced')
         }
         size="md"
         divider
@@ -207,10 +218,12 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
               variant="secondary"
               onClick={() => setExplorerOpen((o) => !o)}
               className="flex items-center gap-2 h-10"
-              title={explorerOpen ? 'Ocultar campos' : 'Mostrar campos'}
+              title={
+                explorerOpen ? t('templates.editor.hideFields') : t('templates.editor.showFields')
+              }
             >
               {explorerOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
-              Campos
+              {t('templates.editor.fields')}
             </Button>
             <Button
               type="button"
@@ -218,7 +231,7 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
               isLoading={saving}
               className="flex items-center gap-2 h-10 px-6"
             >
-              <Save size={16} /> Guardar
+              <Save size={16} /> {t('templates.editor.save')}
             </Button>
           </div>
         }
@@ -228,13 +241,13 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-shrink-0">
         <div className="space-y-1">
           <label className="text-[10px] font-black text-fg-subtle uppercase tracking-widest">
-            Nombre
+            {t('templates.editor.name')}
           </label>
           <Input value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-black text-fg-subtle uppercase tracking-widest">
-            Tipo de documento
+            {t('templates.editor.docType')}
           </label>
           <SearchableSelect
             value={docType}
@@ -243,45 +256,42 @@ export const TemplateEditor: React.FC<Props> = ({ template, onBack, onSave, toke
           />
         </div>
         <div className="flex items-end gap-2 pb-1">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isDefault}
-              onChange={(e) => setIsDefault(e.target.checked)}
-              className="w-4 h-4"
-            />
-            <span className="text-xs font-bold text-fg-body select-none">
-              Usar como default para este tipo
-            </span>
-          </label>
+          <Checkbox
+            checked={isDefault}
+            onChange={setIsDefault}
+            label={t('templates.editor.useAsDefault')}
+          />
         </div>
       </div>
 
       {isCanvasTemplate && (
         <div className="flex-shrink-0 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 text-xs text-amber-800 dark:text-amber-200">
-          Esta plantilla se diseñó con el <strong>diseñador canvas</strong>. El HTML mostrado abajo
-          se genera desde ese diseño. Si editas aquí, perderás los cambios al volver a abrir el
-          diseñador. Pulsa <em>«Abrir diseñador»</em>.
+          {t('templates.editor.canvasNotice1')}{' '}
+          <strong>{t('templates.editor.canvasNoticeDesigner')}</strong>
+          {t('templates.editor.canvasNotice2')} <em>{t('templates.editor.canvasNoticeButton')}</em>.
         </div>
       )}
 
       {/* Tabs de modo + acceso al diseñador canvas */}
       <div className="flex-shrink-0 flex items-center gap-3">
         <ModeTabs mode={mode} onVisual={switchToVisual} onAdvanced={switchToAdvanced} />
-        <button
+        {/* Button del paquete: era un <button> con `bg-accent text-white` fijo y,
+            con un acento claro (Mono oscuro), el texto desaparecía. */}
+        <Button
           type="button"
+          size="sm"
           disabled={saving}
           onClick={openDesigner}
-          className="flex items-center gap-2 px-3 py-2 rounded-xs text-xs font-bold bg-accent text-white hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-accent/20"
+          className="gap-2"
           title={
             template?.id
-              ? 'Abrir diseñador drag-and-drop a pantalla completa'
-              : 'Crear la plantilla y abrir el diseñador'
+              ? t('templates.editor.openDesignerTooltip')
+              : t('templates.editor.createAndOpenTooltip')
           }
         >
-          <LayoutTemplate size={14} />{' '}
-          {template?.id ? 'Abrir diseñador' : 'Crear y abrir diseñador'}
-        </button>
+          <LayoutTemplate size={14} />
+          {template?.id ? t('templates.editor.openDesigner') : t('templates.editor.createAndOpen')}
+        </Button>
       </div>
 
       {/* Split: editor | preview | explorer (3 paneles flex) */}

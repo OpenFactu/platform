@@ -4,6 +4,7 @@ import type { RowAction, TableColumn } from '@openfactu/ui';
 import { Trash2 } from 'lucide-react';
 import { itemsApi } from '../api';
 import type { ItemUomAlternative, Uom } from '../domain/uom';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Unidades alternativas de un artículo (con factor de conversión a la base).
@@ -20,6 +21,7 @@ export const AlternativeUomsPanel: React.FC<{
   const [newFactor, setNewFactor] = useState('');
   const [saving, setSaving] = useState(false);
   const toast = useToast();
+  const { t } = useI18n();
 
   const fetchAlts = async () => {
     if (!itemId) return setAlternatives([]);
@@ -44,12 +46,12 @@ export const AlternativeUomsPanel: React.FC<{
     setSaving(true);
     try {
       await itemsApi.addUom(itemId, { uomId: newUomId, factor: Number(newFactor) });
-      toast.success('Unidad alternativa añadida');
+      toast.success(t('inventory.altUoms.added'));
       setNewUomId('');
       setNewFactor('');
       fetchAlts();
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Error al añadir unidad alternativa');
+      toast.error((err instanceof Error && err.message) || t('inventory.altUoms.addError'));
     } finally {
       setSaving(false);
     }
@@ -59,24 +61,24 @@ export const AlternativeUomsPanel: React.FC<{
     if (!itemId) return;
     try {
       await itemsApi.removeUom(itemId, id);
-      toast.success('Eliminado');
+      toast.success(t('inventory.altUoms.removed'));
       fetchAlts();
     } catch {
-      toast.error('Error al eliminar');
+      toast.error(t('inventory.altUoms.removeError'));
     }
   };
 
   if (!itemId) {
     return (
       <div className="p-4 text-center text-sm text-fg-subtle">
-        Guarda el artículo primero para poder añadir unidades alternativas.
+        {t('inventory.altUoms.saveFirst')}
       </div>
     );
   }
 
   const columns: TableColumn<any>[] = [
-    { header: 'Unidad', cell: (a) => a.code || a.name || a.uomId },
-    { header: 'Factor', accessor: 'factor' },
+    { header: t('inventory.altUoms.unit'), cell: (a) => a.code || a.name || a.uomId },
+    { header: t('inventory.altUoms.factor'), accessor: 'factor' },
   ];
 
   // La unidad base no se puede quitar: para esas filas no hay acciones.
@@ -85,7 +87,7 @@ export const AlternativeUomsPanel: React.FC<{
       ? []
       : [
           {
-            label: 'Eliminar',
+            label: t('inventory.altUoms.delete'),
             icon: <Trash2 size={14} />,
             destructive: true,
             onClick: () => handleRemove(a.id),
@@ -103,25 +105,25 @@ export const AlternativeUomsPanel: React.FC<{
         isLoading={loading}
         rowKey={(a: any, i) => a.id || a.uomId || i}
         rowActions={rowActions}
-        emptyMessage="Sin unidades alternativas configuradas."
+        emptyMessage={t('inventory.altUoms.empty')}
       />
 
       <div className="pt-4 border-t border-border-subtle mt-4">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider text-fg-subtle mb-1 block">
-              Unidad
+              {t('inventory.altUoms.unit')}
             </label>
             <SearchableSelect
               value={newUomId}
               onChange={setNewUomId}
               options={uoms.map((u) => ({ label: `${u.code} — ${u.name}`, value: u.id }))}
-              placeholder="Seleccionar UoM..."
+              placeholder={t('inventory.altUoms.selectUom')}
             />
           </div>
           <div>
             <label className="text-[9px] font-black uppercase tracking-wider text-fg-subtle mb-1 block">
-              Factor
+              {t('inventory.altUoms.factor')}
             </label>
             <Input
               value={newFactor}
@@ -137,7 +139,7 @@ export const AlternativeUomsPanel: React.FC<{
               isLoading={saving}
               className="w-full"
             >
-              Añadir
+              {t('inventory.altUoms.add')}
             </Button>
           </div>
         </div>

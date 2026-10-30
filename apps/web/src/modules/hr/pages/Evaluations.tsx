@@ -22,6 +22,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { ClipboardCheck, Plus, Pencil, Trash2, Save, CheckCircle } from 'lucide-react';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 
 const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
   draft: 'neutral',
@@ -32,13 +33,14 @@ const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
   manager_done: 'warning',
 };
 
+// Claves de i18n; se traducen al pintar.
 const STATUS_LABEL: Record<string, string> = {
-  draft: 'Borrador',
-  active: 'Activo',
-  closed: 'Cerrado',
-  pending: 'Pendiente',
-  self_done: 'Autoevaluado',
-  manager_done: 'Evaluado',
+  draft: 'hrTalent.evaluations.status.draft',
+  active: 'hrTalent.evaluations.status.active',
+  closed: 'hrTalent.evaluations.status.closed',
+  pending: 'hrTalent.evaluations.status.pending',
+  self_done: 'hrTalent.evaluations.status.selfDone',
+  manager_done: 'hrTalent.evaluations.status.managerDone',
 };
 
 // Estados que puede tener un ciclo: las etiquetas se reutilizan de STATUS_LABEL
@@ -49,8 +51,8 @@ const CYCLE_STATUS_OPTIONS = (['draft', 'active', 'closed'] as const).map((value
 }));
 
 const TABS = [
-  { key: 'cycles', label: 'Ciclos' },
-  { key: 'competencies', label: 'Competencias' },
+  { key: 'cycles', label: 'hrTalent.evaluations.tabCycles' },
+  { key: 'competencies', label: 'hrTalent.evaluations.tabCompetencies' },
 ];
 
 /**
@@ -73,6 +75,7 @@ type CompetencyForm = {
 };
 
 export const Evaluations: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const { canWrite } = usePagePermissions();
   const toast = useToast();
@@ -134,7 +137,7 @@ export const Evaluations: React.FC = () => {
   const saveCycle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCycle?.name || !editingCycle?.startDate || !editingCycle?.endDate) {
-      toast.error('Nombre y fechas obligatorios');
+      toast.error(t('hrTalent.evaluations.cycleRequired'));
       return;
     }
     const isNew = !editingCycle.id;
@@ -144,18 +147,20 @@ export const Evaluations: React.FC = () => {
       } else {
         await evaluationsApi.updateCycle(editingCycle.id!, editingCycle);
       }
-      toast.success('Guardado');
+      toast.success(t('hr.common.saved'));
       setEditingCycle(null);
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
   const saveComp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingComp?.code || !editingComp?.name) {
-      toast.error('Código y nombre obligatorios');
+      toast.error(t('hrTime.shiftTemplates.required'));
       return;
     }
     try {
@@ -167,7 +172,9 @@ export const Evaluations: React.FC = () => {
       setEditingComp(null);
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
@@ -203,11 +210,13 @@ export const Evaluations: React.FC = () => {
     if (!scoreEditing) return;
     try {
       await evaluationsApi.saveScores(scoreEditing.evaluationId, scores);
-      toast.success('Puntuaciones guardadas');
+      toast.success(t('hrTalent.evaluations.scoresSaved'));
       setScoreEditing(null);
       if (openCycle) fetchEvaluations(openCycle.id);
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
@@ -217,12 +226,14 @@ export const Evaluations: React.FC = () => {
     await saveScores();
     try {
       await evaluationsApi.close(evaluationId);
-      toast.success('Evaluación cerrada');
+      toast.success(t('hrTalent.evaluations.closed'));
       setScoreEditing(null);
       if (openCycle) fetchEvaluations(openCycle.id);
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'No se pudo cerrar',
+        err instanceof ApiError
+          ? ((err.body as any)?.error ?? err.message)
+          : t('hrTalent.evaluations.closeFailed'),
       );
     }
   };
@@ -239,31 +250,35 @@ export const Evaluations: React.FC = () => {
   };
 
   const cycleColumns: TableColumn<Cycle>[] = [
-    { header: 'Nombre', accessor: 'name', sortable: true, primary: true },
+    { header: t('hr.common.name'), accessor: 'name', sortable: true, primary: true },
     {
-      header: 'Inicio',
+      header: t('hrTime.shiftTemplates.start'),
       sortable: true,
       sortAccessor: (c) => c.startDate || '',
       cell: (c) => c.startDate?.slice(0, 10),
     },
     {
-      header: 'Fin',
+      header: t('hrTime.shiftTemplates.end'),
       sortable: true,
       sortAccessor: (c) => c.endDate || '',
       cell: (c) => c.endDate?.slice(0, 10),
     },
     {
-      header: 'Estado',
+      header: t('hr.common.status'),
       sortable: true,
       sortAccessor: (c) => c.status,
-      cell: (c) => <Badge variant={STATUS_VARIANT[c.status]}>{STATUS_LABEL[c.status]}</Badge>,
+      cell: (c) => <Badge variant={STATUS_VARIANT[c.status]}>{t(STATUS_LABEL[c.status])}</Badge>,
     },
   ];
 
   const cycleRowActions = (c: Cycle): RowAction[] => [
-    { label: 'Abrir', icon: <ClipboardCheck size={14} />, onClick: () => openCycleDetail(c) },
     {
-      label: 'Editar',
+      label: t('hrTalent.evaluations.open'),
+      icon: <ClipboardCheck size={14} />,
+      onClick: () => openCycleDetail(c),
+    },
+    {
+      label: t('hr.common.edit'),
       icon: <Pencil size={14} />,
       disabled: !canWrite,
       onClick: () => setEditingCycle(c),
@@ -272,7 +287,7 @@ export const Evaluations: React.FC = () => {
 
   const evaluationColumns: TableColumn<Evaluation>[] = [
     {
-      header: 'Empleado',
+      header: t('hr.common.employee'),
       sortable: true,
       sortAccessor: (ev) => {
         const emp = employeeById[ev.employeeId];
@@ -289,13 +304,13 @@ export const Evaluations: React.FC = () => {
       primary: true,
     },
     {
-      header: 'Estado',
+      header: t('hr.common.status'),
       sortable: true,
       sortAccessor: (ev) => ev.status,
-      cell: (ev) => <Badge variant={STATUS_VARIANT[ev.status]}>{STATUS_LABEL[ev.status]}</Badge>,
+      cell: (ev) => <Badge variant={STATUS_VARIANT[ev.status]}>{t(STATUS_LABEL[ev.status])}</Badge>,
     },
     {
-      header: 'Score final',
+      header: t('hrTalent.evaluations.finalScore'),
       align: 'right',
       sortable: true,
       sortAccessor: (ev) => Number(ev.finalScore ?? 0),
@@ -308,21 +323,25 @@ export const Evaluations: React.FC = () => {
   ];
 
   const evaluationRowActions = (ev: Evaluation): RowAction[] => [
-    { label: 'Puntuar', icon: <ClipboardCheck size={14} />, onClick: () => openScores(ev) },
+    {
+      label: t('hrTalent.evaluations.score'),
+      icon: <ClipboardCheck size={14} />,
+      onClick: () => openScores(ev),
+    },
   ];
 
   const competencyColumns: TableColumn<Competency>[] = [
-    { header: 'Código', accessor: 'code', sortable: true, primary: true },
-    { header: 'Nombre', accessor: 'name', sortable: true },
+    { header: t('hr.common.code'), accessor: 'code', sortable: true, primary: true },
+    { header: t('hr.common.name'), accessor: 'name', sortable: true },
     {
-      header: 'Peso',
+      header: t('hrTalent.objectives.weight'),
       align: 'right',
       sortable: true,
       sortAccessor: (c) => Number(c.weight ?? 0),
       cell: (c) => <span className="tabular-nums">{Number(c.weight).toFixed(2)}</span>,
     },
     {
-      header: 'Escala',
+      header: t('hrTalent.evaluations.scale'),
       align: 'right',
       sortable: true,
       sortAccessor: (c) => c.scaleMax,
@@ -334,7 +353,7 @@ export const Evaluations: React.FC = () => {
   // numérico, de ahí la conversión al abrir la competencia.
   const competencyRowActions = (c: Competency): RowAction[] => [
     {
-      label: 'Editar competencia',
+      label: t('hrTalent.evaluations.editCompetency'),
       icon: <Pencil size={14} />,
       disabled: !canWrite,
       onClick: () => setEditingComp({ ...c, weight: Number(c.weight ?? 1) }),
@@ -344,8 +363,8 @@ export const Evaluations: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-5">
       <PageHeader
-        title="Evaluaciones"
-        subtitle="Ciclos de evaluación con competencias ponderadas. Al cerrar una evaluación se calcula la puntuación final como Σ(score × peso) / Σpeso."
+        title={t('hrTalent.evaluations.title')}
+        subtitle={t('hrTalent.evaluations.subtitle')}
         icon={<ClipboardCheck size={18} />}
         size="lg"
         actions={
@@ -353,7 +372,7 @@ export const Evaluations: React.FC = () => {
           // `actions` (a la derecha del título) porque la variante segmented ya
           // se pintaba así, no pegadas al borde inferior.
           <Tabs
-            items={TABS}
+            items={TABS.map((x) => ({ ...x, label: t(x.label) }))}
             value={tab}
             onChange={(k) => setTab(k as 'cycles' | 'competencies')}
             variant="segmented"
@@ -366,7 +385,7 @@ export const Evaluations: React.FC = () => {
           {canWrite && (
             <div className="flex justify-end">
               <Button size="sm" onClick={() => setEditingCycle({ status: 'draft' })}>
-                <Plus size={14} /> Nuevo ciclo
+                <Plus size={14} /> {t('hrTalent.evaluations.newCycle')}
               </Button>
             </div>
           )}
@@ -374,7 +393,7 @@ export const Evaluations: React.FC = () => {
             <Card noPadding>
               <form onSubmit={saveCycle} className="p-6 grid grid-cols-1 md:grid-cols-4 gap-3">
                 <Input
-                  label="Nombre"
+                  label={t('hr.common.name')}
                   value={editingCycle.name || ''}
                   onChange={(e) => setEditingCycle({ ...editingCycle, name: e.target.value })}
                   required
@@ -382,18 +401,18 @@ export const Evaluations: React.FC = () => {
                 {/* El `required` de los <input type="date"> era redundante:
                     saveCycle ya avisa si falta nombre o fechas. */}
                 <DatePicker
-                  label="Inicio"
+                  label={t('hrTime.shiftTemplates.start')}
                   value={editingCycle.startDate || null}
                   onChange={(v) => setEditingCycle({ ...editingCycle, startDate: v ?? '' })}
                 />
                 <DatePicker
-                  label="Fin"
+                  label={t('hrTime.shiftTemplates.end')}
                   value={editingCycle.endDate || null}
                   onChange={(v) => setEditingCycle({ ...editingCycle, endDate: v ?? '' })}
                 />
                 <Select
-                  label="Estado"
-                  options={CYCLE_STATUS_OPTIONS}
+                  label={t('hr.common.status')}
+                  options={CYCLE_STATUS_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                   value={editingCycle.status || 'draft'}
                   onChange={(v) =>
                     setEditingCycle({ ...editingCycle, status: v as Cycle['status'] })
@@ -401,10 +420,10 @@ export const Evaluations: React.FC = () => {
                 />
                 <div className="md:col-span-4 flex justify-end gap-2">
                   <Button type="button" variant="secondary" onClick={() => setEditingCycle(null)}>
-                    Cancelar
+                    {t('hr.common.cancel')}
                   </Button>
                   <Button type="submit" disabled={!canWrite}>
-                    Guardar
+                    {t('hr.common.save')}
                   </Button>
                 </div>
               </form>
@@ -417,7 +436,7 @@ export const Evaluations: React.FC = () => {
               data={cycles}
               rowActions={cycleRowActions}
               onRowClick={openCycleDetail}
-              emptyMessage="Todavía no hay ciclos de evaluación."
+              emptyMessage={t('hrTalent.evaluations.emptyCycles')}
             />
           </Card>
         </>
@@ -434,12 +453,12 @@ export const Evaluations: React.FC = () => {
                 </p>
               </div>
               <Button size="sm" variant="secondary" onClick={() => setOpenCycle(null)}>
-                ← Volver
+                ← {t('hr.common.back')}
               </Button>
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                Añadir empleado al ciclo
+                {t('hrTalent.evaluations.addEmployee')}
               </label>
               {/* Actúa como acción, no como campo: el valor vuelve siempre a
                   vacío tras añadir al empleado. */}
@@ -449,7 +468,7 @@ export const Evaluations: React.FC = () => {
                 onChange={(v) => {
                   if (v) addEvaluation(v);
                 }}
-                placeholder="— elegir empleado —"
+                placeholder={t('hrTalent.evaluations.chooseEmployee')}
                 disabled={!canWrite}
               />
             </div>
@@ -459,7 +478,7 @@ export const Evaluations: React.FC = () => {
               data={evaluations}
               rowActions={evaluationRowActions}
               onRowClick={openScores}
-              emptyMessage="Aún no hay empleados en este ciclo."
+              emptyMessage={t('hrTalent.evaluations.emptyEvaluations')}
             />
           </div>
         </Card>
@@ -473,7 +492,7 @@ export const Evaluations: React.FC = () => {
                 size="sm"
                 onClick={() => setEditingComp({ scaleMax: 5, isActive: true, weight: 1 })}
               >
-                <Plus size={14} /> Nueva competencia
+                <Plus size={14} /> {t('hrTalent.evaluations.newCompetency')}
               </Button>
             </div>
           )}
@@ -481,21 +500,21 @@ export const Evaluations: React.FC = () => {
             <Card noPadding>
               <form onSubmit={saveComp} className="p-6 grid grid-cols-1 md:grid-cols-4 gap-3">
                 <Input
-                  label="Código"
+                  label={t('hr.common.code')}
                   value={editingComp.code || ''}
                   onChange={(e) => setEditingComp({ ...editingComp, code: e.target.value })}
                   required
                 />
                 <div className="md:col-span-2">
                   <Input
-                    label="Nombre"
+                    label={t('hr.common.name')}
                     value={editingComp.name || ''}
                     onChange={(e) => setEditingComp({ ...editingComp, name: e.target.value })}
                     required
                   />
                 </div>
                 <NumberInput
-                  label="Peso"
+                  label={t('hrTalent.objectives.weight')}
                   value={editingComp.weight}
                   onChange={(v) => setEditingComp({ ...editingComp, weight: v })}
                   precision={2}
@@ -503,16 +522,16 @@ export const Evaluations: React.FC = () => {
                   emptyValue="zero"
                 />
                 <NumberInput
-                  label="Escala (1..N)"
+                  label={t('hrTalent.evaluations.scaleN')}
                   value={editingComp.scaleMax ?? 5}
                   onChange={(v) => setEditingComp({ ...editingComp, scaleMax: v ?? 5 })}
                 />
                 <div className="md:col-span-4 flex justify-end gap-2">
                   <Button type="button" variant="secondary" onClick={() => setEditingComp(null)}>
-                    Cancelar
+                    {t('hr.common.cancel')}
                   </Button>
                   <Button type="submit" disabled={!canWrite}>
-                    Guardar
+                    {t('hr.common.save')}
                   </Button>
                 </div>
               </form>
@@ -525,7 +544,7 @@ export const Evaluations: React.FC = () => {
               data={competencies}
               rowActions={competencyRowActions}
               onRowClick={(c) => setEditingComp({ ...c, weight: Number(c.weight ?? 1) })}
-              emptyMessage="Todavía no hay competencias definidas."
+              emptyMessage={t('hrTalent.evaluations.emptyCompetencies')}
             />
           </Card>
         </>
@@ -535,21 +554,21 @@ export const Evaluations: React.FC = () => {
       <Modal
         isOpen={!!scoreEditing}
         onClose={() => setScoreEditing(null)}
-        title="Puntuar evaluación"
+        title={t('hrTalent.evaluations.scoreTitle')}
         subtitle={`${scoreEditing?.emp?.firstName ?? ''} ${scoreEditing?.emp?.lastName ?? ''}`.trim()}
         size="3xl"
         hideCancel
         footer={
           <div className="flex w-full justify-between gap-2">
             <Button size="sm" variant="danger" onClick={closeEvaluation} disabled={!canWrite}>
-              <CheckCircle size={14} /> Cerrar evaluación (calcula final)
+              <CheckCircle size={14} /> {t('hrTalent.evaluations.closeEvaluation')}
             </Button>
             <div className="flex gap-2">
               <Button size="sm" variant="secondary" onClick={() => setScoreEditing(null)}>
-                Cerrar
+                {t('hr.common.close')}
               </Button>
               <Button size="sm" onClick={saveScores} disabled={!canWrite}>
-                <Save size={14} /> Guardar
+                <Save size={14} /> {t('hr.common.save')}
               </Button>
             </div>
           </div>
@@ -558,10 +577,10 @@ export const Evaluations: React.FC = () => {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="p-2">Competencia</th>
-              <th className="p-2 text-right">Auto</th>
-              <th className="p-2 text-right">Manager</th>
-              <th className="p-2">Notas</th>
+              <th className="p-2">{t('hrTalent.evaluations.competency')}</th>
+              <th className="p-2 text-right">{t('hrTalent.evaluations.self')}</th>
+              <th className="p-2 text-right">{t('hrTalent.evaluations.manager')}</th>
+              <th className="p-2">{t('hr.common.notes')}</th>
             </tr>
           </thead>
           <tbody>
@@ -576,51 +595,48 @@ export const Evaluations: React.FC = () => {
                     </span>
                   </td>
                   <td className="p-2 text-right">
-                    <input
-                      type="number"
+                    <NumberInput
+                      aria-label={t('hrTalent.evaluations.selfAria')}
+                      containerClassName="w-24 ml-auto"
+                      align="right"
                       min={0}
                       max={c?.scaleMax || 5}
                       step={0.5}
-                      value={s.scoreSelf ?? ''}
-                      onChange={(e) => {
+                      precision={1}
+                      value={s.scoreSelf ?? null}
+                      onChange={(v) => {
                         const next = [...scores];
-                        next[i] = {
-                          ...s,
-                          scoreSelf: e.target.value === '' ? undefined : Number(e.target.value),
-                        };
+                        next[i] = { ...s, scoreSelf: v ?? undefined };
                         setScores(next);
                       }}
-                      className="w-20 text-right px-2 py-1 rounded border border-border-default bg-transparent"
                     />
                   </td>
                   <td className="p-2 text-right">
-                    <input
-                      type="number"
+                    <NumberInput
+                      aria-label={t('hrTalent.evaluations.managerAria')}
+                      containerClassName="w-24 ml-auto"
+                      align="right"
                       min={0}
                       max={c?.scaleMax || 5}
                       step={0.5}
-                      value={s.scoreManager ?? ''}
-                      onChange={(e) => {
+                      precision={1}
+                      value={s.scoreManager ?? null}
+                      onChange={(v) => {
                         const next = [...scores];
-                        next[i] = {
-                          ...s,
-                          scoreManager: e.target.value === '' ? undefined : Number(e.target.value),
-                        };
+                        next[i] = { ...s, scoreManager: v ?? undefined };
                         setScores(next);
                       }}
-                      className="w-20 text-right px-2 py-1 rounded border border-border-default bg-transparent"
                     />
                   </td>
                   <td className="p-2">
-                    <input
-                      type="text"
+                    <Input
+                      aria-label={t('hrTalent.evaluations.comments')}
                       value={s.comments || ''}
                       onChange={(e) => {
                         const next = [...scores];
                         next[i] = { ...s, comments: e.target.value };
                         setScores(next);
                       }}
-                      className="w-full px-2 py-1 rounded border border-border-default bg-transparent"
                     />
                   </td>
                 </tr>

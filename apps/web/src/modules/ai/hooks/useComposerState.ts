@@ -4,6 +4,7 @@ import { convertFileListToFileUIParts, type FileUIPart } from 'ai';
 import { useToast } from '@openfactu/ui';
 import { MAX_ATTACHMENTS, MAX_ATTACHMENT_MB } from '../domain/constants';
 import { classifyFiles, rejectionMessage } from '../domain/droppedFiles';
+import { useI18n } from '@/i18n/I18nContext';
 
 export interface DocumentAttachment {
   filename: string;
@@ -38,6 +39,7 @@ export function useComposerState(
   supportsImages = true,
 ) {
   const toast = useToast();
+  const { t } = useI18n();
   const [input, setInput] = useState('');
   const [quotedText, setQuotedText] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<FileUIPart[]>([]);
@@ -60,12 +62,12 @@ export function useComposerState(
     if (list.length === 0) return;
     const room = MAX_ATTACHMENTS - attachments.length;
     if (room <= 0) {
-      toast.warning(`Máximo ${MAX_ATTACHMENTS} imágenes por mensaje`);
+      toast.warning(t('ai.composer.maxImages', { max: MAX_ATTACHMENTS }));
       return;
     }
     const tooBig = list.filter((f) => f.size > MAX_ATTACHMENT_MB * 1024 * 1024);
     if (tooBig.length > 0) {
-      toast.error(`Cada imagen debe pesar menos de ${MAX_ATTACHMENT_MB} MB`);
+      toast.error(t('ai.composer.imageTooBig', { mb: MAX_ATTACHMENT_MB }));
       return;
     }
     // `convertFileListToFileUIParts` solo acepta un FileList, y al soltar o
@@ -76,7 +78,7 @@ export function useComposerState(
     for (const file of list.slice(0, room)) transfer.items.add(file);
     const parts = await convertFileListToFileUIParts(transfer.files);
     setAttachments((prev) => [...prev, ...parts]);
-    if (list.length > room) toast.warning(`Solo caben ${MAX_ATTACHMENTS} imágenes por mensaje`);
+    if (list.length > room) toast.warning(t('ai.composer.onlyImages', { max: MAX_ATTACHMENTS }));
   };
 
   const addDocuments = async (files: FileList | File[] | null) => {
@@ -84,13 +86,13 @@ export function useComposerState(
     if (all.length === 0) return;
     const room = MAX_DOCUMENTS - documents.length;
     if (room <= 0) {
-      toast.warning(`Máximo ${MAX_DOCUMENTS} documentos por mensaje`);
+      toast.warning(t('ai.composer.maxDocuments', { max: MAX_DOCUMENTS }));
       return;
     }
     const list = all.slice(0, room);
     const tooBig = list.filter((f) => f.size > MAX_DOCUMENT_MB * 1024 * 1024);
     if (tooBig.length > 0) {
-      toast.error(`Cada documento debe pesar menos de ${MAX_DOCUMENT_MB} MB`);
+      toast.error(t('ai.composer.documentTooBig', { mb: MAX_DOCUMENT_MB }));
       return;
     }
     setExtractingDocs(true);
@@ -104,9 +106,9 @@ export function useComposerState(
           { filename: data.filename, text: data.text, truncated: Boolean(data.truncated) },
         ]);
       }
-      if (all.length > room) toast.warning(`Solo caben ${MAX_DOCUMENTS} documentos por mensaje`);
+      if (all.length > room) toast.warning(t('ai.composer.onlyDocuments', { max: MAX_DOCUMENTS }));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al leer el documento');
+      toast.error(e instanceof Error ? e.message : t('ai.composer.readError'));
     } finally {
       setExtractingDocs(false);
     }

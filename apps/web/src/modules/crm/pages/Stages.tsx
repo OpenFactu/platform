@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import {
   Badge,
@@ -42,6 +43,7 @@ function swap<T>(list: T[], index: number, dir: -1 | 1): T[] {
 }
 
 export const Stages: React.FC = () => {
+  const { t } = useI18n();
   const toast = useToast();
   const popup = usePopup();
   const { canWrite, canDelete } = useCrmPermissions('/crm/opportunities');
@@ -49,7 +51,7 @@ export const Stages: React.FC = () => {
   const [draft, setDraft] = useState<Partial<OpportunityStage> | null>(null);
 
   const fail = (err: unknown) =>
-    toast.error(err instanceof Error ? err.message : 'No se pudo guardar');
+    toast.error(err instanceof Error ? err.message : t('crm.errors.saveFailed'));
 
   const move = async (index: number, dir: -1 | 1) => {
     try {
@@ -83,10 +85,10 @@ export const Stages: React.FC = () => {
 
   const remove = async (s: OpportunityStage) => {
     const ok = await popup.confirm({
-      title: 'Borrar etapa',
-      message: `¿Borrar la etapa «${s.name}»?`,
+      title: t('crm.stages.deleteTitle'),
+      message: t('crm.stages.deleteMessage', { name: s.name }),
       tone: 'danger',
-      confirmLabel: 'Borrar',
+      confirmLabel: t('crm.common.delete'),
     });
     if (!ok) return;
     try {
@@ -98,24 +100,34 @@ export const Stages: React.FC = () => {
   };
 
   const columns: TableColumn<OpportunityStage>[] = [
-    { header: 'Etapa', accessor: 'name', card: 'title' },
+    { header: t('crm.common.stage'), accessor: 'name', card: 'title' },
     {
-      header: 'Tipo',
+      header: t('crm.activityForm.type'),
       id: 'kind',
-      cell: (s) => <Badge variant={STAGE_KIND_VARIANT[s.kind]}>{STAGE_KIND_LABEL[s.kind]}</Badge>,
+      cell: (s) => (
+        <Badge variant={STAGE_KIND_VARIANT[s.kind]}>{t(STAGE_KIND_LABEL[s.kind])}</Badge>
+      ),
       card: 'status',
     },
-    { header: 'Probabilidad', id: 'prob', cell: (s) => `${s.probability}%`, align: 'right' },
     {
-      header: 'Seguimiento',
+      header: t('crm.stages.probability'),
+      id: 'prob',
+      cell: (s) => `${s.probability}%`,
+      align: 'right',
+    },
+    {
+      header: t('crm.settings.followUp'),
       id: 'follow',
       cell: (s) =>
         s.followUpType
-          ? `${ACTIVITY_TYPE_LABEL[s.followUpType]} a los ${s.followUpDays ?? 0} días`
+          ? t('crm.stages.followUpAfter', {
+              type: t(ACTIVITY_TYPE_LABEL[s.followUpType]),
+              days: s.followUpDays ?? 0,
+            })
           : '—',
     },
     {
-      header: 'Oportunidades',
+      header: t('crm.nav.opportunities'),
       id: 'count',
       cell: (s) => s.opportunityCount ?? 0,
       align: 'right',
@@ -123,7 +135,7 @@ export const Stages: React.FC = () => {
     ...(canWrite
       ? [
           {
-            header: 'Orden',
+            header: t('crm.stages.order'),
             id: 'order',
             align: 'right',
             cell: (_s: OpportunityStage, i: number) => (
@@ -132,7 +144,7 @@ export const Stages: React.FC = () => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  aria-label="Subir"
+                  aria-label={t('crm.stages.moveUp')}
                   disabled={i === 0}
                   onClick={() => move(i, -1)}
                 >
@@ -142,7 +154,7 @@ export const Stages: React.FC = () => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  aria-label="Bajar"
+                  aria-label={t('crm.stages.moveDown')}
                   disabled={i === stages.length - 1}
                   onClick={() => move(i, 1)}
                 >
@@ -158,14 +170,14 @@ export const Stages: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-4">
       <PageHeader
-        title="Etapas del embudo"
-        subtitle="Las columnas del tablero de oportunidades, en orden"
+        title={t('crm.nav.stagesTitle')}
+        subtitle={t('crm.stages.subtitle')}
         icon={<Workflow size={18} />}
         size="sm"
         actions={
           canWrite && (
             <Button type="button" size="sm" onClick={() => setDraft({ kind: 'open' })}>
-              <Plus size={14} /> Nueva etapa
+              <Plus size={14} /> {t('crm.stages.new')}
             </Button>
           )
         }
@@ -177,36 +189,38 @@ export const Stages: React.FC = () => {
         errorMessage={error ?? undefined}
         onRetry={refresh}
         onRowClick={canWrite ? setDraft : undefined}
-        ariaLabel="Etapas"
+        ariaLabel={t('crm.nav.stages')}
         rowActions={(s) =>
-          canDelete ? [{ label: 'Borrar', onClick: () => remove(s), destructive: true }] : []
+          canDelete
+            ? [{ label: t('crm.common.delete'), onClick: () => remove(s), destructive: true }]
+            : []
         }
       />
       <Modal
         isOpen={!!draft}
         onClose={() => setDraft(null)}
-        title={draft?.id ? 'Editar etapa' : 'Nueva etapa'}
+        title={draft?.id ? t('crm.stages.edit') : t('crm.stages.new')}
         size="md"
         onSubmit={save}
-        primaryAction={{ label: 'Guardar', type: 'submit' }}
+        primaryAction={{ label: t('crm.common.save'), type: 'submit' }}
       >
         {draft && (
           <div className="space-y-4">
             <Input
-              label="Nombre"
+              label={t('crm.common.name')}
               value={draft.name ?? ''}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               required
             />
             <div className="grid grid-cols-2 gap-3">
               <Select
-                label="Tipo"
-                options={KIND_OPTIONS}
+                label={t('crm.activityForm.type')}
+                options={KIND_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                 value={draft.kind ?? 'open'}
                 onChange={(v) => setDraft({ ...draft, kind: v as StageKind })}
               />
               <PercentInput
-                label="Probabilidad"
+                label={t('crm.stages.probability')}
                 precision={0}
                 value={draft.probability ?? 0}
                 onChange={(v) => setDraft({ ...draft, probability: Math.round(v ?? 0) })}
@@ -214,8 +228,11 @@ export const Stages: React.FC = () => {
             </div>
             <div className="space-y-3 pt-3 border-t border-border-subtle">
               <Select
-                label="Seguimiento al entrar en la etapa"
-                options={[{ value: '', label: 'Ninguno' }, ...ACTIVITY_TYPE_OPTIONS]}
+                label={t('crm.stages.followUpOnEnter')}
+                options={[
+                  { value: '', label: t('crm.stages.noFollowUp') },
+                  ...ACTIVITY_TYPE_OPTIONS.map((o) => ({ ...o, label: t(o.label) })),
+                ]}
                 value={draft.followUpType ?? ''}
                 onChange={(v) =>
                   setDraft({ ...draft, followUpType: (v || null) as ActivityType | null })
@@ -224,28 +241,23 @@ export const Stages: React.FC = () => {
               {draft.followUpType && (
                 <div className="grid grid-cols-[8rem_1fr] gap-3">
                   <NumberInput
-                    label="A los (días)"
+                    label={t('crm.stages.afterDays')}
                     value={draft.followUpDays ?? 0}
                     onChange={(v) => setDraft({ ...draft, followUpDays: Math.round(v ?? 0) })}
                     min={0}
                     max={365}
                   />
                   <Input
-                    label="Asunto"
+                    label={t('crm.activityForm.subject')}
                     value={draft.followUpSubject ?? ''}
-                    placeholder="Seguimiento: <título de la oportunidad>"
+                    placeholder={t('crm.stages.subjectPlaceholder')}
                     onChange={(e) => setDraft({ ...draft, followUpSubject: e.target.value })}
                   />
                 </div>
               )}
-              <p className="text-xs text-fg-muted">
-                Se crea para el responsable de la oportunidad cada vez que entra en esta etapa.
-              </p>
+              <p className="text-xs text-fg-muted">{t('crm.stages.followUpHint')}</p>
             </div>
-            <p className="text-xs text-fg-muted">
-              Las etapas «Ganada» y «Perdida» cierran la oportunidad; volver a una abierta la
-              reabre.
-            </p>
+            <p className="text-xs text-fg-muted">{t('crm.stages.closingHint')}</p>
           </div>
         )}
       </Modal>

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useRef, useState } from 'react';
 import { Input } from '@openfactu/ui';
 import { Check, Search } from 'lucide-react';
@@ -23,6 +24,7 @@ export const MunicipalitySearch: React.FC<Props> = ({
   disabled,
   onSearch,
 }) => {
+  const { t } = useI18n();
   const [query, setQuery] = useState(valueName || '');
   const [results, setResults] = useState<GeoRow[]>([]);
   const [open, setOpen] = useState(false);
@@ -75,15 +77,23 @@ export const MunicipalitySearch: React.FC<Props> = ({
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
-        placeholder={subRegionId ? 'Buscar municipio...' : 'Selecciona antes la provincia'}
+        placeholder={
+          subRegionId
+            ? t('partners.municipality.search')
+            : t('partners.municipality.chooseProvince')
+        }
         leftIcon={<Search size={14} />}
       />
       {open && searching && (
         <div className="absolute left-0 right-0 top-full z-[100999] bg-bg-card border border-border-default shadow-lg max-h-52 overflow-auto">
           {loading ? (
-            <div className="px-3 py-2 text-sm text-fg-subtle italic">Buscando…</div>
+            <div className="px-3 py-2 text-sm text-fg-subtle italic">
+              {t('partners.municipality.searching')}
+            </div>
           ) : results.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-fg-subtle italic">Sin resultados</div>
+            <div className="px-3 py-2 text-sm text-fg-subtle italic">
+              {t('partners.municipality.noResults')}
+            </div>
           ) : (
             <ul>
               {results.map((r) => (

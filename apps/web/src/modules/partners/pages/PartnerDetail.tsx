@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Card, Loader, PageHeader, useIsMobile, useToast } from '@openfactu/ui';
@@ -28,6 +29,7 @@ export const PartnerDetail: React.FC = () => {
   const { partnerId = 'new' } = useParams<{ partnerId: string }>();
   const isNew = partnerId === 'new';
   const navigate = useNavigate();
+  const { t } = useI18n();
   const toast = useToast();
   // En móvil guardar (y convertir) van en el botón flotante: la cabecera no lleva acciones.
   const isMobile = useIsMobile();
@@ -58,7 +60,8 @@ export const PartnerDetail: React.FC = () => {
         reset(p);
       })
       .catch((err) => {
-        if (!cancelled) toast.error(err instanceof Error ? err.message : 'No se pudo cargar');
+        if (!cancelled)
+          toast.error(err instanceof Error ? err.message : t('partners.detail.loadFailed'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -72,7 +75,7 @@ export const PartnerDetail: React.FC = () => {
   const handleSave = async () => {
     try {
       const saved = await form.submit(isNew ? null : partnerId);
-      toast.success(isNew ? 'Interlocutor creado' : 'Interlocutor guardado');
+      toast.success(isNew ? t('partners.detail.created') : t('partners.detail.saved'));
       if (isNew) {
         navigate(`/partners/${saved.id}`, { replace: true });
       } else {
@@ -81,7 +84,7 @@ export const PartnerDetail: React.FC = () => {
         reset(fresh);
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo guardar');
+      toast.error(err instanceof Error ? err.message : t('partners.detail.saveFailed'));
     }
   };
 
@@ -97,10 +100,10 @@ export const PartnerDetail: React.FC = () => {
   if (!isNew && !partner) {
     return (
       <div className="p-12 text-center text-fg-muted">
-        Interlocutor no encontrado.
+        {t('partners.detail.notFound')}
         <div className="mt-4">
           <Button variant="secondary" onClick={back}>
-            <ArrowLeft size={14} /> Volver a interlocutores
+            <ArrowLeft size={14} /> {t('partners.detail.backToList')}
           </Button>
         </div>
       </div>
@@ -130,7 +133,7 @@ export const PartnerDetail: React.FC = () => {
           !isMobile && (
             <HeaderSaveButton
               isNew={isNew}
-              label={isNew ? 'Crear interlocutor' : 'Guardar'}
+              label={isNew ? t('partners.wizard.create') : t('partners.common.save')}
               saving={form.saving}
             />
           )
@@ -144,12 +147,12 @@ export const PartnerDetail: React.FC = () => {
             // En móvil ya está la flecha de volver de la barra superior.
             className="w-fit gap-1 max-md:hidden"
           >
-            <ArrowLeft size={12} /> Interlocutores
+            <ArrowLeft size={12} /> {t('partners.nav.label')}
           </Button>
         }
         title={
           <>
-            {form.data.name || (isNew ? 'Nuevo interlocutor' : partner?.name)}
+            {form.data.name || (isNew ? t('partners.wizard.newTitle') : partner?.name)}
             {group && (
               <span className="flex flex-wrap items-center gap-2">
                 <Badge>{group.name}</Badge>
@@ -159,38 +162,44 @@ export const PartnerDetail: React.FC = () => {
         }
         subtitle={
           <span className="font-mono text-xs text-accent font-black uppercase">
-            {isNew ? 'El código se asigna al guardar' : form.data.code}
+            {isNew ? t('partners.detail.codeOnSave') : form.data.code}
           </span>
         }
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-        <Card title="General" subtitle="Identificación, grupo, país y tarifa.">
+        <Card title={t('partners.detail.general')} subtitle={t('partners.detail.generalHint')}>
           <PartnerGeneralFields form={form} disabled={disabled} />
         </Card>
-        <Card title="Contacto" subtitle="Teléfono, correo y web de la empresa.">
+        <Card
+          title={t('partners.wizard.steps.contact')}
+          subtitle={t('partners.wizard.steps.contactHint')}
+        >
           <PartnerContactFields form={form} disabled={disabled} />
         </Card>
         <Card
-          title="Direcciones"
-          subtitle="Facturación y envío. Una por defecto de cada tipo."
+          title={t('partners.wizard.steps.addresses')}
+          subtitle={t('partners.detail.addressesHint')}
           className="xl:col-span-2"
           headerAction={
             canWrite &&
             form.addresses.length > 0 && (
               <Button type="button" variant="secondary" size="sm" onClick={form.addAddress}>
-                <Plus size={14} /> Nueva dirección
+                <Plus size={14} /> {t('partners.addresses.new')}
               </Button>
             )
           }
         >
           <PartnerAddressesFields form={form} disabled={disabled} />
         </Card>
-        <Card title="Fiscal y banco" subtitle="Valores por defecto al facturar y cuenta bancaria.">
+        <Card
+          title={t('partners.wizard.steps.fiscal')}
+          subtitle={t('partners.wizard.steps.fiscalHint')}
+        >
           <PartnerFiscalFields form={form} disabled={disabled} />
         </Card>
         <div className="space-y-6">
-          <Card title="Campos personalizados">
+          <Card title={t('partners.common.customFields')}>
             <PluginFieldsPanel
               tableName="BusinessPartner"
               values={form.pluginValues}
@@ -200,7 +209,7 @@ export const PartnerDetail: React.FC = () => {
             />
           </Card>
           {!isNew && (
-            <Card title="Adjuntos">
+            <Card title={t('partners.detail.attachments')}>
               <AttachmentsPanel entityType="BusinessPartner" entityId={partnerId} />
             </Card>
           )}
@@ -209,10 +218,7 @@ export const PartnerDetail: React.FC = () => {
           // Los formularios del CRM viven en modales (portal), pero el submit
           // sintético de React sube por el árbol y llegaría al <form> de la ficha.
           <div className="xl:col-span-2" onSubmit={(e) => e.stopPropagation()}>
-            <Card
-              title="Comercial"
-              subtitle="Contactos, oportunidades y actividad con este interlocutor."
-            >
+            <Card title={t('partners.detail.sales')} subtitle={t('partners.detail.salesHint')}>
               <PartnerCrmPanel partnerId={partnerId} />
             </Card>
           </div>
@@ -222,7 +228,7 @@ export const PartnerDetail: React.FC = () => {
       {canWrite && (
         <FloatingSaveButton
           isNew={isNew}
-          label={isNew ? 'Crear interlocutor' : 'Guardar'}
+          label={isNew ? t('partners.wizard.create') : t('partners.common.save')}
           saving={form.saving}
         />
       )}

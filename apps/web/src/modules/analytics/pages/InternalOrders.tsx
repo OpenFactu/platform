@@ -15,6 +15,8 @@ import {
 import type { RowAction } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatNumber } from '@/i18n/format';
 import { Briefcase, Plus, Trash2, Pencil } from 'lucide-react';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 import { internalOrdersApi, costCentersApi } from '../api';
@@ -33,21 +35,21 @@ interface InternalOrder {
   [k: string]: any;
 }
 
+/** Claves i18n por tipo: se traducen al pintar. */
 const TYPE_LABELS: Record<string, string> = {
-  project: 'Proyecto',
-  internal_order: 'Orden interna',
-  wbs: 'WBS',
+  project: 'analytics.internalOrders.types.project',
+  internal_order: 'analytics.internalOrders.types.internalOrder',
+  wbs: 'analytics.internalOrders.types.wbs',
 };
 
-const TYPE_OPTIONS = Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }));
-
 const STATUS_OPTIONS = [
-  { value: 'open', label: 'Abierto' },
-  { value: 'closed', label: 'Cerrado' },
+  { value: 'open', label: 'analytics.internalOrders.statuses.open' },
+  { value: 'closed', label: 'analytics.internalOrders.statuses.closed' },
 ];
 
 export const InternalOrders: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -68,6 +70,12 @@ export const InternalOrders: React.FC = () => {
   const toast = useToast();
   const popup = usePopup();
 
+  const typeOptions = Object.entries(TYPE_LABELS).map(([value, label]) => ({
+    value,
+    label: t(label),
+  }));
+  const statusOptions = STATUS_OPTIONS.map((o) => ({ ...o, label: t(o.label) }));
+
   const fetchAll = async () => {
     setLoading(true);
     try {
@@ -75,7 +83,7 @@ export const InternalOrders: React.FC = () => {
       setRows((Array.isArray(r1) ? r1 : []) as unknown as InternalOrder[]);
       setCostCenters(Array.isArray(r2) ? r2 : []);
     } catch {
-      toast.error('Error al cargar datos');
+      toast.error(t('analytics.internalOrders.loadError'));
     } finally {
       setLoading(false);
     }
@@ -119,7 +127,7 @@ export const InternalOrders: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) {
-      toast.error('Nombre es obligatorio');
+      toast.error(t('analytics.internalOrders.nameRequired'));
       return;
     }
     setSubmitting(true);
@@ -127,11 +135,11 @@ export const InternalOrders: React.FC = () => {
     try {
       if (editing) await internalOrdersApi.update(editing.id, payload);
       else await internalOrdersApi.create(payload);
-      toast.success(editing ? 'Actualizado' : 'Creado');
+      toast.success(editing ? t('analytics.common.updated') : t('analytics.common.created'));
       closeForm();
       fetchAll();
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Error al guardar');
+      toast.error((err instanceof Error && err.message) || t('analytics.common.errorSaving'));
     } finally {
       setSubmitting(false);
     }
@@ -139,47 +147,53 @@ export const InternalOrders: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar proyecto',
-      message: 'Esta acción no se puede deshacer.',
+      title: t('analytics.internalOrders.deleteTitle'),
+      message: t('analytics.common.irreversible'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('analytics.common.delete'),
     });
     if (!ok) return;
     try {
       await internalOrdersApi.remove(id);
-      toast.success('Eliminado');
+      toast.success(t('analytics.common.deleted'));
       fetchAll();
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Error al eliminar');
+      toast.error((err instanceof Error && err.message) || t('analytics.common.errorDeleting'));
     }
   };
 
   const columns = [
     {
-      header: 'Código',
+      header: t('analytics.common.code'),
       accessor: 'code',
       sortable: true,
       sortAccessor: (r: any) => r.code,
       primary: true,
     },
-    { header: 'Nombre', accessor: 'name', sortable: true, sortAccessor: (r: any) => r.name },
     {
-      header: 'Tipo',
-      cell: (r: any) => <Badge variant="info">{TYPE_LABELS[r.type] || r.type}</Badge>,
+      header: t('analytics.common.name'),
+      accessor: 'name',
+      sortable: true,
+      sortAccessor: (r: any) => r.name,
     },
     {
-      header: 'Presupuesto',
+      header: t('analytics.common.type'),
+      cell: (r: any) => (
+        <Badge variant="info">{TYPE_LABELS[r.type] ? t(TYPE_LABELS[r.type]) : r.type}</Badge>
+      ),
+    },
+    {
+      header: t('analytics.internalOrders.budget'),
       align: 'right' as const,
-      cell: (r: any) =>
-        r.budgetAmount ? Number(r.budgetAmount).toLocaleString('es-ES') + ' €' : '—',
+      cell: (r: any) => (r.budgetAmount ? formatNumber(Number(r.budgetAmount)) + ' €' : '—'),
     },
     {
-      header: 'Estado',
+      header: t('analytics.common.status'),
       cell: (r: any) =>
         r.status === 'open' ? (
-          <Badge variant="success">Abierto</Badge>
+          <Badge variant="success">{t('analytics.internalOrders.statuses.open')}</Badge>
         ) : (
-          <Badge variant="neutral">Cerrado</Badge>
+          <Badge variant="neutral">{t('analytics.internalOrders.statuses.closed')}</Badge>
         ),
     },
   ];
@@ -189,13 +203,13 @@ export const InternalOrders: React.FC = () => {
   // una vez en lugar de duplicarse entre una columna de botones y el menú.
   const rowActions = (r: InternalOrder): RowAction[] => [
     {
-      label: 'Editar',
+      label: t('analytics.common.edit'),
       icon: <Pencil size={14} />,
       disabled: !canWrite,
       onClick: () => openEdit(r),
     },
     {
-      label: 'Eliminar',
+      label: t('analytics.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       disabled: !canDelete,
@@ -208,15 +222,15 @@ export const InternalOrders: React.FC = () => {
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Proyectos y órdenes internas"
-        subtitle="Tercera dimensión analítica. Agrupa costes e ingresos por iniciativa, proyecto o WBS."
+        title={t('analytics.internalOrders.title')}
+        subtitle={t('analytics.internalOrders.subtitle')}
         icon={<Briefcase size={18} />}
         size="lg"
         actions={
           canWrite && (
             <Button type="button" onClick={openCreate} className="flex items-center gap-2">
               <Plus size={18} />
-              Nuevo
+              {t('analytics.common.new')}
             </Button>
           )
         }
@@ -227,40 +241,40 @@ export const InternalOrders: React.FC = () => {
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
-                label="Código"
-                placeholder={editing ? '' : 'Auto (PRJ-0001)'}
+                label={t('analytics.common.code')}
+                placeholder={editing ? '' : t('analytics.internalOrders.codePlaceholder')}
                 value={form.code || ''}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
               />
               <Input
-                label="Nombre"
+                label={t('analytics.common.name')}
                 value={form.name || ''}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
               />
               {/* Las opciones salen de TYPE_LABELS para no repetir los valores. */}
               <Select
-                label="Tipo"
-                options={TYPE_OPTIONS}
+                label={t('analytics.common.type')}
+                options={typeOptions}
                 value={form.type || 'project'}
                 onChange={(v) => setForm({ ...form, type: v as InternalOrder['type'] })}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <DatePicker
-                label="Inicio"
+                label={t('analytics.internalOrders.start')}
                 value={form.startDate ? form.startDate.substring(0, 10) : null}
                 onChange={(v) => setForm({ ...form, startDate: v || null })}
               />
               <DatePicker
-                label="Fin"
+                label={t('analytics.internalOrders.end')}
                 value={form.endDate ? form.endDate.substring(0, 10) : null}
                 onChange={(v) => setForm({ ...form, endDate: v || null })}
               />
               <Input
                 type="number"
                 step="0.01"
-                label="Presupuesto (€)"
+                label={t('analytics.internalOrders.budgetEur')}
                 value={form.budgetAmount || ''}
                 onChange={(e) => setForm({ ...form, budgetAmount: e.target.value || null })}
               />
@@ -270,25 +284,25 @@ export const InternalOrders: React.FC = () => {
                 {/* SearchableSelect no tiene prop `label`: se conserva el <label>,
                     con el mismo estilo que el que pinta el Select de al lado. */}
                 <label className="block text-[12px] font-medium text-fg-body mb-1.5">
-                  Centro de coste
+                  {t('analytics.internalOrders.costCenter')}
                 </label>
                 <SearchableSelect
                   options={costCenterOptions}
                   value={form.costCenterId || ''}
                   onChange={(v) => setForm({ ...form, costCenterId: v || null })}
-                  placeholder="— sin asignar —"
+                  placeholder={t('analytics.internalOrders.unassigned')}
                   clearable
                 />
               </div>
               <Select
-                label="Estado"
-                options={STATUS_OPTIONS}
+                label={t('analytics.common.status')}
+                options={statusOptions}
                 value={form.status || 'open'}
                 onChange={(v) => setForm({ ...form, status: v as InternalOrder['status'] })}
               />
             </div>
             <Input
-              label="Notas"
+              label={t('analytics.common.notes')}
               value={form.notes || ''}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
             />
@@ -302,10 +316,10 @@ export const InternalOrders: React.FC = () => {
 
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={closeForm}>
-                Cancelar
+                {t('analytics.common.cancel')}
               </Button>
               <Button type="submit" disabled={submitting}>
-                {editing ? 'Guardar cambios' : 'Crear'}
+                {editing ? t('analytics.common.saveChanges') : t('analytics.common.create')}
               </Button>
             </div>
           </form>

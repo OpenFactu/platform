@@ -1,0 +1,32 @@
+{
+  "userTables": {
+    "nav": {
+      "table": "Table",
+      "newRecord": "New record",
+      "record": "Record"
+    },
+    "list": {
+      "record": "Record",
+      "created": "Created",
+      "deleteTitle": "Delete record",
+      "deleteMessage": "Delete this record? This action can't be undone.",
+      "delete": "Delete",
+      "deleted": "Deleted",
+      "deleteError": "Error deleting",
+      "viewEdit": "View / Edit",
+      "kindDocument": "Document",
+      "kindMaster": "Master data",
+      "new": "New"
+    },
+    "detail": {
+      "saveError": "Error saving",
+      "created": "Record created",
+      "saved": "Changes saved",
+      "newTitle": "New record",
+      "editTitle": "Edit record",
+      "back": "Back",
+      "saving": "Saving...",
+      "save": "Save"
+    }
+  }
+}

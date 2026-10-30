@@ -58,6 +58,8 @@ export abstract class DiDocument {
   shipToAddress?: string;
   deliveryDate?: Date | string;
   orderId?: string;
+  /** Facturas: número de la factura del proveedor (obligatorio en PINV) o referencia del cliente. */
+  externalRef?: string;
   customFields: Record<string, any> = {};
   protected _lines: DiLine[] = [];
 
@@ -95,6 +97,7 @@ export abstract class DiDocument {
       shipToAddress: this.shipToAddress,
       deliveryDate: this.deliveryDate,
       orderId: this.orderId,
+      externalRef: this.externalRef,
       lines: this._lines,
       ...this.customFields,
     };
@@ -148,6 +151,7 @@ export abstract class DiDocument {
     if (body.shipToAddress) this.shipToAddress = body.shipToAddress;
     if (body.deliveryDate) this.deliveryDate = body.deliveryDate;
     if (body.orderId) this.orderId = body.orderId;
+    if (body.externalRef) this.externalRef = body.externalRef;
     if (body.customFields) this.customFields = body.customFields;
     if (Array.isArray(body.lines)) {
       for (const l of body.lines) this.addLine(l);

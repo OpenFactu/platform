@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SearchableSelect } from '@openfactu/ui';
 import { useGeo } from '../../hooks/useGeo';
+import { useI18n } from '@/i18n/I18nContext';
 
 const FLAGS: Record<string, string> = {
   ES: '\u{1F1EA}\u{1F1F8}',
@@ -21,6 +22,7 @@ interface Props {
 
 export const CountrySelect: React.FC<Props> = ({ value, onChange, disabled, label }) => {
   const { countries } = useGeo();
+  const { t } = useI18n();
 
   const options = useMemo(
     () =>
@@ -33,12 +35,14 @@ export const CountrySelect: React.FC<Props> = ({ value, onChange, disabled, labe
 
   return (
     <div className="flex flex-col gap-1.5 w-full">
-      <label className="text-[12px] font-medium text-fg-body">{label || 'País'}</label>
+      <label className="text-[12px] font-medium text-fg-body">
+        {label || t('app.geo.country')}
+      </label>
       <SearchableSelect
         options={options}
         value={value}
         onChange={onChange}
-        placeholder="Seleccionar país..."
+        placeholder={t('app.geo.selectCountry')}
         disabled={disabled}
       />
     </div>

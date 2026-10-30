@@ -22,6 +22,7 @@ import {
   Select,
   SearchableSelect,
   Modal,
+  Slider,
   useToast,
 } from '@openfactu/ui';
 import {
@@ -36,6 +37,8 @@ import {
   Gauge,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatNumber } from '@/i18n/format';
 
 interface AiProviderDTO {
   id: string;
@@ -173,6 +176,7 @@ const closestPresetIndex = (n: number) =>
 export const AiSettingsTab: React.FC = () => {
   const { token } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   const [providers, setProviders] = useState<AiProviderDTO[]>([]);
@@ -207,11 +211,11 @@ export const AiSettingsTab: React.FC = () => {
           coreApi.raw('GET', '/api/ai/providers'),
           coreApi.raw('GET', '/api/ai/config'),
         ]);
-        if (!provRes.ok || !cfgRes.ok) throw new Error('No se pudo cargar la configuración de IA');
+        if (!provRes.ok || !cfgRes.ok) throw new Error(t('settingsCompany.ai.loadError'));
         setProviders(provRes.data);
         setCfg({ ...EMPTY, ...cfgRes.data });
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Error');
+        toast.error(e instanceof Error ? e.message : t('settingsCompany.ai.error'));
       } finally {
         setLoading(false);
       }
@@ -233,12 +237,12 @@ export const AiSettingsTab: React.FC = () => {
     setLoadingModels(true);
     try {
       const res = await coreApi.raw('GET', `/api/ai/models${force ? '?refresh=1' : ''}`);
-      if (!res.ok) throw new Error(res.data?.error || 'No se pudo consultar el catálogo');
+      if (!res.ok) throw new Error(res.data?.error || t('settingsCompany.ai.catalogError'));
       setModels(Array.isArray(res.data?.models) ? res.data.models : []);
       setModelsError(res.data?.error || '');
     } catch (e) {
       setModels([]);
-      setModelsError(e instanceof Error ? e.message : 'No se pudo consultar el catálogo');
+      setModelsError(e instanceof Error ? e.message : t('settingsCompany.ai.catalogError'));
     } finally {
       setLoadingModels(false);
     }
@@ -261,19 +265,23 @@ export const AiSettingsTab: React.FC = () => {
     // retirado, o un proveedor que no publica lista. Se añade igualmente para
     // que abrir el desplegable no lo pierda.
     if (cfg.model && !opts.some((o) => o.value === cfg.model)) {
-      opts.unshift({ value: cfg.model, label: cfg.model, secondaryLabel: 'configurado' });
+      opts.unshift({
+        value: cfg.model,
+        label: cfg.model,
+        secondaryLabel: t('settingsCompany.ai.configured'),
+      });
     }
     return opts;
-  }, [models, cfg.model]);
+  }, [models, cfg.model, t]);
 
   const loadLocalModels = async () => {
     setLoadingLocal(true);
     try {
       const res = await coreApi.raw('GET', '/api/ai/local/models');
-      if (!res.ok) throw new Error('No se pudo consultar los modelos locales');
+      if (!res.ok) throw new Error(t('settingsCompany.ai.localModelsError'));
       setLocal(res.data);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error');
+      toast.error(e instanceof Error ? e.message : t('settingsCompany.ai.error'));
     } finally {
       setLoadingLocal(false);
     }
@@ -301,14 +309,14 @@ export const AiSettingsTab: React.FC = () => {
       };
       if (newApiKey) payload.apiKey = newApiKey;
       const res = await coreApi.raw('PUT', '/api/ai/config', payload);
-      if (!res.ok) throw new Error(res.data.error || 'Error');
+      if (!res.ok) throw new Error(res.data.error || t('settingsCompany.ai.error'));
       setCfg({ ...EMPTY, ...res.data });
       setNewApiKey('');
-      toast.success('Configuración guardada');
+      toast.success(t('settingsCompany.ai.saved'));
       // La key puede ser nueva, así que el catálogo se pide otra vez sin caché.
       void loadModels(true);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al guardar');
+      toast.error(e instanceof Error ? e.message : t('settingsCompany.ai.saveError'));
     } finally {
       setSaving(false);
     }
@@ -321,13 +329,13 @@ export const AiSettingsTab: React.FC = () => {
       const data: any = await coreApi.post('/api/ai/test', {});
       if (data.ok) {
         setTestResult({ ok: true, detail: `${data.model} (${data.ms} ms): ${data.text}` });
-        toast.success('El proveedor de IA responde');
+        toast.success(t('settingsCompany.ai.providerResponds'));
       } else {
-        setTestResult({ ok: false, detail: data.error || 'Error desconocido' });
-        toast.error(`Fallo: ${data.error}`);
+        setTestResult({ ok: false, detail: data.error || t('settingsCompany.ai.unknownError') });
+        toast.error(t('settingsCompany.ai.failure', { error: data.error }));
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Error';
+      const msg = e instanceof Error ? e.message : t('settingsCompany.ai.error');
       setTestResult({ ok: false, detail: msg });
       toast.error(msg);
     } finally {
@@ -344,11 +352,11 @@ export const AiSettingsTab: React.FC = () => {
         `/api/ai/local/models/search?q=${encodeURIComponent(hfQuery)}`,
       );
       const data = res.data;
-      if (!res.ok) throw new Error(data.error || 'Error al buscar');
+      if (!res.ok) throw new Error(data.error || t('settingsCompany.ai.searchError'));
       setHfResults(data.results || []);
       setHasSearchedHf(true);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error');
+      toast.error(e instanceof Error ? e.message : t('settingsCompany.ai.error'));
     } finally {
       setSearching(false);
     }
@@ -360,7 +368,7 @@ export const AiSettingsTab: React.FC = () => {
     abortRef.current[name] = controller;
     setDownloads((d) => ({
       ...d,
-      [name]: { status: 'iniciando…', pct: -1, completedMb: 0, totalMb: 0 },
+      [name]: { status: t('settingsCompany.ai.starting'), pct: -1, completedMb: 0, totalMb: 0 },
     }));
     try {
       const res = await apiClient.postStream(
@@ -370,7 +378,7 @@ export const AiSettingsTab: React.FC = () => {
           signal: controller.signal,
         },
       );
-      if (!res.body) throw new Error('Sin cuerpo de respuesta');
+      if (!res.body) throw new Error(t('settingsCompany.ai.noBody'));
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -407,7 +415,7 @@ export const AiSettingsTab: React.FC = () => {
         delete rest[name];
         return rest;
       });
-      toast.success(`Modelo ${name} descargado`);
+      toast.success(t('settingsCompany.ai.downloaded', { name }));
       void loadLocalModels();
     } catch (e) {
       if (controller.signal.aborted) {
@@ -416,9 +424,9 @@ export const AiSettingsTab: React.FC = () => {
           delete rest[name];
           return rest;
         });
-        toast.info(`Descarga de ${name} cancelada`);
+        toast.info(t('settingsCompany.ai.downloadCancelled', { name }));
       } else {
-        const msg = e instanceof Error ? e.message : 'Error';
+        const msg = e instanceof Error ? e.message : t('settingsCompany.ai.error');
         setDownloads((d) => ({
           ...d,
           [name]: {
@@ -427,7 +435,7 @@ export const AiSettingsTab: React.FC = () => {
             failed: true,
           },
         }));
-        toast.error(`Fallo al descargar ${name}: ${msg}`);
+        toast.error(t('settingsCompany.ai.downloadFailed', { name, error: msg }));
       }
     } finally {
       delete abortRef.current[name];
@@ -444,7 +452,7 @@ export const AiSettingsTab: React.FC = () => {
    */
   const applyContext = async () => {
     if (!cfg.model) {
-      toast.error('Elige o escribe primero un modelo base');
+      toast.error(t('settingsCompany.ai.baseModelRequired'));
       return;
     }
     setApplyingContext(true);
@@ -454,7 +462,7 @@ export const AiSettingsTab: React.FC = () => {
         contextWindow: cfg.contextWindow,
       });
       const data = res.data;
-      if (!res.ok) throw new Error(data.error || 'Error al aplicar la ventana de contexto');
+      if (!res.ok) throw new Error(data.error || t('settingsCompany.ai.applyContextError'));
 
       const putRes = await coreApi.raw('PUT', '/api/ai/config', {
         enabled: cfg.enabled,
@@ -466,10 +474,10 @@ export const AiSettingsTab: React.FC = () => {
         supportsImages: cfg.supportsImages,
       });
       if (putRes.ok) setCfg({ ...EMPTY, ...putRes.data });
-      toast.success(`Modelo creado y seleccionado: ${data.modelName}`);
+      toast.success(t('settingsCompany.ai.modelCreated', { name: data.modelName }));
       void loadLocalModels();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error');
+      toast.error(e instanceof Error ? e.message : t('settingsCompany.ai.error'));
     } finally {
       setApplyingContext(false);
     }
@@ -482,15 +490,16 @@ export const AiSettingsTab: React.FC = () => {
         `/api/ai/local/models?name=${encodeURIComponent(name)}`,
       );
       const data = res.data;
-      if (!res.ok) throw new Error(data.error || 'Error al borrar');
-      toast.success(`Modelo ${name} eliminado`);
+      if (!res.ok) throw new Error(data.error || t('settingsCompany.ai.deleteError'));
+      toast.success(t('settingsCompany.ai.deleted', { name }));
       void loadLocalModels();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error');
+      toast.error(e instanceof Error ? e.message : t('settingsCompany.ai.error'));
     }
   };
 
-  if (loading) return <p className="text-sm text-slate-400 italic">Cargando…</p>;
+  if (loading)
+    return <p className="text-sm text-slate-400 italic">{t('settingsCompany.ai.loading')}</p>;
 
   const isLocal = cfg.provider === 'local';
   const installedNames = new Set(local?.models.map((m) => m.name) || []);
@@ -501,17 +510,17 @@ export const AiSettingsTab: React.FC = () => {
         <div className="p-5 space-y-4">
           <div className="flex items-center gap-2 text-fg-body">
             <Bot size={18} />
-            <h2 className="text-lg font-bold">Proveedor de IA</h2>
+            <h2 className="text-lg font-bold">{t('settingsCompany.ai.providerTitle')}</h2>
           </div>
 
           {/* Checkbox y no Switch: el flag se persiste con «Guardar», no al marcarlo. */}
           <label className="flex items-center gap-2 text-sm cursor-pointer">
             <Checkbox checked={cfg.enabled} onChange={(v) => setCfg({ ...cfg, enabled: v })} />
-            <span>Activar el asistente de IA en este tenant</span>
+            <span>{t('settingsCompany.ai.enable')}</span>
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Proveedor">
+            <Field label={t('settingsCompany.ai.provider')}>
               <SearchableSelect
                 options={providers.map((p) => ({ value: p.id, label: p.label }))}
                 value={cfg.provider}
@@ -521,7 +530,10 @@ export const AiSettingsTab: React.FC = () => {
                 }}
               />
             </Field>
-            <Field label="Modelo" hint={activeProvider?.defaultModel ? undefined : 'obligatorio'}>
+            <Field
+              label={t('settingsCompany.ai.model')}
+              hint={activeProvider?.defaultModel ? undefined : t('settingsCompany.ai.required')}
+            >
               {/* Desplegable con lo que el proveedor dice tener, pero
                   `creatable`: un id que no esté en la lista (un fine-tune, o
                   uno recién publicado) se sigue pudiendo escribir. Vaciarlo
@@ -537,9 +549,11 @@ export const AiSettingsTab: React.FC = () => {
                 clearable
                 creatable
                 onCreate={(term) => term.trim()}
-                createLabel={'Usar "{term}"'}
-                placeholder={activeProvider?.defaultModel || 'id del modelo'}
-                emptyMessage={modelsError || 'El proveedor no devolvió modelos'}
+                createLabel={t('settingsCompany.ai.useTerm')}
+                placeholder={
+                  activeProvider?.defaultModel || t('settingsCompany.ai.modelIdPlaceholder')
+                }
+                emptyMessage={modelsError || t('settingsCompany.ai.noModels')}
                 helperText={modelsError || undefined}
               />
             </Field>
@@ -547,17 +561,22 @@ export const AiSettingsTab: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {activeProvider?.needsApiKey !== false && (
-              <Field label="API key" hint={cfg.apiKeySet ? 'guardada' : undefined}>
+              <Field
+                label={t('settingsCompany.ai.apiKey')}
+                hint={cfg.apiKeySet ? t('settingsCompany.ai.keySaved') : undefined}
+              >
                 {/* Sin showStrength ni generator: la key la emite el proveedor. */}
                 <PasswordInput
                   value={newApiKey}
                   onChange={(e) => setNewApiKey(e.target.value)}
-                  placeholder={cfg.apiKeySet ? '•••••••• (dejar vacío = no cambiar)' : 'API key'}
+                  placeholder={
+                    cfg.apiKeySet ? t('settingsCompany.ai.keyKeep') : t('settingsCompany.ai.apiKey')
+                  }
                 />
               </Field>
             )}
             {activeProvider?.needsBaseUrl && (
-              <Field label="Base URL">
+              <Field label={t('settingsCompany.ai.baseUrl')}>
                 <Input
                   value={cfg.baseUrl}
                   onChange={(e) => setCfg({ ...cfg, baseUrl: e.target.value })}
@@ -566,10 +585,10 @@ export const AiSettingsTab: React.FC = () => {
               </Field>
             )}
             {isLocal && (
-              <Field label="Backend local">
+              <Field label={t('settingsCompany.ai.localBackend')}>
                 {/* Dos opciones fijas: Select, no SearchableSelect. */}
                 <Select
-                  ariaLabel="Backend local"
+                  ariaLabel={t('settingsCompany.ai.localBackend')}
                   options={[
                     { value: 'ollama', label: 'Ollama' },
                     { value: 'vllm', label: 'vLLM' },
@@ -588,27 +607,27 @@ export const AiSettingsTab: React.FC = () => {
               checked={cfg.supportsImages}
               onChange={(v) => setCfg({ ...cfg, supportsImages: v })}
             />
-            <span>El modelo elegido acepta imágenes (visión)</span>
+            <span>{t('settingsCompany.ai.supportsImages')}</span>
           </label>
           <p className="text-xs text-slate-500 -mt-2">
-            No se puede detectar automáticamente por el nombre del modelo. Actívalo solo si sabes
-            que este modelo soporta visión (p.ej. Claude, GPT-4o/5, Gemini, o un modelo local con
-            vision) — controla si el chat ofrece adjuntar imágenes.
+            {t('settingsCompany.ai.supportsImagesHelp')}
           </p>
 
           <div className="flex gap-2 pt-2">
             <Button onClick={save} disabled={saving}>
-              {saving ? 'Guardando…' : 'Guardar'}
+              {saving ? t('settingsCompany.ai.saving') : t('settingsCompany.ai.save')}
             </Button>
             <Button onClick={test} variant="secondary" disabled={testing}>
               <span className="inline-flex items-center gap-2">
                 <Plug size={14} />
-                {testing ? 'Probando…' : 'Probar'}
+                {testing ? t('settingsCompany.ai.testing') : t('settingsCompany.ai.test')}
               </span>
             </Button>
           </div>
           <p className="text-xs text-slate-500">
-            "Probar" usa la configuración <strong>guardada</strong> — guarda antes de probar.
+            {t('settingsCompany.ai.testHelpBefore')}
+            <strong>{t('settingsCompany.ai.testHelpStrong')}</strong>
+            {t('settingsCompany.ai.testHelpAfter')}
           </p>
           {testResult && (
             <div
@@ -628,12 +647,8 @@ export const AiSettingsTab: React.FC = () => {
       {isLocal && cfg.localBackend === 'vllm' && (
         <Card>
           <div className="p-5 space-y-2">
-            <h2 className="text-lg font-bold text-fg-body">Modelos (vLLM)</h2>
-            <p className="text-xs text-slate-500">
-              vLLM carga su modelo desde Hugging Face al arrancar el contenedor (repo id +
-              HF_TOKEN); no se descargan modelos en caliente. Usa el buscador para localizar el repo
-              id y configúralo como modelo arriba.
-            </p>
+            <h2 className="text-lg font-bold text-fg-body">{t('settingsCompany.ai.vllmTitle')}</h2>
+            <p className="text-xs text-slate-500">{t('settingsCompany.ai.vllmHelp')}</p>
           </div>
         </Card>
       )}
@@ -642,19 +657,20 @@ export const AiSettingsTab: React.FC = () => {
         <Card>
           <div className="p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-fg-body">Modelos locales (Ollama)</h2>
+              <h2 className="text-lg font-bold text-fg-body">
+                {t('settingsCompany.ai.ollamaTitle')}
+              </h2>
               <Button variant="secondary" onClick={loadLocalModels} disabled={loadingLocal}>
                 <span className="inline-flex items-center gap-2">
                   <RefreshCw size={14} className={loadingLocal ? 'animate-spin' : ''} />
-                  Actualizar
+                  {t('settingsCompany.ai.refresh')}
                 </span>
               </Button>
             </div>
 
             {local && !local.reachable && (
               <div className="text-xs p-2 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-                Ollama no está disponible en {cfg.baseUrl}. Arranca Ollama (o ajusta la Base URL) y
-                pulsa Actualizar. Las descargas necesitan Ollama en marcha.
+                {t('settingsCompany.ai.ollamaUnreachable', { url: cfg.baseUrl })}
               </div>
             )}
 
@@ -662,11 +678,11 @@ export const AiSettingsTab: React.FC = () => {
               <div className="text-xs p-2 rounded-md bg-bg-muted text-fg-body space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-bold uppercase tracking-wider text-[10px] text-slate-500">
-                    Motor de ejecución
+                    {t('settingsCompany.ai.runtime')}
                   </span>
                   {(local.runtime?.length ?? 0) === 0 && (
                     <span className="italic text-slate-400">
-                      ningún modelo cargado ahora — se detecta GPU/CPU al usar uno
+                      {t('settingsCompany.ai.noRuntime')}
                     </span>
                   )}
                   {local.runtime?.map((r) => (
@@ -676,10 +692,11 @@ export const AiSettingsTab: React.FC = () => {
                   ))}
                 </div>
                 <p className="text-[11px] text-slate-500">
-                  GPU o CPU se decide al arrancar el contenedor de Ollama:{' '}
-                  <code className="font-mono">npm run dev:ai:gpu</code> (NVIDIA) o{' '}
-                  <code className="font-mono">npm run dev:ai</code> (CPU). Con el Ollama nativo de
-                  Windows, la GPU se usa automáticamente.
+                  {t('settingsCompany.ai.gpuHelp1')}{' '}
+                  <code className="font-mono">npm run dev:ai:gpu</code>
+                  {t('settingsCompany.ai.gpuHelp2')}{' '}
+                  <code className="font-mono">npm run dev:ai</code>
+                  {t('settingsCompany.ai.gpuHelp3')}
                 </p>
               </div>
             )}
@@ -691,48 +708,41 @@ export const AiSettingsTab: React.FC = () => {
                     <span className="p-1.5 rounded-md bg-accent/10 text-accent">
                       <Gauge size={14} />
                     </span>
-                    Ventana de contexto
+                    {t('settingsCompany.ai.contextWindow')}
                   </div>
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-accent/10 text-accent">
-                    {fmtCtx(cfg.contextWindow)} tokens
+                    {t('settingsCompany.ai.tokens', { n: fmtCtx(cfg.contextWindow) })}
                   </span>
                 </div>
 
-                <div className="px-1">
-                  <input
-                    type="range"
-                    min={0}
-                    max={CONTEXT_PRESETS.length - 1}
-                    step={1}
-                    value={closestPresetIndex(cfg.contextWindow)}
-                    onChange={(e) =>
-                      setCfg({ ...cfg, contextWindow: CONTEXT_PRESETS[Number(e.target.value)] })
-                    }
-                    className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 appearance-none cursor-pointer accent-accent
-                      [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
-                      [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-md
-                      [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white
-                      dark:[&::-webkit-slider-thumb]:border-slate-900
-                      [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
-                      [&::-moz-range-thumb]:bg-accent [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
-                      dark:[&::-moz-range-thumb]:border-slate-900 [&::-moz-range-thumb]:cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-slate-400 mt-1.5">
-                    {CONTEXT_PRESETS.map((p) => (
-                      <span key={p}>{fmtCtx(p)}</span>
-                    ))}
-                  </div>
-                </div>
+                {/* Slider de @openfactu/ui con una marca por preset; antes era un
+                    <input type="range"> con el pulgar estilado a mano. */}
+                <Slider
+                  className="px-1"
+                  min={0}
+                  max={CONTEXT_PRESETS.length - 1}
+                  step={1}
+                  value={closestPresetIndex(cfg.contextWindow)}
+                  onChange={(i) => setCfg({ ...cfg, contextWindow: CONTEXT_PRESETS[i] })}
+                  marks={CONTEXT_PRESETS.map((p, i) => ({ value: i, label: fmtCtx(p) }))}
+                  formatValue={(i) =>
+                    t('settingsCompany.ai.tokens', { n: fmtCtx(CONTEXT_PRESETS[i]) })
+                  }
+                  showValue="never"
+                />
 
                 <div className="flex items-center justify-between gap-3 pt-1">
                   <p className="text-[11px] text-slate-500 leading-relaxed">
-                    Ollama no admite ampliar el contexto en caliente ni por request — esto crea una
-                    copia de <code className="font-mono">{cfg.model || 'tu modelo'}</code> con esta
-                    ventana ya fijada y la deja seleccionada. Casi instantáneo: reutiliza las capas
-                    ya descargadas.
+                    {t('settingsCompany.ai.ctxHelpBefore')}
+                    <code className="font-mono">
+                      {cfg.model || t('settingsCompany.ai.yourModel')}
+                    </code>
+                    {t('settingsCompany.ai.ctxHelpAfter')}
                   </p>
                   <Button onClick={applyContext} disabled={applyingContext || !cfg.model}>
-                    {applyingContext ? 'Creando…' : 'Aplicar'}
+                    {applyingContext
+                      ? t('settingsCompany.ai.creating')
+                      : t('settingsCompany.ai.apply')}
                   </Button>
                 </div>
               </div>
@@ -741,7 +751,7 @@ export const AiSettingsTab: React.FC = () => {
             {local && local.reachable && (
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                  Instalados
+                  {t('settingsCompany.ai.installed')}
                   {local.models.length > 0 && (
                     <span className="text-slate-400 font-normal normal-case">
                       ({local.models.length})
@@ -749,7 +759,9 @@ export const AiSettingsTab: React.FC = () => {
                   )}
                 </h3>
                 {local.models.length === 0 && (
-                  <p className="text-xs text-slate-400 italic">Ningún modelo instalado todavía.</p>
+                  <p className="text-xs text-slate-400 italic">
+                    {t('settingsCompany.ai.noInstalled')}
+                  </p>
                 )}
                 {local.models.map((m) => (
                   <div
@@ -766,20 +778,24 @@ export const AiSettingsTab: React.FC = () => {
                       <div className="text-[11px] text-slate-400">{fmtGb(m.sizeBytes)}</div>
                     </div>
                     <Badge variant={m.toolCalling ? 'success' : 'neutral'}>
-                      {m.toolCalling ? 'tool-calling' : 'sin tools'}
+                      {m.toolCalling
+                        ? t('settingsCompany.ai.toolCalling')
+                        : t('settingsCompany.ai.noTools')}
                     </Badge>
                     <Button
                       variant="secondary"
                       onClick={() => setCfg({ ...cfg, model: m.name })}
                       disabled={cfg.model === m.name}
                     >
-                      {cfg.model === m.name ? 'En uso' : 'Usar'}
+                      {cfg.model === m.name
+                        ? t('settingsCompany.ai.inUse')
+                        : t('settingsCompany.ai.use')}
                     </Button>
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      title="Eliminar modelo"
+                      title={t('settingsCompany.ai.deleteModel')}
                       onClick={() => removeModel(m.name)}
                     >
                       <Trash2 size={14} />
@@ -792,7 +808,7 @@ export const AiSettingsTab: React.FC = () => {
             {local && local.catalog.filter((c) => !installedNames.has(c.id)).length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Sugerencias (compatibles con tool-calling)
+                  {t('settingsCompany.ai.suggestions')}
                 </h3>
                 <div className="space-y-2">
                   {local.catalog
@@ -823,7 +839,7 @@ export const AiSettingsTab: React.FC = () => {
               >
                 <span className="inline-flex items-center gap-2">
                   <Search size={14} />
-                  Buscar en Hugging Face (GGUF)
+                  {t('settingsCompany.ai.searchHfButton')}
                 </span>
               </Button>
             </div>
@@ -834,8 +850,8 @@ export const AiSettingsTab: React.FC = () => {
       <Modal
         isOpen={hfModalOpen}
         onClose={() => setHfModalOpen(false)}
-        title="Buscar en Hugging Face"
-        subtitle="Cualquier resultado GGUF es descargable directamente en Ollama."
+        title={t('settingsCompany.ai.searchHfTitle')}
+        subtitle={t('settingsCompany.ai.searchHfSubtitle')}
         maxWidth="lg"
       >
         <div className="space-y-3">
@@ -846,13 +862,13 @@ export const AiSettingsTab: React.FC = () => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void searchHf();
               }}
-              placeholder="p.ej. qwen 7b instruct"
+              placeholder={t('settingsCompany.ai.searchPlaceholder')}
               leftIcon={<Search size={14} />}
               className="flex-1"
               autoFocus
             />
             <Button variant="secondary" onClick={searchHf} disabled={searching || !hfQuery.trim()}>
-              {searching ? 'Buscando…' : 'Buscar'}
+              {searching ? t('settingsCompany.ai.searching') : t('settingsCompany.ai.search')}
             </Button>
           </div>
           {hfResults.length > 0 && (
@@ -862,7 +878,10 @@ export const AiSettingsTab: React.FC = () => {
                   key={r.pullName}
                   id={r.id}
                   title={r.id}
-                  description={`${r.downloads.toLocaleString()} descargas · ${r.likes} likes`}
+                  description={t('settingsCompany.ai.hfStats', {
+                    downloads: formatNumber(r.downloads),
+                    likes: r.likes,
+                  })}
                   pullName={r.pullName}
                   download={downloads[r.pullName]}
                   reachable={Boolean(local?.reachable)}
@@ -873,7 +892,9 @@ export const AiSettingsTab: React.FC = () => {
             </div>
           )}
           {!searching && hasSearchedHf && hfResults.length === 0 && (
-            <p className="text-xs text-slate-400 italic">Sin resultados para "{hfQuery}".</p>
+            <p className="text-xs text-slate-400 italic">
+              {t('settingsCompany.ai.noResults', { query: hfQuery })}
+            </p>
           )}
         </div>
       </Modal>
@@ -904,43 +925,46 @@ const ModelRow: React.FC<{
   reachable,
   onDownload,
   onCancel,
-}) => (
-  <div className="rounded-lg border border-border-default hover:border-accent/30 hover:bg-accent/[0.03] transition-colors px-3 py-2.5 space-y-2">
-    <div className="flex items-center gap-3 text-sm">
-      <ModelAvatar name={id} />
-      <div className="flex-1 min-w-0">
-        <div className="font-medium break-all">{title}</div>
-        {description && <div className="text-[11px] text-slate-400 break-all">{description}</div>}
-        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-          {sizeGb !== undefined && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-bg-muted text-fg-muted">
-              ~{sizeGb} GB
-            </span>
-          )}
-          {contextLength !== undefined && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent">
-              {fmtCtx(contextLength)} contexto
-            </span>
-          )}
+}) => {
+  const { t } = useI18n();
+  return (
+    <div className="rounded-lg border border-border-default hover:border-accent/30 hover:bg-accent/[0.03] transition-colors px-3 py-2.5 space-y-2">
+      <div className="flex items-center gap-3 text-sm">
+        <ModelAvatar name={id} />
+        <div className="flex-1 min-w-0">
+          <div className="font-medium break-all">{title}</div>
+          {description && <div className="text-[11px] text-slate-400 break-all">{description}</div>}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            {sizeGb !== undefined && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-bg-muted text-fg-muted">
+                ~{sizeGb} GB
+              </span>
+            )}
+            {contextLength !== undefined && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent">
+                {t('settingsCompany.ai.contextBadge', { n: fmtCtx(contextLength) })}
+              </span>
+            )}
+          </div>
+          {pullName && <code className="text-[10px] text-fg-subtle break-all">{pullName}</code>}
         </div>
-        {pullName && <code className="text-[10px] text-fg-subtle break-all">{pullName}</code>}
+        {download && !download.failed ? (
+          <Button variant="secondary" onClick={onCancel}>
+            {t('settingsCompany.ai.cancel')}
+          </Button>
+        ) : (
+          <Button variant="secondary" onClick={onDownload} disabled={!reachable}>
+            <span className="inline-flex items-center gap-2">
+              <Download size={14} />
+              {t('settingsCompany.ai.download')}
+            </span>
+          </Button>
+        )}
       </div>
-      {download && !download.failed ? (
-        <Button variant="secondary" onClick={onCancel}>
-          Cancelar
-        </Button>
-      ) : (
-        <Button variant="secondary" onClick={onDownload} disabled={!reachable}>
-          <span className="inline-flex items-center gap-2">
-            <Download size={14} />
-            Descargar
-          </span>
-        </Button>
-      )}
+      {download && <DownloadProgressBar state={download} />}
     </div>
-    {download && <DownloadProgressBar state={download} />}
-  </div>
-);
+  );
+};
 
 /**
  * Barra de progreso local — @openfactu/ui no exporta ProgressBar, así que este

@@ -9,7 +9,9 @@ import React, {
   useMemo,
 } from 'react';
 import { CORE_MODULES, findActiveModule, type Module, type SubTab } from '@/modules';
+import { categoryLabelKey } from '@/modules/registry';
 import { useAuth } from './AuthContext';
+import { useI18n } from '../i18n/I18nContext';
 
 interface PluginRoute {
   path: string;
@@ -199,6 +201,8 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setReloadTimestamp(Date.now());
   }, [fetchManifests]);
 
+  const { t } = useI18n();
+
   // Mergear módulos core + módulos/sub-tabs aportados por plugins
   const modules = useMemo<Module[]>(() => {
     // Clone para no mutar
@@ -255,7 +259,7 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!target) {
         target = {
           id: 'custom',
-          label: 'Personalizado',
+          label: 'app.nav.custom',
           icon: 'Wrench',
           subTabs: [],
         };
@@ -270,8 +274,22 @@ export const PluginProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     }
 
-    return merged;
-  }, [manifests, userTables]);
+    // Las etiquetas del registro son claves de i18n (`hr.nav.employees`); las de
+    // plugins y tablas de usuario suelen ser texto plano, y `t` las devuelve
+    // tal cual. Se traducen aquí, una vez, para que el menú, las pestañas, el
+    // buscador y la pantalla de Apps reciban ya el texto del idioma activo.
+    return merged.map((m) => ({
+      ...m,
+      label: t(m.label),
+      description: m.description ? t(m.description) : m.description,
+      category: m.category ? t(categoryLabelKey(m.category)) : m.category,
+      subTabs: m.subTabs.map((s) => ({
+        ...s,
+        label: t(s.label),
+        group: s.group ? t(s.group) : s.group,
+      })),
+    }));
+  }, [manifests, userTables, t]);
 
   return (
     <PluginContext.Provider

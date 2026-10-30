@@ -15,11 +15,13 @@ import {
   FileText,
   Settings,
 } from 'lucide-react';
-import { CommandPalette, useCommandPalette } from '@openfactu/ui';
+import { Button, CommandPalette, useCommandPalette } from '@openfactu/ui';
 import type { CommandSection } from '@openfactu/ui';
 import { useAuth } from '../context/AuthContext';
 import { useTabs } from '../context/TabsContext';
 import { useFormat } from '../hooks/useFormat';
+import { useIsMobile } from '../hooks/useMediaQuery';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface SearchResults {
   partners: { id: string; code: string; name: string; nif: string }[];
@@ -76,92 +78,92 @@ interface QuickAction {
 const ACTIONS: QuickAction[] = [
   {
     id: 'new-sales-invoice',
-    label: 'Nueva factura de venta',
-    keywords: 'crear factura venta cliente',
+    label: 'app.search.actions.newSalesInvoice.label',
+    keywords: 'app.search.actions.newSalesInvoice.keywords',
     path: '/sales/invoices/new',
     icon: <FileStack size={14} />,
     creates: true,
   },
   {
     id: 'new-purchase-invoice',
-    label: 'Nueva factura de compra',
-    keywords: 'crear factura compra proveedor',
+    label: 'app.search.actions.newPurchaseInvoice.label',
+    keywords: 'app.search.actions.newPurchaseInvoice.keywords',
     path: '/purchases/invoices/new',
     icon: <FileStack size={14} />,
     creates: true,
   },
   {
     id: 'new-sales-order',
-    label: 'Nuevo pedido de venta',
-    keywords: 'crear pedido venta cliente',
+    label: 'app.search.actions.newSalesOrder.label',
+    keywords: 'app.search.actions.newSalesOrder.keywords',
     path: '/sales-orders/new',
     icon: <FileDigit size={14} />,
     creates: true,
   },
   {
     id: 'new-purchase-order',
-    label: 'Nuevo pedido de compra',
-    keywords: 'crear pedido compra proveedor',
+    label: 'app.search.actions.newPurchaseOrder.label',
+    keywords: 'app.search.actions.newPurchaseOrder.keywords',
     path: '/purchase-orders/new',
     icon: <FileDigit size={14} />,
     creates: true,
   },
   {
     id: 'new-sales-dn',
-    label: 'Nuevo albarán de venta',
-    keywords: 'crear albaran venta entrega',
+    label: 'app.search.actions.newSalesDn.label',
+    keywords: 'app.search.actions.newSalesDn.keywords',
     path: '/sales/delivery-notes/new',
     icon: <Truck size={14} />,
     creates: true,
   },
   {
     id: 'new-purchase-dn',
-    label: 'Nuevo albarán de compra',
-    keywords: 'crear albaran compra recepcion',
+    label: 'app.search.actions.newPurchaseDn.label',
+    keywords: 'app.search.actions.newPurchaseDn.keywords',
     path: '/purchases/delivery-notes/new',
     icon: <Truck size={14} />,
     creates: true,
   },
   {
     id: 'new-quote',
-    label: 'Nuevo presupuesto',
-    keywords: 'crear presupuesto oferta cotizacion',
+    label: 'app.search.actions.newQuote.label',
+    keywords: 'app.search.actions.newQuote.keywords',
     path: '/sales/quotes/new',
     icon: <FileText size={14} />,
     creates: true,
   },
   {
     id: 'go-partners',
-    label: 'Interlocutores',
-    keywords: 'clientes proveedores contactos',
+    label: 'app.search.actions.partners.label',
+    keywords: 'app.search.actions.partners.keywords',
     path: '/partners',
     icon: <Users size={14} />,
   },
   {
     id: 'go-items',
-    label: 'Artículos',
-    keywords: 'catalogo productos stock',
+    label: 'app.search.actions.items.label',
+    keywords: 'app.search.actions.items.keywords',
     path: '/items',
     icon: <Package size={14} />,
   },
   {
     id: 'go-journal',
-    label: 'Asientos contables',
-    keywords: 'diario contabilidad apuntes',
+    label: 'app.search.actions.journal.label',
+    keywords: 'app.search.actions.journal.keywords',
     path: '/journal-entries',
     icon: <ScrollText size={14} />,
   },
   {
     id: 'go-employees',
-    label: 'Empleados',
-    keywords: 'rrhh plantilla personal',
+    label: 'app.search.actions.employees.label',
+    keywords: 'app.search.actions.employees.keywords',
     path: '/hr/employees',
     icon: <UserRound size={14} />,
   },
   {
     id: 'go-settings',
-    label: 'Ajustes de la empresa',
-    keywords: 'configuracion branding tema',
+    label: 'app.search.actions.settings.label',
+    keywords: 'app.search.actions.settings.keywords',
     path: '/settings/company',
     icon: <Settings size={14} />,
   },
@@ -199,7 +201,9 @@ export const GlobalSearch: React.FC = () => {
   const { user } = useAuth();
   const { openTab } = useTabs();
   const fmt = useFormat();
+  const { t } = useI18n();
   const { open, openPalette, close } = useCommandPalette({ shortcut: 'mod+k' });
+  const mobile = useIsMobile();
   const [results, setResults] = useState<SearchResults>(EMPTY);
   const [loading, setLoading] = useState(false);
   // El término se guarda porque en modo servidor la paleta no filtra nada, y
@@ -243,23 +247,23 @@ export const GlobalSearch: React.FC = () => {
   const actionSection = useMemo<CommandSection | null>(() => {
     const q = norm(term.trim());
     const hits = q
-      ? ACTIONS.filter((a) => norm(`${a.label} ${a.keywords}`).includes(q))
+      ? ACTIONS.filter((a) => norm(`${t(a.label)} ${t(a.keywords)}`).includes(q))
       : ACTIONS.slice(0, 7);
     if (hits.length === 0) return null;
     return {
       key: 'actions',
-      label: 'Acciones',
+      label: t('app.search.actionsSection'),
       icon: <Zap size={14} />,
       items: hits.map((a) => ({
         id: a.id,
-        label: a.label,
-        description: a.creates ? 'Crear' : 'Ir a',
-        keywords: a.keywords,
+        label: t(a.label),
+        description: a.creates ? t('app.search.create') : t('app.search.goTo'),
+        keywords: t(a.keywords),
         icon: a.icon,
         onSelect: () => go(a.path, a.label),
       })),
     };
-  }, [term, go]);
+  }, [term, go, t]);
 
   const sections = useMemo<CommandSection[]>(() => {
     /**
@@ -270,7 +274,7 @@ export const GlobalSearch: React.FC = () => {
     const defs = [
       {
         key: 'partners',
-        label: 'Interlocutores',
+        label: t('app.search.sections.partners'),
         icon: <Users size={14} />,
         route: '/partners',
         perItemRoute: true,
@@ -283,7 +287,7 @@ export const GlobalSearch: React.FC = () => {
       },
       {
         key: 'items',
-        label: 'Artículos',
+        label: t('app.search.sections.items'),
         icon: <Package size={14} />,
         route: '/items',
         perItemRoute: false,
@@ -296,7 +300,7 @@ export const GlobalSearch: React.FC = () => {
       },
       {
         key: 'salesInvoices',
-        label: 'Facturas de venta',
+        label: t('app.search.sections.salesInvoices'),
         icon: <FileStack size={14} />,
         route: '/sales/invoices',
         perItemRoute: true,
@@ -309,7 +313,7 @@ export const GlobalSearch: React.FC = () => {
       },
       {
         key: 'purchaseInvoices',
-        label: 'Facturas de compra',
+        label: t('app.search.sections.purchaseInvoices'),
         icon: <FileStack size={14} />,
         route: '/purchases/invoices',
         perItemRoute: true,
@@ -322,7 +326,7 @@ export const GlobalSearch: React.FC = () => {
       },
       {
         key: 'salesDeliveryNotes',
-        label: 'Albaranes de venta',
+        label: t('app.search.sections.salesDeliveryNotes'),
         icon: <Truck size={14} />,
         route: '/sales/delivery-notes',
         perItemRoute: true,
@@ -335,7 +339,7 @@ export const GlobalSearch: React.FC = () => {
       },
       {
         key: 'purchaseDeliveryNotes',
-        label: 'Albaranes de compra',
+        label: t('app.search.sections.purchaseDeliveryNotes'),
         icon: <Truck size={14} />,
         route: '/purchases/delivery-notes',
         perItemRoute: true,
@@ -348,7 +352,7 @@ export const GlobalSearch: React.FC = () => {
       },
       {
         key: 'salesOrders',
-        label: 'Pedidos de venta',
+        label: t('app.search.sections.salesOrders'),
         icon: <FileDigit size={14} />,
         route: '/sales-orders',
         perItemRoute: true,
@@ -361,7 +365,7 @@ export const GlobalSearch: React.FC = () => {
       },
       {
         key: 'purchaseOrders',
-        label: 'Pedidos de compra',
+        label: t('app.search.sections.purchaseOrders'),
         icon: <FileDigit size={14} />,
         route: '/purchase-orders',
         perItemRoute: true,
@@ -374,20 +378,20 @@ export const GlobalSearch: React.FC = () => {
       },
       {
         key: 'journalEntries',
-        label: 'Asientos',
+        label: t('app.search.sections.journalEntries'),
         icon: <ScrollText size={14} />,
         route: '/journal-entries',
         perItemRoute: false,
         rows: results.journalEntries.map((j) => ({
           id: j.id,
-          label: `Nº ${j.number}`,
+          label: t('app.search.journalNumber', { number: j.number }),
           description: j.description || fmt.date(j.date),
           keywords: '',
         })),
       },
       {
         key: 'employees',
-        label: 'Empleados',
+        label: t('app.search.sections.employees'),
         icon: <UserRound size={14} />,
         route: '/hr/employees',
         perItemRoute: false,
@@ -400,7 +404,7 @@ export const GlobalSearch: React.FC = () => {
       },
       {
         key: 'internalOrders',
-        label: 'Proyectos',
+        label: t('app.search.sections.internalOrders'),
         icon: <Briefcase size={14} />,
         route: '/internal-orders',
         perItemRoute: false,
@@ -413,7 +417,7 @@ export const GlobalSearch: React.FC = () => {
       },
       {
         key: 'chartOfAccounts',
-        label: 'Plan contable',
+        label: t('app.search.sections.chartOfAccounts'),
         icon: <BookOpen size={14} />,
         route: '/chart-of-accounts',
         perItemRoute: false,
@@ -440,7 +444,7 @@ export const GlobalSearch: React.FC = () => {
           onSelect: () => (d.perItemRoute ? go(`${d.route}/${r.id}`, r.label) : go(d.route)),
         })),
       }));
-  }, [results, fmt, go]);
+  }, [results, fmt, go, t]);
 
   // Las acciones van primero: son lo único disponible con la paleta recién
   // abierta, y con término escrito siguen siendo el camino más corto.
@@ -460,14 +464,14 @@ export const GlobalSearch: React.FC = () => {
         type="button"
         onClick={openPalette}
         className="group flex min-w-0 items-center gap-2 w-full max-w-md h-9 px-3 rounded-xs border border-border-default bg-bg-muted text-fg-subtle hover:border-border-strong hover:text-fg-muted transition-colors max-sm:w-9 max-sm:justify-center max-sm:border-transparent max-sm:bg-transparent max-sm:px-0"
-        aria-label="Buscar"
+        aria-label={t('app.search.search')}
       >
         <Search size={14} className="shrink-0" />
         {/* Dos rótulos y no uno recortado: en un móvil, «Buscar interlocutores,
             artícu…» ocupa lo mismo y dice menos que «Buscar». */}
-        <span className="sr-only">Buscar</span>
+        <span className="sr-only">{t('app.search.search')}</span>
         <span className="hidden flex-1 min-w-0 text-left text-sm truncate sm:block">
-          Buscar interlocutores, artículos o documentos…
+          {t('app.search.placeholder')}
         </span>
         <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-xs border border-border-default bg-bg-card text-[10px] font-mono text-fg-subtle">
           Ctrl+K
@@ -481,8 +485,17 @@ export const GlobalSearch: React.FC = () => {
         onSearch={runSearch}
         debounceMs={220}
         loading={loading}
-        placeholder="Buscar interlocutores, artículos o documentos…"
-        emptyMessage="Sin resultados. Prueba con un código, un NIF o parte del nombre."
+        placeholder={t('app.search.placeholder')}
+        emptyMessage={t('app.search.empty')}
+        // CommandPalette no trae botón de cerrar: solo Esc, que en el móvil no
+        // existe. Allí el pie (que enseña los atajos de teclado) es un «Cerrar».
+        footerHint={
+          mobile ? (
+            <Button type="button" variant="secondary" className="w-full" onClick={close}>
+              {t('app.search.close')}
+            </Button>
+          ) : undefined
+        }
       />
     </>
   );

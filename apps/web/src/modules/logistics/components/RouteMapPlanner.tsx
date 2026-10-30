@@ -5,6 +5,7 @@ import { BaseMap } from './maps/BaseMap';
 import { Button } from '@openfactu/ui';
 import { ArrowUp, ArrowDown, X, Zap } from 'lucide-react';
 import type { UnroutedShipment } from '../domain/route';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   token: string;
@@ -74,6 +75,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
   selectedIds,
   onSelectionChange,
 }) => {
+  const { t } = useI18n();
   const [shipments, setShipments] = useState<UnroutedShipment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -146,7 +148,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
       <div className="md:col-span-3 h-[420px] rounded-lg overflow-hidden border border-border-default">
         {loading ? (
           <div className="h-full flex items-center justify-center text-sm text-slate-400">
-            Cargando envíos…
+            {t('logistics.routePlanner.loading')}
           </div>
         ) : (
           <BaseMap latitude={center[0]} longitude={center[1]} zoom={12}>
@@ -200,7 +202,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
       <div className="md:col-span-2 flex flex-col gap-2 max-h-[420px]">
         <div className="flex items-center justify-between">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-            Paradas ({selectedIds.length})
+            {t('logistics.routePlanner.stops', { count: selectedIds.length })}
           </div>
           <Button
             type="button"
@@ -208,14 +210,14 @@ export const RouteMapPlanner: React.FC<Props> = ({
             size="sm"
             onClick={optimize}
             disabled={selectedIds.length < 2}
-            title="Reordena por proximidad (vecino más cercano)"
+            title={t('logistics.routePlanner.optimizeHint')}
           >
-            <Zap size={11} /> Optimizar
+            <Zap size={11} /> {t('logistics.routePlanner.optimize')}
           </Button>
         </div>
         {selectedIds.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-center text-[11px] text-slate-400 px-2 rounded-lg border-2 border-dashed border-border-default">
-            Haz click en los pines del mapa para añadirlos a la ruta en el orden que quieras.
+            {t('logistics.routePlanner.emptyHint')}
           </div>
         ) : (
           <ul className="flex-1 overflow-y-auto space-y-1">
@@ -243,7 +245,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
                     size="sm"
                     onClick={() => move(i, -1)}
                     disabled={i === 0}
-                    title="Subir"
+                    title={t('logistics.routePlanner.moveUp')}
                   >
                     <ArrowUp size={12} />
                   </Button>
@@ -253,7 +255,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
                     size="sm"
                     onClick={() => move(i, 1)}
                     disabled={i === selectedIds.length - 1}
-                    title="Bajar"
+                    title={t('logistics.routePlanner.moveDown')}
                   >
                     <ArrowDown size={12} />
                   </Button>
@@ -262,7 +264,7 @@ export const RouteMapPlanner: React.FC<Props> = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => toggle(id)}
-                    title="Quitar de la ruta"
+                    title={t('logistics.routePlanner.removeFromRoute')}
                   >
                     <X size={12} />
                   </Button>
@@ -273,8 +275,9 @@ export const RouteMapPlanner: React.FC<Props> = ({
         )}
         {shipments.length > withCoords.length && (
           <div className="text-[10px] text-amber-600 bg-amber-50 rounded px-2 py-1 border border-amber-200">
-            {shipments.length - withCoords.length} envío(s) no aparecen porque no tienen
-            coordenadas. Edita el envío y coloca el pin en el mapa.
+            {t('logistics.routePlanner.missingCoords', {
+              count: shipments.length - withCoords.length,
+            })}
           </div>
         )}
       </div>

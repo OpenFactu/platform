@@ -3,6 +3,7 @@ import * as LucideIcons from 'lucide-react';
 import { cn, useContextMenu } from '@openfactu/ui';
 import type { ContextMenuItem } from '@openfactu/ui';
 import { Tab, useTabs } from '../../context/TabsContext';
+import { useI18n } from '../../i18n/I18nContext';
 
 const resolveIcon = (name?: string): React.ComponentType<any> => {
   if (name && (LucideIcons as any)[name]) return (LucideIcons as any)[name];
@@ -12,6 +13,7 @@ const resolveIcon = (name?: string): React.ComponentType<any> => {
 export const TabBar: React.FC = () => {
   const { tabs, activeTabId, setActiveTab, closeTab, resetTabs } = useTabs();
   const { contextMenu, openContextMenu } = useContextMenu();
+  const { t } = useI18n();
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
     if (e.button === 1) {
@@ -33,24 +35,24 @@ export const TabBar: React.FC = () => {
 
     return [
       {
-        label: 'Cerrar pestaña',
+        label: t('app.tabs.close'),
         icon: <LucideIcons.X size={14} />,
         onClick: () => closeTab(tab.id),
       },
       {
-        label: 'Cerrar otras pestañas',
+        label: t('app.tabs.closeOthers'),
         icon: <LucideIcons.Layers size={14} />,
         onClick: () => tabs.filter((t) => t.id !== tab.id).forEach((other) => closeTab(other.id)),
         disabled: tabs.length <= 1,
       },
       {
-        label: 'Cerrar pestañas a la derecha',
+        label: t('app.tabs.closeRight'),
         icon: <LucideIcons.ChevronsRight size={14} />,
         onClick: () => rightTabs.forEach((other) => closeTab(other.id)),
         disabled: rightTabs.length === 0,
       },
       {
-        label: 'Cerrar todas las pestañas',
+        label: t('app.tabs.closeAll'),
         icon: <LucideIcons.Trash2 size={14} />,
         destructive: true,
         separatorBefore: true,
@@ -91,7 +93,9 @@ export const TabBar: React.FC = () => {
               {isActive && <div className="absolute top-0 left-0 right-0 h-[2px] bg-accent" />}
               <Icon size={14} className={cn('shrink-0', isActive ? 'text-accent' : 'opacity-70')} />
               <span className="flex-1 truncate text-xs font-semibold tracking-tight">
-                {tab.title}
+                {/* El título guardado puede ser una clave de i18n (las pestañas
+                    viven en localStorage): se traduce al pintar. */}
+                {t(tab.title)}
               </span>
               <button
                 onClick={(e) => {
@@ -99,7 +103,7 @@ export const TabBar: React.FC = () => {
                   closeTab(tab.id);
                 }}
                 className="shrink-0 w-5 h-5 rounded-xs flex items-center justify-center text-ink-400 hover:bg-bg-hover hover:text-fg-default opacity-0 group-hover:opacity-100 transition-opacity"
-                aria-label="Cerrar pestaña"
+                aria-label={t('app.tabs.close')}
                 tabIndex={-1}
               >
                 <LucideIcons.X size={12} />

@@ -5,6 +5,7 @@ import { ArrowUp, ArrowDown, ScrollText, CreditCard, Link2, ChevronRight } from 
 import { useAuth } from '../../context/AuthContext';
 import { useTabs } from '../../context/TabsContext';
 import { useFormat } from '../../hooks/useFormat';
+import { useI18n } from '@/i18n/I18nContext';
 
 type DocType = 'SO' | 'PO' | 'SDN' | 'PDN' | 'SINV' | 'PINV' | (string & {});
 
@@ -25,13 +26,13 @@ interface LinkedData {
 }
 
 const TYPE_LABEL: Record<DocType, string> = {
-  SQ: 'Presupuesto',
-  SO: 'Pedido venta',
-  PO: 'Pedido compra',
-  SDN: 'Albarán venta',
-  PDN: 'Albarán compra',
-  SINV: 'Factura venta',
-  PINV: 'Factura compra',
+  SQ: 'app.docTypes.SQ',
+  SO: 'app.docTypes.SO',
+  PO: 'app.docTypes.PO',
+  SDN: 'app.docTypes.SDN',
+  PDN: 'app.docTypes.PDN',
+  SINV: 'app.docTypes.SINV',
+  PINV: 'app.docTypes.PINV',
 };
 
 const TYPE_PATH: Record<DocType, string> = {
@@ -64,6 +65,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
   const { openTab } = useTabs();
   const fmt = useFormat();
   const toast = useToast();
+  const { t } = useI18n();
   const [data, setData] = useState<LinkedData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -79,7 +81,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
           setData(d);
         }
       })
-      .catch(() => toast.error('Error al cargar trazabilidad'))
+      .catch(() => toast.error(t('app.trace.loadError')))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, id, refreshKey]);
@@ -93,7 +95,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
 
   if (loading) {
     return (
-      <div className="text-xs text-fg-subtle italic text-center p-6">Cargando trazabilidad…</div>
+      <div className="text-xs text-fg-subtle italic text-center p-6">{t('app.trace.loading')}</div>
     );
   }
   if (!data) return null;
@@ -104,18 +106,18 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
       onClick={() =>
         openTab(`${TYPE_PATH[d.type] ?? `/documents/${d.type}`}/${d.id}`, { title: d.code })
       }
-      className="w-full group flex items-center gap-3 p-2.5 rounded-lg border border-border-subtle hover:border-blue-300 dark:hover:border-blue-500/50 hover:bg-blue-50/40 dark:hover:bg-blue-500/5 transition-all text-left"
+      className="w-full group flex items-center gap-3 p-2.5 rounded-lg border border-border-subtle hover:border-accent/50 hover:bg-accent/5 transition-all text-left"
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <Badge variant="info">{TYPE_LABEL[d.type] ?? d.type}</Badge>
+          <Badge variant="info">{TYPE_LABEL[d.type] ? t(TYPE_LABEL[d.type]) : d.type}</Badge>
           <span className="font-mono font-black text-sm text-fg-default truncate">{d.code}</span>
         </div>
         <div className="text-[11px] text-fg-muted mt-0.5 font-mono">
           {fmt.date(d.date)} · {fmt.money(d.total)}
         </div>
       </div>
-      <ChevronRight size={16} className="text-fg-subtle group-hover:text-blue-500 shrink-0" />
+      <ChevronRight size={16} className="text-fg-subtle group-hover:text-accent shrink-0" />
     </button>
   );
 
@@ -126,17 +128,15 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
           <div className="p-3 rounded-full bg-bg-muted mb-3">
             <Link2 size={22} className="text-fg-subtle" />
           </div>
-          <p className="text-sm font-bold text-fg-body">Sin documentos enlazados</p>
-          <p className="text-xs text-fg-subtle mt-1 max-w-xs">
-            Cuando este documento origine o se genere desde otro, aparecerá aquí la cadena completa.
-          </p>
+          <p className="text-sm font-bold text-fg-body">{t('app.trace.emptyTitle')}</p>
+          <p className="text-xs text-fg-subtle mt-1 max-w-xs">{t('app.trace.emptyHint')}</p>
         </div>
       )}
 
       {data.parents.length > 0 && (
         <div>
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-1.5">
-            <ArrowUp size={11} /> Origen
+            <ArrowUp size={11} /> {t('app.trace.origin')}
           </div>
           <div className="space-y-1.5">{data.parents.map(renderDoc)}</div>
         </div>
@@ -145,7 +145,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
       {data.children.length > 0 && (
         <div>
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-1.5">
-            <ArrowDown size={11} /> Derivado
+            <ArrowDown size={11} /> {t('app.trace.derived')}
           </div>
           <div className="space-y-1.5">{data.children.map(renderDoc)}</div>
         </div>
@@ -154,7 +154,7 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
       {data.payments.length > 0 && (
         <div>
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-1.5">
-            <CreditCard size={11} /> Cobros / Pagos
+            <CreditCard size={11} /> {t('app.trace.payments')}
           </div>
           <div className="space-y-1">
             {data.payments.map((p) => (
@@ -164,7 +164,11 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
               >
                 <span className="text-fg-body font-mono">
                   {fmt.date(p.date)}
-                  {p.reference && <span className="ml-2 text-slate-400">· Ref {p.reference}</span>}
+                  {p.reference && (
+                    <span className="ml-2 text-slate-400">
+                      · {t('app.trace.ref', { ref: p.reference })}
+                    </span>
+                  )}
                 </span>
                 <span className="font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
                   {fmt.money(p.amount)}
@@ -177,25 +181,30 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
 
       {data.journalEntries.length > 0 && (
         <div>
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400 mb-1.5">
-            <ScrollText size={11} /> Asientos contables
+          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-accent mb-1.5">
+            <ScrollText size={11} /> {t('app.trace.journalEntries')}
           </div>
           <div className="space-y-1">
             {data.journalEntries.map((je) => (
               <button
                 key={je.id}
-                onClick={() => openTab(`/journal-entries`, { title: `Asiento ${je.number}` })}
-                className="w-full flex items-center justify-between text-xs p-2 rounded-lg bg-blue-50/60 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/10 transition-colors text-left"
+                onClick={() =>
+                  openTab(`/journal-entries`, {
+                    title: t('app.trace.journalEntry', { number: je.number }),
+                  })
+                }
+                className="w-full flex items-center justify-between text-xs p-2 rounded-lg bg-accent/5 border border-accent/20 hover:bg-accent/10 transition-colors text-left"
               >
                 <span className="font-mono">
-                  <b>Nº {je.number || '—'}</b> · {fmt.date(je.date)}
+                  <b>{t('app.trace.numberShort', { number: je.number || '—' })}</b> ·{' '}
+                  {fmt.date(je.date)}
                 </span>
                 <Badge variant={je.status === 'posted' ? 'success' : 'neutral'}>
                   {je.status === 'posted'
-                    ? 'Asentado'
+                    ? t('app.trace.posted')
                     : je.status === 'reversed'
-                      ? 'Reversado'
-                      : 'Borrador'}
+                      ? t('app.trace.reversed')
+                      : t('app.trace.draft')}
                 </Badge>
               </button>
             ))}
@@ -210,9 +219,9 @@ export const LinkedDocumentsPanel: React.FC<Props> = ({ type, id, refreshKey, ba
   return (
     <Card className="border-border-subtle" bodyClassName="p-5 space-y-4">
       <div className="flex items-center gap-2">
-        <Link2 size={16} className="text-blue-600 dark:text-blue-300" />
+        <Link2 size={16} className="text-accent" />
         <h4 className="text-[10px] font-black uppercase text-fg-muted tracking-[0.15em]">
-          Trazabilidad
+          {t('app.trace.title')}
         </h4>
       </div>
       {inner}

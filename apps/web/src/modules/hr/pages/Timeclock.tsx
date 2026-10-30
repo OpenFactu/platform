@@ -21,12 +21,15 @@ import { useAuth } from '@/context/AuthContext';
 import { Timer, Download } from 'lucide-react';
 import { exportToXlsx } from '@/utils/exportXlsx';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
 
+// Claves de i18n; se traducen al pintar.
 const KIND_LABEL: Record<string, string> = {
-  in: 'Entrada',
-  out: 'Salida',
-  break_start: 'Inicio pausa',
-  break_end: 'Fin pausa',
+  in: 'hrTime.timeclock.kind.in',
+  out: 'hrTime.timeclock.kind.out',
+  break_start: 'hrTime.timeclock.kind.breakStart',
+  break_end: 'hrTime.timeclock.kind.breakEnd',
 };
 const KIND_VARIANT: Record<string, BadgeProps['variant']> = {
   in: 'success',
@@ -37,11 +40,12 @@ const KIND_VARIANT: Record<string, BadgeProps['variant']> = {
 
 // Vistas de la página (sólo visibles para admin).
 const TABS = [
-  { key: 'me', label: 'Mis fichajes' },
-  { key: 'all', label: 'Todos' },
+  { key: 'me', label: 'hrTime.timeclock.tabMe' },
+  { key: 'all', label: 'hrTime.timeclock.tabAll' },
 ];
 
 export const Timeclock: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   // La pestaña "todos" enseña los fichajes del resto de la plantilla, así que
   // va por rol y no por permiso de ruta. Antes comparaba contra 'admin' en
@@ -90,24 +94,29 @@ export const Timeclock: React.FC = () => {
     try {
       data = await timeclockApi.exportJson(Object.fromEntries(params));
     } catch {
-      toast.error('No se pudo exportar');
+      toast.error(t('hrTime.timeclock.exportFailed'));
       return;
     }
     await exportToXlsx({
       filename,
-      sheetName: 'Fichajes',
+      sheetName: t('hrTime.timeclock.sheetName'),
       title,
       columns: [
-        { key: 'fecha', label: 'Fecha', type: 'date', width: 12 },
-        { key: 'hora', label: 'Hora', width: 10 },
-        { key: 'empleadoCodigo', label: 'Código', width: 10 },
-        { key: 'empleadoNombre', label: 'Nombre', width: 28 },
-        { key: 'tipo', label: 'Tipo', width: 14, format: (v) => KIND_LABEL[v] || v },
-        { key: 'origen', label: 'Origen', width: 10 },
-        { key: 'notas', label: 'Notas', width: 40 },
-        { key: 'metodo', label: 'Método', width: 14 },
-        { key: 'kiosco', label: 'Kiosco', width: 24 },
-        { key: 'lector', label: 'Lector', width: 24 },
+        { key: 'fecha', label: t('hr.common.date'), type: 'date', width: 12 },
+        { key: 'hora', label: t('hrTime.timeclock.col.time'), width: 10 },
+        { key: 'empleadoCodigo', label: t('hr.common.code'), width: 10 },
+        { key: 'empleadoNombre', label: t('hr.common.name'), width: 28 },
+        {
+          key: 'tipo',
+          label: t('hrTime.timeclock.col.kind'),
+          width: 14,
+          format: (v) => (KIND_LABEL[v] ? t(KIND_LABEL[v]) : v),
+        },
+        { key: 'origen', label: t('hrTime.timeclock.col.source'), width: 10 },
+        { key: 'notas', label: t('hr.common.notes'), width: 40 },
+        { key: 'metodo', label: t('hrTime.timeclock.col.method'), width: 14 },
+        { key: 'kiosco', label: t('hrTime.timeclock.col.kiosk'), width: 24 },
+        { key: 'lector', label: t('hrTime.timeclock.col.reader'), width: 24 },
       ],
       rows: data,
     });
@@ -125,7 +134,7 @@ export const Timeclock: React.FC = () => {
       toast.error(
         err instanceof ApiError
           ? ((err.body as any)?.error ?? err.message)
-          : 'No hay empleado vinculado',
+          : t('hrTime.timeclock.noEmployee'),
       );
     } finally {
       setLoading(false);
@@ -202,7 +211,7 @@ export const Timeclock: React.FC = () => {
       });
       if (accountRef.current !== account) return;
       pendingPunch.current = null;
-      toast.success(`Fichaje "${KIND_LABEL[kind]}" registrado`);
+      toast.success(t('hrTime.timeclock.punched', { kind: t(KIND_LABEL[kind]) }));
       await fetchAll();
     } catch (err) {
       if (accountRef.current !== account) return;
@@ -210,7 +219,9 @@ export const Timeclock: React.FC = () => {
         pendingPunch.current = null;
         if (err.status === 409) await fetchAll();
       }
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     } finally {
       punchLock.current = false;
       setPunchBusy(false);
@@ -227,20 +238,20 @@ export const Timeclock: React.FC = () => {
   );
 
   const whenColumn: TableColumn<Entry> = {
-    header: 'Fecha y hora',
+    header: t('hrTime.timeclock.col.dateTime'),
     sortable: true,
     sortAccessor: (e) => e.at,
-    cell: (e) => <span className="font-mono">{new Date(e.at).toLocaleString('es-ES')}</span>,
+    cell: (e) => <span className="font-mono">{formatDateTime(e.at)}</span>,
     primary: true,
   };
   const kindColumn: TableColumn<Entry> = {
-    header: 'Tipo',
+    header: t('hrTime.timeclock.col.kind'),
     sortable: true,
     sortAccessor: (e) => e.kind,
-    cell: (e) => <Badge variant={KIND_VARIANT[e.kind]}>{KIND_LABEL[e.kind]}</Badge>,
+    cell: (e) => <Badge variant={KIND_VARIANT[e.kind]}>{t(KIND_LABEL[e.kind])}</Badge>,
   };
   const sourceColumn: TableColumn<Entry> = {
-    header: 'Origen',
+    header: t('hrTime.timeclock.col.source'),
     sortable: true,
     sortAccessor: (e) => e.source || '',
     cell: (e) => <span className="text-xs text-fg-muted">{e.source}</span>,
@@ -251,7 +262,7 @@ export const Timeclock: React.FC = () => {
   const allColumns: TableColumn<Entry>[] = [
     whenColumn,
     {
-      header: 'Empleado',
+      header: t('hr.common.employee'),
       sortable: true,
       sortAccessor: (e) => {
         const emp = employeeById[e.employeeId ?? ''];
@@ -274,7 +285,7 @@ export const Timeclock: React.FC = () => {
     kindColumn,
     sourceColumn,
     {
-      header: 'Notas',
+      header: t('hr.common.notes'),
       cell: (e) => <span className="text-xs text-fg-muted truncate max-w-xs block">{e.notes}</span>,
     },
   ];
@@ -282,12 +293,12 @@ export const Timeclock: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-5">
       <PageHeader
-        title="Fichajes"
+        title={t('hrTime.timeclock.title')}
         subtitle={
           tab === 'me' && employee
             ? `${employee.firstName} ${employee.lastName} (${employee.code})`
             : tab === 'all'
-              ? 'Vista de todos los empleados (administración)'
+              ? t('hrTime.timeclock.allSubtitle')
               : undefined
         }
         icon={<Timer size={18} />}
@@ -297,7 +308,7 @@ export const Timeclock: React.FC = () => {
             {/* Lo que cambia es la vista completa, no un filtro → Tabs. */}
             {isAdmin && (
               <Tabs
-                items={TABS}
+                items={TABS.map((x) => ({ ...x, label: t(x.label) }))}
                 value={tab}
                 onChange={(k) => setTab(k as 'me' | 'all')}
                 variant="segmented"
@@ -313,11 +324,11 @@ export const Timeclock: React.FC = () => {
                   exportEntriesExcel(
                     new URLSearchParams({ employeeId: employee.id, from: monthStart }),
                     `mis_fichajes_${monthStart}`,
-                    `Mis fichajes · desde ${monthStart}`,
+                    t('hrTime.timeclock.exportMeTitle', { from: monthStart }),
                   )
                 }
               >
-                <Download size={14} /> Exportar mes
+                <Download size={14} /> {t('hrTime.timeclock.exportMonth')}
               </Button>
             )}
             {tab === 'all' && isAdmin && (
@@ -333,11 +344,11 @@ export const Timeclock: React.FC = () => {
                   exportEntriesExcel(
                     params,
                     `fichajes_${filters.from}_${filters.to}`,
-                    `Fichajes · ${filters.from} a ${filters.to}`,
+                    t('hrTime.timeclock.exportAllTitle', { from: filters.from, to: filters.to }),
                   );
                 }}
               >
-                <Download size={14} /> Exportar Excel
+                <Download size={14} /> {t('hrTime.timeclock.exportExcel')}
               </Button>
             )}
           </div>
@@ -349,17 +360,17 @@ export const Timeclock: React.FC = () => {
           <Card className="p-6" noPadding>
             <div className="p-6 space-y-4">
               <div className="text-sm text-slate-500">
-                Último fichaje:{' '}
+                {t('hrTime.timeclock.lastEntry')}{' '}
                 {last ? (
                   <span>
-                    <Badge variant={KIND_VARIANT[last.kind]}>{KIND_LABEL[last.kind]}</Badge>{' '}
-                    <span className="font-mono">{new Date(last.at).toLocaleString('es-ES')}</span>
+                    <Badge variant={KIND_VARIANT[last.kind]}>{t(KIND_LABEL[last.kind])}</Badge>{' '}
+                    <span className="font-mono">{formatDateTime(last.at)}</span>
                   </span>
                 ) : (
-                  <span className="italic">aún no has fichado en los últimos 31 días</span>
+                  <span className="italic">{t('hrTime.timeclock.noRecent')}</span>
                 )}
               </div>
-              <p className="font-semibold">{WORK_STATE_LABEL[workState]}</p>
+              <p className="font-semibold">{t(WORK_STATE_LABEL[workState])}</p>
               <TimeclockActions
                 allowedActions={actions}
                 busy={punchBusy || loading}
@@ -376,22 +387,20 @@ export const Timeclock: React.FC = () => {
                   try {
                     setQr((await timeclockApi.qr()).qrDataUrl);
                   } catch (e) {
-                    toast.error(e instanceof Error ? e.message : 'No se pudo mostrar tu QR.');
+                    toast.error(e instanceof Error ? e.message : t('hrTime.timeclock.qrFailed'));
                   }
                 }}
               >
-                {qr ? 'Ocultar mi QR' : 'Mi QR de fichaje'}
+                {qr ? t('hrTime.timeclock.hideQr') : t('hrTime.timeclock.myQr')}
               </Button>
               {qr && (
                 <div>
                   <img
                     src={qr}
-                    alt="Mi QR personal para identificarme en el kiosco"
+                    alt={t('hrTime.timeclock.qrAlt')}
                     className="w-64 max-w-full bg-white"
                   />
-                  <p className="text-sm text-fg-muted mt-2">
-                    Muestra este QR a la cámara del kiosco.
-                  </p>
+                  <p className="text-sm text-fg-muted mt-2">{t('hrTime.timeclock.qrHint')}</p>
                 </div>
               )}
             </div>
@@ -403,7 +412,7 @@ export const Timeclock: React.FC = () => {
               columns={myColumns}
               data={entries}
               isLoading={loading}
-              emptyMessage="Sin fichajes"
+              emptyMessage={t('hrTime.timeclock.empty')}
             />
           </Card>
         </>
@@ -417,31 +426,31 @@ export const Timeclock: React.FC = () => {
                 {/* SearchableSelect no tiene prop `label` → se conserva el
                     <label> suelto. El vacío es válido («Todos») → clearable. */}
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                  Empleado
+                  {t('hr.common.employee')}
                 </label>
                 <SearchableSelect
                   options={employeeOptions}
                   value={filters.employeeId}
                   onChange={(v) => setFilters({ ...filters, employeeId: v })}
-                  placeholder="Todos"
+                  placeholder={t('hr.common.all')}
                   clearable
                 />
               </div>
               {/* El rango se guarda como '' cuando se vacía, igual que hacía el
                   <input type="date">. */}
               <DatePicker
-                label="Desde"
+                label={t('hr.common.from')}
                 value={filters.from || null}
                 onChange={(v) => setFilters({ ...filters, from: v ?? '' })}
               />
               <DatePicker
-                label="Hasta"
+                label={t('hr.common.to')}
                 value={filters.to || null}
                 onChange={(v) => setFilters({ ...filters, to: v ?? '' })}
               />
               <div className="text-xs text-slate-500">
-                <span className="font-bold text-fg-body">{allEntries.length}</span> fichajes en el
-                rango
+                <span className="font-bold text-fg-body">{allEntries.length}</span>{' '}
+                {t('hrTime.timeclock.inRange')}
               </div>
             </div>
           </Card>
@@ -451,7 +460,7 @@ export const Timeclock: React.FC = () => {
               className="max-md:p-3"
               columns={allColumns}
               data={allEntries}
-              emptyMessage="Sin fichajes en el rango"
+              emptyMessage={t('hrTime.timeclock.emptyRange')}
             />
           </Card>
         </>

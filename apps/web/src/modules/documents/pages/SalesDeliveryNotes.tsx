@@ -1,9 +1,20 @@
+import { DocumentFormLayout } from '../components/form/DocumentFormLayout';
+import { SeriesPeriodFields } from '../components/form/SeriesPeriodFields';
+import {
+  HeaderSection,
+  LinesSection,
+  PartnerField,
+  WithholdingNotice,
+} from '../components/form/FormPieces';
+import { useFormLineColumns } from '../hooks/useFormLineColumns';
+import { buildFormSteps, formStepStatus } from '../domain/formSteps';
+
+import { ResponsiveActions } from '@/components/common/ResponsiveActions';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Table,
   Card,
   Button,
-  Input,
   DatePicker,
   Loader,
   usePopup,
@@ -12,6 +23,8 @@ import {
   FilterBar,
   PageHeader,
   SearchableSelect,
+  Field,
+  FormGrid,
 } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useLocation, useParams } from 'react-router-dom';
@@ -22,12 +35,7 @@ import { formatDocCode } from '@/utils/docCode';
 import {
   Truck,
   Plus,
-  Trash2,
-  ArrowLeft,
-  Save,
   Copy,
-  PlusSquare,
-  Barcode,
   ShoppingCart,
   AlertCircle,
   Download,
@@ -37,7 +45,7 @@ import {
 import { DocumentActionBar } from '../components/DocumentActionBar';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
-import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
+
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
 import { MobileLineCards } from '../components/MobileLineCards';
 import { useIsMobile } from '@/hooks/useMediaQuery';
@@ -47,25 +55,22 @@ import { PreparationButton } from '@/components/common/PreparationButton';
 import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
-import {
-  buildDetailLineColumns,
-  buildFormLineColumns,
-  statusBadgeProps,
-} from '../components/documentLineCells';
+import { buildDetailLineColumns, statusBadgeProps } from '../components/documentLineCells';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
 import { downloadPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
 import { BatchSelectionModal } from '@/modules/inventory/components/BatchSelectionModal';
 import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssignmentPanel';
-import { useItemUoms } from '@/hooks/useItemUoms';
+
 import { useZonesWithStock } from '@/hooks/useZonesWithStock';
-import { usePluginLineFields } from '@/hooks/usePluginLineFields';
+
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
 import { useDocumentScanner } from '@/hooks/useDocumentScanner';
 import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
 import { docsApi } from '../api';
 import { apiClient, ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 
 // --- Sub-componente: VISTA DE LISTADO ---
 const SDNList: React.FC<{
@@ -78,6 +83,7 @@ const SDNList: React.FC<{
   onCopyToInvoice: (sdn: any) => void;
   doc: any;
 }> = ({ data, loading, partners, onCreate, onCreateFromClone, onDetail, onCopyToInvoice, doc }) => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
@@ -96,7 +102,7 @@ const SDNList: React.FC<{
     try {
       await downloadPdf(`/api/sales/delivery-notes/${id}/pdf`);
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al descargar PDF');
+      toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
       setDownloadingId(null);
     }
@@ -110,46 +116,46 @@ const SDNList: React.FC<{
         {
           key: 'partnerId',
           type: 'select',
-          label: 'Cliente',
+          label: t('doc.partner.customer'),
           options: partners.map((p) => ({ label: p.name, value: p.id })),
         },
         {
           key: 'status',
           type: 'select',
-          label: 'Estado',
+          label: t('doc.common.status'),
           options: [
-            { label: 'Abierto', value: 'O' },
-            { label: 'Facturado', value: 'C' },
-            { label: 'Cancelado', value: 'X' },
+            { label: t('doc.status.open'), value: 'O' },
+            { label: t('doc.status.invoiced'), value: 'C' },
+            { label: t('doc.status.cancelled'), value: 'X' },
           ],
         },
-        { key: 'date', type: 'date', label: 'Fecha' },
+        { key: 'date', type: 'date', label: t('doc.common.date') },
       ],
     });
 
   const columns = [
     {
-      header: 'No. Albarán',
+      header: t('doc.salesDeliveryNotes.colNumber'),
       sortable: true,
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
           <span className="text-[10px] text-fg-subtle font-mono mt-1">
-            ID: {item.id.substring(0, 8)}
+            {t('doc.common.idShort', { id: item.id.substring(0, 8) })}
           </span>
         </div>
       ),
     },
     {
-      header: 'Fecha',
+      header: t('doc.common.date'),
       card: 'meta' as const,
       sortable: true,
       sortAccessor: (item: any) => new Date(item.date).getTime(),
       accessor: (item: any) => fmt.date(item.date),
     },
     {
-      header: 'Cliente',
+      header: t('doc.partner.customer'),
       card: 'subtitle' as const,
       sortable: true,
       sortAccessor: (item: any) => item.partnerName || '',
@@ -157,18 +163,20 @@ const SDNList: React.FC<{
         item.partnerName || partners.find((p) => p.id === item.partnerId)?.name || '...',
     },
     {
-      header: 'Pedido Origen',
+      header: t('doc.deliveryNotes.sourceOrder'),
       accessor: (item: any) =>
         item.orderDocNum ? (
           <Badge variant="info" className="font-mono text-[10px] opacity-80">
             {item.orderPrefix}-{item.periodCode}-{String(item.orderDocNum).padStart(6, '0')}
           </Badge>
         ) : (
-          <span className="text-[10px] text-fg-subtle font-bold italic">Directo</span>
+          <span className="text-[10px] text-fg-subtle font-bold italic">
+            {t('doc.deliveryNotes.direct')}
+          </span>
         ),
     },
     {
-      header: 'Total',
+      header: t('doc.lines.total'),
       align: 'right' as const,
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
@@ -177,21 +185,21 @@ const SDNList: React.FC<{
       ),
     },
     {
-      header: 'Estado',
+      header: t('doc.common.status'),
       card: 'status' as const,
       align: 'center' as const,
       sortable: true,
       sortAccessor: (item: any) => item.status || '',
       cell: (item: any) => (
         <div className="flex items-center gap-1.5 flex-wrap">
-          {item.status === 'O' && <Badge variant="warning">Abierto</Badge>}
-          {item.status === 'C' && <Badge variant="success">Facturado</Badge>}
-          {item.status === 'X' && <Badge variant="error">Cancelado</Badge>}
+          {item.status === 'O' && <Badge variant="warning">{t('doc.status.open')}</Badge>}
+          {item.status === 'C' && <Badge variant="success">{t('doc.status.invoiced')}</Badge>}
+          {item.status === 'X' && <Badge variant="error">{t('doc.status.cancelled')}</Badge>}
           {item.hasActiveShipment && item.activeShipmentStatus === 'delivered' && (
-            <Badge variant="success">Entregado</Badge>
+            <Badge variant="success">{t('doc.deliveryNotes.delivered')}</Badge>
           )}
           {item.hasActiveShipment && item.activeShipmentStatus !== 'delivered' && (
-            <Badge variant="info">En preparación</Badge>
+            <Badge variant="info">{t('doc.deliveryNotes.inPreparation')}</Badge>
           )}
         </div>
       ),
@@ -200,7 +208,7 @@ const SDNList: React.FC<{
       // `PreparationButton` es un componente con estado propio (loading, toast,
       // llamada a /api/logistics/prep) y no cabe en un `RowAction`, así que se
       // queda como columna. El resto de acciones pasan a `rowActions`.
-      header: 'Acciones',
+      header: t('doc.common.actions'),
       align: 'right' as const,
       cell: (item: any) =>
         item.status === 'O' && !item.hasActiveShipment && flags.logisticsEnabled ? (
@@ -216,16 +224,20 @@ const SDNList: React.FC<{
   // se declaran una vez en lugar de duplicarse entre una columna de botones y
   // el menú contextual.
   const rowActions = (item: any): RowAction[] => [
-    { label: 'Ver Albarán', icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
-      label: 'Descargar PDF',
+      label: t('doc.salesDeliveryNotes.view'),
+      icon: <Eye size={14} />,
+      onClick: () => onDetail(item),
+    },
+    {
+      label: t('doc.actions.downloadPdf'),
       icon: <Download size={14} />,
       onClick: () => handleQuickPdf(item.id),
     },
     ...(item.status === 'O'
       ? [
           {
-            label: 'Facturar',
+            label: t('doc.deliveryNotes.invoice'),
             icon: <Copy size={14} />,
             onClick: () => onCopyToInvoice(item),
             separatorBefore: true,
@@ -235,12 +247,14 @@ const SDNList: React.FC<{
     ...(item.hasActiveShipment && item.activeShipmentId
       ? [
           {
-            label: 'Ver preparación',
+            label: t('doc.deliveryNotes.viewPreparation'),
             icon: <PackageSearch size={14} />,
             onClick: () => {
               const path = `/logistics/shipments/${item.activeShipmentId}`;
               if (tabs && (tabs as any).openTab) {
-                (tabs as any).openTab(path, { title: 'Envío en preparación' });
+                (tabs as any).openTab(path, {
+                  title: t('doc.deliveryNotes.shipmentInPreparation'),
+                });
               } else {
                 window.location.href = path;
               }
@@ -253,8 +267,8 @@ const SDNList: React.FC<{
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Salidas (Albaranes)"
-        subtitle="Registro físico de salida de productos y control de expedición."
+        title={t('doc.salesDeliveryNotes.title')}
+        subtitle={t('doc.salesDeliveryNotes.subtitle')}
         icon={<Truck size={18} />}
         size="lg"
         divider
@@ -271,14 +285,27 @@ const SDNList: React.FC<{
             {doc.state.canWrite && onCreateFromClone && (
               <CloneDocumentActions docType="SDN" onPaste={onCreateFromClone} show="paste" />
             )}
-            <Button
-              type="button"
-              onClick={onCreate}
-              disabled={!doc.state.canWrite}
-              className="flex items-center gap-2 disabled:opacity-50"
+            <ResponsiveActions
+              source="primary:create"
+              actions={[
+                {
+                  id: 'create',
+                  label: t('doc.salesDeliveryNotes.new'),
+                  icon: <Plus size={19} />,
+                  onClick: onCreate,
+                  disabled: !doc.state.canWrite,
+                },
+              ]}
             >
-              <Plus size={20} /> Registrar Nueva Salida
-            </Button>
+              <Button
+                type="button"
+                onClick={onCreate}
+                disabled={!doc.state.canWrite}
+                className="flex items-center gap-2 disabled:opacity-50"
+              >
+                <Plus size={20} /> {t('doc.salesDeliveryNotes.new')}
+              </Button>
+            </ResponsiveActions>
           </div>
         }
       />
@@ -294,23 +321,23 @@ const SDNList: React.FC<{
           config={[
             {
               key: 'partnerId',
-              label: 'Cliente',
+              label: t('doc.partner.customer'),
               type: 'select',
               options: partners.map((p) => ({ label: p.name, value: p.id })),
             },
             {
               key: 'status',
-              label: 'Estado',
+              label: t('doc.common.status'),
               type: 'select',
               options: [
-                { label: 'Abierto', value: 'O' },
-                { label: 'Facturado', value: 'C' },
-                { label: 'Cancelado', value: 'X' },
+                { label: t('doc.status.open'), value: 'O' },
+                { label: t('doc.status.invoiced'), value: 'C' },
+                { label: t('doc.status.cancelled'), value: 'X' },
               ],
             },
-            { key: 'date', label: 'Fecha', type: 'date' },
+            { key: 'date', label: t('doc.common.date'), type: 'date' },
           ]}
-          searchPlaceholder="Buscar albarán..."
+          searchPlaceholder={t('doc.deliveryNotes.search')}
         />
         <BulkSendToolbar
           selectedKeys={selectedKeys}
@@ -338,7 +365,6 @@ const SDNList: React.FC<{
 
 // --- Sub-componente: VISTA DE FORMULARIO ---
 const SDNForm: React.FC<{
-  onBack: () => void;
   onSubmit: (e: any) => void;
   state: any;
   setState: any;
@@ -351,7 +377,6 @@ const SDNForm: React.FC<{
   setInternalOrderId: (id: string | null) => void;
   setViewingBatch: (l: any) => void;
 }> = ({
-  onBack,
   onSubmit,
   state,
   setState,
@@ -364,258 +389,141 @@ const SDNForm: React.FC<{
   setInternalOrderId,
   setViewingBatch,
 }) => {
+  const { t, locale } = useI18n();
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
-  const fmt = useFormat();
-  const isMobile = useIsMobile();
-  const itemUoms = useItemUoms();
   const zonesWithStock = useZonesWithStock();
   const { flags } = useTheme();
   const warehouseLocation = flags.warehouseLocation;
-  const pluginLineFields = usePluginLineFields('SalesDeliveryNoteLine');
 
   const filteredZones = zones.filter(
     (z) => !state.warehouseId || z.warehouseId === state.warehouseId,
   );
 
-  const projectCol = useInternalOrderLineColumn(actions.updateLine);
-  const columns = useMemo(() => {
-    const base = buildFormLineColumns({
-      kind: DocKind.DeliveryNote,
-      side: DocSide.Sale,
-      state,
-      masters,
-      zones: warehouseLocation === 'line' ? zones : filteredZones,
-      actions,
-      onAssignBatch: setBatchEditingIdx,
-      onViewBatch: setViewingBatch,
-      fmt,
-      getItemUoms: itemUoms.get,
-      warehouseLocation,
-      pluginLineFields,
-      getAvailableZones: zonesWithStock.get,
-    });
-    // El builder base ya trae su propia columna 'Proyecto' cuando hay
-    // proyectos en masters — la quitamos para no duplicarla con projectCol.
-    const rest = base.slice(0, -1).filter((c) => c.header !== 'Proyecto');
-    return [...rest, projectCol, base[base.length - 1]];
-  }, [
-    state.lines,
-    state.warehouseId,
-    masters.items,
-    masters.taxGroups,
+  const columns = useFormLineColumns({
+    kind: DocKind.DeliveryNote,
+    side: DocSide.Sale,
+    state,
+    masters,
+    zones: warehouseLocation === 'line' ? zones : filteredZones,
+    actions,
+    onAssignBatch: setBatchEditingIdx,
+    onViewBatch: setViewingBatch,
+    getAvailableZones: zonesWithStock.get,
     warehouseLocation,
-    zones,
-    pluginLineFields,
-    projectCol,
-  ]);
+    pluginTable: 'SalesDeliveryNoteLine',
+    extraDep: `${state.warehouseId}|${zones.length}`,
+  });
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const steps = useMemo(() => buildFormSteps({ fiscal: 'optional' }), [locale]);
+  const status = formStepStatus(state, masters, {
+    partnerLabel: t('doc.steps.theCustomer'),
+    warehouse: warehouseLocation !== 'line',
+  });
+  const partner = masters.partners.find((x: any) => x.id === state.partnerId);
 
   return (
-    <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <PageHeader
+    <>
+      <DocumentFormLayout
         title={
           <span className="flex items-center gap-3">
-            Registro de Salida
-            {orderId && (
-              <Badge
-                variant="info"
-                className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 italic"
-              >
-                De Pedido
-              </Badge>
-            )}
+            {t('doc.salesDeliveryNotes.formTitle')}
+            {orderId && <Badge variant="info">{t('doc.deliveryNotes.fromOrder')}</Badge>}
           </span>
         }
-        subtitle={
-          <span className="flex items-center gap-2">
-            <PlusSquare size={14} />
-            Documento de expedición y control de stock de salida.
-          </span>
-        }
-        size="lg"
-        divider
-        breadcrumbs={
-          <Button type="button" variant="ghost" size="sm" onClick={onBack} title="Volver">
-            <ArrowLeft size={14} className="mr-1" /> Volver
-          </Button>
-        }
-        actions={
-          <Button
-            type="button"
-            onClick={onSubmit}
-            isLoading={state.isSubmitting}
-            disabled={!!state.seriesError}
-            className="flex items-center gap-2"
-          >
-            <Save size={20} /> Registrar Albarán
-          </Button>
-        }
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 md:col-span-2 space-y-6 border-t-4 border-t-emerald-500">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
-                Cliente *
-              </label>
-              <SearchableSelect
-                value={state.partnerId}
-                onChange={setState.setPartnerId}
-                options={masters.partners.map((p: any) => ({ label: p.name, value: p.id }))}
-                placeholder="Seleccionar cliente..."
-              />
-            </div>
-            {warehouseLocation !== 'line' && (
-              <div className="space-y-2">
-                <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
-                  Almacén de Salida *
-                </label>
-                <SearchableSelect
-                  value={state.warehouseId}
-                  onChange={setState.setWarehouseId}
-                  options={masters.warehouses.map((w: any) => ({ label: w.name, value: w.id }))}
-                />
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
-                Fecha Albarán *
-              </label>
-              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
-            </div>
-            <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
-          </div>
-        </Card>
-
-        <div className="space-y-6">
-          <Card className="p-6 space-y-6 bg-bg-muted">
-            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest border-b pb-2">
-              Logística y Series
-            </h4>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-fg-muted">Serie de Albarán *</label>
-                <SearchableSelect
-                  value={state.seriesId}
-                  onChange={setState.setSeriesId}
-                  options={masters.series.map((s: any) => ({ label: s.name, value: s.id }))}
-                />
-                {state.isManualSeries && (
-                  <div className="mt-2 space-y-1">
-                    <label className="text-[10px] font-bold text-fg-muted">
-                      Número de documento (manual) *
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={state.manualNumber}
-                      onChange={(e) => setState.setManualNumber(e.target.value)}
-                      placeholder="Ej: 1050"
-                    />
-                  </div>
-                )}
-                {state.seriesError && (
-                  <p className="text-[10px] text-rose-500 font-bold mt-1">{state.seriesError}</p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-fg-muted">Periodo Contable *</label>
-                <SearchableSelect
-                  value={state.periodId}
-                  onChange={setState.setPeriodId}
-                  options={masters.periods.map((p: any) => ({ label: p.name, value: p.id }))}
-                />
-              </div>
-            </div>
-          </Card>
-          <PluginFieldsPanel
-            tableName="SalesDeliveryNote"
-            values={state.pluginData}
-            onChange={setState.setPluginField}
-            disabled={state.isSubmitting}
-            layout="sidebar"
+        subtitle={t('doc.salesDeliveryNotes.formSubtitle')}
+        submitLabel={t('doc.deliveryNotes.submit')}
+        onSubmit={() => onSubmit(undefined)}
+        isSubmitting={state.isSubmitting}
+        canSubmit={!state.seriesError && state.canWrite}
+        steps={steps}
+        status={status}
+        onProblem={(p) => {
+          if (p.batchLine != null) setBatchEditingIdx(p.batchLine);
+        }}
+        totals={
+          <DocumentTotalsBlock
+            variant="plain"
+            subtotal={computations.subtotal}
+            tax={computations.taxTotal}
+            total={computations.total}
+            withholdingAmount={computations.withholdingAmount}
+            withholdingRate={state.withholdingRate}
+            totalLabel={t('doc.deliveryNotes.totalForm')}
           />
-        </div>
-      </div>
-
-      {(() => {
-        const p = masters.partners.find((x: any) => x.id === state.partnerId);
-        const partnerRate = Number(p?.defaultWithholdingRate || 0);
-        const docRate = Number(state.withholdingRate || 0);
-        if (partnerRate > 0 && docRate === 0) {
-          return (
-            <div className="flex items-center justify-between gap-4 p-3 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
-              <div className="flex items-start gap-3 min-w-0">
-                <AlertCircle
-                  size={18}
-                  className="text-amber-600 dark:text-amber-300 shrink-0 mt-0.5"
-                />
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
-                    Este cliente tiene retención IRPF por defecto del {partnerRate}%
-                  </p>
-                  <p className="text-xs text-amber-700 dark:text-amber-300/80 mt-0.5">
-                    El albarán se emitirá sin retención. Si aplica, aplícala aquí para que herede a
-                    la factura.
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setState.setWithholdingRate(partnerRate)}
-                className="shrink-0"
-              >
-                Aplicar {partnerRate}%
-              </Button>
-            </div>
-          );
         }
-        return null;
-      })()}
-
-      <DocumentFiscalPanel kind="sales" state={state} setState={setState} collapsible />
-
-      <Card className="shadow-lg overflow-hidden border-border-subtle" noPadding>
-        {isMobile ? (
-          <MobileLineCards columns={columns} lines={state.lines || []} />
-        ) : (
-          <Table responsive="scroll" columns={columns} data={state.lines || []} />
-        )}
-        <div className="p-6 bg-bg-muted flex flex-col md:flex-row justify-between items-start md:items-center border-t border-border-default gap-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => actions.addLine()}
-              className="text-emerald-600 dark:text-emerald-300 font-bold flex items-center gap-2 h-10 border-border-default bg-bg-card"
-            >
-              <PlusSquare size={16} /> Añadir Línea Libre
-            </Button>
-          </div>
-          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-lg border border-border-subtle shadow-sm">
-            <div className="flex justify-between w-full text-[10px] font-black text-fg-subtle uppercase tracking-widest px-1">
-              <span>Base Imponible:</span>
-              <span className="text-fg-body">{computations.subtotal.toFixed(2)} €</span>
+        sections={{
+          header: (
+            <HeaderSection
+              fields={
+                <FormGrid columns={2}>
+                  <PartnerField
+                    label={t('doc.partner.customer')}
+                    value={state.partnerId}
+                    onChange={setState.setPartnerId}
+                    partners={masters.partners}
+                    placeholder={t('doc.common.selectCustomer')}
+                  />
+                  {warehouseLocation !== 'line' ? (
+                    <Field label={t('doc.salesOrders.outWarehouse')} required>
+                      <SearchableSelect
+                        value={state.warehouseId}
+                        onChange={setState.setWarehouseId}
+                        options={masters.warehouses.map((w: any) => ({
+                          label: w.name,
+                          value: w.id,
+                        }))}
+                        required
+                      />
+                    </Field>
+                  ) : (
+                    <span />
+                  )}
+                  <DatePicker
+                    label={t('doc.deliveryNotes.date')}
+                    required
+                    value={state.date}
+                    onChange={(v) => setState.setDate(v ?? '')}
+                  />
+                  <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
+                </FormGrid>
+              }
+              side={
+                <>
+                  <SeriesPeriodFields state={state} setState={setState} masters={masters} />
+                  <PluginFieldsPanel
+                    tableName="SalesDeliveryNote"
+                    values={state.pluginData}
+                    onChange={setState.setPluginField}
+                    disabled={state.isSubmitting}
+                    layout="sidebar"
+                  />
+                </>
+              }
+            />
+          ),
+          lines: (
+            <LinesSection
+              columns={columns}
+              lines={state.lines || []}
+              onAdd={() => actions.addLine()}
+              emptyMessage={t('doc.deliveryNotes.noLines')}
+            />
+          ),
+          fiscal: (
+            <div className="space-y-4">
+              <WithholdingNotice
+                partner={partner}
+                currentRate={state.withholdingRate}
+                onApply={setState.setWithholdingRate}
+                docLabel={t('doc.nouns.deliveryNote')}
+                side="sale"
+              />
+              <DocumentFiscalPanel kind="sales" state={state} setState={setState} bare />
             </div>
-            <div className="flex justify-between w-full text-[10px] font-black text-blue-500 dark:text-blue-300 uppercase tracking-widest px-1">
-              <span>Cuota IVA:</span>
-              <span>{computations.taxTotal.toFixed(2)} €</span>
-            </div>
-            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-border-subtle">
-              <span className="text-[10px] uppercase font-black text-fg-subtle tracking-widest">
-                Total Albarán:
-              </span>
-              <span className="text-2xl font-black text-fg-default tracking-tighter ml-4">
-                {computations.total.toFixed(2)} €
-              </span>
-            </div>
-          </div>
-        </div>
-      </Card>
+          ),
+        }}
+      />
 
       <BatchAssignmentPanel
         isOpen={batchEditingIdx !== null}
@@ -675,7 +583,7 @@ const SDNForm: React.FC<{
           setState.setLines([...nextLines, ...extraLines]);
         }}
       />
-    </div>
+    </>
   );
 };
 
@@ -689,11 +597,20 @@ const SDNDetail: React.FC<{
   zones: any[];
   setViewingBatch: (l: any) => void;
 }> = ({ sdn, onBack, onCancel, onCopyToInvoice, masters, zones, setViewingBatch }) => {
+  const { t, locale } = useI18n();
   const fmt = useFormat();
   const isMobile = useIsMobile();
   const { flags } = useTheme();
   const tabs = useTabs();
   const partner = masters.partners.find((p: any) => p.id === sdn.partnerId);
+  const openShipment = () => {
+    const path = `/logistics/shipments/${sdn.activeShipmentId}`;
+    if (tabs && (tabs as any).openTab) {
+      (tabs as any).openTab(path, { title: t('doc.deliveryNotes.shipmentInPreparation') });
+    } else {
+      window.location.href = path;
+    }
+  };
 
   const columns = useMemo(
     () =>
@@ -705,13 +622,14 @@ const SDNDetail: React.FC<{
         onViewBatch: setViewingBatch,
         fmt,
       }),
-    [sdn.lines, masters.items, masters.taxGroups],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sdn.lines, masters.items, masters.taxGroups, locale],
   );
 
   return (
     <DocumentDetailLayout
       onBack={onBack}
-      breadcrumb="VENTAS · ALBARÁN"
+      breadcrumb={t('doc.salesDeliveryNotes.breadcrumb')}
       title={formatDocCode(sdn)}
       status={statusBadgeProps(sdn.status, DocKind.DeliveryNote)}
       actions={
@@ -724,7 +642,7 @@ const SDNDetail: React.FC<{
           showCancel={sdn.status === 'O'}
           primary={
             sdn.status === 'O'
-              ? { label: 'Facturar', icon: Copy, onClick: onCopyToInvoice }
+              ? { label: t('doc.deliveryNotes.invoice'), icon: Copy, onClick: onCopyToInvoice }
               : undefined
           }
         />
@@ -737,34 +655,40 @@ const SDNDetail: React.FC<{
         {sdn.status === 'O' && !sdn.hasActiveShipment && flags.logisticsEnabled && (
           <PreparationButton docType="SDN" docId={sdn.id} />
         )}
-        {sdn.hasActiveShipment && sdn.activeShipmentId && (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              const path = `/logistics/shipments/${sdn.activeShipmentId}`;
-              if (tabs && (tabs as any).openTab) {
-                (tabs as any).openTab(path, { title: 'Envío en preparación' });
-              } else {
-                window.location.href = path;
-              }
-            }}
-          >
-            Ver preparación
-          </Button>
-        )}
+        <ResponsiveActions
+          source="secondary:shipment"
+          actions={
+            sdn.hasActiveShipment && sdn.activeShipmentId
+              ? [
+                  {
+                    id: 'shipment',
+                    label: t('doc.deliveryNotes.viewPreparation'),
+                    icon: <Truck size={19} />,
+                    onClick: openShipment,
+                  },
+                ]
+              : []
+          }
+        >
+          {sdn.hasActiveShipment && sdn.activeShipmentId && (
+            <Button variant="secondary" onClick={openShipment}>
+              {t('doc.deliveryNotes.viewPreparation')}
+            </Button>
+          )}
+        </ResponsiveActions>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="md:col-span-2 border-border-subtle" bodyClassName="p-6 space-y-5">
           <div>
             <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] mb-2">
-              Cliente
+              {t('doc.partner.customer')}
             </h4>
             <p className="text-xl font-black text-fg-default tracking-tight">
               {partner?.name || '—'}
             </p>
             {partner?.nif && (
               <p className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider mt-0.5 font-mono">
-                NIF: {partner.nif}
+                {t('doc.common.nif', { nif: partner.nif })}
               </p>
             )}
           </div>
@@ -772,8 +696,9 @@ const SDNDetail: React.FC<{
             <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-lg">
               <ShoppingCart size={14} className="text-blue-600 dark:text-blue-300 shrink-0" />
               <p className="text-xs font-bold text-blue-800 dark:text-blue-200 leading-tight">
-                Desde pedido {sdn.orderPrefix}-{sdn.periodCode}-
-                {String(sdn.orderDocNum).padStart(6, '0')}
+                {t('doc.deliveryNotes.fromOrderCode', {
+                  code: `${sdn.orderPrefix}-${sdn.periodCode}-${String(sdn.orderDocNum).padStart(6, '0')}`,
+                })}
               </p>
             </div>
           )}
@@ -781,12 +706,12 @@ const SDNDetail: React.FC<{
 
         <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
           <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] border-b border-border-subtle pb-2">
-            Información
+            {t('doc.common.information')}
           </h4>
           <dl className="space-y-2.5">
             <div className="flex justify-between items-baseline gap-4">
               <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                Fecha
+                {t('doc.common.date')}
               </dt>
               <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {fmt.date(sdn.date)}
@@ -794,7 +719,7 @@ const SDNDetail: React.FC<{
             </div>
             <div className="flex justify-between items-baseline gap-4">
               <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                Líneas
+                {t('doc.steps.lines')}
               </dt>
               <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {sdn.lines?.length ?? 0}
@@ -814,7 +739,7 @@ const SDNDetail: React.FC<{
           subtotal={sdn.subtotal}
           tax={sdn.taxTotal}
           total={sdn.total}
-          totalLabel="Total Albarán"
+          totalLabel={t('doc.deliveryNotes.total')}
         />
       </Card>
 
@@ -824,7 +749,7 @@ const SDNDetail: React.FC<{
         onChange={() => {}}
         disabled
         layout="inline"
-        title="Campos de plugin"
+        title={t('doc.common.pluginFields')}
       />
       <AttachmentsPanel entityType="SalesDeliveryNote" entityId={sdn.id} />
     </DocumentDetailLayout>
@@ -832,6 +757,7 @@ const SDNDetail: React.FC<{
 };
 
 export const SalesDeliveryNotes: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const location = useLocation();
   const params = useParams();
@@ -893,7 +819,7 @@ export const SalesDeliveryNotes: React.FC = () => {
         }));
         setDeliveries(withCode);
       } catch {
-        toast.error('Error al cargar albaranes');
+        toast.error(t('doc.deliveryNotes.loadListError'));
       } finally {
         setLoading(false);
       }
@@ -910,7 +836,9 @@ export const SalesDeliveryNotes: React.FC = () => {
         setSelectedDelivery(data);
         currentTab.rename(formatDocCode(data));
       } catch (e) {
-        toast.error((e instanceof Error ? e.message : undefined) || 'Error al cargar el albarán');
+        toast.error(
+          (e instanceof Error ? e.message : undefined) || t('doc.deliveryNotes.loadError'),
+        );
       } finally {
         setDetailLoading(false);
       }
@@ -995,7 +923,7 @@ export const SalesDeliveryNotes: React.FC = () => {
   const handleSubmit = async (e: any) => {
     try {
       const data = await doc.actions.submitDocument({ orderId, internalOrderId });
-      toast.success(`Albarán registrado nº ${data.docNum}`);
+      toast.success(t('doc.deliveryNotes.created', { num: data.docNum }));
       notifyDocChange(DocType.SalesDeliveryNote);
       currentTab.close();
     } catch (err) {
@@ -1004,18 +932,14 @@ export const SalesDeliveryNotes: React.FC = () => {
   };
 
   const handleCancel = async (id: string) => {
-    const reason = window.prompt(
-      'Motivo de la cancelación (opcional — quedará registrado en auditoría y se enviará en emails/webhooks):',
-      '',
-    );
+    const reason = window.prompt(t('doc.deliveryNotes.cancelReasonPrompt'), '');
     if (reason === null) return;
     const ok = await popup.confirm({
-      title: 'Cancelar albarán',
-      message:
-        '¿Cancelar el albarán? Se devolverá el stock, se reabrirá el pedido origen y, si hay envío en curso, también se cancelará.',
+      title: t('doc.deliveryNotes.cancelTitle'),
+      message: t('doc.salesDeliveryNotes.cancelMessage'),
       tone: 'danger',
-      confirmLabel: 'Cancelar albarán',
-      cancelLabel: 'Volver',
+      confirmLabel: t('doc.deliveryNotes.cancelTitle'),
+      cancelLabel: t('doc.common.back'),
     });
     if (!ok) return;
     const doCall = (force: boolean) =>
@@ -1031,11 +955,11 @@ export const SalesDeliveryNotes: React.FC = () => {
         // 409 con requiresForce = envío ya en ruta — pedir confirmación explícita.
         if (err instanceof ApiError && err.status === 409 && (err.body as any)?.requiresForce) {
           const forceOk = await popup.confirm({
-            title: 'El envío está en ruta',
-            message: 'El conductor tendrá que volver sin entregar. ¿Cancelar de todos modos?',
+            title: t('doc.salesDeliveryNotes.inRouteTitle'),
+            message: t('doc.salesDeliveryNotes.inRouteMessage'),
             tone: 'danger',
-            confirmLabel: 'Cancelar de todos modos',
-            cancelLabel: 'Volver',
+            confirmLabel: t('doc.salesDeliveryNotes.cancelAnyway'),
+            cancelLabel: t('doc.common.back'),
           });
           if (!forceOk) return;
           d = await doCall(true);
@@ -1045,13 +969,13 @@ export const SalesDeliveryNotes: React.FC = () => {
       }
       toast.success(
         d?.shipmentCancelled
-          ? 'Albarán y envío cancelados. Stock revertido.'
-          : 'Albarán cancelado y stock revertido.',
+          ? t('doc.salesDeliveryNotes.cancelledWithShipment')
+          : t('doc.deliveryNotes.cancelled'),
       );
       notifyDocChange(DocType.SalesDeliveryNote);
       currentTab.close();
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al cancelar');
+      toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.cancelError'));
     }
   };
 
@@ -1059,7 +983,6 @@ export const SalesDeliveryNotes: React.FC = () => {
     return (
       <>
         <SDNForm
-          onBack={() => currentTab.close()}
           onSubmit={handleSubmit}
           state={doc.state}
           setState={doc.setState}
@@ -1107,7 +1030,7 @@ export const SalesDeliveryNotes: React.FC = () => {
           onCopyToInvoice={() => {
             localStorage.setItem('copy_pdn_source', JSON.stringify(selectedDelivery));
             openTab(`/sales/invoices/new?copyFrom=${selectedDelivery.id}`, {
-              title: `Factura ← ${formatDocCode(selectedDelivery)}`,
+              title: t('doc.quotes.invoiceFrom', { code: formatDocCode(selectedDelivery) }),
             });
           }}
           masters={doc.masters}
@@ -1148,7 +1071,7 @@ export const SalesDeliveryNotes: React.FC = () => {
         docsApi.get('/api/sales/delivery-notes', p.id).then((detail) => {
           localStorage.setItem('copy_pdn_source', JSON.stringify(detail));
           openTab(`/sales/invoices/new?copyFrom=${p.id}`, {
-            title: `Factura ← ${formatDocCode(p)}`,
+            title: t('doc.quotes.invoiceFrom', { code: formatDocCode(p) }),
           });
         });
       }}

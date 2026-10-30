@@ -1,11 +1,21 @@
 import { shiftTemplatesApi } from '../api';
 import type { ShiftTemplate } from '../domain/shift';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Input, useToast, PageHeader, ColorInput } from '@openfactu/ui';
+import {
+  Table,
+  Card,
+  Button,
+  Input,
+  TimePicker,
+  useToast,
+  PageHeader,
+  ColorInput,
+} from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { Clock, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 
 const empty = (): Partial<ShiftTemplate> => ({
   code: '',
@@ -20,6 +30,7 @@ const empty = (): Partial<ShiftTemplate> => ({
 });
 
 export const ShiftTemplates: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const [rows, setRows] = useState<ShiftTemplate[]>([]);
   const [editing, setEditing] = useState<Partial<ShiftTemplate> | null>(null);
@@ -46,7 +57,7 @@ export const ShiftTemplates: React.FC = () => {
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing?.code || !editing?.name) {
-      toast.error('Código y nombre obligatorios');
+      toast.error(t('hrTime.shiftTemplates.required'));
       return;
     }
     const isNew = !editing.id;
@@ -59,7 +70,9 @@ export const ShiftTemplates: React.FC = () => {
       setEditing(null);
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
@@ -70,15 +83,15 @@ export const ShiftTemplates: React.FC = () => {
 
   const columns = [
     {
-      header: 'Color',
+      header: t('hr.common.color'),
       cell: (r: ShiftTemplate) => (
         <span className="inline-block w-4 h-4 rounded" style={{ background: r.color || '#999' }} />
       ),
     },
-    { header: 'Código', cell: (r: ShiftTemplate) => <code>{r.code}</code> },
-    { header: 'Nombre', cell: (r: ShiftTemplate) => r.name },
+    { header: t('hr.common.code'), cell: (r: ShiftTemplate) => <code>{r.code}</code> },
+    { header: t('hr.common.name'), cell: (r: ShiftTemplate) => r.name },
     {
-      header: 'Horario',
+      header: t('hrTime.shiftTemplates.schedule'),
       cell: (r: ShiftTemplate) =>
         r.secondStartTime && r.secondEndTime ? (
           <span>
@@ -91,16 +104,16 @@ export const ShiftTemplates: React.FC = () => {
           `${r.startTime} – ${r.endTime}`
         ),
     },
-    { header: 'Pausa (min)', cell: (r: ShiftTemplate) => r.breakMinutes },
+    { header: t('hrTime.shiftTemplates.breakMin'), cell: (r: ShiftTemplate) => r.breakMinutes },
   ];
 
   // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
   // del hover y en el menú de click derecho, así que no hace falta duplicarlas
   // en una columna de botones.
   const rowActions = (r: ShiftTemplate): RowAction[] => [
-    { label: 'Editar', icon: <Pencil size={14} />, onClick: () => setEditing(r) },
+    { label: t('hr.common.edit'), icon: <Pencil size={14} />, onClick: () => setEditing(r) },
     {
-      label: 'Eliminar',
+      label: t('hr.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       onClick: () => remove(r),
@@ -110,13 +123,13 @@ export const ShiftTemplates: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-6">
       <PageHeader
-        title="Plantillas de turno"
-        subtitle="Cada plantilla define un turno por horas reales (no fijo). Se usan en patrones y asignaciones."
+        title={t('hrTime.shiftTemplates.title')}
+        subtitle={t('hrTime.shiftTemplates.subtitle')}
         icon={<Clock size={18} />}
         size="lg"
         actions={
           <Button type="button" size="sm" onClick={() => setEditing(empty())}>
-            <Plus size={14} /> Nueva plantilla
+            <Plus size={14} /> {t('hrTime.shiftTemplates.new')}
           </Button>
         }
       />
@@ -126,35 +139,33 @@ export const ShiftTemplates: React.FC = () => {
           <form onSubmit={save} className="p-6 space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <Input
-                label="Código"
+                label={t('hr.common.code')}
                 value={editing.code || ''}
                 onChange={(e) => setEditing({ ...editing, code: e.target.value })}
                 required
               />
               <div className="md:col-span-2">
                 <Input
-                  label="Nombre"
+                  label={t('hr.common.name')}
                   value={editing.name || ''}
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                   required
                 />
               </div>
-              <Input
-                label="Inicio"
-                type="time"
+              <TimePicker
+                label={t('hrTime.shiftTemplates.start')}
                 value={editing.startTime || '08:00'}
-                onChange={(e) => setEditing({ ...editing, startTime: e.target.value })}
+                onChange={(v) => setEditing({ ...editing, startTime: v ?? '' })}
                 required
               />
-              <Input
-                label="Fin"
-                type="time"
+              <TimePicker
+                label={t('hrTime.shiftTemplates.end')}
                 value={editing.endTime || '15:00'}
-                onChange={(e) => setEditing({ ...editing, endTime: e.target.value })}
+                onChange={(v) => setEditing({ ...editing, endTime: v ?? '' })}
                 required
               />
               <Input
-                label="Pausa (min)"
+                label={t('hrTime.shiftTemplates.breakMin')}
                 type="number"
                 value={editing.breakMinutes ?? 0}
                 onChange={(e) =>
@@ -163,7 +174,7 @@ export const ShiftTemplates: React.FC = () => {
               />
               {/* ColorInput sí tiene prop `label` → el <label> suelto desaparece. */}
               <ColorInput
-                label="Color"
+                label={t('hr.common.color')}
                 value={editing.color || '#6366F1'}
                 onChange={(v) => setEditing({ ...editing, color: v })}
               />
@@ -174,11 +185,10 @@ export const ShiftTemplates: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-bold text-amber-700 dark:text-amber-300">
-                    Turno partido (segundo tramo)
+                    {t('hrTime.shiftTemplates.split')}
                   </div>
                   <div className="text-xs text-slate-500">
-                    Opcional. Si lo defines, al aplicar la plantilla se generan dos turnos en el
-                    mismo día (mañana + tarde).
+                    {t('hrTime.shiftTemplates.splitHint')}
                   </div>
                 </div>
                 {editing.secondStartTime || editing.secondEndTime ? (
@@ -190,7 +200,7 @@ export const ShiftTemplates: React.FC = () => {
                       setEditing({ ...editing, secondStartTime: null, secondEndTime: null })
                     }
                   >
-                    Quitar partido
+                    {t('hrTime.shiftTemplates.removeSplit')}
                   </Button>
                 ) : (
                   <Button
@@ -205,32 +215,30 @@ export const ShiftTemplates: React.FC = () => {
                       })
                     }
                   >
-                    + Añadir tramo tarde
+                    {t('hrTime.shiftTemplates.addSplit')}
                   </Button>
                 )}
               </div>
               {(editing.secondStartTime || editing.secondEndTime) && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <Input
-                    label="Inicio 2º tramo"
-                    type="time"
-                    value={editing.secondStartTime || ''}
-                    onChange={(e) => setEditing({ ...editing, secondStartTime: e.target.value })}
+                  <TimePicker
+                    label={t('hrTime.shiftTemplates.start2')}
+                    value={editing.secondStartTime || null}
+                    onChange={(v) => setEditing({ ...editing, secondStartTime: v ?? '' })}
                   />
-                  <Input
-                    label="Fin 2º tramo"
-                    type="time"
-                    value={editing.secondEndTime || ''}
-                    onChange={(e) => setEditing({ ...editing, secondEndTime: e.target.value })}
+                  <TimePicker
+                    label={t('hrTime.shiftTemplates.end2')}
+                    value={editing.secondEndTime || null}
+                    onChange={(v) => setEditing({ ...editing, secondEndTime: v ?? '' })}
                   />
                 </div>
               )}
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
-                Cancelar
+                {t('hr.common.cancel')}
               </Button>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit">{t('hr.common.save')}</Button>
             </div>
           </form>
         </Card>

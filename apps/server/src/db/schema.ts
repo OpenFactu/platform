@@ -46,6 +46,8 @@ export const globalUsers = pgTable('GlobalUser', {
   totpSecret: text('totpSecret'),
   totpEnabled: boolean('totpEnabled').default(false).notNull(),
   totpBackupCodes: text('totpBackupCodes'), // JSON con hashes SHA-256 de un solo uso
+  // Idioma de la interfaz ('es' | 'en'). Null = el del navegador.
+  locale: text('locale'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
@@ -1593,6 +1595,8 @@ export const salesInvoices = pgTable('SalesInvoice', {
   rectifyRef: text('rectifyRef'),
   rectifyReason: text('rectifyReason'),
   rectifyType: text('rectifyType'),
+  /** Referencia externa (mig 081): ventas, la del cliente; compras, el número de factura del proveedor. */
+  externalRef: text('externalRef'),
   // ── Multi-divisa ──────────────────────────────────────────────
   currencyId: text('currencyId'),
   exchangeRate: decimal('exchangeRate', { precision: 12, scale: 6 }).default('1'),
@@ -1834,6 +1838,8 @@ export const purchaseInvoices = pgTable('PurchaseInvoice', {
   rectifyRef: text('rectifyRef'),
   rectifyReason: text('rectifyReason'),
   rectifyType: text('rectifyType'),
+  /** Referencia externa (mig 081): ventas, la del cliente; compras, el número de factura del proveedor. */
+  externalRef: text('externalRef'),
   currencyId: text('currencyId'),
   exchangeRate: decimal('exchangeRate', { precision: 12, scale: 6 }).default('1'),
   totalCurrency: decimal('totalCurrency', { precision: 15, scale: 4 }),

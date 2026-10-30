@@ -1,4 +1,4 @@
-import { Select } from '@openfactu/ui';
+import { ColorInput, Input, NumberInput, Select, Switch } from '@openfactu/ui';
 /**
  * Editor "tonto" de etiquetas FREE: formulario con toggles que produce el
  * `CanvasLayout` automáticamente sin que el usuario tenga que tocar el
@@ -24,6 +24,7 @@ import {
   type SimpleLabelSettings,
   type BarcodeSymbology,
 } from './canvas/types';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   settings: SimpleLabelSettings;
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
+  const { t } = useI18n();
   const update = (patch: Partial<SimpleLabelSettings>) => {
     const next = { ...settings, ...patch };
     onChange(buildSimpleLabelLayout(next));
@@ -39,16 +41,16 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
   return (
     <div className="px-6 py-5 max-w-2xl mx-auto space-y-5 text-sm overflow-y-auto h-full">
       <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500 dark:text-slate-400">
-        Editor simple — etiqueta
+        {t('templates.simpleLabel.heading')}
       </div>
 
-      <FormSection title="Origen de los datos">
+      <FormSection title={t('templates.simpleLabel.dataSource')}>
         <RadioRow
-          label="¿Qué imprimes?"
+          label={t('templates.simpleLabel.whatToPrint')}
           value={settings.kind}
           options={[
-            { value: 'article', label: 'Etiqueta de artículo' },
-            { value: 'document', label: 'Etiqueta de documento' },
+            { value: 'article', label: t('templates.simpleLabel.articleLabel') },
+            { value: 'document', label: t('templates.simpleLabel.documentLabel') },
           ]}
           onChange={(v) => {
             // Cambiar el origen reinicia los toggles a defaults sensatos del
@@ -67,103 +69,97 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
         />
         <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug mt-1">
           {settings.kind === 'article'
-            ? 'Lee el artículo desde la tabla Item con :itemId. Botón "Etiqueta" en Items o por línea de documento.'
-            : 'Usa params.docCode (sin tocar BD). Botón "Etiqueta" en la barra del detalle del documento.'}
+            ? t('templates.simpleLabel.articleHint')
+            : t('templates.simpleLabel.documentHint')}
         </p>
       </FormSection>
 
-      <FormSection title="Tamaño">
-        <Field label="Tamaño de página">
+      <FormSection title={t('templates.simpleLabel.size')}>
+        <Field label={t('templates.simpleLabel.pageSize')}>
           <Select
             options={[
-              { value: 'Ticket80', label: `${PAGE_SIZE_LABELS.Ticket80}` },
-              { value: 'Ticket58', label: `${PAGE_SIZE_LABELS.Ticket58}` },
-              { value: 'Label100x62', label: `${PAGE_SIZE_LABELS.Label100x62}` },
-              { value: 'Label70x37', label: `${PAGE_SIZE_LABELS.Label70x37}` },
-              { value: 'Label50x25', label: `${PAGE_SIZE_LABELS.Label50x25}` },
-              { value: 'A4', label: `${PAGE_SIZE_LABELS.A4}` },
-              { value: 'Letter', label: `${PAGE_SIZE_LABELS.Letter}` },
-              { value: 'Custom', label: `${PAGE_SIZE_LABELS.Custom}` },
+              { value: 'Ticket80', label: t(PAGE_SIZE_LABELS.Ticket80) },
+              { value: 'Ticket58', label: t(PAGE_SIZE_LABELS.Ticket58) },
+              { value: 'Label100x62', label: t(PAGE_SIZE_LABELS.Label100x62) },
+              { value: 'Label70x37', label: t(PAGE_SIZE_LABELS.Label70x37) },
+              { value: 'Label50x25', label: t(PAGE_SIZE_LABELS.Label50x25) },
+              { value: 'A4', label: t(PAGE_SIZE_LABELS.A4) },
+              { value: 'Letter', label: t(PAGE_SIZE_LABELS.Letter) },
+              { value: 'Custom', label: t(PAGE_SIZE_LABELS.Custom) },
             ]}
             value={settings.pageSize}
             onChange={(v) => update({ pageSize: v as PageSize })}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.simpleLabel.option')}
           />
         </Field>
         {settings.pageSize === 'Custom' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Field label="Ancho (mm)">
-              <input
-                type="number"
+            <Field label={t('templates.simpleLabel.widthMm')}>
+              <NumberInput
                 value={settings.customWidthMm ?? 100}
-                onChange={(e) =>
-                  update({ customWidthMm: Math.max(10, Number(e.target.value) || 10) })
-                }
-                className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                onChange={(v) => update({ customWidthMm: Math.max(10, v || 10) })}
+                min={10}
               />
             </Field>
-            <Field label="Alto (mm)">
-              <input
-                type="number"
+            <Field label={t('templates.simpleLabel.heightMm')}>
+              <NumberInput
                 value={settings.customHeightMm ?? 60}
-                onChange={(e) =>
-                  update({ customHeightMm: Math.max(10, Number(e.target.value) || 10) })
-                }
-                className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+                onChange={(v) => update({ customHeightMm: Math.max(10, v || 10) })}
+                min={10}
               />
             </Field>
           </div>
         )}
       </FormSection>
 
-      <FormSection title="Qué mostrar">
+      <FormSection title={t('templates.simpleLabel.whatToShow')}>
         <ToggleRow
-          label="Cabecera (texto fijo arriba)"
+          label={t('templates.simpleLabel.header')}
           checked={settings.showTitle === true}
           onChange={(v) => update({ showTitle: v })}
         />
         {settings.showTitle && (
-          <Field label="Texto de la cabecera">
-            <input
-              type="text"
+          <Field label={t('templates.simpleLabel.headerText')}>
+            <Input
               value={settings.titleText ?? ''}
               onChange={(e) => update({ titleText: e.target.value })}
               placeholder={settings.kind === 'document' ? 'DOCUMENTO' : 'PRODUCTO'}
-              className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
             />
           </Field>
         )}
         <ToggleRow
           label={
-            settings.kind === 'article' ? 'Nombre del artículo' : 'Código del documento (texto)'
+            settings.kind === 'article'
+              ? t('templates.simpleLabel.itemName')
+              : t('templates.simpleLabel.docCode')
           }
           checked={settings.showName === true}
           onChange={(v) => update({ showName: v })}
         />
         {settings.kind === 'article' && (
           <ToggleRow
-            label="Código interno del artículo"
+            label={t('templates.simpleLabel.itemCode')}
             checked={settings.showCode === true}
             onChange={(v) => update({ showCode: v })}
           />
         )}
         {settings.kind === 'article' && (
           <ToggleRow
-            label="Precio (formato moneda)"
+            label={t('templates.simpleLabel.price')}
             checked={settings.showPrice === true}
             onChange={(v) => update({ showPrice: v })}
           />
         )}
         <ToggleRow
-          label="Código de barras"
+          label={t('templates.simpleLabel.barcode')}
           checked={settings.showBarcode === true}
           onChange={(v) => update({ showBarcode: v })}
         />
         {settings.showBarcode && (
-          <Field label="Simbología">
+          <Field label={t('templates.simpleLabel.symbology')}>
             <Select
               options={[
-                { value: 'auto', label: 'Auto (detectar EAN-13/UPC-A/EAN-8/Code128)' },
+                { value: 'auto', label: t('templates.simpleLabel.symbologyAuto') },
                 { value: 'code128', label: 'Code 128' },
                 { value: 'ean13', label: 'EAN-13' },
                 { value: 'ean8', label: 'EAN-8' },
@@ -175,46 +171,41 @@ export const SimpleLabelEditor: React.FC<Props> = ({ settings, onChange }) => {
               ]}
               value={settings.barcodeSymbology ?? 'auto'}
               onChange={(v) => update({ barcodeSymbology: v as BarcodeSymbology })}
-              ariaLabel="Opción"
+              ariaLabel={t('templates.simpleLabel.option')}
             />
           </Field>
         )}
         <ToggleRow
-          label="Código QR"
+          label={t('templates.simpleLabel.qr')}
           checked={settings.showQr === true}
           onChange={(v) => update({ showQr: v })}
         />
       </FormSection>
 
-      <FormSection title="Texto al pie (opcional)">
-        <Field label="Texto adicional">
-          <input
-            type="text"
+      <FormSection title={t('templates.simpleLabel.footer')}>
+        <Field label={t('templates.simpleLabel.footerText')}>
+          <Input
             value={settings.footerText ?? ''}
             onChange={(e) => update({ footerText: e.target.value || undefined })}
-            placeholder="Ej: {{company.name}} · gracias por su compra"
-            className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
+            placeholder={t('templates.simpleLabel.footerPlaceholder')}
           />
           <p className="text-[10px] text-slate-400 mt-1">
-            Admite expresiones Handlebars como <code>{'{{params.docCode}}'}</code>.
+            {t('templates.simpleLabel.footerHint')} <code>{'{{params.docCode}}'}</code>.
           </p>
         </Field>
       </FormSection>
 
-      <FormSection title="Color de acento">
-        <Field label="Color principal de textos destacados">
-          <input
-            type="color"
+      <FormSection title={t('templates.simpleLabel.accent')}>
+        <Field label={t('templates.simpleLabel.accentColor')}>
+          <ColorInput
             value={settings.accentColor ?? '#0f172a'}
-            onChange={(e) => update({ accentColor: e.target.value })}
-            className="h-9 w-full rounded border border-slate-200 dark:border-slate-700"
+            onChange={(v) => update({ accentColor: v })}
           />
         </Field>
       </FormSection>
 
       <p className="text-[11px] text-slate-500 dark:text-slate-400 italic leading-snug border-t border-slate-200 dark:border-slate-800 pt-3">
-        Si necesitas algo más concreto que estos toggles, cambia al editor avanzado — pero ojo: si
-        después vuelves al simple, los cambios manuales se perderán.
+        {t('templates.simpleLabel.advancedNote')}
       </p>
     </div>
   );
@@ -246,15 +237,9 @@ const ToggleRow: React.FC<{
   checked: boolean;
   onChange: (v: boolean) => void;
 }> = ({ label, checked, onChange }) => (
-  <label className="flex items-center justify-between cursor-pointer py-1">
-    <span className="text-sm text-slate-700 dark:text-slate-200">{label}</span>
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={(e) => onChange(e.target.checked)}
-      className="w-4 h-4"
-    />
-  </label>
+  <div className="py-1">
+    <Switch label={label} checked={checked} onChange={onChange} />
+  </div>
 );
 
 const RadioRow: React.FC<{

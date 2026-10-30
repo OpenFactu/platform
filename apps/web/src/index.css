@@ -40,6 +40,43 @@
   .k-tabs [aria-selected='true'].text-\[color\:var\(--color-accent-fg\)\] {
     color: var(--color-accent-fg);
   }
+
+  /*
+   * Mismo fichero, línea 13: `[data-k-mobile='Card'] > div { padding: 16px }`
+   * también rellena el cuerpo de un `<Card noPadding>`, que se queda sin clases
+   * (`class=""`). Las tablas y listas que van a sangre dentro de la tarjeta
+   * (líneas de documento, totales) acababan con dos rellenos sumados y sin
+   * cuadrar entre sí. Se respeta el `noPadding`.
+   */
+  [data-k-mobile='Card'] > div[class=''] {
+    padding: 0;
+  }
+
+  /*
+   * Mismo fichero, línea 11: los botones de móvil miden al menos 48px, también
+   * la X de cerrar de los diálogos y desplegables a pantalla completa. Como la
+   * cabecera alinea por arriba (`items-start`), el título quedaba más alto que
+   * la X. En móvil se alinean al centro. Solo la cabecera de Modal (la de
+   * BottomSheet también es asa y no se toca); el selector gana a la utilidad.
+   */
+  div[data-sheet-handle].items-start {
+    align-items: center;
+  }
+}
+
+/*
+ * SearchableSelect (SearchableSelect.tsx:194) resalta la primera opción al
+ * abrir: es el cursor del teclado, para que Intro elija algo. En pantallas
+ * táctiles no hay teclado ni ratón y parecía una opción marcada (en gris junto
+ * a la elegida). Ahí solo se resalta la que se está pulsando.
+ */
+@media (hover: none) {
+  .k-adaptive-content [role='option'][aria-selected='false'] {
+    background-color: transparent;
+  }
+  .k-adaptive-content [role='option'][aria-selected='false']:active {
+    background-color: var(--bg-hover);
+  }
 }
 
 @tailwind base;
@@ -371,21 +408,46 @@ html.dark *::-webkit-scrollbar-thumb:hover {
 
 /* Aurora del fondo de acceso (AuroraBackdrop): deriva lenta, solo transform. */
 @keyframes k-aurora-a {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(8%, 6%, 0) scale(1.12); }
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(8%, 6%, 0) scale(1.12);
+  }
 }
 @keyframes k-aurora-b {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
-  50% { transform: translate3d(-10%, 4%, 0) scale(0.92); }
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1.05);
+  }
+  50% {
+    transform: translate3d(-10%, 4%, 0) scale(0.92);
+  }
 }
 @keyframes k-aurora-c {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
-  50% { transform: translate3d(6%, -8%, 0) scale(1.1); }
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+  50% {
+    transform: translate3d(6%, -8%, 0) scale(1.1);
+  }
 }
-.k-aurora { will-change: transform; }
-.k-aurora-1 { animation: k-aurora-a 22s ease-in-out infinite; }
-.k-aurora-2 { animation: k-aurora-b 28s ease-in-out infinite; }
-.k-aurora-3 { animation: k-aurora-c 34s ease-in-out infinite; }
+.k-aurora {
+  will-change: transform;
+}
+.k-aurora-1 {
+  animation: k-aurora-a 22s ease-in-out infinite;
+}
+.k-aurora-2 {
+  animation: k-aurora-b 28s ease-in-out infinite;
+}
+.k-aurora-3 {
+  animation: k-aurora-c 34s ease-in-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
-  .k-aurora { animation: none; }
+  .k-aurora {
+    animation: none;
+  }
 }

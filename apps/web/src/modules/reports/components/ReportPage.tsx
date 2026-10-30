@@ -6,6 +6,7 @@ import type { TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, FileText, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { ExcelTools, type ExcelColumn } from '@/components/common/ExcelTools';
 
 interface Props<T> {
@@ -51,6 +52,7 @@ export function ReportPage<T extends Record<string, any>>({
   footer,
 }: Props<T>) {
   const { token, user } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -73,9 +75,9 @@ export function ReportPage<T extends Record<string, any>>({
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      toast.success('PDF descargado');
+      toast.success(t('reports.common.pdfDownloaded'));
     } catch (err: any) {
-      toast.error(err?.message || 'Error al generar PDF');
+      toast.error(err?.message || t('reports.common.pdfError'));
     }
   };
 
@@ -110,7 +112,7 @@ export function ReportPage<T extends Record<string, any>>({
         icon={<FileText size={18} />}
         breadcrumbs={
           <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> Volver
+            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
           </Button>
         }
         actions={
@@ -123,7 +125,7 @@ export function ReportPage<T extends Record<string, any>>({
                 className="flex items-center gap-2"
               >
                 <RefreshCw size={16} />
-                Actualizar
+                {t('reports.common.refresh')}
               </Button>
             )}
             <ExcelTools data={rows} columns={columns} filename={filename} exportOnly />
@@ -146,7 +148,7 @@ export function ReportPage<T extends Record<string, any>>({
           data={rows}
           isLoading={loading}
           rowKey={(_r, i) => i}
-          emptyMessage="Ningún registro cumple los filtros actuales."
+          emptyMessage={t('reports.common.noRows')}
         />
       </Card>
 

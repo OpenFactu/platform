@@ -1,3 +1,4 @@
+import { t } from '@/i18n/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { normalizePhone } from '@openfactu/common';
 import { useGeo } from '@/hooks/useGeo';
@@ -22,9 +23,9 @@ export const QUICK_PARTNER_STEPS: Array<{
   label: string;
   fields: QuickPartnerField[];
 }> = [
-  { key: 'company', label: 'Empresa', fields: ['name', 'nif', 'groupId'] },
-  { key: 'contact', label: 'Contacto', fields: ['email', 'phone'] },
-  { key: 'review', label: 'Revisar', fields: [] },
+  { key: 'company', label: 'crm.quickPartner.steps.company', fields: ['name', 'nif', 'groupId'] },
+  { key: 'contact', label: 'crm.quickPartner.steps.contact', fields: ['email', 'phone'] },
+  { key: 'review', label: 'crm.quickPartner.steps.review', fields: [] },
 ];
 
 const EMPTY: QuickPartnerDraft = {
@@ -96,7 +97,7 @@ export function useQuickPartnerForm(initial: QuickPartnerInitial | null) {
   const duplicates = useMemo(() => findDuplicates(draft, partners), [draft, partners]);
   const nifDuplicate = duplicates.find((d) => d.reason === 'nif');
   if (nifDuplicate && !allErrors.nif)
-    allErrors.nif = `Ya existe «${nifDuplicate.partner.name}» con este NIF`;
+    allErrors.nif = t('crm.quickPartner.nifExists', { name: nifDuplicate.partner.name });
 
   // Solo se enseñan los errores de los campos ya visitados (o todos tras intentar crear).
   const errors = Object.fromEntries(
@@ -153,7 +154,7 @@ export function useQuickPartnerForm(initial: QuickPartnerInitial | null) {
         countryCode: effective.countryCode,
       });
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'No se pudo crear el cliente');
+      setServerError(err instanceof Error ? err.message : t('crm.quickPartner.createFailed'));
       return null;
     } finally {
       setSaving(false);

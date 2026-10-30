@@ -1,3 +1,10 @@
+import { DocumentFormLayout } from '../components/form/DocumentFormLayout';
+import { SeriesPeriodFields } from '../components/form/SeriesPeriodFields';
+import { HeaderSection, LinesSection, PartnerField } from '../components/form/FormPieces';
+import { useFormLineColumns } from '../hooks/useFormLineColumns';
+import { buildFormSteps, formStepStatus } from '../domain/formSteps';
+
+import { ResponsiveActions } from '@/components/common/ResponsiveActions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import {
@@ -11,8 +18,9 @@ import {
   Badge,
   FilterBar,
   PageHeader,
+  FormGrid,
 } from '@openfactu/ui';
-import { SearchableSelect } from '@openfactu/ui';
+
 import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -20,12 +28,9 @@ import { useTabs, useCurrentTab } from '@/context/TabsContext';
 import {
   FileSignature,
   Plus,
-  ArrowLeft,
-  Save,
   Pencil,
   FileText,
   Copy,
-  PlusSquare,
   Download,
   Eye,
   Check,
@@ -39,29 +44,31 @@ import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
-import { buildDetailLineColumns, buildFormLineColumns } from '../components/documentLineCells';
+import { buildDetailLineColumns } from '../components/documentLineCells';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
 import { downloadPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
-import { useItemUoms } from '@/hooks/useItemUoms';
+
 import { usePluginLineFields } from '@/hooks/usePluginLineFields';
 import { useDocument, DocKind, DocSide } from '@openfactu/common';
 import { formatDocCode } from '@/utils/docCode';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
-import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
+
 import { useDocTypes } from '../domain/docTypeRegistry';
 import { docsApi } from '../api';
 import { apiClient } from '@/shared/http';
+import { t } from '@/i18n/i18n';
+import { useI18n } from '@/i18n/I18nContext';
 
 const API = '/api/documents/SQ';
 
 const statusBadge = (status: string): { label: string; variant: any } => {
-  if (status === 'O') return { label: 'Abierto', variant: 'warning' };
-  if (status === 'A') return { label: 'Aceptado', variant: 'success' };
-  if (status === 'R') return { label: 'Rechazado', variant: 'error' };
-  return { label: 'Cancelado', variant: 'neutral' };
+  if (status === 'O') return { label: t('doc.status.open'), variant: 'warning' };
+  if (status === 'A') return { label: t('doc.status.accepted'), variant: 'success' };
+  if (status === 'R') return { label: t('doc.status.rejected'), variant: 'error' };
+  return { label: t('doc.status.cancelled'), variant: 'neutral' };
 };
 
 // --- Sub-componente: VISTA DE LISTADO ---
@@ -73,6 +80,7 @@ const QuoteList: React.FC<{
   onDetail: (q: any) => void;
   canWrite?: boolean;
 }> = ({ data, loading, partners, onCreate, onDetail, canWrite }) => {
+  const { t } = useI18n();
   const toast = useToast();
   const fmt = useFormat();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -84,7 +92,7 @@ const QuoteList: React.FC<{
     try {
       await downloadPdf(`${API}/${id}/pdf`);
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al descargar PDF');
+      toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
       setDownloadingId(null);
     }
@@ -110,27 +118,27 @@ const QuoteList: React.FC<{
 
   const columns = [
     {
-      header: 'No. Presupuesto',
+      header: t('doc.quotes.colNumber'),
       sortable: true,
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
           <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
           <span className="text-[10px] text-fg-subtle font-mono mt-1">
-            ID: {item.id.substring(0, 8)}
+            {t('doc.common.idShort', { id: item.id.substring(0, 8) })}
           </span>
         </div>
       ),
     },
     {
-      header: 'Fecha',
+      header: t('doc.common.date'),
       card: 'meta' as const,
       sortable: true,
       sortAccessor: (item: any) => new Date(item.date).getTime(),
       accessor: (item: any) => fmt.date(item.date),
     },
     {
-      header: 'Cliente',
+      header: t('doc.partner.customer'),
       card: 'subtitle' as const,
       sortable: true,
       sortAccessor: (item: any) => item.partnerName || '',
@@ -138,7 +146,7 @@ const QuoteList: React.FC<{
         item.partnerName || partners.find((p) => p.id === item.partnerId)?.name || '...',
     },
     {
-      header: 'Total',
+      header: t('doc.lines.total'),
       align: 'right' as const,
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
@@ -147,7 +155,7 @@ const QuoteList: React.FC<{
       ),
     },
     {
-      header: 'Estado',
+      header: t('doc.common.status'),
       card: 'status' as const,
       align: 'center' as const,
       sortable: true,
@@ -163,9 +171,9 @@ const QuoteList: React.FC<{
   // del hover y en el menú de click derecho, así que no hay que duplicarlas
   // entre una columna de botones y el menú contextual.
   const rowActions = (item: any): RowAction[] => [
-    { label: 'Ver Presupuesto', icon: <Eye size={14} />, onClick: () => onDetail(item) },
+    { label: t('doc.quotes.view'), icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
-      label: 'Descargar PDF',
+      label: t('doc.actions.downloadPdf'),
       icon: <Download size={14} />,
       onClick: () => handleQuickPdf(item.id),
     },
@@ -178,17 +186,30 @@ const QuoteList: React.FC<{
         divider
         className="pb-8"
         icon={<FileSignature size={18} />}
-        title="Presupuestos"
-        subtitle="Ofertas a clientes, convertibles en pedido o factura al aceptarse."
+        title={t('doc.nav.quotes')}
+        subtitle={t('doc.quotes.subtitle')}
         actions={
-          <Button
-            type="button"
-            onClick={onCreate}
-            disabled={!canWrite}
-            className="flex items-center gap-2 h-12 px-6 disabled:opacity-50"
+          <ResponsiveActions
+            source="primary:create"
+            actions={[
+              {
+                id: 'create',
+                label: t('doc.routes.newQuote'),
+                icon: <Plus size={19} />,
+                onClick: onCreate,
+                disabled: !canWrite,
+              },
+            ]}
           >
-            <Plus size={20} /> Nuevo Presupuesto
-          </Button>
+            <Button
+              type="button"
+              onClick={onCreate}
+              disabled={!canWrite}
+              className="flex items-center gap-2 h-12 px-6 disabled:opacity-50"
+            >
+              <Plus size={20} /> {t('doc.routes.newQuote')}
+            </Button>
+          </ResponsiveActions>
         }
       />
 
@@ -208,24 +229,24 @@ const QuoteList: React.FC<{
           config={[
             {
               key: 'partnerId',
-              label: 'Cliente',
+              label: t('doc.partner.customer'),
               type: 'select',
               options: partners.map((p) => ({ label: p.name, value: p.id })),
             },
             {
               key: 'status',
-              label: 'Estado',
+              label: t('doc.common.status'),
               type: 'select',
               options: [
-                { label: 'Abierto', value: 'O' },
-                { label: 'Aceptado', value: 'A' },
-                { label: 'Rechazado', value: 'R' },
-                { label: 'Cancelado', value: 'X' },
+                { label: t('doc.status.open'), value: 'O' },
+                { label: t('doc.status.accepted'), value: 'A' },
+                { label: t('doc.status.rejected'), value: 'R' },
+                { label: t('doc.status.cancelled'), value: 'X' },
               ],
             },
-            { key: 'date', label: 'Fecha', type: 'date' },
+            { key: 'date', label: t('doc.common.date'), type: 'date' },
           ]}
-          searchPlaceholder="Buscar presupuesto..."
+          searchPlaceholder={t('doc.quotes.search')}
         />
         <Table
           className="max-md:p-3"
@@ -242,7 +263,6 @@ const QuoteList: React.FC<{
 
 // --- Sub-componente: VISTA DE CREACIÓN ---
 const QuoteForm: React.FC<{
-  onBack: () => void;
   onSubmit: () => void;
   state: any;
   setState: any;
@@ -256,7 +276,6 @@ const QuoteForm: React.FC<{
   /** Código del presupuesto que se edita; sin él, es un alta. */
   editingCode?: string;
 }> = ({
-  onBack,
   onSubmit,
   state,
   setState,
@@ -269,192 +288,103 @@ const QuoteForm: React.FC<{
   setInternalOrderId,
   editingCode,
 }) => {
-  const fmt = useFormat();
-  const isMobile = useIsMobile();
-  const itemUoms = useItemUoms();
-  const pluginLineFields = usePluginLineFields('SalesQuoteLine');
-  const projectCol = useInternalOrderLineColumn(actions.updateLine);
+  const { t, locale } = useI18n();
+  const columns = useFormLineColumns({
+    kind: DocKind.Order,
+    side: DocSide.Sale,
+    state,
+    masters,
+    actions,
+    pluginTable: 'SalesQuoteLine',
+  });
 
-  const columns = useMemo(() => {
-    const base = buildFormLineColumns({
-      kind: DocKind.Order,
-      side: DocSide.Sale,
-      state,
-      masters,
-      actions,
-      fmt,
-      getItemUoms: itemUoms.get,
-      pluginLineFields,
-    });
-    // El builder base ya trae su propia columna 'Proyecto' cuando hay
-    // proyectos en masters — la quitamos para no duplicarla con projectCol.
-    const rest = base.slice(0, -1).filter((c) => c.header !== 'Proyecto');
-    return [...rest, projectCol, base[base.length - 1]];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.lines, masters.items, masters.taxGroups, pluginLineFields, projectCol]);
+  // Presupuesto: sin paso fiscal y sin lotes (no mueve stock).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const steps = useMemo(() => buildFormSteps({ fiscal: 'none' }), [locale]);
+  // Al editar ya tiene número: no se vuelve a pedir aunque la serie sea manual.
+  const status = formStepStatus(
+    editingCode ? { ...state, isManualSeries: false } : state,
+    masters,
+    { partnerLabel: t('doc.steps.theCustomer') },
+    { batches: false },
+  );
 
   return (
-    <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <PageHeader
-        size="lg"
-        divider
-        className="pb-8"
-        breadcrumbs={
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onBack}
-            title="Volver"
-            className="rounded-lg self-start"
-          >
-            <ArrowLeft size={20} />
-          </Button>
-        }
-        title={editingCode ? `Editar ${editingCode}` : 'Nuevo Presupuesto'}
-        subtitle={
-          <span className="flex items-center gap-2">
-            <FileText size={14} className="text-accent" />
-            Oferta sin efecto en stock ni contabilidad.
-          </span>
-        }
-        actions={
-          <Button
-            type="button"
-            onClick={onSubmit}
-            isLoading={state.isSubmitting}
-            disabled={!!state.seriesError || !state.canWrite}
-            className="flex items-center gap-2 h-12 px-8 disabled:opacity-50"
-          >
-            <Save size={20} /> {editingCode ? 'Guardar cambios' : 'Guardar Presupuesto'}
-          </Button>
-        }
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 md:col-span-2 space-y-6 border-border-subtle">
-          <div className="border-b border-border-subtle pb-3 flex justify-between items-baseline gap-4">
-            <h3 className="font-black text-fg-body uppercase text-[11px] tracking-[0.15em] leading-none">
-              Cabecera del Presupuesto
-            </h3>
-            <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider leading-none">
-              * Campos obligatorios
-            </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
-                Cliente *
-              </label>
-              <SearchableSelect
-                value={state.partnerId}
-                onChange={setState.setPartnerId}
-                options={masters.partners.map((p: any) => ({ label: p.name, value: p.id }))}
-                placeholder="Seleccionar cliente..."
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
-                Fecha *
-              </label>
-              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
-                Válido hasta
-              </label>
-              <DatePicker value={validUntil} onChange={(v) => setValidUntil(v ?? '')} />
-            </div>
-            <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
-          </div>
-        </Card>
-
-        <div className="space-y-6">
-          <Card className="p-6 space-y-6 border-border-subtle bg-bg-muted">
-            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest border-b pb-2">
-              Series y Periodo
-            </h4>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-fg-muted">Serie de Numeración *</label>
-                {/* Al editar, número, serie y periodo no cambian. */}
-                <SearchableSelect
-                  value={state.seriesId}
-                  onChange={setState.setSeriesId}
-                  options={masters.series.map((s: any) => ({ label: s.name, value: s.id }))}
-                  disabled={!!editingCode}
+    <DocumentFormLayout
+      title={
+        editingCode ? t('doc.common.editCode', { code: editingCode }) : t('doc.quotes.newTitle')
+      }
+      subtitle={t('doc.quotes.formSubtitle')}
+      submitLabel={editingCode ? t('doc.common.saveChanges') : t('doc.quotes.save')}
+      onSubmit={onSubmit}
+      isSubmitting={state.isSubmitting}
+      canSubmit={!state.seriesError && state.canWrite}
+      steps={steps}
+      status={status}
+      totals={
+        <DocumentTotalsBlock
+          variant="plain"
+          subtotal={computations.subtotal}
+          tax={computations.taxTotal}
+          total={computations.total}
+          totalLabel={t('doc.quotes.totalForm')}
+        />
+      }
+      sections={{
+        header: (
+          <HeaderSection
+            fields={
+              <FormGrid columns={2}>
+                <PartnerField
+                  label={t('doc.partner.customer')}
+                  value={state.partnerId}
+                  onChange={setState.setPartnerId}
+                  partners={masters.partners}
+                  placeholder={t('doc.common.selectCustomer')}
                 />
-                {state.seriesError && (
-                  <p className="text-[10px] text-rose-500 font-bold mt-1 italic">
-                    {state.seriesError}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-fg-muted">Periodo Contable *</label>
-                <SearchableSelect
-                  value={state.periodId}
-                  onChange={setState.setPeriodId}
-                  options={masters.periods.map((p: any) => ({ label: p.name, value: p.id }))}
-                  disabled={!!editingCode}
+                <DatePicker
+                  label={t('doc.common.date')}
+                  required
+                  value={state.date}
+                  onChange={(v) => setState.setDate(v ?? '')}
                 />
-              </div>
-            </div>
-          </Card>
-          <PluginFieldsPanel
-            tableName="SalesQuote"
-            values={state.pluginData}
-            onChange={setState.setPluginField}
-            disabled={state.isSubmitting}
-            layout="sidebar"
+                <DatePicker
+                  label={t('doc.quotes.validUntil')}
+                  value={validUntil || null}
+                  onChange={(v) => setValidUntil(v ?? '')}
+                />
+                <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
+              </FormGrid>
+            }
+            side={
+              <>
+                <SeriesPeriodFields
+                  state={state}
+                  setState={setState}
+                  masters={masters}
+                  locked={!!editingCode}
+                />
+                <PluginFieldsPanel
+                  tableName="SalesQuote"
+                  values={state.pluginData}
+                  onChange={setState.setPluginField}
+                  disabled={state.isSubmitting}
+                  layout="sidebar"
+                />
+              </>
+            }
           />
-        </div>
-      </div>
-
-      <Card className="shadow-lg overflow-hidden border-border-subtle" noPadding>
-        {isMobile ? (
-          <MobileLineCards
+        ),
+        lines: (
+          <LinesSection
             columns={columns}
             lines={state.lines || []}
-            emptyMessage="No hay líneas en el presupuesto."
+            onAdd={() => actions.addLine()}
+            emptyMessage={t('doc.quotes.noLines')}
           />
-        ) : (
-          <Table
-            responsive="scroll"
-            columns={columns}
-            data={state.lines || []}
-            emptyMessage="No hay líneas en el presupuesto."
-          />
-        )}
-        <div className="p-6 bg-bg-muted flex flex-col md:flex-row justify-between items-start md:items-center border-t border-border-subtle gap-6">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => actions.addLine()}
-            className="text-sky-600 dark:text-sky-300 font-bold flex items-center gap-2 h-10 border-border-default bg-bg-card"
-          >
-            <PlusSquare size={16} /> Añadir Línea
-          </Button>
-          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-lg border border-border-subtle shadow-sm">
-            <div className="flex justify-between w-full text-[10px] font-black text-fg-subtle uppercase tracking-widest px-1">
-              <span>Base Imponible:</span>
-              <span className="text-fg-body">{computations.subtotal.toFixed(2)} €</span>
-            </div>
-            <div className="flex justify-between w-full text-[10px] font-black text-sky-500 uppercase tracking-widest px-1">
-              <span>Cuota IVA:</span>
-              <span>{computations.taxTotal.toFixed(2)} €</span>
-            </div>
-            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-border-subtle">
-              <span className="text-[10px] uppercase font-black text-fg-subtle tracking-widest">
-                Total Presupuesto:
-              </span>
-              <span className="text-2xl font-black text-fg-default tracking-tighter ml-4">
-                {computations.total.toFixed(2)} €
-              </span>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
+        ),
+      }}
+    />
   );
 };
 
@@ -484,6 +414,7 @@ const QuoteDetail: React.FC<{
   isCancelling,
   masters,
 }) => {
+  const { t, locale } = useI18n();
   const fmt = useFormat();
   const isMobile = useIsMobile();
   const partner = masters.partners.find((p: any) => p.id === quote.partnerId);
@@ -502,7 +433,7 @@ const QuoteDetail: React.FC<{
         pluginLineFields,
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [quote.lines, masters.items, masters.taxGroups, pluginLineFields],
+    [quote.lines, masters.items, masters.taxGroups, pluginLineFields, locale],
   );
 
   const isOpen = quote.status === 'O';
@@ -516,7 +447,7 @@ const QuoteDetail: React.FC<{
   return (
     <DocumentDetailLayout
       onBack={onBack}
-      breadcrumb="VENTAS · PRESUPUESTO"
+      breadcrumb={t('doc.quotes.breadcrumb')}
       title={docCode}
       status={statusBadge(quote.status)}
       actions={
@@ -529,50 +460,100 @@ const QuoteDetail: React.FC<{
           showCancel={isOpen && canDelete}
           isCancelling={isCancelling}
           primary={
-            convertible ? { label: 'Crear Pedido', icon: Copy, onClick: onCreateOrder } : undefined
+            convertible
+              ? { label: t('doc.quotes.createOrder'), icon: Copy, onClick: onCreateOrder }
+              : undefined
           }
         />
       }
     >
       <div className="flex items-center gap-3 mb-4 -mt-2 flex-wrap">
-        {isOpen && canWrite && (
-          <>
-            <Button variant="secondary" size="sm" onClick={onEdit} className="h-9 gap-2">
-              <Pencil size={14} /> Editar
-            </Button>
+        <ResponsiveActions
+          source="secondary:quote"
+          actions={[
+            ...(isOpen && canWrite
+              ? [
+                  {
+                    id: 'edit',
+                    label: t('doc.common.edit'),
+                    icon: <Pencil size={19} />,
+                    onClick: onEdit,
+                  },
+                  {
+                    id: 'accept',
+                    label: t('doc.quotes.accept'),
+                    icon: <Check size={19} />,
+                    onClick: () => onStatusChange('A'),
+                  },
+                  {
+                    id: 'reject',
+                    label: t('doc.quotes.reject'),
+                    icon: <X size={19} />,
+                    onClick: () => onStatusChange('R'),
+                  },
+                ]
+              : []),
+            ...((isAccepted || isRejected) && canWrite
+              ? [
+                  {
+                    id: 'reopen',
+                    label: t('doc.quotes.reopen'),
+                    icon: <RotateCcw size={19} />,
+                    onClick: () => onStatusChange('O'),
+                  },
+                ]
+              : []),
+            ...(canInvoiceDirectly
+              ? [
+                  {
+                    id: 'invoice',
+                    label: t('doc.quotes.createInvoice'),
+                    icon: <FileText size={19} />,
+                    onClick: onCreateInvoice,
+                  },
+                ]
+              : []),
+          ]}
+        >
+          {isOpen && canWrite && (
+            <>
+              <Button variant="secondary" size="sm" onClick={onEdit} className="h-9 gap-2">
+                <Pencil size={14} /> {t('doc.common.edit')}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onStatusChange('A')}
+                className="h-9 gap-2 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
+              >
+                <Check size={14} /> {t('doc.quotes.accept')}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onStatusChange('R')}
+                className="h-9 gap-2 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-500/30"
+              >
+                <X size={14} /> {t('doc.quotes.reject')}
+              </Button>
+            </>
+          )}
+          {(isAccepted || isRejected) && canWrite && (
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => onStatusChange('A')}
-              className="h-9 gap-2 text-emerald-600 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30"
+              onClick={() => onStatusChange('O')}
+              className="h-9 gap-2"
             >
-              <Check size={14} /> Aceptar
+              <RotateCcw size={14} /> {t('doc.quotes.reopen')}
             </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => onStatusChange('R')}
-              className="h-9 gap-2 text-rose-600 dark:text-rose-300 border-rose-200 dark:border-rose-500/30"
-            >
-              <X size={14} /> Rechazar
+          )}
+          {canInvoiceDirectly && (
+            <Button variant="secondary" size="sm" onClick={onCreateInvoice} className="h-9 gap-2">
+              <FileText size={14} /> {t('doc.quotes.createInvoiceBtn')}
             </Button>
-          </>
-        )}
-        {(isAccepted || isRejected) && canWrite && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => onStatusChange('O')}
-            className="h-9 gap-2"
-          >
-            <RotateCcw size={14} /> Reabrir
-          </Button>
-        )}
-        {canInvoiceDirectly && (
-          <Button variant="secondary" size="sm" onClick={onCreateInvoice} className="h-9 gap-2">
-            <FileText size={14} /> Crear Factura
-          </Button>
-        )}
+          )}
+        </ResponsiveActions>
         <TraceabilityButton type="SQ" id={quote.id} docCode={docCode} />
         <InternalOrderChip internalOrderId={quote.internalOrderId} />
       </div>
@@ -581,33 +562,33 @@ const QuoteDetail: React.FC<{
         <Card className="md:col-span-2 border-border-subtle" bodyClassName="p-6 space-y-5">
           <div>
             <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] mb-2">
-              Cliente
+              {t('doc.partner.customer')}
             </h4>
             <p className="text-xl font-black text-fg-default tracking-tight">
               {partner?.name || '—'}
             </p>
             {partner?.nif && (
               <p className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider mt-0.5 font-mono">
-                NIF: {partner.nif}
+                {t('doc.common.nif', { nif: partner.nif })}
               </p>
             )}
           </div>
           <div className="flex items-center gap-3 p-3 bg-sky-50 dark:bg-sky-500/5 border border-sky-100 dark:border-sky-500/30 rounded-lg">
             <FileText size={16} className="text-sky-600 dark:text-sky-300 shrink-0" />
             <p className="text-xs text-sky-800 dark:text-sky-200 font-medium leading-tight">
-              Documento de oferta — no mueve stock ni genera apuntes contables.
+              {t('doc.quotes.offerNotice')}
             </p>
           </div>
         </Card>
 
         <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
           <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] border-b border-border-subtle pb-2">
-            Información
+            {t('doc.common.information')}
           </h4>
           <dl className="space-y-2.5">
             <div className="flex justify-between items-baseline gap-4">
               <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                Fecha
+                {t('doc.common.date')}
               </dt>
               <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {fmt.date(quote.date)}
@@ -616,7 +597,7 @@ const QuoteDetail: React.FC<{
             {quote.validUntil && (
               <div className="flex justify-between items-baseline gap-4">
                 <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                  Válido hasta
+                  {t('doc.quotes.validUntil')}
                 </dt>
                 <dd className="text-sm font-bold text-fg-default tabular-nums">
                   {fmt.date(quote.validUntil)}
@@ -626,7 +607,7 @@ const QuoteDetail: React.FC<{
             {series && (
               <div className="flex justify-between items-baseline gap-4">
                 <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                  Serie
+                  {t('doc.common.series')}
                 </dt>
                 <dd className="text-sm font-bold text-fg-default truncate">{series.name}</dd>
               </div>
@@ -634,7 +615,7 @@ const QuoteDetail: React.FC<{
             {period && (
               <div className="flex justify-between items-baseline gap-4">
                 <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                  Periodo
+                  {t('doc.series.period')}
                 </dt>
                 <dd className="text-sm font-bold text-fg-default truncate">{period.name}</dd>
               </div>
@@ -653,7 +634,7 @@ const QuoteDetail: React.FC<{
           subtotal={quote.subtotal}
           tax={quote.taxTotal}
           total={quote.total}
-          totalLabel="Total Presupuesto"
+          totalLabel={t('doc.quotes.total')}
         />
       </Card>
 
@@ -663,7 +644,7 @@ const QuoteDetail: React.FC<{
         onChange={() => {}}
         disabled
         layout="inline"
-        title="Campos de plugin"
+        title={t('doc.common.pluginFields')}
       />
 
       <AttachmentsPanel entityType="SalesQuote" entityId={quote.id} />
@@ -673,6 +654,7 @@ const QuoteDetail: React.FC<{
 
 // --- Componente principal ---
 export const SalesQuotes: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const toast = useToast();
   const popup = usePopup();
@@ -729,7 +711,7 @@ export const SalesQuotes: React.FC = () => {
           })),
         );
       } catch {
-        toast.error('Error al cargar presupuestos');
+        toast.error(t('doc.quotes.loadListError'));
       } finally {
         setLoading(false);
       }
@@ -747,9 +729,7 @@ export const SalesQuotes: React.FC = () => {
         setSelectedQuote(data);
         currentTab.rename(formatDocCode(data));
       } catch (e) {
-        toast.error(
-          (e instanceof Error ? e.message : undefined) || 'Error al cargar el presupuesto',
-        );
+        toast.error((e instanceof Error ? e.message : undefined) || t('doc.quotes.loadError'));
       } finally {
         setDetailLoading(false);
       }
@@ -765,7 +745,7 @@ export const SalesQuotes: React.FC = () => {
       try {
         const q: any = await docsApi.get(API, detailId);
         setEditing(q);
-        currentTab.rename(`Editar ${formatDocCode(q)}`);
+        currentTab.rename(t('doc.common.editCode', { code: formatDocCode(q) }));
         doc.setState.setPartnerId(q.partnerId);
         doc.setState.setSeriesId(q.seriesId);
         doc.setState.setPeriodId(q.periodId);
@@ -792,9 +772,7 @@ export const SalesQuotes: React.FC = () => {
           })),
         );
       } catch (e) {
-        toast.error(
-          (e instanceof Error ? e.message : undefined) || 'Error al cargar el presupuesto',
-        );
+        toast.error((e instanceof Error ? e.message : undefined) || t('doc.quotes.loadError'));
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -803,7 +781,7 @@ export const SalesQuotes: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!editing) return;
     if (!doc.state.partnerId || doc.state.lines.length === 0) {
-      toast.error('Elige el cliente y añade al menos una línea');
+      toast.error(t('doc.quotes.customerAndLine'));
       return;
     }
     try {
@@ -816,21 +794,21 @@ export const SalesQuotes: React.FC = () => {
         ...(validUntil ? { validUntil } : {}),
         internalOrderId,
       });
-      toast.success('Presupuesto actualizado');
+      toast.success(t('doc.quotes.updated'));
       notifyDocChange('SQ');
       currentTab.close();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo guardar');
+      toast.error(err instanceof Error ? err.message : t('doc.common.saveError'));
     }
   };
 
   const handleSubmit = async () => {
     if (!doc.state.partnerId || !doc.state.seriesId || !doc.state.periodId) {
-      toast.error('Completa los campos obligatorios');
+      toast.error(t('doc.common.requiredFields'));
       return;
     }
     if (doc.state.lines.length === 0) {
-      toast.error('Añade al menos una línea');
+      toast.error(t('doc.common.addOneLine'));
       return;
     }
     try {
@@ -838,7 +816,7 @@ export const SalesQuotes: React.FC = () => {
         ...(validUntil ? { validUntil } : {}),
         internalOrderId,
       });
-      toast.success(`Presupuesto registrado nº ${data.docNum}`);
+      toast.success(t('doc.quotes.created', { num: data.docNum }));
       notifyDocChange('SQ');
       currentTab.close();
     } catch (err) {
@@ -849,17 +827,17 @@ export const SalesQuotes: React.FC = () => {
   const handleCancel = async () => {
     if (!selectedQuote) return;
     const ok = await popup.confirm({
-      title: 'Cancelar presupuesto',
-      message: '¿Seguro que deseas cancelar este presupuesto?',
+      title: t('doc.quotes.cancelTitle'),
+      message: t('doc.quotes.cancelMessage'),
       tone: 'danger',
-      confirmLabel: 'Cancelar presupuesto',
-      cancelLabel: 'Volver',
+      confirmLabel: t('doc.quotes.cancelTitle'),
+      cancelLabel: t('doc.common.back'),
     });
     if (!ok) return;
     setIsCancelling(true);
     try {
       await docsApi.cancel(API, selectedQuote.id);
-      toast.success('Presupuesto cancelado');
+      toast.success(t('doc.quotes.cancelled'));
       notifyDocChange('SQ');
       currentTab.close();
     } catch (e) {
@@ -874,10 +852,10 @@ export const SalesQuotes: React.FC = () => {
     try {
       const updated: any = await apiClient.post(`${API}/${selectedQuote.id}/status`, { status });
       setSelectedQuote((prev: any) => ({ ...prev, status: updated?.status ?? status }));
-      toast.success('Estado actualizado');
+      toast.success(t('doc.common.statusUpdated'));
       notifyDocChange('SQ');
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al cambiar estado');
+      toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.statusError'));
     }
   };
 
@@ -885,7 +863,7 @@ export const SalesQuotes: React.FC = () => {
     if (!selectedQuote) return;
     localStorage.setItem('copy_quote_source', JSON.stringify(selectedQuote));
     openTab(`/sales-orders/new?copyFrom=${selectedQuote.id}`, {
-      title: `Pedido ← ${formatDocCode(selectedQuote)}`,
+      title: t('doc.quotes.orderFrom', { code: formatDocCode(selectedQuote) }),
     });
   };
 
@@ -893,7 +871,7 @@ export const SalesQuotes: React.FC = () => {
     if (!selectedQuote) return;
     localStorage.setItem('copy_quote_source', JSON.stringify(selectedQuote));
     openTab(`/sales/invoices/new?copyFrom=${selectedQuote.id}`, {
-      title: `Factura ← ${formatDocCode(selectedQuote)}`,
+      title: t('doc.quotes.invoiceFrom', { code: formatDocCode(selectedQuote) }),
     });
   };
 
@@ -907,7 +885,6 @@ export const SalesQuotes: React.FC = () => {
     }
     return (
       <QuoteForm
-        onBack={() => currentTab.close()}
         onSubmit={handleSaveEdit}
         state={doc.state}
         setState={doc.setState}
@@ -926,7 +903,6 @@ export const SalesQuotes: React.FC = () => {
   if (isCreate) {
     return (
       <QuoteForm
-        onBack={() => currentTab.close()}
         onSubmit={handleSubmit}
         state={doc.state}
         setState={doc.setState}
@@ -959,7 +935,7 @@ export const SalesQuotes: React.FC = () => {
         onCreateInvoice={handleCreateInvoice}
         onEdit={() =>
           openTab(`/sales/quotes/${selectedQuote.id}/edit`, {
-            title: `Editar ${formatDocCode(selectedQuote)}`,
+            title: t('doc.common.editCode', { code: formatDocCode(selectedQuote) }),
           })
         }
         canWrite={canWrite}
@@ -975,7 +951,7 @@ export const SalesQuotes: React.FC = () => {
       data={quotes}
       loading={loading}
       partners={doc.masters.partners || []}
-      onCreate={() => openTab('/sales/quotes/new', { title: 'Nuevo Presupuesto' })}
+      onCreate={() => openTab('/sales/quotes/new', { title: 'doc.routes.newQuote' })}
       onDetail={(q) => openTab(`/sales/quotes/${q.id}`, { title: formatDocCode(q) })}
       canWrite={canWrite}
     />

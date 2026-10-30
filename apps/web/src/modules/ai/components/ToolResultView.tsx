@@ -9,6 +9,7 @@ import React from 'react';
 import { Table } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { AlertCircle } from 'lucide-react';
+import { t } from '@/i18n/i18n';
 
 type Row = Record<string, unknown>;
 
@@ -32,12 +33,12 @@ const ErrorNotice: React.FC<{ message: string }> = ({ message }) => (
 );
 
 const EmptyNotice: React.FC = () => (
-  <p className="text-[11px] text-fg-subtle italic">Sin resultados</p>
+  <p className="text-[11px] text-fg-subtle italic">{t('ai.result.noResults')}</p>
 );
 
 function fmtCell(v: unknown): string {
   if (v === null || v === undefined) return '—';
-  if (typeof v === 'boolean') return v ? 'Sí' : 'No';
+  if (typeof v === 'boolean') return v ? t('ai.result.yes') : t('ai.result.no');
   if (typeof v === 'object') return JSON.stringify(v);
   return String(v);
 }
@@ -66,7 +67,7 @@ const DataTable: React.FC<{ rows: Row[]; maxRows?: number }> = ({ rows, maxRows 
       />
       {rows.length > maxRows && (
         <div className="text-[10px] text-fg-subtle px-2 py-1 bg-bg-muted">
-          Mostrando {maxRows} de {rows.length} filas
+          {t('ai.result.showing', { shown: maxRows, total: rows.length })}
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { t } from '@/i18n/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@openfactu/ui';
 import { websiteApi } from '../api/websiteApi';
@@ -26,7 +27,7 @@ export function useMediaLibrary(open: boolean) {
     try {
       setAssets(await websiteApi.listAssets());
     } catch {
-      toast.error('Error al cargar la biblioteca');
+      toast.error(t('website.media.loadError'));
     } finally {
       setLoading(false);
     }
@@ -48,9 +49,9 @@ export function useMediaLibrary(open: boolean) {
     try {
       const asset = await websiteApi.uploadAsset(file, filters.folder || undefined);
       setAssets((a) => [asset, ...a]);
-      toast.success('Archivo subido');
+      toast.success(t('website.media.uploaded'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al subir');
+      toast.error(e instanceof Error ? e.message : t('website.media.uploadError'));
     } finally {
       setUploading(false);
     }
@@ -61,7 +62,7 @@ export function useMediaLibrary(open: boolean) {
       await websiteApi.deleteAsset(asset.id);
       setAssets((a) => a.filter((x) => x.id !== asset.id));
     } catch {
-      toast.error('Error al eliminar');
+      toast.error(t('website.media.deleteError'));
     }
   };
 
@@ -72,9 +73,9 @@ export function useMediaLibrary(open: boolean) {
     try {
       const updated = await websiteApi.updateAssetMeta(asset.id, patch);
       setAssets((a) => a.map((x) => (x.id === asset.id ? updated : x)));
-      toast.success('Datos actualizados');
+      toast.success(t('website.media.updated'));
     } catch {
-      toast.error('Error al actualizar');
+      toast.error(t('website.media.updateError'));
     }
   };
 

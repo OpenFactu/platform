@@ -1,4 +1,5 @@
 // ──────────────────────────────────────────────────────────────────
+import { t } from '@/i18n/i18n';
 // Validación de IBAN (ISO 13616) y SWIFT/BIC (ISO 9362).
 // Usado tanto en el formulario de Partner como en CompanySettings (sección
 // Fiscal). La longitud esperada por país se verifica además del checksum.
@@ -93,14 +94,17 @@ export function normalizeIban(raw: string): string {
 /** Retorna { ok, reason } — reason es una etiqueta cuando falla. */
 export function validateIban(raw: string): { ok: boolean; reason?: string } {
   const iban = normalizeIban(raw);
-  if (!iban) return { ok: false, reason: 'vacío' };
-  if (!/^[A-Z0-9]+$/.test(iban)) return { ok: false, reason: 'caracteres no válidos' };
+  if (!iban) return { ok: false, reason: t('app.validation.empty') };
+  if (!/^[A-Z0-9]+$/.test(iban)) return { ok: false, reason: t('app.validation.invalidChars') };
 
   const country = iban.slice(0, 2);
   const expected = IBAN_LENGTHS[country];
-  if (!expected) return { ok: false, reason: `país ${country} desconocido` };
+  if (!expected) return { ok: false, reason: t('app.validation.unknownCountry', { country }) };
   if (iban.length !== expected)
-    return { ok: false, reason: `${country} esperaba ${expected} chars, recibidos ${iban.length}` };
+    return {
+      ok: false,
+      reason: t('app.validation.ibanLength', { country, expected, got: iban.length }),
+    };
 
   // Rotar y sustituir letras por números. Hacemos mod 97 por bloques para
   // no manejar BigInt — aritmética estándar sobre string numérico.
@@ -114,7 +118,7 @@ export function validateIban(raw: string): { ok: boolean; reason?: string } {
   for (let i = 0; i < numeric.length; i++) {
     remainder = (remainder * 10 + Number(numeric.charAt(i))) % 97;
   }
-  if (remainder !== 1) return { ok: false, reason: 'checksum inválido' };
+  if (remainder !== 1) return { ok: false, reason: t('app.validation.badChecksum') };
   return { ok: true };
 }
 
@@ -130,10 +134,10 @@ export function validateSwift(raw: string): { ok: boolean; reason?: string } {
   const s = String(raw || '')
     .toUpperCase()
     .replace(/\s+/g, '');
-  if (!s) return { ok: false, reason: 'vacío' };
+  if (!s) return { ok: false, reason: t('app.validation.empty') };
   if (s.length !== 8 && s.length !== 11)
-    return { ok: false, reason: `${s.length} caracteres, esperados 8 u 11` };
+    return { ok: false, reason: t('app.validation.swiftLength', { got: s.length }) };
   if (!/^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(s))
-    return { ok: false, reason: 'formato inválido' };
+    return { ok: false, reason: t('app.validation.invalidFormat') };
   return { ok: true };
 }

@@ -15,6 +15,8 @@
  * compartirla entre el soltar, el pegar y los `<input type="file">`.
  */
 
+import { t } from '@/i18n/i18n';
+
 /** Extensiones que sabe leer `extractTextFromFile` (server: core/ai/fileProcessing.ts). */
 export const DOCUMENT_EXTENSIONS = [
   '.xlsx',
@@ -90,12 +92,10 @@ export function rejectionMessage(rejected: RejectedFile[]): string | null {
   const unsupported = names('unsupported');
   const parts: string[] = [];
   if (noVision.length > 0) {
-    parts.push(`El modelo activo no admite imágenes: ${noVision.join(', ')}`);
+    parts.push(t('ai.drop.noVision', { files: noVision.join(', ') }));
   }
   if (unsupported.length > 0) {
-    parts.push(
-      `Formato no admitido: ${unsupported.join(', ')} — se admiten Excel, PDF, Word, CSV/TXT e imágenes`,
-    );
+    parts.push(t('ai.drop.unsupported', { files: unsupported.join(', ') }));
   }
   return parts.join('. ');
 }

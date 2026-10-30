@@ -39,32 +39,40 @@ export const documentsModule: ModuleManifest = {
   nav: [
     {
       id: 'sales',
-      label: 'Ventas',
+      label: 'doc.nav.sales',
       icon: 'ShoppingCart',
       hiddenInLogisticsOnly: true,
       featureFlag: 'salesEnabled',
-      description: 'Pedidos, albaranes y facturas de venta, con tarifas de precio.',
+      description: 'doc.nav.salesDescription',
       category: 'Ventas y compras',
       subTabs: [
-        { id: 'sales-quotes', label: 'Presupuestos', path: '/sales/quotes' },
-        { id: 'sales-orders', label: 'Pedidos', path: '/sales-orders' },
-        { id: 'sales-delivery-notes', label: 'Albaranes', path: '/sales/delivery-notes' },
-        { id: 'sales-invoices', label: 'Facturas', path: '/sales/invoices' },
-        { id: 'pricelists', label: 'Tarifas', path: '/pricelists' },
+        { id: 'sales-quotes', label: 'doc.nav.quotes', path: '/sales/quotes' },
+        { id: 'sales-orders', label: 'doc.nav.orders', path: '/sales-orders' },
+        {
+          id: 'sales-delivery-notes',
+          label: 'doc.nav.deliveryNotes',
+          path: '/sales/delivery-notes',
+        },
+        { id: 'sales-invoices', label: 'doc.nav.invoices', path: '/sales/invoices' },
+        { id: 'pricelists', label: 'doc.nav.priceLists', path: '/pricelists' },
       ],
     },
     {
       id: 'purchases',
-      label: 'Compras',
+      label: 'doc.nav.purchases',
       icon: 'Truck',
       hiddenInLogisticsOnly: true,
       featureFlag: 'purchasesEnabled',
-      description: 'Pedidos, albaranes y facturas de compra a proveedores.',
+      description: 'doc.nav.purchasesDescription',
       category: 'Ventas y compras',
       subTabs: [
-        { id: 'purchase-orders', label: 'Pedidos', path: '/purchase-orders' },
-        { id: 'purchase-delivery-notes', label: 'Albaranes', path: '/purchases/delivery-notes' },
-        { id: 'purchase-invoices', label: 'Facturas', path: '/purchases/invoices' },
+        { id: 'purchase-orders', label: 'doc.nav.orders', path: '/purchase-orders' },
+        {
+          id: 'purchase-delivery-notes',
+          label: 'doc.nav.deliveryNotes',
+          path: '/purchases/delivery-notes',
+        },
+        { id: 'purchase-invoices', label: 'doc.nav.invoices', path: '/purchases/invoices' },
       ],
     },
   ],
@@ -74,7 +82,12 @@ export const documentsModule: ModuleManifest = {
       (pattern, i) => ({
         pattern,
         Component: SalesQuotes,
-        title: ['Presupuestos', 'Nuevo Presupuesto', 'Presupuesto', 'Editar Presupuesto'][i],
+        title: [
+          'doc.routes.quotes',
+          'doc.routes.newQuote',
+          'doc.routes.quote',
+          'doc.routes.editQuote',
+        ][i],
         iconName: 'FileSignature',
         permissionPath: '/sales/quotes',
       }),
@@ -82,7 +95,7 @@ export const documentsModule: ModuleManifest = {
     ...['/sales-orders', '/sales-orders/new', '/sales-orders/:id'].map((pattern, i) => ({
       pattern,
       Component: SalesOrders,
-      title: i === 1 ? 'Nuevo Pedido Venta' : i === 2 ? 'Pedido Venta' : 'Pedidos Venta',
+      title: i === 1 ? 'doc.routes.newSO' : i === 2 ? 'doc.types.SO' : 'doc.typesPlural.SO',
       iconName: 'FileDigit',
       permissionPath: '/sales-orders',
     })),
@@ -90,7 +103,7 @@ export const documentsModule: ModuleManifest = {
       (pattern, i) => ({
         pattern,
         Component: SalesDeliveryNotes,
-        title: i === 1 ? 'Nuevo Albarán Venta' : i === 2 ? 'Albarán Venta' : 'Albaranes Venta',
+        title: i === 1 ? 'doc.routes.newSDN' : i === 2 ? 'doc.types.SDN' : 'doc.typesPlural.SDN',
         iconName: 'Truck',
         permissionPath: '/sales/delivery-notes',
       }),
@@ -98,7 +111,7 @@ export const documentsModule: ModuleManifest = {
     ...['/sales/invoices', '/sales/invoices/new', '/sales/invoices/:id'].map((pattern, i) => ({
       pattern,
       Component: SalesInvoices,
-      title: i === 1 ? 'Nueva Factura Venta' : i === 2 ? 'Factura Venta' : 'Facturas Venta',
+      title: i === 1 ? 'doc.routes.newSINV' : i === 2 ? 'doc.types.SINV' : 'doc.typesPlural.SINV',
       iconName: 'FileStack',
       permissionPath: '/sales/invoices',
     })),
@@ -106,7 +119,7 @@ export const documentsModule: ModuleManifest = {
     ...['/purchase-orders', '/purchase-orders/new', '/purchase-orders/:id'].map((pattern, i) => ({
       pattern,
       Component: PurchaseOrders,
-      title: i === 1 ? 'Nuevo Pedido Compra' : i === 2 ? 'Pedido Compra' : 'Pedidos Compra',
+      title: i === 1 ? 'doc.routes.newPO' : i === 2 ? 'doc.types.PO' : 'doc.typesPlural.PO',
       iconName: 'FileDigit',
       permissionPath: '/purchase-orders',
     })),
@@ -117,7 +130,7 @@ export const documentsModule: ModuleManifest = {
     ].map((pattern, i) => ({
       pattern,
       Component: PurchaseDeliveryNotes,
-      title: i === 1 ? 'Nuevo Albarán Compra' : i === 2 ? 'Albarán Compra' : 'Albaranes Compra',
+      title: i === 1 ? 'doc.routes.newPDN' : i === 2 ? 'doc.types.PDN' : 'doc.typesPlural.PDN',
       iconName: 'Truck',
       permissionPath: '/purchases/delivery-notes',
     })),
@@ -125,7 +138,7 @@ export const documentsModule: ModuleManifest = {
       (pattern, i) => ({
         pattern,
         Component: PurchaseInvoices,
-        title: i === 1 ? 'Nueva Factura Compra' : i === 2 ? 'Factura Compra' : 'Facturas Compra',
+        title: i === 1 ? 'doc.routes.newPINV' : i === 2 ? 'doc.types.PINV' : 'doc.typesPlural.PINV',
         iconName: 'FileStack',
         permissionPath: '/purchases/invoices',
       }),
@@ -135,7 +148,12 @@ export const documentsModule: ModuleManifest = {
       (pattern, i) => ({
         pattern,
         Component: Documents,
-        title: i === 1 ? 'Nuevo Documento' : i === 2 ? 'Documento' : 'Documentos',
+        title:
+          i === 1
+            ? 'doc.routes.newDocument'
+            : i === 2
+              ? 'doc.routes.document'
+              : 'doc.routes.documents',
         iconName: 'FileText',
         permissionPath: '/documents',
       }),
@@ -143,7 +161,7 @@ export const documentsModule: ModuleManifest = {
     {
       pattern: '/pricelists',
       Component: PriceLists,
-      title: 'Tarifas',
+      title: 'doc.nav.priceLists',
       iconName: 'Zap',
       permissionPath: '/pricelists',
     },
@@ -151,7 +169,7 @@ export const documentsModule: ModuleManifest = {
     {
       pattern: '/document-series',
       Component: DocumentSeries,
-      title: 'Series Doc.',
+      title: 'doc.routes.documentSeries',
       iconName: 'FileDigit',
       permissionPath: '/document-series',
     },

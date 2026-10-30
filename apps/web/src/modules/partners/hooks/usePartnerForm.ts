@@ -1,3 +1,4 @@
+import { t } from '@/i18n/i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useGeo, type GeoRow } from '@/hooks/useGeo';
@@ -207,7 +208,7 @@ export function usePartnerForm() {
 
   /** Guarda y devuelve el interlocutor. Lanza si falta algo o falla el servidor. */
   const submit = async (id: string | null): Promise<Partner> => {
-    if (!data.name.trim() || !data.groupId) throw new Error('Nombre y grupo son obligatorios');
+    if (!data.name.trim() || !data.groupId) throw new Error(t('partners.form.nameGroupRequired'));
     setSaving(true);
     try {
       // `pluginValues` va PRIMERO: arranca siendo el registro entero, así que

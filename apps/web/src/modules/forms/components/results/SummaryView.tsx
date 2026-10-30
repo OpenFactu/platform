@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import { Card, KpiCard, StackedBar } from '@openfactu/ui';
 import type { QuestionSummary } from '@forms-engine';
@@ -29,6 +30,7 @@ const Bars: React.FC<{
 );
 
 const Nps: React.FC<{ q: QuestionSummary }> = ({ q }) => {
+  const { t } = useI18n();
   const n = (from: number, to: number) =>
     (q.counts ?? [])
       .filter((c) => Number(c.key) >= from && Number(c.key) <= to)
@@ -38,18 +40,33 @@ const Nps: React.FC<{ q: QuestionSummary }> = ({ q }) => {
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <KpiCard label="NPS" value={q.nps ?? '—'} />
-        <KpiCard label="Promotores (9–10)" value={pro} />
-        <KpiCard label="Pasivos (7–8)" value={pas} />
-        <KpiCard label="Detractores (0–6)" value={det} />
+        <KpiCard label={t('forms.summary.promotersRange')} value={pro} />
+        <KpiCard label={t('forms.summary.passivesRange')} value={pas} />
+        <KpiCard label={t('forms.summary.detractorsRange')} value={det} />
       </div>
       {q.answered > 0 && (
         <StackedBar
           showLegend
-          ariaLabel="Reparto de la recomendación"
+          ariaLabel={t('forms.summary.npsBreakdown')}
           segments={[
-            { key: 'det', label: 'Detractores', value: det, color: 'rgb(var(--k-danger-rgb))' },
-            { key: 'pas', label: 'Pasivos', value: pas, color: 'rgb(var(--k-warning-rgb))' },
-            { key: 'pro', label: 'Promotores', value: pro, color: 'rgb(var(--k-success-rgb))' },
+            {
+              key: 'det',
+              label: t('forms.summary.detractors'),
+              value: det,
+              color: 'rgb(var(--k-danger-rgb))',
+            },
+            {
+              key: 'pas',
+              label: t('forms.summary.passives'),
+              value: pas,
+              color: 'rgb(var(--k-warning-rgb))',
+            },
+            {
+              key: 'pro',
+              label: t('forms.summary.promoters'),
+              value: pro,
+              color: 'rgb(var(--k-success-rgb))',
+            },
           ]}
         />
       )}
@@ -72,13 +89,16 @@ const Texts: React.FC<{ texts: string[] }> = ({ texts }) => (
 
 /** Lo que se pinta para una pregunta según lo que trae su resumen. */
 export const QuestionResult: React.FC<{ q: QuestionSummary }> = ({ q }) => {
-  if (q.answered === 0) return <p className="text-sm text-fg-muted">Sin respuestas.</p>;
+  const { t } = useI18n();
+  if (q.answered === 0)
+    return <p className="text-sm text-fg-muted">{t('forms.summary.noResponses')}</p>;
   if (q.nps !== undefined) return <Nps q={q} />;
   return (
     <div className="space-y-3">
       {q.average != null && (
         <p className="text-sm text-fg-body">
-          Media: <span className="font-semibold tabular-nums">{q.average}</span>
+          {t('forms.summary.average')}{' '}
+          <span className="font-semibold tabular-nums">{q.average}</span>
         </p>
       )}
       {q.counts && <Bars counts={q.counts} total={q.answered} />}
@@ -95,36 +115,37 @@ export const QuestionResult: React.FC<{ q: QuestionSummary }> = ({ q }) => {
         <>
           {q.counts && (
             <div className="text-xs font-semibold uppercase tracking-wide text-fg-muted">
-              Respuestas en «Otro»
+              {t('forms.summary.otherAnswers')}
             </div>
           )}
           <Texts texts={q.texts} />
         </>
       )}
-      {q.type === 'file' && (
-        <p className="text-sm text-fg-muted">Los archivos se ven en cada respuesta individual.</p>
-      )}
+      {q.type === 'file' && <p className="text-sm text-fg-muted">{t('forms.summary.filesHint')}</p>}
     </div>
   );
 };
 
 /** Resumen como el de Google: una tarjeta por pregunta. */
-export const SummaryView: React.FC<{ summary: FormSummary }> = ({ summary }) => (
-  <div className="space-y-4">
-    {summary.quiz && (
-      <div className="grid grid-cols-2 gap-3">
-        <KpiCard label="Nota media" value={summary.quiz.average ?? '—'} />
-        <KpiCard label="Puntuación máxima" value={summary.quiz.maxScore ?? '—'} />
-      </div>
-    )}
-    {summary.questions.map((q) => (
-      <Card
-        key={q.questionId}
-        title={q.title || 'Pregunta sin título'}
-        subtitle={`${q.answered} respuesta(s)`}
-      >
-        <QuestionResult q={q} />
-      </Card>
-    ))}
-  </div>
-);
+export const SummaryView: React.FC<{ summary: FormSummary }> = ({ summary }) => {
+  const { t } = useI18n();
+  return (
+    <div className="space-y-4">
+      {summary.quiz && (
+        <div className="grid grid-cols-2 gap-3">
+          <KpiCard label={t('forms.summary.averageScore')} value={summary.quiz.average ?? '—'} />
+          <KpiCard label={t('forms.summary.maxScore')} value={summary.quiz.maxScore ?? '—'} />
+        </div>
+      )}
+      {summary.questions.map((q) => (
+        <Card
+          key={q.questionId}
+          title={q.title || t('forms.question.untitled')}
+          subtitle={t('forms.responses.count', { count: q.answered })}
+        >
+          <QuestionResult q={q} />
+        </Card>
+      ))}
+    </div>
+  );
+};

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, SkeletonPage } from '@openfactu/ui';
@@ -10,6 +11,7 @@ import { themeStyle } from '../domain/theme';
 
 /** Vista previa: el mismo formulario que verá quien responde, sin enviar nada. */
 export const FormPreview: React.FC = () => {
+  const { t } = useI18n();
   const { formId = '' } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -36,9 +38,9 @@ export const FormPreview: React.FC = () => {
             size="sm"
             onClick={() => navigate(`/forms/${form.id}`)}
           >
-            <ArrowLeft size={14} /> Volver al editor
+            <ArrowLeft size={14} /> {t('forms.preview.backToEditor')}
           </Button>
-          <span className="text-xs text-fg-muted">Vista previa · las respuestas no se guardan</span>
+          <span className="text-xs text-fg-muted">{t('forms.preview.notice')}</span>
         </div>
         <FormRunner
           title={form.title || form.name}

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useMemo, useState } from 'react';
 import {
   Card,
@@ -14,6 +15,7 @@ import { Chart } from '@openfactu/ui/charts';
 import { BarChart3 } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useFormat } from '@/hooks/useFormat';
+import { intlLocale, t as translate } from '@/i18n/i18n';
 import {
   crmReportsApi,
   type LostReasonRow,
@@ -27,22 +29,25 @@ type Tab = 'forecast' | 'funnel' | 'lost' | 'sources' | 'activity' | 'surveys';
 type Range = '3' | '6' | '12' | '24';
 
 const monthLabel = (m: string | null) => {
-  if (!m) return 'Sin fecha';
+  if (!m) return translate('crm.reports.noDate');
   const [y, mo] = m.split('-').map(Number);
-  return new Date(y, mo - 1, 1).toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+  return new Date(y, mo - 1, 1).toLocaleDateString(intlLocale(), {
+    month: 'short',
+    year: '2-digit',
+  });
 };
 
 const Loading = () => <Skeleton className="h-64 w-full" />;
-const Empty = ({ title }: { title: string }) => (
-  <EmptyState
-    icon={<BarChart3 size={18} />}
-    title={title}
-    hint="Prueba con un periodo más largo."
-  />
-);
+const Empty = ({ title }: { title: string }) => {
+  const { t } = useI18n();
+  return (
+    <EmptyState icon={<BarChart3 size={18} />} title={title} hint={t('crm.reports.tryLonger')} />
+  );
+};
 
 export const Reports: React.FC = () => {
   const fmt = useFormat();
+  const { t } = useI18n();
   const { flags } = useTheme();
   const [tab, setTab] = useState<Tab>('forecast');
   const [range, setRange] = useState<Range>('12');
@@ -50,32 +55,32 @@ export const Reports: React.FC = () => {
   const period = useMemo(() => lastMonths(Number(range)), [range]);
 
   const tabs = [
-    { key: 'forecast', label: 'Previsión' },
-    { key: 'funnel', label: 'Embudo' },
-    { key: 'lost', label: 'Pérdidas' },
-    { key: 'sources', label: 'Orígenes' },
-    { key: 'activity', label: 'Comerciales' },
-    ...(flags.formsEnabled ? [{ key: 'surveys', label: 'Encuestas' }] : []),
+    { key: 'forecast', label: t('crm.reports.tabs.forecast') },
+    { key: 'funnel', label: t('crm.reports.tabs.funnel') },
+    { key: 'lost', label: t('crm.reports.tabs.lost') },
+    { key: 'sources', label: t('crm.reports.tabs.sources') },
+    { key: 'activity', label: t('crm.reports.tabs.activity') },
+    ...(flags.formsEnabled ? [{ key: 'surveys', label: t('crm.reports.tabs.surveys') }] : []),
   ];
 
   return (
     <div className="p-4 w-full space-y-4">
       <PageHeader
-        title="Informes del CRM"
-        subtitle="Cómo va el embudo, de dónde vienen las ventas y por qué se pierden"
+        title={t('crm.nav.reportsTitle')}
+        subtitle={t('crm.reports.subtitle')}
         icon={<BarChart3 size={18} />}
         size="sm"
         actions={
           <SegmentedControl
             size="sm"
-            aria-label="Periodo"
+            aria-label={t('crm.reports.period')}
             value={range}
             onChange={(v) => setRange(v as Range)}
             options={[
-              { value: '3', label: '3 meses' },
-              { value: '6', label: '6 meses' },
-              { value: '12', label: '12 meses' },
-              { value: '24', label: '24 meses' },
+              { value: '3', label: t('crm.reports.months', { n: 3 }) },
+              { value: '6', label: t('crm.reports.months', { n: 6 }) },
+              { value: '12', label: t('crm.reports.months', { n: 12 }) },
+              { value: '24', label: t('crm.reports.months', { n: 24 }) },
             ]}
           />
         }
@@ -95,6 +100,7 @@ type Fmt = ReturnType<typeof useFormat>;
 type PeriodProps = { period: ReturnType<typeof lastMonths> };
 
 const ForecastTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
+  const { t } = useI18n();
   const { data } = useCrmReport(crmReportsApi.forecast, period);
   if (!data) return <Loading />;
   const openTotal = data.open.reduce((s, r) => s + r.amount, 0);
@@ -108,39 +114,42 @@ const ForecastTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <KpiCard label="Abierto en el embudo" value={fmt.money(openTotal)} />
-        <KpiCard label="Previsión ponderada" value={fmt.money(weightedTotal)} />
-        <KpiCard label="Ganado en el periodo" value={fmt.money(wonTotal)} />
+        <KpiCard label={t('crm.reports.openInPipeline')} value={fmt.money(openTotal)} />
+        <KpiCard label={t('crm.opportunities.weighted')} value={fmt.money(weightedTotal)} />
+        <KpiCard label={t('crm.reports.wonInPeriod')} value={fmt.money(wonTotal)} />
       </div>
-      <Card title="Previsión por mes de cierre" subtitle="Oportunidades abiertas.">
+      <Card title={t('crm.reports.forecastByMonth')} subtitle={t('crm.reports.openOpportunities')}>
         {chartData.length ? (
           <Chart
             type="bar"
             data={chartData}
             xKey="month"
-            series={[{ key: 'Importe' }, { key: 'Ponderado' }]}
+            series={[
+              { key: 'Importe', label: t('crm.common.amount') },
+              { key: 'Ponderado', label: t('crm.reports.weighted') },
+            ]}
             valueFormat={(v) => fmt.money(v)}
             height={280}
             legend
-            aria-label="Previsión por mes de cierre"
+            aria-label={t('crm.reports.forecastByMonth')}
           />
         ) : (
-          <Empty title="No hay oportunidades abiertas" />
+          <Empty title={t('crm.reports.noOpen')} />
         )}
       </Card>
-      <Card title="Ganado por mes">
+      <Card title={t('crm.reports.wonByMonth')}>
         {data.won.length ? (
           <Chart
             type="bar"
             data={data.won.map((r) => ({ month: monthLabel(r.month), Ganado: r.amount }))}
             xKey="month"
-            series={[{ key: 'Ganado', color: 'positive' }]}
+            series={[{ key: 'Ganado', label: t('crm.reports.won'), color: 'positive' }]}
             valueFormat={(v) => fmt.money(v)}
             height={240}
-            aria-label="Ganado por mes"
+            aria-label={t('crm.reports.wonByMonth')}
           />
         ) : (
-          <Empty title="Nada ganado en el periodo" />
+          <Empty title={t('crm.reports.noneWon')} />
         )}
       </Card>
     </div>
@@ -148,14 +157,15 @@ const ForecastTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
 };
 
 const FunnelTab: React.FC<PeriodProps> = ({ period }) => {
+  const { t } = useI18n();
   const { data } = useCrmReport(crmReportsApi.funnel, period);
   if (!data) return <Loading />;
-  if (data.cohort === 0) return <Empty title="No se crearon oportunidades en el periodo" />;
+  if (data.cohort === 0) return <Empty title={t('crm.reports.noneCreated')} />;
   const max = Math.max(...data.stages.map((s) => s.reached), 1);
   return (
     <Card
-      title="Embudo"
-      subtitle={`${data.cohort} oportunidad(es) creadas en el periodo: cuántas pasaron por cada etapa, cuántas siguieron y cuánto tiempo estuvieron.`}
+      title={t('crm.reports.tabs.funnel')}
+      subtitle={t('crm.reports.funnelSubtitle', { count: data.cohort })}
     >
       <ul className="space-y-4">
         {data.stages.map((s) => (
@@ -165,10 +175,14 @@ const FunnelTab: React.FC<PeriodProps> = ({ period }) => {
               <span className="text-xs text-fg-muted tabular-nums">{s.reached}</span>
               <span className="flex-1" />
               {s.conversion != null && (
-                <span className="text-xs text-fg-body">{s.conversion}% siguen adelante</span>
+                <span className="text-xs text-fg-body">
+                  {t('crm.reports.conversion', { pct: s.conversion })}
+                </span>
               )}
               {s.avgDays != null && (
-                <span className="text-xs text-fg-muted">{s.avgDays} días de media</span>
+                <span className="text-xs text-fg-muted">
+                  {t('crm.reports.avgDays', { days: s.avgDays })}
+                </span>
               )}
             </div>
             <div className="h-3 rounded-full bg-bg-muted overflow-hidden">
@@ -191,14 +205,15 @@ const FunnelTab: React.FC<PeriodProps> = ({ period }) => {
 };
 
 const LostTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
+  const { t } = useI18n();
   const { data } = useCrmReport(crmReportsApi.lostReasons, period);
   if (!data) return <Loading />;
-  if (data.length === 0) return <Empty title="No se perdió ninguna oportunidad en el periodo" />;
+  if (data.length === 0) return <Empty title={t('crm.reports.noneLost')} />;
   const columns: TableColumn<LostReasonRow>[] = [
-    { header: 'Motivo', accessor: 'reason', card: 'title' },
-    { header: 'Oportunidades', accessor: 'count', align: 'right' },
+    { header: t('crm.lostReason.reason'), accessor: 'reason', card: 'title' },
+    { header: t('crm.nav.opportunities'), accessor: 'count', align: 'right' },
     {
-      header: 'Importe perdido',
+      header: t('crm.reports.lostAmount'),
       id: 'amount',
       accessor: (r) => fmt.money(r.amount),
       align: 'right',
@@ -206,21 +221,21 @@ const LostTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
   ];
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-      <Card title="Motivos de pérdida">
+      <Card title={t('crm.settings.lostReasons')}>
         <Chart
           type="donut"
           data={data.map((r) => ({ reason: r.reason, Oportunidades: r.count }))}
           xKey="reason"
-          series={[{ key: 'Oportunidades' }]}
+          series={[{ key: 'Oportunidades', label: t('crm.nav.opportunities') }]}
           height={260}
           legend
-          aria-label="Motivos de pérdida"
+          aria-label={t('crm.settings.lostReasons')}
         />
       </Card>
       <Table
         columns={columns}
         data={data}
-        ariaLabel="Motivos de pérdida"
+        ariaLabel={t('crm.settings.lostReasons')}
         rowKey={(r) => r.reason}
       />
     </div>
@@ -228,25 +243,31 @@ const LostTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
 };
 
 const SourcesTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
+  const { t } = useI18n();
   const { data } = useCrmReport(crmReportsApi.sources, period);
   if (!data) return <Loading />;
-  if (data.length === 0) return <Empty title="No se crearon oportunidades en el periodo" />;
+  if (data.length === 0) return <Empty title={t('crm.reports.noneCreated')} />;
   const columns: TableColumn<SourceRow>[] = [
-    { header: 'Origen', accessor: 'source', card: 'title' },
-    { header: 'Creadas', accessor: 'created', align: 'right' },
-    { header: 'Ganadas', accessor: 'won', align: 'right' },
-    { header: 'Perdidas', accessor: 'lost', align: 'right' },
+    { header: t('crm.fields.source'), accessor: 'source', card: 'title' },
+    { header: t('crm.reports.created'), accessor: 'created', align: 'right' },
+    { header: t('crm.reports.wonCount'), accessor: 'won', align: 'right' },
+    { header: t('crm.reports.lostCount'), accessor: 'lost', align: 'right' },
     {
-      header: '% de éxito',
+      header: t('crm.reports.winRate'),
       id: 'rate',
       accessor: (r) => (r.winRate == null ? '—' : `${r.winRate}%`),
       align: 'right',
     },
-    { header: 'Ganado', id: 'amount', accessor: (r) => fmt.money(r.wonAmount), align: 'right' },
+    {
+      header: t('crm.reports.won'),
+      id: 'amount',
+      accessor: (r) => fmt.money(r.wonAmount),
+      align: 'right',
+    },
   ];
   return (
     <div className="space-y-4">
-      <Card title="Oportunidades por origen">
+      <Card title={t('crm.reports.bySource')}>
         <Chart
           type="bar"
           data={data.map((r) => ({
@@ -257,37 +278,43 @@ const SourcesTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
           }))}
           xKey="source"
           series={[
-            { key: 'Ganadas', color: 'positive', stackId: 'a' },
-            { key: 'Abiertas', color: 'neutral', stackId: 'a' },
-            { key: 'Perdidas', color: 'negative', stackId: 'a' },
+            { key: 'Ganadas', label: t('crm.reports.wonCount'), color: 'positive', stackId: 'a' },
+            { key: 'Abiertas', label: t('crm.opportunities.open'), color: 'neutral', stackId: 'a' },
+            { key: 'Perdidas', label: t('crm.reports.lostCount'), color: 'negative', stackId: 'a' },
           ]}
           height={260}
           legend
-          aria-label="Oportunidades por origen"
+          aria-label={t('crm.reports.bySource')}
         />
       </Card>
-      <Table columns={columns} data={data} ariaLabel="Orígenes" rowKey={(r) => r.source} />
+      <Table
+        columns={columns}
+        data={data}
+        ariaLabel={t('crm.settings.sources')}
+        rowKey={(r) => r.source}
+      />
     </div>
   );
 };
 
 const ActivityTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
+  const { t } = useI18n();
   const { data } = useCrmReport(crmReportsApi.activity, period);
   if (!data) return <Loading />;
-  if (data.length === 0) return <Empty title="Sin actividad en el periodo" />;
+  if (data.length === 0) return <Empty title={t('crm.reports.noActivity')} />;
   const types = Object.keys(ACTIVITY_TYPE_LABEL) as ActivityType[];
   const columns: TableColumn<OwnerActivityRow>[] = [
-    { header: 'Comercial', accessor: 'name', card: 'title' },
-    ...types.map<TableColumn<OwnerActivityRow>>((t) => ({
-      header: ACTIVITY_TYPE_LABEL[t],
-      id: t,
-      accessor: (r) => r.done[t] ?? 0,
+    { header: t('crm.reports.salesRep'), accessor: 'name', card: 'title' },
+    ...types.map<TableColumn<OwnerActivityRow>>((type) => ({
+      header: t(ACTIVITY_TYPE_LABEL[type]),
+      id: type,
+      accessor: (r) => r.done[type] ?? 0,
       align: 'right',
     })),
-    { header: 'Vencidas', accessor: 'overdue', align: 'right' },
-    { header: 'Ganadas', accessor: 'won', align: 'right' },
+    { header: t('crm.reports.overdue'), accessor: 'overdue', align: 'right' },
+    { header: t('crm.reports.wonCount'), accessor: 'won', align: 'right' },
     {
-      header: 'Importe ganado',
+      header: t('crm.reports.wonAmount'),
       id: 'amount',
       accessor: (r) => fmt.money(r.wonAmount),
       align: 'right',
@@ -295,14 +322,14 @@ const ActivityTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
   ];
   return (
     <Card
-      title="Actividad por comercial"
-      subtitle="Actividades hechas en el periodo, pendientes vencidas y oportunidades ganadas."
+      title={t('crm.reports.activityByRep')}
+      subtitle={t('crm.reports.activityByRepHint')}
       noPadding
     >
       <Table
         columns={columns}
         data={data}
-        ariaLabel="Actividad por comercial"
+        ariaLabel={t('crm.reports.activityByRep')}
         rowKey={(r) => r.ownerUserId ?? 'none'}
       />
     </Card>
@@ -310,16 +337,17 @@ const ActivityTab: React.FC<PeriodProps & { fmt: Fmt }> = ({ period, fmt }) => {
 };
 
 const SurveysTab: React.FC<PeriodProps> = ({ period }) => {
+  const { t } = useI18n();
   const { data } = useCrmReport(crmReportsApi.surveys, period);
   if (!data) return <Loading />;
-  if (data.length === 0) return <Empty title="No hay encuestas" />;
+  if (data.length === 0) return <Empty title={t('crm.reports.noSurveys')} />;
   return (
     <div className="space-y-4">
       {data.map((s) => (
         <Card
           key={s.formId}
           title={s.name}
-          subtitle={`${s.responses} respuesta(s) en el periodo${s.nps != null ? ` · NPS ${s.nps}` : ''}`}
+          subtitle={`${t('crm.reports.responses', { count: s.responses })}${s.nps != null ? ` · NPS ${s.nps}` : ''}`}
         >
           {s.months.some((m) => m.nps != null) ? (
             <Chart
@@ -328,13 +356,11 @@ const SurveysTab: React.FC<PeriodProps> = ({ period }) => {
               xKey="month"
               series={[{ key: 'NPS' }]}
               height={220}
-              aria-label={`NPS de ${s.name} por mes`}
+              aria-label={t('crm.reports.npsByMonth', { name: s.name })}
             />
           ) : (
             <p className="text-sm text-fg-muted">
-              {s.responses
-                ? 'Esta encuesta no tiene pregunta NPS.'
-                : 'Sin respuestas en el periodo.'}
+              {s.responses ? t('crm.reports.noNps') : t('crm.reports.noResponses')}
             </p>
           )}
         </Card>

@@ -6,10 +6,10 @@ const AiChat = lazy(() => import('./pages').then((m) => ({ default: m.AiChat }))
 export const aiModule: ModuleManifest = {
   nav: {
     id: 'assistant',
-    label: 'Asistente IA',
+    label: 'ai.nav.assistant',
     icon: 'Bot',
     featureFlag: 'assistantEnabled',
-    description: 'Chat con Keiro, el asistente de IA de Keirost.',
+    description: 'ai.nav.description',
     category: 'Productividad',
     subTabs: [{ id: 'ai-chat', label: 'Keiro', path: '/ai/chat', status: 'beta' }],
   },
@@ -17,7 +17,7 @@ export const aiModule: ModuleManifest = {
     {
       pattern: '/ai/chat',
       Component: AiChat,
-      title: 'Asistente IA',
+      title: 'ai.nav.assistant',
       iconName: 'Bot',
       permissionPath: '/ai/chat',
     },

@@ -9,6 +9,8 @@ import { Button, useToast, cn } from '@openfactu/ui';
 import { ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTabs } from '../../context/TabsContext';
+import { ResponsiveActions } from './ResponsiveActions';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   docType: 'SDN' | 'PDN';
@@ -31,6 +33,7 @@ export const PreparationButton: React.FC<Props> = ({
   const iconSize = size ?? (compact ? 14 : 16);
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const tabs = (() => {
     try {
       return useTabs();
@@ -45,13 +48,13 @@ export const PreparationButton: React.FC<Props> = ({
     try {
       const d =
         docType === 'SDN' ? await prepTasksApi.fromSdn(docId) : await prepTasksApi.fromPdn(docId);
-      toast.success(d.reused ? 'Preparación ya iniciada — abriendo' : 'Preparación iniciada');
+      toast.success(d.reused ? t('app.prep.reused') : t('app.prep.started'));
       // Navegar DIRECTAMENTE al detalle del shipment creado, en lugar de
       // caer en la lista genérica de /logistics. Así el usuario ve el
       // mapa, las tareas de picking y puede moverlo al siguiente estado.
       const sid = d.shipmentId;
       const target = sid ? `/logistics/shipments/${sid}` : '/logistics';
-      const title = sid ? 'Envío en preparación' : 'Preparación';
+      const title = sid ? t('app.prep.shipmentTitle') : t('app.prep.title');
       if (tabs && (tabs as any).openTab) {
         (tabs as any).openTab(target, { title });
       } else {
@@ -59,13 +62,14 @@ export const PreparationButton: React.FC<Props> = ({
       }
     } catch (e) {
       const msg = e instanceof ApiError ? (e.body as any)?.error : undefined;
-      toast.error(msg || (e as any)?.message || 'Error al iniciar preparación');
+      toast.error(msg || (e as any)?.message || t('app.prep.error'));
     } finally {
       setLoading(false);
     }
   };
 
-  return (
+  const label = docType === 'SDN' ? t('app.prep.prepare') : t('app.prep.receive');
+  const button = (
     <Button
       variant={compact ? 'ghost' : 'secondary'}
       size={compact ? 'sm' : undefined}
@@ -74,7 +78,17 @@ export const PreparationButton: React.FC<Props> = ({
       className={cn(compact ? 'gap-1' : 'flex items-center gap-2 whitespace-nowrap', className)}
     >
       <ClipboardCheck size={iconSize} />
-      {docType === 'SDN' ? 'Preparar envío' : 'Recepcionar'}
+      {label}
     </Button>
+  );
+  // La compacta va en filas de listado; la de la ficha, en móvil, al botón flotante.
+  if (compact) return button;
+  return (
+    <ResponsiveActions
+      source="secondary:preparation"
+      actions={[{ id: 'prep', label, icon: <ClipboardCheck size={19} />, onClick }]}
+    >
+      {button}
+    </ResponsiveActions>
   );
 };

@@ -1,3 +1,4 @@
+import { t } from '@/i18n/i18n';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { contactsApi, opportunitiesApi } from '../api';
@@ -17,12 +18,14 @@ export function validateOpportunity(
   stages: OpportunityStage[],
   settings: CrmSettings,
 ): string | null {
-  if (!form.title?.trim()) return 'El título es obligatorio';
+  if (!form.title?.trim()) return t('crm.opportunity.validation.titleRequired');
   if (!form.partnerId && !form.prospectName?.trim() && !form.prospectCompany?.trim())
-    return 'Elige el cliente o indica el nombre o la empresa del prospecto';
+    return t('crm.opportunity.validation.partnerRequired');
   const stage = stages.find((s) => s.id === form.stageId);
-  if (stage?.kind === 'lost' && !form.lostReason) return 'Indica el motivo de pérdida';
-  if (settings.sourceRequired && !form.source) return 'Indica el origen de la oportunidad';
+  if (stage?.kind === 'lost' && !form.lostReason)
+    return t('crm.opportunity.validation.lostReasonRequired');
+  if (settings.sourceRequired && !form.source)
+    return t('crm.opportunity.validation.sourceRequired');
   return null;
 }
 

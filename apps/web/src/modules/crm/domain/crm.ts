@@ -110,11 +110,12 @@ export interface OpportunityDocument {
   validUntil?: string | null;
 }
 
+/** Claves de i18n: se traducen al pintar con `t()`. */
 export const DOC_TYPE_LABEL: Record<OpportunityDocType, string> = {
-  SQ: 'Presupuesto',
-  SO: 'Pedido',
-  SDN: 'Albarán',
-  SINV: 'Factura',
+  SQ: 'crm.docType.SQ',
+  SO: 'crm.docType.SO',
+  SDN: 'crm.docType.SDN',
+  SINV: 'crm.docType.SINV',
 };
 
 /** Ruta de la ficha de cada tipo de documento. */
@@ -166,10 +167,11 @@ export interface CrmSettings {
   boardClosedDays: number;
 }
 
+/** Claves de i18n: se traducen al pintar con `t()`. */
 export const STAGE_KIND_LABEL: Record<StageKind, string> = {
-  open: 'Abierta',
-  won: 'Ganada',
-  lost: 'Perdida',
+  open: 'crm.stageKind.open',
+  won: 'crm.stageKind.won',
+  lost: 'crm.stageKind.lost',
 };
 
 export const STAGE_KIND_VARIANT: Record<StageKind, BadgeVariant> = {
@@ -178,14 +180,16 @@ export const STAGE_KIND_VARIANT: Record<StageKind, BadgeVariant> = {
   lost: 'neutral',
 };
 
+/** Claves de i18n: se traducen al pintar con `t()`. */
 export const ACTIVITY_TYPE_LABEL: Record<ActivityType, string> = {
-  call: 'Llamada',
-  meeting: 'Reunión',
-  email: 'Correo',
-  note: 'Nota',
-  task: 'Tarea',
+  call: 'crm.activityType.call',
+  meeting: 'crm.activityType.meeting',
+  email: 'crm.activityType.email',
+  note: 'crm.activityType.note',
+  task: 'crm.activityType.task',
 };
 
+/** `label` es una clave de i18n. */
 export const ACTIVITY_TYPE_OPTIONS = (Object.keys(ACTIVITY_TYPE_LABEL) as ActivityType[]).map(
   (value) => ({ value, label: ACTIVITY_TYPE_LABEL[value] }),
 );

@@ -18,6 +18,7 @@ import {
 import { Plus, Trash2, Play, Zap, History, Edit2, Pause, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Automation {
   id: string;
@@ -44,42 +45,57 @@ interface RunRow {
 }
 
 const EVENT_OPTIONS = [
-  { value: 'salesInvoice.afterCreate', label: 'Factura de venta creada' },
-  { value: 'salesInvoice.afterPost', label: 'Factura de venta asentada' },
-  { value: 'purchaseInvoice.afterCreate', label: 'Factura de compra creada' },
-  { value: 'purchaseInvoice.afterPost', label: 'Factura de compra asentada' },
-  { value: 'salesOrder.afterCreate', label: 'Pedido de venta creado' },
-  { value: 'salesDeliveryNote.afterCreate', label: 'Albarán de venta creado' },
-  { value: 'purchaseOrder.afterCreate', label: 'Pedido de compra creado' },
-  { value: 'purchaseDeliveryNote.afterCreate', label: 'Albarán de compra creado' },
-  { value: 'partner.afterCreate', label: 'Partner creado' },
-  { value: 'item.afterCreate', label: 'Artículo creado' },
-  { value: 'crm.opportunity.created', label: 'CRM · Oportunidad creada' },
-  { value: 'crm.opportunity.stageChanged', label: 'CRM · Oportunidad cambia de etapa' },
-  { value: 'crm.opportunity.won', label: 'CRM · Oportunidad ganada' },
-  { value: 'crm.opportunity.lost', label: 'CRM · Oportunidad perdida' },
-  { value: 'crm.activity.created', label: 'CRM · Actividad registrada' },
-  { value: 'crm.form.submitted', label: 'CRM · Formulario o encuesta respondidos' },
+  { value: 'salesInvoice.afterCreate', label: 'settings.automations.events.salesInvoiceCreated' },
+  { value: 'salesInvoice.afterPost', label: 'settings.automations.events.salesInvoicePosted' },
+  {
+    value: 'purchaseInvoice.afterCreate',
+    label: 'settings.automations.events.purchaseInvoiceCreated',
+  },
+  {
+    value: 'purchaseInvoice.afterPost',
+    label: 'settings.automations.events.purchaseInvoicePosted',
+  },
+  { value: 'salesOrder.afterCreate', label: 'settings.automations.events.salesOrderCreated' },
+  {
+    value: 'salesDeliveryNote.afterCreate',
+    label: 'settings.automations.events.salesDeliveryNoteCreated',
+  },
+  { value: 'purchaseOrder.afterCreate', label: 'settings.automations.events.purchaseOrderCreated' },
+  {
+    value: 'purchaseDeliveryNote.afterCreate',
+    label: 'settings.automations.events.purchaseDeliveryNoteCreated',
+  },
+  { value: 'partner.afterCreate', label: 'settings.automations.events.partnerCreated' },
+  { value: 'item.afterCreate', label: 'settings.automations.events.itemCreated' },
+  { value: 'crm.opportunity.created', label: 'settings.automations.events.crmOpportunityCreated' },
+  {
+    value: 'crm.opportunity.stageChanged',
+    label: 'settings.automations.events.crmOpportunityStageChanged',
+  },
+  { value: 'crm.opportunity.won', label: 'settings.automations.events.crmOpportunityWon' },
+  { value: 'crm.opportunity.lost', label: 'settings.automations.events.crmOpportunityLost' },
+  { value: 'crm.activity.created', label: 'settings.automations.events.crmActivityCreated' },
+  { value: 'crm.form.submitted', label: 'settings.automations.events.crmFormSubmitted' },
 ];
 
 const TRIGGER_TYPE_OPTIONS = [
-  { value: 'schedule', label: 'Programado (cron)' },
-  { value: 'event', label: 'Evento del sistema' },
-  { value: 'manual', label: 'Manual (solo botón)' },
+  { value: 'schedule', label: 'settings.automations.triggers.schedule' },
+  { value: 'event', label: 'settings.automations.triggers.event' },
+  { value: 'manual', label: 'settings.automations.triggers.manual' },
 ];
 
 const ACTION_TYPE_OPTIONS = [
-  { value: 'email', label: 'Enviar email' },
-  { value: 'webhook', label: 'Llamar a webhook (HTTP POST)' },
-  { value: 'notification', label: 'Notificación interna' },
+  { value: 'email', label: 'settings.automations.actions.email' },
+  { value: 'webhook', label: 'settings.automations.actions.webhook' },
+  { value: 'notification', label: 'settings.automations.actions.notification' },
 ];
 
 const HTTP_METHOD_OPTIONS = ['POST', 'PUT', 'GET'].map((m) => ({ value: m, label: m }));
 
 const NOTIFY_ROLE_OPTIONS = [
-  { value: 'ADMIN', label: 'Administradores' },
-  { value: 'USER', label: 'Todos los usuarios' },
-  { value: 'SUPERUSER', label: 'Superusers' },
+  { value: 'ADMIN', label: 'settings.automations.roles.admin' },
+  { value: 'USER', label: 'settings.automations.roles.user' },
+  { value: 'SUPERUSER', label: 'settings.automations.roles.superuser' },
 ];
 
 const defaultForm = (): any => ({
@@ -100,6 +116,9 @@ export const Automations: React.FC = () => {
   const { token, user } = useAuth();
   const fmt = useFormat();
   const toast = useToast();
+  const { t } = useI18n();
+  const tr = (opts: { value: string; label: string }[]) =>
+    opts.map((o) => ({ ...o, label: t(o.label) }));
   const popup = usePopup();
   const [rows, setRows] = useState<Automation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +189,7 @@ export const Automations: React.FC = () => {
 
   const save = async () => {
     if (!form.name) {
-      toast.error('El nombre es obligatorio.');
+      toast.error(t('settings.automations.nameRequired'));
       return;
     }
     const triggerConfig: any =
@@ -212,10 +231,12 @@ export const Automations: React.FC = () => {
       const res = await coreApi.raw(method, url, body);
       const data = res.data;
       if (!res.ok) {
-        toast.error(data?.error || 'Error al guardar');
+        toast.error(data?.error || t('settings.automations.saveError'));
         return;
       }
-      toast.success(form.id ? 'Actualizada' : 'Creada');
+      toast.success(
+        form.id ? t('settings.automations.updated') : t('settings.automations.created'),
+      );
       setShowModal(false);
       load();
     } finally {
@@ -230,10 +251,10 @@ export const Automations: React.FC = () => {
 
   const remove = async (a: Automation) => {
     const ok = await popup.confirm({
-      title: 'Eliminar automatización',
-      message: `Se eliminará "${a.name}" y su historial de ejecuciones dejará de estar accesible.`,
+      title: t('settings.automations.deleteTitle'),
+      message: t('settings.automations.deleteMessage', { name: a.name }),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('settings.automations.delete'),
     });
     if (!ok) return;
     await coreApi.raw('DELETE', `/api/automations/${a.id}`);
@@ -244,7 +265,7 @@ export const Automations: React.FC = () => {
     const res = await coreApi.raw('POST', `/api/automations/${a.id}/run`, { context: {} });
     const data = res.data;
     if (data.status === 'ok') toast.success(data.output || 'OK');
-    else toast.error(data.error || 'Falló');
+    else toast.error(data.error || t('settings.automations.failed'));
   };
 
   const openLogs = async (a: Automation) => {
@@ -259,14 +280,14 @@ export const Automations: React.FC = () => {
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
       <PageHeader
-        title="Automatizaciones"
-        subtitle="Ejecuta acciones según un horario, un evento del sistema o a demanda."
+        title={t('settings.automations.title')}
+        subtitle={t('settings.automations.subtitle')}
         icon={<Zap size={18} />}
         size="sm"
         divider
         actions={
           <Button type="button" onClick={openCreate} className="flex items-center gap-2">
-            <Plus size={14} /> Nueva
+            <Plus size={14} /> {t('settings.automations.new')}
           </Button>
         }
       />
@@ -279,11 +300,11 @@ export const Automations: React.FC = () => {
         <Card bodyClassName="p-0">
           <EmptyState
             icon={<Zap size={18} />}
-            title="Aún no has creado automatizaciones"
-            hint="Lanza un email, un webhook o una notificación según un horario o un evento del sistema."
+            title={t('settings.automations.emptyTitle')}
+            hint={t('settings.automations.emptyHint')}
             action={
               <Button onClick={openCreate} className="flex items-center gap-2">
-                <Plus size={14} /> Nueva
+                <Plus size={14} /> {t('settings.automations.new')}
               </Button>
             }
           />
@@ -303,7 +324,9 @@ export const Automations: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => toggleEnabled(a)}
-                  title={a.enabled ? 'Desactivar' : 'Activar'}
+                  title={
+                    a.enabled ? t('settings.automations.disable') : t('settings.automations.enable')
+                  }
                   className={a.enabled ? 'text-emerald-500' : undefined}
                 >
                   {a.enabled ? <CheckCircle2 size={16} /> : <Pause size={16} />}
@@ -313,12 +336,14 @@ export const Automations: React.FC = () => {
                     <span className="font-semibold text-sm text-fg-default">{a.name}</span>
                     <Badge variant="neutral">{a.triggerType}</Badge>
                     <Badge variant="info">{a.actionType}</Badge>
-                    {!a.enabled && <Badge variant="warning">Inactiva</Badge>}
+                    {!a.enabled && (
+                      <Badge variant="warning">{t('settings.automations.inactive')}</Badge>
+                    )}
                   </div>
                   <div className="text-[11px] text-fg-muted mt-0.5 font-mono truncate">
                     {a.triggerType === 'schedule' && `cron: ${a.triggerConfig?.cron || ''}`}
                     {a.triggerType === 'event' && `event: ${a.triggerConfig?.event || ''}`}
-                    {a.triggerType === 'manual' && 'ejecución manual'}
+                    {a.triggerType === 'manual' && t('settings.automations.manualRun')}
                     {a.description && (
                       <span className="ml-2 italic text-slate-400">— {a.description}</span>
                     )}
@@ -329,7 +354,7 @@ export const Automations: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => runNow(a)}
-                  title="Ejecutar ahora"
+                  title={t('settings.automations.runNow')}
                 >
                   <Play size={14} />
                 </Button>
@@ -338,7 +363,7 @@ export const Automations: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => openLogs(a)}
-                  title="Historial"
+                  title={t('settings.automations.history')}
                 >
                   <History size={14} />
                 </Button>
@@ -347,7 +372,7 @@ export const Automations: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => openEdit(a)}
-                  title="Editar"
+                  title={t('settings.automations.edit')}
                 >
                   <Edit2 size={14} />
                 </Button>
@@ -356,7 +381,7 @@ export const Automations: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => remove(a)}
-                  title="Eliminar"
+                  title={t('settings.automations.delete')}
                 >
                   <Trash2 size={14} />
                 </Button>
@@ -370,18 +395,18 @@ export const Automations: React.FC = () => {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={form.id ? 'Editar automatización' : 'Nueva automatización'}
+        title={form.id ? t('settings.automations.editTitle') : t('settings.automations.newTitle')}
         maxWidth="2xl"
       >
         <div className="space-y-5 pt-4 max-h-[70vh] overflow-y-auto pr-2">
           <Grid2>
-            <FieldBox label="Nombre">
+            <FieldBox label={t('settings.automations.name')}>
               <Input
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </FieldBox>
-            <FieldBox label="Activada">
+            <FieldBox label={t('settings.automations.enabled')}>
               {/* Checkbox y no Switch: se persiste con «Crear»/«Guardar». El
                   toggle inmediato es el botón del listado. */}
               <label className="flex items-center gap-2 h-10 cursor-pointer">
@@ -389,28 +414,28 @@ export const Automations: React.FC = () => {
                   checked={form.enabled}
                   onChange={(v) => setForm({ ...form, enabled: v })}
                 />
-                <span className="text-sm">Sí, se ejecuta</span>
+                <span className="text-sm">{t('settings.automations.enabledYes')}</span>
               </label>
             </FieldBox>
           </Grid2>
-          <FieldBox label="Descripción (opcional)">
+          <FieldBox label={t('settings.automations.description')}>
             <Input
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </FieldBox>
 
-          <SectionTitle>Trigger</SectionTitle>
-          <FieldBox label="Cuándo se ejecuta">
+          <SectionTitle>{t('settings.automations.triggerSection')}</SectionTitle>
+          <FieldBox label={t('settings.automations.when')}>
             <Select
-              ariaLabel="Cuándo se ejecuta"
-              options={TRIGGER_TYPE_OPTIONS}
+              ariaLabel={t('settings.automations.when')}
+              options={tr(TRIGGER_TYPE_OPTIONS)}
               value={form.triggerType}
               onChange={(v) => setForm({ ...form, triggerType: v })}
             />
           </FieldBox>
           {form.triggerType === 'schedule' && (
-            <FieldBox label="Cron (m h dom mon dow). Ejemplos: '0 9 * * 1' = lunes 9:00; '*/15 * * * *' = cada 15 min">
+            <FieldBox label={t('settings.automations.cronLabel')}>
               <Input
                 value={form.cron}
                 onChange={(e) => setForm({ ...form, cron: e.target.value })}
@@ -419,22 +444,22 @@ export const Automations: React.FC = () => {
             </FieldBox>
           )}
           {form.triggerType === 'event' && (
-            <FieldBox label="Evento">
+            <FieldBox label={t('settings.automations.event')}>
               {/* Opciones derivadas de EVENT_OPTIONS (10 entradas, estáticas). */}
               <Select
-                ariaLabel="Evento"
-                options={EVENT_OPTIONS}
+                ariaLabel={t('settings.automations.event')}
+                options={tr(EVENT_OPTIONS)}
                 value={form.event}
                 onChange={(v) => setForm({ ...form, event: v })}
               />
             </FieldBox>
           )}
 
-          <SectionTitle>Acción</SectionTitle>
-          <FieldBox label="Qué hace">
+          <SectionTitle>{t('settings.automations.actionSection')}</SectionTitle>
+          <FieldBox label={t('settings.automations.what')}>
             <Select
-              ariaLabel="Qué hace"
-              options={ACTION_TYPE_OPTIONS}
+              ariaLabel={t('settings.automations.what')}
+              options={tr(ACTION_TYPE_OPTIONS)}
               value={form.actionType}
               onChange={(v) => setForm({ ...form, actionType: v })}
             />
@@ -442,16 +467,16 @@ export const Automations: React.FC = () => {
 
           {form.actionType === 'email' && (
             <>
-              <FieldBox label="Para (acepta {{ path }})">
+              <FieldBox label={t('settings.automations.emailTo')}>
                 <Input
                   value={form.email.to}
                   onChange={(e) =>
                     setForm({ ...form, email: { ...form.email, to: e.target.value } })
                   }
-                  placeholder="admin@empresa.com ó {{ partner.email }}"
+                  placeholder={t('settings.automations.emailToPlaceholder')}
                 />
               </FieldBox>
-              <FieldBox label="Asunto">
+              <FieldBox label={t('settings.automations.subject')}>
                 <Input
                   value={form.email.subject}
                   onChange={(e) =>
@@ -459,7 +484,7 @@ export const Automations: React.FC = () => {
                   }
                 />
               </FieldBox>
-              <FieldBox label="Cuerpo">
+              <FieldBox label={t('settings.automations.body')}>
                 <Textarea
                   value={form.email.body}
                   onChange={(e) =>
@@ -484,16 +509,16 @@ export const Automations: React.FC = () => {
                     placeholder="https://..."
                   />
                 </FieldBox>
-                <FieldBox label="Método">
+                <FieldBox label={t('settings.automations.method')}>
                   <Select
-                    ariaLabel="Método HTTP"
+                    ariaLabel={t('settings.automations.httpMethod')}
                     options={HTTP_METHOD_OPTIONS}
                     value={form.webhook.method}
                     onChange={(v) => setForm({ ...form, webhook: { ...form.webhook, method: v } })}
                   />
                 </FieldBox>
               </Grid2>
-              <FieldBox label="Body (JSON — soporta {{ path }})">
+              <FieldBox label={t('settings.automations.webhookBody')}>
                 <Textarea
                   value={form.webhook.body}
                   onChange={(e) =>
@@ -508,17 +533,17 @@ export const Automations: React.FC = () => {
 
           {form.actionType === 'notification' && (
             <>
-              <FieldBox label="Destinatarios">
+              <FieldBox label={t('settings.automations.recipients')}>
                 <Select
-                  ariaLabel="Destinatarios"
-                  options={NOTIFY_ROLE_OPTIONS}
+                  ariaLabel={t('settings.automations.recipients')}
+                  options={tr(NOTIFY_ROLE_OPTIONS)}
                   value={form.notification.role}
                   onChange={(v) =>
                     setForm({ ...form, notification: { ...form.notification, role: v } })
                   }
                 />
               </FieldBox>
-              <FieldBox label="Título">
+              <FieldBox label={t('settings.automations.notificationTitle')}>
                 <Input
                   value={form.notification.title}
                   onChange={(e) =>
@@ -529,7 +554,7 @@ export const Automations: React.FC = () => {
                   }
                 />
               </FieldBox>
-              <FieldBox label="Cuerpo">
+              <FieldBox label={t('settings.automations.body')}>
                 <Textarea
                   value={form.notification.body}
                   onChange={(e) =>
@@ -546,10 +571,16 @@ export const Automations: React.FC = () => {
 
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Cancelar
+              {t('settings.automations.cancel')}
             </Button>
             <Button onClick={save} disabled={submitting}>
-              {submitting ? <Loader size="sm" variant="white" /> : form.id ? 'Guardar' : 'Crear'}
+              {submitting ? (
+                <Loader size="sm" variant="white" />
+              ) : form.id ? (
+                t('settings.automations.save')
+              ) : (
+                t('settings.automations.create')
+              )}
             </Button>
           </div>
         </div>
@@ -559,7 +590,7 @@ export const Automations: React.FC = () => {
       <Modal
         isOpen={!!logsFor}
         onClose={() => setLogsFor(null)}
-        title={`Historial · ${logsFor?.name || ''}`}
+        title={t('settings.automations.historyTitle', { name: logsFor?.name || '' })}
         maxWidth="2xl"
       >
         <div className="space-y-3 pt-4 max-h-[70vh] overflow-y-auto">
@@ -570,8 +601,8 @@ export const Automations: React.FC = () => {
           ) : logs.length === 0 ? (
             <EmptyState
               icon={<History size={18} />}
-              title="Sin ejecuciones aún"
-              hint="Usa «Ejecutar ahora» para probarla sin esperar al trigger."
+              title={t('settings.automations.noRuns')}
+              hint={t('settings.automations.noRunsHint')}
             />
           ) : (
             <ul>

@@ -26,6 +26,7 @@ import {
   type EmployeeValues,
 } from '../components/EmployeeFields';
 import { EMPLOYEE_STATUS_LABEL } from '../domain/employee';
+import { useI18n } from '@/i18n/I18nContext';
 
 export function EmployeeDetail() {
   const { employeeId } = useParams<{ employeeId: string }>();
@@ -33,6 +34,7 @@ export function EmployeeDetail() {
   return <EmployeeDetailPage key={`${user?.tenantId}:${employeeId}`} />;
 }
 function EmployeeDetailPage() {
+  const { t } = useI18n();
   const { employeeId } = useParams<{ employeeId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -101,11 +103,13 @@ function EmployeeDetailPage() {
   const save = async () => {
     if (!canWrite || !employeeId || saving) return;
     if (!values.firstName?.trim() || !values.lastName?.trim()) {
-      toast.error('Nombre y apellidos son obligatorios');
+      toast.error(t('hr.employeeDetail.nameRequired'));
       return;
     }
     if (values.iban && !validateIban(values.iban).ok) {
-      toast.error(`IBAN inválido: ${validateIban(values.iban).reason}`);
+      toast.error(
+        t('hr.employeeDetail.invalidIban', { reason: validateIban(values.iban).reason ?? '' }),
+      );
       return;
     }
     setSaving(true);
@@ -119,9 +123,9 @@ function EmployeeDetailPage() {
       setValues(updated);
       setCustom({});
       setDirty(false);
-      toast.success('Empleado actualizado');
+      toast.success(t('hr.employeeDetail.updated'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo guardar el empleado.');
+      toast.error(e instanceof Error ? e.message : t('hr.employeeDetail.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -130,9 +134,9 @@ function EmployeeDetailPage() {
     if (
       dirty &&
       !(await popup.confirm({
-        title: 'Cambios sin guardar',
-        message: '¿Quieres volver al listado y descartar los cambios?',
-        confirmLabel: 'Descartar cambios',
+        title: t('hr.employeeDetail.unsaved'),
+        message: t('hr.employeeDetail.discardMessage'),
+        confirmLabel: t('hr.employeeDetail.discard'),
       }))
     )
       return;
@@ -147,9 +151,9 @@ function EmployeeDetailPage() {
   if (!employee)
     return (
       <div className="p-12 text-center space-y-4">
-        <p>Empleado no encontrado.</p>
+        <p>{t('hr.employeeDetail.notFound')}</p>
         <Button variant="secondary" onClick={() => navigate('/hr/employees')}>
-          Volver a empleados
+          {t('hr.employeeDetail.backToList')}
         </Button>
       </div>
     );
@@ -172,7 +176,7 @@ function EmployeeDetailPage() {
                 className="w-fit gap-1"
               >
                 <ArrowLeft size={12} />
-                Empleados
+                {t('hr.employees.title')}
               </Button>
             }
             title={
@@ -180,9 +184,9 @@ function EmployeeDetailPage() {
                 {`${values.firstName || ''} ${values.lastName || ''}`}
                 <span className="flex flex-wrap items-center gap-2">
                   <Badge variant={values.status === 'active' ? 'success' : 'neutral'}>
-                    {EMPLOYEE_STATUS_LABEL[values.status || 'active']}
+                    {t(EMPLOYEE_STATUS_LABEL[values.status || 'active'])}
                   </Badge>
-                  {dirty && <Badge variant="warning">Cambios sin guardar</Badge>}
+                  {dirty && <Badge variant="warning">{t('hr.employeeDetail.unsaved')}</Badge>}
                 </span>
               </>
             }
@@ -194,7 +198,7 @@ function EmployeeDetailPage() {
                 disabled={!canWrite || saving || !dirty}
               >
                 <Save size={14} className="mr-2" />
-                {saving ? 'Guardando…' : 'Guardar cambios'}
+                {saving ? t('hr.common.saving') : t('hr.employeeDetail.saveChanges')}
               </Button>
             }
           />
@@ -204,10 +208,13 @@ function EmployeeDetailPage() {
         disabled={!canWrite || saving}
         className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start min-w-0"
       >
-        <Card title="Datos personales" subtitle="Identificación y datos de contacto.">
+        <Card
+          title={t('hr.employeeWizard.stepPersonal')}
+          subtitle={t('hr.employeeDetail.personalSubtitle')}
+        >
           <EmployeePersonalFields values={values} set={set} />
         </Card>
-        <Card title="Organización" subtitle="Situación laboral, departamento y centro de coste.">
+        <Card title={t('hr.employeeWizard.stepOrg')} subtitle={t('hr.employeeDetail.orgSubtitle')}>
           <EmployeeWorkFields
             values={values}
             set={set}
@@ -215,11 +222,14 @@ function EmployeeDetailPage() {
             costCenters={costCenters}
           />
         </Card>
-        <Card title="Acceso y PIN" subtitle="Usuario del sistema y acceso al kiosco.">
+        <Card
+          title={t('hr.employeeDetail.accessTitle')}
+          subtitle={t('hr.employeeDetail.accessSubtitle')}
+        >
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-fg-body mb-1">
-                Usuario asociado
+                {t('hr.employeeDetail.linkedUser')}
               </label>
               <SearchableSelect
                 value={typeof values.userId === 'string' ? values.userId : ''}
@@ -230,30 +240,29 @@ function EmployeeDetailPage() {
                 }))}
                 onChange={(v) => set('userId', v || null)}
                 clearable
-                placeholder="Sin usuario asociado"
+                placeholder={t('hr.employeeDetail.noUser')}
               />
-              <p className="mt-2 text-xs text-fg-muted">
-                Necesario para que pueda iniciar sesión y fichar desde su móvil.
-              </p>
+              <p className="mt-2 text-xs text-fg-muted">{t('hr.employeeDetail.userHint')}</p>
             </div>
             <div className="max-w-xs">
               <Input
-                label="PIN del kiosco"
+                label={t('hr.employeeDetail.kioskPin')}
                 value={values.kioskPin || ''}
                 onChange={(e) =>
                   set('kioskPin', e.target.value.replace(/\D/g, '').slice(0, 8) || null)
                 }
                 inputMode="numeric"
                 maxLength={8}
-                placeholder="Entre 4 y 8 dígitos"
+                placeholder={t('hr.employeeDetail.pinPlaceholder')}
               />
             </div>
-            <p className="text-xs text-fg-muted">
-              El PIN debe ser único entre los empleados activos de la empresa.
-            </p>
+            <p className="text-xs text-fg-muted">{t('hr.employeeDetail.pinHint')}</p>
           </div>
         </Card>
-        <Card title="Administración" subtitle="Cuenta bancaria y observaciones internas.">
+        <Card
+          title={t('hr.employeeDetail.adminTitle')}
+          subtitle={t('hr.employeeDetail.adminSubtitle')}
+        >
           <div className="space-y-4">
             <Input
               label="IBAN"
@@ -262,7 +271,7 @@ function EmployeeDetailPage() {
               placeholder="ES00 0000 0000 0000 0000 0000"
             />
             <Input
-              label="Notas"
+              label={t('hr.common.notes')}
               value={values.notes || ''}
               onChange={(e) => set('notes', e.target.value)}
             />

@@ -1,9 +1,13 @@
 import { ASSISTANT_NAME } from './constants';
 
-/** Textos del estado vacío y del asistente para los componentes de @openfactu/ui/ai. */
-export const KEIRO_LABELS = {
-  emptyTitle: `Hola, soy ${ASSISTANT_NAME}`,
-  emptyHint:
-    'Pregúntame sobre los datos de tu empresa, adjunta un Excel/PDF/Word para que lo lea, o pídeme crear un borrador o un widget para el Dashboard — cualquier acción te pedirá confirmación antes de ejecutarse.',
+/**
+ * Textos del estado vacío y del asistente para los componentes de @openfactu/ui/ai.
+ * Recibe `t` (de `useI18n`) para rehacerse al cambiar de idioma.
+ */
+export const keiroLabels = (
+  t: (path: string, vars?: Record<string, string | number>) => string,
+) => ({
+  emptyTitle: t('ai.labels.emptyTitle', { name: ASSISTANT_NAME }),
+  emptyHint: t('ai.labels.emptyHint'),
   assistant: ASSISTANT_NAME,
-};
+});

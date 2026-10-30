@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@openfactu/ui';
 import { DriverApp } from '@/modules/logistics/pages/DriverApp';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Layout mínimo para usuarios con rol DRIVER. Sin sidebar ni tabs.
@@ -11,6 +12,7 @@ import { useAuth } from '@/context/AuthContext';
  */
 export const DriverLayout: React.FC = () => {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
 
   useEffect(() => {
     // Si en algún momento el driver llega con una URL distinta de /driver,
@@ -22,10 +24,16 @@ export const DriverLayout: React.FC = () => {
       <header className="flex items-center justify-between px-4 py-2 bg-bg-card border-b border-border-default">
         <div className="text-xs">
           <span className="font-bold text-fg-default">{user?.username}</span>{' '}
-          <span className="text-slate-500">· repartidor</span>
+          <span className="text-slate-500">· {t('logistics.driverLayout.role')}</span>
         </div>
-        <Button type="button" variant="ghost" size="sm" onClick={logout} title="Cerrar sesión">
-          <LogOut size={14} /> Salir
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={logout}
+          title={t('logistics.driverLayout.logout')}
+        >
+          <LogOut size={14} /> {t('logistics.driverLayout.exit')}
         </Button>
       </header>
       <div className="flex-1 min-h-0">

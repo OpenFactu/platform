@@ -4,6 +4,7 @@ import { Building, Check, ChevronsUpDown, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTabs } from '../context/TabsContext';
 import { useToast } from '@openfactu/ui';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface TenantRow {
   id: string;
@@ -13,6 +14,7 @@ interface TenantRow {
 export const TenantSwitcher: React.FC = () => {
   const { user, token, switchTenant } = useAuth();
   const toast = useToast();
+  const { t: tr } = useI18n();
   const { resetTabs, openTab } = useTabs();
   const [open, setOpen] = useState(false);
   const [tenants, setTenants] = useState<TenantRow[] | null>(null);
@@ -37,7 +39,7 @@ export const TenantSwitcher: React.FC = () => {
       const data: TenantRow[] = res.data;
       setTenants(data);
     } catch {
-      toast.error('No se pudieron cargar las empresas');
+      toast.error(tr('app.tenant.loadError'));
     }
   };
 
@@ -54,11 +56,11 @@ export const TenantSwitcher: React.FC = () => {
     setBusy(true);
     try {
       await switchTenant(tenantId);
-      toast.success('Empresa cambiada');
+      toast.success(tr('app.tenant.switched'));
       setOpen(false);
       resetTabs('/');
     } catch (e: any) {
-      toast.error(e.message || 'Error al cambiar de empresa');
+      toast.error(e.message || tr('app.tenant.switchError'));
     } finally {
       setBusy(false);
     }
@@ -81,10 +83,10 @@ export const TenantSwitcher: React.FC = () => {
         </div>
         <div className="flex-1 min-w-0 text-left">
           <p className="text-[9px] font-black uppercase text-fg-subtle tracking-widest leading-none">
-            Empresa activa
+            {tr('app.sidebar.activeCompany')}
           </p>
           <p className="text-xs font-bold text-fg-default truncate mt-0.5">
-            {user?.tenantName || 'Sin empresa'}
+            {user?.tenantName || tr('app.tenant.none')}
           </p>
         </div>
         <ChevronsUpDown
@@ -97,14 +99,18 @@ export const TenantSwitcher: React.FC = () => {
         <div className="absolute bottom-full left-0 right-0 mb-2 bg-bg-card border border-border-default rounded-xs shadow-k-lg overflow-hidden z-dropdown">
           <div className="px-3 py-2.5 border-b border-border-default">
             <p className="text-[9px] font-black uppercase tracking-widest text-fg-subtle">
-              Tus empresas
+              {tr('app.tenant.yours')}
             </p>
           </div>
           <ul className="max-h-64 overflow-auto py-1 divide-y divide-border-subtle">
             {tenants === null ? (
-              <li className="px-3 py-3 text-xs text-fg-subtle italic">Cargando…</li>
+              <li className="px-3 py-3 text-xs text-fg-subtle italic">
+                {tr('app.common.loading')}
+              </li>
             ) : tenants.length === 0 ? (
-              <li className="px-3 py-3 text-xs text-fg-subtle italic">Sin empresas accesibles</li>
+              <li className="px-3 py-3 text-xs text-fg-subtle italic">
+                {tr('app.tenant.noneAccessible')}
+              </li>
             ) : (
               tenants.map((t) => {
                 const active = t.id === user?.tenantId;
@@ -151,7 +157,7 @@ export const TenantSwitcher: React.FC = () => {
                 className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs font-bold text-success-fg hover:bg-success-bg transition-colors"
               >
                 <Plus size={14} />
-                <span>Nueva empresa</span>
+                <span>{tr('app.tenant.new')}</span>
               </button>
             </div>
           )}

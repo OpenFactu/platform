@@ -1,8 +1,8 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
-import { Input, Modal, Switch, Textarea, useToast } from '@openfactu/ui';
+import { Input, Modal, Switch, TagInput, Textarea, useToast } from '@openfactu/ui';
 import { contactsApi } from '../api';
 import { PartnerSelect } from './PartnerSelect';
-import { TagsInput } from './TagsInput';
 import type { Contact } from '../domain/crm';
 
 export type ContactDraft = Partial<Contact>;
@@ -16,6 +16,7 @@ interface Props {
 
 export const ContactForm: React.FC<Props> = ({ draft, fixedPartnerId, onClose, onSaved }) => {
   const toast = useToast();
+  const { t } = useI18n();
   const [form, setForm] = useState<ContactDraft>({});
   const [saving, setSaving] = useState(false);
 
@@ -31,7 +32,7 @@ export const ContactForm: React.FC<Props> = ({ draft, fixedPartnerId, onClose, o
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name?.trim() || !form.partnerId) {
-      toast.error('El nombre y el interlocutor son obligatorios');
+      toast.error(t('crm.contactForm.required'));
       return;
     }
     setSaving(true);
@@ -52,7 +53,7 @@ export const ContactForm: React.FC<Props> = ({ draft, fixedPartnerId, onClose, o
       onSaved();
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo guardar');
+      toast.error(err instanceof Error ? err.message : t('crm.errors.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -62,21 +63,21 @@ export const ContactForm: React.FC<Props> = ({ draft, fixedPartnerId, onClose, o
     <Modal
       isOpen={!!draft}
       onClose={onClose}
-      title={form.id ? form.name || 'Contacto' : 'Nuevo contacto'}
+      title={form.id ? form.name || t('crm.contactForm.contact') : t('crm.contactForm.newTitle')}
       size="lg"
       onSubmit={save}
-      primaryAction={{ label: 'Guardar', type: 'submit', isLoading: saving }}
+      primaryAction={{ label: t('crm.common.save'), type: 'submit', isLoading: saving }}
     >
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input
-            label="Nombre"
+            label={t('crm.common.name')}
             value={form.name ?? ''}
             onChange={(e) => set({ name: e.target.value })}
             required
           />
           <Input
-            label="Cargo"
+            label={t('crm.contactForm.role')}
             value={form.role ?? ''}
             onChange={(e) => set({ role: e.target.value })}
           />
@@ -86,33 +87,37 @@ export const ContactForm: React.FC<Props> = ({ draft, fixedPartnerId, onClose, o
         )}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Input
-            label="Correo"
+            label={t('crm.common.email')}
             type="email"
             value={form.email ?? ''}
             onChange={(e) => set({ email: e.target.value })}
           />
           <Input
-            label="Teléfono"
+            label={t('crm.common.phone')}
             type="tel"
             value={form.phone ?? ''}
             onChange={(e) => set({ phone: e.target.value })}
           />
           <Input
-            label="Móvil"
+            label={t('crm.common.mobile')}
             type="tel"
             value={form.mobile ?? ''}
             onChange={(e) => set({ mobile: e.target.value })}
           />
         </div>
         <Textarea
-          label="Notas"
+          label={t('crm.common.notes')}
           rows={2}
           value={form.notes ?? ''}
           onChange={(e) => set({ notes: e.target.value })}
         />
-        <TagsInput value={form.tags ?? []} onChange={(tags) => set({ tags })} />
+        <TagInput
+          label={t('crm.common.tags')}
+          value={form.tags ?? []}
+          onChange={(tags) => set({ tags })}
+        />
         <Switch
-          label="Contacto principal del interlocutor"
+          label={t('crm.contactForm.isMain')}
           checked={!!form.isMain}
           onChange={(checked) => set({ isMain: checked })}
         />

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useMemo, useState } from 'react';
 import { SearchableSelect, type SearchableSelectOption } from '@openfactu/ui';
 import { usePartnerOptions } from '../hooks/useCrmData';
@@ -17,6 +18,7 @@ interface Props {
  * escritura en Interlocutores) y queda seleccionado.
  */
 export const PartnerSelect: React.FC<Props> = ({ value, onChange, disabled }) => {
+  const { t } = useI18n();
   const { canWrite } = useCrmPermissions('/partners');
   const { options, loading, refresh } = usePartnerOptions();
   const [newPartner, setNewPartner] = useState<QuickPartnerInitial | null>(null);
@@ -33,16 +35,16 @@ export const PartnerSelect: React.FC<Props> = ({ value, onChange, disabled }) =>
   return (
     <div className="contents" onSubmit={(e) => e.stopPropagation()}>
       <SearchableSelect
-        label="Interlocutor"
+        label={t('crm.partnerSelect.label')}
         options={allOptions}
         value={value}
         onChange={onChange}
-        placeholder="Busca o crea un cliente"
+        placeholder={t('crm.partnerSelect.placeholder')}
         required
         loading={loading}
         disabled={disabled}
         creatable={canWrite}
-        createLabel='Crear cliente "{term}"'
+        createLabel={t('crm.partnerSelect.create')}
         onCreate={(term) => {
           setNewPartner({ name: term });
         }}

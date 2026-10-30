@@ -1,8 +1,9 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Input, Modal, useToast, CopyButton } from '@openfactu/ui';
-import { ShieldCheck, ShieldOff, Loader2 } from 'lucide-react';
+import { Card, Button, Input, Modal, useToast, CopyButton, Spinner } from '@openfactu/ui';
+import { ShieldCheck, ShieldOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Sección "Autenticación en dos pasos" (TOTP) del perfil de usuario.
@@ -12,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 export const TwoFactorSettings: React.FC = () => {
   const { token } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
 
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
@@ -55,7 +57,9 @@ export const TwoFactorSettings: React.FC = () => {
       setBackupCodes(null);
       setSetupOpen(true);
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'No se pudo iniciar el 2FA');
+      toast.error(
+        (e instanceof Error ? e.message : undefined) || t('settings.twoFactor.setupError'),
+      );
     } finally {
       setLoading(false);
     }
@@ -69,9 +73,11 @@ export const TwoFactorSettings: React.FC = () => {
       if (!res.ok) throw new Error(data.error);
       setBackupCodes(data.backupCodes);
       setEnabled(true);
-      toast.success('2FA activado');
+      toast.success(t('settings.twoFactor.enabledToast'));
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Código incorrecto');
+      toast.error(
+        (e instanceof Error ? e.message : undefined) || t('settings.twoFactor.wrongCode'),
+      );
     } finally {
       setLoading(false);
     }
@@ -86,9 +92,11 @@ export const TwoFactorSettings: React.FC = () => {
       setEnabled(false);
       setDisableOpen(false);
       setDisableCode('');
-      toast.success('2FA desactivado');
+      toast.success(t('settings.twoFactor.disabledToast'));
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Código incorrecto');
+      toast.error(
+        (e instanceof Error ? e.message : undefined) || t('settings.twoFactor.wrongCode'),
+      );
     } finally {
       setLoading(false);
     }
@@ -105,7 +113,7 @@ export const TwoFactorSettings: React.FC = () => {
   return (
     <Card className="p-6 space-y-4 border-border-subtle">
       <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
-        <ShieldCheck size={14} /> Autenticación en dos pasos (2FA)
+        <ShieldCheck size={14} /> {t('settings.twoFactor.title')}
       </h2>
 
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -121,11 +129,14 @@ export const TwoFactorSettings: React.FC = () => {
           </div>
           <div>
             <p className="text-sm font-black text-fg-default">
-              {enabled === null ? 'Comprobando…' : enabled ? 'Activado' : 'Desactivado'}
+              {enabled === null
+                ? t('settings.twoFactor.checking')
+                : enabled
+                  ? t('settings.twoFactor.statusOn')
+                  : t('settings.twoFactor.statusOff')}
             </p>
             <p className="text-[11px] text-fg-subtle font-medium max-w-sm">
-              Añade una capa extra de seguridad pidiendo un código de tu app de autenticación al
-              iniciar sesión.
+              {t('settings.twoFactor.description')}
             </p>
           </div>
         </div>
@@ -136,12 +147,12 @@ export const TwoFactorSettings: React.FC = () => {
             onClick={() => setDisableOpen(true)}
             className="flex items-center gap-2"
           >
-            <ShieldOff size={16} /> Desactivar
+            <ShieldOff size={16} /> {t('settings.twoFactor.disable')}
           </Button>
         ) : (
           <Button onClick={startSetup} disabled={loading} className="flex items-center gap-2">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-            Activar 2FA
+            {loading ? <Spinner size="sm" tone="inherit" /> : <ShieldCheck size={16} />}
+            {t('settings.twoFactor.enable')}
           </Button>
         )}
       </div>
@@ -150,18 +161,19 @@ export const TwoFactorSettings: React.FC = () => {
       <Modal
         isOpen={setupOpen}
         onClose={closeSetup}
-        title="Configurar 2FA"
-        subtitle="Escanea el código con tu app de autenticación"
+        title={t('settings.twoFactor.setupTitle')}
+        subtitle={t('settings.twoFactor.setupSubtitle')}
         maxWidth="md"
       >
         {backupCodes ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-300 font-bold text-sm">
-              <ShieldCheck size={18} /> 2FA activado correctamente
+              <ShieldCheck size={18} /> {t('settings.twoFactor.enabledOk')}
             </div>
             <p className="text-sm text-fg-muted">
-              Guarda estos <strong>códigos de respaldo</strong> en un lugar seguro. Cada uno sirve
-              una sola vez para iniciar sesión si pierdes acceso a tu app. No volverán a mostrarse.
+              {t('settings.twoFactor.backupBefore')}
+              <strong>{t('settings.twoFactor.backupStrong')}</strong>
+              {t('settings.twoFactor.backupAfter')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-4 bg-bg-muted border border-border-default rounded-lg font-mono text-sm text-fg-default">
               {backupCodes.map((c) => (
@@ -174,9 +186,9 @@ export const TwoFactorSettings: React.FC = () => {
               <CopyButton
                 value={(backupCodes ?? []).join('\n')}
                 variant="ghost"
-                label="Copiar códigos"
+                label={t('settings.twoFactor.copyCodes')}
               />
-              <Button onClick={closeSetup}>Hecho</Button>
+              <Button onClick={closeSetup}>{t('settings.twoFactor.done')}</Button>
             </div>
           </div>
         ) : (
@@ -185,19 +197,17 @@ export const TwoFactorSettings: React.FC = () => {
               <div className="flex justify-center">
                 <img
                   src={qr}
-                  alt="Código QR para 2FA"
+                  alt={t('settings.twoFactor.qrAlt')}
                   className="w-48 h-48 border border-border-default rounded-lg bg-white p-2"
                 />
               </div>
             )}
             <div className="text-center">
-              <p className="text-[11px] text-fg-subtle">
-                ¿No puedes escanear? Introduce esta clave manualmente:
-              </p>
+              <p className="text-[11px] text-fg-subtle">{t('settings.twoFactor.manualKey')}</p>
               <code className="text-xs font-mono text-fg-body break-all">{secret}</code>
             </div>
             <Input
-              label="Código de 6 dígitos"
+              label={t('settings.twoFactor.sixDigitCode')}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="123456"
@@ -206,15 +216,15 @@ export const TwoFactorSettings: React.FC = () => {
             />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={closeSetup}>
-                Cancelar
+                {t('settings.twoFactor.cancel')}
               </Button>
               <Button
                 onClick={confirmEnable}
                 disabled={loading || code.trim().length < 6}
                 className="flex items-center gap-2"
               >
-                {loading && <Loader2 size={16} className="animate-spin" />}
-                Verificar y activar
+                {loading && <Spinner size="sm" tone="inherit" />}
+                {t('settings.twoFactor.verifyEnable')}
               </Button>
             </div>
           </div>
@@ -225,25 +235,22 @@ export const TwoFactorSettings: React.FC = () => {
       <Modal
         isOpen={disableOpen}
         onClose={() => setDisableOpen(false)}
-        title="Desactivar 2FA"
-        subtitle="Introduce un código para confirmar"
+        title={t('settings.twoFactor.disableTitle')}
+        subtitle={t('settings.twoFactor.disableSubtitle')}
         maxWidth="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-fg-muted">
-            Introduce un código de tu app (o un código de respaldo) para desactivar la autenticación
-            en dos pasos.
-          </p>
+          <p className="text-sm text-fg-muted">{t('settings.twoFactor.disableHelp')}</p>
           <Input
-            label="Código"
+            label={t('settings.twoFactor.code')}
             value={disableCode}
             onChange={(e) => setDisableCode(e.target.value)}
-            placeholder="123456 o código de respaldo"
+            placeholder={t('settings.twoFactor.codePlaceholder')}
             autoFocus
           />
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setDisableOpen(false)}>
-              Cancelar
+              {t('settings.twoFactor.cancel')}
             </Button>
             <Button
               variant="danger"
@@ -251,8 +258,8 @@ export const TwoFactorSettings: React.FC = () => {
               disabled={loading || !disableCode.trim()}
               className="flex items-center gap-2"
             >
-              {loading && <Loader2 size={16} className="animate-spin" />}
-              Desactivar
+              {loading && <Spinner size="sm" tone="inherit" />}
+              {t('settings.twoFactor.disable')}
             </Button>
           </div>
         </div>

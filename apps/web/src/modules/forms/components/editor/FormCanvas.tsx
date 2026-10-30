@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import { SortableList, type SortableHandleProps } from '@openfactu/ui';
 import { isQuestion, type Item, type Question } from '@forms-engine';
@@ -25,6 +26,7 @@ export const FormCanvas: React.FC<Props> = ({ editor, crm, disabled }) => {
   const quiz = form.settings.quiz.enabled;
   const headerId = form.theme.headerAssetId;
 
+  const { t } = useI18n();
   const renderItem = (item: Item, sectionIndex: number, handleProps: SortableHandleProps) => {
     const common = {
       active: editor.activeId === item.id,
@@ -103,7 +105,7 @@ export const FormCanvas: React.FC<Props> = ({ editor, crm, disabled }) => {
             )}
             {section.items.length === 0 ? (
               <p className="rounded-xs border border-dashed border-border-default p-6 text-center text-sm text-fg-muted">
-                Sección vacía: selecciona una tarjeta de aquí y usa la barra para añadir preguntas.
+                {t('forms.canvas.emptySection')}
               </p>
             ) : (
               <SortableList
@@ -111,7 +113,7 @@ export const FormCanvas: React.FC<Props> = ({ editor, crm, disabled }) => {
                 getKey={(i) => i.id}
                 onReorder={(items) => actions.reorder(section.id, items)}
                 disabled={disabled}
-                handleLabel="Arrastra para mover"
+                handleLabel={t('forms.canvas.dragToMove')}
                 className="space-y-4"
                 renderItem={(item, { handleProps }) => renderItem(item, si, handleProps)}
               />

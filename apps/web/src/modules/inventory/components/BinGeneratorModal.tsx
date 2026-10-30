@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, Input, Loader, NumberInput, useToast, Modal } from '@openfactu/ui';
 import { LayoutGrid, Play, Info } from 'lucide-react';
 import { warehousesApi } from '../api';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface BinGeneratorModalProps {
   warehouseId: string;
@@ -24,26 +25,29 @@ const SegmentRange: React.FC<{
   label: string;
   range: Range;
   onChange: (range: Range) => void;
-}> = ({ label, range, onChange }) => (
-  <div className="space-y-2">
-    <p className="text-[11px] font-bold text-fg-muted">{label}</p>
-    <div className="flex items-center gap-2">
-      <NumberInput
-        value={range.start}
-        onChange={(v) => onChange({ ...range, start: v ?? 1 })}
-        min={1}
-        inputSize="sm"
-      />
-      <span className="text-fg-subtle">al</span>
-      <NumberInput
-        value={range.end}
-        onChange={(v) => onChange({ ...range, end: v ?? 1 })}
-        min={1}
-        inputSize="sm"
-      />
+}> = ({ label, range, onChange }) => {
+  const { t } = useI18n();
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] font-bold text-fg-muted">{label}</p>
+      <div className="flex items-center gap-2">
+        <NumberInput
+          value={range.start}
+          onChange={(v) => onChange({ ...range, start: v ?? 1 })}
+          min={1}
+          inputSize="sm"
+        />
+        <span className="text-fg-subtle">{t('inventory.binGenerator.to')}</span>
+        <NumberInput
+          value={range.end}
+          onChange={(v) => onChange({ ...range, end: v ?? 1 })}
+          min={1}
+          inputSize="sm"
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
   warehouseId,
@@ -57,6 +61,7 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
   const [levelRange, setLevelRange] = useState<Range>({ start: 1, end: 3, padding: 2 });
   const [isGenerating, setIsGenerating] = useState(false);
   const toast = useToast();
+  const { t } = useI18n();
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -71,7 +76,9 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
       toast.success(data.message);
       onSuccess();
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Fallo en la conexión');
+      toast.error(
+        (err instanceof Error && err.message) || t('inventory.binGenerator.connectionError'),
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -86,22 +93,22 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
     <Modal
       isOpen={true}
       onClose={onClose}
-      title="Generador Masivo de Ubicaciones (Motor Industrial)"
-      subtitle="Crea mallas de almacenamiento complejas al instante mediante parámetros jerárquicos."
+      title={t('inventory.binGenerator.title')}
+      subtitle={t('inventory.binGenerator.subtitle')}
       maxWidth="2xl"
     >
       <div className="space-y-6">
         {/* Configuración Nomenclatura */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-bg-muted rounded-lg border border-border-subtle">
           <Input
-            label="Prefijo"
-            placeholder="Ej: B, P, R..."
+            label={t('inventory.binGenerator.prefix')}
+            placeholder={t('inventory.binGenerator.prefixPlaceholder')}
             value={prefix}
             onChange={(e) => setPrefix(e.target.value)}
           />
           <Input
-            label="Separador"
-            placeholder="Ej: -, /, ."
+            label={t('inventory.binGenerator.separator')}
+            placeholder={t('inventory.binGenerator.separatorPlaceholder')}
             value={separator}
             onChange={(e) => setSeparator(e.target.value)}
           />
@@ -110,12 +117,24 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
         {/* Rango de Pasillos */}
         <div className="space-y-4">
           <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
-            <LayoutGrid size={12} /> Definición de Segmentos
+            <LayoutGrid size={12} /> {t('inventory.binGenerator.segments')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-l-4 border-blue-500 pl-4 py-2">
-            <SegmentRange label="Pasillo (Aisle)" range={aisleRange} onChange={setAisleRange} />
-            <SegmentRange label="Columna (Stack)" range={stackRange} onChange={setStackRange} />
-            <SegmentRange label="Nivel (Level)" range={levelRange} onChange={setLevelRange} />
+            <SegmentRange
+              label={t('inventory.binGenerator.aisle')}
+              range={aisleRange}
+              onChange={setAisleRange}
+            />
+            <SegmentRange
+              label={t('inventory.binGenerator.stack')}
+              range={stackRange}
+              onChange={setStackRange}
+            />
+            <SegmentRange
+              label={t('inventory.binGenerator.level')}
+              range={levelRange}
+              onChange={setLevelRange}
+            />
           </div>
         </div>
 
@@ -123,9 +142,12 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
           <div className="flex items-center gap-3 text-blue-700">
             <Info size={20} />
             <div>
-              <p className="text-xs font-bold">Resumen de Operación</p>
+              <p className="text-xs font-bold">{t('inventory.binGenerator.summary')}</p>
               <p className="text-[11px] font-medium opacity-80">
-                Se generarán {total} ubicaciones únicas (ej: {prefix}01{separator}01{separator}01).
+                {t('inventory.binGenerator.willGenerate', {
+                  total,
+                  example: `${prefix}01${separator}01${separator}01`,
+                })}
               </p>
             </div>
           </div>
@@ -138,7 +160,7 @@ export const BinGeneratorModal: React.FC<BinGeneratorModalProps> = ({
               <Loader size="sm" variant="white" />
             ) : (
               <div className="flex items-center gap-2">
-                <Play size={16} /> Generar Bins
+                <Play size={16} /> {t('inventory.binGenerator.generate')}
               </div>
             )}
           </Button>

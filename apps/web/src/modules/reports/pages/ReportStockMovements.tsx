@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { DatePicker } from '@openfactu/ui';
 import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
 export const ReportStockMovements: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -29,20 +31,20 @@ export const ReportStockMovements: React.FC = () => {
 
   const columns = useMemo(
     () => [
-      { key: 'date', label: 'Fecha', format: (v: any) => fmt.date(v) },
-      { key: 'type', label: 'Tipo' },
-      { key: 'itemCode', label: 'Código' },
-      { key: 'itemName', label: 'Artículo' },
-      { key: 'qty', label: 'Cantidad', format: (v: any) => String(v) },
-      { key: 'partnerName', label: 'Partner' },
+      { key: 'date', label: t('reports.common.date'), format: (v: any) => fmt.date(v) },
+      { key: 'type', label: t('reports.common.type') },
+      { key: 'itemCode', label: t('reports.common.code') },
+      { key: 'itemName', label: t('reports.common.item') },
+      { key: 'qty', label: t('reports.stockMovements.quantity'), format: (v: any) => String(v) },
+      { key: 'partnerName', label: t('reports.stockMovements.partner') },
     ],
-    [fmt],
+    [fmt, t],
   );
 
   return (
     <ReportPage
-      title="Movimientos de stock"
-      subtitle="Entradas (compra) y salidas (venta) por albarán."
+      title={t('reports.stockMovements.title')}
+      subtitle={t('reports.stockMovements.subtitle')}
       rows={rows}
       columns={columns as any}
       loading={loading}
@@ -52,12 +54,17 @@ export const ReportStockMovements: React.FC = () => {
         <div className="flex items-end gap-3 flex-wrap">
           {/* El estado guarda '' como «sin filtro»; DatePicker habla en null. */}
           <DatePicker
-            label="Desde"
+            label={t('reports.common.from')}
             value={from || null}
             onChange={(v) => setFrom(v ?? '')}
             clearable
           />
-          <DatePicker label="Hasta" value={to || null} onChange={(v) => setTo(v ?? '')} clearable />
+          <DatePicker
+            label={t('reports.common.to')}
+            value={to || null}
+            onChange={(v) => setTo(v ?? '')}
+            clearable
+          />
         </div>
       }
     />

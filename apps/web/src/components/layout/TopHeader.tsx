@@ -6,6 +6,7 @@ import { useTabs } from '../../context/TabsContext';
 import { GlobalSearch } from '../GlobalSearch';
 import { NotificationBell } from './NotificationBell';
 import { MobileModuleSwitcher } from './MobileModuleSwitcher';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Header superior compacto: logo + branding, búsqueda global y notificaciones. El modo claro/oscuro se cambia en
@@ -17,6 +18,7 @@ export const TopHeader: React.FC = () => {
   const { branding } = useTheme();
   const { toggle: toggleMobileNav } = useMobileNav();
   const { tabs, activeTabId, closeTab } = useTabs();
+  const { t } = useI18n();
 
   return (
     <header className="h-14 bg-bg-card border-b border-border-default flex items-center px-3 md:px-4 gap-2 md:gap-4 z-10">
@@ -24,7 +26,7 @@ export const TopHeader: React.FC = () => {
       <button
         onClick={toggleMobileNav}
         className="p-2 rounded-xs text-fg-muted hover:text-accent dark:hover:text-accent hover:bg-bg-hover transition-colors"
-        aria-label="Abrir menú"
+        aria-label={t('app.sidebar.openMenu')}
       >
         <Menu size={20} />
       </button>
@@ -34,7 +36,7 @@ export const TopHeader: React.FC = () => {
         <button
           onClick={() => activeTabId && closeTab(activeTabId)}
           className="md:hidden p-2 -ml-1 rounded-xs text-fg-muted hover:text-accent hover:bg-bg-hover transition-colors"
-          aria-label="Volver"
+          aria-label={t('app.header.back')}
         >
           <ArrowLeft size={20} />
         </button>

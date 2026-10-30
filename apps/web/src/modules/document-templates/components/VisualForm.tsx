@@ -6,6 +6,7 @@ import {
   ColorInput,
   Checkbox,
   SearchableSelect,
+  Slider,
 } from '@openfactu/ui';
 import {
   Palette,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { VisualOptions } from '@openfactu/pdf/browser';
 import { Section } from './Section';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   opts: VisualOptions;
@@ -80,23 +82,17 @@ const RangeField: React.FC<{
   step?: number;
   onChange: (v: number) => void;
 }> = ({ label, value, min, max, step, onChange }) => (
-  <div className="space-y-1">
-    <div className="flex items-center justify-between">
-      <FieldLabel>{label}</FieldLabel>
-      <span className="text-[10px] font-mono font-bold text-fg-body">{value}</span>
-    </div>
-    {/* Excepción deliberada: el paquete no exporta slider. Lo único que se
-        cambia es que el pulgar siga al acento del tenant. */}
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step ?? 1}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="w-full accent-accent"
-    />
-  </div>
+  // Slider de @openfactu/ui (desde 0.6.0; antes era un <input type="range">
+  // porque el paquete no lo tenía). Pinta él la etiqueta y el valor.
+  <Slider
+    label={label}
+    min={min}
+    max={max}
+    step={step ?? 1}
+    value={value}
+    onChange={onChange}
+    showValue="always"
+  />
 );
 
 const SelectField: React.FC<{
@@ -134,6 +130,7 @@ const Grid2: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 // -------------------- Main form --------------------
 
 export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
+  const { t } = useI18n();
   const updateColumn = <K extends keyof VisualOptions['columns']>(key: K, value: boolean) => {
     updateOpt('columns', { ...opts.columns, [key]: value });
   };
@@ -152,45 +149,45 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
-      <Section title="Diseño" icon={<Palette size={14} />} defaultExpanded>
+      <Section title={t('templates.visual.design')} icon={<Palette size={14} />} defaultExpanded>
         <div className="space-y-3">
           <Grid2>
             <ColorField
-              label="Color principal"
+              label={t('templates.visual.primaryColor')}
               value={opts.accentColor}
               onChange={(v) => updateOpt('accentColor', v)}
             />
             <ColorField
-              label="Color cabecera"
+              label={t('templates.visual.headerColor')}
               value={opts.headerBgColor}
               onChange={(v) => updateOpt('headerBgColor', v)}
             />
           </Grid2>
           <Grid2>
             <ColorField
-              label="Color texto"
+              label={t('templates.visual.textColor')}
               value={opts.textColor}
               onChange={(v) => updateOpt('textColor', v)}
             />
             <ColorField
-              label="Color secundario"
+              label={t('templates.visual.secondaryColor')}
               value={opts.mutedColor}
               onChange={(v) => updateOpt('mutedColor', v)}
             />
           </Grid2>
           <Grid2>
             <SelectField
-              label="Tipo de letra"
+              label={t('templates.visual.font')}
               value={opts.fontFamily}
               onChange={(v) => updateOpt('fontFamily', v as any)}
               options={[
-                { label: 'Sans-serif (moderna)', value: 'sans' },
-                { label: 'Serif (clásica)', value: 'serif' },
-                { label: 'Monoespaciada', value: 'mono' },
+                { label: t('templates.visual.fontSans'), value: 'sans' },
+                { label: t('templates.visual.fontSerif'), value: 'serif' },
+                { label: t('templates.visual.fontMono'), value: 'mono' },
               ]}
             />
             <NumberField
-              label="Tamaño base"
+              label={t('templates.visual.baseSize')}
               value={opts.baseFontSize}
               min={7}
               max={14}
@@ -201,54 +198,54 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
         </div>
       </Section>
 
-      <Section title="Página" icon={<Layout size={14} />}>
+      <Section title={t('templates.visual.page')} icon={<Layout size={14} />}>
         <div className="space-y-3">
           <Grid2>
             <SelectField
-              label="Tamaño"
+              label={t('templates.visual.size')}
               value={opts.pageSize}
               onChange={(v) => updateOpt('pageSize', v as any)}
               options={[
                 { label: 'A4 (210 × 297 mm)', value: 'A4' },
-                { label: 'Letter (US)', value: 'Letter' },
+                { label: t('templates.visual.letterUs'), value: 'Letter' },
                 { label: 'A5 (148 × 210 mm)', value: 'A5' },
               ]}
             />
             <SelectField
-              label="Orientación"
+              label={t('templates.visual.orientation')}
               value={opts.orientation}
               onChange={(v) => updateOpt('orientation', v as any)}
               options={[
-                { label: 'Vertical', value: 'portrait' },
-                { label: 'Horizontal', value: 'landscape' },
+                { label: t('templates.visual.portrait'), value: 'portrait' },
+                { label: t('templates.visual.landscape'), value: 'landscape' },
               ]}
             />
           </Grid2>
           <SelectField
-            label="Márgenes"
+            label={t('templates.visual.margins')}
             value={opts.margins}
             onChange={(v) => updateOpt('margins', v as any)}
             options={[
-              { label: 'Estrechos', value: 'narrow' },
-              { label: 'Normales', value: 'normal' },
-              { label: 'Amplios', value: 'wide' },
+              { label: t('templates.visual.marginsNarrow'), value: 'narrow' },
+              { label: t('templates.visual.marginsNormal'), value: 'normal' },
+              { label: t('templates.visual.marginsWide'), value: 'wide' },
             ]}
           />
         </div>
       </Section>
 
-      <Section title="Cabecera y logo" icon={<ImageIcon size={14} />}>
+      <Section title={t('templates.visual.headerLogo')} icon={<ImageIcon size={14} />}>
         <div className="space-y-3">
           <div className="space-y-1">
-            <FieldLabel>Título personalizado</FieldLabel>
+            <FieldLabel>{t('templates.visual.customTitle')}</FieldLabel>
             <Input
               value={opts.customTitle}
               onChange={(e) => updateOpt('customTitle', e.target.value)}
-              placeholder="Vacío = usar título por defecto (Factura de Venta, ...)"
+              placeholder={t('templates.visual.customTitlePlaceholder')}
             />
           </div>
           <div className="space-y-1">
-            <FieldLabel>URL del logo</FieldLabel>
+            <FieldLabel>{t('templates.visual.logoUrl')}</FieldLabel>
             <Input
               value={opts.logoUrl}
               onChange={(e) => updateOpt('logoUrl', e.target.value)}
@@ -257,17 +254,17 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
           </div>
           <Grid2>
             <SelectField
-              label="Posición del logo"
+              label={t('templates.visual.logoPosition')}
               value={opts.logoPosition}
               onChange={(v) => updateOpt('logoPosition', v as any)}
               options={[
-                { label: 'Izquierda', value: 'left' },
-                { label: 'Centrado', value: 'center' },
-                { label: 'Derecha', value: 'right' },
+                { label: t('templates.visual.left'), value: 'left' },
+                { label: t('templates.visual.centered'), value: 'center' },
+                { label: t('templates.visual.right'), value: 'right' },
               ]}
             />
             <NumberField
-              label="Alto máximo"
+              label={t('templates.visual.maxHeight')}
               value={opts.logoMaxHeight}
               min={20}
               max={200}
@@ -278,64 +275,64 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
         </div>
       </Section>
 
-      <Section title="Datos de la empresa" icon={<Building2 size={14} />}>
+      <Section title={t('templates.visual.companyData')} icon={<Building2 size={14} />}>
         <div className="space-y-2">
           <CheckboxRow
             checked={opts.showCompanyTaxId}
             onChange={(v) => updateOpt('showCompanyTaxId', v)}
-            title="Mostrar CIF/NIF"
+            title={t('templates.visual.showCompanyTaxId')}
           />
           <CheckboxRow
             checked={opts.showCompanyAddress}
             onChange={(v) => updateOpt('showCompanyAddress', v)}
-            title="Mostrar dirección"
+            title={t('templates.visual.showAddress')}
           />
           <CheckboxRow
             checked={opts.showCompanyContact}
             onChange={(v) => updateOpt('showCompanyContact', v)}
-            title="Mostrar contacto (teléfono, email, web)"
+            title={t('templates.visual.showContact')}
           />
           <p className="text-[10px] text-fg-subtle italic pt-1">
-            Los datos se leen de <code>SystemConfig</code> (company_name, company_phone...).
-            Configurables en los ajustes del tenant.
+            {t('templates.visual.companyHint1')} <code>SystemConfig</code>{' '}
+            {t('templates.visual.companyHint2')}
           </p>
         </div>
       </Section>
 
-      <Section title="Datos del cliente/proveedor" icon={<Users size={14} />}>
+      <Section title={t('templates.visual.partnerData')} icon={<Users size={14} />}>
         <div className="space-y-2">
           <CheckboxRow
             checked={opts.showPartnerTaxId}
             onChange={(v) => updateOpt('showPartnerTaxId', v)}
-            title="Mostrar NIF/CIF"
+            title={t('templates.visual.showPartnerTaxId')}
           />
           <CheckboxRow
             checked={opts.showPartnerAddress}
             onChange={(v) => updateOpt('showPartnerAddress', v)}
-            title="Mostrar dirección principal"
+            title={t('templates.visual.showMainAddress')}
           />
           <CheckboxRow
             checked={opts.showPartnerContact}
             onChange={(v) => updateOpt('showPartnerContact', v)}
-            title="Mostrar email y teléfono"
+            title={t('templates.visual.showEmailPhone')}
           />
           <CheckboxRow
             checked={opts.showBillTo}
             onChange={(v) => updateOpt('showBillTo', v)}
-            title="Bloque 'Dirección de facturación'"
-            description="Si el documento la tiene"
+            title={t('templates.visual.billToBlock')}
+            description={t('templates.visual.ifDocHasIt')}
           />
           <CheckboxRow
             checked={opts.showShipTo}
             onChange={(v) => updateOpt('showShipTo', v)}
-            title="Bloque 'Dirección de envío'"
-            description="Si el documento la tiene"
+            title={t('templates.visual.shipToBlock')}
+            description={t('templates.visual.ifDocHasIt')}
           />
           <CheckboxRow
             checked={opts.showBaseDoc}
             onChange={(v) => updateOpt('showBaseDoc', v)}
-            title="Mostrar albarán origen"
-            description="En facturas creadas desde un albarán"
+            title={t('templates.visual.showBaseDoc')}
+            description={t('templates.visual.showBaseDocDesc')}
           />
           {/* Extensión propia: el toggle no está en el paquete @openfactu/pdf
               (se serializa en el meta y lo lee renderDocumentPdf en el server). */}
@@ -344,82 +341,82 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
             onChange={(v) =>
               (updateOpt as unknown as (k: string, val: boolean) => void)('showInternalOrder', v)
             }
-            title="Mostrar proyecto"
-            description="Si el documento tiene un proyecto/orden interna asignado en cabecera"
+            title={t('templates.visual.showProject')}
+            description={t('templates.visual.showProjectDesc')}
           />
         </div>
       </Section>
 
-      <Section title="Tabla de líneas" icon={<Table size={14} />}>
+      <Section title={t('templates.visual.linesTable')} icon={<Table size={14} />}>
         <div className="space-y-2">
           <CheckboxRow
             checked={opts.columns.code}
             onChange={(v) => updateColumn('code', v)}
-            title="Código del artículo"
+            title={t('templates.visual.colCode')}
           />
           <CheckboxRow
             checked={opts.columns.description}
             onChange={(v) => updateColumn('description', v)}
-            title="Descripción (nombre + descripción larga)"
+            title={t('templates.visual.colDescription')}
           />
           <CheckboxRow
             checked={opts.columns.quantity}
             onChange={(v) => updateColumn('quantity', v)}
-            title="Cantidad"
+            title={t('templates.visual.colQuantity')}
           />
           <CheckboxRow
             checked={opts.columns.uom}
             onChange={(v) => updateColumn('uom', v)}
-            title="Unidad de medida"
+            title={t('templates.visual.colUom')}
           />
           <CheckboxRow
             checked={opts.columns.price}
             onChange={(v) => updateColumn('price', v)}
-            title="Precio unitario"
+            title={t('templates.visual.colPrice')}
           />
           <CheckboxRow
             checked={opts.columns.iva}
             onChange={(v) => updateColumn('iva', v)}
-            title="% IVA"
+            title={t('templates.visual.colVat')}
           />
           <CheckboxRow
             checked={opts.columns.lineTotal}
             onChange={(v) => updateColumn('lineTotal', v)}
-            title="Total de línea"
+            title={t('templates.visual.colLineTotal')}
           />
         </div>
       </Section>
 
-      <Section title="Totales" icon={<Stamp size={14} />}>
+      <Section title={t('templates.visual.totals')} icon={<Stamp size={14} />}>
         <div className="space-y-2">
           <CheckboxRow
             checked={opts.showTaxBreakdown}
             onChange={(v) => updateOpt('showTaxBreakdown', v)}
-            title="Desglose de IVA"
-            description="Mostrar IVA desglosado por tipo (21%, 10%...)"
+            title={t('templates.visual.taxBreakdown')}
+            description={t('templates.visual.taxBreakdownDesc')}
           />
           <CheckboxRow
             checked={opts.showTotalInWords}
             onChange={(v) => updateOpt('showTotalInWords', v)}
-            title="Total en letras"
-            description="Añadir el total escrito en español bajo los totales"
+            title={t('templates.visual.totalInWords')}
+            description={t('templates.visual.totalInWordsDesc')}
           />
         </div>
       </Section>
 
-      <Section title="Campos personalizados" icon={<Stamp size={14} />}>
+      <Section title={t('templates.visual.customFields')} icon={<Stamp size={14} />}>
         <div className="space-y-2">
           <CheckboxRow
             checked={!!(opts as any).showCustomFields}
             onChange={(v) =>
               (updateOpt as unknown as (k: string, val: boolean) => void)('showCustomFields', v)
             }
-            title="Mostrar campos personalizados"
-            description="Vuelca automáticamente los campos custom definidos para este documento (`visibleIn=pdf`) al final del PDF."
+            title={t('templates.visual.showCustomFields')}
+            description={t('templates.visual.showCustomFieldsDesc')}
           />
           {(opts as any).showCustomFields && (
             <div className="space-y-1">
-              <FieldLabel>Título del bloque</FieldLabel>
+              <FieldLabel>{t('templates.visual.blockTitle')}</FieldLabel>
               <Input
                 value={(opts as any).customFieldsLabel ?? 'Datos adicionales'}
                 onChange={(e) =>
@@ -435,32 +432,32 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
         </div>
       </Section>
 
-      <Section title="Marca de agua" icon={<Stamp size={14} />}>
+      <Section title={t('templates.visual.watermark')} icon={<Stamp size={14} />}>
         <div className="space-y-3">
           <CheckboxRow
             checked={opts.watermark.enabled}
             onChange={(v) => updateWatermark('enabled', v)}
-            title="Activar marca de agua"
-            description="Se repite en todas las páginas del PDF"
+            title={t('templates.visual.enableWatermark')}
+            description={t('templates.visual.watermarkDesc')}
           />
           {opts.watermark.enabled && (
             <>
               <div className="space-y-1">
-                <FieldLabel>Texto</FieldLabel>
+                <FieldLabel>{t('templates.visual.text')}</FieldLabel>
                 <Input
                   value={opts.watermark.text}
                   onChange={(e) => updateWatermark('text', e.target.value)}
-                  placeholder="BORRADOR, PAGADO, COPIA..."
+                  placeholder={t('templates.visual.watermarkPlaceholder')}
                 />
               </div>
               <Grid2>
                 <ColorField
-                  label="Color"
+                  label={t('templates.visual.color')}
                   value={opts.watermark.color}
                   onChange={(v) => updateWatermark('color', v)}
                 />
                 <NumberField
-                  label="Tamaño"
+                  label={t('templates.visual.size')}
                   value={opts.watermark.fontSize}
                   min={40}
                   max={200}
@@ -469,7 +466,7 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
                 />
               </Grid2>
               <RangeField
-                label="Opacidad"
+                label={t('templates.visual.opacity')}
                 value={Math.round(opts.watermark.opacity * 100) / 100}
                 min={0.05}
                 max={1}
@@ -477,7 +474,7 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
                 onChange={(v) => updateWatermark('opacity', v)}
               />
               <RangeField
-                label="Rotación"
+                label={t('templates.visual.rotation')}
                 value={opts.watermark.rotation}
                 min={-90}
                 max={90}
@@ -489,57 +486,57 @@ export const VisualForm: React.FC<Props> = ({ opts, updateOpt }) => {
         </div>
       </Section>
 
-      <Section title="Pie de página" icon={<AlignCenter size={14} />}>
+      <Section title={t('templates.visual.footer')} icon={<AlignCenter size={14} />}>
         <div className="space-y-3">
           <div className="space-y-1">
-            <FieldLabel>Mensaje del pie</FieldLabel>
+            <FieldLabel>{t('templates.visual.footerMessage')}</FieldLabel>
             <Input
               value={opts.footer.text}
               onChange={(e) => updateFooter('text', e.target.value)}
-              placeholder="Documento generado electrónicamente..."
+              placeholder={t('templates.visual.footerPlaceholder')}
             />
             <p className="text-[9px] text-fg-subtle italic">
-              Admite variables: <code>{'{{company.name}}'}</code>, <code>{'{{doc.docCode}}'}</code>,{' '}
-              <code>{'{{generatedAt}}'}</code>
+              {t('templates.visual.supportsVars')} <code>{'{{company.name}}'}</code>,{' '}
+              <code>{'{{doc.docCode}}'}</code>, <code>{'{{generatedAt}}'}</code>
             </p>
           </div>
           <SelectField
-            label="Alineación"
+            label={t('templates.visual.alignment')}
             value={opts.footer.alignment}
             onChange={(v) => updateFooter('alignment', v as any)}
             options={[
-              { label: 'Izquierda', value: 'left' },
-              { label: 'Centro', value: 'center' },
-              { label: 'Derecha', value: 'right' },
+              { label: t('templates.visual.left'), value: 'left' },
+              { label: t('templates.visual.center'), value: 'center' },
+              { label: t('templates.visual.right'), value: 'right' },
             ]}
           />
           <CheckboxRow
             checked={opts.footer.showPageNumbers}
             onChange={(v) => updateFooter('showPageNumbers', v)}
-            title="Mostrar números de página"
-            description="Formato: 1 / 3 — aparece en todas las páginas"
+            title={t('templates.visual.showPageNumbers')}
+            description={t('templates.visual.showPageNumbersDesc')}
           />
           <CheckboxRow
             checked={opts.footer.showGeneratedAt}
             onChange={(v) => updateFooter('showGeneratedAt', v)}
-            title="Mostrar fecha y hora de generación"
+            title={t('templates.visual.showGeneratedAt')}
           />
         </div>
       </Section>
 
-      <Section title="CSS personalizado (avanzado)" icon={<Code2 size={14} />}>
+      <Section title={t('templates.visual.customCss')} icon={<Code2 size={14} />}>
         <div className="space-y-2">
-          <FieldLabel>CSS extra</FieldLabel>
+          <FieldLabel>{t('templates.visual.extraCss')}</FieldLabel>
           <Textarea
             value={opts.customCss}
             onChange={(e) => updateOpt('customCss', e.target.value)}
-            placeholder="/* Ej: .party { background: #fef3c7; } */"
+            placeholder={t('templates.visual.cssPlaceholder')}
             rows={8}
             className="text-[11px] font-mono resize-y"
           />
           <p className="text-[9px] text-fg-subtle italic">
-            Se añade al final del bloque <code>&lt;style&gt;</code>, por lo que puede sobrescribir
-            cualquier estilo de la plantilla base.
+            {t('templates.visual.cssHint1')} <code>&lt;style&gt;</code>
+            {t('templates.visual.cssHint2')}
           </p>
         </div>
       </Section>

@@ -27,6 +27,7 @@ import {
 } from '@openfactu/ui';
 import { Plus, Trash2, Edit2, Webhook, Send } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Sub {
   id: string;
@@ -38,19 +39,20 @@ interface Sub {
 }
 
 const AVAILABLE_EVENTS = [
-  { value: 'shipment.pending', label: 'Envío en preparación' },
-  { value: 'shipment.in_transit', label: 'Envío en camino' },
-  { value: 'shipment.out_for_delivery', label: 'Envío en reparto' },
-  { value: 'shipment.postponed', label: 'Entrega aplazada' },
-  { value: 'shipment.delivered', label: 'Envío entregado' },
-  { value: 'shipment.cancelled', label: 'Envío cancelado' },
-  { value: 'shipment.returned', label: 'Envío devuelto' },
-  { value: 'shipment.exception', label: 'Incidencia' },
+  { value: 'shipment.pending', label: 'settings.webhooks.events.pending' },
+  { value: 'shipment.in_transit', label: 'settings.webhooks.events.inTransit' },
+  { value: 'shipment.out_for_delivery', label: 'settings.webhooks.events.outForDelivery' },
+  { value: 'shipment.postponed', label: 'settings.webhooks.events.postponed' },
+  { value: 'shipment.delivered', label: 'settings.webhooks.events.delivered' },
+  { value: 'shipment.cancelled', label: 'settings.webhooks.events.cancelled' },
+  { value: 'shipment.returned', label: 'settings.webhooks.events.returned' },
+  { value: 'shipment.exception', label: 'settings.webhooks.events.exception' },
 ];
 
 export const WebhooksSettings: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const popup = usePopup();
   const [subs, setSubs] = useState<Sub[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,27 +96,27 @@ export const WebhooksSettings: React.FC = () => {
 
   const save = async () => {
     if (!form.name || !form.url) {
-      toast.error('Nombre y URL son obligatorios');
+      toast.error(t('settings.webhooks.required'));
       return;
     }
     const url = editing ? `/api/webhooks/${editing.id}` : '/api/webhooks';
     const method = editing ? 'PATCH' : 'POST';
     const r = await coreApi.raw(method, url, form);
     if (!r.ok) {
-      toast.error(r.data?.error || 'Error');
+      toast.error(r.data?.error || t('settings.webhooks.error'));
       return;
     }
-    toast.success(editing ? 'Webhook actualizado' : 'Webhook creado');
+    toast.success(editing ? t('settings.webhooks.updated') : t('settings.webhooks.created'));
     setShowModal(false);
     load();
   };
 
   const remove = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar webhook',
-      message: 'Dejarás de recibir eventos en esa URL. La suscripción no se puede recuperar.',
+      title: t('settings.webhooks.deleteTitle'),
+      message: t('settings.webhooks.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('settings.webhooks.delete'),
     });
     if (!ok) return;
     await coreApi.raw('DELETE', `/api/webhooks/${id}`);
@@ -123,8 +125,8 @@ export const WebhooksSettings: React.FC = () => {
 
   const test = async (id: string) => {
     const r = await coreApi.raw('POST', `/api/webhooks/${id}/test`);
-    if (r.ok) toast.success('Ping enviado — revisa el servicio receptor');
-    else toast.error('Fallo al enviar ping');
+    if (r.ok) toast.success(t('settings.webhooks.pingSent'));
+    else toast.error(t('settings.webhooks.pingFailed'));
   };
 
   const toggleEvent = (evt: string) => {
@@ -137,14 +139,14 @@ export const WebhooksSettings: React.FC = () => {
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
       <PageHeader
-        title="Webhooks salientes"
-        subtitle="Suscríbete a eventos del sistema y recíbelos en tu propia URL con firma HMAC-SHA256 opcional."
+        title={t('settings.webhooks.title')}
+        subtitle={t('settings.webhooks.subtitle')}
         icon={<Webhook size={18} />}
         size="sm"
         divider
         actions={
           <Button type="button" onClick={openNew} className="flex items-center gap-2">
-            <Plus size={14} /> Nuevo
+            <Plus size={14} /> {t('settings.webhooks.new')}
           </Button>
         }
       />
@@ -157,11 +159,11 @@ export const WebhooksSettings: React.FC = () => {
         <Card bodyClassName="p-0">
           <EmptyState
             icon={<Webhook size={18} />}
-            title="Sin suscripciones"
-            hint="Crea la primera para recibir eventos del sistema en tu propia URL."
+            title={t('settings.webhooks.emptyTitle')}
+            hint={t('settings.webhooks.emptyHint')}
             action={
               <Button onClick={openNew} className="flex items-center gap-2">
-                <Plus size={14} /> Nuevo
+                <Plus size={14} /> {t('settings.webhooks.new')}
               </Button>
             }
           />
@@ -177,12 +179,14 @@ export const WebhooksSettings: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm text-fg-default">{s.name}</span>
-                    {!s.isActive && <Badge variant="neutral">Inactivo</Badge>}
-                    {s.secret && <Badge variant="info">Firmado HMAC</Badge>}
+                    {!s.isActive && (
+                      <Badge variant="neutral">{t('settings.webhooks.inactive')}</Badge>
+                    )}
+                    {s.secret && <Badge variant="info">{t('settings.webhooks.signed')}</Badge>}
                   </div>
                   <div className="text-[11px] text-slate-500 font-mono truncate">{s.url}</div>
                   <div className="text-[11px] text-slate-400 mt-0.5">
-                    {s.events.length === 0 ? 'Todos los eventos' : s.events.join(', ')}
+                    {s.events.length === 0 ? t('settings.webhooks.allEvents') : s.events.join(', ')}
                   </div>
                 </div>
                 <Button
@@ -190,17 +194,17 @@ export const WebhooksSettings: React.FC = () => {
                   variant="secondary"
                   size="sm"
                   onClick={() => test(s.id)}
-                  title="Enviar ping de prueba"
+                  title={t('settings.webhooks.sendPing')}
                   className="flex items-center gap-1"
                 >
-                  <Send size={11} /> Probar
+                  <Send size={11} /> {t('settings.webhooks.test')}
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => openEdit(s)}
-                  title="Editar"
+                  title={t('settings.webhooks.edit')}
                 >
                   <Edit2 size={13} />
                 </Button>
@@ -209,7 +213,7 @@ export const WebhooksSettings: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => remove(s.id)}
-                  title="Eliminar"
+                  title={t('settings.webhooks.delete')}
                 >
                   <Trash2 size={13} />
                 </Button>
@@ -222,15 +226,15 @@ export const WebhooksSettings: React.FC = () => {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editing ? 'Editar webhook' : 'Nuevo webhook'}
+        title={editing ? t('settings.webhooks.editTitle') : t('settings.webhooks.newTitle')}
         maxWidth="md"
       >
         <div className="space-y-3 pt-2">
           <Input
-            label="Nombre"
+            label={t('settings.webhooks.name')}
             value={form.name || ''}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="Integración con ERP interno"
+            placeholder={t('settings.webhooks.namePlaceholder')}
           />
           <Input
             label="URL"
@@ -242,15 +246,15 @@ export const WebhooksSettings: React.FC = () => {
               botón de generar sustituye al «Genera una cadena aleatoria» que
               antes solo era un placeholder. */}
           <PasswordInput
-            label="Secreto (opcional) — para firma HMAC-SHA256"
+            label={t('settings.webhooks.secret')}
             value={form.secret || ''}
             onChange={(e) => setForm({ ...form, secret: e.target.value })}
             generator={{ length: 40 }}
-            placeholder="Genera una cadena aleatoria"
+            placeholder={t('settings.webhooks.secretPlaceholder')}
           />
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
-              Eventos a recibir (vacío = todos)
+              {t('settings.webhooks.eventsLabel')}
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
               {AVAILABLE_EVENTS.map((e) => (
@@ -263,7 +267,7 @@ export const WebhooksSettings: React.FC = () => {
                     onChange={() => toggleEvent(e.value)}
                   />
                   <span className="font-mono text-[10px]">{e.value}</span>
-                  <span className="text-slate-500">{e.label}</span>
+                  <span className="text-slate-500">{t(e.label)}</span>
                 </label>
               ))}
             </div>
@@ -273,13 +277,13 @@ export const WebhooksSettings: React.FC = () => {
               checked={form.isActive !== false}
               onChange={(v) => setForm({ ...form, isActive: v })}
             />
-            Activo
+            {t('settings.webhooks.active')}
           </label>
           <div className="flex justify-end gap-2 pt-4 border-t border-border-subtle">
             <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Cancelar
+              {t('settings.webhooks.cancel')}
             </Button>
-            <Button onClick={save}>Guardar</Button>
+            <Button onClick={save}>{t('settings.webhooks.save')}</Button>
           </div>
         </div>
       </Modal>

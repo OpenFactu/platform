@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { apiClient, ApiError } from '@/shared/http';
 import { authApi } from '@/shared/api';
+import { t as tNow, setLocale } from '@/i18n/i18n';
 
 interface User {
   id: string;
@@ -11,6 +12,7 @@ interface User {
   tenantName?: string;
   permissions?: Record<string, { read: boolean; write: boolean; delete: boolean }>;
   avatarImageUrl?: string | null;
+  locale?: 'es' | 'en' | null;
 }
 
 interface AuthContextType {
@@ -85,6 +87,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   }, []);
 
+  // El idioma va con la persona: si lo eligió en su perfil, manda sobre el del navegador.
+  useEffect(() => {
+    if (user?.locale === 'es' || user?.locale === 'en') setLocale(user.locale);
+  }, [user?.locale]);
+
   // Empuja el estado de auth al cliente HTTP central (único dueño de fetch).
   useEffect(() => {
     apiClient.setAuth(token, user?.tenantId ?? null);
@@ -97,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [logout]);
 
   const switchTenant = async (tenantId: string) => {
-    if (!token) throw new Error('No autenticado');
+    if (!token) throw new Error(tNow('app.common.notAuthenticated'));
     const data = await authApi.switchTenant(tenantId);
     localStorage.setItem('openfactu_token', data.token);
     // Mismo motivo que en login(): empujar el token antes de que los efectos

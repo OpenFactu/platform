@@ -23,6 +23,8 @@ import {
 } from './constants';
 import { useAuth } from '@/context/AuthContext';
 import { templatesApi } from '../api';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
 
 interface Props {
   data: TemplateRow[];
@@ -52,6 +54,7 @@ export const TemplatesList: React.FC<Props> = ({
 }) => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const [resyncing, setResyncing] = useState(false);
   const [selectedType, setSelectedType] = useState<DocType | null>(null);
 
@@ -60,21 +63,14 @@ export const TemplatesList: React.FC<Props> = ({
   const DOC_TYPES = useDocTypeOptions().map((o) => o.value);
 
   const handleResyncDefaults = async () => {
-    if (
-      !confirm(
-        '¿Regenerar TODAS las plantillas por defecto con el diseño Keirost actual?\n\n' +
-          'Esto sustituirá el HTML de las plantillas marcadas como "por defecto" de cada tipo de documento.\n' +
-          'Tus plantillas personalizadas NO se tocan.',
-      )
-    )
-      return;
+    if (!confirm(t('templates.list.resyncConfirm'))) return;
     setResyncing(true);
     try {
       const body: any = await templatesApi.resyncDefaults();
-      toast.success(`Plantillas regeneradas: ${body.count}`);
+      toast.success(t('templates.list.resyncDone', { count: body.count }));
       onReload?.();
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al regenerar plantillas');
+      toast.error((e instanceof Error ? e.message : undefined) || t('templates.list.resyncError'));
     } finally {
       setResyncing(false);
     }
@@ -101,22 +97,21 @@ export const TemplatesList: React.FC<Props> = ({
 
   const columns = [
     {
-      header: 'Nombre',
+      header: t('templates.list.colName'),
       accessor: (item: TemplateRow) => (
         <div className="flex items-center gap-2">
           <span className="font-bold text-fg-default">{item.name}</span>
           {item.isDefault && (
             <Badge variant="success" className="text-[9px] font-black uppercase">
-              Default
+              {t('templates.list.defaultBadge')}
             </Badge>
           )}
         </div>
       ),
     },
     {
-      header: 'Última actualización',
-      accessor: (item: TemplateRow) =>
-        item.updatedAt ? new Date(item.updatedAt).toLocaleString('es-ES') : '—',
+      header: t('templates.list.colUpdated'),
+      accessor: (item: TemplateRow) => (item.updatedAt ? formatDateTime(item.updatedAt) : '—'),
     },
   ];
 
@@ -125,11 +120,11 @@ export const TemplatesList: React.FC<Props> = ({
   // acción se declaran una vez en lugar de duplicarse entre una columna de
   // botones y el menú.
   const rowActions = (item: TemplateRow): RowAction[] => [
-    { label: 'Editar', icon: <Pencil size={14} />, onClick: () => onEdit(item) },
+    { label: t('templates.list.edit'), icon: <Pencil size={14} />, onClick: () => onEdit(item) },
     ...(onGenerate && (item.docType === 'FREE' || item.docType === 'LABEL')
       ? [
           {
-            label: 'Generar documento',
+            label: t('templates.list.generateDocument'),
             icon: <FileDown size={14} />,
             onClick: () => onGenerate(item),
           },
@@ -138,15 +133,19 @@ export const TemplatesList: React.FC<Props> = ({
     ...(!item.isDefault
       ? [
           {
-            label: 'Marcar como default',
+            label: t('templates.list.setDefault'),
             icon: <Star size={14} />,
             onClick: () => onSetDefault(item),
           },
         ]
       : []),
-    { label: 'Duplicar', icon: <Copy size={14} />, onClick: () => onDuplicate(item) },
     {
-      label: 'Borrar',
+      label: t('templates.list.duplicate'),
+      icon: <Copy size={14} />,
+      onClick: () => onDuplicate(item),
+    },
+    {
+      label: t('templates.list.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       onClick: () => onDelete(item),
@@ -157,8 +156,8 @@ export const TemplatesList: React.FC<Props> = ({
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       <PageHeader
-        title="Plantillas de Documento"
-        subtitle="Formatos PDF personalizables para facturas, albaranes, pedidos, etiquetas y documentos libres."
+        title={t('templates.list.title')}
+        subtitle={t('templates.list.subtitle')}
         icon={<FileCode size={18} />}
         size="lg"
         divider
@@ -170,10 +169,10 @@ export const TemplatesList: React.FC<Props> = ({
               disabled={resyncing}
               variant="outline"
               className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
-              title="Regenera las plantillas por defecto con la paleta Keirost + trazabilidad. No toca plantillas custom."
+              title={t('templates.list.resyncTooltip')}
             >
               <RefreshCw size={16} className={resyncing ? 'animate-spin' : ''} />
-              {resyncing ? 'Regenerando…' : 'Regenerar estándares'}
+              {resyncing ? t('templates.list.resyncing') : t('templates.list.resync')}
             </Button>
             {onAiGenerate && (
               <Button
@@ -181,13 +180,13 @@ export const TemplatesList: React.FC<Props> = ({
                 onClick={onAiGenerate}
                 variant="outline"
                 className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
-                title="Describe la plantilla en lenguaje natural y la IA la genera"
+                title={t('templates.list.aiTooltip')}
               >
-                <Sparkles size={16} /> Generar con IA
+                <Sparkles size={16} /> {t('templates.list.aiGenerate')}
               </Button>
             )}
             <Button type="button" onClick={onCreate} className="flex items-center gap-2 h-12 px-6">
-              <Plus size={18} /> Nueva Plantilla
+              <Plus size={18} /> {t('templates.list.newTemplate')}
             </Button>
           </div>
         }
@@ -200,7 +199,7 @@ export const TemplatesList: React.FC<Props> = ({
           {/* Panel izquierdo: tipos */}
           <Card noPadding className="overflow-hidden border-border-subtle">
             <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-border-subtle">
-              Tipo de documento
+              {t('templates.list.docTypeHeader')}
             </div>
             <ul>
               {DOC_TYPES.map((docType) => {
@@ -256,12 +255,14 @@ export const TemplatesList: React.FC<Props> = ({
                   </span>
                   <span className="font-bold text-sm">{getDocTypeLabel(selectedType)}</span>
                 </div>
-                <span className="text-[10px] font-bold opacity-70">{rows.length} plantilla(s)</span>
+                <span className="text-[10px] font-bold opacity-70">
+                  {t('templates.list.templateCount', { count: rows.length })}
+                </span>
               </div>
             )}
             {rows.length === 0 ? (
               <div className="p-10 text-center text-fg-subtle text-sm italic flex items-center justify-center gap-2">
-                <AlertCircle size={14} /> Sin plantillas para este tipo
+                <AlertCircle size={14} /> {t('templates.list.emptyForType')}
               </div>
             ) : (
               <Table

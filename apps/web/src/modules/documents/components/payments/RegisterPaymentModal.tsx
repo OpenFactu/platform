@@ -64,7 +64,7 @@ export const RegisterPaymentModal: React.FC<Props> = ({
       return;
     }
     if (!reference.trim()) {
-      toast.error('El nº de referencia es obligatorio');
+      toast.error(t('payment.referenceRequired'));
       return;
     }
     setSaving(true);
@@ -82,8 +82,10 @@ export const RegisterPaymentModal: React.FC<Props> = ({
       const data = await paymentsApi.create(body);
       toast.success(
         kind === 'sales'
-          ? t('invoice.registerPayment') + ' · ' + data.paymentStatus
-          : t('invoice.registerPaymentPurchase') + ' · ' + data.paymentStatus,
+          ? t('invoice.registerPayment') + ' · ' + t(`invoice.paymentStatus.${data.paymentStatus}`)
+          : t('invoice.registerPaymentPurchase') +
+              ' · ' +
+              t(`invoice.paymentStatus.${data.paymentStatus}`),
       );
       onSuccess?.();
       onClose();
@@ -153,7 +155,7 @@ export const RegisterPaymentModal: React.FC<Props> = ({
             <Input
               value={reference}
               onChange={(e) => setReference(e.target.value)}
-              placeholder="nº transferencia, recibo…"
+              placeholder={t('payment.referencePlaceholder')}
               required
               className={
                 !reference.trim()
@@ -163,7 +165,7 @@ export const RegisterPaymentModal: React.FC<Props> = ({
             />
             {!reference.trim() && (
               <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-400 font-medium">
-                Campo obligatorio
+                {t('payment.requiredField')}
               </p>
             )}
           </div>

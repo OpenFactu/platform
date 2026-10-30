@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { PageHeader, Alert } from '@openfactu/ui';
 import { Usb } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { kiosksApi } from '@/modules/hr/api';
 import type { Kiosk } from '@/modules/hr/domain/kiosk';
 import { TimeclockDevices } from '@/modules/hr/components/TimeclockDevices';
 
 export function PhysicalDevices() {
   const { user } = useAuth();
+  const { t } = useI18n();
   const [kiosks, setKiosks] = useState<Kiosk[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ export function PhysicalDevices() {
         if (active) setKiosks(rows);
       })
       .catch(() => {
-        if (active) setError('No se pudieron cargar los kioscos de esta empresa.');
+        if (active) setError(t('settings.devices.loadError'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -38,8 +40,8 @@ export function PhysicalDevices() {
   return (
     <div className="p-4 space-y-6">
       <PageHeader
-        title="Dispositivos físicos"
-        subtitle="Configura los lectores de tarjetas por USB y vincúlalos a una pantalla de fichaje."
+        title={t('settings.devices.title')}
+        subtitle={t('settings.devices.subtitle')}
         icon={<Usb size={18} />}
         size="lg"
       />
@@ -49,15 +51,12 @@ export function PhysicalDevices() {
         </Alert>
       )}
       {loading ? (
-        <p role="status">Cargando dispositivos…</p>
+        <p role="status">{t('settings.devices.loading')}</p>
       ) : (
         !error && (
           <>
             {!kiosks.some((k) => k.isActive) && (
-              <p className="text-sm text-fg-muted">
-                Crea primero un kiosco activo en Recursos Humanos → Kioskos de fichaje. Después
-                podrás vincular el lector a su pantalla.
-              </p>
+              <p className="text-sm text-fg-muted">{t('settings.devices.noActiveKiosk')}</p>
             )}
             <TimeclockDevices
               key={user?.tenantId}

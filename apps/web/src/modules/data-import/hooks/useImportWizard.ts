@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '@openfactu/ui';
+import { useI18n } from '@/i18n/I18nContext';
 import { dataImportApi } from '../api/dataImportApi';
 import { checkMapping, mappingIsValid } from '../lib/mappingChecks';
 import { errorMessage } from '../lib/errorMessage';
@@ -14,16 +15,18 @@ export type WizardStep = 'object' | 'file' | 'mapping' | 'mode' | 'run';
 
 export const STEP_ORDER: WizardStep[] = ['object', 'file', 'mapping', 'mode', 'run'];
 
+/** Claves de i18n; se traducen al pintar. */
 export const STEP_LABELS: Record<WizardStep, string> = {
-  object: 'Qué importar',
-  file: 'Fichero',
-  mapping: 'Columnas',
-  mode: 'Modo',
-  run: 'Simular e importar',
+  object: 'dataImport.steps.object',
+  file: 'dataImport.steps.file',
+  mapping: 'dataImport.steps.mapping',
+  mode: 'dataImport.steps.mode',
+  run: 'dataImport.steps.run',
 };
 
 export function useImportWizard() {
   const toast = useToast();
+  const { t, locale } = useI18n();
 
   const [objects, setObjects] = useState<ImportObject[]>([]);
   const [loadingObjects, setLoadingObjects] = useState(true);
@@ -47,7 +50,7 @@ export function useImportWizard() {
     dataImportApi
       .objects()
       .then(setObjects)
-      .catch((e) => toast.error(errorMessage(e, 'No se pudo cargar el catálogo')))
+      .catch((e) => toast.error(errorMessage(e, t('dataImport.wizard.catalogError'))))
       .finally(() => setLoadingObjects(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -85,7 +88,8 @@ export function useImportWizard() {
 
   const issues = useMemo(
     () => (object && sheet ? checkMapping(object, allHeaders, mapping, mode, matchBy) : []),
-    [object, sheet, allHeaders, mapping, mode, matchBy],
+    // `locale`: los avisos se redactan al calcularlos, hay que rehacerlos al cambiar de idioma.
+    [object, sheet, allHeaders, mapping, mode, matchBy, locale],
   );
 
   const canContinue = useMemo(() => {
@@ -125,7 +129,7 @@ export function useImportWizard() {
     try {
       await dataImportApi.downloadTemplate(object);
     } catch (e) {
-      toast.error(errorMessage(e, 'No se pudo generar la plantilla'));
+      toast.error(errorMessage(e, t('dataImport.wizard.templateError')));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [object]);
@@ -148,7 +152,7 @@ export function useImportWizard() {
         );
         setMapping(object.lines ? merged : (first?.mapping ?? {}));
       } catch (e) {
-        toast.error(errorMessage(e, 'No se pudo leer el fichero'));
+        toast.error(errorMessage(e, t('dataImport.wizard.readError')));
       } finally {
         setUploading(false);
       }
@@ -214,9 +218,9 @@ export function useImportWizard() {
           matchBy,
         });
         setSavedMappings((prev) => [...prev.filter((m) => m.id !== saved.id), saved]);
-        toast.success(`Mapeo "${name}" guardado`);
+        toast.success(t('dataImport.wizard.mappingSaved', { name }));
       } catch (e) {
-        toast.error(errorMessage(e, 'No se pudo guardar el mapeo'));
+        toast.error(errorMessage(e, t('dataImport.wizard.mappingSaveError')));
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,7 +233,7 @@ export function useImportWizard() {
         await dataImportApi.deleteMapping(saved.id);
         setSavedMappings((prev) => prev.filter((m) => m.id !== saved.id));
       } catch (e) {
-        toast.error(errorMessage(e, 'No se pudo borrar el mapeo'));
+        toast.error(errorMessage(e, t('dataImport.wizard.mappingDeleteError')));
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -256,7 +260,7 @@ export function useImportWizard() {
         setStep('run');
         return jobId;
       } catch (e) {
-        toast.error(errorMessage(e, 'No se pudo lanzar la importación'));
+        toast.error(errorMessage(e, t('dataImport.wizard.launchError')));
         return null;
       } finally {
         setLaunching(false);

@@ -20,6 +20,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
 import type { ClientIncident, Shipment, ShipmentEvent } from '../domain/shipment';
 
 interface Incident {
@@ -32,6 +34,7 @@ export const IncidentsTab: React.FC = () => {
   const { token, user } = useAuth();
   const { openTab } = useTabs();
   const toast = useToast();
+  const { t } = useI18n();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [clientReported, setClientReported] = useState<ClientIncident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,10 +89,10 @@ export const IncidentsTab: React.FC = () => {
         status: 'exception',
         reason: ci.description || 'Incidencia reportada por el cliente',
       });
-      toast.success('Escalada — el envío queda en estado de incidencia');
+      toast.success(t('logistics.incidents.escalated'));
       load();
     } catch {
-      toast.error('No se pudo escalar la incidencia');
+      toast.error(t('logistics.incidents.escalateError'));
     }
   };
 
@@ -106,11 +109,11 @@ export const IncidentsTab: React.FC = () => {
     setActionLoading(true);
     try {
       await shipmentsApi.update(resolveModal.shipment.id, { status: 'in_transit' });
-      toast.success('Incidencia resuelta — envío en tránsito de nuevo');
+      toast.success(t('logistics.incidents.resolved'));
       setResolveModal(null);
       load();
     } catch {
-      toast.error('No se pudo resolver');
+      toast.error(t('logistics.incidents.resolveError'));
     } finally {
       setActionLoading(false);
     }
@@ -125,15 +128,15 @@ export const IncidentsTab: React.FC = () => {
       });
       toast.success(
         d.receiptId
-          ? 'Devolución creada. GoodsReceipt en borrador listo para postear.'
-          : 'Devolución registrada.',
+          ? t('logistics.incidents.returnCreated')
+          : t('logistics.incidents.returnRegistered'),
       );
       setReturnModal(null);
       setReturnReason('');
       load();
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
-      toast.error(msg || 'No se pudo convertir en devolución');
+      toast.error(msg || t('logistics.incidents.returnError'));
     } finally {
       setActionLoading(false);
     }
@@ -146,12 +149,12 @@ export const IncidentsTab: React.FC = () => {
           <AlertTriangle className="text-rose-500" size={18} />
           <span className="text-sm text-fg-body">
             {incidents.length === 0
-              ? 'Sin incidencias activas'
-              : `${incidents.length} incidencia(s) activa(s)`}
+              ? t('logistics.incidents.noneActive')
+              : t('logistics.incidents.activeCount', { count: incidents.length })}
           </span>
         </div>
         <Button variant="secondary" size="sm" onClick={load} className="flex items-center gap-2">
-          <RefreshCw size={13} /> Refrescar
+          <RefreshCw size={13} /> {t('logistics.incidents.refresh')}
         </Button>
       </div>
 
@@ -162,10 +165,10 @@ export const IncidentsTab: React.FC = () => {
       ) : incidents.length === 0 ? (
         <Card bodyClassName="py-16 text-center">
           <CheckCircle2 size={40} className="mx-auto text-emerald-500 mb-2" />
-          <div className="text-sm font-bold text-fg-body">Todo fluye sin incidencias</div>
-          <div className="text-xs text-slate-500 mt-0.5">
-            Cuando un conductor reporte una incidencia desde su app, aparecerá aquí.
+          <div className="text-sm font-bold text-fg-body">
+            {t('logistics.incidents.emptyTitle')}
           </div>
+          <div className="text-xs text-slate-500 mt-0.5">{t('logistics.incidents.emptyHint')}</div>
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -180,7 +183,7 @@ export const IncidentsTab: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="error">Incidencia</Badge>
+                        <Badge variant="error">{t('logistics.incidents.badge')}</Badge>
                         {s.trackingNumber && (
                           <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                             {s.trackingNumber}
@@ -188,13 +191,13 @@ export const IncidentsTab: React.FC = () => {
                         )}
                         {s.driverName && (
                           <span className="text-[11px] text-slate-500">
-                            Reportada por <b>{s.driverName}</b>
+                            {t('logistics.incidents.reportedBy')} <b>{s.driverName}</b>
                             {s.vehiclePlate ? ` · ${s.vehiclePlate}` : ''}
                           </span>
                         )}
                         {inc.reportedAt && (
                           <span className="text-[11px] text-slate-400 ml-auto">
-                            {new Date(inc.reportedAt).toLocaleString('es-ES')}
+                            {formatDateTime(inc.reportedAt)}
                           </span>
                         )}
                       </div>
@@ -208,7 +211,7 @@ export const IncidentsTab: React.FC = () => {
                       )}
                       {inc.reason && (
                         <div className="mt-1 rounded-md bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 px-2.5 py-1.5 text-xs text-rose-800 dark:text-rose-200">
-                          <b>Motivo:</b> {inc.reason}
+                          <b>{t('logistics.incidents.reason')}</b> {inc.reason}
                         </div>
                       )}
                     </div>
@@ -219,12 +222,14 @@ export const IncidentsTab: React.FC = () => {
                       size="sm"
                       onClick={() =>
                         openTab(`/logistics/shipments/${s.id}`, {
-                          title: `Envío ${s.trackingNumber || ''}`,
+                          title: t('logistics.incidents.shipmentTitle', {
+                            code: s.trackingNumber || '',
+                          }),
                         })
                       }
                       className="text-primary"
                     >
-                      Ver detalle
+                      {t('logistics.incidents.viewDetail')}
                     </Button>
                     <Button
                       variant="secondary"
@@ -235,14 +240,14 @@ export const IncidentsTab: React.FC = () => {
                       }}
                       className="flex items-center gap-1.5 !text-amber-700"
                     >
-                      <RotateCcw size={13} /> Convertir en devolución
+                      <RotateCcw size={13} /> {t('logistics.incidents.convertToReturn')}
                     </Button>
                     <Button
                       size="sm"
                       onClick={() => setResolveModal(inc)}
                       className="flex items-center gap-1.5"
                     >
-                      <CheckCircle2 size={13} /> Marcar resuelta
+                      <CheckCircle2 size={13} /> {t('logistics.incidents.markResolved')}
                     </Button>
                   </div>
                 </li>
@@ -258,9 +263,11 @@ export const IncidentsTab: React.FC = () => {
         <>
           <div className="flex items-center gap-2 pt-2">
             <MessageCircle size={16} className="text-amber-500" />
-            <span className="text-sm font-bold text-fg-body">Reportadas por clientes</span>
+            <span className="text-sm font-bold text-fg-body">
+              {t('logistics.incidents.clientReported')}
+            </span>
             <span className="text-[11px] text-slate-400">
-              vía chat de seguimiento · últimos 30 días
+              {t('logistics.incidents.clientReportedHint')}
             </span>
           </div>
           <Card bodyClassName="p-0">
@@ -279,10 +286,12 @@ export const IncidentsTab: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="warning">Cliente</Badge>
-                          {escalated && <Badge variant="error">Escalada</Badge>}
+                          <Badge variant="warning">{t('logistics.incidents.customer')}</Badge>
+                          {escalated && (
+                            <Badge variant="error">{t('logistics.incidents.escalatedBadge')}</Badge>
+                          )}
                           <span className="text-[11px] text-slate-400 ml-auto">
-                            {new Date(ci.createdAt).toLocaleString('es-ES')}
+                            {formatDateTime(ci.createdAt)}
                           </span>
                         </div>
                         {ci.destinationAddress && (
@@ -305,11 +314,13 @@ export const IncidentsTab: React.FC = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          openTab(`/logistics/shipments/${ci.shipmentId}`, { title: 'Envío' })
+                          openTab(`/logistics/shipments/${ci.shipmentId}`, {
+                            title: t('logistics.incidents.shipment'),
+                          })
                         }
                         className="text-primary"
                       >
-                        Ver envío
+                        {t('logistics.incidents.viewShipment')}
                       </Button>
                       {!escalated && (
                         <Button
@@ -318,7 +329,7 @@ export const IncidentsTab: React.FC = () => {
                           onClick={() => escalate(ci)}
                           className="flex items-center gap-1.5 !text-rose-700"
                         >
-                          <AlertTriangle size={13} /> Escalar a incidencia
+                          <AlertTriangle size={13} /> {t('logistics.incidents.escalate')}
                         </Button>
                       )}
                     </div>
@@ -334,22 +345,25 @@ export const IncidentsTab: React.FC = () => {
       <Modal
         isOpen={!!resolveModal}
         onClose={() => !actionLoading && setResolveModal(null)}
-        title="Marcar incidencia como resuelta"
+        title={t('logistics.incidents.resolveModal.title')}
         subtitle={
           resolveModal
-            ? `Envío ${resolveModal.shipment.trackingNumber || resolveModal.shipment.id.slice(0, 8)}`
+            ? t('logistics.incidents.shipmentTitle', {
+                code: resolveModal.shipment.trackingNumber || resolveModal.shipment.id.slice(0, 8),
+              })
             : ''
         }
         maxWidth="md"
       >
         <div className="space-y-3">
           <div className="text-sm text-fg-body">
-            El envío volverá al estado <b>En tránsito</b> para que el conductor pueda completar la
-            entrega. La incidencia seguirá visible en el historial del envío.
+            {t('logistics.incidents.resolveModal.before')}{' '}
+            <b>{t('logistics.incidents.resolveModal.status')}</b>{' '}
+            {t('logistics.incidents.resolveModal.after')}
           </div>
           {resolveModal?.reason && (
             <div className="rounded-md bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 px-3 py-2 text-xs text-rose-800 dark:text-rose-200">
-              <b>Motivo original:</b> {resolveModal.reason}
+              <b>{t('logistics.incidents.originalReason')}</b> {resolveModal.reason}
             </div>
           )}
           <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
@@ -358,11 +372,13 @@ export const IncidentsTab: React.FC = () => {
               onClick={() => setResolveModal(null)}
               disabled={actionLoading}
             >
-              Cancelar
+              {t('logistics.incidents.cancel')}
             </Button>
             <Button onClick={confirmResolve} disabled={actionLoading}>
               <CheckCircle2 size={14} className="inline mr-1" />
-              {actionLoading ? 'Resolviendo…' : 'Marcar resuelta'}
+              {actionLoading
+                ? t('logistics.incidents.resolving')
+                : t('logistics.incidents.markResolved')}
             </Button>
           </div>
         </div>
@@ -372,30 +388,33 @@ export const IncidentsTab: React.FC = () => {
       <Modal
         isOpen={!!returnModal}
         onClose={() => !actionLoading && setReturnModal(null)}
-        title="Convertir incidencia en devolución"
+        title={t('logistics.incidents.returnModal.title')}
         subtitle={
           returnModal
-            ? `Envío ${returnModal.shipment.trackingNumber || returnModal.shipment.id.slice(0, 8)}`
+            ? t('logistics.incidents.shipmentTitle', {
+                code: returnModal.shipment.trackingNumber || returnModal.shipment.id.slice(0, 8),
+              })
             : ''
         }
         maxWidth="md"
       >
         <div className="space-y-3">
           <div className="text-sm text-fg-body">
-            Se marcará el envío como <b>devuelto</b> y se creará una entrada de stock (GoodsReceipt)
-            en borrador sobre el almacén origen para que revises y postees el retorno de mercancía.
+            {t('logistics.incidents.returnModal.before')}{' '}
+            <b>{t('logistics.incidents.returnModal.status')}</b>{' '}
+            {t('logistics.incidents.returnModal.after')}
           </div>
           {returnModal?.reason && (
             <div className="rounded-md bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 px-3 py-2 text-xs text-rose-800 dark:text-rose-200">
-              <b>Motivo original:</b> {returnModal.reason}
+              <b>{t('logistics.incidents.originalReason')}</b> {returnModal.reason}
             </div>
           )}
           <Textarea
-            label="Motivo de la devolución (opcional)"
+            label={t('logistics.incidents.returnModal.reasonLabel')}
             value={returnReason}
             onChange={(e) => setReturnReason(e.target.value)}
             rows={3}
-            placeholder="Resumen breve — p. ej. cliente rechazó, producto dañado…"
+            placeholder={t('logistics.incidents.returnModal.reasonPlaceholder')}
           />
           <div className="flex justify-end gap-2 pt-2 border-t border-border-subtle">
             <Button
@@ -406,11 +425,13 @@ export const IncidentsTab: React.FC = () => {
               }}
               disabled={actionLoading}
             >
-              Cancelar
+              {t('logistics.incidents.cancel')}
             </Button>
             <Button onClick={confirmReturn} disabled={actionLoading}>
               <RotateCcw size={14} className="inline mr-1" />
-              {actionLoading ? 'Creando…' : 'Convertir en devolución'}
+              {actionLoading
+                ? t('logistics.incidents.creating')
+                : t('logistics.incidents.convertToReturn')}
             </Button>
           </div>
         </div>

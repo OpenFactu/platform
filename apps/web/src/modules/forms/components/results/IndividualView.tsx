@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { Badge, Button, Card, NumberInput, Skeleton, useToast } from '@openfactu/ui';
 import { ChevronLeft, ChevronRight, Download, Trash2 } from 'lucide-react';
@@ -27,16 +28,17 @@ const GradeInput: React.FC<{
   setDraft: (d: Record<string, number>) => void;
   disabled: boolean;
 }> = ({ q, detail, draft, setDraft, disabled }) => {
+  const { t } = useI18n();
   const g = detail.grading?.questions[q.id];
   if (!g) return null;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {g.correct === true && <Badge variant="success">Correcta</Badge>}
-      {g.correct === false && <Badge variant="error">Incorrecta</Badge>}
-      {g.correct === null && <Badge variant="warning">Por corregir</Badge>}
+      {g.correct === true && <Badge variant="success">{t('forms.individual.correct')}</Badge>}
+      {g.correct === false && <Badge variant="error">{t('forms.individual.incorrect')}</Badge>}
+      {g.correct === null && <Badge variant="warning">{t('forms.thanks.toGrade')}</Badge>}
       <div className="w-24">
         <NumberInput
-          aria-label={`Puntos de «${q.title}»`}
+          aria-label={t('forms.individual.pointsOf', { title: q.title })}
           value={draft[q.id] ?? g.points}
           onChange={(n) => setDraft({ ...draft, [q.id]: Math.max(0, Math.min(g.max, n ?? 0)) })}
           min={0}
@@ -45,7 +47,7 @@ const GradeInput: React.FC<{
           disabled={disabled}
         />
       </div>
-      <span className="text-xs text-fg-muted">de {g.max}</span>
+      <span className="text-xs text-fg-muted">{t('forms.individual.ofMax', { max: g.max })}</span>
     </div>
   );
 };
@@ -61,6 +63,7 @@ export const IndividualView: React.FC<Props> = ({
   onDelete,
   onGraded,
 }) => {
+  const { t } = useI18n();
   const fmt = useFormat();
   const toast = useToast();
   const [index, setIndex] = useState(0);
@@ -86,9 +89,9 @@ export const IndividualView: React.FC<Props> = ({
       await saveGrades({ ...(detail?.grades ?? {}), ...draft });
       setDraft({});
       onGraded();
-      toast.success('Corrección guardada');
+      toast.success(t('forms.individual.gradeSaved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo guardar');
+      toast.error(err instanceof Error ? err.message : t('forms.errors.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -102,20 +105,20 @@ export const IndividualView: React.FC<Props> = ({
             type="button"
             variant="ghost"
             size="sm"
-            aria-label="Anterior"
+            aria-label={t('forms.individual.previous')}
             onClick={() => setIndex(at - 1)}
             disabled={at === 0}
           >
             <ChevronLeft size={16} />
           </Button>
           <span className="text-sm tabular-nums text-fg-body">
-            {at + 1} de {rows.length}
+            {t('forms.individual.position', { n: at + 1, total: rows.length })}
           </span>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            aria-label="Siguiente"
+            aria-label={t('forms.runner.next')}
             onClick={() => setIndex(at + 1)}
             disabled={at >= rows.length - 1}
           >
@@ -126,13 +129,13 @@ export const IndividualView: React.FC<Props> = ({
           {[row.respondentEmail, row.contactName, row.partnerName, fmt.date(row.createdAt)]
             .filter(Boolean)
             .join(' · ')}
-          {row.updatedAt && ' · editada'}
+          {row.updatedAt && ` · ${t('forms.individual.edited')}`}
         </div>
         <div className="flex items-center gap-2">
           {quiz && detail?.grading && (
             <Badge variant={detail.grading.pending ? 'warning' : 'accent'}>
               {detail.grading.score} / {detail.grading.maxScore}
-              {detail.grading.pending && ' · por corregir'}
+              {detail.grading.pending && ` · ${t('forms.individual.toGradeLower')}`}
             </Badge>
           )}
           {canDelete && (
@@ -140,7 +143,7 @@ export const IndividualView: React.FC<Props> = ({
               type="button"
               variant="ghost"
               size="sm"
-              aria-label="Borrar esta respuesta"
+              aria-label={t('forms.individual.deleteThis')}
               onClick={() => onDelete(row)}
             >
               <Trash2 size={16} />
@@ -158,7 +161,11 @@ export const IndividualView: React.FC<Props> = ({
               ? (detail.answers[q.id] as string[])
               : [];
           return (
-            <Card key={q.id} title={q.title || 'Pregunta sin título'} bodyClassName="space-y-3">
+            <Card
+              key={q.id}
+              title={q.title || t('forms.question.untitled')}
+              bodyClassName="space-y-3"
+            >
               {q.type === 'file' ? (
                 ids.length ? (
                   <ul className="space-y-1">
@@ -171,22 +178,23 @@ export const IndividualView: React.FC<Props> = ({
                           onClick={() =>
                             downloadPdf(
                               formsApi.fileUrl(formId, row.id, id),
-                              files.get(id)?.fileName ?? 'archivo',
+                              files.get(id)?.fileName ?? t('forms.individual.fileLower'),
                             )
                           }
                         >
-                          <Download size={14} /> {files.get(id)?.fileName ?? 'Archivo'}
+                          <Download size={14} />{' '}
+                          {files.get(id)?.fileName ?? t('forms.individual.file')}
                         </Button>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-fg-subtle">Sin respuesta</p>
+                  <p className="text-sm text-fg-subtle">{t('forms.individual.noAnswer')}</p>
                 )
               ) : (
                 <p className="text-sm text-fg-body whitespace-pre-wrap">
                   {formatAnswer(q, detail.answers) || (
-                    <span className="text-fg-subtle">Sin respuesta</span>
+                    <span className="text-fg-subtle">{t('forms.individual.noAnswer')}</span>
                   )}
                 </p>
               )}
@@ -207,7 +215,7 @@ export const IndividualView: React.FC<Props> = ({
       {quiz && canWrite && Object.keys(draft).length > 0 && (
         <div className="flex justify-end">
           <Button type="button" onClick={save} isLoading={saving}>
-            Guardar corrección
+            {t('forms.individual.saveGrade')}
           </Button>
         </div>
       )}

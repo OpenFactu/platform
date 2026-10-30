@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
-import { Button, Modal } from '@openfactu/ui';
-import { MoreHorizontal, Trash2, Tag, Mail, type LucideIcon } from 'lucide-react';
+import { Button, type FloatingAction } from '@openfactu/ui';
+import { Download, Trash2, Tag, Mail, type LucideIcon } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
-import { PrintTemplateButton } from '@/modules/document-templates/components/PrintTemplateButton';
+import { useI18n } from '@/i18n/I18nContext';
+import { useMobilePageActions } from '@/context/MobilePageActionsContext';
+import {
+  PdfTemplatePickerModal,
+  PrintTemplateButton,
+  usePdfTemplates,
+} from '@/modules/document-templates/components/PrintTemplateButton';
 import { LabelPrintButton } from '@/modules/document-templates/components/LabelPrintButton';
 
 export interface PrimaryAction {
@@ -44,14 +50,71 @@ export const DocumentActionBar: React.FC<Props> = ({
   docCode,
   onCancel,
   showCancel = true,
-  cancelLabel = 'Cancelar',
+  cancelLabel: cancelLabelProp,
   isCancelling,
   primary,
   onSendEmail,
 }) => {
+  const { t } = useI18n();
+  const cancelLabel = cancelLabelProp ?? t('doc.common.cancel');
   const PrimaryIcon = primary?.icon;
   const mobile = useIsMobile();
-  const [moreOpen, setMoreOpen] = useState(false);
+  const pdf = usePdfTemplates(docType, pdfUrl);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [labelOpen, setLabelOpen] = useState(false);
+
+  // Móvil: todo al botón flotante de la pantalla (MobileBottomNav). La acción
+  // principal va aparte para quedar la última, junto al pulgar, y cancelar la
+  // primera, lejos de él.
+  const mobileActions: FloatingAction[] = [
+    ...(onCancel && showCancel
+      ? [{ id: 'cancel', label: cancelLabel, icon: <Trash2 size={19} />, onClick: onCancel }]
+      : []),
+    ...(docId
+      ? [
+          {
+            id: 'label',
+            label: t('doc.lines.label'),
+            icon: <Tag size={19} />,
+            onClick: () => setLabelOpen(true),
+          },
+        ]
+      : []),
+    {
+      id: 'pdf',
+      label: t('doc.actions.downloadPdf'),
+      icon: <Download size={19} />,
+      onClick: async () => {
+        if (await pdf.start()) setPickerOpen(true);
+      },
+    },
+    ...(onSendEmail
+      ? [
+          {
+            id: 'email',
+            label: t('doc.actions.sendByEmail'),
+            icon: <Mail size={19} />,
+            onClick: onSendEmail,
+          },
+        ]
+      : []),
+  ];
+  useMobilePageActions('document:bar', mobileActions, mobile);
+  useMobilePageActions(
+    'primary:bar',
+    primary && PrimaryIcon
+      ? [
+          {
+            id: 'primary',
+            label: primary.label,
+            icon: <PrimaryIcon size={19} />,
+            onClick: primary.onClick,
+            disabled: primary.disabled || primary.isLoading,
+          },
+        ]
+      : [],
+    mobile,
+  );
 
   const primaryButton = (className: string) =>
     primary && PrimaryIcon ? (
@@ -77,12 +140,12 @@ export const DocumentActionBar: React.FC<Props> = ({
       {docId && (
         <LabelPrintButton
           params={{ docId, ...(docCode ? { docCode } : {}) }}
-          title="Imprimir etiqueta del documento"
+          title={t('doc.actions.printDocLabel')}
           variant="full"
           triggerLabel={
             <>
               <Tag size={14} />
-              <span>Etiqueta</span>
+              <span>{t('doc.lines.label')}</span>
             </>
           }
           className="h-10 gap-2"
@@ -94,42 +157,33 @@ export const DocumentActionBar: React.FC<Props> = ({
           variant="outline"
           onClick={onSendEmail}
           className="h-10 gap-2 border-accent/30 text-accent hover:bg-accent/5"
-          title="Enviar por email con PDF adjunto"
+          title={t('doc.actions.sendWithPdf')}
         >
           <Mail size={14} />
-          <span>Enviar</span>
+          <span>{t('doc.actions.send')}</span>
         </Button>
       )}
     </>
   );
 
-  // Móvil: la acción principal a ancho completo y el resto tras «Más», en una
-  // hoja inferior, en vez de dos filas de botones bajo el título.
   if (mobile) {
     return (
-      <div className="flex w-full items-center gap-2">
-        {primaryButton('h-11 flex-1 gap-2')}
-        <Button
-          type="button"
-          variant="secondary"
-          className={primary ? 'h-11 gap-2' : 'h-11 flex-1 gap-2'}
-          onClick={() => setMoreOpen(true)}
-        >
-          <MoreHorizontal size={16} />
-          <span>{primary ? 'Más' : 'Acciones'}</span>
-        </Button>
-        <Modal
-          isOpen={moreOpen}
-          onClose={() => setMoreOpen(false)}
-          title="Acciones"
-          size="sm"
-          hideCancel
-        >
-          <div className="flex flex-col gap-2 [&_button]:h-11 [&_button]:w-full [&_button]:justify-start">
-            {others}
-          </div>
-        </Modal>
-      </div>
+      <>
+        <PdfTemplatePickerModal
+          templates={pdf.templates}
+          isOpen={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onPick={(id) => void pdf.download(id)}
+        />
+        {docId && (
+          <LabelPrintButton
+            params={{ docId, ...(docCode ? { docCode } : {}) }}
+            hideTrigger
+            open={labelOpen}
+            onOpenChange={setLabelOpen}
+          />
+        )}
+      </>
     );
   }
 

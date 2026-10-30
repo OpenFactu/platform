@@ -2,6 +2,8 @@ import React from 'react';
 import { Badge, Switch, Card } from '@openfactu/ui';
 import { PluginIcon } from '@/components/PluginIcon';
 import type { Module } from '@/modules';
+import { useI18n } from '@/i18n/I18nContext';
+import { categoryLabelKey } from '@/modules/registry';
 
 interface ModuleCardProps {
   module: Module;
@@ -23,6 +25,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
   onToggle,
   isToggling,
 }) => {
+  const { t } = useI18n();
   return (
     <Card
       noPadding
@@ -45,23 +48,25 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
               />
             </div>
             <div>
-              <h3 className="font-bold text-fg-default leading-tight">{module.label}</h3>
+              <h3 className="font-bold text-fg-default leading-tight">{t(module.label)}</h3>
               {module.category && (
                 <Badge variant="info" className="mt-1">
-                  {module.category}
+                  {t(categoryLabelKey(module.category))}
                 </Badge>
               )}
             </div>
           </div>
 
           {/* Switch: el flag del módulo se guarda en la empresa al instante. */}
-          <span title={enabled ? 'Desactivar módulo' : 'Activar módulo'}>
+          <span
+            title={enabled ? t('plugins.card.deactivateModule') : t('plugins.card.activateModule')}
+          >
             <Switch checked={enabled} onChange={onToggle} disabled={isToggling} />
           </span>
         </div>
 
         {module.description && (
-          <p className="text-sm text-fg-muted mb-4 line-clamp-2">{module.description}</p>
+          <p className="text-sm text-fg-muted mb-4 line-clamp-2">{t(module.description)}</p>
         )}
 
         <div className="flex items-center text-xs">
@@ -70,7 +75,7 @@ export const ModuleCard: React.FC<ModuleCardProps> = ({
               enabled ? 'text-success-fg' : 'text-fg-subtle'
             }`}
           >
-            {enabled ? 'Activo' : 'Inactivo'}
+            {enabled ? t('plugins.card.active') : t('plugins.card.inactive')}
           </span>
         </div>
       </div>

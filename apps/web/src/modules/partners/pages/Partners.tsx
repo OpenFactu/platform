@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
@@ -14,6 +15,7 @@ import type { Partner, PartnerGroup } from '../domain/partner';
  * pestañas la ficha no cabía.
  */
 export const Partners: React.FC = () => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const navigate = useNavigate();
   const canWrite =
@@ -30,7 +32,7 @@ export const Partners: React.FC = () => {
     partnersApi
       .list()
       .then((data) => !cancelled && setPartners(data))
-      .catch(() => toast.error('Error al cargar interlocutores'))
+      .catch(() => toast.error(t('partners.list.loadError')))
       .finally(() => !cancelled && setLoading(false));
     partnerGroupsApi
       .list()
@@ -46,7 +48,7 @@ export const Partners: React.FC = () => {
 
   const columns = [
     {
-      header: 'Código',
+      header: t('partners.list.code'),
       card: 'status' as const,
       sortable: true,
       sortAccessor: (i: Partner) => i.code ?? '',
@@ -57,7 +59,7 @@ export const Partners: React.FC = () => {
       ),
     },
     {
-      header: 'Razón Social',
+      header: t('partners.list.legalName'),
       card: 'title' as const,
       cell: (p: Partner) => (
         <span className="font-bold">
@@ -68,17 +70,21 @@ export const Partners: React.FC = () => {
         </span>
       ),
     },
-    { header: 'NIF/VAT', card: 'subtitle' as const, cell: (p: Partner) => p.nif },
+    { header: t('partners.list.nifVat'), card: 'subtitle' as const, cell: (p: Partner) => p.nif },
     {
-      header: 'Grupo',
+      header: t('partners.fields.group'),
       card: 'meta' as const,
       sortable: true,
       sortAccessor: (i: Partner) => i.groupName ?? '',
       cell: (p: Partner) => groups.find((g) => g.id === p.groupId)?.name || '-',
     },
-    { header: 'Contacto', card: 'body' as const, cell: (p: Partner) => p.email || p.phone || '-' },
     {
-      header: 'Direcciones',
+      header: t('partners.wizard.steps.contact'),
+      card: 'body' as const,
+      cell: (p: Partner) => p.email || p.phone || '-',
+    },
+    {
+      header: t('partners.wizard.steps.addresses'),
       card: 'hidden' as const,
       cell: (p: Partner) => <Badge variant="info">{p.addresses?.length || 0}</Badge>,
     },
@@ -92,7 +98,7 @@ export const Partners: React.FC = () => {
   // declara una vez en lugar de duplicarse entre una columna de botones y el menú.
   const rowActions = (p: Partner): RowAction[] => [
     {
-      label: 'Editar',
+      label: t('partners.common.edit'),
       icon: <Edit2 size={14} />,
       disabled: !canWrite,
       onClick: () => openDetail(p),
@@ -119,8 +125,8 @@ export const Partners: React.FC = () => {
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       <PageHeader
-        title="Interlocutores"
-        subtitle="Gestión centralizada de Clientes y Proveedores."
+        title={t('partners.nav.label')}
+        subtitle={t('partners.list.subtitle')}
         icon={<Users size={18} />}
         size="lg"
         actions={
@@ -130,7 +136,7 @@ export const Partners: React.FC = () => {
             disabled={!canWrite}
             className="flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:grayscale transition-all"
           >
-            <Plus size={18} /> Nuevo Interlocutor
+            <Plus size={18} /> {t('partners.list.new')}
           </Button>
         }
       />
@@ -140,7 +146,7 @@ export const Partners: React.FC = () => {
           <SearchInput
             value={search}
             onChange={setSearch}
-            placeholder="Buscar por código, razón social, NIF, grupo o contacto…"
+            placeholder={t('partners.list.searchPlaceholder')}
             clearable
             containerClassName="max-w-md"
           />
@@ -152,9 +158,7 @@ export const Partners: React.FC = () => {
           isLoading={loading}
           rowActions={rowActions}
           onRowClick={openDetail}
-          emptyMessage={
-            search ? `Ningún interlocutor coincide con “${search}”.` : 'Aún no hay interlocutores.'
-          }
+          emptyMessage={search ? t('partners.list.noMatch', { search }) : t('partners.list.empty')}
         />
       </Card>
     </div>

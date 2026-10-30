@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { tr } from '../../i18n';
 import { and, eq, ne, sql, desc } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { DocumentEngine } from '../../core/documents/DocumentEngine';
@@ -201,22 +202,28 @@ async function getDocumentWithLines(
  * aquí sin recompilar la web. OJO: registrada antes de /:docType para que
  * Express no capture "types" como código de documento.
  */
-router.get('/types', (_req, res) => {
+router.get('/types', (req, res) => {
+  // Las etiquetas del registro están en español; se traducen al idioma de la petición.
+  const l = (s: string) => tr(req, s);
   const types = DocumentRegistry.getAll().map((c) => ({
     docType: c.docType,
     side: c.side,
     category: c.category,
-    label: c.label,
-    labelPlural: c.labelPlural,
+    label: l(c.label),
+    labelPlural: l(c.labelPlural),
     apiPath: c.apiPath,
     uiRoute: c.uiRoute ?? `/documents/${c.docType}`,
     initialStatus: c.initialStatus,
-    statusLabels: c.statusLabels,
-    statusOptions: Object.entries(c.statusLabels).map(([value, label]) => ({ value, label })),
-    partnerLabel: c.partnerLabel ?? (c.side === 'sales' ? 'Cliente' : 'Proveedor'),
-    partnerPlaceholder:
+    statusLabels: Object.fromEntries(Object.entries(c.statusLabels).map(([k, v]) => [k, l(v)])),
+    statusOptions: Object.entries(c.statusLabels).map(([value, label]) => ({
+      value,
+      label: l(label),
+    })),
+    partnerLabel: l(c.partnerLabel ?? (c.side === 'sales' ? 'Cliente' : 'Proveedor')),
+    partnerPlaceholder: l(
       c.partnerPlaceholder ??
-      (c.side === 'sales' ? 'Seleccionar cliente...' : 'Seleccionar proveedor...'),
+        (c.side === 'sales' ? 'Seleccionar cliente...' : 'Seleccionar proveedor...'),
+    ),
     hasFiscalFields: c.hasFiscalFields,
     hasWarehouse: c.hasWarehouse,
     hasInternalOrder: c.hasInternalOrder,

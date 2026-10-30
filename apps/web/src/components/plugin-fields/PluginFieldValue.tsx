@@ -1,5 +1,6 @@
 import React from 'react';
 import type { PluginFieldDef } from './types';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Fmt {
   money?: (v: number | string | null | undefined) => string;
@@ -15,6 +16,7 @@ interface Props {
 
 /** Render read-only de un valor de campo plugin. Uso: listados, detalles, PDF. */
 export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
+  const { t } = useI18n();
   if (value === null || value === undefined || value === '') {
     return <span className="text-fg-subtle">—</span>;
   }
@@ -23,7 +25,7 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
     case 'BOOLEAN':
       return (
         <span className="text-xs font-bold text-fg-body">
-          {value === true || value === 'true' ? 'Sí' : 'No'}
+          {value === true || value === 'true' ? t('app.common.yes') : t('app.common.no')}
         </span>
       );
 

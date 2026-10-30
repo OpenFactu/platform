@@ -3,6 +3,7 @@
  * correo, teléfono, web, código postal e IBAN, y búsqueda de interlocutores
  * que ya existen con el mismo NIF, correo o nombre. Puro.
  */
+import { t } from '@/i18n/i18n';
 import { validatePostalCode, validateTaxId, type CountryMeta } from '@openfactu/common';
 
 export type CountryLike = (CountryMeta & { name?: string }) | null | undefined;
@@ -12,21 +13,25 @@ const WEB_RE = /^(https?:\/\/)?[^\s/$.?#]+\.[^\s]{2,}$/i;
 
 export const checkName = (name: string): string | null => {
   const n = name.trim();
-  if (!n) return 'Escribe el nombre o la razón social';
-  if (n.length < 2) return 'El nombre es demasiado corto';
-  if (n.length > 200) return 'El nombre admite como mucho 200 caracteres';
+  if (!n) return t('partners.checks.nameRequired');
+  if (n.length < 2) return t('partners.checks.nameTooShort');
+  if (n.length > 200) return t('partners.checks.nameTooLong');
   return null;
 };
 
 export const checkNif = (nif: string, country: CountryLike): string | null =>
   nif.trim() && !validateTaxId(nif.trim(), country ?? undefined)
-    ? `El ${country?.taxIdLabel || 'NIF'} no tiene el formato de ${country?.name ?? 'este país'}${
-        country?.taxIdExample ? ` (ej.: ${country.taxIdExample})` : ''
-      }`
+    ? t('partners.checks.nifFormat', {
+        label: country?.taxIdLabel || t('partners.checks.nif'),
+        country: country?.name ?? t('partners.checks.thisCountry'),
+      }) +
+      (country?.taxIdExample
+        ? ` ${t('partners.checks.example', { example: country.taxIdExample })}`
+        : '')
     : null;
 
 export const checkEmail = (email: string): string | null =>
-  email.trim() && !EMAIL_RE.test(email.trim()) ? 'El correo no es válido' : null;
+  email.trim() && !EMAIL_RE.test(email.trim()) ? t('partners.checks.emailInvalid') : null;
 
 export const checkPhone = (phone: string, country?: CountryLike): string | null => {
   if (!phone.trim()) return null;
@@ -35,29 +40,29 @@ export const checkPhone = (phone: string, country?: CountryLike): string | null 
   let digits = phone.replace(/\D/g, '');
   if (phone.trim().startsWith('+') && prefix && digits.startsWith(prefix))
     digits = digits.slice(prefix.length);
-  return digits.length < 6 || digits.length > 15 ? 'El teléfono no es válido' : null;
+  return digits.length < 6 || digits.length > 15 ? t('partners.checks.phoneInvalid') : null;
 };
 
 export const checkWebsite = (web: string): string | null =>
-  web.trim() && !WEB_RE.test(web.trim()) ? 'La web no es válida (ej.: www.empresa.com)' : null;
+  web.trim() && !WEB_RE.test(web.trim()) ? t('partners.checks.websiteInvalid') : null;
 
 export const checkPostalCode = (zip: string, country: CountryLike): string | null =>
   zip.trim() && !validatePostalCode(zip.trim(), country ?? undefined)
-    ? `El código postal no tiene el formato de ${country?.name ?? 'este país'}`
+    ? t('partners.checks.zipFormat', { country: country?.name ?? t('partners.checks.thisCountry') })
     : null;
 
 /** IBAN: longitud y dígito de control (mod 97). */
 export function checkIban(iban: string): string | null {
   const s = iban.replace(/\s+/g, '').toUpperCase();
   if (!s) return null;
-  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(s)) return 'El IBAN no es válido';
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(s)) return t('partners.checks.ibanInvalid');
   const moved = s.slice(4) + s.slice(0, 4);
   let rest = 0;
   for (const ch of moved) {
     const v = /[A-Z]/.test(ch) ? String(ch.charCodeAt(0) - 55) : ch;
     for (const d of v) rest = (rest * 10 + Number(d)) % 97;
   }
-  return rest === 1 ? null : 'El IBAN no es válido (revisa los dígitos de control)';
+  return rest === 1 ? null : t('partners.checks.ibanChecksum');
 }
 
 /** NIF comparable: sin espacios ni guiones, en mayúsculas y sin el prefijo de país (ES…). */
@@ -95,10 +100,11 @@ export interface Duplicate<P extends PartnerLike> {
   reason: DuplicateReason;
 }
 
+/** Claves de i18n: se traducen al pintar con `t()`. */
 export const DUPLICATE_REASON_LABEL: Record<DuplicateReason, string> = {
-  nif: 'el mismo NIF',
-  email: 'el mismo correo',
-  name: 'el mismo nombre',
+  nif: 'partners.duplicates.reason.nif',
+  email: 'partners.duplicates.reason.email',
+  name: 'partners.duplicates.reason.name',
 };
 
 /** Interlocutores que ya existen y casan por NIF, correo o nombre (el NIF primero). */

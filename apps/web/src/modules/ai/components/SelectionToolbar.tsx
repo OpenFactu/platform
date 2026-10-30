@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@openfactu/ui';
 import { MessageSquarePlus } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Botón flotante que aparece junto a una selección de texto activa dentro de
@@ -13,19 +14,22 @@ export const SelectionToolbar: React.FC<{
   x: number;
   y: number;
   onClick: () => void;
-}> = ({ x, y, onClick }) => (
-  <div className="fixed z-50 -translate-x-1/2 -translate-y-full" style={{ left: x, top: y - 8 }}>
-    <Button
-      variant="accent"
-      size="sm"
-      className="shadow-lg flex items-center gap-1.5 whitespace-nowrap"
-      // Evita que el mousedown del click colapse la selección antes de que
-      // el contenedor la haya leído para construir esta tarjeta.
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onClick}
-    >
-      <MessageSquarePlus size={14} />
-      Preguntar sobre esto
-    </Button>
-  </div>
-);
+}> = ({ x, y, onClick }) => {
+  const { t } = useI18n();
+  return (
+    <div className="fixed z-50 -translate-x-1/2 -translate-y-full" style={{ left: x, top: y - 8 }}>
+      <Button
+        variant="accent"
+        size="sm"
+        className="shadow-lg flex items-center gap-1.5 whitespace-nowrap"
+        // Evita que el mousedown del click colapse la selección antes de que
+        // el contenedor la haya leído para construir esta tarjeta.
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={onClick}
+      >
+        <MessageSquarePlus size={14} />
+        {t('ai.selection.ask')}
+      </Button>
+    </div>
+  );
+};

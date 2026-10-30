@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { useFormat } from '@/hooks/useFormat';
 import { usePluginFields, PluginFieldValue } from '@/components/plugin-fields';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface TableMeta {
   tableName: string;
@@ -25,6 +26,7 @@ export const UserTableList: React.FC = () => {
   const fmt = useFormat();
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
 
   const [meta, setMeta] = useState<TableMeta | null>(null);
   const [rows, setRows] = useState<any[]>([]);
@@ -94,7 +96,7 @@ export const UserTableList: React.FC = () => {
     const cols: any[] = [];
     if (meta?.displayField) {
       cols.push({
-        header: meta.label || 'Registro',
+        header: meta.label || t('userTables.list.record'),
         accessor: (r: any) => (
           <span className="font-semibold text-fg-default">
             {r[meta.displayField as string] ?? '—'}
@@ -110,26 +112,26 @@ export const UserTableList: React.FC = () => {
       });
     }
     cols.push({
-      header: 'Creado',
+      header: t('userTables.list.created'),
       align: 'right' as const,
       accessor: (r: any) => fmt.date(r.createdAt),
     });
     return cols;
-  }, [meta, fmt]);
+  }, [meta, fmt, t]);
 
   const removeRow = async (r: any) => {
     const ok = await popup.confirm({
-      title: 'Eliminar registro',
-      message: '¿Eliminar este registro? Esta acción no se puede deshacer.',
+      title: t('userTables.list.deleteTitle'),
+      message: t('userTables.list.deleteMessage'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('userTables.list.delete'),
     });
     if (!ok) return;
     const res = await coreApi.raw('DELETE', `/api/user-tables/${tblName}/rows/${r.id}`);
     if (res.ok) {
-      toast.success('Eliminado');
+      toast.success(t('userTables.list.deleted'));
       load();
-    } else toast.error('Error al eliminar');
+    } else toast.error(t('userTables.list.deleteError'));
   };
 
   const allColumns = [...baseCols, ...pluginCols];
@@ -139,12 +141,12 @@ export const UserTableList: React.FC = () => {
   // columna extra con el botón de borrar.
   const rowActions = (r: any): RowAction[] => [
     {
-      label: 'Ver / Editar',
+      label: t('userTables.list.viewEdit'),
       icon: <Eye size={14} />,
       onClick: () => openTab(`/u/${name}/${r.id}`),
     },
     {
-      label: 'Eliminar',
+      label: t('userTables.list.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       onClick: () => removeRow(r),
@@ -162,7 +164,9 @@ export const UserTableList: React.FC = () => {
                 subtítulo dentro de un <p> y Badge es un <div>, que el navegador
                 cerraría en falso rompiendo la línea. */}
             <Badge variant={meta?.kind === 'document' ? 'info' : 'neutral'}>
-              {meta?.kind === 'document' ? 'Documento' : 'Maestro'}
+              {meta?.kind === 'document'
+                ? t('userTables.list.kindDocument')
+                : t('userTables.list.kindMaster')}
             </Badge>
           </>
         }
@@ -177,7 +181,7 @@ export const UserTableList: React.FC = () => {
             onClick={() => openTab(`/u/${name}/new`)}
             className="flex items-center gap-2"
           >
-            <Plus size={14} /> Nuevo
+            <Plus size={14} /> {t('userTables.list.new')}
           </Button>
         }
       />

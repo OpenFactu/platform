@@ -1,6 +1,8 @@
 import React from 'react';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@openfactu/ui';
+import type { IconWeight } from '@phosphor-icons/react';
+import { PHOSPHOR_BY_LUCIDE } from './icons/phosphorIcons';
 
 /** `book-user` → `BookUser`, que es como lo exporta Lucide. */
 function toPascalCase(name: string): string {
@@ -16,6 +18,14 @@ interface PluginIconProps {
   className?: string;
   size?: number;
   strokeWidth?: number;
+  /**
+   * `phosphor` pinta el equivalente de Phosphor (el estilo del menú) si lo
+   * hay; si no, Lucide. El nombre se sigue escribiendo en el vocabulario de
+   * Lucide, que es el que declaran módulos y plugins.
+   */
+  family?: 'lucide' | 'phosphor';
+  /** Peso de Phosphor: `duotone` para destacar el activo. */
+  weight?: IconWeight;
 }
 
 export const PluginIcon: React.FC<PluginIconProps> = ({
@@ -23,7 +33,14 @@ export const PluginIcon: React.FC<PluginIconProps> = ({
   className,
   size = 18,
   strokeWidth,
+  family = 'lucide',
+  weight = 'regular',
 }) => {
+  if (family === 'phosphor' && iconName) {
+    const Phosphor = PHOSPHOR_BY_LUCIDE[iconName] ?? PHOSPHOR_BY_LUCIDE[toPascalCase(iconName)];
+    if (Phosphor) return <Phosphor size={size} weight={weight} className={className} />;
+  }
+
   if (!iconName) {
     return <LucideIcons.Puzzle size={size} strokeWidth={strokeWidth} className={className} />;
   }

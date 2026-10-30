@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Button } from '@openfactu/ui';
 import {
   AIComposer,
@@ -8,7 +8,8 @@ import {
 } from '@openfactu/ui/ai';
 import { X } from 'lucide-react';
 import { MAX_ATTACHMENTS } from '../domain/constants';
-import { KEIRO_LABELS } from '../domain/keiroLabels';
+import { keiroLabels } from '../domain/keiroLabels';
+import { useI18n } from '@/i18n/I18nContext';
 import type { KeiroChat } from '../hooks/useKeiroChat';
 import { AuroraBackdrop } from '@/components/login/AuroraBackdrop';
 import { PendingQuestionBar } from './PendingQuestionBar';
@@ -24,6 +25,8 @@ export const KeiroChatBody: React.FC<{
   suggestions?: AIPromptSuggestion[];
 }> = ({ chat, suggestions }) => {
   const { composer, pendingQuestion, selection } = chat;
+  const { t } = useI18n();
+  const labels = useMemo(() => keiroLabels(t), [t]);
   const empty = chat.aiMessages.length === 0;
 
   return (
@@ -46,7 +49,7 @@ export const KeiroChatBody: React.FC<{
           onApproveTool: chat.approveTool,
           onRejectTool: chat.rejectTool,
         }}
-        labels={KEIRO_LABELS}
+        labels={labels}
         suggestions={empty ? suggestions : undefined}
         onSelectPrompt={(text) => composer.send(text)}
       />
@@ -67,7 +70,7 @@ export const KeiroChatBody: React.FC<{
               variant="ghost"
               size="sm"
               onClick={composer.clearQuote}
-              title="Quitar cita"
+              title={t('ai.chat.removeQuote')}
             >
               <X size={14} />
             </Button>
@@ -82,7 +85,7 @@ export const KeiroChatBody: React.FC<{
           onFiles={(files) => composer.addDropped(files)}
           maxFiles={MAX_ATTACHMENTS + 3}
           maxSizeMb={15}
-          labels={KEIRO_LABELS}
+          labels={labels}
         >
           <AIComposer.Attachments />
           <AIComposer.Input />
@@ -94,8 +97,8 @@ export const KeiroChatBody: React.FC<{
               placement="top"
               align="start"
               className="[&_.ai-context-trigger]:select-none [&_.ai-context-trigger]:!border-transparent [&_.ai-context-trigger]:!bg-transparent [&_.ai-context-trigger:hover]:!bg-bg-hover"
-              details={[{ label: 'Cálculo', value: 'Estimado' }]}
-              labels={KEIRO_LABELS}
+              details={[{ label: t('ai.chat.calculation'), value: t('ai.chat.estimated') }]}
+              labels={labels}
             />
           </AIComposer.Tools>
         </AIComposer>

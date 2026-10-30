@@ -1,8 +1,9 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { Loader2, AlertCircle } from 'lucide-react';
-import { Card } from '@openfactu/ui';
+import { AlertCircle } from 'lucide-react';
+import { Card, Spinner } from '@openfactu/ui';
 import { usePlugins } from '../../context/PluginContext';
 import { getDynamicImportApiBase } from '../../utils/dynamicImportBase';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface PluginComponentLoaderProps {
   pluginId: string;
@@ -20,6 +21,7 @@ export const PluginComponentLoader: React.FC<PluginComponentLoaderProps> = ({
   props,
 }) => {
   const { reloadTimestamp } = usePlugins();
+  const { t } = useI18n();
   const [Component, setComponent] = useState<React.ComponentType<any> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,16 +53,14 @@ export const PluginComponentLoader: React.FC<PluginComponentLoaderProps> = ({
           Object.values(module).find((v) => typeof v === 'function');
 
         if (!LoadedComponent) {
-          throw new Error(
-            'El módulo de plugin no exporta un componente válido (default o función).',
-          );
+          throw new Error(t('app.pluginLoader.noExport'));
         }
 
         setComponent(() => LoadedComponent);
       } catch (err: any) {
         if (!isMounted) return;
         console.error(`[PluginLoader] Fallo crítico al cargar ${componentPath}:`, err);
-        setError(err.message || 'Error al descargar o transpilar el componente del plugin.');
+        setError(err.message || t('app.pluginLoader.loadError'));
       }
     };
 
@@ -75,14 +75,12 @@ export const PluginComponentLoader: React.FC<PluginComponentLoaderProps> = ({
       <Card className="border-rose-200 bg-rose-50 p-6 flex flex-col gap-3">
         <div className="flex items-center gap-3">
           <AlertCircle className="text-rose-500" size={24} />
-          <h3 className="text-rose-900 font-bold">Error de Extensión</h3>
+          <h3 className="text-rose-900 font-bold">{t('app.pluginLoader.errorTitle')}</h3>
         </div>
         <div className="bg-white/50 p-3 rounded border border-rose-100 font-mono text-xs text-rose-800">
           {error}
         </div>
-        <p className="text-rose-700 text-sm">
-          Verifica que el archivo exista en la carpeta del plugin y sea válido.
-        </p>
+        <p className="text-rose-700 text-sm">{t('app.pluginLoader.errorHint')}</p>
       </Card>
     );
   }
@@ -91,21 +89,27 @@ export const PluginComponentLoader: React.FC<PluginComponentLoaderProps> = ({
     return (
       <div className="flex flex-col items-center justify-center p-20 space-y-4">
         <div className="relative">
-          <Loader2 className="animate-spin text-blue-500" size={40} />
+          <Spinner size="lg" tone="accent" />
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-1 h-1 bg-blue-500 rounded-full animate-ping" />
           </div>
         </div>
         <div className="text-center">
-          <p className="text-slate-900 font-medium tracking-tight">Cargando Componente Externo</p>
-          <p className="text-slate-400 text-xs mt-1">Sincronizando con el Plugin SDK...</p>
+          <p className="text-slate-900 font-medium tracking-tight">
+            {t('app.pluginLoader.loading')}
+          </p>
+          <p className="text-slate-400 text-xs mt-1">{t('app.pluginLoader.syncing')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <Suspense fallback={<div className="p-10 text-center text-slate-400">Renderizando...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-10 text-center text-slate-400">{t('app.pluginLoader.rendering')}</div>
+      }
+    >
       <Component {...props} />
     </Suspense>
   );

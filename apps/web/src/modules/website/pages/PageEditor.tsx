@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { SiteEditor, type PageDocument, type RenderContext } from '@openfactu/site-builder';
@@ -15,6 +16,7 @@ const AUTOSAVE_MS = 1500;
 export const PageEditor: React.FC = () => {
   const { pageId } = useParams<{ pageId: string }>();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const toast = useToast();
 
   const [site, setSite] = useState<WebsiteSite | null>(null);
@@ -52,7 +54,7 @@ export const PageEditor: React.FC = () => {
         setPages(all);
         setDoc(p.blocksDraft ?? { version: 1, blocks: [] });
       } catch {
-        toast.error('No se pudo cargar la página');
+        toast.error(t('website.editor.loadError'));
         navigate('/website/pages');
       }
     })();
@@ -67,12 +69,12 @@ export const PageEditor: React.FC = () => {
         await websiteApi.updatePage(pageId, { blocksDraft: docToSave });
         setDirty(false);
       } catch {
-        toast.error('Error al guardar');
+        toast.error(t('website.editor.saveError'));
       } finally {
         setSaving(false);
       }
     },
-    [pageId, toast],
+    [pageId, toast, t],
   );
 
   // Autosave con debounce sobre cada cambio del documento
@@ -106,10 +108,10 @@ export const PageEditor: React.FC = () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
       await save(doc);
       await websiteApi.publishPage(pageId);
-      toast.success('Página publicada');
+      toast.success(t('website.editor.published'));
       setPage((p) => (p ? { ...p, status: 'published' } : p));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al publicar');
+      toast.error(e instanceof Error ? e.message : t('website.editor.publishError'));
     } finally {
       setPublishing(false);
     }
@@ -157,33 +159,37 @@ export const PageEditor: React.FC = () => {
       <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border-default bg-bg-card">
         <div className="flex items-center gap-3 min-w-0">
           <Button size="sm" variant="secondary" onClick={() => navigate('/website/pages')}>
-            <ArrowLeft size={14} className="mr-1" /> Páginas
+            <ArrowLeft size={14} className="mr-1" /> {t('website.nav.pages')}
           </Button>
           <div className="min-w-0">
             <p className="font-black text-fg-default truncate leading-tight">{page.title}</p>
             <p className="text-[11px] font-mono text-slate-400 leading-tight">{page.path}</p>
           </div>
           {page.status === 'published' ? (
-            <Badge variant="success">Publicada</Badge>
+            <Badge variant="success">{t('website.status.published')}</Badge>
           ) : (
-            <Badge variant="neutral">Borrador</Badge>
+            <Badge variant="neutral">{t('website.status.draft')}</Badge>
           )}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-slate-400 font-medium w-24 text-right">
-            {saving ? 'Guardando…' : dirty ? 'Cambios sin guardar' : 'Guardado'}
+            {saving
+              ? t('website.common.saving')
+              : dirty
+                ? t('website.editor.unsaved')
+                : t('website.editor.saved')}
           </span>
           <Button size="sm" variant="secondary" onClick={() => save(doc)} disabled={saving}>
-            <Save size={14} className="mr-1" /> Guardar
+            <Save size={14} className="mr-1" /> {t('website.common.save')}
           </Button>
           <Button size="sm" variant="secondary" onClick={handlePreview}>
-            <Eye size={14} className="mr-1" /> Vista previa
+            <Eye size={14} className="mr-1" /> {t('website.editor.preview')}
           </Button>
           <Button
             size="sm"
             variant="secondary"
             onClick={() => setThemeOpen(true)}
-            title="Tema de la web (colores y fuente)"
+            title={t('website.editor.themeTitle')}
           >
             <Palette size={14} />
           </Button>
@@ -191,12 +197,13 @@ export const PageEditor: React.FC = () => {
             size="sm"
             variant="secondary"
             onClick={() => setFullscreen((f) => !f)}
-            title={fullscreen ? 'Salir de pantalla completa (Esc)' : 'Pantalla completa'}
+            title={fullscreen ? t('website.editor.exitFullscreen') : t('website.theme.fullscreen')}
           >
             {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </Button>
           <Button size="sm" onClick={handlePublish} disabled={publishing}>
-            <Rocket size={14} className="mr-1" /> {publishing ? 'Publicando…' : 'Publicar'}
+            <Rocket size={14} className="mr-1" />{' '}
+            {publishing ? t('website.editor.publishing') : t('website.editor.publish')}
           </Button>
         </div>
       </header>

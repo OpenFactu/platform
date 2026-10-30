@@ -1,11 +1,12 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Table } from '@openfactu/ui';
+import { Card, Table, Spinner } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { Chart } from '@openfactu/ui/charts';
-import { LayoutGrid, AlertCircle, Loader2 } from 'lucide-react';
+import { LayoutGrid, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getDynamicImportApiBase } from '../../utils/dynamicImportBase';
+import { useI18n } from '@/i18n/I18nContext';
 
 type QueryResult =
   | { error: string }
@@ -45,6 +46,7 @@ const CodeWidgetRenderer: React.FC<{ widgetId: string; tenantId: string }> = ({
 }) => {
   const [Component, setComponent] = useState<React.ComponentType<any> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     let isMounted = true;
@@ -64,12 +66,12 @@ const CodeWidgetRenderer: React.FC<{ widgetId: string; tenantId: string }> = ({
           module.default ||
           module.Component ||
           Object.values(module).find((v) => typeof v === 'function');
-        if (!Loaded) throw new Error('El componente no exporta nada renderizable (default).');
+        if (!Loaded) throw new Error(t('app.widgets.noExport'));
         setComponent(() => Loaded);
       })
       .catch((err: any) => {
         if (!isMounted) return;
-        setError(err.message || 'Error al cargar el componente.');
+        setError(err.message || t('app.widgets.loadError'));
       });
 
     return () => {
@@ -87,7 +89,7 @@ const CodeWidgetRenderer: React.FC<{ widgetId: string; tenantId: string }> = ({
   if (!Component) {
     return (
       <div className="flex items-center justify-center py-6 text-fg-subtle">
-        <Loader2 size={18} className="animate-spin" />
+        <Spinner size="md" tone="inherit" />
       </div>
     );
   }
@@ -100,10 +102,12 @@ const CodeWidgetRenderer: React.FC<{ widgetId: string; tenantId: string }> = ({
  * `chartType`. Sin fetch propio — los datos llegan en `w.queryResult`.
  */
 const QueryWidgetRenderer: React.FC<{ result?: QueryResult }> = ({ result }) => {
+  const { t } = useI18n();
   if (!result || !('chartType' in result)) {
     return (
       <div className="flex items-center gap-2 text-danger-fg text-xs py-2">
-        <AlertCircle size={14} /> {(result && 'error' in result && result.error) || 'Sin datos'}
+        <AlertCircle size={14} />{' '}
+        {(result && 'error' in result && result.error) || t('app.widgets.noData')}
       </div>
     );
   }
@@ -132,7 +136,7 @@ const QueryWidgetRenderer: React.FC<{ result?: QueryResult }> = ({ result }) => 
         xKey="x"
         series={[{ key: 'y' }]}
         height={192}
-        aria-label="Resultado de la consulta"
+        aria-label={t('app.widgets.queryResult')}
       />
     );
   }
@@ -152,7 +156,7 @@ const QueryWidgetRenderer: React.FC<{ result?: QueryResult }> = ({ result }) => 
         columns={columns}
         data={result.rows}
         rowKey={(_row, i) => i}
-        emptyMessage="La consulta no devolvió filas"
+        emptyMessage={t('app.widgets.noRows')}
       />
     </div>
   );

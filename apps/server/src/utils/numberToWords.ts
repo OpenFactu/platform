@@ -154,3 +154,54 @@ export function amountToSpanishWords(amount: number, currency: string = 'euro'):
 
   return result;
 }
+
+const EN_ONES = [
+  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen',
+  'nineteen',
+];
+const EN_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+function belowThousandEn(n: number): string {
+  const parts: string[] = [];
+  if (n >= 100) {
+    parts.push(`${EN_ONES[Math.floor(n / 100)]} hundred`);
+    n %= 100;
+  }
+  if (n >= 20) {
+    parts.push(EN_TENS[Math.floor(n / 10)] + (n % 10 ? `-${EN_ONES[n % 10]}` : ''));
+  } else if (n > 0 || parts.length === 0) {
+    parts.push(EN_ONES[n]);
+  }
+  return parts.join(' ');
+}
+
+/** Entero a letras en inglés (escala corta: thousand, million). */
+export function numberToEnglishWords(n: number): string {
+  const abs = Math.floor(Math.abs(n));
+  if (abs === 0) return 'zero';
+  if (abs >= 1_000_000_000) return String(abs);
+  const parts: string[] = [];
+  const millions = Math.floor(abs / 1_000_000);
+  const thousands = Math.floor((abs % 1_000_000) / 1000);
+  const rest = abs % 1000;
+  if (millions) parts.push(`${belowThousandEn(millions)} million`);
+  if (thousands) parts.push(`${belowThousandEn(thousands)} thousand`);
+  if (rest) parts.push(belowThousandEn(rest));
+  return parts.join(' ');
+}
+
+/** Importe a letras en inglés: "one hundred twenty euros and fifty cents". */
+export function amountToEnglishWords(amount: number, currency: string = 'euro'): string {
+  const rounded = Math.round(amount * 100) / 100;
+  const integer = Math.floor(rounded);
+  const cents = Math.round((rounded - integer) * 100);
+  let result = `${numberToEnglishWords(integer)} ${integer === 1 ? currency : `${currency}s`}`;
+  if (cents > 0) result += ` and ${numberToEnglishWords(cents)} ${cents === 1 ? 'cent' : 'cents'}`;
+  return result;
+}
+
+/** Importe a letras en el idioma del documento. */
+export function amountToWords(amount: number, locale: string = 'es'): string {
+  return locale.startsWith('en') ? amountToEnglishWords(amount) : amountToSpanishWords(amount);
+}

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge, EmptyState, Table, type TableColumn } from '@openfactu/ui';
@@ -18,27 +19,33 @@ export const OpportunityMiniList: React.FC<{
   hideClient?: boolean;
 }> = ({ items, empty, date, hideClient }) => {
   const fmt = useFormat();
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   const columns: TableColumn<Opportunity>[] = [
-    { header: 'Oportunidad', id: 'title', accessor: 'title', card: 'title' },
+    { header: t('crm.common.opportunity'), id: 'title', accessor: 'title', card: 'title' },
     ...(hideClient
       ? []
       : [
           {
-            header: 'Cliente',
+            header: t('crm.common.customer'),
             id: 'client',
             accessor: (o: Opportunity) => o.partnerName ?? '—',
             card: 'subtitle',
           } as TableColumn<Opportunity>,
         ]),
     {
-      header: 'Etapa',
+      header: t('crm.common.stage'),
       id: 'stage',
       card: 'status',
       cell: (o) => <Badge variant={STAGE_KIND_VARIANT[o.stageKind ?? 'open']}>{o.stageName}</Badge>,
     },
-    { header: 'Importe', id: 'amount', accessor: (o) => fmt.money(o.amount), align: 'right' },
+    {
+      header: t('crm.common.amount'),
+      id: 'amount',
+      accessor: (o) => fmt.money(o.amount),
+      align: 'right',
+    },
     ...(date
       ? [
           {
@@ -57,7 +64,7 @@ export const OpportunityMiniList: React.FC<{
       data={items}
       onRowClick={(o) => navigate(`/crm/opportunities/${o.id}`)}
       density="compact"
-      ariaLabel="Oportunidades"
+      ariaLabel={t('crm.nav.opportunities')}
       emptyMessage={<EmptyState variant="compact" icon={<Target size={18} />} title={empty} />}
     />
   );

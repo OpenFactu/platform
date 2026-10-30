@@ -8,16 +8,18 @@ import {
   RefreshCw,
   ScanLine,
 } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
+import { t as translate } from '@/i18n/i18n';
 
 function cameraError(error: unknown) {
   const name = error instanceof Error ? error.name : '';
   if (name === 'NotAllowedError' || name === 'SecurityError')
-    return 'Permite el acceso a la cámara en el navegador y vuelve a intentarlo.';
+    return translate('hrTime.qr.errors.notAllowed');
   if (name === 'NotFoundError' || name === 'OverconstrainedError')
-    return 'No encontramos una cámara disponible. Conecta una cámara o utiliza tu PIN.';
+    return translate('hrTime.qr.errors.notFound');
   if (name === 'NotReadableError' || name === 'AbortError')
-    return 'La cámara está ocupada o no responde. Cierra otras aplicaciones que la estén usando.';
-  return 'No se pudo iniciar la cámara. Vuelve a intentarlo o utiliza tu PIN.';
+    return translate('hrTime.qr.errors.notReadable');
+  return translate('hrTime.qr.errors.generic');
 }
 
 export function KioskQrScanner({
@@ -29,6 +31,7 @@ export function KioskQrScanner({
   onClose: () => void;
   onUsePin: () => void;
 }) {
+  const { t } = useI18n();
   const video = useRef<HTMLVideoElement>(null);
   const callback = useRef(onScan);
   const [status, setStatus] = useState<'starting' | 'ready' | 'error'>('starting');
@@ -64,9 +67,7 @@ export function KioskQrScanner({
     const start = async () => {
       try {
         if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-          setError(
-            'El navegador necesita una conexión segura para abrir la cámara. Abre el kiosco con HTTPS o utiliza tu PIN.',
-          );
+          setError(translate('hrTime.qr.errors.insecure'));
           setStatus('error');
           return;
         }
@@ -85,7 +86,7 @@ export function KioskQrScanner({
         const track = stream.getVideoTracks()[0];
         track?.addEventListener('ended', () => {
           if (!disposed) {
-            setError('La cámara se ha desconectado. Conéctala y vuelve a intentarlo.');
+            setError(translate('hrTime.qr.errors.disconnected'));
             setStatus('error');
             stop();
           }
@@ -106,7 +107,7 @@ export function KioskQrScanner({
             if (disposed || !result) return;
             const text = result.getText();
             if (!/^ofc:timeclock:v1:[A-Za-z0-9_-]{43}$/.test(text)) {
-              setNotice('Ese QR no es de fichaje. Muestra tu QR personal.');
+              setNotice(translate('hrTime.qr.notTimeclockQr'));
               clearTimeout(noticeTimer);
               noticeTimer = setTimeout(() => {
                 if (!disposed) setNotice('');
@@ -150,7 +151,7 @@ export function KioskQrScanner({
           autoPlay
           playsInline
           muted
-          aria-label="Vista de la cámara para leer tu QR"
+          aria-label={t('hrTime.qr.videoAria')}
           className={`absolute inset-0 w-full h-full object-cover ${status === 'ready' ? '' : 'invisible'}`}
         />
         {status === 'ready' ? (
@@ -168,7 +169,7 @@ export function KioskQrScanner({
             </div>
             <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-slate-950/85 px-3 py-1.5 text-xs text-white">
               <span className="h-2 w-2 rounded-full bg-emerald-400" />
-              Cámara activa
+              {t('hrTime.qr.active')}
             </div>
           </>
         ) : (
@@ -179,15 +180,13 @@ export function KioskQrScanner({
               <Camera size={32} className="text-emerald-300" />
             )}
             <p className="!text-white text-lg font-semibold">
-              {status === 'error' ? 'La cámara no está disponible' : 'Abriendo la cámara'}
+              {status === 'error' ? t('hrTime.qr.unavailable') : t('hrTime.qr.opening')}
             </p>
             {status === 'starting' && (
               <>
                 <LoaderCircle size={20} className="text-slate-400 motion-safe:animate-spin" />
                 <p className="max-w-xs text-sm text-slate-400">
-                  {waiting
-                    ? 'Si aparece una solicitud del navegador, permite el acceso a la cámara.'
-                    : 'Permite el acceso cuando lo solicite el navegador.'}
+                  {waiting ? t('hrTime.qr.allowPrompt') : t('hrTime.qr.allowWhenAsked')}
                 </p>
               </>
             )}
@@ -203,14 +202,12 @@ export function KioskQrScanner({
         <p className={error || notice ? 'text-amber-200' : 'text-slate-300'}>
           {error ||
             notice ||
-            (status === 'ready'
-              ? 'Coloca tu QR dentro del marco y mantenlo quieto. Lo leeremos automáticamente.'
-              : 'También puedes identificarte con tu PIN mientras tanto.')}
+            (status === 'ready' ? t('hrTime.qr.placeQr') : t('hrTime.qr.pinMeanwhile'))}
         </p>
       </div>
       {cameras.length > 1 && (
         <label className="block text-sm text-slate-300">
-          Cámara
+          {t('hrTime.qr.camera')}
           <select
             className="mt-2 block w-full min-h-12 rounded-lg border border-slate-600 bg-slate-900 px-3 text-white"
             value={deviceId || activeDevice}
@@ -221,7 +218,7 @@ export function KioskQrScanner({
           >
             {cameras.map((camera, index) => (
               <option key={camera.deviceId} value={camera.deviceId}>
-                {camera.label || `Cámara ${index + 1}`}
+                {camera.label || t('hrTime.qr.cameraN', { n: index + 1 })}
               </option>
             ))}
           </select>
@@ -238,16 +235,16 @@ export function KioskQrScanner({
             }}
           >
             <RefreshCw size={16} />
-            Reintentar
+            {t('hrTime.qr.retry')}
           </button>
         )}
         <button type="button" className={button} onClick={onUsePin}>
           <KeyRound size={16} />
-          Usar PIN
+          {t('hrTime.qr.usePin')}
         </button>
         <button type="button" className={button + ' border-transparent'} onClick={onClose}>
           <ArrowLeft size={16} />
-          Volver
+          {t('hrTime.qr.back')}
         </button>
       </div>
     </div>

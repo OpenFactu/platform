@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useEffect, useState } from 'react';
 import {
   Badge,
@@ -20,6 +21,7 @@ import type { WebsiteHost, WebsiteSite } from '../domain/website';
 
 /** Ajustes del site: identidad, slug, tema, SEO y dominios. Solo admins. */
 export const Settings: React.FC = () => {
+  const { t } = useI18n();
   const toast = useToast();
   const popup = usePopup();
   const { branding } = useTheme();
@@ -43,7 +45,7 @@ export const Settings: React.FC = () => {
       setHosts(h);
       setPriceLists(Array.isArray(pl) ? pl : []);
     } catch {
-      toast.error('Error al cargar los ajustes');
+      toast.error(t('website.settings.loadError'));
     } finally {
       setLoading(false);
     }
@@ -72,10 +74,10 @@ export const Settings: React.FC = () => {
         priceListId: site.priceListId,
       });
       setSite(updated);
-      toast.success('Ajustes guardados');
+      toast.success(t('website.settings.saved'));
       fetchAll();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al guardar');
+      toast.error(e instanceof Error ? e.message : t('website.editor.saveError'));
     } finally {
       setSaving(false);
     }
@@ -86,26 +88,26 @@ export const Settings: React.FC = () => {
     try {
       await websiteApi.addHost(newHost.kind, newHost.value.trim().toLowerCase());
       setNewHost(null);
-      toast.success('Host añadido');
+      toast.success(t('website.settings.hostAdded'));
       fetchAll();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al añadir host');
+      toast.error(e instanceof Error ? e.message : t('website.settings.hostAddError'));
     }
   };
 
   const handleRemoveHost = async (host: WebsiteHost) => {
     const ok = await popup.confirm({
-      title: 'Quitar dominio',
-      message: `¿Quitar ${host.value}?`,
+      title: t('website.settings.removeDomain'),
+      message: t('website.settings.removeDomainMessage', { host: host.value }),
       tone: 'danger',
-      confirmLabel: 'Quitar',
+      confirmLabel: t('website.settings.remove'),
     });
     if (!ok) return;
     try {
       await websiteApi.removeHost(host.id);
       fetchAll();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al quitar host');
+      toast.error(e instanceof Error ? e.message : t('website.settings.hostRemoveError'));
     }
   };
 
@@ -116,26 +118,31 @@ export const Settings: React.FC = () => {
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500 max-w-4xl">
       <PageHeader
-        eyebrow="Website / Ajustes"
-        title="Ajustes de la web"
+        eyebrow={t('website.settings.eyebrow')}
+        title={t('website.nav.settingsTitle')}
         icon={<Settings2 size={18} />}
         size="lg"
         actions={
           <Button type="button" onClick={handleSave} disabled={saving}>
-            <Save size={16} className="mr-2" /> {saving ? 'Guardando…' : 'Guardar'}
+            <Save size={16} className="mr-2" />{' '}
+            {saving ? t('website.common.saving') : t('website.common.save')}
           </Button>
         }
       />
 
       <Card className="space-y-4">
-        <h2 className="font-black text-fg-default">Identidad</h2>
+        <h2 className="font-black text-fg-default">{t('website.settings.identity')}</h2>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1">Nombre del site</label>
+            <label className="text-xs font-bold text-slate-500 block mb-1">
+              {t('website.settings.siteName')}
+            </label>
             <Input value={site.name} onChange={(e) => patch({ name: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1">Slug (URL)</label>
+            <label className="text-xs font-bold text-slate-500 block mb-1">
+              {t('website.settings.slug')}
+            </label>
             <Input
               value={site.slug}
               onChange={(e) =>
@@ -144,7 +151,7 @@ export const Settings: React.FC = () => {
               className="font-mono"
             />
             <p className="text-[11px] text-slate-400 mt-1">
-              Tu web:{' '}
+              {t('website.settings.yourSite')}{' '}
               <span className="font-mono text-teal-600 dark:text-teal-300">
                 {window.location.origin}/site/{site.slug}
               </span>
@@ -154,28 +161,25 @@ export const Settings: React.FC = () => {
       </Card>
 
       <Card className="space-y-4">
-        <h2 className="font-black text-fg-default">Tema</h2>
-        <p className="text-xs text-slate-400 -mt-2">
-          Por defecto la web usa el branding de la empresa; aquí puedes sobreescribirlo solo para la
-          web.
-        </p>
+        <h2 className="font-black text-fg-default">{t('website.settings.theme')}</h2>
+        <p className="text-xs text-slate-400 -mt-2">{t('website.settings.themeHint')}</p>
         <div className="grid md:grid-cols-3 gap-4">
           <ColorInput
-            label="Color primario"
+            label={t('website.theme.primaryColor')}
             value={overrides.colorPrimary ?? branding.colorPrimary}
             onChange={(v) => patchTheme({ colorPrimary: v })}
           />
           <ColorInput
-            label="Color de acento"
+            label={t('website.theme.accentColor')}
             value={overrides.colorAccent ?? branding.colorAccent}
             onChange={(v) => patchTheme({ colorAccent: v })}
           />
           <Select
-            label="Fuente"
+            label={t('website.theme.font')}
             value={overrides.fontId ?? ''}
             onChange={(v) => patchTheme({ fontId: v || undefined })}
             options={[
-              { value: '', label: `Como el branding (${branding.fontFamily})` },
+              { value: '', label: t('website.theme.fontBranding', { font: branding.fontFamily }) },
               ...FONT_OPTIONS.map((f) => ({ value: f.id, label: f.label })),
             ]}
           />
@@ -184,41 +188,41 @@ export const Settings: React.FC = () => {
 
       <Card className="space-y-4">
         <h2 className="font-black text-fg-default flex items-center gap-2">
-          <ShoppingCart size={16} /> Tienda
+          <ShoppingCart size={16} /> {t('website.settings.store')}
         </h2>
         <div>
           <label className="text-xs font-bold text-slate-500 block mb-1">
-            Tarifa de precios de la web
+            {t('website.settings.priceList')}
           </label>
           <SearchableSelect
             value={site.priceListId ?? ''}
             onChange={(v) => patch({ priceListId: v || null })}
             options={[
-              { value: '', label: 'Precio base de los artículos' },
+              { value: '', label: t('website.settings.basePrice') },
               ...priceLists.map((pl) => ({ value: pl.id, label: pl.name })),
             ]}
-            placeholder="Precio base de los artículos"
+            placeholder={t('website.settings.basePrice')}
           />
-          <p className="text-[11px] text-slate-400 mt-1">
-            La tienda muestra (y el checkout cobra) los precios de esta tarifa. Si el precio de
-            tarifa es menor que el base, el producto sale como oferta: precio anterior tachado y
-            badge de descuento. Los artículos sin precio en la tarifa usan su precio base.
-          </p>
+          <p className="text-[11px] text-slate-400 mt-1">{t('website.settings.priceListHint')}</p>
         </div>
       </Card>
 
       <Card className="space-y-4">
-        <h2 className="font-black text-fg-default">SEO por defecto</h2>
+        <h2 className="font-black text-fg-default">{t('website.settings.seo')}</h2>
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1">Título SEO</label>
+            <label className="text-xs font-bold text-slate-500 block mb-1">
+              {t('website.settings.seoTitle')}
+            </label>
             <Input
               value={site.seoTitle ?? ''}
               onChange={(e) => patch({ seoTitle: e.target.value || null })}
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1">Imagen OG (URL)</label>
+            <label className="text-xs font-bold text-slate-500 block mb-1">
+              {t('website.settings.ogImage')}
+            </label>
             <Input
               value={site.ogImageUrl ?? ''}
               onChange={(e) => patch({ ogImageUrl: e.target.value || null })}
@@ -226,7 +230,9 @@ export const Settings: React.FC = () => {
           </div>
         </div>
         <div>
-          <label className="text-xs font-bold text-slate-500 block mb-1">Descripción</label>
+          <label className="text-xs font-bold text-slate-500 block mb-1">
+            {t('website.settings.description')}
+          </label>
           <Input
             value={site.seoDescription ?? ''}
             onChange={(e) => patch({ seoDescription: e.target.value || null })}
@@ -236,43 +242,46 @@ export const Settings: React.FC = () => {
 
       <Card className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-black text-fg-default">Dominios</h2>
+          <h2 className="font-black text-fg-default">{t('website.settings.domains')}</h2>
           <Button
             size="sm"
             variant="secondary"
             onClick={() => setNewHost({ kind: 'subdomain', value: '' })}
             disabled={!!newHost}
           >
-            <Plus size={14} className="mr-1" /> Añadir
+            <Plus size={14} className="mr-1" /> {t('website.settings.add')}
           </Button>
         </div>
         <p className="text-xs text-slate-400 -mt-2">
-          Además de /site/{site.slug}, la web puede servirse bajo un subdominio de la plataforma o
-          un dominio propio (requiere configuración DNS).
+          {t('website.settings.domainsHint', { path: `/site/${site.slug}` })}
         </p>
         {newHost && (
           <div className="flex gap-2 items-center bg-teal-50/40 dark:bg-teal-500/5 p-3 rounded-lg">
             <Select
-              ariaLabel="Tipo de host"
+              ariaLabel={t('website.settings.hostType')}
               value={newHost.kind}
               onChange={(v) => setNewHost({ ...newHost, kind: v as 'subdomain' | 'domain' })}
               options={[
-                { value: 'subdomain', label: 'Subdominio' },
-                { value: 'domain', label: 'Dominio propio' },
+                { value: 'subdomain', label: t('website.settings.subdomain') },
+                { value: 'domain', label: t('website.settings.ownDomain') },
               ]}
               containerClassName="w-44 shrink-0"
             />
             <Input
-              placeholder={newHost.kind === 'subdomain' ? 'acme.keirost.app' : 'www.miempresa.com'}
+              placeholder={
+                newHost.kind === 'subdomain'
+                  ? 'acme.keirost.app'
+                  : t('website.settings.domainPlaceholder')
+              }
               value={newHost.value}
               onChange={(e) => setNewHost({ ...newHost, value: e.target.value })}
               className="h-9 font-mono text-sm flex-1"
             />
             <Button size="sm" onClick={handleAddHost}>
-              Añadir
+              {t('website.settings.add')}
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setNewHost(null)}>
-              Cancelar
+              {t('website.common.cancel')}
             </Button>
           </div>
         )}
@@ -289,7 +298,7 @@ export const Settings: React.FC = () => {
                   {host.kind === 'slug' ? `/site/${host.value}` : host.value}
                 </span>
                 {host.kind === 'domain' && !host.verified && (
-                  <Badge variant="warning">Pendiente de verificación</Badge>
+                  <Badge variant="warning">{t('website.settings.pendingVerification')}</Badge>
                 )}
                 {host.kind === 'slug' && <Badge variant="neutral">Slug</Badge>}
               </div>
@@ -298,7 +307,7 @@ export const Settings: React.FC = () => {
                   variant="ghost"
                   size="sm"
                   onClick={() => handleRemoveHost(host)}
-                  title="Quitar dominio"
+                  title={t('website.settings.removeDomain')}
                   className="text-fg-subtle hover:text-rose-500"
                 >
                   <Trash2 size={15} />

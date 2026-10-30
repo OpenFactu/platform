@@ -25,6 +25,7 @@ import {
   Table,
   useToast,
   usePopup,
+  Spinner,
 } from '@openfactu/ui';
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import {
@@ -37,9 +38,10 @@ import {
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
 
 type Destination = 'local' | 'gdrive' | 'onedrive';
 
@@ -66,16 +68,24 @@ interface BackupRun {
 }
 
 const DEST_LABELS: Record<Destination, string> = {
-  local: 'Disco del servidor',
+  local: 'settingsCompany.backups.destLocal',
   gdrive: 'Google Drive',
   onedrive: 'OneDrive',
 };
 
-const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const WEEKDAYS = [
+  'settingsCompany.backups.weekdays.sunday',
+  'settingsCompany.backups.weekdays.monday',
+  'settingsCompany.backups.weekdays.tuesday',
+  'settingsCompany.backups.weekdays.wednesday',
+  'settingsCompany.backups.weekdays.thursday',
+  'settingsCompany.backups.weekdays.friday',
+  'settingsCompany.backups.weekdays.saturday',
+];
 
 const FREQUENCY_OPTIONS = [
-  { value: 'daily', label: 'Diaria' },
-  { value: 'weekly', label: 'Semanal' },
+  { value: 'daily', label: 'settingsCompany.backups.daily' },
+  { value: 'weekly', label: 'settingsCompany.backups.weekly' },
 ];
 
 /** Opciones derivadas de WEEKDAYS: el índice ES el valor que espera el cron. */
@@ -95,6 +105,7 @@ function formatSize(bytes: number | null): string {
 export const BackupsTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const popup = usePopup();
   const role = user?.role;
   const canUse = role === 'ADMIN' || role === 'SUPERUSER';
@@ -142,7 +153,7 @@ export const BackupsTab: React.FC = () => {
         if (!cfgRes.ok) throw new Error(`HTTP ${cfgRes.status}`);
         setConfig(cfgRes.data);
       } catch {
-        toast.error('No se pudo cargar la configuración de backups');
+        toast.error(t('settingsCompany.backups.loadError'));
       } finally {
         setLoading(false);
       }
@@ -173,11 +184,11 @@ export const BackupsTab: React.FC = () => {
       const res = await coreApi.raw('PUT', '/api/config/backup', config);
       if (!res.ok) throw new Error(res.data?.error || `HTTP ${res.status}`);
       setConfig(res.data);
-      toast.success('Programación guardada');
+      toast.success(t('settingsCompany.backups.scheduleSaved'));
     } catch (e) {
       toast.error(
         (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-          'Error al guardar',
+          t('settingsCompany.backups.saveError'),
       );
     } finally {
       setSaving(false);
@@ -190,12 +201,12 @@ export const BackupsTab: React.FC = () => {
       const res = await coreApi.raw('POST', '/api/backups/run');
       const body = res.data ?? {};
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-      toast.success('Backup lanzado — puede tardar unos minutos');
+      toast.success(t('settingsCompany.backups.launched'));
       await loadRuns().catch(() => undefined);
     } catch (e) {
       toast.error(
         (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-          'Error al lanzar el backup',
+          t('settingsCompany.backups.launchError'),
       );
     } finally {
       setLaunching(false);
@@ -212,27 +223,36 @@ export const BackupsTab: React.FC = () => {
       a.click();
       setTimeout(() => URL.revokeObjectURL(u), 30_000);
     } catch (e) {
-      toast.error(`Error al descargar: ${e instanceof Error ? e.message : String(e)}`);
+      toast.error(
+        t('settingsCompany.backups.downloadError', {
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
     }
   };
 
   const remove = async (run: BackupRun) => {
     const ok = await popup.confirm({
-      title: 'Eliminar backup',
-      message: `Se borrará "${run.fileName || run.id}" también del destino (${DEST_LABELS[run.destination] || run.destination}). No hay marcha atrás.`,
+      title: t('settingsCompany.backups.deleteTitle'),
+      message: t('settingsCompany.backups.deleteMessage', {
+        file: run.fileName || run.id,
+        destination: DEST_LABELS[run.destination]
+          ? t(DEST_LABELS[run.destination])
+          : run.destination,
+      }),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('settingsCompany.backups.delete'),
     });
     if (!ok) return;
     try {
       const res = await coreApi.raw('DELETE', `/api/backups/${run.id}`);
       if (!res.ok) throw new Error(res.data?.error || `HTTP ${res.status}`);
-      toast.success('Backup eliminado');
+      toast.success(t('settingsCompany.backups.deleted'));
       await loadRuns().catch(() => undefined);
     } catch (e) {
       toast.error(
         (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-          'Error al eliminar',
+          t('settingsCompany.backups.deleteError'),
       );
     }
   };
@@ -240,7 +260,7 @@ export const BackupsTab: React.FC = () => {
   const restore = async () => {
     if (!restoreRun) return;
     if (!restoreName.trim()) {
-      toast.error('Indica el nombre de la nueva empresa');
+      toast.error(t('settingsCompany.backups.nameRequired'));
       return;
     }
     setRestoring(true);
@@ -250,13 +270,15 @@ export const BackupsTab: React.FC = () => {
       });
       const body = res.data ?? {};
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-      toast.success(`Backup restaurado como "${restoreName.trim()}" (id: ${body.tenantId})`);
+      toast.success(
+        t('settingsCompany.backups.restored', { name: restoreName.trim(), id: body.tenantId }),
+      );
       setRestoreRun(null);
       setRestoreName('');
     } catch (e) {
       toast.error(
         (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-          'Error al restaurar',
+          t('settingsCompany.backups.restoreError'),
       );
     } finally {
       setRestoring(false);
@@ -269,8 +291,8 @@ export const BackupsTab: React.FC = () => {
         <div className="p-6 flex items-start gap-3 text-sm text-amber-800 dark:text-amber-200">
           <AlertTriangle size={18} className="shrink-0 mt-0.5" />
           <div>
-            <strong>Acceso restringido.</strong> Necesitas rol ADMIN o SUPERUSER para gestionar
-            backups.
+            <strong>{t('settingsCompany.backups.restrictedTitle')}</strong>{' '}
+            {t('settingsCompany.backups.restrictedBody')}
           </div>
         </div>
       </Card>
@@ -280,7 +302,9 @@ export const BackupsTab: React.FC = () => {
   if (loading || !config) {
     return (
       <Card>
-        <div className="p-6 text-sm text-fg-subtle italic">Cargando…</div>
+        <div className="p-6 text-sm text-fg-subtle italic">
+          {t('settingsCompany.backups.loading')}
+        </div>
       </Card>
     );
   }
@@ -291,34 +315,44 @@ export const BackupsTab: React.FC = () => {
 
   const historyColumns: TableColumn<BackupRun>[] = [
     {
-      header: 'Fecha',
-      cell: (run) => new Date(run.startedAt).toLocaleString(),
+      header: t('settingsCompany.backups.colDate'),
+      cell: (run) => formatDateTime(run.startedAt),
       sortable: true,
       sortAccessor: (run) => run.startedAt,
       primary: true,
       className: 'whitespace-nowrap',
     },
-    { header: 'Tipo', cell: (run) => (run.kind === 'scheduled' ? 'Programado' : 'Manual') },
-    { header: 'Destino', cell: (run) => DEST_LABELS[run.destination] || run.destination },
     {
-      header: 'Tamaño',
+      header: t('settingsCompany.backups.colKind'),
+      cell: (run) =>
+        run.kind === 'scheduled'
+          ? t('settingsCompany.backups.kindScheduled')
+          : t('settingsCompany.backups.kindManual'),
+    },
+    {
+      header: t('settingsCompany.backups.colDestination'),
+      cell: (run) =>
+        DEST_LABELS[run.destination] ? t(DEST_LABELS[run.destination]) : run.destination,
+    },
+    {
+      header: t('settingsCompany.backups.colSize'),
       cell: (run) => formatSize(run.sizeBytes),
       align: 'right',
       sortable: true,
       sortAccessor: (run) => run.sizeBytes ?? 0,
     },
     {
-      header: 'Estado',
+      header: t('settingsCompany.backups.colStatus'),
       cell: (run) => (
         <>
           {run.status === 'ok' && (
             <span className="inline-flex items-center gap-1 text-success-fg text-xs font-bold">
-              <CheckCircle2 size={13} /> OK
+              <CheckCircle2 size={13} /> {t('settingsCompany.backups.statusOk')}
             </span>
           )}
           {run.status === 'running' && (
             <span className="inline-flex items-center gap-1 text-info-fg text-xs font-bold">
-              <Loader2 size={13} className="animate-spin" /> En curso
+              <Spinner size="xs" tone="inherit" /> {t('settingsCompany.backups.statusRunning')}
             </span>
           )}
           {run.status === 'error' && (
@@ -326,7 +360,7 @@ export const BackupsTab: React.FC = () => {
               className="inline-flex items-center gap-1 text-danger-fg text-xs font-bold"
               title={run.error || ''}
             >
-              <XCircle size={13} /> Error
+              <XCircle size={13} /> {t('settingsCompany.backups.statusError')}
             </span>
           )}
         </>
@@ -344,13 +378,13 @@ export const BackupsTab: React.FC = () => {
     const actions: RowAction[] = [];
     if (run.status === 'ok') {
       actions.push({
-        label: 'Descargar',
+        label: t('settingsCompany.backups.download'),
         icon: <Download size={14} />,
         onClick: () => download(run),
       });
       if (isSuperuser) {
         actions.push({
-          label: 'Restaurar como empresa nueva',
+          label: t('settingsCompany.backups.restoreAsNew'),
           icon: <RotateCcw size={14} />,
           onClick: () => {
             setRestoreRun(run);
@@ -361,7 +395,7 @@ export const BackupsTab: React.FC = () => {
     }
     if (run.status !== 'running') {
       actions.push({
-        label: 'Eliminar',
+        label: t('settingsCompany.backups.delete'),
         icon: <Trash2 size={14} />,
         destructive: true,
         onClick: () => remove(run),
@@ -376,32 +410,35 @@ export const BackupsTab: React.FC = () => {
         <div className="p-6 space-y-4">
           <div className="flex items-center gap-2 text-fg-body">
             <DatabaseBackup size={18} />
-            <h2 className="text-lg font-bold">Backups automáticos</h2>
+            <h2 className="text-lg font-bold">{t('settingsCompany.backups.autoTitle')}</h2>
           </div>
           <p className="text-sm text-fg-muted leading-snug">
-            El servidor genera un <code>.zip</code> completo de la empresa (esquema + datos
-            {config.includeUploads ? ' + adjuntos' : ''}) según esta programación y lo guarda en el
-            destino elegido, conservando solo los últimos {config.retentionCount || '—'}.
+            {t('settingsCompany.backups.autoHelpBefore')}
+            <code>.zip</code>
+            {t('settingsCompany.backups.autoHelpAfter', {
+              uploads: config.includeUploads ? t('settingsCompany.backups.plusUploads') : '',
+              count: String(config.retentionCount || '—'),
+            })}
           </p>
 
           {/* Checkbox y no Switch: la programación se persiste con «Guardar
               programación», no al marcar la casilla. */}
           <label className="flex items-center gap-2 text-sm text-fg-body cursor-pointer font-bold">
             <Checkbox checked={config.enabled} onChange={(v) => set('enabled', v)} />
-            Activar backups automáticos
+            {t('settingsCompany.backups.enableAuto')}
           </label>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Select
-              label="Frecuencia"
-              options={FREQUENCY_OPTIONS}
+              label={t('settingsCompany.backups.frequency')}
+              options={FREQUENCY_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
               value={config.frequency}
               onChange={(v) => set('frequency', v as BackupConfig['frequency'])}
             />
             {config.frequency === 'weekly' && (
               <Select
-                label="Día"
-                options={WEEKDAY_OPTIONS}
+                label={t('settingsCompany.backups.day')}
+                options={WEEKDAY_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                 value={String(config.weekday)}
                 onChange={(v) => set('weekday', Number(v))}
               />
@@ -409,7 +446,9 @@ export const BackupsTab: React.FC = () => {
             {/* 24 opciones → SearchableSelect (se puede teclear «03»). Sin prop
                 `label`, así que la etiqueta va aparte. */}
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-bold text-slate-500">Hora</span>
+              <span className="text-xs font-bold text-slate-500">
+                {t('settingsCompany.backups.hour')}
+              </span>
               <SearchableSelect
                 options={HOUR_OPTIONS}
                 value={String(config.hour)}
@@ -417,17 +456,17 @@ export const BackupsTab: React.FC = () => {
               />
             </div>
             <Select
-              label="Destino"
+              label={t('settingsCompany.backups.colDestination')}
               options={(Object.keys(DEST_LABELS) as Destination[]).map((d) => ({
                 value: d,
-                label: `${DEST_LABELS[d]}${cloudConnected(d) ? '' : ' (sin conectar)'}`,
+                label: `${t(DEST_LABELS[d])}${cloudConnected(d) ? '' : t('settingsCompany.backups.notConnectedSuffix')}`,
                 disabled: !cloudConnected(d),
               }))}
               value={config.destination}
               onChange={(v) => set('destination', v as Destination)}
             />
             <NumberInput
-              label="Copias a conservar"
+              label={t('settingsCompany.backups.retention')}
               value={config.retentionCount}
               onChange={(v) => set('retentionCount', Math.max(1, v ?? 1))}
               min={1}
@@ -438,28 +477,28 @@ export const BackupsTab: React.FC = () => {
 
           <label className="flex items-center gap-2 text-xs text-fg-body cursor-pointer">
             <Checkbox checked={config.includeUploads} onChange={(v) => set('includeUploads', v)} />
-            <span>Incluir archivos adjuntos locales (storage/uploads) en el zip.</span>
+            <span>{t('settingsCompany.backups.includeUploads')}</span>
           </label>
 
           <p className="text-[11px] text-slate-400 leading-snug">
-            La hora es la hora local del servidor. Si el destino es Google Drive u OneDrive debe
-            estar conectado en Ajustes → Almacenamiento; los backups se guardan en la carpeta
-            «Keirost Backups».
+            {t('settingsCompany.backups.hourHelp')}
           </p>
 
           {!canUse && (
-            <p className="text-[11px] text-slate-400">
-              Solo un administrador puede guardar esta configuración.
-            </p>
+            <p className="text-[11px] text-slate-400">{t('settingsCompany.backups.adminOnly')}</p>
           )}
           <div className="flex items-center gap-3">
             <Button onClick={saveConfig} disabled={saving || !canUse}>
               <Save size={15} className="mr-2" />
-              {saving ? 'Guardando…' : 'Guardar programación'}
+              {saving
+                ? t('settingsCompany.backups.saving')
+                : t('settingsCompany.backups.saveSchedule')}
             </Button>
             <Button variant="secondary" onClick={runNow} disabled={launching}>
               <Play size={15} className="mr-2" />
-              {launching ? 'Lanzando…' : 'Backup ahora'}
+              {launching
+                ? t('settingsCompany.backups.launching')
+                : t('settingsCompany.backups.runNow')}
             </Button>
           </div>
         </div>
@@ -467,12 +506,14 @@ export const BackupsTab: React.FC = () => {
 
       <Card>
         <div className="p-6 space-y-3">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-fg-muted">Historial</h3>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-fg-muted">
+            {t('settingsCompany.backups.history')}
+          </h3>
           {runs.length === 0 ? (
             <EmptyState
               icon={<DatabaseBackup size={28} />}
-              title="Todavía no hay backups"
-              hint="Activa la programación o lanza uno con «Backup ahora»."
+              title={t('settingsCompany.backups.emptyTitle')}
+              hint={t('settingsCompany.backups.emptyHint')}
             />
           ) : (
             <Table
@@ -490,29 +531,31 @@ export const BackupsTab: React.FC = () => {
           <div className="p-6 space-y-3">
             <div className="flex items-center gap-2 text-fg-body">
               <RotateCcw size={18} />
-              <h3 className="text-lg font-bold">Restaurar backup</h3>
+              <h3 className="text-lg font-bold">{t('settingsCompany.backups.restoreTitle')}</h3>
             </div>
             <div className="rounded-lg border-2 border-dashed border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/20 p-4 text-amber-800 dark:text-amber-200 text-xs flex items-start gap-2">
               <AlertTriangle size={14} className="shrink-0 mt-0.5" />
               <span>
-                La restauración crea una <strong>empresa nueva</strong> a partir del backup «
-                {restoreRun.fileName}» — no sobrescribe la actual. Verifica la copia y después
-                elimina o renombra la empresa antigua si procede.
+                {t('settingsCompany.backups.restoreBefore')}
+                <strong>{t('settingsCompany.backups.restoreStrong')}</strong>
+                {t('settingsCompany.backups.restoreAfter', { file: restoreRun.fileName || '' })}
               </span>
             </div>
             <Input
-              label="Nombre de la nueva empresa"
-              placeholder="Ej: ACME (restaurada)"
+              label={t('settingsCompany.backups.newName')}
+              placeholder={t('settingsCompany.backups.newNamePlaceholder')}
               value={restoreName}
               onChange={(e) => setRestoreName(e.target.value)}
             />
             <div className="flex items-center gap-3">
               <Button onClick={restore} disabled={restoring}>
                 <RotateCcw size={15} className="mr-2" />
-                {restoring ? 'Restaurando…' : 'Restaurar'}
+                {restoring
+                  ? t('settingsCompany.backups.restoring')
+                  : t('settingsCompany.backups.restore')}
               </Button>
               <Button variant="secondary" onClick={() => setRestoreRun(null)} disabled={restoring}>
-                Cancelar
+                {t('settingsCompany.backups.cancel')}
               </Button>
             </div>
           </div>

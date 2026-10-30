@@ -12,35 +12,35 @@ const PartnerGroups = lazy(() =>
 export const partnersModule: ModuleManifest = {
   nav: {
     id: 'partners',
-    label: 'Interlocutores',
+    label: 'partners.nav.label',
     icon: 'Users',
     featureFlag: 'partnersEnabled',
-    description: 'Directorio de clientes y proveedores, agrupados por categorías.',
+    description: 'partners.nav.description',
     category: 'Operaciones',
     subTabs: [
-      { id: 'partners-list', label: 'Directorio', path: '/partners' },
-      { id: 'partner-groups', label: 'Grupos', path: '/partner-groups' },
+      { id: 'partners-list', label: 'partners.nav.directory', path: '/partners' },
+      { id: 'partner-groups', label: 'partners.nav.groups', path: '/partner-groups' },
     ],
   },
   routes: [
     {
       pattern: '/partners',
       Component: Partners,
-      title: 'Directorio',
+      title: 'partners.nav.directory',
       iconName: 'Users',
       permissionPath: '/partners',
     },
     {
       pattern: '/partners/:partnerId',
       Component: PartnerDetail,
-      title: 'Ficha de interlocutor',
+      title: 'partners.nav.detail',
       iconName: 'Users',
       permissionPath: '/partners',
     },
     {
       pattern: '/partner-groups',
       Component: PartnerGroups,
-      title: 'Grupos',
+      title: 'partners.nav.groups',
       iconName: 'Network',
       permissionPath: '/partner-groups',
     },

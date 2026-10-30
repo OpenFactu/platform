@@ -1,6 +1,7 @@
 import type { AIMessageData, AIMessagePart, AIToolStatus } from '@openfactu/ui/ai';
 import { ACTION_LABELS, ASSISTANT_NAME, TOOL_LABELS } from './constants';
 import { splitAttachedDocuments } from './splitAttachedDocuments';
+import { t } from '@/i18n/i18n';
 import type { PendingQuestionOutput } from './pendingQuestion';
 import type { ChatMessage, ChatMessagePart } from './types';
 
@@ -93,13 +94,17 @@ function toParts(message: ChatMessage, isLast: boolean): AIMessagePart[] {
 
     if (part.type === 'file') {
       if (part.mediaType?.startsWith('image')) {
-        parts.push({ type: 'image', url: part.url, alt: part.filename || 'imagen adjunta' });
+        parts.push({
+          type: 'image',
+          url: part.url,
+          alt: part.filename || t('ai.messages.attachedImage'),
+        });
       } else {
         parts.push({
           type: 'file',
           attachment: {
             id: `${message.id}-${i}`,
-            name: part.filename || 'archivo adjunto',
+            name: part.filename || t('ai.messages.attachedFile'),
             mediaType: part.mediaType || 'application/octet-stream',
             url: part.url,
           },
@@ -114,7 +119,8 @@ function toParts(message: ChatMessage, isLast: boolean): AIMessagePart[] {
     const out = p.output as
       | ({ ok?: boolean; error?: string; docCode?: string } & Record<string, unknown>)
       | undefined;
-    const label = ACTION_LABELS[name] || TOOL_LABELS[name] || name;
+    const labelKey = ACTION_LABELS[name] || TOOL_LABELS[name];
+    const label = labelKey ? t(labelKey) : name;
 
     // ── Acciones (piden confirmación) ──
     if (ACTION_LABELS[name]) {
@@ -125,17 +131,16 @@ function toParts(message: ChatMessage, isLast: boolean): AIMessagePart[] {
           id: p.approval?.id ?? `${message.id}-${i}`,
           name:
             status === 'approval-required'
-              ? `Confirmación requerida: ${label}`
+              ? t('ai.messages.confirmationRequired', { label })
               : status === 'completed' && out?.docCode
                 ? `${label} — ${out.docCode}`
                 : label,
-          description:
-            status === 'approval-required' ? 'Nada se ejecuta hasta que confirmes.' : undefined,
+          description: status === 'approval-required' ? t('ai.messages.nothingRuns') : undefined,
           status,
           input: status === 'approval-required' ? p.input : undefined,
           error:
             status === 'error'
-              ? out?.error || p.errorText || 'El servidor no dio más detalles del error.'
+              ? out?.error || p.errorText || t('ai.messages.noErrorDetails')
               : undefined,
         },
       });
@@ -209,7 +214,7 @@ export function toAIMessages(
     return {
       id: m.id,
       role: m.role === 'system' ? 'system' : isUser ? 'user' : 'assistant',
-      name: isUser ? 'Tú' : ASSISTANT_NAME,
+      name: isUser ? t('ai.messages.you') : ASSISTANT_NAME,
       avatar: isUser ? (userAvatarUrl ?? undefined) : undefined,
       parts,
     };

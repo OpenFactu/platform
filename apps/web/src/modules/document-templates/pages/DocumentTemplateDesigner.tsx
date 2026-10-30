@@ -78,37 +78,41 @@ import {
 import { extractPlaceholders } from '../components/canvas/params';
 import { SqlEditorModal } from '../components/SqlEditorModal';
 import { templatesApi } from '../api';
+import { t } from '@/i18n/i18n';
+import { useI18n } from '@/i18n/I18nContext';
 
+/** Claves i18n (se traducen al pintar). */
 const BAND_LABELS: Record<BandKind, string> = {
-  pageHeader: 'Cabecera de página',
-  docHeader: 'Cabecera del documento',
-  detail: 'Detalle (líneas)',
-  totals: 'Totales',
-  pageFooter: 'Pie de página',
-  custom: 'Sección',
+  pageHeader: 'templates.designer.bands.pageHeader',
+  docHeader: 'templates.designer.bands.docHeader',
+  detail: 'templates.designer.bands.detail',
+  totals: 'templates.designer.bands.totals',
+  pageFooter: 'templates.designer.bands.pageFooter',
+  custom: 'templates.designer.bands.custom',
 };
 
 /** Etiqueta visible de una banda: su `label` propio o el genérico por `kind`. */
-const bandLabel = (b: Band): string => b.label ?? BAND_LABELS[b.kind];
+const bandLabel = (b: Band): string => b.label ?? t(BAND_LABELS[b.kind]);
 
+/** `label` es una clave i18n: se traduce al pintar. */
 const PALETTE_ITEMS: { kind: ElementKind; label: string }[] = [
-  { kind: 'text', label: 'Texto' },
-  { kind: 'image', label: 'Imagen' },
-  { kind: 'shape', label: 'Forma' },
-  { kind: 'divider', label: 'Divisor' },
-  { kind: 'box', label: 'Caja' },
-  { kind: 'spacer', label: 'Espacio (hueco)' },
-  { kind: 'field', label: 'Campo' },
-  { kind: 'linesTable', label: 'Tabla líneas' },
-  { kind: 'list', label: 'Lista' },
-  { kind: 'summary', label: 'Resumen' },
-  { kind: 'totals', label: 'Totales' },
-  { kind: 'currentDate', label: 'Fecha' },
-  { kind: 'qr', label: 'QR' },
-  { kind: 'barcode', label: 'Código barras' },
-  { kind: 'conditional', label: 'Condicional' },
-  { kind: 'signature', label: 'Firma' },
-  { kind: 'pageBreak', label: 'Salto página' },
+  { kind: 'text', label: 'templates.designer.palette.text' },
+  { kind: 'image', label: 'templates.designer.palette.image' },
+  { kind: 'shape', label: 'templates.designer.palette.shape' },
+  { kind: 'divider', label: 'templates.designer.palette.divider' },
+  { kind: 'box', label: 'templates.designer.palette.box' },
+  { kind: 'spacer', label: 'templates.designer.palette.spacer' },
+  { kind: 'field', label: 'templates.designer.palette.field' },
+  { kind: 'linesTable', label: 'templates.designer.palette.linesTable' },
+  { kind: 'list', label: 'templates.designer.palette.list' },
+  { kind: 'summary', label: 'templates.designer.palette.summary' },
+  { kind: 'totals', label: 'templates.designer.palette.totals' },
+  { kind: 'currentDate', label: 'templates.designer.palette.currentDate' },
+  { kind: 'qr', label: 'templates.designer.palette.qr' },
+  { kind: 'barcode', label: 'templates.designer.palette.barcode' },
+  { kind: 'conditional', label: 'templates.designer.palette.conditional' },
+  { kind: 'signature', label: 'templates.designer.palette.signature' },
+  { kind: 'pageBreak', label: 'templates.designer.palette.pageBreak' },
 ];
 
 /** Tamaño por defecto en mm cuando se suelta un elemento de la paleta. */
@@ -278,6 +282,7 @@ function cloneElement(el: CanvasElement, dx = 5, dy = 5): CanvasElement {
 }
 
 export const DocumentTemplateDesigner: React.FC = () => {
+  const { t } = useI18n();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
@@ -328,7 +333,9 @@ export const DocumentTemplateDesigner: React.FC = () => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     } else {
-      rootRef.current.requestFullscreen().catch(() => toast.error('Fullscreen no disponible'));
+      rootRef.current
+        .requestFullscreen()
+        .catch(() => toast.error(t('templates.designer.toast.fullscreenUnavailable')));
     }
   };
 
@@ -373,7 +380,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
           setSaveState('saved');
         }
       } catch {
-        toast.error('No se pudo cargar la plantilla');
+        toast.error(t('templates.designer.toast.loadError'));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -405,12 +412,12 @@ export const DocumentTemplateDesigner: React.FC = () => {
       lastSavedRef.current = snapshot;
       // Si entretanto el usuario siguió editando, queda 'dirty'; si no, 'saved'.
       setSaveState(JSON.stringify(layout) === snapshot ? 'saved' : 'dirty');
-      if (!opts.silent) toast.success('Plantilla guardada');
+      if (!opts.silent) toast.success(t('templates.designer.toast.saved'));
       if (opts.returnAfter) navigate('/document-templates');
     } catch {
       setSaveState('dirty');
       // El autoguardado no molesta con toasts; el manual sí avisa del fallo.
-      if (!opts.silent) toast.error('Error al guardar');
+      if (!opts.silent) toast.error(t('templates.designer.toast.saveError'));
     } finally {
       setSaving(false);
     }
@@ -531,10 +538,14 @@ export const DocumentTemplateDesigner: React.FC = () => {
   const handleDragStart = (event: DragStartEvent) => {
     const data = event.active.data.current as any;
     if (data?.action === 'create') {
-      const label = PALETTE_ITEMS.find((p) => p.kind === data.kind)?.label ?? String(data.kind);
+      const item = PALETTE_ITEMS.find((p) => p.kind === data.kind);
+      const label = item ? t(item.label) : String(data.kind);
       setActiveDrag({ kind: 'palette', label });
     } else if (data?.action === 'createField') {
-      setActiveDrag({ kind: 'field', label: data.descriptor?.label ?? 'Campo' });
+      setActiveDrag({
+        kind: 'field',
+        label: data.descriptor?.label ?? t('templates.designer.palette.field'),
+      });
     } else {
       setActiveDrag(null);
     }
@@ -753,7 +764,11 @@ export const DocumentTemplateDesigner: React.FC = () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(url);
     } catch (e) {
-      toast.error(`Preview falló: ${e instanceof Error ? e.message : undefined}`);
+      toast.error(
+        t('templates.designer.toast.previewFailed', {
+          error: String(e instanceof Error ? e.message : undefined),
+        }),
+      );
     } finally {
       setPreviewLoading(false);
     }
@@ -770,7 +785,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${(template?.name || 'plantilla').replace(/\s+/g, '_')}.canvas.json`;
+    a.download = `${(template?.name || t('templates.designer.exportFileName')).replace(/\s+/g, '_')}.canvas.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -780,14 +795,18 @@ export const DocumentTemplateDesigner: React.FC = () => {
       const text = await file.text();
       const parsed = JSON.parse(text);
       if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.bands)) {
-        throw new Error('Formato inválido');
+        throw new Error(t('templates.designer.toast.invalidFormat'));
       }
       setLayout(parsed as CanvasLayout);
       setSelectedElementId(null);
-      toast.success('Layout importado');
+      toast.success(t('templates.designer.toast.layoutImported'));
     } catch (e) {
       toast.error(
-        `No se pudo importar: ${(e instanceof Error ? e.message : undefined) || 'JSON inválido'}`,
+        t('templates.designer.toast.importFailed', {
+          error:
+            (e instanceof Error ? e.message : undefined) ||
+            t('templates.designer.toast.invalidJson'),
+        }),
       );
     }
   };
@@ -798,15 +817,15 @@ export const DocumentTemplateDesigner: React.FC = () => {
         canvasLayout?: CanvasLayout | null;
       };
       if (!data.canvasLayout || data.canvasLayout.version !== 1) {
-        toast.error('Esa plantilla no tiene canvas layout (posiblemente sea legacy HTML).');
+        toast.error(t('templates.designer.toast.noCanvasLayout'));
         return;
       }
       setLayout(data.canvasLayout);
       setSelectedElementId(null);
       setImportOpen(false);
-      toast.success(`Importado desde "${data.name}"`);
+      toast.success(t('templates.designer.toast.importedFrom', { name: data.name }));
     } catch {
-      toast.error('No se pudo importar la plantilla');
+      toast.error(t('templates.designer.toast.importTemplateError'));
     }
   };
 
@@ -832,7 +851,13 @@ export const DocumentTemplateDesigner: React.FC = () => {
       ...prev,
       bands: [
         ...prev.bands,
-        { id: genId('band'), kind: 'custom', height: 20, elements: [], label: 'Sección' },
+        {
+          id: genId('band'),
+          kind: 'custom',
+          height: 20,
+          elements: [],
+          label: t('templates.designer.bands.custom'),
+        },
       ],
     }));
   };
@@ -1002,123 +1027,123 @@ export const DocumentTemplateDesigner: React.FC = () => {
   const cssElement = cssElementId ? findElement(cssElementId) : null;
 
   /** Construye las opciones del menú contextual según el objetivo. */
-  const buildCtxItems = (t: CtxTarget): ContextMenuItem[] => {
+  const buildCtxItems = (tg: CtxTarget): ContextMenuItem[] => {
     const hasClip = !!clipboardRef.current;
     const hasStyleClip = !!styleClipboardRef.current;
-    if (t.scope === 'element') {
-      const el = findElement(t.elementId);
+    if (tg.scope === 'element') {
+      const el = findElement(tg.elementId);
       const locked = !!el?.locked;
       const hidden = !!el?.hidden;
       const canStyle = !!el && 'style' in el;
       return [
         {
-          label: 'Duplicar',
+          label: t('templates.designer.ctx.duplicate'),
           icon: <Copy size={14} />,
-          onClick: () => handleDuplicateElement(t.bandId, t.elementId),
+          onClick: () => handleDuplicateElement(tg.bandId, tg.elementId),
         },
         {
-          label: 'Copiar',
+          label: t('templates.designer.ctx.copy'),
           icon: <Copy size={14} />,
-          onClick: () => handleCopyElement(t.elementId),
+          onClick: () => handleCopyElement(tg.elementId),
         },
         {
-          label: 'Pegar',
+          label: t('templates.designer.ctx.paste'),
           icon: <ClipboardPaste size={14} />,
           disabled: !hasClip,
-          onClick: () => handlePasteElement(t.bandId),
+          onClick: () => handlePasteElement(tg.bandId),
         },
         {
-          label: 'Copiar estilo',
+          label: t('templates.designer.ctx.copyStyle'),
           disabled: !canStyle,
-          onClick: () => handleCopyStyle(t.elementId),
+          onClick: () => handleCopyStyle(tg.elementId),
         },
         {
-          label: 'Pegar estilo',
+          label: t('templates.designer.ctx.pasteStyle'),
           disabled: !hasStyleClip || !canStyle,
-          onClick: () => handlePasteStyle(t.elementId),
+          onClick: () => handlePasteStyle(tg.elementId),
         },
         {
-          label: 'Traer al frente',
+          label: t('templates.designer.ctx.bringToFront'),
           icon: <BringToFront size={14} />,
           separatorBefore: true,
-          onClick: () => handleZOrder(t.bandId, t.elementId, 'front'),
+          onClick: () => handleZOrder(tg.bandId, tg.elementId, 'front'),
         },
         {
-          label: 'Enviar al fondo',
+          label: t('templates.designer.ctx.sendToBack'),
           icon: <SendToBack size={14} />,
-          onClick: () => handleZOrder(t.bandId, t.elementId, 'back'),
+          onClick: () => handleZOrder(tg.bandId, tg.elementId, 'back'),
         },
         {
-          label: hidden ? 'Mostrar' : 'Ocultar',
+          label: hidden ? t('templates.designer.ctx.show') : t('templates.designer.ctx.hide'),
           icon: hidden ? <Eye size={14} /> : <EyeOff size={14} />,
           separatorBefore: true,
-          onClick: () => handleUpdateElement(t.elementId, { hidden: !hidden }),
+          onClick: () => handleUpdateElement(tg.elementId, { hidden: !hidden }),
         },
         {
-          label: locked ? 'Desbloquear' : 'Bloquear',
+          label: locked ? t('templates.designer.ctx.unlock') : t('templates.designer.ctx.lock'),
           icon: locked ? <Unlock size={14} /> : <Lock size={14} />,
-          onClick: () => handleUpdateElement(t.elementId, { locked: !locked }),
+          onClick: () => handleUpdateElement(tg.elementId, { locked: !locked }),
         },
         {
-          label: 'Editar CSS',
+          label: t('templates.designer.ctx.editCss'),
           icon: <Code size={14} />,
-          onClick: () => setCssElementId(t.elementId),
+          onClick: () => setCssElementId(tg.elementId),
         },
         {
-          label: 'Eliminar',
+          label: t('templates.designer.ctx.delete'),
           icon: <Trash2 size={14} />,
           destructive: true,
           separatorBefore: true,
-          onClick: () => handleDeleteElement(t.bandId, t.elementId),
+          onClick: () => handleDeleteElement(tg.bandId, tg.elementId),
         },
       ];
     }
-    if (t.scope === 'band') {
+    if (tg.scope === 'band') {
       return [
         {
-          label: 'Añadir elemento aquí',
+          label: t('templates.designer.ctx.addElementHere'),
           icon: <Plus size={14} />,
           submenu: PALETTE_ITEMS.map((p) => ({
-            label: p.label,
-            onClick: () => handleAddElementToBand(t.bandId, p.kind, t.xMm, t.yMm),
+            label: t(p.label),
+            onClick: () => handleAddElementToBand(tg.bandId, p.kind, tg.xMm, tg.yMm),
           })),
         },
         {
-          label: 'Pegar',
+          label: t('templates.designer.ctx.paste'),
           icon: <ClipboardPaste size={14} />,
           disabled: !hasClip,
-          onClick: () => handlePasteElement(t.bandId, t.xMm, t.yMm),
+          onClick: () => handlePasteElement(tg.bandId, tg.xMm, tg.yMm),
         },
         {
-          label: 'Ocultar banda',
+          label: t('templates.designer.ctx.hideBand'),
           icon: <EyeOff size={14} />,
           separatorBefore: true,
-          onClick: () => handleUpdateBand(t.bandId, { hidden: true }),
+          onClick: () => handleUpdateBand(tg.bandId, { hidden: true }),
         },
         {
-          label: 'Subir banda',
+          label: t('templates.designer.ctx.moveBandUp'),
           icon: <ChevronUp size={14} />,
-          onClick: () => handleMoveBand(t.bandId, -1),
+          onClick: () => handleMoveBand(tg.bandId, -1),
         },
         {
-          label: 'Bajar banda',
+          label: t('templates.designer.ctx.moveBandDown'),
           icon: <ChevronDown size={14} />,
-          onClick: () => handleMoveBand(t.bandId, 1),
+          onClick: () => handleMoveBand(tg.bandId, 1),
         },
         {
-          label: 'Eliminar sección',
+          label: t('templates.designer.ctx.deleteSection'),
           icon: <Trash2 size={14} />,
           destructive: true,
           separatorBefore: true,
-          disabled: layout.bands.find((b) => b.id === t.bandId)?.kind !== 'custom',
-          onClick: () => handleDeleteBand(t.bandId),
+          disabled: layout.bands.find((b) => b.id === tg.bandId)?.kind !== 'custom',
+          onClick: () => handleDeleteBand(tg.bandId),
         },
       ];
     }
     // canvas vacío
     return [
       {
-        label: 'Pegar',
+        label: t('templates.designer.ctx.paste'),
         icon: <ClipboardPaste size={14} />,
         disabled: !hasClip,
         onClick: () => {
@@ -1127,7 +1152,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
         },
       },
       {
-        label: 'Editar CSS global',
+        label: t('templates.designer.ctx.editGlobalCss'),
         icon: <Code size={14} />,
         separatorBefore: true,
         onClick: () => setGlobalCssOpen(true),
@@ -1138,7 +1163,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center text-slate-500">
-        Cargando plantilla…
+        {t('templates.designer.loadingTemplate')}
       </div>
     );
   }
@@ -1146,7 +1171,7 @@ export const DocumentTemplateDesigner: React.FC = () => {
   return (
     <div ref={rootRef} className="absolute inset-0 flex flex-col bg-slate-50 dark:bg-slate-950">
       <Toolbar
-        title={template?.name ?? 'Sin título'}
+        title={template?.name ?? t('templates.designer.untitled')}
         onBack={handleBack}
         onSave={() => handleSave()}
         saving={saving}
@@ -1165,7 +1190,9 @@ export const DocumentTemplateDesigner: React.FC = () => {
       />
       {(template as any)?.docType === 'LABEL' && (
         <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 border-b border-purple-200 dark:border-purple-800/40 text-xs flex-wrap">
-          <span className="font-bold text-purple-700 dark:text-purple-300">Modo:</span>
+          <span className="font-bold text-purple-700 dark:text-purple-300">
+            {t('templates.designer.label.mode')}
+          </span>
           <div className="inline-flex rounded border border-purple-300 dark:border-purple-700 overflow-hidden">
             <button
               type="button"
@@ -1184,44 +1211,44 @@ export const DocumentTemplateDesigner: React.FC = () => {
               }}
               className={`px-3 py-1 ${labelEditMode === 'simple' ? 'bg-purple-600 text-white font-bold' : 'bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-200'}`}
             >
-              Simple (formulario)
+              {t('templates.designer.label.simple')}
             </button>
             <button
               type="button"
               onClick={() => setLabelEditMode('advanced')}
               className={`px-3 py-1 border-l border-purple-300 dark:border-purple-700 ${labelEditMode === 'advanced' ? 'bg-purple-600 text-white font-bold' : 'bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-200'}`}
             >
-              Avanzado (canvas)
+              {t('templates.designer.label.advanced')}
             </button>
           </div>
           {labelEditMode === 'advanced' && (
             <>
               <span className="font-bold text-purple-700 dark:text-purple-300 ml-2">
-                Layouts predefinidos:
+                {t('templates.designer.label.presets')}
               </span>
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm('Sustituir el layout por etiqueta de artículo. ¿Continuar?')) {
+                  if (confirm(t('templates.designer.label.replaceArticleConfirm'))) {
                     setLayout(createLabelLayout());
                     setSelectedElementId(null);
                   }
                 }}
                 className="px-2 py-1 rounded border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-900/40"
               >
-                Etiqueta de artículo
+                {t('templates.designer.label.articleLabel')}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  if (confirm('Sustituir el layout por etiqueta de documento. ¿Continuar?')) {
+                  if (confirm(t('templates.designer.label.replaceDocumentConfirm'))) {
                     setLayout(createDocumentLabelLayout());
                     setSelectedElementId(null);
                   }
                 }}
                 className="px-2 py-1 rounded border border-purple-300 dark:border-purple-700 bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-900/40"
               >
-                Etiqueta de documento
+                {t('templates.designer.label.documentLabel')}
               </button>
             </>
           )}
@@ -1241,8 +1268,8 @@ export const DocumentTemplateDesigner: React.FC = () => {
         value={layout.customCss ?? ''}
         onChange={(v) => handleUpdatePage({ customCss: v.trim() ? v : undefined })}
         onClose={() => setGlobalCssOpen(false)}
-        title="CSS global del documento"
-        helpText="Reglas CSS completas. Se inyectan tras el CSS base; apunta a elementos con la clase que les pongas en su inspector."
+        title={t('templates.designer.css.globalTitle')}
+        helpText={t('templates.designer.css.globalHelp')}
       />
       <CssEditorModal
         open={!!cssElement}
@@ -1254,8 +1281,8 @@ export const DocumentTemplateDesigner: React.FC = () => {
           } as Partial<CanvasElement>)
         }
         onClose={() => setCssElementId(null)}
-        title="CSS del elemento"
-        helpText="Propiedades CSS que se anexan al estilo del elemento (sin selector). Ej.: letter-spacing:2px;"
+        title={t('templates.designer.css.elementTitle')}
+        helpText={t('templates.designer.css.elementHelp')}
       />
       {importOpen && (
         <ImportFromTemplateDialog
@@ -1381,139 +1408,156 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onRedo,
   canUndo,
   canRedo,
-}) => (
-  <header className="flex items-center gap-2 px-4 h-14 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-    <button
-      onClick={onBack}
-      className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-      title="Volver a plantillas"
-    >
-      <ArrowLeft size={18} />
-    </button>
-    <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">{title}</div>
-    <div className="flex-1" />
-    <ToolbarButton
-      icon={<Undo size={16} />}
-      label="Deshacer (Ctrl+Z)"
-      disabled={!canUndo}
-      onClick={onUndo}
-    />
-    <ToolbarButton
-      icon={<Redo size={16} />}
-      label="Rehacer (Ctrl+Y)"
-      disabled={!canRedo}
-      onClick={onRedo}
-    />
-    <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
-    <button
-      type="button"
-      onClick={onImportFromTemplate}
-      title="Importar desde otra plantilla"
-      className="flex items-center gap-1 px-2 py-1.5 rounded text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-    >
-      <FileUp size={16} />
-    </button>
-    <label
-      title="Importar JSON"
-      className="flex items-center gap-1 px-2 py-1.5 rounded text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-    >
-      <input
-        type="file"
-        accept="application/json,.json"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) {
-            onImport(f);
-            e.target.value = '';
-          }
-        }}
+}) => {
+  const { t } = useI18n();
+  return (
+    <header className="flex items-center gap-2 px-4 h-14 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+      <button
+        onClick={onBack}
+        className="p-2 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+        title={t('templates.designer.toolbar.back')}
+      >
+        <ArrowLeft size={18} />
+      </button>
+      <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">{title}</div>
+      <div className="flex-1" />
+      <ToolbarButton
+        icon={<Undo size={16} />}
+        label={t('templates.designer.toolbar.undo')}
+        disabled={!canUndo}
+        onClick={onUndo}
       />
-      <FileUp size={16} className="opacity-60" />
-      <span className="text-[10px]">JSON</span>
-    </label>
-    <button
-      type="button"
-      onClick={onExport}
-      title="Exportar JSON"
-      className="flex items-center gap-1 px-2 py-1.5 rounded text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-    >
-      <FileDown size={16} />
-      <span className="text-[10px]">JSON</span>
-    </button>
-    <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
-    <button
-      type="button"
-      onClick={onPreview}
-      disabled={previewLoading}
-      title="Previsualizar PDF"
-      className="flex items-center gap-1 px-2 py-1.5 rounded text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
-    >
-      <Eye size={16} /> {previewLoading && <span className="text-[10px]">…</span>}
-    </button>
-    <button
-      type="button"
-      onClick={onToggleFullscreen}
-      title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-      className="p-2 rounded text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-    >
-      {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-    </button>
-    <span
-      className={`text-[11px] mr-1 select-none ${
-        saveState === 'saved'
-          ? 'text-emerald-600 dark:text-emerald-400'
-          : saveState === 'saving'
-            ? 'text-slate-400'
-            : 'text-amber-600 dark:text-amber-400'
-      }`}
-      title="Autoguardado activado"
-    >
-      {saveState === 'saving'
-        ? 'Guardando…'
-        : saveState === 'saved'
-          ? '✓ Guardado'
-          : '● Sin guardar'}
-    </span>
-    <button
-      onClick={onSave}
-      disabled={saving}
-      title="Guardar ahora (no cierra el diseñador)"
-      className="flex items-center gap-2 px-3 py-1.5 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-    >
-      <Save size={16} /> {saving ? 'Guardando…' : 'Guardar'}
-    </button>
-  </header>
-);
+      <ToolbarButton
+        icon={<Redo size={16} />}
+        label={t('templates.designer.toolbar.redo')}
+        disabled={!canRedo}
+        onClick={onRedo}
+      />
+      <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+      <button
+        type="button"
+        onClick={onImportFromTemplate}
+        title={t('templates.designer.toolbar.importFromTemplate')}
+        className="flex items-center gap-1 px-2 py-1.5 rounded text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+      >
+        <FileUp size={16} />
+      </button>
+      <label
+        title={t('templates.designer.toolbar.importJson')}
+        className="flex items-center gap-1 px-2 py-1.5 rounded text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+      >
+        <input
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) {
+              onImport(f);
+              e.target.value = '';
+            }
+          }}
+        />
+        <FileUp size={16} className="opacity-60" />
+        <span className="text-[10px]">JSON</span>
+      </label>
+      <button
+        type="button"
+        onClick={onExport}
+        title={t('templates.designer.toolbar.exportJson')}
+        className="flex items-center gap-1 px-2 py-1.5 rounded text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+      >
+        <FileDown size={16} />
+        <span className="text-[10px]">JSON</span>
+      </button>
+      <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+      <button
+        type="button"
+        onClick={onPreview}
+        disabled={previewLoading}
+        title={t('templates.designer.toolbar.preview')}
+        className="flex items-center gap-1 px-2 py-1.5 rounded text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+      >
+        <Eye size={16} /> {previewLoading && <span className="text-[10px]">…</span>}
+      </button>
+      <button
+        type="button"
+        onClick={onToggleFullscreen}
+        title={
+          isFullscreen
+            ? t('templates.designer.toolbar.exitFullscreen')
+            : t('templates.designer.toolbar.fullscreen')
+        }
+        className="p-2 rounded text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+      >
+        {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+      </button>
+      <span
+        className={`text-[11px] mr-1 select-none ${
+          saveState === 'saved'
+            ? 'text-emerald-600 dark:text-emerald-400'
+            : saveState === 'saving'
+              ? 'text-slate-400'
+              : 'text-amber-600 dark:text-amber-400'
+        }`}
+        title={t('templates.designer.toolbar.autosaveOn')}
+      >
+        {saveState === 'saving'
+          ? t('templates.designer.toolbar.saving')
+          : saveState === 'saved'
+            ? t('templates.designer.toolbar.saved')
+            : t('templates.designer.toolbar.unsaved')}
+      </span>
+      <button
+        onClick={onSave}
+        disabled={saving}
+        title={t('templates.designer.toolbar.saveNow')}
+        className="flex items-center gap-2 px-3 py-1.5 rounded bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+      >
+        <Save size={16} />{' '}
+        {saving ? t('templates.designer.toolbar.saving') : t('templates.designer.toolbar.save')}
+      </button>
+    </header>
+  );
+};
 
-const PreviewModal: React.FC<{ url: string; onClose: () => void }> = ({ url, onClose }) => (
-  <div
-    className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
-    onClick={onClose}
-  >
+const PreviewModal: React.FC<{ url: string; onClose: () => void }> = ({ url, onClose }) => {
+  const { t } = useI18n();
+  return (
     <div
-      className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-[min(900px,95vw)] h-[90vh] flex flex-col"
-      onClick={(e) => e.stopPropagation()}
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+      onClick={onClose}
     >
-      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <h2 className="font-bold text-slate-900 dark:text-slate-100">Vista previa del PDF</h2>
-        <div className="flex items-center gap-2">
-          <a
-            href={url}
-            download="preview.pdf"
-            className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
-          >
-            Descargar
-          </a>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-            ✕
-          </button>
+      <div
+        className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-[min(900px,95vw)] h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <h2 className="font-bold text-slate-900 dark:text-slate-100">
+            {t('templates.designer.previewModal.title')}
+          </h2>
+          <div className="flex items-center gap-2">
+            <a
+              href={url}
+              download="preview.pdf"
+              className="text-xs px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
+            >
+              {t('templates.designer.previewModal.download')}
+            </a>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+              ✕
+            </button>
+          </div>
         </div>
+        <iframe
+          src={url}
+          className="flex-1 w-full"
+          title={t('templates.designer.previewModal.iframeTitle')}
+        />
       </div>
-      <iframe src={url} className="flex-1 w-full" title="PDF preview" />
     </div>
-  </div>
-);
+  );
+};
 
 const ToolbarButton: React.FC<{
   icon: React.ReactNode;
@@ -1534,16 +1578,21 @@ const ToolbarButton: React.FC<{
 
 // ---------- paleta ----------
 
-const PalettePanel: React.FC = () => (
-  <aside className="w-56 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
-    <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">Paleta</div>
-    <ul className="px-2 pb-4 space-y-1">
-      {PALETTE_ITEMS.map((it) => (
-        <PaletteItem key={it.kind} kind={it.kind} label={it.label} />
-      ))}
-    </ul>
-  </aside>
-);
+const PalettePanel: React.FC = () => {
+  const { t } = useI18n();
+  return (
+    <aside className="w-56 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
+      <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">
+        {t('templates.designer.palette.title')}
+      </div>
+      <ul className="px-2 pb-4 space-y-1">
+        {PALETTE_ITEMS.map((it) => (
+          <PaletteItem key={it.kind} kind={it.kind} label={t(it.label)} />
+        ))}
+      </ul>
+    </aside>
+  );
+};
 
 const PaletteItem: React.FC<{ kind: ElementKind; label: string }> = ({ kind, label }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -1616,7 +1665,7 @@ function buildFieldDescriptors(args: {
         out.push({
           key: `q-${name}-${c}`,
           label: c,
-          group: `Consulta: ${name}`,
+          group: t('templates.designer.fields.queryGroup', { name }),
           canvasPath: `queries.${name}.0.${c}`,
           linePath: c,
           lineSource: `query:${name}`,
@@ -1624,7 +1673,12 @@ function buildFieldDescriptors(args: {
       }
     }
     for (const k of args.paramKeys) {
-      out.push({ key: `p-${k}`, label: k, group: 'Parámetros', canvasPath: `params.${k}` });
+      out.push({
+        key: `p-${k}`,
+        label: k,
+        group: t('templates.designer.fields.params'),
+        canvasPath: `params.${k}`,
+      });
     }
     return out;
   }
@@ -1650,7 +1704,7 @@ function buildFieldDescriptors(args: {
     out.push({
       key: `l-${f.path}`,
       label: shortLabel(f.path),
-      group: 'Líneas (tabla)',
+      group: t('templates.designer.fields.lines'),
       canvasPath: `lines.0.${f.path}`,
       linePath: f.path,
       format: inferDefaultFormat(f),
@@ -1663,6 +1717,7 @@ const FieldsPanel: React.FC<{ descriptors: FieldDescriptor[]; isFreeOrLabel: boo
   descriptors,
   isFreeOrLabel,
 }) => {
+  const { t } = useI18n();
   const [q, setQ] = useState('');
   const nq = q.trim().toLowerCase();
   const filtered = nq
@@ -1677,21 +1732,21 @@ const FieldsPanel: React.FC<{ descriptors: FieldDescriptor[]; isFreeOrLabel: boo
   return (
     <aside className="w-56 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
       <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">
-        Campos
+        {t('templates.designer.fields.title')}
       </div>
       <div className="px-2 pb-1">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar campo…"
+          placeholder={t('templates.designer.fields.search')}
           className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
         />
       </div>
       {descriptors.length === 0 && (
         <div className="px-3 py-2 text-[11px] text-slate-400 italic leading-snug">
           {isFreeOrLabel
-            ? 'Sin campos. Definí una consulta SQL en el inspector de página para que aparezcan sus columnas.'
-            : 'Sin campos.'}
+            ? t('templates.designer.fields.emptyFree')
+            : t('templates.designer.fields.empty')}
         </div>
       )}
       {groups.map((g) => (
@@ -1709,7 +1764,7 @@ const FieldsPanel: React.FC<{ descriptors: FieldDescriptor[]; isFreeOrLabel: boo
         </div>
       ))}
       <div className="px-3 py-2 text-[10px] text-slate-400 leading-snug">
-        Arrastra un campo al lienzo (crea un Campo enlazado) o sobre una tabla (añade columna).
+        {t('templates.designer.fields.dragHint')}
       </div>
     </aside>
   );
@@ -1854,6 +1909,7 @@ const BandSlot: React.FC<BandSlotProps> = ({
   onResizeElement,
   onContext,
 }) => {
+  const { t } = useI18n();
   const { setNodeRef, isOver } = useDroppable({ id: band.id });
   const handleResizeDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -1902,7 +1958,9 @@ const BandSlot: React.FC<BandSlotProps> = ({
       </div>
       {band.elements.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-400 pointer-events-none">
-          {isOver ? 'Suelta aquí' : 'Arrastra aquí un componente'}
+          {isOver
+            ? t('templates.designer.canvas.dropHere')
+            : t('templates.designer.canvas.dragHere')}
         </div>
       )}
       {band.elements.map((el) => (
@@ -1920,7 +1978,7 @@ const BandSlot: React.FC<BandSlotProps> = ({
       {/* Handle de resize: arrastra para cambiar el alto de la banda */}
       <div
         onMouseDown={handleResizeDown}
-        title="Arrastra para cambiar el alto de la banda"
+        title={t('templates.designer.canvas.resizeBand')}
         className="absolute left-0 right-0 bottom-0 h-1.5 cursor-ns-resize bg-transparent hover:bg-blue-400/40 z-20"
       />
     </section>
@@ -1946,6 +2004,7 @@ const ElementBox: React.FC<ElementBoxProps> = ({
   onResize,
   onContext,
 }) => {
+  const { t } = useI18n();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `el-${element.id}`,
     data: { action: 'move', bandId, elementId: element.id },
@@ -2026,19 +2085,19 @@ const ElementBox: React.FC<ElementBoxProps> = ({
           <div
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={startResize('e')}
-            title="Redimensionar ancho"
+            title={t('templates.designer.canvas.resizeWidth')}
             className="absolute top-0 right-0 bottom-0 w-1.5 cursor-ew-resize bg-blue-500/20 hover:bg-blue-500/60"
           />
           <div
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={startResize('s')}
-            title="Redimensionar alto"
+            title={t('templates.designer.canvas.resizeHeight')}
             className="absolute left-0 right-0 bottom-0 h-1.5 cursor-ns-resize bg-blue-500/20 hover:bg-blue-500/60"
           />
           <div
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={startResize('se')}
-            title="Redimensionar"
+            title={t('templates.designer.canvas.resize')}
             className="absolute -right-1 -bottom-1 w-3 h-3 rounded-sm bg-blue-600 border border-white cursor-nwse-resize z-10"
           />
         </>
@@ -2048,6 +2107,7 @@ const ElementBox: React.FC<ElementBoxProps> = ({
 };
 
 const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
+  const { t } = useI18n();
   const s = element.style ?? {};
   const base: React.CSSProperties = {
     width: '100%',
@@ -2087,7 +2147,9 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
       }
       return (
         <div style={base} className="whitespace-pre-wrap break-words">
-          {element.text || <span className="text-slate-400 italic">Texto</span>}
+          {element.text || (
+            <span className="text-slate-400 italic">{t('templates.designer.preview.text')}</span>
+          )}
         </div>
       );
     case 'image':
@@ -2100,7 +2162,7 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
         />
       ) : (
         <div style={base} className="text-slate-400 italic">
-          🖼 (elige imagen)
+          🖼 {t('templates.designer.preview.pickImage')}
         </div>
       );
     case 'shape':
@@ -2136,7 +2198,7 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
         return (
           <div style={base} className="font-mono text-slate-700 dark:text-slate-300">
             {element.prefix && <span dangerouslySetInnerHTML={{ __html: element.prefix }} />}
-            {`{{${element.path || 'campo'}}}`}
+            {`{{${element.path || t('templates.designer.preview.fieldPlaceholder')}}}`}
             {element.suffix && <span dangerouslySetInnerHTML={{ __html: element.suffix }} />}
           </div>
         );
@@ -2144,7 +2206,7 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
       return (
         <div style={base} className="font-mono text-slate-700 dark:text-slate-300">
           {element.prefix}
-          {`{{${element.path || 'campo'}}}`}
+          {`{{${element.path || t('templates.designer.preview.fieldPlaceholder')}}}`}
           {element.suffix}
         </div>
       );
@@ -2390,35 +2452,38 @@ const InspectorPanel: React.FC<InspectorPanelProps> = ({
   onAddBand,
   onDeleteBand,
   onMoveBand,
-}) => (
-  <aside className="w-80 shrink-0 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
-    <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">
-      Inspector
-    </div>
-    {element ? (
-      <ElementInspector
-        element={element}
-        onChange={onChange}
-        pluginGroup={pluginGroup}
-        linePluginFields={linePluginFields}
-        docType={docType}
-        queryFieldGroups={queryFieldGroups}
-        queryColumns={queryColumns}
-        queryNames={queryNames}
-        layout={layout}
-      />
-    ) : (
-      <PageInspector
-        layout={layout}
-        onUpdatePage={onUpdatePage}
-        onUpdateBand={onUpdateBand}
-        onAddBand={onAddBand}
-        onDeleteBand={onDeleteBand}
-        onMoveBand={onMoveBand}
-      />
-    )}
-  </aside>
-);
+}) => {
+  const { t } = useI18n();
+  return (
+    <aside className="w-80 shrink-0 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-y-auto">
+      <div className="px-3 py-2 text-xs uppercase tracking-wide font-bold text-slate-400">
+        {t('templates.designer.inspector.title')}
+      </div>
+      {element ? (
+        <ElementInspector
+          element={element}
+          onChange={onChange}
+          pluginGroup={pluginGroup}
+          linePluginFields={linePluginFields}
+          docType={docType}
+          queryFieldGroups={queryFieldGroups}
+          queryColumns={queryColumns}
+          queryNames={queryNames}
+          layout={layout}
+        />
+      ) : (
+        <PageInspector
+          layout={layout}
+          onUpdatePage={onUpdatePage}
+          onUpdateBand={onUpdateBand}
+          onAddBand={onAddBand}
+          onDeleteBand={onDeleteBand}
+          onMoveBand={onMoveBand}
+        />
+      )}
+    </aside>
+  );
+};
 
 const PageInspector: React.FC<{
   layout: CanvasLayout;
@@ -2428,72 +2493,75 @@ const PageInspector: React.FC<{
   onDeleteBand: (bandId: string) => void;
   onMoveBand: (bandId: string, dir: -1 | 1) => void;
 }> = ({ layout, onUpdatePage, onUpdateBand, onAddBand, onDeleteBand, onMoveBand }) => {
+  const { t } = useI18n();
   const [cssOpen, setCssOpen] = useState(false);
   return (
     <div className="px-3 py-3 space-y-4 text-sm">
-      <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500">Página</div>
-      <Section title="Formato">
-        <Label>Tamaño</Label>
+      <div className="text-[11px] uppercase tracking-wide font-bold text-slate-500">
+        {t('templates.designer.page.title')}
+      </div>
+      <Section title={t('templates.designer.page.format')}>
+        <Label>{t('templates.designer.common.size')}</Label>
         <Select
           options={[
-            { value: 'A4', label: `${PAGE_SIZE_LABELS.A4}` },
-            { value: 'Letter', label: `${PAGE_SIZE_LABELS.Letter}` },
-            { value: 'Ticket80', label: `${PAGE_SIZE_LABELS.Ticket80}` },
-            { value: 'Ticket58', label: `${PAGE_SIZE_LABELS.Ticket58}` },
-            { value: 'Label100x62', label: `${PAGE_SIZE_LABELS.Label100x62}` },
-            { value: 'Label70x37', label: `${PAGE_SIZE_LABELS.Label70x37}` },
-            { value: 'Label50x25', label: `${PAGE_SIZE_LABELS.Label50x25}` },
-            { value: 'Custom', label: `${PAGE_SIZE_LABELS.Custom}` },
+            { value: 'A4', label: t(PAGE_SIZE_LABELS.A4) },
+            { value: 'Letter', label: t(PAGE_SIZE_LABELS.Letter) },
+            { value: 'Ticket80', label: t(PAGE_SIZE_LABELS.Ticket80) },
+            { value: 'Ticket58', label: t(PAGE_SIZE_LABELS.Ticket58) },
+            { value: 'Label100x62', label: t(PAGE_SIZE_LABELS.Label100x62) },
+            { value: 'Label70x37', label: t(PAGE_SIZE_LABELS.Label70x37) },
+            { value: 'Label50x25', label: t(PAGE_SIZE_LABELS.Label50x25) },
+            { value: 'Custom', label: t(PAGE_SIZE_LABELS.Custom) },
           ]}
           value={layout.pageSize}
           onChange={(v) => onUpdatePage({ pageSize: v as PageSize })}
-          ariaLabel="Opción"
+          ariaLabel={t('templates.designer.common.option')}
         />
         {layout.pageSize === 'Custom' && (
           <div className="grid grid-cols-2 gap-2">
             <NumberField
-              label="Ancho (mm)"
+              label={t('templates.designer.common.widthMm')}
               value={layout.customWidthMm ?? 100}
               onChange={(v) => onUpdatePage({ customWidthMm: Math.max(10, v) })}
             />
             <NumberField
-              label="Alto (mm)"
+              label={t('templates.designer.common.heightMm')}
               value={layout.customHeightMm ?? 100}
               onChange={(v) => onUpdatePage({ customHeightMm: Math.max(10, v) })}
             />
           </div>
         )}
-        <Label>Márgenes (mm)</Label>
+        <Label>{t('templates.designer.page.marginsMm')}</Label>
         <div className="grid grid-cols-2 gap-2">
           <NumberField
-            label="Arriba"
+            label={t('templates.designer.page.top')}
             value={layout.margins.top}
             onChange={(v) => onUpdatePage({ margins: { ...layout.margins, top: v } })}
           />
           <NumberField
-            label="Derecha"
+            label={t('templates.designer.page.right')}
             value={layout.margins.right}
             onChange={(v) => onUpdatePage({ margins: { ...layout.margins, right: v } })}
           />
           <NumberField
-            label="Abajo"
+            label={t('templates.designer.page.bottom')}
             value={layout.margins.bottom}
             onChange={(v) => onUpdatePage({ margins: { ...layout.margins, bottom: v } })}
           />
           <NumberField
-            label="Izquierda"
+            label={t('templates.designer.page.left')}
             value={layout.margins.left}
             onChange={(v) => onUpdatePage({ margins: { ...layout.margins, left: v } })}
           />
         </div>
       </Section>
-      <Section title="Bandas (alto en mm)">
+      <Section title={t('templates.designer.page.bands')}>
         {layout.bands.map((b, i) => (
           <div key={b.id} className={`flex items-center gap-1 ${b.hidden ? 'opacity-50' : ''}`}>
             {b.kind === 'custom' ? (
               <input
                 value={b.label ?? ''}
-                placeholder="Sección"
+                placeholder={t('templates.designer.bands.custom')}
                 onChange={(e) => onUpdateBand(b.id, { label: e.target.value })}
                 className="flex-1 min-w-0 px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
               />
@@ -2504,7 +2572,11 @@ const PageInspector: React.FC<{
             )}
             <button
               type="button"
-              title={b.hidden ? 'Mostrar banda' : 'Ocultar banda'}
+              title={
+                b.hidden
+                  ? t('templates.designer.page.showBand')
+                  : t('templates.designer.ctx.hideBand')
+              }
               onClick={() => onUpdateBand(b.id, { hidden: !b.hidden })}
               className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
@@ -2512,7 +2584,7 @@ const PageInspector: React.FC<{
             </button>
             <button
               type="button"
-              title="Subir"
+              title={t('templates.designer.page.moveUp')}
               disabled={i === 0}
               onClick={() => onMoveBand(b.id, -1)}
               className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
@@ -2521,7 +2593,7 @@ const PageInspector: React.FC<{
             </button>
             <button
               type="button"
-              title="Bajar"
+              title={t('templates.designer.page.moveDown')}
               disabled={i === layout.bands.length - 1}
               onClick={() => onMoveBand(b.id, 1)}
               className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30"
@@ -2540,7 +2612,7 @@ const PageInspector: React.FC<{
             {b.kind === 'custom' && (
               <button
                 type="button"
-                title="Eliminar sección"
+                title={t('templates.designer.ctx.deleteSection')}
                 onClick={() => onDeleteBand(b.id)}
                 className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30"
               >
@@ -2554,13 +2626,14 @@ const PageInspector: React.FC<{
           onClick={onAddBand}
           className="flex items-center gap-1 mt-1 px-2 py-1 text-xs rounded border border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
         >
-          <Plus size={13} /> Añadir banda
+          <Plus size={13} /> {t('templates.designer.page.addBand')}
         </button>
         <div className="pt-1 text-[11px] text-slate-400">
-          Total (visibles):{' '}
-          {layout.bands.filter((b) => !b.hidden).reduce((a, b) => a + b.height, 0)}mm. Útil de
-          página:{' '}
-          {resolvePageDimensions(layout).height - layout.margins.top - layout.margins.bottom}mm.
+          {t('templates.designer.page.bandsTotal', {
+            total: layout.bands.filter((b) => !b.hidden).reduce((a, b) => a + b.height, 0),
+            usable:
+              resolvePageDimensions(layout).height - layout.margins.top - layout.margins.bottom,
+          })}
         </div>
       </Section>
       <WatermarkInspector
@@ -2588,10 +2661,9 @@ const PageInspector: React.FC<{
         schema={layout.paramsSchema}
         onChange={(s) => onUpdatePage({ paramsSchema: s })}
       />
-      <Section title="CSS personalizado">
+      <Section title={t('templates.designer.page.customCss')}>
         <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-          Hoja de estilos global del documento. Se aplica al compilar y puede apuntar a las clases
-          que pongas en cada elemento (ej.{' '}
+          {t('templates.designer.page.customCssHint')}{' '}
           <code>
             .mi-clase {'{'} color:red {'}'}
           </code>
@@ -2602,22 +2674,22 @@ const PageInspector: React.FC<{
           onClick={() => setCssOpen(true)}
           className="flex items-center gap-2 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
         >
-          <Code size={14} /> Editar CSS global
+          <Code size={14} /> {t('templates.designer.ctx.editGlobalCss')}
           {layout.customCss ? (
             <span className="text-emerald-600 dark:text-emerald-400">●</span>
           ) : null}
         </button>
       </Section>
       <div className="text-[11px] text-slate-400 italic">
-        Selecciona un elemento para editar sus propiedades.
+        {t('templates.designer.page.selectElementHint')}
       </div>
       <CssEditorModal
         open={cssOpen}
         value={layout.customCss ?? ''}
         onChange={(v) => onUpdatePage({ customCss: v.trim() ? v : undefined })}
         onClose={() => setCssOpen(false)}
-        title="CSS global del documento"
-        helpText="Reglas CSS completas. Se inyectan tras el CSS base, así que pueden sobreescribir estilos por defecto. Apunta a elementos con la clase que les pongas en su inspector."
+        title={t('templates.designer.css.globalTitle')}
+        helpText={t('templates.designer.css.globalHelpLong')}
       />
     </div>
   );
@@ -2632,6 +2704,7 @@ const QueriesInspector: React.FC<{
   onChange: (q: CanvasLayout['queries']) => void;
   onTestParamsChange: (p: Record<string, unknown>) => void;
 }> = ({ queries, testParams, paramsSchema, onChange, onTestParamsChange }) => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
   const list = queries ?? [];
@@ -2653,17 +2726,20 @@ const QueriesInspector: React.FC<{
     setList([...list, { name: `consulta${list.length + 1}`, sql: 'SELECT 1 AS valor' }]);
 
   return (
-    <Section title="Consultas SQL (admin)">
+    <Section title={t('templates.designer.queries.title')}>
       {!isAdmin && (
         <div className="text-[11px] text-amber-600 dark:text-amber-400">
-          Solo lectura: necesitas rol ADMIN para editar.
+          {t('templates.designer.queries.readOnly')}
         </div>
       )}
       <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-        Se ejecutan al renderizar. Resultado accesible como{' '}
-        <code className="px-1 rounded bg-slate-100 dark:bg-slate-800">queries.NOMBRE</code>. Solo{' '}
-        <code>SELECT</code> / <code>WITH</code>. Placeholders: <code>:docId</code>,{' '}
-        <code>:partnerId</code>, <code>:companyId</code>, <code>:tenantId</code>.
+        {t('templates.designer.queries.hint1')}{' '}
+        <code className="px-1 rounded bg-slate-100 dark:bg-slate-800">
+          queries.{t('templates.designer.queries.nameUpper')}
+        </code>
+        . {t('templates.designer.queries.hint2')} <code>SELECT</code> / <code>WITH</code>.
+        Placeholders: <code>:docId</code>, <code>:partnerId</code>, <code>:companyId</code>,{' '}
+        <code>:tenantId</code>.
       </div>
       {list.map((q, idx) => (
         <QueryEditor
@@ -2681,17 +2757,17 @@ const QueriesInspector: React.FC<{
           onClick={add}
           className="text-[11px] px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
         >
-          + Añadir consulta
+          + {t('templates.designer.queries.add')}
         </button>
       )}
       {list.length > 0 && (
         <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
           <div className="text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2">
-            Parámetros de prueba
+            {t('templates.designer.queries.testParams')}
           </div>
           <div className="text-[10px] text-slate-400 dark:text-slate-500 mb-2">
-            Valores de los placeholders <code>:xxx</code> para “Probar” y la vista previa 👁. Se
-            listan solos al detectarlos en las consultas.
+            {t('templates.designer.queries.testParamsHint1')} <code>:xxx</code>{' '}
+            {t('templates.designer.queries.testParamsHint2')}
           </div>
           <TestParamsEditor
             queries={queries}
@@ -2715,6 +2791,7 @@ const QueryEditor: React.FC<{
   onChange: (p: Partial<{ name: string; sql: string }>) => void;
   onRemove: () => void;
 }> = ({ query, testParams, readOnly, onChange, onRemove }) => {
+  const { t } = useI18n();
   const [result, setResult] = useState<
     | { ok: true; rows: unknown[]; rowCount: number; truncated: boolean }
     | { ok: false; error: string }
@@ -2732,7 +2809,7 @@ const QueryEditor: React.FC<{
         params: testParams,
       });
       if (body?.ok === false) {
-        setResult({ ok: false, error: body.error || 'Error en la consulta' });
+        setResult({ ok: false, error: body.error || t('templates.designer.queries.queryError') });
       } else {
         setResult({
           ok: true,
@@ -2746,7 +2823,7 @@ const QueryEditor: React.FC<{
         ok: false,
         error:
           (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-          'Error de red',
+          t('templates.designer.queries.networkError'),
       });
     } finally {
       setTesting(false);
@@ -2764,7 +2841,7 @@ const QueryEditor: React.FC<{
           value={query.name}
           onChange={(e) => onChange({ name: e.target.value })}
           disabled={readOnly}
-          placeholder="nombreConsulta"
+          placeholder={t('templates.designer.queries.namePlaceholder')}
           className="flex-1 px-2 py-1 text-xs font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
         />
         {!readOnly && (
@@ -2772,7 +2849,7 @@ const QueryEditor: React.FC<{
             type="button"
             onClick={onRemove}
             className="text-[11px] px-1.5 py-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
-            title="Eliminar consulta"
+            title={t('templates.designer.queries.remove')}
           >
             ✕
           </button>
@@ -2783,11 +2860,17 @@ const QueryEditor: React.FC<{
         className={`p-2 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-[11px] leading-snug whitespace-pre overflow-hidden text-slate-700 dark:text-slate-200 ${
           !readOnly ? 'cursor-pointer hover:border-blue-400' : ''
         }`}
-        title={readOnly ? 'Solo lectura' : 'Click para abrir el editor SQL'}
+        title={
+          readOnly
+            ? t('templates.designer.queries.readOnlyShort')
+            : t('templates.designer.queries.clickToOpen')
+        }
       >
         {preview || <span className="text-slate-400 italic">SELECT * FROM …</span>}
         {lineCount > 3 && (
-          <div className="text-[10px] text-slate-400">…{lineCount - 3} líneas más</div>
+          <div className="text-[10px] text-slate-400">
+            {t('templates.designer.queries.moreLines', { count: lineCount - 3 })}
+          </div>
         )}
       </div>
       {!readOnly && (
@@ -2797,7 +2880,7 @@ const QueryEditor: React.FC<{
             onClick={() => setEditorOpen(true)}
             className="text-[11px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-800 text-white"
           >
-            ✎ Editor SQL
+            ✎ {t('templates.designer.queries.sqlEditor')}
           </button>
           <button
             type="button"
@@ -2805,12 +2888,14 @@ const QueryEditor: React.FC<{
             disabled={testing}
             className="text-[11px] px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
           >
-            {testing ? 'Probando…' : '▶ Probar'}
+            {testing
+              ? t('templates.designer.queries.testing')
+              : t('templates.designer.queries.test')}
           </button>
           {result && result.ok && (
             <span className="text-[11px] text-emerald-600 dark:text-emerald-400">
-              {result.rowCount} fila{result.rowCount === 1 ? '' : 's'}
-              {result.truncated ? ' (truncado a 1000)' : ''}
+              {t('templates.designer.queries.rows', { count: result.rowCount ?? 0 })}
+              {result.truncated ? t('templates.designer.queries.truncated') : ''}
             </span>
           )}
           {result && result.ok === false && (
@@ -2822,7 +2907,7 @@ const QueryEditor: React.FC<{
       )}
       <SqlEditorModal
         open={editorOpen}
-        title={`Editor SQL — ${query.name}`}
+        title={t('templates.designer.queries.editorTitle', { name: query.name })}
         queryName={query.name}
         initialSql={query.sql}
         onSave={(v) => onChange({ sql: v })}
@@ -2878,6 +2963,7 @@ const TestParamsEditor: React.FC<{
   readOnly: boolean;
   labels?: Record<string, string>;
 }> = ({ queries, value, onChange, readOnly, labels }) => {
+  const { t } = useI18n();
   const detected = extractPlaceholders(queries);
   // Unión de los placeholders detectados y las claves ya guardadas (para no
   // perder valores de un placeholder que se quitó temporalmente de la query).
@@ -2893,7 +2979,8 @@ const TestParamsEditor: React.FC<{
   if (names.length === 0) {
     return (
       <div className="text-[10px] text-slate-400 italic">
-        Sin parámetros: las consultas no usan placeholders <code>:xxx</code>.
+        {t('templates.designer.testParams.none')} <code>:xxx</code>
+        {t('templates.designer.testParams.noneSuffix')}
       </div>
     );
   }
@@ -2915,13 +3002,13 @@ const TestParamsEditor: React.FC<{
               value={String(value[name] ?? '')}
               onChange={(e) => setVal(name, e.target.value)}
               disabled={readOnly}
-              placeholder="valor"
+              placeholder={t('templates.designer.testParams.valuePlaceholder')}
               className="flex-1 min-w-0 px-2 py-1 text-[10px] font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
             />
             {!readOnly && !isDetected && (
               <button
                 type="button"
-                title="Quitar parámetro huérfano"
+                title={t('templates.designer.testParams.removeOrphan')}
                 onClick={() => remove(name)}
                 className="text-[10px] px-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
               >
@@ -2944,6 +3031,7 @@ const ParamsSchemaInspector: React.FC<{
   schema: ParamDef[] | undefined;
   onChange: (s: ParamDef[] | undefined) => void;
 }> = ({ queries, schema, onChange }) => {
+  const { t } = useI18n();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
   const detected = extractPlaceholders(queries);
@@ -2961,10 +3049,11 @@ const ParamsSchemaInspector: React.FC<{
   };
 
   return (
-    <Section title="Parámetros de entrada">
+    <Section title={t('templates.designer.paramsSchema.title')}>
       <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-        Cómo se piden estos placeholders al <strong>generar</strong> el documento (botón “Generar”
-        en la lista de plantillas).
+        {t('templates.designer.paramsSchema.hint1')}{' '}
+        <strong>{t('templates.designer.paramsSchema.hintGenerate')}</strong>{' '}
+        {t('templates.designer.paramsSchema.hint2')}
       </p>
       {detected.map((name) => {
         const p = byName.get(name) ?? { name };
@@ -2977,22 +3066,22 @@ const ParamsSchemaInspector: React.FC<{
             <input
               value={p.label ?? ''}
               onChange={(e) => update(name, { label: e.target.value || undefined })}
-              placeholder="Etiqueta visible"
+              placeholder={t('templates.designer.paramsSchema.labelPlaceholder')}
               className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
             />
             <div className="grid grid-cols-2 gap-1">
               <Select
                 options={[
-                  { value: 'text', label: 'Texto' },
-                  { value: 'number', label: 'Número' },
-                  { value: 'date', label: 'Fecha' },
-                  { value: 'select', label: 'Lista (elige uno)' },
-                  { value: 'multiselect', label: 'Lista múltiple (varios)' },
+                  { value: 'text', label: t('templates.designer.opt.text') },
+                  { value: 'number', label: t('templates.designer.opt.number') },
+                  { value: 'date', label: t('templates.designer.opt.date') },
+                  { value: 'select', label: t('templates.designer.opt.select') },
+                  { value: 'multiselect', label: t('templates.designer.opt.multiselect') },
                 ]}
                 value={p.type ?? 'text'}
                 onChange={(v) => update(name, { type: v as ParamDef['type'] })}
                 className="text-xs"
-                ariaLabel="Opción"
+                ariaLabel={t('templates.designer.common.option')}
               />
               <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300">
                 <input
@@ -3000,13 +3089,13 @@ const ParamsSchemaInspector: React.FC<{
                   checked={!!p.required}
                   onChange={(e) => update(name, { required: e.target.checked })}
                 />
-                Obligatorio
+                {t('templates.designer.paramsSchema.required')}
               </label>
             </div>
             <input
               value={p.default ?? ''}
               onChange={(e) => update(name, { default: e.target.value || undefined })}
-              placeholder="Valor por defecto"
+              placeholder={t('templates.designer.paramsSchema.defaultPlaceholder')}
               className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
             />
             {(p.type === 'select' || p.type === 'multiselect') && (
@@ -3021,20 +3110,20 @@ const ParamsSchemaInspector: React.FC<{
                         .filter(Boolean),
                     })
                   }
-                  placeholder="Opciones manuales (coma-separadas, o valor|etiqueta)"
+                  placeholder={t('templates.designer.paramsSchema.optionsPlaceholder')}
                   className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
                 />
                 <Textarea
                   value={p.optionsQuery ?? ''}
                   onChange={(e) => update(name, { optionsQuery: e.target.value || undefined })}
-                  placeholder={
-                    'Consulta de opciones (SELECT value, label …). Tiene prioridad sobre las manuales.'
-                  }
+                  placeholder={t('templates.designer.paramsSchema.optionsQueryPlaceholder')}
                   rows={2}
                   className="text-[11px] font-mono"
                 />
                 <div className="text-[10px] text-slate-400 leading-snug">
-                  La consulta debe devolver columnas <code>value</code> y <code>label</code> (ej.{' '}
+                  {t('templates.designer.paramsSchema.optionsQueryHint1')} <code>value</code>{' '}
+                  {t('templates.designer.paramsSchema.optionsQueryHintAnd')} <code>label</code> (
+                  {t('templates.designer.paramsSchema.eg')}{' '}
                   <code>SELECT id AS value, name AS label FROM "Warehouse" ORDER BY name</code>).
                 </div>
               </>
@@ -3050,30 +3139,31 @@ const PageNumbersInspector: React.FC<{
   value: CanvasLayout['pageNumbers'];
   onChange: (v: CanvasLayout['pageNumbers']) => void;
 }> = ({ value, onChange }) => {
+  const { t } = useI18n();
   const v = value ?? { enabled: false, alignment: 'center' as const };
   const patch = (p: Partial<NonNullable<CanvasLayout['pageNumbers']>>) => onChange({ ...v, ...p });
   return (
-    <Section title="Números de página">
+    <Section title={t('templates.designer.pageNumbers.title')}>
       <Toggle
-        label="Mostrar numeración (Página X / Total)"
+        label={t('templates.designer.pageNumbers.show')}
         checked={v.enabled}
         onChange={(enabled) => patch({ enabled })}
       />
       {v.enabled && (
         <>
-          <Label>Alineación</Label>
+          <Label>{t('templates.designer.common.alignment')}</Label>
           <Select
             options={[
-              { value: 'left', label: 'Izquierda' },
-              { value: 'center', label: 'Centro' },
-              { value: 'right', label: 'Derecha' },
+              { value: 'left', label: t('templates.designer.opt.left') },
+              { value: 'center', label: t('templates.designer.opt.center') },
+              { value: 'right', label: t('templates.designer.opt.right') },
             ]}
             value={v.alignment ?? 'center'}
             onChange={(v) => patch({ alignment: v as any })}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
           <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-            El pie se pinta en los últimos 12mm de cada página. Se reserva espacio automáticamente.
+            {t('templates.designer.pageNumbers.hint')}
           </div>
         </>
       )}
@@ -3086,22 +3176,22 @@ const TraceabilityFooterInspector: React.FC<{
   showDocBarcode?: boolean;
   onChange: (v: { showDocQr?: boolean; showDocBarcode?: boolean }) => void;
 }> = ({ showDocQr, showDocBarcode, onChange }) => {
+  const { t } = useI18n();
   return (
-    <Section title="Trazabilidad (QR / código de barras)">
+    <Section title={t('templates.designer.traceability.title')}>
       <Toggle
-        label="Mostrar QR de verificación"
+        label={t('templates.designer.traceability.showQr')}
         checked={showDocQr === true}
         onChange={(v) => onChange({ showDocQr: v })}
       />
       <Toggle
-        label="Mostrar código de barras (Code-128)"
+        label={t('templates.designer.traceability.showBarcode')}
         checked={showDocBarcode === true}
         onChange={(v) => onChange({ showDocBarcode: v })}
       />
       {(showDocQr || showDocBarcode) && (
         <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-          Se añaden junto al hash y la fecha en el pie de cada página, igual que en las plantillas
-          estándar del sistema.
+          {t('templates.designer.traceability.hint')}
         </div>
       )}
     </Section>
@@ -3112,6 +3202,7 @@ const WatermarkInspector: React.FC<{
   watermark: CanvasLayout['watermark'];
   onChange: (w: CanvasLayout['watermark']) => void;
 }> = ({ watermark, onChange }) => {
+  const { t } = useI18n();
   const w = watermark ?? {
     enabled: false,
     text: 'BORRADOR',
@@ -3123,25 +3214,27 @@ const WatermarkInspector: React.FC<{
   };
   const patch = (p: Partial<NonNullable<CanvasLayout['watermark']>>) => onChange({ ...w, ...p });
   return (
-    <Section title="Marca de agua">
+    <Section title={t('templates.designer.watermark.title')}>
       <Toggle
-        label="Activar marca de agua"
+        label={t('templates.designer.watermark.enable')}
         checked={w.enabled}
         onChange={(v) => patch({ enabled: v })}
       />
       {w.enabled && (
         <>
-          <Label>Texto</Label>
+          <Label>{t('templates.designer.common.text')}</Label>
           <input
             type="text"
             value={w.text}
             onChange={(e) => patch({ text: e.target.value })}
-            placeholder="BORRADOR · COPIA · {{doc.status}}"
+            placeholder={t('templates.designer.watermark.textPlaceholder')}
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
           />
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Color</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.common.color')}
+              </div>
               <input
                 type="color"
                 value={w.color ?? '#94a3b8'}
@@ -3150,7 +3243,9 @@ const WatermarkInspector: React.FC<{
               />
             </label>
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Tamaño (pt)</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.common.sizePt')}
+              </div>
               <input
                 type="number"
                 min={10}
@@ -3163,7 +3258,9 @@ const WatermarkInspector: React.FC<{
           </div>
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Rotación (°)</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.common.rotationDeg')}
+              </div>
               <input
                 type="number"
                 min={-180}
@@ -3174,7 +3271,9 @@ const WatermarkInspector: React.FC<{
               />
             </label>
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Opacidad (0-1)</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.watermark.opacity')}
+              </div>
               <input
                 type="number"
                 step={0.05}
@@ -3191,7 +3290,7 @@ const WatermarkInspector: React.FC<{
             </label>
           </div>
           <Toggle
-            label="Negrita"
+            label={t('templates.designer.common.bold')}
             checked={w.fontWeight === 'bold'}
             onChange={(v) => patch({ fontWeight: v ? 'bold' : 'normal' })}
           />
@@ -3211,49 +3310,46 @@ const SourceColumnPicker: React.FC<{
   pathLabel?: string;
   queryNames: string[];
   queryColumns: Record<string, string[]>;
-}> = ({
-  source,
-  path,
-  onSource,
-  onPath,
-  showPath = true,
-  pathLabel = 'Columna',
-  queryNames,
-  queryColumns,
-}) => {
+}> = ({ source, path, onSource, onPath, showPath = true, pathLabel, queryNames, queryColumns }) => {
+  const { t } = useI18n();
   const queryName = source && source.startsWith('query:') ? source.slice('query:'.length) : null;
   const cols = queryName ? (queryColumns[queryName] ?? []) : [];
   return (
     <>
-      <Label>Fuente de datos</Label>
+      <Label>{t('templates.designer.source.title')}</Label>
       <Select
         options={[
-          { value: '', label: 'Líneas del documento' },
-          ...queryNames.map((n) => ({ value: `query:${n}`, label: `Consulta: ${n}` })),
+          { value: '', label: t('templates.designer.source.docLines') },
+          ...queryNames.map((n) => ({
+            value: `query:${n}`,
+            label: t('templates.designer.fields.queryGroup', { name: n }),
+          })),
         ]}
         value={source ?? ''}
         onChange={(v) => onSource(v || undefined)}
-        ariaLabel="Fuente de datos"
+        ariaLabel={t('templates.designer.source.title')}
       />
       {showPath && (
         <>
-          <Label>{pathLabel}</Label>
+          <Label>{pathLabel ?? t('templates.designer.source.column')}</Label>
           <input
             value={path ?? ''}
             onChange={(e) => onPath(e.target.value || undefined)}
-            placeholder={queryName ? 'columna' : 'itemName / lineTotal'}
+            placeholder={
+              queryName ? t('templates.designer.source.columnPlaceholder') : 'itemName / lineTotal'
+            }
             className="w-full px-2 py-1 text-xs font-mono rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
           />
           {cols.length > 0 && (
             <Select
               options={[
-                { value: '', label: 'Elegir columna…' },
+                { value: '', label: t('templates.designer.source.pickColumn') },
                 ...cols.map((c) => ({ value: c, label: c })),
               ]}
               value=""
               onChange={(v) => v && onPath(v)}
               className="text-xs"
-              ariaLabel="Columna"
+              ariaLabel={t('templates.designer.source.column')}
             />
           )}
         </>
@@ -3283,6 +3379,7 @@ const ElementInspector: React.FC<{
   queryNames,
   layout,
 }) => {
+  const { t } = useI18n();
   const patch = (p: Partial<CanvasElement>) => onChange(element.id, p);
   // Dimensiones útiles para los botones "ocupar": ancho de página menos
   // márgenes y alto de la banda que contiene al elemento.
@@ -3315,17 +3412,17 @@ const ElementInspector: React.FC<{
       </div>
 
       {/* Geometría común */}
-      <Section title="Geometría">
+      <Section title={t('templates.designer.el.geometry')}>
         <NumberGrid>
           <NumberField label="X (mm)" value={element.x} onChange={(v) => patch({ x: v } as any)} />
           <NumberField label="Y (mm)" value={element.y} onChange={(v) => patch({ y: v } as any)} />
           <NumberField
-            label="Ancho (mm)"
+            label={t('templates.designer.common.widthMm')}
             value={element.w}
             onChange={(v) => patch({ w: Math.max(1, v) } as any)}
           />
           <NumberField
-            label="Alto (mm)"
+            label={t('templates.designer.common.heightMm')}
             value={element.h}
             onChange={(v) => patch({ h: Math.max(1, v) } as any)}
           />
@@ -3335,25 +3432,25 @@ const ElementInspector: React.FC<{
             type="button"
             onClick={fitWidth}
             className="flex-1 px-2 py-1 text-[11px] rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700"
-            title="Ocupar todo el ancho útil de la página"
+            title={t('templates.designer.el.fitWidthTitle')}
           >
-            ↔ Ancho completo
+            {t('templates.designer.el.fitWidth')}
           </button>
           <button
             type="button"
             onClick={fitBand}
             disabled={!ownBand}
             className="flex-1 px-2 py-1 text-[11px] rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40"
-            title="Ocupar toda la banda (ancho útil y alto de la banda)"
+            title={t('templates.designer.el.fitBandTitle')}
           >
-            ⤢ Ocupar banda
+            {t('templates.designer.el.fitBand')}
           </button>
         </div>
       </Section>
 
       {/* Props específicas por tipo */}
       {element.kind === 'text' && (
-        <Section title="Contenido">
+        <Section title={t('templates.designer.el.content')}>
           {element.rich && !element.raw ? (
             <RichTextEditor
               value={element.text}
@@ -3369,14 +3466,14 @@ const ElementInspector: React.FC<{
               mono={element.raw === true}
               placeholder={
                 element.raw
-                  ? 'Expresión Handlebars. Ej: {{#if doc.paid}}Pagada{{else}}Pendiente{{/if}}'
-                  : 'Texto a mostrar'
+                  ? t('templates.designer.el.exprPlaceholder')
+                  : t('templates.designer.el.textPlaceholder')
               }
-              modalTitle="Editor de expresión"
+              modalTitle={t('templates.designer.el.exprEditor')}
             />
           )}
           <Toggle
-            label="Texto enriquecido (negritas, colores...)"
+            label={t('templates.designer.el.richText')}
             checked={element.rich === true}
             onChange={(v) =>
               patch({
@@ -3393,7 +3490,7 @@ const ElementInspector: React.FC<{
             }
           />
           <Toggle
-            label="Expresión Handlebars (avanzado)"
+            label={t('templates.designer.el.rawExpr')}
             checked={element.raw === true}
             onChange={(v) => patch({ raw: v, rich: v ? false : element.rich } as any)}
           />
@@ -3406,7 +3503,7 @@ const ElementInspector: React.FC<{
       )}
 
       {element.kind === 'image' && (
-        <Section title="Imagen">
+        <Section title={t('templates.designer.el.image')}>
           <label className="flex items-center justify-center text-xs px-3 py-6 rounded border-2 border-dashed border-slate-300 dark:border-slate-600 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
             <input
               type="file"
@@ -3419,7 +3516,9 @@ const ElementInspector: React.FC<{
                 patch({ src: dataUrl } as any);
               }}
             />
-            {element.src ? 'Cambiar imagen' : 'Seleccionar archivo'}
+            {element.src
+              ? t('templates.designer.el.changeImage')
+              : t('templates.designer.el.selectFile')}
           </label>
           {element.src && (
             <img
@@ -3428,7 +3527,7 @@ const ElementInspector: React.FC<{
               className="mt-2 max-h-20 mx-auto rounded border border-slate-200 dark:border-slate-700"
             />
           )}
-          <Label>O pega una URL</Label>
+          <Label>{t('templates.designer.el.orPasteUrl')}</Label>
           <input
             type="text"
             value={element.src.startsWith('data:') ? '' : element.src}
@@ -3436,33 +3535,33 @@ const ElementInspector: React.FC<{
             placeholder="https://..."
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
           />
-          <Label>Ajuste</Label>
+          <Label>{t('templates.designer.el.fit')}</Label>
           <Select
             options={[
-              { value: 'contain', label: 'Contener (sin recortar)' },
-              { value: 'cover', label: 'Cubrir (rellenar)' },
-              { value: 'fill', label: 'Estirar' },
+              { value: 'contain', label: t('templates.designer.opt.contain') },
+              { value: 'cover', label: t('templates.designer.opt.cover') },
+              { value: 'fill', label: t('templates.designer.opt.fill') },
             ]}
             value={element.fit ?? 'contain'}
             onChange={(v) => patch({ fit: v as any } as any)}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
         </Section>
       )}
 
       {element.kind === 'shape' && (
-        <Section title="Forma">
-          <Label>Tipo</Label>
+        <Section title={t('templates.designer.el.shape')}>
+          <Label>{t('templates.designer.el.type')}</Label>
           <Select
             options={[
-              { value: 'line', label: 'Línea' },
-              { value: 'rect', label: 'Rectángulo' },
+              { value: 'line', label: t('templates.designer.opt.line') },
+              { value: 'rect', label: t('templates.designer.opt.rect') },
             ]}
             value={element.shape}
             onChange={(v) => patch({ shape: v as any } as any)}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
-          <Label>Color de borde</Label>
+          <Label>{t('templates.designer.el.borderColor')}</Label>
           <input
             type="color"
             value={element.style?.borderColor ?? '#000000'}
@@ -3477,8 +3576,8 @@ const ElementInspector: React.FC<{
       )}
 
       {element.kind === 'field' && (
-        <Section title="Campo">
-          <Label>Campo vinculado</Label>
+        <Section title={t('templates.designer.el.field')}>
+          <Label>{t('templates.designer.el.linkedField')}</Label>
           <FieldPicker
             value={element.path}
             groups={fieldGroups}
@@ -3497,22 +3596,22 @@ const ElementInspector: React.FC<{
             placeholder="doc.docCode"
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
           />
-          <Label>Formato</Label>
+          <Label>{t('templates.designer.el.format')}</Label>
           <Select
             options={[
-              { value: '', label: 'Sin formato' },
-              { value: 'currency', label: 'Moneda' },
-              { value: 'number', label: 'Número' },
-              { value: 'date', label: 'Fecha' },
-              { value: 'percent', label: 'Porcentaje' },
-              { value: 'address', label: 'Dirección (multilínea)' },
+              { value: '', label: t('templates.designer.opt.noFormat') },
+              { value: 'currency', label: t('templates.designer.opt.currency') },
+              { value: 'number', label: t('templates.designer.opt.number') },
+              { value: 'date', label: t('templates.designer.opt.date') },
+              { value: 'percent', label: t('templates.designer.opt.percent') },
+              { value: 'address', label: t('templates.designer.opt.address') },
             ]}
             value={element.format ?? ''}
             onChange={(v) => patch({ format: (v || undefined) as any } as any)}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
           <Toggle
-            label="Prefijo/sufijo enriquecidos (negritas, colores...)"
+            label={t('templates.designer.el.richAffix')}
             checked={element.rich === true}
             onChange={(v) =>
               patch({
@@ -3528,7 +3627,7 @@ const ElementInspector: React.FC<{
               } as any)
             }
           />
-          <Label>Prefijo</Label>
+          <Label>{t('templates.designer.el.prefix')}</Label>
           {element.rich ? (
             <RichTextEditor
               value={element.prefix ?? ''}
@@ -3543,7 +3642,7 @@ const ElementInspector: React.FC<{
               className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
             />
           )}
-          <Label>Sufijo</Label>
+          <Label>{t('templates.designer.el.suffix')}</Label>
           {element.rich ? (
             <RichTextEditor
               value={element.suffix ?? ''}
@@ -3562,14 +3661,14 @@ const ElementInspector: React.FC<{
       )}
 
       {element.kind === 'totals' && (
-        <Section title="Totales a mostrar">
+        <Section title={t('templates.designer.el.totalsToShow')}>
           <Toggle
             label="Subtotal"
             checked={element.showSubtotal !== false}
             onChange={(v) => patch({ showSubtotal: v } as any)}
           />
           <Toggle
-            label="Desglose IVA"
+            label={t('templates.designer.el.vatBreakdown')}
             checked={element.showTaxBreakdown !== false}
             onChange={(v) => patch({ showTaxBreakdown: v } as any)}
           />
@@ -3583,7 +3682,7 @@ const ElementInspector: React.FC<{
 
       {element.kind === 'qr' && (
         <Section title="QR">
-          <Label>Valor (path o literal)</Label>
+          <Label>{t('templates.designer.el.valuePathOrLiteral')}</Label>
           <input
             type="text"
             value={element.value}
@@ -3594,30 +3693,30 @@ const ElementInspector: React.FC<{
       )}
 
       {element.kind === 'barcode' && (
-        <Section title="Código de barras">
-          <Label>Valor (path o literal)</Label>
+        <Section title={t('templates.designer.el.barcode')}>
+          <Label>{t('templates.designer.el.valuePathOrLiteral')}</Label>
           <input
             type="text"
             value={element.value}
             onChange={(e) => patch({ value: e.target.value } as any)}
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
           />
-          <Label>Simbología</Label>
+          <Label>{t('templates.designer.el.symbology')}</Label>
           <Select
             options={[
-              { value: 'auto', label: 'Auto (detecta EAN-13/UPC-A/EAN-8/ITF-14/Code128)' },
-              { value: 'code128', label: 'Code 128 (alfanumérico)' },
-              { value: 'code39', label: 'Code 39 (industrial)' },
+              { value: 'auto', label: t('templates.designer.sym.auto') },
+              { value: 'code128', label: t('templates.designer.sym.code128') },
+              { value: 'code39', label: t('templates.designer.sym.code39') },
               { value: 'code93', label: 'Code 93' },
               { value: 'codabar', label: 'Codabar' },
               { value: 'interleaved2of5', label: 'Interleaved 2 of 5 (ITF)' },
-              { value: 'ean13', label: 'EAN-13 (13 dígitos)' },
-              { value: 'ean8', label: 'EAN-8 (8 dígitos)' },
-              { value: 'upca', label: 'UPC-A (12 dígitos, USA)' },
-              { value: 'upce', label: 'UPC-E (compacto)' },
-              { value: 'isbn', label: 'ISBN (libros)' },
-              { value: 'itf14', label: 'ITF-14 (cajas)' },
-              { value: 'gs1-128', label: 'GS1-128 (con FNC1)' },
+              { value: 'ean13', label: t('templates.designer.sym.ean13') },
+              { value: 'ean8', label: t('templates.designer.sym.ean8') },
+              { value: 'upca', label: t('templates.designer.sym.upca') },
+              { value: 'upce', label: t('templates.designer.sym.upce') },
+              { value: 'isbn', label: t('templates.designer.sym.isbn') },
+              { value: 'itf14', label: t('templates.designer.sym.itf14') },
+              { value: 'gs1-128', label: t('templates.designer.sym.gs1128') },
               { value: 'datamatrix', label: 'Data Matrix' },
               { value: 'pdf417', label: 'PDF417' },
               { value: 'qrcode', label: 'QR Code' },
@@ -3625,14 +3724,13 @@ const ElementInspector: React.FC<{
             ]}
             value={element.symbology}
             onChange={(v) => patch({ symbology: v as any } as any)}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
           <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
-            Si el valor no encaja con la simbología elegida (ej. EAN-13 con 12 dígitos), el render
-            hace fallback automático a Code 128 para que la etiqueta nunca salga en blanco.
+            {t('templates.designer.el.barcodeHint')}
           </div>
           <Toggle
-            label="Mostrar texto legible"
+            label={t('templates.designer.el.showHumanText')}
             checked={element.includeText ?? false}
             onChange={(v) => patch({ includeText: v } as any)}
           />
@@ -3651,30 +3749,29 @@ const ElementInspector: React.FC<{
       )}
 
       {element.kind === 'signature' && (
-        <Section title="Firma">
-          <Label>Etiqueta</Label>
+        <Section title={t('templates.designer.el.signature')}>
+          <Label>{t('templates.designer.el.label')}</Label>
           <input
             type="text"
             value={element.label ?? ''}
             onChange={(e) => patch({ label: e.target.value } as any)}
-            placeholder="Firma y sello"
+            placeholder={t('templates.designer.el.signaturePlaceholder')}
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
           />
         </Section>
       )}
 
       {element.kind === 'pageBreak' && (
-        <Section title="Salto de página">
+        <Section title={t('templates.designer.el.pageBreak')}>
           <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-            Fuerza el inicio de una nueva página a partir de este punto en el PDF. En el diseñador
-            se muestra como un marcador visual.
+            {t('templates.designer.el.pageBreakHint')}
           </div>
         </Section>
       )}
 
       {element.kind === 'conditional' && (
-        <Section title="Condición">
-          <Label>Path a evaluar</Label>
+        <Section title={t('templates.designer.el.condition')}>
+          <Label>{t('templates.designer.el.pathToEval')}</Label>
           <input
             type="text"
             value={element.path}
@@ -3682,56 +3779,56 @@ const ElementInspector: React.FC<{
             placeholder="doc.paid"
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
           />
-          <Label>Operador</Label>
+          <Label>{t('templates.designer.el.operator')}</Label>
           <Select
             options={[
-              { value: 'truthy', label: 'Tiene valor (truthy)' },
-              { value: 'falsy', label: 'Está vacío (falsy)' },
-              { value: 'eq', label: '= igual a' },
-              { value: 'neq', label: '≠ distinto de' },
-              { value: 'gt', label: '> mayor que' },
-              { value: 'lt', label: '< menor que' },
+              { value: 'truthy', label: t('templates.designer.cond.truthy') },
+              { value: 'falsy', label: t('templates.designer.cond.falsy') },
+              { value: 'eq', label: t('templates.designer.cond.eq') },
+              { value: 'neq', label: t('templates.designer.cond.neq') },
+              { value: 'gt', label: t('templates.designer.cond.gt') },
+              { value: 'lt', label: t('templates.designer.cond.lt') },
             ]}
             value={element.operator}
             onChange={(v) => patch({ operator: v as any } as any)}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
           {element.operator !== 'truthy' && element.operator !== 'falsy' && (
             <>
-              <Label>Valor a comparar</Label>
+              <Label>{t('templates.designer.el.compareValue')}</Label>
               <input
                 type="text"
                 value={element.value ?? ''}
                 onChange={(e) => patch({ value: e.target.value } as any)}
-                placeholder='100  o  "pagada"  o  doc.subtotal'
+                placeholder={t('templates.designer.el.compareValuePlaceholder')}
                 className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
               />
               <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                Números y <code>path.como.este</code> se evalúan; el resto se trata como cadena
-                literal.
+                {t('templates.designer.el.compareHint1')} <code>path.como.este</code>{' '}
+                {t('templates.designer.el.compareHint2')}
               </div>
             </>
           )}
-          <Label>Si se cumple</Label>
+          <Label>{t('templates.designer.el.ifTrue')}</Label>
           <ExpandableTextarea
             value={element.thenText}
             onChange={(v) => patch({ thenText: v } as any)}
             rows={3}
             mono
-            placeholder="Pagada · {{formatCurrency doc.total}}"
-            modalTitle="Editor: si se cumple"
+            placeholder={t('templates.designer.el.ifTruePlaceholder')}
+            modalTitle={t('templates.designer.el.ifTrueEditor')}
           />
-          <Label>Si no se cumple (opcional)</Label>
+          <Label>{t('templates.designer.el.ifFalse')}</Label>
           <ExpandableTextarea
             value={element.elseText ?? ''}
             onChange={(v) => patch({ elseText: v || undefined } as any)}
             rows={3}
             mono
-            placeholder="Pendiente"
-            modalTitle="Editor: si no se cumple"
+            placeholder={t('templates.designer.el.ifFalsePlaceholder')}
+            modalTitle={t('templates.designer.el.ifFalseEditor')}
           />
           <ExprCommands
-            label="Insertar en «si se cumple»"
+            label={t('templates.designer.el.insertIntoTrue')}
             onInsert={(snippet) =>
               patch({ thenText: appendSnippet(element.thenText, snippet) } as any)
             }
@@ -3740,16 +3837,16 @@ const ElementInspector: React.FC<{
       )}
 
       {element.kind === 'divider' && (
-        <Section title="Divisor">
-          <Label>Orientación</Label>
+        <Section title={t('templates.designer.el.divider')}>
+          <Label>{t('templates.designer.el.orientation')}</Label>
           <Select
             options={[
-              { value: 'horizontal', label: 'Horizontal' },
-              { value: 'vertical', label: 'Vertical' },
+              { value: 'horizontal', label: t('templates.designer.opt.horizontal') },
+              { value: 'vertical', label: t('templates.designer.opt.vertical') },
             ]}
             value={element.orientation ?? 'horizontal'}
             onChange={(v) => patch({ orientation: v as any } as any)}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
           <div className="text-[10px] text-slate-400 leading-snug">
             Grosor, color y estilo de línea se ajustan en la sección Estilo (borde).
@@ -3758,19 +3855,19 @@ const ElementInspector: React.FC<{
       )}
 
       {element.kind === 'summary' && (
-        <Section title="Resumen / Agregado">
-          <Label>Operación</Label>
+        <Section title={t('templates.designer.el.summary')}>
+          <Label>{t('templates.designer.el.operation')}</Label>
           <Select
             options={[
-              { value: 'sum', label: 'Suma' },
-              { value: 'count', label: 'Conteo' },
-              { value: 'avg', label: 'Promedio' },
-              { value: 'min', label: 'Mínimo' },
-              { value: 'max', label: 'Máximo' },
+              { value: 'sum', label: t('templates.designer.agg.sum') },
+              { value: 'count', label: t('templates.designer.agg.count') },
+              { value: 'avg', label: t('templates.designer.agg.avg') },
+              { value: 'min', label: t('templates.designer.agg.min') },
+              { value: 'max', label: t('templates.designer.agg.max') },
             ]}
             value={element.op}
             onChange={(v) => patch({ op: v as any } as any)}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
           <SourceColumnPicker
             source={element.source}
@@ -3781,21 +3878,23 @@ const ElementInspector: React.FC<{
             queryNames={queryNames}
             queryColumns={queryColumns}
           />
-          <Label>Formato</Label>
+          <Label>{t('templates.designer.el.format')}</Label>
           <Select
             options={[
               { value: '', label: '—' },
-              { value: 'currency', label: '€ Moneda' },
-              { value: 'number', label: '# Número' },
-              { value: 'percent', label: '% Porcentaje' },
+              { value: 'currency', label: t('templates.designer.opt.currencySym') },
+              { value: 'number', label: t('templates.designer.opt.numberSym') },
+              { value: 'percent', label: t('templates.designer.opt.percentSym') },
             ]}
             value={element.format ?? ''}
             onChange={(v) => patch({ format: (v || undefined) as any } as any)}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Prefijo</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.el.prefix')}
+              </div>
               <input
                 value={element.prefix ?? ''}
                 onChange={(e) => patch({ prefix: e.target.value || undefined } as any)}
@@ -3803,7 +3902,9 @@ const ElementInspector: React.FC<{
               />
             </label>
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Sufijo</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.el.suffix')}
+              </div>
               <input
                 value={element.suffix ?? ''}
                 onChange={(e) => patch({ suffix: e.target.value || undefined } as any)}
@@ -3815,9 +3916,9 @@ const ElementInspector: React.FC<{
       )}
 
       {element.kind === 'box' && (
-        <Section title="Caja">
+        <Section title={t('templates.designer.el.box')}>
           <NumberField
-            label="Radio esquinas (px)"
+            label={t('templates.designer.el.cornerRadius')}
             value={element.style?.borderRadius ?? 0}
             onChange={(v) =>
               patch({
@@ -3826,59 +3927,58 @@ const ElementInspector: React.FC<{
             }
           />
           <div className="text-[10px] text-slate-400 leading-snug">
-            Fondo y borde en la sección Estilo. Coloca elementos encima y usa “Traer al frente”
-            (click derecho) para que queden por delante de la caja.
+            {t('templates.designer.el.boxHint')}
           </div>
         </Section>
       )}
 
       {element.kind === 'list' && (
-        <Section title="Lista">
+        <Section title={t('templates.designer.el.list')}>
           <SourceColumnPicker
             source={element.source}
             path={element.itemPath}
             onSource={(s) => patch({ source: s } as any)}
             onPath={(p) => patch({ itemPath: p } as any)}
-            pathLabel="Campo a mostrar"
+            pathLabel={t('templates.designer.el.fieldToShow')}
             queryNames={queryNames}
             queryColumns={queryColumns}
           />
           <Toggle
-            label="Numerada"
+            label={t('templates.designer.el.numbered')}
             checked={!!element.ordered}
             onChange={(v) => patch({ ordered: v } as any)}
           />
-          <Label>Marcador</Label>
+          <Label>{t('templates.designer.el.marker')}</Label>
           <Select
             options={[
-              { value: 'bullet', label: 'Viñeta' },
-              { value: 'number', label: 'Número' },
-              { value: 'none', label: 'Ninguno' },
+              { value: 'bullet', label: t('templates.designer.opt.bullet') },
+              { value: 'number', label: t('templates.designer.opt.number') },
+              { value: 'none', label: t('templates.designer.opt.none') },
             ]}
             value={element.marker ?? 'bullet'}
             onChange={(v) => patch({ marker: v as any } as any)}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
         </Section>
       )}
 
       {element.kind === 'currentDate' && (
-        <Section title="Fecha">
-          <Label>Modo</Label>
+        <Section title={t('templates.designer.el.date')}>
+          <Label>{t('templates.designer.el.mode')}</Label>
           <Select
             options={[
-              { value: 'date', label: 'Solo fecha' },
-              { value: 'datetime', label: 'Fecha y hora' },
+              { value: 'date', label: t('templates.designer.opt.dateOnly') },
+              { value: 'datetime', label: t('templates.designer.opt.datetime') },
             ]}
             value={element.mode ?? 'date'}
             onChange={(v) => patch({ mode: v as any } as any)}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
-          <Label>Prefijo</Label>
+          <Label>{t('templates.designer.el.prefix')}</Label>
           <input
             value={element.prefix ?? ''}
             onChange={(e) => patch({ prefix: e.target.value || undefined } as any)}
-            placeholder="ej. Emitido el "
+            placeholder={t('templates.designer.el.datePrefixPlaceholder')}
             className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
           />
         </Section>
@@ -3889,13 +3989,13 @@ const ElementInspector: React.FC<{
           por `'style' in element`, que oculta la sección en elementos recién
           creados sin clave `style` (p.ej. un texto nuevo). */}
       {element.kind !== 'pageBreak' && element.kind !== 'spacer' && (
-        <Section title="Estilo">
+        <Section title={t('templates.designer.el.style')}>
           {!STYLE_NO_FONT.has(element.kind) && (
             <>
-              <Label>Fuente</Label>
+              <Label>{t('templates.designer.el.font')}</Label>
               <Select
                 options={[
-                  { value: '', label: 'Por defecto del sistema' },
+                  { value: '', label: t('templates.designer.opt.systemDefault') },
                   {
                     value: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
                     label: 'Sans-serif',
@@ -3916,12 +4016,14 @@ const ElementInspector: React.FC<{
                     },
                   } as any)
                 }
-                ariaLabel="Opción"
+                ariaLabel={t('templates.designer.common.option')}
               />
 
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Tamaño (pt)</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {t('templates.designer.common.sizePt')}
+                  </div>
                   <input
                     type="number"
                     min={4}
@@ -3939,7 +4041,9 @@ const ElementInspector: React.FC<{
                   />
                 </label>
                 <label className="block">
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400">Color</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {t('templates.designer.common.color')}
+                  </div>
                   <input
                     type="color"
                     value={element.style?.color ?? '#000000'}
@@ -3962,7 +4066,7 @@ const ElementInspector: React.FC<{
                       },
                     } as any)
                   }
-                  title="Negrita"
+                  title={t('templates.designer.common.bold')}
                   className="font-bold"
                 >
                   B
@@ -3977,7 +4081,7 @@ const ElementInspector: React.FC<{
                       },
                     } as any)
                   }
-                  title="Cursiva"
+                  title={t('templates.designer.el.italic')}
                   className="italic"
                 >
                   I
@@ -3988,7 +4092,7 @@ const ElementInspector: React.FC<{
                   onClick={() =>
                     patch({ style: { ...(element.style ?? {}), textAlign: 'left' } } as any)
                   }
-                  title="Izquierda"
+                  title={t('templates.designer.opt.left')}
                 >
                   ⬅
                 </StyleToggleButton>
@@ -3997,7 +4101,7 @@ const ElementInspector: React.FC<{
                   onClick={() =>
                     patch({ style: { ...(element.style ?? {}), textAlign: 'center' } } as any)
                   }
-                  title="Centro"
+                  title={t('templates.designer.opt.center')}
                 >
                   ↔
                 </StyleToggleButton>
@@ -4006,7 +4110,7 @@ const ElementInspector: React.FC<{
                   onClick={() =>
                     patch({ style: { ...(element.style ?? {}), textAlign: 'right' } } as any)
                   }
-                  title="Derecha"
+                  title={t('templates.designer.opt.right')}
                 >
                   ➡
                 </StyleToggleButton>
@@ -4014,7 +4118,7 @@ const ElementInspector: React.FC<{
             </>
           )}
 
-          <Label>Color de fondo</Label>
+          <Label>{t('templates.designer.el.bgColor')}</Label>
           <div className="flex gap-2 items-center">
             <input
               type="color"
@@ -4035,20 +4139,22 @@ const ElementInspector: React.FC<{
               }
               className="text-[11px] text-slate-500 hover:text-slate-700"
             >
-              Transparente
+              {t('templates.designer.el.transparent')}
             </button>
           </div>
 
-          <Label>Borde</Label>
+          <Label>{t('templates.designer.el.border')}</Label>
           <div className="grid grid-cols-[1fr_70px_70px] gap-2 items-end">
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Estilo</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.el.style')}
+              </div>
               <Select
                 options={[
-                  { value: 'none', label: 'Sin borde' },
-                  { value: 'solid', label: 'Línea' },
-                  { value: 'dashed', label: 'Guiones' },
-                  { value: 'dotted', label: 'Puntos' },
+                  { value: 'none', label: t('templates.designer.opt.noBorder') },
+                  { value: 'solid', label: t('templates.designer.opt.line') },
+                  { value: 'dashed', label: t('templates.designer.opt.dashed') },
+                  { value: 'dotted', label: t('templates.designer.opt.dotted') },
                 ]}
                 value={element.style?.borderStyle ?? 'none'}
                 onChange={(value) => {
@@ -4064,11 +4170,13 @@ const ElementInspector: React.FC<{
                     },
                   } as any);
                 }}
-                ariaLabel="Opción"
+                ariaLabel={t('templates.designer.common.option')}
               />
             </label>
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Grosor (px)</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.el.borderWidth')}
+              </div>
               <input
                 type="number"
                 min={0}
@@ -4086,7 +4194,9 @@ const ElementInspector: React.FC<{
               />
             </label>
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Color</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.common.color')}
+              </div>
               <input
                 type="color"
                 value={element.style?.borderColor ?? '#000000'}
@@ -4103,31 +4213,32 @@ const ElementInspector: React.FC<{
       )}
 
       {/* CSS por elemento — disponible para todos los kinds (fuera del guard de estilo). */}
-      <Section title="CSS del elemento">
-        <Label>Clase CSS</Label>
+      <Section title={t('templates.designer.css.elementTitle')}>
+        <Label>{t('templates.designer.el.cssClass')}</Label>
         <input
           value={element.className ?? ''}
-          placeholder="ej. destacado total-grande"
+          placeholder={t('templates.designer.el.cssClassPlaceholder')}
           onChange={(e) => patch({ className: e.target.value || undefined } as any)}
           className="w-full px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono"
         />
         <div className="text-[10px] text-slate-400 leading-snug">
-          Apúntale reglas desde el CSS global del documento (botón en el inspector de página).
+          {t('templates.designer.el.cssClassHint')}
         </div>
-        <Label>CSS propio</Label>
+        <Label>{t('templates.designer.el.ownCss')}</Label>
         <button
           type="button"
           onClick={() => setCssOpen(true)}
           className="flex items-center gap-2 px-2 py-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
         >
-          <Code size={13} /> Editar CSS
+          <Code size={13} /> {t('templates.designer.ctx.editCss')}
           {element.customCss ? (
             <span className="text-emerald-600 dark:text-emerald-400">●</span>
           ) : null}
         </button>
         <div className="text-[10px] text-slate-400 leading-snug">
-          Propiedades CSS (ej. <code>letter-spacing:2px;text-transform:uppercase</code>), no reglas
-          con selector.
+          {t('templates.designer.el.ownCssHint1')}{' '}
+          <code>letter-spacing:2px;text-transform:uppercase</code>
+          {t('templates.designer.el.ownCssHint2')}
         </div>
       </Section>
 
@@ -4136,8 +4247,8 @@ const ElementInspector: React.FC<{
         value={element.customCss ?? ''}
         onChange={(v) => patch({ customCss: v.trim() ? v : undefined } as any)}
         onClose={() => setCssOpen(false)}
-        title="CSS del elemento"
-        helpText="Propiedades CSS que se anexan al estilo de este elemento (sin selector). Ej.: letter-spacing:2px; text-transform:uppercase;"
+        title={t('templates.designer.css.elementTitle')}
+        helpText={t('templates.designer.css.elementHelpLong')}
       />
     </div>
   );
@@ -4237,6 +4348,7 @@ const LinesTableEditor: React.FC<{
   queryNames = [],
   isFreeOrLabel = false,
 }) => {
+  const { t } = useI18n();
   // Fuente actual: 'lines' (documento) o 'query:NOMBRE'.
   const queryName =
     element.source && element.source.startsWith('query:')
@@ -4289,14 +4401,17 @@ const LinesTableEditor: React.FC<{
   };
 
   return (
-    <Section title="Tabla de líneas">
+    <Section title={t('templates.designer.lt.title')}>
       {(queryNames.length > 0 || isFreeOrLabel) && (
         <>
-          <Label>Fuente de datos</Label>
+          <Label>{t('templates.designer.source.title')}</Label>
           <Select
             options={[
-              { value: '', label: 'Líneas del documento' },
-              ...queryNames.map((n) => ({ value: `query:${n}`, label: `Consulta: ${n}` })),
+              { value: '', label: t('templates.designer.source.docLines') },
+              ...queryNames.map((n) => ({
+                value: `query:${n}`,
+                label: t('templates.designer.fields.queryGroup', { name: n }),
+              })),
             ]}
             value={element.source ?? ''}
             onChange={(value) => {
@@ -4315,50 +4430,50 @@ const LinesTableEditor: React.FC<{
                 onPatch({ source: value });
               }
             }}
-            ariaLabel="Fuente de datos"
+            ariaLabel={t('templates.designer.source.title')}
           />
           {isFreeOrLabel && !queryName && (
             <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-snug">
-              En un Documento Libre no hay “líneas” del documento. Elegí una consulta como fuente
-              para que la tabla itere sus filas.
+              {t('templates.designer.lt.freeHint')}
             </div>
           )}
           {queryName && queryCols.length === 0 && (
             <div className="text-[10px] text-amber-600 dark:text-amber-400 leading-snug">
-              La consulta “{queryName}” aún no devuelve columnas (¿0 filas o error?). Pruébala en el
-              inspector de página; mientras, podés escribir el path de columna a mano.
+              {t('templates.designer.lt.noColumns', { name: queryName })}
             </div>
           )}
         </>
       )}
-      <Label>Disposición</Label>
+      <Label>{t('templates.designer.lt.layout')}</Label>
       <Select
         options={[
-          { value: 'table', label: 'Tabla clásica' },
-          { value: 'keyValue', label: 'Lista clave: valor' },
+          { value: 'table', label: t('templates.designer.lt.layoutTable') },
+          { value: 'keyValue', label: t('templates.designer.lt.layoutKeyValue') },
         ]}
         value={element.layout ?? 'table'}
         onChange={(v) => onPatch({ layout: v as LinesTableElement['layout'] })}
-        ariaLabel="Opción"
+        ariaLabel={t('templates.designer.common.option')}
       />
       {(element.layout ?? 'table') === 'table' && (
         <>
-          <Label>Preset</Label>
+          <Label>{t('templates.designer.lt.preset')}</Label>
           <Select
             options={[
-              { value: 'default', label: 'Por defecto' },
-              { value: 'bordered', label: 'Con bordes' },
-              { value: 'striped', label: 'Filas cebra' },
-              { value: 'compact', label: 'Compacta' },
-              { value: 'borderless', label: 'Sin bordes' },
+              { value: 'default', label: t('templates.designer.lt.presetDefault') },
+              { value: 'bordered', label: t('templates.designer.lt.presetBordered') },
+              { value: 'striped', label: t('templates.designer.lt.presetStriped') },
+              { value: 'compact', label: t('templates.designer.lt.presetCompact') },
+              { value: 'borderless', label: t('templates.designer.lt.presetBorderless') },
             ]}
             value={element.tableStyle ?? 'default'}
             onChange={(v) => onPatch({ tableStyle: v as LinesTableElement['tableStyle'] })}
-            ariaLabel="Opción"
+            ariaLabel={t('templates.designer.common.option')}
           />
           <div className="grid grid-cols-2 gap-2">
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Fondo cabecera</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.lt.headerBg')}
+              </div>
               <input
                 type="color"
                 value={element.headerBg ?? '#f1f5f9'}
@@ -4367,7 +4482,9 @@ const LinesTableEditor: React.FC<{
               />
             </label>
             <label className="block">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Color borde</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {t('templates.designer.lt.borderColor')}
+              </div>
               <input
                 type="color"
                 value={element.borderColor ?? '#e5e7eb'}
@@ -4377,26 +4494,26 @@ const LinesTableEditor: React.FC<{
             </label>
           </div>
           <NumberField
-            label="Padding celda (px)"
+            label={t('templates.designer.lt.cellPadding')}
             value={element.cellPadding ?? 4}
             onChange={(v) => onPatch({ cellPadding: Math.max(0, v) })}
           />
         </>
       )}
       <Toggle
-        label="Mostrar cabecera"
+        label={t('templates.designer.lt.showHeader')}
         checked={element.showHeader !== false}
         onChange={(v) => onPatch({ showHeader: v })}
       />
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>Columnas ({element.columns.length})</Label>
+          <Label>{t('templates.designer.lt.columns', { count: element.columns.length })}</Label>
           <button
             type="button"
             onClick={addColumn}
             className="text-[11px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600"
           >
-            + Añadir
+            + {t('templates.designer.lt.add')}
           </button>
         </div>
         {element.columns.map((col, idx) => (
@@ -4409,14 +4526,14 @@ const LinesTableEditor: React.FC<{
                 type="text"
                 value={col.label}
                 onChange={(e) => updateColumn(idx, { label: e.target.value })}
-                placeholder="Cabecera"
+                placeholder={t('templates.designer.lt.headerPlaceholder')}
                 className="flex-1 px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
               <button
                 type="button"
                 onClick={() => moveColumn(idx, -1)}
                 disabled={idx === 0}
-                title="Subir columna"
+                title={t('templates.designer.lt.moveUp')}
                 className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30"
               >
                 <ChevronUp size={13} />
@@ -4425,7 +4542,7 @@ const LinesTableEditor: React.FC<{
                 type="button"
                 onClick={() => moveColumn(idx, 1)}
                 disabled={idx === element.columns.length - 1}
-                title="Bajar columna"
+                title={t('templates.designer.lt.moveDown')}
                 className="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30"
               >
                 <ChevronDown size={13} />
@@ -4434,7 +4551,7 @@ const LinesTableEditor: React.FC<{
                 type="button"
                 onClick={() => removeColumn(idx)}
                 className="text-[11px] px-1.5 py-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
-                title="Borrar columna"
+                title={t('templates.designer.lt.delete')}
               >
                 ✕
               </button>
@@ -4451,21 +4568,21 @@ const LinesTableEditor: React.FC<{
                 type="number"
                 value={col.widthPct}
                 onChange={(e) => updateColumn(idx, { widthPct: Number(e.target.value) || 0 })}
-                title="% ancho"
+                title={t('templates.designer.lt.widthPct')}
                 className="px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
               />
             </div>
             <div className="grid grid-cols-2 gap-1">
               <Select
                 options={[
-                  { value: 'left', label: 'Izq' },
-                  { value: 'center', label: 'Centro' },
-                  { value: 'right', label: 'Der' },
+                  { value: 'left', label: t('templates.designer.lt.alignLeft') },
+                  { value: 'center', label: t('templates.designer.opt.center') },
+                  { value: 'right', label: t('templates.designer.lt.alignRight') },
                 ]}
                 value={col.align ?? 'left'}
                 onChange={(v) => updateColumn(idx, { align: v as any })}
                 className="text-xs"
-                ariaLabel="Opción"
+                ariaLabel={t('templates.designer.common.option')}
               />
               <Select
                 options={[
@@ -4479,13 +4596,15 @@ const LinesTableEditor: React.FC<{
                 value={col.format ?? ''}
                 onChange={(v) => updateColumn(idx, { format: (v || undefined) as any })}
                 className="text-xs"
-                ariaLabel="Opción"
+                ariaLabel={t('templates.designer.common.option')}
               />
             </div>
             {lineGroup && (
               <details className="text-[11px]">
                 <summary className="cursor-pointer text-slate-500">
-                  {queryName ? 'Elegir columna de la consulta…' : 'Elegir campo de línea…'}
+                  {queryName
+                    ? t('templates.designer.lt.pickQueryColumn')
+                    : t('templates.designer.lt.pickLineField')}
                 </summary>
                 <div className="mt-1 max-h-32 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded">
                   {lineGroup.fields.map((f) => (
@@ -4552,6 +4671,7 @@ const RichTextEditor: React.FC<{
   defaultColor?: string;
   style?: ElementStyle;
 }> = ({ value, onChange, defaultColor, style }) => {
+  const { t } = useI18n();
   const ref = useRef<HTMLDivElement | null>(null);
   const [color, setColor] = useState(defaultColor || '#1e40af');
   const [bgColor, setBgColor] = useState('#fef08a');
@@ -4608,7 +4728,7 @@ const RichTextEditor: React.FC<{
           type="button"
           onClick={() => exec('bold')}
           className={`${btnCls} font-bold`}
-          title="Negrita (Ctrl+B)"
+          title={t('templates.designer.rt.bold')}
         >
           B
         </button>
@@ -4616,7 +4736,7 @@ const RichTextEditor: React.FC<{
           type="button"
           onClick={() => exec('italic')}
           className={`${btnCls} italic`}
-          title="Cursiva (Ctrl+I)"
+          title={t('templates.designer.rt.italic')}
         >
           I
         </button>
@@ -4624,7 +4744,7 @@ const RichTextEditor: React.FC<{
           type="button"
           onClick={() => exec('underline')}
           className={`${btnCls} underline`}
-          title="Subrayado (Ctrl+U)"
+          title={t('templates.designer.rt.underline')}
         >
           U
         </button>
@@ -4632,12 +4752,12 @@ const RichTextEditor: React.FC<{
           type="button"
           onClick={() => exec('strikeThrough')}
           className={`${btnCls} line-through`}
-          title="Tachado"
+          title={t('templates.designer.rt.strike')}
         >
           S
         </button>
         <span className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-        <label className="flex items-center gap-1" title="Color del texto seleccionado">
+        <label className="flex items-center gap-1" title={t('templates.designer.rt.textColor')}>
           <input
             type="color"
             value={color}
@@ -4651,7 +4771,7 @@ const RichTextEditor: React.FC<{
             A
           </button>
         </label>
-        <label className="flex items-center gap-1" title="Color de fondo del texto seleccionado">
+        <label className="flex items-center gap-1" title={t('templates.designer.rt.bgColor')}>
           <input
             type="color"
             value={bgColor}
@@ -4674,7 +4794,7 @@ const RichTextEditor: React.FC<{
           type="button"
           onClick={() => setBlockAlign('left')}
           className={btnCls}
-          title="Alinear izquierda"
+          title={t('templates.designer.rt.alignLeft')}
         >
           ⯇
         </button>
@@ -4682,7 +4802,7 @@ const RichTextEditor: React.FC<{
           type="button"
           onClick={() => setBlockAlign('center')}
           className={btnCls}
-          title="Centrar"
+          title={t('templates.designer.rt.center')}
         >
           ≡
         </button>
@@ -4690,12 +4810,17 @@ const RichTextEditor: React.FC<{
           type="button"
           onClick={() => setBlockAlign('right')}
           className={btnCls}
-          title="Alinear derecha"
+          title={t('templates.designer.rt.alignRight')}
         >
           ⯈
         </button>
         <span className="w-px h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
-        <button type="button" onClick={clearFormat} className={btnCls} title="Quitar formato">
+        <button
+          type="button"
+          onClick={clearFormat}
+          className={btnCls}
+          title={t('templates.designer.rt.clear')}
+        >
           ⨯
         </button>
       </div>
@@ -4725,8 +4850,7 @@ const RichTextEditor: React.FC<{
         }}
       />
       <div className="text-[10px] text-slate-400 leading-snug">
-        Selecciona texto y aplica formato. Ctrl+B/I/U también funcionan. El formato se exporta como
-        HTML al PDF.
+        {t('templates.designer.rt.hint')}
       </div>
     </div>
   );
@@ -4739,6 +4863,7 @@ const FieldPicker: React.FC<{
   groups: FieldGroup[];
   onPick: (field: FieldDef) => void;
 }> = ({ value, groups, onPick }) => {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   // Keyeamos por `label` (no por `group`) porque pueden coexistir varios grupos
   // con el mismo `group` (p.ej. varias consultas SQL para FREE/LABEL).
@@ -4763,12 +4888,14 @@ const FieldPicker: React.FC<{
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Buscar campo…"
+        placeholder={t('templates.designer.fields.search')}
         className="w-full px-2 py-1.5 text-xs bg-transparent border-b border-slate-200 dark:border-slate-700 focus:outline-none"
       />
       <div className="max-h-56 overflow-y-auto">
         {filteredGroups.length === 0 && (
-          <div className="px-3 py-3 text-xs text-slate-400 italic">Sin resultados</div>
+          <div className="px-3 py-3 text-xs text-slate-400 italic">
+            {t('templates.designer.fields.noResults')}
+          </div>
         )}
         {filteredGroups.map((g) => {
           const expanded = normalizedQuery ? true : openGroup === g.label;
@@ -4937,61 +5064,99 @@ interface ExprCommand {
   hint?: string;
 }
 
+/** `group`/`label`/`hint` son claves i18n; `snippet` va tal cual a la plantilla. */
 const EXPR_COMMANDS: ExprCommand[] = [
   {
-    group: 'Campos',
-    label: 'Campo simple',
+    group: 'templates.designer.expr.groups.fields',
+    label: 'templates.designer.expr.labels.simpleField',
     snippet: '{{doc.docCode}}',
-    hint: 'Imprime el valor tal cual',
+    hint: 'templates.designer.expr.hints.asIs',
   },
   {
-    group: 'Campos',
-    label: 'Campo (HTML crudo)',
+    group: 'templates.designer.expr.groups.fields',
+    label: 'templates.designer.expr.labels.rawField',
     snippet: '{{{company.logoUrl}}}',
-    hint: 'No escapa el HTML',
+    hint: 'templates.designer.expr.hints.noEscape',
   },
-  { group: 'Formato', label: 'Moneda', snippet: '{{formatCurrency doc.total}}' },
-  { group: 'Formato', label: 'Número', snippet: '{{formatNumber valor 2}}', hint: '2 = decimales' },
-  { group: 'Formato', label: 'Fecha', snippet: '{{formatDate doc.issueDate}}' },
   {
-    group: 'Formato',
-    label: 'Dirección (multilínea)',
+    group: 'templates.designer.expr.groups.format',
+    label: 'templates.designer.expr.labels.currency',
+    snippet: '{{formatCurrency doc.total}}',
+  },
+  {
+    group: 'templates.designer.expr.groups.format',
+    label: 'templates.designer.expr.labels.number',
+    snippet: '{{formatNumber valor 2}}',
+    hint: 'templates.designer.expr.hints.decimals',
+  },
+  {
+    group: 'templates.designer.expr.groups.format',
+    label: 'templates.designer.expr.labels.date',
+    snippet: '{{formatDate doc.issueDate}}',
+  },
+  {
+    group: 'templates.designer.expr.groups.format',
+    label: 'templates.designer.expr.labels.address',
     snippet: '{{{formatAddress partner.billingAddress}}}',
   },
-  { group: 'Formato', label: 'Padding a la izquierda', snippet: '{{padLeft valor 6 "0"}}' },
-  { group: 'Matemáticas', label: 'Multiplicar', snippet: '{{multiply precio cantidad}}' },
   {
-    group: 'Condicional',
-    label: 'Si / si no',
+    group: 'templates.designer.expr.groups.format',
+    label: 'templates.designer.expr.labels.padLeft',
+    snippet: '{{padLeft valor 6 "0"}}',
+  },
+  {
+    group: 'templates.designer.expr.groups.math',
+    label: 'templates.designer.expr.labels.multiply',
+    snippet: '{{multiply precio cantidad}}',
+  },
+  {
+    group: 'templates.designer.expr.groups.conditional',
+    label: 'templates.designer.expr.labels.ifElse',
     snippet: '{{#if doc.paid}}Pagada{{else}}Pendiente{{/if}}',
   },
-  { group: 'Condicional', label: 'Si NO (unless)', snippet: '{{#unless doc.notes}}—{{/unless}}' },
-  { group: 'Condicional', label: 'Igual a', snippet: '{{#if (eq doc.status "paid")}}OK{{/if}}' },
   {
-    group: 'Condicional',
-    label: 'Distinto de',
+    group: 'templates.designer.expr.groups.conditional',
+    label: 'templates.designer.expr.labels.unless',
+    snippet: '{{#unless doc.notes}}—{{/unless}}',
+  },
+  {
+    group: 'templates.designer.expr.groups.conditional',
+    label: 'templates.designer.expr.labels.equal',
+    snippet: '{{#if (eq doc.status "paid")}}OK{{/if}}',
+  },
+  {
+    group: 'templates.designer.expr.groups.conditional',
+    label: 'templates.designer.expr.labels.notEqual',
     snippet: '{{#if (neq doc.status "paid")}}!{{/if}}',
   },
-  { group: 'Condicional', label: 'Mayor que', snippet: '{{#if (gt doc.total 100)}}grande{{/if}}' },
-  { group: 'Condicional', label: 'Menor que', snippet: '{{#if (lt doc.total 100)}}pequeño{{/if}}' },
   {
-    group: 'Iteración',
-    label: 'Líneas del documento',
+    group: 'templates.designer.expr.groups.conditional',
+    label: 'templates.designer.expr.labels.greater',
+    snippet: '{{#if (gt doc.total 100)}}grande{{/if}}',
+  },
+  {
+    group: 'templates.designer.expr.groups.conditional',
+    label: 'templates.designer.expr.labels.less',
+    snippet: '{{#if (lt doc.total 100)}}pequeño{{/if}}',
+  },
+  {
+    group: 'templates.designer.expr.groups.iteration',
+    label: 'templates.designer.expr.labels.docLines',
     snippet: '{{#each lines}}{{itemName}} x{{quantity}}\n{{/each}}',
   },
   {
-    group: 'Iteración',
-    label: 'Desglose de IVA',
+    group: 'templates.designer.expr.groups.iteration',
+    label: 'templates.designer.expr.labels.vatBreakdown',
     snippet: '{{#each doc.taxBreakdown}}IVA {{rate}}%: {{formatCurrency amount}}\n{{/each}}',
   },
   {
-    group: 'Códigos',
-    label: 'QR (data URI)',
+    group: 'templates.designer.expr.groups.codes',
+    label: 'templates.designer.expr.labels.qr',
     snippet: '<img src="{{{qrCode doc.docCode}}}" style="width:25mm;height:25mm" />',
   },
   {
-    group: 'Códigos',
-    label: 'Código de barras',
+    group: 'templates.designer.expr.groups.codes',
+    label: 'templates.designer.expr.labels.barcode',
     snippet:
       '<img src="{{{barcode doc.docCode symbology="code128" includeText=true}}}" style="width:60mm;height:15mm" />',
   },
@@ -4999,19 +5164,20 @@ const EXPR_COMMANDS: ExprCommand[] = [
 
 const ExprCommands: React.FC<{ onInsert: (snippet: string) => void; label?: string }> = ({
   onInsert,
-  label = 'Comandos disponibles',
+  label,
 }) => {
+  const { t } = useI18n();
   const groups = Array.from(new Set(EXPR_COMMANDS.map((c) => c.group)));
   return (
     <details className="text-[11px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
       <summary className="cursor-pointer px-2 py-1.5 select-none font-semibold text-slate-600 dark:text-slate-300">
-        ⌘ {label}
+        ⌘ {label ?? t('templates.designer.expr.available')}
       </summary>
       <div className="px-2 pb-2 pt-1 space-y-2">
         {groups.map((g) => (
           <div key={g}>
             <div className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-0.5">
-              {g}
+              {t(g)}
             </div>
             <div className="flex flex-wrap gap-1">
               {EXPR_COMMANDS.filter((c) => c.group === g).map((c) => (
@@ -5019,18 +5185,17 @@ const ExprCommands: React.FC<{ onInsert: (snippet: string) => void; label?: stri
                   key={c.label}
                   type="button"
                   onClick={() => onInsert(c.snippet)}
-                  title={`${c.hint ? c.hint + ' — ' : ''}${c.snippet}`}
+                  title={`${c.hint ? t(c.hint) + ' — ' : ''}${c.snippet}`}
                   className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors"
                 >
-                  {c.label}
+                  {t(c.label)}
                 </button>
               ))}
             </div>
           </div>
         ))}
         <div className="text-[10px] text-slate-400 dark:text-slate-500 pt-1">
-          Al pulsar un comando se añade su plantilla al final del texto. Edítala después para usar
-          tus paths.
+          {t('templates.designer.expr.hint')}
         </div>
       </div>
     </details>
@@ -5055,7 +5220,8 @@ const ExpandableTextarea: React.FC<{
   mono?: boolean;
   placeholder?: string;
   modalTitle?: string;
-}> = ({ value, onChange, rows = 3, mono = false, placeholder, modalTitle = 'Editor' }) => {
+}> = ({ value, onChange, rows = 3, mono = false, placeholder, modalTitle }) => {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="relative">
@@ -5069,10 +5235,10 @@ const ExpandableTextarea: React.FC<{
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        title="Abrir editor grande"
+        title={t('templates.designer.expandable.open')}
         className="absolute top-1 right-1 px-1.5 py-0.5 text-[11px] rounded bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
       >
-        ⛶ editor
+        ⛶ {t('templates.designer.expandable.editor')}
       </button>
       {expanded &&
         createPortal(
@@ -5085,13 +5251,13 @@ const ExpandableTextarea: React.FC<{
             <div className="w-[min(90vw,900px)] h-[min(85vh,700px)] rounded-lg shadow-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
                 <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  {modalTitle}
+                  {modalTitle ?? t('templates.designer.expandable.defaultTitle')}
                 </div>
                 <button
                   type="button"
                   onClick={() => setExpanded(false)}
                   className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                  title="Cerrar"
+                  title={t('templates.designer.expandable.close')}
                 >
                   ✕
                 </button>
@@ -5105,14 +5271,17 @@ const ExpandableTextarea: React.FC<{
               />
               <div className="flex justify-end gap-2 px-4 py-3 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">
                 <span className="self-center">
-                  {value.length} car · {value.split('\n').length} líneas
+                  {t('templates.designer.expandable.stats', {
+                    chars: value.length,
+                    lines: value.split('\n').length,
+                  })}
                 </span>
                 <button
                   type="button"
                   onClick={() => setExpanded(false)}
                   className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium"
                 >
-                  Listo
+                  {t('templates.designer.expandable.done')}
                 </button>
               </div>
             </div>

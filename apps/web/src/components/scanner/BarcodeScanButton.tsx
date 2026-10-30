@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ScanLine } from 'lucide-react';
 import { BarcodeCameraModal } from './BarcodeCameraModal';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   onScan?: (code: string) => void;
@@ -18,9 +19,11 @@ export const BarcodeScanButton: React.FC<Props> = ({
   onScan,
   className = '',
   size = 16,
-  'aria-label': ariaLabel = 'Escanear código',
+  'aria-label': ariaLabelProp,
 }) => {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
+  const ariaLabel = ariaLabelProp ?? t('app.bottomNav.scan');
   return (
     <>
       <button

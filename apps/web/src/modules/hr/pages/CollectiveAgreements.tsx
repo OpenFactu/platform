@@ -16,6 +16,8 @@ import { useAuth } from '@/context/AuthContext';
 import { usePagePermissions } from '@/hooks/usePagePermissions';
 import { BookOpen, Plus, Pencil, Trash2 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatNumber } from '@/i18n/format';
 
 const empty = (): Partial<Agreement> => ({
   code: '',
@@ -32,6 +34,7 @@ const empty = (): Partial<Agreement> => ({
 });
 
 export const CollectiveAgreements: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const { canWrite, canDelete } = usePagePermissions();
   const [rows, setRows] = useState<Agreement[]>([]);
@@ -60,7 +63,7 @@ export const CollectiveAgreements: React.FC = () => {
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editing?.code || !editing?.name) {
-      toast.error('Código y nombre obligatorios');
+      toast.error(t('hrTime.shiftTemplates.required'));
       return;
     }
     const isNew = !editing.id;
@@ -70,50 +73,61 @@ export const CollectiveAgreements: React.FC = () => {
       } else {
         await collectiveAgreementsApi.update(editing.id!, editing);
       }
-      toast.success('Guardado');
+      toast.success(t('hr.common.saved'));
       setEditing(null);
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
   const remove = async (a: Agreement) => {
     const ok = await popup.confirm({
-      title: 'Borrar convenio',
-      message: `¿Borrar convenio ${a.code}?`,
+      title: t('hrPayroll.agreements.deleteTitle'),
+      message: t('hrPayroll.agreements.deleteMessage', { code: a.code }),
       tone: 'danger',
-      confirmLabel: 'Borrar',
+      confirmLabel: t('hr.common.delete'),
     });
     if (!ok) return;
     await collectiveAgreementsApi.remove(a.id);
     fetchAll();
   };
 
-  const money = (v: unknown) =>
-    `${Number(v || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })} €`;
+  const money = (v: unknown) => `${formatNumber(Number(v || 0), { minimumFractionDigits: 2 })} €`;
 
   const columns: TableColumn<Agreement>[] = [
-    { header: 'Código', accessor: 'code', sortable: true, primary: true },
-    { header: 'Nombre', accessor: 'name', sortable: true },
+    { header: t('hr.common.code'), accessor: 'code', sortable: true, primary: true },
+    { header: t('hr.common.name'), accessor: 'name', sortable: true },
     {
-      header: 'Sector',
+      header: t('hrPayroll.agreements.sector'),
       sortable: true,
       sortAccessor: (r) => r.sector || '',
       cell: (r) => <span className="text-fg-muted">{r.sector || '—'}</span>,
     },
     {
-      header: 'Salario base',
+      header: t('hrPayroll.agreements.baseSalary'),
       align: 'right',
       sortable: true,
       sortAccessor: (r) => Number(r.baseSalary || 0),
       cell: (r) => <span className="tabular-nums">{money(r.baseSalary)}</span>,
       className: 'tabular-nums',
     },
-    { header: 'Vacac.', accessor: 'vacationDays', align: 'right', sortable: true },
-    { header: 'h/sem', accessor: 'weeklyHours', align: 'right', sortable: true },
     {
-      header: 'Vigencia',
+      header: t('hrPayroll.agreements.vacationShort'),
+      accessor: 'vacationDays',
+      align: 'right',
+      sortable: true,
+    },
+    {
+      header: t('hrPayroll.agreements.weeklyShort'),
+      accessor: 'weeklyHours',
+      align: 'right',
+      sortable: true,
+    },
+    {
+      header: t('hrPayroll.agreements.validity'),
       cell: (r) => (
         <span className="text-xs text-fg-muted">
           {r.validFrom?.slice(0, 10) || '—'} → {r.validTo?.slice(0, 10) || '—'}
@@ -126,13 +140,13 @@ export const CollectiveAgreements: React.FC = () => {
   // click derecho, así no hace falta una columna de botones.
   const rowActions = (r: Agreement): RowAction[] => [
     {
-      label: 'Editar',
+      label: t('hr.common.edit'),
       icon: <Pencil size={14} />,
       disabled: !canWrite,
       onClick: () => setEditing(r),
     },
     {
-      label: 'Borrar',
+      label: t('hr.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       disabled: !canDelete,
@@ -143,14 +157,14 @@ export const CollectiveAgreements: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-5">
       <PageHeader
-        title="Convenios colectivos"
-        subtitle="Catálogo de convenios. Asigna uno a cada contrato para que el salario base y los días de vacaciones se sugieran automáticamente."
+        title={t('hrPayroll.agreements.title')}
+        subtitle={t('hrPayroll.agreements.subtitle')}
         icon={<BookOpen size={18} />}
         size="lg"
         actions={
           canWrite && (
             <Button type="button" size="sm" onClick={() => setEditing(empty())}>
-              <Plus size={14} /> Nuevo convenio
+              <Plus size={14} /> {t('hrPayroll.agreements.new')}
             </Button>
           )
         }
@@ -160,65 +174,65 @@ export const CollectiveAgreements: React.FC = () => {
         <Card noPadding>
           <form onSubmit={save} className="p-6 grid grid-cols-1 md:grid-cols-4 gap-3">
             <Input
-              label="Código"
+              label={t('hr.common.code')}
               value={editing.code || ''}
               onChange={(e) => setEditing({ ...editing, code: e.target.value })}
               required
             />
             <div className="md:col-span-2">
               <Input
-                label="Nombre"
+                label={t('hr.common.name')}
                 value={editing.name || ''}
                 onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                 required
               />
             </div>
             <Input
-              label="Sector"
+              label={t('hrPayroll.agreements.sector')}
               value={editing.sector || ''}
               onChange={(e) => setEditing({ ...editing, sector: e.target.value })}
             />
             <DatePicker
-              label="Vigencia desde"
+              label={t('hrPayroll.agreements.validFrom')}
               value={(editing.validFrom || '').slice(0, 10) || null}
               onChange={(v) => setEditing({ ...editing, validFrom: v ?? '' })}
             />
             <DatePicker
-              label="Vigencia hasta"
+              label={t('hrPayroll.agreements.validTo')}
               value={(editing.validTo || '').slice(0, 10) || null}
               onChange={(v) => setEditing({ ...editing, validTo: v ?? '' })}
             />
             <Input
-              label="Salario base anual"
+              label={t('hrPayroll.agreements.baseSalaryYear')}
               type="number"
               step="0.01"
               value={String(editing.baseSalary ?? '0')}
               onChange={(e) => setEditing({ ...editing, baseSalary: e.target.value })}
             />
             <Input
-              label="Vacaciones (días)"
+              label={t('hrPayroll.agreements.vacationDays')}
               type="number"
               value={String(editing.vacationDays ?? 22)}
               onChange={(e) => setEditing({ ...editing, vacationDays: Number(e.target.value) })}
             />
             <Input
-              label="Horas / semana"
+              label={t('hrPayroll.agreements.weeklyHours')}
               type="number"
               step="0.5"
               value={String(editing.weeklyHours ?? '40')}
               onChange={(e) => setEditing({ ...editing, weeklyHours: e.target.value })}
             />
             <Input
-              label="URL del PDF"
+              label={t('hrPayroll.agreements.pdfUrl')}
               value={editing.documentUrl || ''}
               onChange={(e) => setEditing({ ...editing, documentUrl: e.target.value })}
             />
             <div className="md:col-span-4 flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
-                Cancelar
+                {t('hr.common.cancel')}
               </Button>
               <Button type="submit" disabled={!canWrite}>
-                Guardar
+                {t('hr.common.save')}
               </Button>
             </div>
           </form>
@@ -233,7 +247,7 @@ export const CollectiveAgreements: React.FC = () => {
           isLoading={loading}
           rowActions={rowActions}
           onRowClick={(r) => setEditing(r)}
-          emptyMessage="Todavía no hay convenios dados de alta."
+          emptyMessage={t('hrPayroll.agreements.empty')}
         />
       </Card>
     </div>

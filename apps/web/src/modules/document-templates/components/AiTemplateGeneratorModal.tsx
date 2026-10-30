@@ -21,10 +21,20 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Button, Input, Textarea, Badge, SearchableSelect, useToast } from '@openfactu/ui';
-import { Sparkles, Save, AlertTriangle, Loader2, LayoutTemplate } from 'lucide-react';
+import {
+  Modal,
+  Button,
+  Input,
+  Textarea,
+  Badge,
+  SearchableSelect,
+  useToast,
+  Spinner,
+} from '@openfactu/ui';
+import { Sparkles, Save, AlertTriangle, LayoutTemplate } from 'lucide-react';
 import { useDocTypeOptions, type DocType } from './constants';
 import { templatesApi } from '../api';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface GeneratedResult {
   html: string;
@@ -45,6 +55,7 @@ interface Props {
 export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) => {
   const DOC_TYPE_OPTIONS = useDocTypeOptions();
   const toast = useToast();
+  const { t } = useI18n();
 
   const [docType, setDocType] = useState<DocType>('SINV');
   const [name, setName] = useState('');
@@ -73,7 +84,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
       previewUrlRef.current = url;
       setPreviewUrl(url);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error en el preview');
+      toast.error(e instanceof Error ? e.message : t('templates.ai.previewError'));
     } finally {
       setPreviewLoading(false);
     }
@@ -81,7 +92,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
 
   const generate = async (refine: boolean) => {
     if (!description.trim()) {
-      toast.error('Describe la plantilla que quieres');
+      toast.error(t('templates.ai.describeRequired'));
       return;
     }
     setGenerating(true);
@@ -103,13 +114,15 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
       setResult(data);
       setFeedback('');
       if (data.warnings?.length) {
-        toast.warning(`Generada con ${data.warnings.length} query(s) con avisos`);
+        toast.warning(t('templates.ai.generatedWithWarnings', { count: data.warnings.length }));
       } else {
-        toast.success(`Plantilla generada en ${Math.round((data.ms || 0) / 1000)}s`);
+        toast.success(
+          t('templates.ai.generatedIn', { seconds: Math.round((data.ms || 0) / 1000) }),
+        );
       }
       void renderPreview(data.html, data.queries);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al generar');
+      toast.error(e instanceof Error ? e.message : t('templates.ai.generateError'));
     } finally {
       setGenerating(false);
     }
@@ -118,7 +131,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
   const save = async () => {
     if (!result) return;
     if (!name.trim()) {
-      toast.error('Ponle un nombre a la plantilla');
+      toast.error(t('templates.ai.nameRequired'));
       return;
     }
     setSaving(true);
@@ -138,25 +151,25 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
           legacyHtml: true,
         });
       }
-      toast.success(`Plantilla "${name.trim()}" guardada`);
+      toast.success(t('templates.ai.saved', { name: name.trim() }));
       onSaved();
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Error al guardar');
+      toast.error(e instanceof Error ? e.message : t('templates.ai.saveError'));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Generar plantilla con IA" maxWidth="6xl">
+    <Modal isOpen onClose={onClose} title={t('templates.ai.title')} maxWidth="6xl">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* ── Columna izquierda: formulario ── */}
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
-                Tipo de documento
+                {t('templates.ai.docType')}
               </span>
               <SearchableSelect
                 options={DOC_TYPE_OPTIONS}
@@ -167,19 +180,19 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
             </div>
             <div className="space-y-1">
               <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
-                Nombre
+                {t('templates.ai.name')}
               </span>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="p.ej. Factura minimalista azul"
+                placeholder={t('templates.ai.namePlaceholder')}
               />
             </div>
           </div>
 
           <div className="space-y-1">
             <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
-              Descripción
+              {t('templates.ai.description')}
             </span>
             <Textarea
               className="min-h-[80px] resize-y"
@@ -187,8 +200,8 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
               onChange={(e) => setDescription(e.target.value)}
               placeholder={
                 docType === 'FREE' || docType === 'LABEL'
-                  ? 'p.ej. Etiqueta 60x40mm con nombre del artículo, código de barras EAN y precio, a partir del parámetro :itemId'
-                  : 'p.ej. Factura elegante con cabecera azul marino, logo a la izquierda, tabla de líneas con IVA desglosado y totales grandes'
+                  ? t('templates.ai.descriptionPlaceholderLabel')
+                  : t('templates.ai.descriptionPlaceholderDoc')
               }
               disabled={generating}
             />
@@ -197,12 +210,8 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
           {!result && (
             <Button onClick={() => generate(false)} disabled={generating} className="w-full">
               <span className="inline-flex items-center gap-2">
-                {generating ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Sparkles size={16} />
-                )}
-                {generating ? 'Generando… (puede tardar un minuto)' : 'Generar'}
+                {generating ? <Spinner size="sm" tone="inherit" /> : <Sparkles size={16} />}
+                {generating ? t('templates.ai.generating') : t('templates.ai.generate')}
               </span>
             </Button>
           )}
@@ -218,17 +227,14 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
               {result.visualOptions && (
                 <div className="text-xs p-2 rounded-md border border-border-default text-fg-muted flex items-start gap-2">
                   <LayoutTemplate size={14} className="shrink-0 mt-0.5 text-accent" />
-                  <span>
-                    Generada con las opciones del modo Visual: al guardarla podrás seguir editándola
-                    ahí, sin perder el diseño.
-                  </span>
+                  <span>{t('templates.ai.visualNote')}</span>
                 </div>
               )}
 
               {result.queries.length > 0 && (
                 <div className="space-y-1">
                   <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
-                    Queries generadas
+                    {t('templates.ai.generatedQueries')}
                   </span>
                   {result.queries.map((q) => {
                     const warning = result.warnings.find((w) => w.name === q.name);
@@ -240,7 +246,7 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-mono font-bold">{q.name}</span>
                           <Badge variant={warning ? 'error' : 'success'}>
-                            {warning ? 'inválida' : 'válida'}
+                            {warning ? t('templates.ai.invalid') : t('templates.ai.valid')}
                           </Badge>
                         </div>
                         <pre className="text-[11px] text-slate-500 whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
@@ -260,13 +266,13 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
 
               <div className="space-y-1">
                 <span className="text-xs font-bold text-fg-muted uppercase tracking-wider">
-                  Pedir ajustes
+                  {t('templates.ai.refine')}
                 </span>
                 <Textarea
                   className="min-h-[80px] resize-y"
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
-                  placeholder="p.ej. Haz la cabecera más compacta y añade el IBAN al pie"
+                  placeholder={t('templates.ai.refinePlaceholder')}
                   disabled={generating}
                 />
               </div>
@@ -279,18 +285,14 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
                   className="flex-1"
                 >
                   <span className="inline-flex items-center gap-2">
-                    {generating ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Sparkles size={16} />
-                    )}
-                    {generating ? 'Ajustando…' : 'Ajustar'}
+                    {generating ? <Spinner size="sm" tone="inherit" /> : <Sparkles size={16} />}
+                    {generating ? t('templates.ai.adjusting') : t('templates.ai.adjust')}
                   </span>
                 </Button>
                 <Button onClick={save} disabled={saving || generating} className="flex-1">
                   <span className="inline-flex items-center gap-2">
                     <Save size={16} />
-                    {saving ? 'Guardando…' : 'Guardar plantilla'}
+                    {saving ? t('templates.ai.saving') : t('templates.ai.save')}
                   </span>
                 </Button>
               </div>
@@ -302,15 +304,19 @@ export const AiTemplateGeneratorModal: React.FC<Props> = ({ onClose, onSaved }) 
         <div className="border border-border-default rounded-md overflow-hidden min-h-[60vh] flex items-center justify-center bg-bg-muted">
           {previewLoading && (
             <div className="text-sm text-slate-400 flex items-center gap-2">
-              <Loader2 size={16} className="animate-spin" /> Renderizando PDF…
+              <Spinner size="sm" tone="inherit" /> {t('templates.ai.rendering')}
             </div>
           )}
           {!previewLoading && previewUrl && (
-            <iframe title="Preview de la plantilla" src={previewUrl} className="w-full h-[70vh]" />
+            <iframe
+              title={t('templates.ai.previewTitle')}
+              src={previewUrl}
+              className="w-full h-[70vh]"
+            />
           )}
           {!previewLoading && !previewUrl && (
             <div className="text-sm text-slate-400 italic px-6 text-center">
-              El preview del PDF aparecerá aquí tras generar.
+              {t('templates.ai.previewEmpty')}
             </div>
           )}
         </div>

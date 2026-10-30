@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Badge, Button, Card, Loader, PageHeader, useIsMobile, useToast } from '@openfactu/ui';
@@ -23,6 +24,7 @@ export const OpportunityDetail: React.FC = () => {
   const { opportunityId = 'new' } = useParams<{ opportunityId: string }>();
   const [search] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const toast = useToast();
   // En móvil guardar (y convertir) van en el botón flotante: la cabecera no lleva acciones.
   const isMobile = useIsMobile();
@@ -60,10 +62,10 @@ export const OpportunityDetail: React.FC = () => {
     }
     try {
       const id = await detail.save();
-      toast.success(isNew ? 'Oportunidad creada' : 'Oportunidad guardada');
+      toast.success(isNew ? t('crm.detail.created') : t('crm.detail.saved'));
       if (isNew) navigate(`/crm/opportunities/${id}`, { replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo guardar');
+      toast.error(err instanceof Error ? err.message : t('crm.errors.saveFailed'));
     }
   };
 
@@ -71,10 +73,10 @@ export const OpportunityDetail: React.FC = () => {
     try {
       if (detail.linesDirty) await detail.save();
       const quote = await detail.createQuote();
-      toast.success(`Presupuesto ${quote.docNum} creado`);
+      toast.success(t('crm.detail.quoteCreated', { num: quote.docNum }));
       navigate(`/sales/quotes/${quote.id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo crear el presupuesto');
+      toast.error(err instanceof Error ? err.message : t('crm.detail.quoteFailed'));
     }
   };
 
@@ -88,10 +90,10 @@ export const OpportunityDetail: React.FC = () => {
   if (detail.notFound) {
     return (
       <div className="p-12 text-center text-fg-muted">
-        Oportunidad no encontrada.
+        {t('crm.detail.notFound')}
         <div className="mt-4">
           <Button variant="secondary" onClick={back}>
-            <ArrowLeft size={14} /> Volver a oportunidades
+            <ArrowLeft size={14} /> {t('crm.detail.backToList')}
           </Button>
         </div>
       </div>
@@ -131,16 +133,16 @@ export const OpportunityDetail: React.FC = () => {
             // En móvil ya está la flecha de volver de la barra superior.
             className="w-fit gap-1 max-md:hidden"
           >
-            <ArrowLeft size={12} /> Oportunidades
+            <ArrowLeft size={12} /> {t('crm.nav.opportunities')}
           </Button>
         }
         title={
           <>
-            {form.title || (isNew ? 'Nueva oportunidad' : '')}
+            {form.title || (isNew ? t('crm.opportunity.new') : '')}
             {(stage || isProspect) && (
               <span className="flex flex-wrap items-center gap-2">
                 {stage && <Badge variant={STAGE_KIND_VARIANT[stage.kind]}>{stage.name}</Badge>}
-                {isProspect && <Badge variant="warning">Prospecto</Badge>}
+                {isProspect && <Badge variant="warning">{t('crm.board.prospect')}</Badge>}
               </span>
             )}
           </>
@@ -163,13 +165,13 @@ export const OpportunityDetail: React.FC = () => {
                   // En móvil va dentro del botón flotante.
                   className="max-md:hidden"
                 >
-                  <UserPlus size={14} /> Convertir en cliente
+                  <UserPlus size={14} /> {t('crm.detail.convert')}
                 </Button>
               )}
               {canWrite && (
                 <HeaderSaveButton
                   isNew={isNew}
-                  label={isNew ? 'Crear oportunidad' : 'Guardar'}
+                  label={isNew ? t('crm.detail.create') : t('crm.common.save')}
                   saving={detail.saving}
                 />
               )}
@@ -179,7 +181,7 @@ export const OpportunityDetail: React.FC = () => {
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-        <Card title="Datos">
+        <Card title={t('crm.detail.data')}>
           <OpportunityFields
             form={form}
             set={detail.set}
@@ -187,14 +189,14 @@ export const OpportunityDetail: React.FC = () => {
             settings={settings}
             // Abierta: el importe sale de los productos. Ganada: es el del presupuesto aceptado.
             amountFromLines={detail.lines.length > 0 && stage?.kind === 'open'}
-            amountHint={stage?.kind === 'won' ? 'Importe del presupuesto aceptado.' : undefined}
+            amountHint={stage?.kind === 'won' ? t('crm.detail.amountFromQuote') : undefined}
             disabled={!canWrite}
           />
         </Card>
         <div className="space-y-6">
           <Card
-            title="Documentos"
-            subtitle="Presupuestos, pedidos y facturas de esta oportunidad."
+            title={t('crm.detail.documents')}
+            subtitle={t('crm.detail.documentsHint')}
             headerAction={
               !isNew &&
               canQuote &&
@@ -205,15 +207,15 @@ export const OpportunityDetail: React.FC = () => {
                   variant="secondary"
                   onClick={handleQuote}
                   disabled={!hasItemLines || detail.saving}
-                  title={hasItemLines ? undefined : 'Añade productos con artículo'}
+                  title={hasItemLines ? undefined : t('crm.detail.addItemLines')}
                 >
-                  <FileSignature size={14} /> Crear presupuesto
+                  <FileSignature size={14} /> {t('crm.detail.createQuote')}
                 </Button>
               )
             }
           >
             {isNew ? (
-              <p className="text-sm text-fg-muted">Guarda la oportunidad para presupuestarla.</p>
+              <p className="text-sm text-fg-muted">{t('crm.detail.saveToQuote')}</p>
             ) : (
               <OpportunityDocuments documents={detail.documents} />
             )}
@@ -222,7 +224,7 @@ export const OpportunityDetail: React.FC = () => {
             // Los formularios de actividad viven en modales (portal) y su submit
             // sintético subiría hasta el <form> de la ficha.
             <div onSubmit={(e) => e.stopPropagation()}>
-              <Card title="Actividad">
+              <Card title={t('crm.detail.activity')}>
                 <ActivityList
                   filter={{ opportunityId }}
                   defaults={{ opportunityId, partnerId: form.partnerId }}
@@ -233,12 +235,8 @@ export const OpportunityDetail: React.FC = () => {
           )}
         </div>
         <Card
-          title="Productos de interés"
-          subtitle={
-            linesLocked
-              ? 'La oportunidad está cerrada: los productos quedan como estaban.'
-              : 'El precio sale de la tarifa del cliente. El importe de la oportunidad es su suma.'
-          }
+          title={t('crm.detail.products')}
+          subtitle={linesLocked ? t('crm.detail.linesLocked') : t('crm.detail.linesHint')}
           className="xl:col-span-2"
         >
           <OpportunityLinesEditor
@@ -255,14 +253,14 @@ export const OpportunityDetail: React.FC = () => {
       <div onSubmit={(e) => e.stopPropagation()}>
         <QuickPartnerModal
           initial={converting}
-          title="Convertir en cliente"
+          title={t('crm.detail.convert')}
           onClose={() => setConverting(null)}
           onCreated={async (partner) => {
             try {
               await detail.convertToClient(partner.id);
-              toast.success('El prospecto ya es cliente');
+              toast.success(t('crm.detail.converted'));
             } catch (err) {
-              toast.error(err instanceof Error ? err.message : 'No se pudo enlazar el cliente');
+              toast.error(err instanceof Error ? err.message : t('crm.detail.convertFailed'));
             }
           }}
         />
@@ -271,14 +269,14 @@ export const OpportunityDetail: React.FC = () => {
       {canWrite && (
         <FloatingSaveButton
           isNew={isNew}
-          label={isNew ? 'Crear oportunidad' : 'Guardar'}
+          label={isNew ? t('crm.detail.create') : t('crm.common.save')}
           saving={detail.saving}
           actions={
             canConvert
               ? [
                   {
                     id: 'convert',
-                    label: 'Convertir en cliente',
+                    label: t('crm.detail.convert'),
                     icon: <UserPlus size={18} />,
                     onClick: convert,
                   },

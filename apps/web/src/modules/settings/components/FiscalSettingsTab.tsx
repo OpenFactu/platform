@@ -15,6 +15,7 @@ import {
 import { FiscalCatalogTable } from '@/components/fiscal/FiscalCatalogTable';
 import { PaymentTermsEditor } from '@/modules/accounting/components/PaymentTermsEditor';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { validateIban, validateSwift, formatIban } from '@/utils/bankValidation';
 
 /** Paleta de arranque para el color principal del PDF. */
@@ -39,6 +40,7 @@ const PDF_COLOR_PRESETS = [
 export const FiscalSettingsTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   // PUT /api/config/fiscal exige ADMIN o SUPERUSER en el backend
   // (adminMiddleware, apps/server/src/api/config.ts).
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
@@ -88,11 +90,13 @@ export const FiscalSettingsTab: React.FC = () => {
       const res = await coreApi.raw('PUT', '/api/config/fiscal', bank);
       if (!res.ok) {
         const err = res.data ?? {};
-        throw new Error(err?.error || 'Error');
+        throw new Error(err?.error || t('settingsCompany.fiscal.error'));
       }
-      toast.success('Guardado');
+      toast.success(t('settingsCompany.fiscal.saved'));
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al guardar');
+      toast.error(
+        (e instanceof Error ? e.message : undefined) || t('settingsCompany.fiscal.saveError'),
+      );
     } finally {
       setSaving(false);
     }
@@ -104,12 +108,12 @@ export const FiscalSettingsTab: React.FC = () => {
       <Card>
         <div className="p-6 space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 flex items-center gap-2">
-            <Landmark size={14} /> Datos bancarios y fiscales
+            <Landmark size={14} /> {t('settingsCompany.fiscal.bankSection')}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Input
-                label="IBAN"
+                label={t('settingsCompany.fiscal.iban')}
                 value={bank.company_iban}
                 onChange={(e) => setBank({ ...bank, company_iban: e.target.value })}
                 onBlur={(e) => setBank({ ...bank, company_iban: formatIban(e.target.value) })}
@@ -118,13 +122,13 @@ export const FiscalSettingsTab: React.FC = () => {
               <IbanFeedback value={bank.company_iban} />
             </div>
             <Input
-              label="Banco"
+              label={t('settingsCompany.fiscal.bank')}
               value={bank.company_bank_name}
               onChange={(e) => setBank({ ...bank, company_bank_name: e.target.value })}
             />
             <div>
               <Input
-                label="SWIFT / BIC"
+                label={t('settingsCompany.fiscal.swift')}
                 value={bank.company_bank_swift}
                 onChange={(e) =>
                   setBank({ ...bank, company_bank_swift: e.target.value.toUpperCase() })
@@ -134,23 +138,23 @@ export const FiscalSettingsTab: React.FC = () => {
               <SwiftFeedback value={bank.company_bank_swift} />
             </div>
             <Input
-              label="Régimen fiscal"
+              label={t('settingsCompany.fiscal.fiscalRegime')}
               value={bank.company_fiscal_regime}
               onChange={(e) => setBank({ ...bank, company_fiscal_regime: e.target.value })}
-              placeholder="General / Simplificado / Recargo equivalencia..."
+              placeholder={t('settingsCompany.fiscal.fiscalRegimePlaceholder')}
             />
             <div className="md:col-span-2">
               <Input
-                label="Pie legal de factura (opcional)"
+                label={t('settingsCompany.fiscal.invoiceFooter')}
                 value={bank.company_invoice_footer}
                 onChange={(e) => setBank({ ...bank, company_invoice_footer: e.target.value })}
-                placeholder="Texto legal que aparece al pie del PDF"
+                placeholder={t('settingsCompany.fiscal.invoiceFooterPlaceholder')}
               />
             </div>
             {/* ColorInput ya trae muestra + campo hex; el par de controles
                 (selector de color nativo + Input) que había aquí era eso a mano. */}
             <ColorInput
-              label="Color principal PDF"
+              label={t('settingsCompany.fiscal.pdfColor')}
               value={bank.company_invoice_color}
               onChange={(v) => setBank({ ...bank, company_invoice_color: v })}
               presets={PDF_COLOR_PRESETS}
@@ -159,12 +163,12 @@ export const FiscalSettingsTab: React.FC = () => {
           <div className="flex flex-col items-end gap-2">
             {!isAdmin && (
               <p className="text-[11px] text-ink-400 dark:text-ink-500">
-                Solo un administrador puede guardar esta configuración.
+                {t('settingsCompany.fiscal.adminOnly')}
               </p>
             )}
             <Button onClick={saveBank} disabled={saving || !isAdmin} className="gap-2">
               <Save size={14} />
-              {saving ? 'Guardando…' : 'Guardar'}
+              {saving ? t('settingsCompany.fiscal.saving') : t('settingsCompany.fiscal.save')}
             </Button>
           </div>
         </div>
@@ -175,7 +179,7 @@ export const FiscalSettingsTab: React.FC = () => {
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 flex items-center gap-2">
-              <PenLine size={14} /> Firma / representante
+              <PenLine size={14} /> {t('settingsCompany.fiscal.signatureSection')}
             </h2>
             {/* Checkbox y no Switch: se persiste con el «Guardar» de arriba
                 (mismo estado `bank`), no al marcarlo. */}
@@ -184,40 +188,41 @@ export const FiscalSettingsTab: React.FC = () => {
                 checked={bank.signature_show_in_pdf === 'true'}
                 onChange={(v) => setBank({ ...bank, signature_show_in_pdf: v ? 'true' : 'false' })}
               />
-              <span className="text-ink-700 dark:text-slate-200 font-bold">Mostrar en PDF</span>
+              <span className="text-ink-700 dark:text-slate-200 font-bold">
+                {t('settingsCompany.fiscal.showInPdf')}
+              </span>
             </label>
           </div>
           <p className="text-[11px] text-ink-400 dark:text-ink-500">
-            El nombre y cargo aparecen bajo la línea de firma en la factura emitida. Si añades una
-            URL de imagen (rúbrica escaneada), se imprime encima.
+            {t('settingsCompany.fiscal.signatureHelp')}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Nombre del firmante"
+              label={t('settingsCompany.fiscal.signerName')}
               value={bank.signature_name}
               onChange={(e) => setBank({ ...bank, signature_name: e.target.value })}
-              placeholder="Juan García Pérez"
+              placeholder={t('settingsCompany.fiscal.signerNamePlaceholder')}
             />
             <Input
-              label="Cargo"
+              label={t('settingsCompany.fiscal.signerRole')}
               value={bank.signature_role}
               onChange={(e) => setBank({ ...bank, signature_role: e.target.value })}
-              placeholder="Administrador único / Apoderado"
+              placeholder={t('settingsCompany.fiscal.signerRolePlaceholder')}
             />
             <div className="md:col-span-2">
               <label className="text-xs text-ink-500 dark:text-ink-400 block mb-1">
-                Imagen de la firma (opcional) · PNG o JPG, máx. 500 KB
+                {t('settingsCompany.fiscal.signatureImage')}
               </label>
               <div className="flex items-center gap-2">
                 <Input
                   value={
                     bank.signature_image_url?.startsWith('data:')
-                      ? '(imagen cargada)'
+                      ? t('settingsCompany.fiscal.imageLoaded')
                       : bank.signature_image_url || ''
                   }
                   onChange={(e) => setBank({ ...bank, signature_image_url: e.target.value })}
                   readOnly={bank.signature_image_url?.startsWith('data:')}
-                  placeholder="Pega una URL o sube un PNG →"
+                  placeholder={t('settingsCompany.fiscal.imagePlaceholder')}
                   className="flex-1"
                 />
                 {/* El límite de 500 KB se sigue comprobando a mano (maxSizeMb
@@ -226,23 +231,23 @@ export const FiscalSettingsTab: React.FC = () => {
                   variant="button"
                   accept="image/png,image/jpeg"
                   icon={<Upload size={14} />}
-                  label="Subir PNG"
+                  label={t('settingsCompany.fiscal.uploadPng')}
                   className="whitespace-nowrap"
                   onFiles={(files) => {
                     const f = files[0];
                     if (!f) return;
                     if (f.size > 500 * 1024) {
-                      toast.error('Máximo 500 KB');
+                      toast.error(t('settingsCompany.fiscal.max500kb'));
                       return;
                     }
                     const reader = new FileReader();
                     reader.onload = () => {
                       setBank({ ...bank, signature_image_url: String(reader.result || '') });
                     };
-                    reader.onerror = () => toast.error('No se pudo leer el fichero');
+                    reader.onerror = () => toast.error(t('settingsCompany.fiscal.readError'));
                     reader.readAsDataURL(f);
                   }}
-                  onReject={() => toast.error('Solo PNG o JPG')}
+                  onReject={() => toast.error(t('settingsCompany.fiscal.onlyPngJpg'))}
                 />
                 {bank.signature_image_url && (
                   <Button
@@ -250,7 +255,7 @@ export const FiscalSettingsTab: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => setBank({ ...bank, signature_image_url: '' })}
-                    title="Quitar firma"
+                    title={t('settingsCompany.fiscal.removeSignature')}
                   >
                     <XIcon size={14} />
                   </Button>
@@ -259,9 +264,13 @@ export const FiscalSettingsTab: React.FC = () => {
               {bank.signature_image_url && (
                 <div className="mt-3 flex items-center gap-3 p-3 border border-line dark:border-ink-700 rounded-sm bg-white dark:bg-ink-900">
                   <span className="text-[10px] text-ink-400 font-mono uppercase tracking-wider">
-                    Vista previa
+                    {t('settingsCompany.fiscal.preview')}
                   </span>
-                  <img src={bank.signature_image_url} alt="Firma" className="h-12 object-contain" />
+                  <img
+                    src={bank.signature_image_url}
+                    alt={t('settingsCompany.fiscal.signatureAlt')}
+                    className="h-12 object-contain"
+                  />
                 </div>
               )}
             </div>
@@ -274,11 +283,13 @@ export const FiscalSettingsTab: React.FC = () => {
         <div className="p-6">
           <div className="flex items-center gap-2 mb-4 text-ink-700 dark:text-slate-200">
             <Coins size={16} />
-            <h2 className="text-base font-bold font-display">Divisas</h2>
+            <h2 className="text-base font-bold font-display">
+              {t('settingsCompany.fiscal.currencies')}
+            </h2>
           </div>
           <FiscalCatalogTable
             endpoint="/api/currencies"
-            title="Monedas disponibles"
+            title={t('settingsCompany.fiscal.currenciesTitle')}
             defaultRow={{
               code: '',
               name: '',
@@ -289,18 +300,33 @@ export const FiscalSettingsTab: React.FC = () => {
               isActive: true,
             }}
             columns={[
-              { key: 'code', label: 'Código', width: '90px' },
-              { key: 'name', label: 'Nombre' },
-              { key: 'symbol', label: 'Símbolo', width: '90px' },
-              { key: 'decimals', label: 'Decimales', type: 'number', width: '100px' },
+              { key: 'code', label: t('settingsCompany.fiscal.cols.code'), width: '90px' },
+              { key: 'name', label: t('settingsCompany.fiscal.cols.name') },
+              { key: 'symbol', label: t('settingsCompany.fiscal.cols.symbol'), width: '90px' },
+              {
+                key: 'decimals',
+                label: t('settingsCompany.fiscal.cols.decimals'),
+                type: 'number',
+                width: '100px',
+              },
               {
                 key: 'exchangeRate',
-                label: 'Cambio',
+                label: t('settingsCompany.fiscal.cols.exchangeRate'),
                 type: 'number',
                 width: '120px',
               },
-              { key: 'isBase', label: 'Base', type: 'boolean', width: '70px' },
-              { key: 'isActive', label: 'Activa', type: 'boolean', width: '80px' },
+              {
+                key: 'isBase',
+                label: t('settingsCompany.fiscal.cols.isBase'),
+                type: 'boolean',
+                width: '70px',
+              },
+              {
+                key: 'isActive',
+                label: t('settingsCompany.fiscal.cols.activeF'),
+                type: 'boolean',
+                width: '80px',
+              },
             ]}
           />
         </div>
@@ -311,11 +337,13 @@ export const FiscalSettingsTab: React.FC = () => {
         <div className="p-6">
           <div className="flex items-center gap-2 mb-4 text-ink-700 dark:text-slate-200">
             <FileText size={16} />
-            <h2 className="text-base font-bold font-display">Tipos de documento fiscal</h2>
+            <h2 className="text-base font-bold font-display">
+              {t('settingsCompany.fiscal.docTypes')}
+            </h2>
           </div>
           <FiscalCatalogTable
             endpoint="/api/document-types"
-            title="Tipos (F1, F2, R1...)"
+            title={t('settingsCompany.fiscal.docTypesTitle')}
             defaultRow={{
               code: '',
               name: '',
@@ -326,30 +354,55 @@ export const FiscalSettingsTab: React.FC = () => {
               sortOrder: 0,
             }}
             columns={[
-              { key: 'code', label: 'Código', width: '110px', placeholder: 'F1, 33, INV…' },
-              { key: 'name', label: 'Nombre', placeholder: 'Factura normal' },
+              {
+                key: 'code',
+                label: t('settingsCompany.fiscal.cols.code'),
+                width: '110px',
+                placeholder: 'F1, 33, INV…',
+              },
+              {
+                key: 'name',
+                label: t('settingsCompany.fiscal.cols.name'),
+                placeholder: t('settingsCompany.fiscal.cols.namePlaceholder'),
+              },
               {
                 key: 'docCategory',
-                label: 'Categoría',
+                label: t('settingsCompany.fiscal.cols.category'),
                 width: '180px',
                 type: 'select',
                 options: [
-                  { label: 'Factura', value: 'invoice' },
-                  { label: 'Abono / Rectificativa', value: 'credit_note' },
-                  { label: 'Cargo (nota débito)', value: 'debit_note' },
-                  { label: 'Ticket / Simplificada', value: 'ticket' },
+                  { label: t('settingsCompany.fiscal.categories.invoice'), value: 'invoice' },
+                  {
+                    label: t('settingsCompany.fiscal.categories.creditNote'),
+                    value: 'credit_note',
+                  },
+                  {
+                    label: t('settingsCompany.fiscal.categories.debitNoteLong'),
+                    value: 'debit_note',
+                  },
+                  { label: t('settingsCompany.fiscal.categories.ticket'), value: 'ticket' },
                 ],
               },
-              { key: 'isRectify', label: 'Rectificativa', type: 'boolean', width: '120px' },
-              { key: 'isActive', label: 'Activo', type: 'boolean', width: '80px' },
+              {
+                key: 'isRectify',
+                label: t('settingsCompany.fiscal.cols.isRectify'),
+                type: 'boolean',
+                width: '120px',
+              },
+              {
+                key: 'isActive',
+                label: t('settingsCompany.fiscal.cols.active'),
+                type: 'boolean',
+                width: '80px',
+              },
             ]}
             render={(col, row) => {
               if (col.key === 'docCategory') {
                 const map: Record<string, string> = {
-                  invoice: 'Factura',
-                  credit_note: 'Abono / Rectificativa',
-                  debit_note: 'Cargo',
-                  ticket: 'Ticket / Simplificada',
+                  invoice: t('settingsCompany.fiscal.categories.invoice'),
+                  credit_note: t('settingsCompany.fiscal.categories.creditNote'),
+                  debit_note: t('settingsCompany.fiscal.categories.debitNote'),
+                  ticket: t('settingsCompany.fiscal.categories.ticket'),
                 };
                 const label = map[row.docCategory] || row.docCategory || '—';
                 return (
@@ -373,16 +426,23 @@ export const FiscalSettingsTab: React.FC = () => {
         <div className="p-6">
           <div className="flex items-center gap-2 mb-4 text-ink-700 dark:text-slate-200">
             <CreditCard size={16} />
-            <h2 className="text-base font-bold font-display">Métodos de pago</h2>
+            <h2 className="text-base font-bold font-display">
+              {t('settingsCompany.fiscal.paymentMethods')}
+            </h2>
           </div>
           <FiscalCatalogTable
             endpoint="/api/payment-methods"
-            title="Cómo se cobra / paga"
+            title={t('settingsCompany.fiscal.paymentMethodsTitle')}
             defaultRow={{ code: '', name: '', isActive: true }}
             columns={[
-              { key: 'code', label: 'Código', width: '140px' },
-              { key: 'name', label: 'Nombre' },
-              { key: 'isActive', label: 'Activo', type: 'boolean', width: '80px' },
+              { key: 'code', label: t('settingsCompany.fiscal.cols.code'), width: '140px' },
+              { key: 'name', label: t('settingsCompany.fiscal.cols.name') },
+              {
+                key: 'isActive',
+                label: t('settingsCompany.fiscal.cols.active'),
+                type: 'boolean',
+                width: '80px',
+              },
             ]}
           />
         </div>
@@ -393,7 +453,9 @@ export const FiscalSettingsTab: React.FC = () => {
         <div className="p-6">
           <div className="flex items-center gap-2 mb-4 text-ink-700 dark:text-slate-200">
             <CalendarClock size={16} />
-            <h2 className="text-base font-bold font-display">Plazos de pago</h2>
+            <h2 className="text-base font-bold font-display">
+              {t('settingsCompany.fiscal.paymentTerms')}
+            </h2>
           </div>
           <PaymentTermsEditor />
         </div>
@@ -403,11 +465,12 @@ export const FiscalSettingsTab: React.FC = () => {
 };
 
 const IbanFeedback: React.FC<{ value: string }> = ({ value }) => {
+  const { t } = useI18n();
   if (!value?.trim()) return null;
   const res = validateIban(value);
   return res.ok ? (
     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-mono">
-      ✓ IBAN válido
+      {t('settingsCompany.fiscal.ibanValid')}
     </p>
   ) : (
     <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-1 font-mono">
@@ -417,11 +480,12 @@ const IbanFeedback: React.FC<{ value: string }> = ({ value }) => {
 };
 
 const SwiftFeedback: React.FC<{ value: string }> = ({ value }) => {
+  const { t } = useI18n();
   if (!value?.trim()) return null;
   const res = validateSwift(value);
   return res.ok ? (
     <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-mono">
-      ✓ SWIFT válido
+      {t('settingsCompany.fiscal.swiftValid')}
     </p>
   ) : (
     <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-1 font-mono">

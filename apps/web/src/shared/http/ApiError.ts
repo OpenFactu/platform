@@ -3,6 +3,8 @@
  * como ApiError, con el status HTTP y el body parseado (json o texto) para
  * que la UI pueda decidir el mensaje del toast.
  */
+import { t } from '@/i18n/i18n';
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -22,5 +24,5 @@ export function extractErrorMessage(status: number, body: unknown): string {
     if (typeof b.message === 'string' && b.message) return b.message;
   }
   if (typeof body === 'string' && body.trim()) return body.trim().slice(0, 300);
-  return `Error HTTP ${status}`;
+  return t('app.common.httpError', { status });
 }

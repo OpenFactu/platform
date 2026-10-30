@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { SearchableSelect } from '@openfactu/ui';
 import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
 export const ReportTrialBalance: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const [periods, setPeriods] = useState<any[]>([]);
   const [periodId, setPeriodId] = useState<string>('');
@@ -40,19 +42,19 @@ export const ReportTrialBalance: React.FC = () => {
 
   const columns = useMemo(
     () => [
-      { key: 'code', label: 'Cuenta' },
-      { key: 'name', label: 'Denominación' },
-      { key: 'debit', label: 'Debe', format: (v: any) => fmt.money(v) },
-      { key: 'credit', label: 'Haber', format: (v: any) => fmt.money(v) },
-      { key: 'balance', label: 'Saldo', format: (v: any) => fmt.money(v) },
+      { key: 'code', label: t('reports.common.account') },
+      { key: 'name', label: t('reports.common.accountName') },
+      { key: 'debit', label: t('reports.common.debit'), format: (v: any) => fmt.money(v) },
+      { key: 'credit', label: t('reports.common.credit'), format: (v: any) => fmt.money(v) },
+      { key: 'balance', label: t('reports.common.balance'), format: (v: any) => fmt.money(v) },
     ],
-    [fmt],
+    [fmt, t],
   );
 
   return (
     <ReportPage
-      title="Balance de sumas y saldos"
-      subtitle="Totales debe/haber por cuenta del período."
+      title={t('reports.trialBalance.title')}
+      subtitle={t('reports.trialBalance.subtitle')}
       rows={rows}
       columns={columns as any}
       loading={loading}
@@ -62,12 +64,14 @@ export const ReportTrialBalance: React.FC = () => {
       pdfQuery={{ periodId }}
       filters={
         <div className="max-w-sm">
-          <label className="block text-xs font-bold text-fg-body mb-1">Período</label>
+          <label className="block text-xs font-bold text-fg-body mb-1">
+            {t('reports.common.period')}
+          </label>
           <SearchableSelect
             options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
             value={periodId}
             onChange={setPeriodId}
-            placeholder="— seleccionar período —"
+            placeholder={t('reports.common.selectPeriod')}
           />
         </div>
       }

@@ -17,6 +17,8 @@ import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { CORE_MODULES } from '@/modules';
 import { ModuleCard } from '@/modules/plugins/components/ModuleCard';
 import { FLAGS_DEFAULTS } from '@/context/ThemeContext';
+import { useI18n } from '@/i18n/I18nContext';
+import { categoryLabelKey } from '@/modules/registry';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -127,10 +129,11 @@ function StepIndicator({ step }: { step: number }) {
 }
 
 function WizardHeader() {
+  const { t } = useI18n();
   return (
     <div className="mb-8 text-center">
       <div className="flex items-center justify-center gap-3">
-        <KeirostLogo size={44} variant="outline" />
+        <KeirostLogo size={40} className="text-fg-default" />
         <h1
           className="text-3xl font-bold tracking-tight text-[#0A1628] dark:text-slate-100"
           style={{ fontFamily: "'Space Grotesk', sans-serif" }}
@@ -138,7 +141,7 @@ function WizardHeader() {
           Keirost <span style={{ color: '#0D9488' }}>ERP</span>
         </h1>
       </div>
-      <p className="text-gray-500 dark:text-slate-400 mt-3">Asistente de configuración inicial</p>
+      <p className="text-gray-500 dark:text-slate-400 mt-3">{t('app.setup.subtitle')}</p>
     </div>
   );
 }
@@ -156,19 +159,20 @@ function Step1Database({
 }) {
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
   const [showPass, setShowPass] = useState(false);
   const [checking, setChecking] = useState(false);
   const [testing, setTesting] = useState(false);
 
   const validate = (): number | null => {
     if (!data.host || !data.port || !data.user || !data.password) {
-      toast.error('Completa todos los campos de la base de datos.');
+      toast.error(t('app.setup.db.fillAll'));
       return null;
     }
 
     const port = parseInt(data.port);
     if (isNaN(port) || port < 1 || port > 65535) {
-      toast.error('El puerto debe ser un número válido (1-65535).');
+      toast.error(t('app.setup.db.badPort'));
       return null;
     }
 
@@ -187,12 +191,12 @@ function Step1Database({
         { auth: false },
       );
       if (json.connected) {
-        toast.success(json.message || 'Conexión correcta.');
+        toast.success(json.message || t('app.setup.db.ok'));
       } else {
-        toast.error(json.message || 'No se pudo conectar.');
+        toast.error(json.message || t('app.setup.db.fail'));
       }
     } catch {
-      toast.error('Error de red al verificar la conexión.');
+      toast.error(t('app.setup.db.networkError'));
     } finally {
       setTesting(false);
     }
@@ -214,13 +218,12 @@ function Step1Database({
         if (json.hasExistingSetup) {
           const skip = await new Promise<boolean>((resolve) => {
             popup.show({
-              title: 'Configuración existente detectada',
+              title: t('app.setup.db.existingTitle'),
               tone: 'warning',
               render: (close) => (
                 <div>
                   <p className="text-sm text-[var(--k-ink-700)] dark:text-slate-200">
-                    Esta base de datos ya tiene una configuración de Keirost ERP. ¿Quieres saltarte
-                    el setup e ir directamente al login?
+                    {t('app.setup.db.existingBody')}
                   </p>
                   <div className="flex gap-2 justify-end mt-4">
                     <button
@@ -230,7 +233,7 @@ function Step1Database({
                       }}
                       className="px-4 py-2 rounded-sm border border-border-default text-fg-body hover:bg-bg-hover transition text-sm font-medium"
                     >
-                      Continuar setup
+                      {t('app.setup.db.continue')}
                     </button>
                     <button
                       onClick={() => {
@@ -239,7 +242,7 @@ function Step1Database({
                       }}
                       className="px-4 py-2 rounded-sm bg-[#0D9488] text-white hover:bg-[#0A6E63] transition text-sm font-medium"
                     >
-                      Ir al login
+                      {t('app.setup.db.goLogin')}
                     </button>
                   </div>
                 </div>
@@ -250,7 +253,7 @@ function Step1Database({
             window.location.href = '/login';
             return;
           }
-          toast.warning('Continuando con el setup...');
+          toast.warning(t('app.setup.db.continuing'));
         } else if (json.databaseExists) {
           toast.info(json.message);
         } else {
@@ -261,7 +264,7 @@ function Step1Database({
         toast.error(json.message);
       }
     } catch {
-      toast.error('Error de red al verificar la conexión.');
+      toast.error(t('app.setup.db.networkError'));
     } finally {
       setChecking(false);
     }
@@ -269,32 +272,30 @@ function Step1Database({
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-      <h2 className="text-xl font-bold">1. Base de Datos</h2>
-      <p className="text-sm text-gray-600 dark:text-slate-400">
-        Configura la conexión principal de PostgreSQL.
-      </p>
+      <h2 className="text-xl font-bold">{t('app.setup.db.title')}</h2>
+      <p className="text-sm text-gray-600 dark:text-slate-400">{t('app.setup.db.subtitle')}</p>
       <input
         className={INPUT_CLS}
-        placeholder="Host (ej: localhost)"
+        placeholder={t('app.setup.db.host')}
         value={data.host}
         onChange={(e) => onChange({ host: e.target.value })}
       />
       <input
         className={INPUT_CLS}
-        placeholder="Puerto (ej: 5432)"
+        placeholder={t('app.setup.db.port')}
         value={data.port}
         onChange={(e) => onChange({ port: e.target.value })}
       />
       <input
         className={INPUT_CLS}
-        placeholder="Usuario (ej: openfactu)"
+        placeholder={t('app.setup.db.user')}
         value={data.user}
         onChange={(e) => onChange({ user: e.target.value })}
       />
       <PasswordInput
         value={data.password}
         onChange={(v) => onChange({ password: v })}
-        placeholder="Contraseña DB"
+        placeholder={t('app.setup.db.password')}
         show={showPass}
         onToggle={() => setShowPass(!showPass)}
       />
@@ -304,7 +305,7 @@ function Step1Database({
         className={`w-full ${BTN_SECONDARY_CLS} disabled:opacity-50`}
       >
         {testing ? <Loader size="sm" className="mr-0" /> : <Database size={18} />}
-        <span>{testing ? 'Probando conexión...' : 'Probar conexión'}</span>
+        <span>{testing ? t('app.setup.db.testing') : t('app.setup.db.test')}</span>
       </button>
       <button
         onClick={handleNext}
@@ -316,7 +317,7 @@ function Step1Database({
         ) : (
           <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
         )}
-        <span>{checking ? 'Verificando conexión...' : 'Siguiente'}</span>
+        <span>{checking ? t('app.setup.db.checking') : t('app.setup.next')}</span>
       </button>
     </div>
   );
@@ -334,40 +335,39 @@ function Step2Admin({
   onNext: () => void;
 }) {
   const [showPass, setShowPass] = useState(false);
+  const { t } = useI18n();
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-      <h2 className="text-xl font-bold">2. Administrador</h2>
-      <p className="text-sm text-gray-600 dark:text-slate-400">
-        Crea la cuenta de superusuario global.
-      </p>
+      <h2 className="text-xl font-bold">{t('app.setup.admin.title')}</h2>
+      <p className="text-sm text-gray-600 dark:text-slate-400">{t('app.setup.admin.subtitle')}</p>
       <input
         type="email"
         className={INPUT_CLS}
-        placeholder="Email"
+        placeholder={t('app.setup.admin.email')}
         value={data.email}
         onChange={(e) => onChange({ email: e.target.value })}
       />
       <input
         type="text"
         className={INPUT_CLS}
-        placeholder="Nombre de Usuario (ej: angel)"
+        placeholder={t('app.setup.admin.username')}
         value={data.username}
         onChange={(e) => onChange({ username: e.target.value })}
       />
       <PasswordInput
         value={data.password}
         onChange={(v) => onChange({ password: v })}
-        placeholder="Contraseña"
+        placeholder={t('app.login.password')}
         show={showPass}
         onToggle={() => setShowPass(!showPass)}
       />
       <div className="flex gap-2">
         <button onClick={onPrev} className={BTN_SECONDARY_CLS}>
-          <ChevronLeft size={20} /> Atrás
+          <ChevronLeft size={20} /> {t('app.setup.back')}
         </button>
         <button onClick={onNext} className={BTN_PRIMARY_CLS}>
-          Siguiente{' '}
+          {t('app.setup.next')}{' '}
           <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
@@ -386,30 +386,29 @@ function Step3Company({
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-      <h2 className="text-xl font-bold">3. Primera Empresa</h2>
-      <p className="text-sm text-gray-600 dark:text-slate-400">
-        Datos fiscales de tu empresa principal.
-      </p>
+      <h2 className="text-xl font-bold">{t('app.setup.company.title')}</h2>
+      <p className="text-sm text-gray-600 dark:text-slate-400">{t('app.setup.company.subtitle')}</p>
       <input
         className={INPUT_CLS}
-        placeholder="Nombre de la Empresa"
+        placeholder={t('app.setup.company.name')}
         value={data.name}
         onChange={(e) => onChange({ name: e.target.value })}
       />
       <input
         className={INPUT_CLS}
-        placeholder="NIF / CIF"
+        placeholder={t('app.setup.company.nif')}
         value={data.nif}
         onChange={(e) => onChange({ nif: e.target.value })}
       />
       <div className="flex gap-3 mt-6">
         <button onClick={onPrev} className={BTN_SECONDARY_CLS}>
-          <ChevronLeft size={18} /> Atrás
+          <ChevronLeft size={18} /> {t('app.setup.back')}
         </button>
         <button onClick={onNext} disabled={!data.name || !data.nif} className={BTN_PRIMARY_CLS}>
-          Siguiente{' '}
+          {t('app.setup.next')}{' '}
           <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
@@ -428,28 +427,27 @@ function Step4CompanyDetails({
   onPrev: () => void;
   onNext: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="space-y-3 animate-in fade-in slide-in-from-right-4">
-      <h2 className="text-xl font-bold">4. Configuración de Empresa</h2>
-      <p className="text-sm text-gray-600 dark:text-slate-400">
-        Datos de contacto, domicilio y preferencias. Podrás editarlos después en Ajustes.
-      </p>
+      <h2 className="text-xl font-bold">{t('app.setup.details.title')}</h2>
+      <p className="text-sm text-gray-600 dark:text-slate-400">{t('app.setup.details.subtitle')}</p>
       <input
         className={INPUT_CLS}
-        placeholder="Dirección"
+        placeholder={t('app.setup.details.address')}
         value={data.address}
         onChange={(e) => onChange({ address: e.target.value })}
       />
       <div className="grid grid-cols-2 gap-2">
         <input
           className={INPUT_CLS}
-          placeholder="Ciudad"
+          placeholder={t('app.setup.details.city')}
           value={data.city}
           onChange={(e) => onChange({ city: e.target.value })}
         />
         <input
           className={INPUT_CLS}
-          placeholder="Código Postal"
+          placeholder={t('app.geo.postalCode')}
           value={data.zip}
           onChange={(e) => onChange({ zip: e.target.value })}
         />
@@ -457,17 +455,17 @@ function Step4CompanyDetails({
       <div className="grid grid-cols-2 gap-2">
         <Select
           options={[
-            { value: 'ES', label: 'España' },
-            { value: 'PT', label: 'Portugal' },
-            { value: 'FR', label: 'Francia' },
-            { value: 'IT', label: 'Italia' },
-            { value: 'DE', label: 'Alemania' },
-            { value: 'GB', label: 'Reino Unido' },
-            { value: 'US', label: 'Estados Unidos' },
+            { value: 'ES', label: t('app.setup.countries.ES') },
+            { value: 'PT', label: t('app.setup.countries.PT') },
+            { value: 'FR', label: t('app.setup.countries.FR') },
+            { value: 'IT', label: t('app.setup.countries.IT') },
+            { value: 'DE', label: t('app.setup.countries.DE') },
+            { value: 'GB', label: t('app.setup.countries.GB') },
+            { value: 'US', label: t('app.setup.countries.US') },
           ]}
           value={data.country}
           onChange={(v) => onChange({ country: v })}
-          ariaLabel="Opción"
+          ariaLabel={t('app.geo.country')}
         />
         <Select
           options={[
@@ -477,33 +475,33 @@ function Step4CompanyDetails({
           ]}
           value={data.currency}
           onChange={(v) => onChange({ currency: v })}
-          ariaLabel="Opción"
+          ariaLabel={t('app.setup.details.currency')}
         />
       </div>
       <input
         type="email"
         className={INPUT_CLS}
-        placeholder="Email de contacto"
+        placeholder={t('app.setup.details.email')}
         value={data.email}
         onChange={(e) => onChange({ email: e.target.value })}
       />
       <div className="grid grid-cols-2 gap-2">
         <input
           className={INPUT_CLS}
-          placeholder="Teléfono"
+          placeholder={t('app.geo.phone')}
           value={data.phone}
           onChange={(e) => onChange({ phone: e.target.value })}
         />
         <input
           className={INPUT_CLS}
-          placeholder="Web"
+          placeholder={t('app.setup.details.web')}
           value={data.website}
           onChange={(e) => onChange({ website: e.target.value })}
         />
       </div>
       <div>
         <label className="text-xs text-gray-500 dark:text-slate-400 block mb-1">
-          Inicio del año fiscal (MM-DD)
+          {t('app.setup.details.fiscalYearStart')}
         </label>
         <input
           className={INPUT_CLS}
@@ -514,7 +512,7 @@ function Step4CompanyDetails({
       </div>
       <div>
         <label className="text-xs text-gray-500 dark:text-slate-400 block mb-1">
-          URL pública de la aplicación
+          {t('app.setup.details.publicUrl')}
         </label>
         <input
           className={INPUT_CLS}
@@ -523,19 +521,18 @@ function Step4CompanyDetails({
           onChange={(e) => onChange({ publicBaseUrl: e.target.value })}
         />
         <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">
-          Dominio desde el que tus clientes abrirán los enlaces de seguimiento (emails). Podrás
-          cambiarlo luego en Ajustes.
+          {t('app.setup.details.publicUrlHint')}
         </p>
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onPrev} className={BTN_SECONDARY_CLS}>
-          <ChevronLeft size={18} /> Atrás
+          <ChevronLeft size={18} /> {t('app.setup.back')}
         </button>
         <button
           onClick={onNext}
           className="flex-1 bg-[#0D9488] text-white p-3 rounded-sm font-bold hover:bg-[#0A6E63] transition flex items-center justify-center gap-2 whitespace-nowrap shadow-md hover:shadow-lg"
         >
-          Siguiente{' '}
+          {t('app.setup.next')}{' '}
           <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
@@ -556,6 +553,7 @@ function Step5Modules({
   onSubmit: () => void;
   loading: boolean;
 }) {
+  const { t } = useI18n();
   const activatable = CORE_MODULES.filter((m) => Boolean(m.featureFlag));
   const byCategory = activatable.reduce<Record<string, typeof activatable>>((acc, m) => {
     const cat = m.category || 'General';
@@ -565,15 +563,13 @@ function Step5Modules({
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-right-4">
-      <h2 className="text-xl font-bold">5. Módulos</h2>
-      <p className="text-sm text-gray-600 dark:text-slate-400">
-        Elige qué módulos activar. Podrás cambiarlo después en Apps.
-      </p>
+      <h2 className="text-xl font-bold">{t('app.setup.modules.title')}</h2>
+      <p className="text-sm text-gray-600 dark:text-slate-400">{t('app.setup.modules.subtitle')}</p>
       <div className="max-h-96 overflow-y-auto space-y-4 pr-1">
         {Object.entries(byCategory).map(([category, mods]) => (
           <div key={category}>
             <h3 className="text-xs font-bold uppercase tracking-wide text-fg-muted mb-2">
-              {category}
+              {t(categoryLabelKey(category))}
             </h3>
             <div className="grid grid-cols-2 gap-2">
               {mods.map((m) => (
@@ -591,7 +587,7 @@ function Step5Modules({
       </div>
       <div className="flex gap-3 mt-6">
         <button onClick={onPrev} className={BTN_SECONDARY_CLS}>
-          <ChevronLeft size={18} /> Atrás
+          <ChevronLeft size={18} /> {t('app.setup.back')}
         </button>
         <button
           onClick={onSubmit}
@@ -603,7 +599,9 @@ function Step5Modules({
           ) : (
             <CheckCircle2 size={18} />
           )}
-          <span>{loading ? 'Inicializando...' : 'Finalizar'}</span>
+          <span>
+            {loading ? t('app.setup.modules.initializing') : t('app.setup.modules.finish')}
+          </span>
         </button>
       </div>
     </div>
@@ -616,6 +614,7 @@ export const SetupWizard: React.FC = () => {
   const [step, setStep] = useState(1);
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
   const isDocker = window.location.port === '8080';
 
   const [formData, setFormData] = useState<SetupFormData>({
@@ -693,11 +692,9 @@ export const SetupWizard: React.FC = () => {
       window.location.href = '/';
     } catch (err) {
       if (err instanceof ApiError && err.status !== 0) {
-        toast.error(
-          ((err.body as any)?.error as string) || 'Fallo en la configuración. Revisa los logs.',
-        );
+        toast.error(((err.body as any)?.error as string) || t('app.setup.failed'));
       } else {
-        toast.error('Error de red al intentar configurar el sistema.');
+        toast.error(t('app.setup.networkError'));
       }
     } finally {
       setLoading(false);

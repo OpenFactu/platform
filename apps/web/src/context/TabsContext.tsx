@@ -96,7 +96,7 @@ function computeInitialState(user: NavUser | null | undefined): TabsState {
   const makeDashTab = (): Tab => ({
     id: genId(),
     path: '/',
-    title: dashboardMeta?.title ?? 'Dashboard',
+    title: dashboardMeta?.title ?? 'home.nav.dashboard',
     iconName: dashboardMeta?.iconName,
   });
 
@@ -211,7 +211,7 @@ export const TabsProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const dash: Tab = {
           id: genId(),
           path: '/',
-          title: dashboardMeta?.title ?? 'Dashboard',
+          title: dashboardMeta?.title ?? 'home.nav.dashboard',
           iconName: dashboardMeta?.iconName,
         };
         return { tabs: [dash], activeTabId: dash.id };
@@ -250,7 +250,7 @@ export const TabsProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const tab: Tab = {
       id: genId(),
       path,
-      title: meta?.title ?? 'Dashboard',
+      title: meta?.title ?? 'home.nav.dashboard',
       iconName: meta?.iconName,
     };
     setState({ tabs: [tab], activeTabId: tab.id });
@@ -305,6 +305,9 @@ export interface CurrentTab {
   rename: (title: string) => void;
   navigateTab: (path: string) => void;
 }
+
+/** Id de la pestaña que contiene al componente, o `null` fuera de una pestaña. */
+export const useCurrentTabId = (): string | null => useContext(CurrentTabContext);
 
 export const useCurrentTab = (): CurrentTab => {
   const id = useContext(CurrentTabContext);

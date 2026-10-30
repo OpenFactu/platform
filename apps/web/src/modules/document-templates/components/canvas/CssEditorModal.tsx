@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, Button } from '@openfactu/ui';
 import { AdvancedEditor } from '../AdvancedEditor';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface CssEditorModalProps {
   open: boolean;
@@ -25,9 +26,10 @@ export const CssEditorModal: React.FC<CssEditorModalProps> = ({
   value,
   onChange,
   onClose,
-  title = 'CSS personalizado',
+  title,
   helpText,
 }) => {
+  const { t } = useI18n();
   const [draft, setDraft] = useState(value);
 
   // Re-sincroniza el borrador cada vez que se (re)abre el modal.
@@ -43,7 +45,12 @@ export const CssEditorModal: React.FC<CssEditorModalProps> = ({
   };
 
   return (
-    <Modal isOpen={open} onClose={onClose} title={title} maxWidth="3xl">
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      title={title ?? t('templates.cssEditor.defaultTitle')}
+      maxWidth="3xl"
+    >
       <div className="flex flex-col gap-3">
         {helpText && <p className="text-xs text-slate-500 dark:text-slate-400">{helpText}</p>}
         <div className="h-[60vh] rounded border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -51,9 +58,9 @@ export const CssEditorModal: React.FC<CssEditorModalProps> = ({
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={onClose}>
-            Cancelar
+            {t('templates.cssEditor.cancel')}
           </Button>
-          <Button onClick={save}>Guardar</Button>
+          <Button onClick={save}>{t('templates.cssEditor.save')}</Button>
         </div>
       </div>
     </Modal>

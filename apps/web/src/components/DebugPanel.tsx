@@ -3,7 +3,9 @@
  *   1. El servidor está en modo debug (`/api/setup/status` devuelve `debugEnabled: true`).
  *   2. O el usuario añade `?debug=1` a la URL.
  *
- * Un botón fijo abre un `Drawer` de @openfactu/ui con las acciones:
+ * Se abre solo con el atajo Ctrl+Shift+B (en Mac también Cmd+Shift+B): ya no
+ * hay botón fijo, que tapaba la esquina de la pantalla. Es un `Drawer` de
+ * @openfactu/ui con las acciones:
  *   - Simular escáner: inyecta un código como si lo hubiese leído un lector HID.
  *   - Reset setup: vacía tenants + config y vuelve al wizard.
  *   - Forzar setup: redirige con `?force=1` para mostrar el wizard sin tirar nada.
@@ -17,6 +19,7 @@ import { coreApi, type RawResult } from '@/shared/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Button, ConfirmDialog, Drawer, Input } from '@openfactu/ui';
 import { Bug, RotateCcw, Globe, ScanLine } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
 
 export const DebugPanel: React.FC = () => {
   const [debugEnabled, setDebugEnabled] = useState<boolean | null>(null);
@@ -26,6 +29,7 @@ export const DebugPanel: React.FC = () => {
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [scanCode, setScanCode] = useState('');
+  const { t } = useI18n();
   const scanInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -36,13 +40,13 @@ export const DebugPanel: React.FC = () => {
       .catch(() => setDebugEnabled(forceParam));
   }, []);
 
-  // Atajo global Ctrl+Shift+B → abre el panel y enfoca el input de escaneo
+  // Atajo global Ctrl/Cmd+Shift+B → abre (o cierra) el panel y enfoca el input de escaneo
   useEffect(() => {
     if (!debugEnabled) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && (e.key === 'B' || e.key === 'b')) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'B' || e.key === 'b')) {
         e.preventDefault();
-        setOpen(true);
+        setOpen((v) => !v);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -54,7 +58,7 @@ export const DebugPanel: React.FC = () => {
     if (!code) return;
     window.dispatchEvent(new CustomEvent('keirost:scan', { detail: code }));
     setScanCode('');
-    setMsg(`Código inyectado: ${code}`);
+    setMsg(t('app.debug.injected', { code }));
     setErr(null);
   };
 
@@ -70,7 +74,7 @@ export const DebugPanel: React.FC = () => {
       if (!r.ok) throw new Error(body?.error || `HTTP ${r.status}`);
       setMsg(body?.message || JSON.stringify(body));
     } catch (e: any) {
-      setErr(e?.message || 'Error');
+      setErr(e?.message || t('app.common.error'));
     } finally {
       setBusy(null);
     }
@@ -89,26 +93,13 @@ export const DebugPanel: React.FC = () => {
 
   return (
     <>
-      <div className="fixed bottom-4 left-[76px] max-md:bottom-20 max-md:left-4 z-40">
-        <Button
-          type="button"
-          variant="accent"
-          size="sm"
-          className="rounded-full shadow-lg"
-          onClick={() => setOpen(true)}
-          title="Panel de debug (Ctrl+Shift+B)"
-        >
-          <Bug size={14} /> Debug
-        </Button>
-      </div>
-
       <Drawer
         open={open}
         onClose={() => setOpen(false)}
         side="right"
         size="sm"
         title="Debug"
-        subtitle="Utilidades de desarrollo"
+        subtitle={t('app.debug.subtitle')}
         initialFocusRef={scanInputRef}
       >
         <div className="space-y-5">
@@ -116,7 +107,7 @@ export const DebugPanel: React.FC = () => {
               un lector HID o la cámara. */}
           <div className="space-y-2">
             <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-fg-muted">
-              <ScanLine size={13} /> Simular escáner
+              <ScanLine size={13} /> {t('app.debug.simulateScanner')}
               <span className="font-mono normal-case text-fg-subtle">Ctrl+Shift+B</span>
             </div>
             <div className="flex gap-2">
@@ -130,18 +121,16 @@ export const DebugPanel: React.FC = () => {
                     fireScan();
                   }
                 }}
-                placeholder="Código + Enter"
+                placeholder={t('app.debug.codePlaceholder')}
                 containerClassName="flex-1 min-w-0"
               />
               <Button type="button" onClick={fireScan} disabled={!scanCode.trim()}>
-                Disparar
+                {t('app.debug.fire')}
               </Button>
             </div>
           </div>
 
-          <Alert tone="warning">
-            Acciones destructivas — solo úsalas en desarrollo. Pondrán la app en estado inicial.
-          </Alert>
+          <Alert tone="warning">{t('app.debug.destructiveWarning')}</Alert>
 
           <div className="space-y-2">
             <Button
@@ -152,7 +141,7 @@ export const DebugPanel: React.FC = () => {
               disabled={!!busy}
             >
               <RotateCcw size={14} />
-              {busy === 'reset' ? 'Reseteando…' : 'Reset setup completo'}
+              {busy === 'reset' ? t('app.debug.resetting') : t('app.debug.resetSetup')}
             </Button>
             <Button
               type="button"
@@ -161,7 +150,7 @@ export const DebugPanel: React.FC = () => {
               onClick={forceWizard}
               disabled={!!busy}
             >
-              <Bug size={14} /> Forzar wizard (?force=1)
+              <Bug size={14} /> {t('app.debug.forceWizard')}
             </Button>
             <Button
               type="button"
@@ -171,7 +160,7 @@ export const DebugPanel: React.FC = () => {
               disabled={!!busy}
             >
               <Globe size={14} />
-              {busy === 'geo' ? 'Sembrando…' : 'Re-cargar países / geografía'}
+              {busy === 'geo' ? t('app.debug.seeding') : t('app.debug.reseedGeo')}
             </Button>
           </div>
 
@@ -191,14 +180,9 @@ export const DebugPanel: React.FC = () => {
       <ConfirmDialog
         open={confirmReset}
         tone="danger"
-        title="¿Resetear setup completamente?"
-        message={
-          <>
-            Va a borrar todos los tenants y sus schemas, todos los usuarios globales y el archivo de
-            configuración. Los países (Country/Region/…) se conservan.
-          </>
-        }
-        confirmLabel="Resetear"
+        title={t('app.debug.resetConfirmTitle')}
+        message={t('app.debug.resetConfirmMessage')}
+        confirmLabel={t('app.debug.resetConfirm')}
         onCancel={() => setConfirmReset(false)}
         onConfirm={() => {
           setConfirmReset(false);

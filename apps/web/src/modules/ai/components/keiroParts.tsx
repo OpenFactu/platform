@@ -1,6 +1,7 @@
+import { Spinner } from '@openfactu/ui';
 import React from 'react';
 import { AITrace, registerMessagePart } from '@openfactu/ui/ai';
-import { AlertTriangle, Loader2, ShieldQuestion, Table2 } from 'lucide-react';
+import { AlertTriangle, ShieldQuestion, Table2 } from 'lucide-react';
 import { TOOL_LABELS } from '../domain/constants';
 import type { PendingQuestionOutput } from '../domain/pendingQuestion';
 import { AttachedDocumentChip } from './AttachedDocumentChip';
@@ -9,6 +10,7 @@ import { FileDownloadCard } from './FileDownloadCard';
 import { MessageFooter } from './MessageFooter';
 import { PdfPreviewCard } from './PdfPreviewCard';
 import { ToolResultView } from './ToolResultView';
+import { t } from '@/i18n/i18n';
 
 const SOURCE = 'keirost-ai';
 
@@ -24,7 +26,7 @@ const failure = (message: string) => (
 
 const loading = (label: string) => (
   <div className="flex items-center gap-2 text-xs text-fg-subtle">
-    <Loader2 size={13} className="animate-spin" /> {label}
+    <Spinner size="xs" tone="inherit" /> {label}
   </div>
 );
 
@@ -60,8 +62,8 @@ export function registerKeiroParts(): void {
       if (r.done && r.output?.ok && r.output.compiledCode) {
         return <ComponentRenderer compiledCode={r.output.compiledCode} />;
       }
-      if (r.failed) return failure(r.output?.error || 'No se pudo generar el componente.');
-      return loading('Generando vista…');
+      if (r.failed) return failure(r.output?.error || t('ai.parts.componentError'));
+      return loading(t('ai.parts.generatingView'));
     },
     { source: SOURCE },
   );
@@ -80,8 +82,10 @@ export function registerKeiroParts(): void {
       if (r.done && o?.ok && o.filename && o.mimeType && o.base64) {
         return <FileDownloadCard filename={o.filename} mimeType={o.mimeType} base64={o.base64} />;
       }
-      if (r.failed) return failure(o?.error || 'No se pudo generar el archivo.');
-      return loading(`${TOOL_LABELS[r.name] ?? 'Generando archivo'}…`);
+      if (r.failed) return failure(o?.error || t('ai.parts.fileError'));
+      return loading(
+        `${TOOL_LABELS[r.name] ? t(TOOL_LABELS[r.name]) : t('ai.parts.generatingFile')}…`,
+      );
     },
     { source: SOURCE },
   );
@@ -91,10 +95,10 @@ export function registerKeiroParts(): void {
     ({ data }) => {
       const r = data as Result<{ ok?: boolean; pdfBase64?: string; error?: string }>;
       if (r.done && r.output?.ok && r.output.pdfBase64) {
-        return <PdfPreviewCard base64={r.output.pdfBase64} title="Vista previa de plantilla" />;
+        return <PdfPreviewCard base64={r.output.pdfBase64} title={t('ai.parts.templatePreview')} />;
       }
-      if (r.failed) return failure(r.output?.error || 'No se pudo generar la vista previa.');
-      return loading('Generando vista previa…');
+      if (r.failed) return failure(r.output?.error || t('ai.parts.previewError'));
+      return loading(t('ai.parts.generatingPreview'));
     },
     { source: SOURCE },
   );
@@ -103,7 +107,7 @@ export function registerKeiroParts(): void {
     'keiro-question',
     ({ data }) => {
       const d = data as { loading?: boolean; pending?: boolean; question?: PendingQuestionOutput };
-      if (d.loading) return loading('Preguntando…');
+      if (d.loading) return loading(t('ai.parts.asking'));
       // La pendiente la fija PendingQuestionBar encima del compositor.
       if (d.pending || !d.question) return null;
       return (
@@ -111,7 +115,11 @@ export function registerKeiroParts(): void {
           <ShieldQuestion size={12} className="text-accent/70 shrink-0" />
           {d.question.step && (
             <span className="font-mono text-accent/70">
-              Paso {d.question.step.current}/{d.question.step.total} ·
+              {t('ai.parts.step', {
+                current: d.question.step.current,
+                total: d.question.step.total,
+              })}{' '}
+              ·
             </span>
           )}
           {d.question.question}
@@ -128,7 +136,7 @@ export function registerKeiroParts(): void {
       return (
         <AITrace
           status="done"
-          title={`Ver resultados (${outputs.length})`}
+          title={t('ai.parts.viewResults', { count: outputs.length })}
           icon={<Table2 size={14} />}
         >
           {/* Tablas anchas: scroll propio, sin partir las celdas letra a letra. */}

@@ -1,5 +1,7 @@
+import { Spinner } from '@openfactu/ui';
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import { t } from '@/i18n/i18n';
 
 /**
  * Renderiza un componente React que Keiro generó en el propio turno
@@ -29,12 +31,12 @@ export const ComponentRenderer: React.FC<{ compiledCode: string }> = ({ compiled
           module.default ||
           module.Component ||
           Object.values(module).find((v) => typeof v === 'function');
-        if (!Loaded) throw new Error('El componente no exporta nada renderizable (default).');
+        if (!Loaded) throw new Error(t('ai.component.noExport'));
         setComponent(() => Loaded);
       })
       .catch((err: unknown) => {
         if (!isMounted) return;
-        setError(err instanceof Error ? err.message : 'Error al cargar el componente.');
+        setError(err instanceof Error ? err.message : t('ai.component.loadError'));
       })
       .finally(() => URL.revokeObjectURL(url));
 
@@ -53,7 +55,7 @@ export const ComponentRenderer: React.FC<{ compiledCode: string }> = ({ compiled
   if (!Component) {
     return (
       <div className="flex items-center justify-center py-6 text-slate-400">
-        <Loader2 size={18} className="animate-spin" />
+        <Spinner size="md" tone="inherit" />
       </div>
     );
   }

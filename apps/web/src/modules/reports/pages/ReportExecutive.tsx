@@ -10,11 +10,13 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
 export const ReportExecutive: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const navigate = useNavigate();
   const [periods, setPeriods] = useState<any[]>([]);
@@ -53,13 +55,13 @@ export const ReportExecutive: React.FC = () => {
   return (
     <div className="p-6 w-full space-y-5">
       <PageHeader
-        title="Informe ejecutivo"
-        subtitle="Resumen del período para socios y dirección."
+        title={t('reports.executive.title')}
+        subtitle={t('reports.executive.subtitle')}
         icon={<FileBarChart size={18} />}
         size="md"
         breadcrumbs={
           <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> Volver
+            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
           </Button>
         }
         actions={
@@ -71,7 +73,7 @@ export const ReportExecutive: React.FC = () => {
               className="flex items-center gap-2"
             >
               <RefreshCw size={16} />
-              Actualizar
+              {t('reports.common.refresh')}
             </Button>
             <Button type="button" onClick={downloadPdf} className="flex items-center gap-2">
               <Download size={16} />
@@ -81,31 +83,35 @@ export const ReportExecutive: React.FC = () => {
         }
         toolbar={
           <div className="max-w-sm">
-            <label className="block text-xs font-bold text-fg-body mb-1">Período</label>
+            <label className="block text-xs font-bold text-fg-body mb-1">
+              {t('reports.common.period')}
+            </label>
             <SearchableSelect
               options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
               value={periodId}
               onChange={setPeriodId}
-              placeholder="— seleccionar período —"
+              placeholder={t('reports.common.selectPeriod')}
             />
           </div>
         }
       />
       {loading || !data ? (
-        <Card className="p-10 text-center text-slate-400 italic">Cargando…</Card>
+        <Card className="p-10 text-center text-slate-400 italic">
+          {t('reports.common.loading')}
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="p-5 bg-emerald-50 dark:bg-emerald-500/10">
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-                  Facturación
+                  {t('reports.executive.sales')}
                 </span>
                 <div className="text-3xl font-black text-emerald-900 dark:text-emerald-100 mt-2">
                   {fmt.money(data.sales?.total || 0)}
                 </div>
                 <span className="text-xs text-emerald-700 dark:text-emerald-400">
-                  {data.sales?.count || 0} facturas
+                  {t('reports.executive.invoices', { count: data.sales?.count || 0 })}
                 </span>
               </div>
               <TrendingUp size={24} className="text-emerald-500" />
@@ -115,13 +121,13 @@ export const ReportExecutive: React.FC = () => {
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-300">
-                  Compras
+                  {t('reports.executive.purchases')}
                 </span>
                 <div className="text-3xl font-black text-blue-900 dark:text-blue-100 mt-2">
                   {fmt.money(data.purchases?.total || 0)}
                 </div>
                 <span className="text-xs text-blue-700 dark:text-blue-400">
-                  {data.purchases?.count || 0} facturas
+                  {t('reports.executive.invoices', { count: data.purchases?.count || 0 })}
                 </span>
               </div>
               <TrendingDown size={24} className="text-blue-500" />
@@ -132,7 +138,7 @@ export const ReportExecutive: React.FC = () => {
           >
             <div className="flex items-baseline justify-between">
               <span className="text-xs font-black uppercase tracking-widest">
-                Margen bruto (ventas − compras)
+                {t('reports.executive.grossMargin')}
               </span>
               <span className="text-3xl font-black tabular-nums">
                 {fmt.money(data.margin || 0)}

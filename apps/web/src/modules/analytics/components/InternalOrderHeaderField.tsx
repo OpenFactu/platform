@@ -1,7 +1,8 @@
 import { internalOrdersApi, type InternalOrder } from '@/modules/analytics/api';
 import React, { useEffect, useState } from 'react';
-import { SearchableSelect } from '@openfactu/ui';
+import { Field, SearchableSelect } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   value: string | null | undefined;
@@ -19,10 +20,11 @@ interface Props {
 export const InternalOrderHeaderField: React.FC<Props> = ({
   value,
   onChange,
-  label = 'Proyecto',
+  label,
   inheritsHint = true,
 }) => {
   const { token, user } = useAuth();
+  const { t } = useI18n();
   const [orders, setOrders] = useState<InternalOrder[]>([]);
 
   useEffect(() => {
@@ -35,22 +37,21 @@ export const InternalOrderHeaderField: React.FC<Props> = ({
   }, [token, user?.tenantId]);
 
   const options = [
-    { label: '— Sin proyecto —', value: '' },
+    { label: t('analytics.headerField.noProjectOption'), value: '' },
     ...orders
       .filter((o) => o.status !== 'closed')
       .map((o) => ({ label: `${o.code} — ${o.name}`, value: o.id })),
   ];
 
   return (
-    <div className="space-y-2">
-      <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">{label}</label>
+    <Field label={label ?? t('analytics.headerField.label')}>
       <SearchableSelect
         value={value || ''}
         onChange={(v) => onChange(v || null)}
         options={options}
-        placeholder="Sin proyecto"
+        placeholder={t('analytics.headerField.noProject')}
       />
-    </div>
+    </Field>
   );
 };
 

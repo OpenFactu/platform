@@ -2,6 +2,7 @@ import React from 'react';
 import { NumberInput, RadioGroup, SearchableSelect } from '@openfactu/ui';
 import type { ItemFormValues } from '../hooks/useItemForm';
 import type { Warehouse, Zone } from '../domain/warehouse';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   values: ItemFormValues;
@@ -12,26 +13,46 @@ interface Props {
 
 /** Producto normal o caja de embalaje (las cajas salen en Logística → Paquetes). */
 const KIND_OPTIONS = [
-  { value: 'product', label: 'Producto', description: 'Artículo normal de stock' },
-  { value: 'box', label: 'Caja', description: 'Embalaje usado en Logística → Paquetes' },
+  {
+    value: 'product',
+    label: 'inventory.itemFields.kind.product',
+    description: 'inventory.itemFields.kind.productDesc',
+  },
+  {
+    value: 'box',
+    label: 'inventory.itemFields.kind.box',
+    description: 'inventory.itemFields.kind.boxDesc',
+  },
 ];
 
 const MANAGE_BY_OPTIONS = [
-  { value: 'N', label: 'Gestión Estándar', description: 'Sin control de lotes ni series.' },
-  { value: 'B', label: 'Control por Lotes', description: 'Obligatorio en cada movimiento.' },
-  { value: 'S', label: 'Control por Series', description: 'Identificación única del producto.' },
+  {
+    value: 'N',
+    label: 'inventory.itemFields.manageBy.standard',
+    description: 'inventory.itemFields.manageBy.standardDesc',
+  },
+  {
+    value: 'B',
+    label: 'inventory.itemFields.manageBy.batches',
+    description: 'inventory.itemFields.manageBy.batchesDesc',
+  },
+  {
+    value: 'S',
+    label: 'inventory.itemFields.manageBy.serials',
+    description: 'inventory.itemFields.manageBy.serialsDesc',
+  },
 ];
 
 /** Dimensiones en mm (enteras) y pesos en kg (2 decimales) de la caja. */
 const BOX_MM_FIELDS = [
-  ['boxLengthMm', 'Largo (mm)'],
-  ['boxWidthMm', 'Ancho (mm)'],
-  ['boxHeightMm', 'Alto (mm)'],
+  ['boxLengthMm', 'inventory.itemFields.box.length'],
+  ['boxWidthMm', 'inventory.itemFields.box.width'],
+  ['boxHeightMm', 'inventory.itemFields.box.height'],
 ] as const;
 
 const BOX_KG_FIELDS = [
-  ['boxMaxWeightKg', 'Peso máx. (kg)'],
-  ['boxTareWeightKg', 'Tara (kg)'],
+  ['boxMaxWeightKg', 'inventory.itemFields.box.maxWeight'],
+  ['boxTareWeightKg', 'inventory.itemFields.box.tare'],
 ] as const;
 
 /**
@@ -39,6 +60,9 @@ const BOX_KG_FIELDS = [
  * trazabilidad y ubicación por defecto. JSX extraído del antiguo modal.
  */
 export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, zones }) => {
+  const { t } = useI18n();
+  const translateOptions = (opts: { value: string; label: string; description: string }[]) =>
+    opts.map((o) => ({ ...o, label: t(o.label), description: t(o.description) }));
   const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: w.name }));
   const zoneOptions = zones
     .filter((z) => !values.defaultWarehouseId || z.warehouseId === values.defaultWarehouseId)
@@ -50,9 +74,9 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
           decir RadioGroup — antes eran tarjetas pintadas a mano. */}
       <div className="p-4 bg-bg-muted border border-border-default">
         <RadioGroup
-          label="Tipo de artículo"
+          label={t('inventory.itemFields.kindLabel')}
           orientation="horizontal"
-          options={KIND_OPTIONS}
+          options={translateOptions(KIND_OPTIONS)}
           value={values.kind}
           onChange={(v) => set('kind', v as 'product' | 'box')}
         />
@@ -60,13 +84,13 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
         {values.kind === 'box' && (
           <div className="mt-4 pt-4 border-t border-border-default space-y-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-fg-muted">
-              Dimensiones de la caja (opcional)
+              {t('inventory.itemFields.box.dimensions')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {BOX_MM_FIELDS.map(([key, label]) => (
                 <NumberInput
                   key={key}
-                  label={label}
+                  label={t(label)}
                   value={values[key]}
                   onChange={(v) => set(key, v)}
                   min={0}
@@ -78,7 +102,7 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
               {BOX_KG_FIELDS.map(([key, label]) => (
                 <NumberInput
                   key={key}
-                  label={label}
+                  label={t(label)}
                   value={values[key]}
                   onChange={(v) => set(key, v)}
                   min={0}
@@ -93,8 +117,8 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
 
       <div className="p-4 bg-bg-muted border border-border-default">
         <RadioGroup
-          label="Trazabilidad obligatoria"
-          options={MANAGE_BY_OPTIONS}
+          label={t('inventory.itemFields.manageByLabel')}
+          options={translateOptions(MANAGE_BY_OPTIONS)}
           value={values.manageBy}
           onChange={(v) => set('manageBy', v)}
         />
@@ -102,16 +126,15 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
 
       <div className="p-4 bg-bg-muted border border-border-default">
         <label className="text-[11px] font-black text-fg-default uppercase tracking-widest mb-3 block">
-          Ubicación por defecto
+          {t('inventory.itemFields.defaultLocation')}
         </label>
         <p className="text-[11px] text-fg-muted mb-4">
-          Cuando selecciones este artículo en un pedido o albarán se rellenará automáticamente su
-          almacén y ubicación. Puedes cambiarlo por línea.
+          {t('inventory.itemFields.defaultLocationHint')}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
-              Almacén
+              {t('inventory.itemFields.warehouse')}
             </label>
             <SearchableSelect
               options={warehouseOptions}
@@ -125,12 +148,12 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
                 if (!stillValid) set('defaultZoneId', '');
               }}
               clearable
-              placeholder="(Sin almacén)"
+              placeholder={t('inventory.itemFields.noWarehouse')}
             />
           </div>
           <div>
             <label className="text-[10px] font-bold uppercase tracking-wider text-fg-muted block mb-1">
-              Ubicación / Bin
+              {t('inventory.itemFields.bin')}
             </label>
             <SearchableSelect
               options={zoneOptions}
@@ -138,7 +161,7 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
               onChange={(v) => set('defaultZoneId', v)}
               disabled={!values.defaultWarehouseId}
               clearable
-              placeholder="(Sin ubicación)"
+              placeholder={t('inventory.itemFields.noBin')}
             />
           </div>
         </div>

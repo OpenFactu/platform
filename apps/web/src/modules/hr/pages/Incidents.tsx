@@ -19,12 +19,15 @@ import type { BadgeProps, RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { AlertTriangle, Plus, UserCheck, Check, Ban } from 'lucide-react';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
 
+// Claves de i18n; se traducen al pintar.
 const STATUS_LABEL: Record<string, string> = {
-  pending: 'Pendiente',
-  approved: 'Aprobada',
-  rejected: 'Rechazada',
-  covered: 'Cubierta',
+  pending: 'hr.incidentStatus.pending',
+  approved: 'hr.incidentStatus.approved',
+  rejected: 'hr.incidentStatus.rejected',
+  covered: 'hr.incidentStatus.covered',
 };
 const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
   pending: 'warning',
@@ -34,6 +37,7 @@ const STATUS_VARIANT: Record<string, BadgeProps['variant']> = {
 };
 
 export const Incidents: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const [rows, setRows] = useState<Incident[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -100,17 +104,19 @@ export const Incidents: React.FC = () => {
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.employeeId || !form.incidentTypeId || !form.startAt) {
-      toast.error('Empleado, tipo y fecha de inicio son obligatorios');
+      toast.error(t('hr.incidents.required'));
       return;
     }
     try {
       await incidentsApi.create(form);
-      toast.success('Incidencia registrada');
+      toast.success(t('hr.incidents.created'));
       setCreating(false);
       setForm({ employeeId: '', incidentTypeId: '', startAt: '', endAt: '', notes: '' });
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
@@ -135,22 +141,25 @@ export const Incidents: React.FC = () => {
 
   const columns = [
     {
-      header: 'Empleado',
+      header: t('hr.common.employee'),
       cell: (r: Incident) =>
         empMap[r.employeeId]
           ? `${empMap[r.employeeId].firstName} ${empMap[r.employeeId].lastName}`
           : r.employeeId,
     },
-    { header: 'Tipo', cell: (r: Incident) => typeMap[r.incidentTypeId]?.name || r.incidentTypeId },
-    { header: 'Desde', cell: (r: Incident) => new Date(r.startAt).toLocaleString('es-ES') },
     {
-      header: 'Hasta',
-      cell: (r: Incident) => (r.endAt ? new Date(r.endAt).toLocaleString('es-ES') : '—'),
+      header: t('hr.incidents.type'),
+      cell: (r: Incident) => typeMap[r.incidentTypeId]?.name || r.incidentTypeId,
+    },
+    { header: t('hr.common.from'), cell: (r: Incident) => formatDateTime(r.startAt) },
+    {
+      header: t('hr.common.to'),
+      cell: (r: Incident) => (r.endAt ? formatDateTime(r.endAt) : '—'),
     },
     {
-      header: 'Estado',
+      header: t('hr.common.status'),
       cell: (r: Incident) => (
-        <Badge variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</Badge>
+        <Badge variant={STATUS_VARIANT[r.status]}>{t(STATUS_LABEL[r.status])}</Badge>
       ),
     },
   ];
@@ -159,27 +168,27 @@ export const Incidents: React.FC = () => {
   // del hover y en el menú de click derecho, así que las condiciones de estado
   // (pendiente / aprobada) se declaran una vez en lugar de duplicarse.
   const rowActions = (r: Incident): RowAction[] => {
-    const t = typeMap[r.incidentTypeId];
+    const type = typeMap[r.incidentTypeId];
     return [
       ...(r.status === 'pending'
         ? [
             {
-              label: 'Aprobar',
+              label: t('hr.incidents.approve'),
               icon: <Check size={14} />,
               onClick: () => setStatus(r, 'approved'),
             },
             {
-              label: 'Rechazar',
+              label: t('hr.incidents.reject'),
               icon: <Ban size={14} />,
               destructive: true,
               onClick: () => setStatus(r, 'rejected'),
             },
           ]
         : []),
-      ...(r.status === 'approved' && t?.requiresSubstitution
+      ...(r.status === 'approved' && type?.requiresSubstitution
         ? [
             {
-              label: 'Asignar sustituto',
+              label: t('hr.incidents.assignSub'),
               icon: <UserCheck size={14} />,
               onClick: () => openSubstitute(r),
             },
@@ -191,13 +200,13 @@ export const Incidents: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-6">
       <PageHeader
-        title="Incidencias"
-        subtitle="Ausencias, retrasos, bajas, sustituciones."
+        title={t('hr.incidents.title')}
+        subtitle={t('hr.incidents.subtitle')}
         icon={<AlertTriangle size={18} />}
         size="lg"
         actions={
           <Button type="button" size="sm" onClick={() => setCreating(true)}>
-            <Plus size={14} /> Nueva incidencia
+            <Plus size={14} /> {t('hr.incidents.new')}
           </Button>
         }
       />
@@ -210,39 +219,39 @@ export const Incidents: React.FC = () => {
                 {/* SearchableSelect no tiene prop `label` → se conserva el
                     <label> suelto. El `required` del <select> nativo se pierde,
                     pero `create` ya avisa si falta empleado o tipo. */}
-                <label className="block text-sm mb-1">Empleado</label>
+                <label className="block text-sm mb-1">{t('hr.common.employee')}</label>
                 <SearchableSelect
                   options={employeeOptions}
                   value={form.employeeId}
                   onChange={(v) => setForm({ ...form, employeeId: v })}
-                  placeholder="— seleccionar —"
+                  placeholder={t('hrTime.shiftPatterns.selectPlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm mb-1">Tipo</label>
+                <label className="block text-sm mb-1">{t('hr.incidents.type')}</label>
                 <SearchableSelect
                   options={typeOptions}
                   value={form.incidentTypeId}
                   onChange={(v) => setForm({ ...form, incidentTypeId: v })}
-                  placeholder="— seleccionar —"
+                  placeholder={t('hrTime.shiftPatterns.selectPlaceholder')}
                 />
               </div>
               <Input
-                label="Desde"
+                label={t('hr.common.from')}
                 type="datetime-local"
                 value={form.startAt}
                 onChange={(e) => setForm({ ...form, startAt: e.target.value })}
                 required
               />
               <Input
-                label="Hasta"
+                label={t('hr.common.to')}
                 type="datetime-local"
                 value={form.endAt}
                 onChange={(e) => setForm({ ...form, endAt: e.target.value })}
               />
               <div className="md:col-span-2">
                 <Input
-                  label="Notas"
+                  label={t('hr.common.notes')}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 />
@@ -250,9 +259,9 @@ export const Incidents: React.FC = () => {
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setCreating(false)}>
-                Cancelar
+                {t('hr.common.cancel')}
               </Button>
-              <Button type="submit">Crear</Button>
+              <Button type="submit">{t('hr.common.create')}</Button>
             </div>
           </form>
         </Card>
@@ -271,20 +280,20 @@ export const Incidents: React.FC = () => {
       <Modal
         isOpen={!!substituting}
         onClose={() => setSubstituting(null)}
-        title="Sugerir sustituto"
+        title={t('hr.incidents.suggestSub')}
         size="2xl"
         hideCancel
         footer={
           <Button type="button" variant="secondary" onClick={() => setSubstituting(null)}>
-            Cerrar
+            {t('hr.common.close')}
           </Button>
         }
       >
         {substituteOptions.length === 0 ? (
           <EmptyState
             icon={<UserCheck size={18} />}
-            title="No hay candidatos elegibles"
-            hint="Filtros: mismo departamento, sin turno solapado, sin incidencia propia activa."
+            title={t('hr.incidents.noCandidates')}
+            hint={t('hr.incidents.noCandidatesHint')}
           />
         ) : (
           <ul className="divide-y">
@@ -296,7 +305,7 @@ export const Incidents: React.FC = () => {
                   </div>
                   <div className="text-xs text-slate-400">{c.code}</div>
                 </div>
-                <Button onClick={() => assignSubstitute(c.id)}>Asignar</Button>
+                <Button onClick={() => assignSubstitute(c.id)}>{t('hr.incidents.assign')}</Button>
               </li>
             ))}
           </ul>

@@ -1,3 +1,4 @@
+import { t } from '@/i18n/i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { formsApi } from '../api/formsApi';
@@ -75,7 +76,7 @@ export function useFormEditor(id: string) {
       setError(null);
     } catch (e) {
       setStatus('error');
-      setError(e instanceof Error ? e.message : 'No se pudo guardar');
+      setError(e instanceof Error ? e.message : t('forms.errors.saveFailed'));
     }
   }, [id, commit]);
 

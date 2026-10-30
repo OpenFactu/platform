@@ -1,6 +1,7 @@
 import React from 'react';
 import { useToast } from '@openfactu/ui';
 import { useBarcodeScanner } from './useBarcodeScanner';
+import { t } from '@/i18n/i18n';
 
 /**
  * Conecta un escáner (HID o cámara) al editor de líneas de un documento
@@ -31,7 +32,7 @@ export function useDocumentScanner(doc: any, enabled = true): void {
         items.find((i: any) => (i.code || '') === trimmed);
 
       if (!item) {
-        toast.error(`Artículo no encontrado: ${trimmed}`);
+        toast.error(t('app.scanner.itemNotFound', { code: trimmed }));
         return;
       }
 

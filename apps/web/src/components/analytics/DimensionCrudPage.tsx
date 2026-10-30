@@ -17,6 +17,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Plus, Trash2, Pencil } from 'lucide-react';
 import { PluginFieldsPanel } from '../PluginFieldsPanel';
 import { crudApi } from '@/shared/api';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface DimensionRow {
   id: string;
@@ -73,6 +74,7 @@ export const DimensionCrudPage: React.FC<Props> = ({
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
 
   const fetchRows = async () => {
     setLoading(true);
@@ -80,7 +82,7 @@ export const DimensionCrudPage: React.FC<Props> = ({
       const data = await crudApi.list<DimensionRow>(endpoint);
       setRows(Array.isArray(data) ? data : []);
     } catch {
-      toast.error(`Error al cargar ${title.toLowerCase()}`);
+      toast.error(t('app.dimensions.loadError', { title: t(title).toLowerCase() }));
     } finally {
       setLoading(false);
     }
@@ -109,7 +111,9 @@ export const DimensionCrudPage: React.FC<Props> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || (!autoCode && !form.code)) {
-      toast.error(autoCode ? 'El nombre es obligatorio' : 'Código y nombre son obligatorios');
+      toast.error(
+        autoCode ? t('app.dimensions.nameRequired') : t('app.dimensions.codeNameRequired'),
+      );
       return;
     }
     setSubmitting(true);
@@ -117,11 +121,11 @@ export const DimensionCrudPage: React.FC<Props> = ({
     try {
       if (editing) await crudApi.update(endpoint, editing.id, payload);
       else await crudApi.create(endpoint, payload);
-      toast.success(editing ? 'Actualizado' : 'Creado');
+      toast.success(editing ? t('app.fiscalTable.updated') : t('app.fiscalTable.created'));
       closeForm();
       fetchRows();
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Error al guardar');
+      toast.error((err instanceof Error && err.message) || t('app.common.saveError'));
     } finally {
       setSubmitting(false);
     }
@@ -129,18 +133,18 @@ export const DimensionCrudPage: React.FC<Props> = ({
 
   const handleDelete = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar',
-      message: 'Esta acción no se puede deshacer.',
+      title: t('app.common.delete'),
+      message: t('app.common.cannotUndo'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('app.common.delete'),
     });
     if (!ok) return;
     try {
       await crudApi.remove(endpoint, id);
-      toast.success('Eliminado');
+      toast.success(t('app.fiscalTable.deleted'));
       fetchRows();
     } catch (err) {
-      toast.error((err instanceof Error && err.message) || 'Error al eliminar');
+      toast.error((err instanceof Error && err.message) || t('app.common.deleteError'));
     }
   };
 
@@ -148,15 +152,20 @@ export const DimensionCrudPage: React.FC<Props> = ({
 
   const columns = [
     {
-      header: 'Código',
+      header: t('app.common.code'),
       accessor: 'code',
       sortable: true,
       sortAccessor: (r: any) => r.code,
       primary: true,
     },
-    { header: 'Nombre', accessor: 'name', sortable: true, sortAccessor: (r: any) => r.name },
     {
-      header: 'Padre',
+      header: t('app.common.name'),
+      accessor: 'name',
+      sortable: true,
+      sortAccessor: (r: any) => r.name,
+    },
+    {
+      header: t('app.dimensions.parent'),
       cell: (r: DimensionRow) =>
         r.parentId && parentMap[r.parentId] ? (
           <span className="text-fg-muted text-xs">{parentMap[r.parentId].code}</span>
@@ -165,12 +174,12 @@ export const DimensionCrudPage: React.FC<Props> = ({
         ),
     },
     {
-      header: 'Estado',
+      header: t('app.common.status'),
       cell: (r: any) =>
         r.isActive ? (
-          <Badge variant="success">Activo</Badge>
+          <Badge variant="success">{t('app.common.active')}</Badge>
         ) : (
-          <Badge variant="neutral">Inactivo</Badge>
+          <Badge variant="neutral">{t('app.common.inactive')}</Badge>
         ),
     },
   ];
@@ -180,13 +189,13 @@ export const DimensionCrudPage: React.FC<Props> = ({
   // una vez en lugar de duplicarse entre una columna de botones y el menú.
   const rowActions = (r: DimensionRow): RowAction[] => [
     {
-      label: 'Editar',
+      label: t('app.common.edit'),
       icon: <Pencil size={14} />,
       disabled: !canWrite,
       onClick: () => openEdit(r),
     },
     {
-      label: 'Eliminar',
+      label: t('app.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       disabled: !canDelete,
@@ -199,15 +208,15 @@ export const DimensionCrudPage: React.FC<Props> = ({
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title={title}
-        subtitle={subtitle}
+        title={t(title)}
+        subtitle={t(subtitle)}
         icon={icon}
         size="lg"
         actions={
           canWrite && (
             <Button type="button" onClick={openCreate} className="flex items-center gap-2">
               <Plus size={18} />
-              Nuevo
+              {t('app.common.new')}
             </Button>
           )
         }
@@ -218,15 +227,15 @@ export const DimensionCrudPage: React.FC<Props> = ({
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
-                label="Código"
-                placeholder={autoCode ? 'Auto' : codePlaceholder || 'CC-001'}
+                label={t('app.common.code')}
+                placeholder={autoCode ? t('app.dimensions.auto') : codePlaceholder || 'CC-001'}
                 value={form.code || ''}
                 onChange={(e) => setForm({ ...form, code: e.target.value })}
                 required={!autoCode}
               />
               <Input
-                label="Nombre"
-                placeholder="Oficina Madrid"
+                label={t('app.common.name')}
+                placeholder={t('app.dimensions.namePlaceholder')}
                 value={form.name || ''}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
@@ -235,20 +244,22 @@ export const DimensionCrudPage: React.FC<Props> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* SearchableSelect no tiene prop `label`, de ahí el <label> a mano. */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-fg-body">Padre (opcional)</label>
+                <label className="text-[12px] font-medium text-fg-body">
+                  {t('app.dimensions.parentOptional')}
+                </label>
                 <SearchableSelect
                   value={form.parentId || ''}
                   onChange={(v) => setForm({ ...form, parentId: v || null })}
                   options={rows
                     .filter((r) => r.id !== editing?.id)
                     .map((r) => ({ value: r.id, label: r.code, secondaryLabel: r.name }))}
-                  placeholder="— sin padre —"
-                  emptyMessage="No hay dimensiones creadas"
+                  placeholder={t('app.dimensions.noParent')}
+                  emptyMessage={t('app.dimensions.empty')}
                   clearable
                 />
               </div>
               <Input
-                label="Notas"
+                label={t('app.dimensions.notes')}
                 value={form.notes || ''}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
               />
@@ -259,7 +270,7 @@ export const DimensionCrudPage: React.FC<Props> = ({
                 checked={form.isActive !== false}
                 onChange={(checked) => setForm({ ...form, isActive: checked })}
               />
-              Activo
+              {t('app.common.active')}
             </label>
 
             <PluginFieldsPanel
@@ -271,10 +282,10 @@ export const DimensionCrudPage: React.FC<Props> = ({
 
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={closeForm}>
-                Cancelar
+                {t('app.common.cancel')}
               </Button>
               <Button type="submit" disabled={submitting}>
-                {editing ? 'Guardar cambios' : 'Crear'}
+                {editing ? t('app.dimensions.saveChanges') : t('app.dimensions.create')}
               </Button>
             </div>
           </form>

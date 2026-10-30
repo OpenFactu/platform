@@ -1,13 +1,12 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Button, Badge, PageHeader, useToast } from '@openfactu/ui';
+import { Card, Button, Badge, PageHeader, useToast, Spinner } from '@openfactu/ui';
 import {
   Activity,
   Mail,
   Clock,
   CheckCircle2,
   XCircle,
-  Loader2,
   RefreshCw,
   AlertTriangle,
   DatabaseBackup,
@@ -15,6 +14,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatTime } from '@/i18n/format';
 
 interface MailQueueRow {
   id: string;
@@ -78,6 +79,7 @@ export const BackgroundTasks: React.FC = () => {
   const { token, user } = useAuth();
   const fmt = useFormat();
   const toast = useToast();
+  const { t } = useI18n();
   const [mails, setMails] = useState<MailQueueRow[]>([]);
   const [backups, setBackups] = useState<BackupRunRow[]>([]);
   const [canSeeBackups, setCanSeeBackups] = useState(true);
@@ -146,18 +148,18 @@ export const BackgroundTasks: React.FC = () => {
   return (
     <div className="p-4 space-y-6 animate-in fade-in duration-500">
       <PageHeader
-        title="Tareas en segundo plano"
-        subtitle="Cola de envíos, backups, subidas y su estado en tiempo real."
+        title={t('system.tasks.title')}
+        subtitle={t('system.tasks.subtitle')}
         icon={<Activity size={18} />}
         size="md"
         divider
         actions={
           <>
             <span className="text-[10px] font-mono text-fg-subtle animate-pulse">
-              ● {new Date(lastUpdate).toLocaleTimeString('es-ES')}
+              ● {formatTime(lastUpdate)}
             </span>
             <Button type="button" variant="outline" size="sm" onClick={load} className="gap-1">
-              <RefreshCw size={12} /> Refrescar
+              <RefreshCw size={12} /> {t('system.tasks.refresh')}
             </Button>
           </>
         }
@@ -166,25 +168,25 @@ export const BackgroundTasks: React.FC = () => {
       {/* Stats agregadas — correo */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
-          label="Enviándose"
+          label={t('system.tasks.sending')}
           value={grouped.sending.length}
-          icon={<Loader2 size={18} className="animate-spin" />}
+          icon={<Spinner size="md" tone="inherit" />}
           tone="accent"
         />
         <StatCard
-          label="En cola"
+          label={t('system.tasks.queued')}
           value={grouped.queued.length}
           icon={<Clock size={18} />}
           tone="neutral"
         />
         <StatCard
-          label="Enviados (última h)"
+          label={t('system.tasks.sentLastHour')}
           value={grouped.sent.length}
           icon={<CheckCircle2 size={18} />}
           tone="success"
         />
         <StatCard
-          label="Fallidos"
+          label={t('system.tasks.failedPlural')}
           value={grouped.failed.length}
           icon={<XCircle size={18} />}
           tone="error"
@@ -194,14 +196,18 @@ export const BackgroundTasks: React.FC = () => {
       <Card>
         <div className="p-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 flex items-center gap-2 mb-3">
-            <Mail size={14} /> Cola de correo
+            <Mail size={14} /> {t('system.tasks.mailQueue')}
           </h2>
           {loading ? (
-            <div className="py-10 text-center text-ink-400 text-xs font-mono">Cargando…</div>
+            <div className="py-10 text-center text-ink-400 text-xs font-mono">
+              {t('app.common.loading')}
+            </div>
           ) : mails.length === 0 ? (
             <div className="py-10 flex flex-col items-center gap-2 text-ink-400">
               <Mail size={28} />
-              <p className="text-xs font-mono uppercase tracking-wider">No hay emails en la cola</p>
+              <p className="text-xs font-mono uppercase tracking-wider">
+                {t('system.tasks.noMails')}
+              </p>
             </div>
           ) : (
             <ul className="divide-y divide-line dark:divide-ink-700">
@@ -221,19 +227,19 @@ export const BackgroundTasks: React.FC = () => {
           {/* Stats agregadas — backups */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <StatCard
-              label="Backups en curso"
+              label={t('system.tasks.backupsRunning')}
               value={backupsGrouped.running.length}
-              icon={<Loader2 size={18} className="animate-spin" />}
+              icon={<Spinner size="md" tone="inherit" />}
               tone="accent"
             />
             <StatCard
-              label="Completados (última h)"
+              label={t('system.tasks.completedLastHour')}
               value={backupsGrouped.okRecent.length}
               icon={<CheckCircle2 size={18} />}
               tone="success"
             />
             <StatCard
-              label="Fallidos"
+              label={t('system.tasks.failedPlural')}
               value={backupsGrouped.failed.length}
               icon={<XCircle size={18} />}
               tone="error"
@@ -246,12 +252,14 @@ export const BackgroundTasks: React.FC = () => {
                 <DatabaseBackup size={14} /> Backups
               </h2>
               {loading ? (
-                <div className="py-10 text-center text-ink-400 text-xs font-mono">Cargando…</div>
+                <div className="py-10 text-center text-ink-400 text-xs font-mono">
+                  {t('app.common.loading')}
+                </div>
               ) : backups.length === 0 ? (
                 <div className="py-10 flex flex-col items-center gap-2 text-ink-400">
                   <DatabaseBackup size={28} />
                   <p className="text-xs font-mono uppercase tracking-wider">
-                    Todavía no hay backups
+                    {t('system.tasks.noBackups')}
                   </p>
                 </div>
               ) : (
@@ -269,14 +277,18 @@ export const BackgroundTasks: React.FC = () => {
       <Card>
         <div className="p-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 flex items-center gap-2 mb-3">
-            <Paperclip size={14} /> Subidas recientes
+            <Paperclip size={14} /> {t('system.tasks.recentUploads')}
           </h2>
           {loading ? (
-            <div className="py-10 text-center text-ink-400 text-xs font-mono">Cargando…</div>
+            <div className="py-10 text-center text-ink-400 text-xs font-mono">
+              {t('app.common.loading')}
+            </div>
           ) : uploads.length === 0 ? (
             <div className="py-10 flex flex-col items-center gap-2 text-ink-400">
               <Paperclip size={28} />
-              <p className="text-xs font-mono uppercase tracking-wider">Sin subidas recientes</p>
+              <p className="text-xs font-mono uppercase tracking-wider">
+                {t('system.tasks.noUploads')}
+              </p>
             </div>
           ) : (
             <ul className="divide-y divide-line dark:divide-ink-700">
@@ -320,20 +332,25 @@ const StatCard: React.FC<{
 
 const MailRow: React.FC<{ mail: MailQueueRow; fmt: any }> = ({ mail, fmt }) => {
   const to = Array.isArray(mail.to) ? mail.to.join(', ') : mail.to;
+  const { t } = useI18n();
   const statusMap = {
-    queued: { label: 'En cola', color: 'neutral' as const, icon: <Clock size={12} /> },
+    queued: {
+      label: t('system.tasks.queued'),
+      color: 'neutral' as const,
+      icon: <Clock size={12} />,
+    },
     sending: {
-      label: 'Enviando…',
+      label: t('system.tasks.sendingNow'),
       color: 'info' as const,
-      icon: <Loader2 size={12} className="animate-spin" />,
+      icon: <Spinner size="xs" tone="inherit" />,
     },
     sent: {
-      label: 'Entregado',
+      label: t('system.tasks.delivered'),
       color: 'success' as const,
       icon: <CheckCircle2 size={12} />,
     },
     failed: {
-      label: 'Fallido',
+      label: t('system.tasks.failed'),
       color: 'error' as const,
       icon: <AlertTriangle size={12} />,
     },
@@ -357,8 +374,10 @@ const MailRow: React.FC<{ mail: MailQueueRow; fmt: any }> = ({ mail, fmt }) => {
             <>
               <span>·</span>
               <span>
-                Intento {mail.attempts}
-                {mail.status === 'queued' && etaSec > 0 && ` · reintenta en ${etaSec}s`}
+                {t('system.tasks.attempt', { n: mail.attempts })}
+                {mail.status === 'queued' &&
+                  etaSec > 0 &&
+                  ` · ${t('system.tasks.retryIn', { s: etaSec })}`}
               </span>
             </>
           )}
@@ -374,20 +393,29 @@ const MailRow: React.FC<{ mail: MailQueueRow; fmt: any }> = ({ mail, fmt }) => {
 };
 
 const BACKUP_DEST_LABELS: Record<BackupRunRow['destination'], string> = {
-  local: 'Disco local',
+  local: 'system.tasks.destLocal',
   gdrive: 'Google Drive',
   onedrive: 'OneDrive',
 };
 
 const BackupRow: React.FC<{ run: BackupRunRow; fmt: any }> = ({ run, fmt }) => {
+  const { t } = useI18n();
   const statusMap = {
     running: {
-      label: 'En curso…',
+      label: t('system.tasks.running'),
       color: 'info' as const,
-      icon: <Loader2 size={12} className="animate-spin" />,
+      icon: <Spinner size="xs" tone="inherit" />,
     },
-    ok: { label: 'Completado', color: 'success' as const, icon: <CheckCircle2 size={12} /> },
-    error: { label: 'Fallido', color: 'error' as const, icon: <AlertTriangle size={12} /> },
+    ok: {
+      label: t('system.tasks.completed'),
+      color: 'success' as const,
+      icon: <CheckCircle2 size={12} />,
+    },
+    error: {
+      label: t('system.tasks.failed'),
+      color: 'error' as const,
+      icon: <AlertTriangle size={12} />,
+    },
   }[run.status];
 
   return (
@@ -398,12 +426,17 @@ const BackupRow: React.FC<{ run: BackupRunRow; fmt: any }> = ({ run, fmt }) => {
       </Badge>
       <div className="flex-1 min-w-0">
         <div className="text-sm font-bold text-ink-900 dark:text-slate-100 truncate">
-          {run.fileName || (run.kind === 'manual' ? 'Backup manual' : 'Backup programado')}
+          {run.fileName ||
+            (run.kind === 'manual'
+              ? t('system.tasks.manualBackup')
+              : t('system.tasks.scheduledBackup'))}
         </div>
         <div className="text-[11px] text-ink-500 dark:text-ink-400 flex items-center gap-2">
-          <span>{run.kind === 'manual' ? 'Manual' : 'Programado'}</span>
+          <span>
+            {run.kind === 'manual' ? t('system.tasks.manual') : t('system.tasks.scheduled')}
+          </span>
           <span>·</span>
-          <span>{BACKUP_DEST_LABELS[run.destination] || run.destination}</span>
+          <span>{t(BACKUP_DEST_LABELS[run.destination] || run.destination)}</span>
           {run.sizeBytes ? (
             <>
               <span>·</span>

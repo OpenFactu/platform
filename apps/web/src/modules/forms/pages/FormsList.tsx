@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -21,15 +22,17 @@ import { useFormsPermissions } from '../hooks/useFormsPermissions';
 
 type Template = { id: string; label: string; kind: 'form' | 'survey' };
 
+/** Claves de i18n de la ayuda de cada plantilla (por id de plantilla del servidor). */
 const TEMPLATE_HINT: Record<string, string> = {
-  blank: 'Empieza de cero.',
-  contact: 'Nombre, empresa, correo, teléfono y mensaje.',
-  satisfaction: 'Recomendación de 0 a 10 (NPS), valoración y comentarios.',
-  event: 'Datos del asistente, sesiones y necesidades.',
-  quiz: 'Preguntas con puntos y respuesta correcta.',
+  blank: 'forms.list.templates.blank',
+  contact: 'forms.list.templates.contact',
+  satisfaction: 'forms.list.templates.satisfaction',
+  event: 'forms.list.templates.event',
+  quiz: 'forms.list.templates.quiz',
 };
 
 export const FormsList: React.FC = () => {
+  const { t } = useI18n();
   const fmt = useFormat();
   const toast = useToast();
   const popup = usePopup();
@@ -66,7 +69,7 @@ export const FormsList: React.FC = () => {
       setCreating(null);
       navigate(`/forms/${f.id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo crear');
+      toast.error(err instanceof Error ? err.message : t('forms.list.createFailed'));
     } finally {
       setBusy(false);
     }
@@ -77,54 +80,64 @@ export const FormsList: React.FC = () => {
       const copy = await formsApi.duplicate(f.id);
       navigate(`/forms/${copy.id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo duplicar');
+      toast.error(err instanceof Error ? err.message : t('forms.list.duplicateFailed'));
     }
   };
 
   const remove = async (f: FormListItem) => {
     const ok = await popup.confirm({
-      title: 'Borrar formulario',
-      message: `¿Borrar «${f.name}» y sus ${f.responses} respuesta(s)? El enlace dejará de funcionar.`,
+      title: t('forms.list.deleteTitle'),
+      message: t('forms.list.deleteMessage', { name: f.name, count: f.responses }),
       tone: 'danger',
-      confirmLabel: 'Borrar',
+      confirmLabel: t('forms.common.delete'),
     });
     if (!ok) return;
     try {
       await formsApi.remove(f.id);
       reload();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo borrar');
+      toast.error(err instanceof Error ? err.message : t('forms.errors.deleteFailed'));
     }
   };
 
   const columns: TableColumn<FormListItem>[] = [
-    { header: 'Nombre', accessor: 'name', sortable: true, card: 'title' },
+    { header: t('forms.list.name'), accessor: 'name', sortable: true, card: 'title' },
     {
-      header: 'Estado',
+      header: t('forms.share.status'),
       id: 'active',
       card: 'status',
       cell: (f) =>
         f.isActive ? (
-          <Badge variant="success">Acepta respuestas</Badge>
+          <Badge variant="success">{t('forms.list.accepting')}</Badge>
         ) : (
-          <Badge variant="neutral">Cerrado</Badge>
+          <Badge variant="neutral">{t('forms.list.closed')}</Badge>
         ),
     },
-    { header: 'Respuestas', id: 'n', accessor: (f) => f.responses, align: 'right' },
     {
-      header: 'Última respuesta',
+      header: t('forms.settings.responses'),
+      id: 'n',
+      accessor: (f) => f.responses,
+      align: 'right',
+    },
+    {
+      header: t('forms.list.lastResponse'),
       id: 'last',
       accessor: (f) => (f.lastResponseAt ? fmt.date(f.lastResponseAt) : '—'),
       card: 'meta',
     },
-    { header: 'Modificado', id: 'upd', accessor: (f) => fmt.date(f.updatedAt), card: 'meta' },
+    {
+      header: t('forms.list.modified'),
+      id: 'upd',
+      accessor: (f) => fmt.date(f.updatedAt),
+      card: 'meta',
+    },
   ];
 
   return (
     <div className="p-4 w-full space-y-4">
       <PageHeader
-        title="Formularios"
-        subtitle="Formularios, encuestas y cuestionarios que se comparten con un enlace"
+        title={t('forms.nav.list')}
+        subtitle={t('forms.list.subtitle')}
         icon={<ClipboardList size={18} />}
         size="sm"
         actions={
@@ -134,7 +147,7 @@ export const FormsList: React.FC = () => {
               size="sm"
               onClick={() => setCreating({ name: '', template: 'blank' })}
             >
-              <Plus size={14} /> Nuevo
+              <Plus size={14} /> {t('forms.list.new')}
             </Button>
           )
         }
@@ -144,24 +157,28 @@ export const FormsList: React.FC = () => {
         data={forms ?? []}
         isLoading={forms === null}
         onRowClick={(f) => navigate(`/forms/${f.id}`)}
-        emptyMessage="Todavía no hay formularios. Crea el primero desde una plantilla."
-        ariaLabel="Formularios"
+        emptyMessage={t('forms.list.empty')}
+        ariaLabel={t('forms.nav.list')}
         rowActions={(f) => [
-          ...(canWrite ? [{ label: 'Duplicar', onClick: () => duplicate(f) }] : []),
-          ...(canDelete ? [{ label: 'Borrar', onClick: () => remove(f), destructive: true }] : []),
+          ...(canWrite
+            ? [{ label: t('forms.blocks.duplicate'), onClick: () => duplicate(f) }]
+            : []),
+          ...(canDelete
+            ? [{ label: t('forms.common.delete'), onClick: () => remove(f), destructive: true }]
+            : []),
         ]}
       />
       <Modal
         isOpen={!!creating}
         onClose={() => setCreating(null)}
-        title="Nuevo formulario"
+        title={t('forms.list.newTitle')}
         size="md"
         onSubmit={(e) => {
           e.preventDefault();
           create();
         }}
         primaryAction={{
-          label: 'Crear',
+          label: t('forms.list.create'),
           type: 'submit',
           disabled: !creating?.name.trim(),
           isLoading: busy,
@@ -170,18 +187,18 @@ export const FormsList: React.FC = () => {
         {creating && (
           <div className="space-y-4">
             <Input
-              label="Nombre"
+              label={t('forms.list.name')}
               value={creating.name}
               onChange={(e) => setCreating({ ...creating, name: e.target.value })}
-              placeholder="Inscripción jornada, Satisfacción 2026…"
+              placeholder={t('forms.list.namePlaceholder')}
               autoFocus
             />
             <RadioGroup
-              label="Empezar con"
-              options={templates.map((t) => ({
-                value: t.id,
-                label: t.label,
-                description: TEMPLATE_HINT[t.id],
+              label={t('forms.list.startWith')}
+              options={templates.map((tpl) => ({
+                value: tpl.id,
+                label: tpl.label,
+                description: TEMPLATE_HINT[tpl.id] ? t(TEMPLATE_HINT[tpl.id]) : undefined,
               }))}
               value={creating.template}
               onChange={(template) => setCreating({ ...creating, template })}

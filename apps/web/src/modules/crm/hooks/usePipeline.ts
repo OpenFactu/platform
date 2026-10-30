@@ -1,3 +1,4 @@
+import { t } from '@/i18n/i18n';
 import { useMemo, useState } from 'react';
 import { useToast } from '@openfactu/ui';
 import { useRealtimeEvents } from '@/hooks/useRealtimeEvents';
@@ -19,7 +20,6 @@ export function usePipeline(partnerId?: string, scope?: OpportunityScope) {
     partnerId,
     scope,
   );
-  const [dragId, setDragId] = useState<string | null>(null);
   const [pendingLost, setPendingLost] = useState<{ opp: Opportunity; stageId: string } | null>(
     null,
   );
@@ -63,7 +63,7 @@ export function usePipeline(partnerId?: string, scope?: OpportunityScope) {
       refresh();
     } catch (err) {
       setOpportunities(previous);
-      toast.error(err instanceof Error ? err.message : 'No se pudo mover la oportunidad');
+      toast.error(err instanceof Error ? err.message : t('crm.pipeline.moveFailed'));
     }
   };
 
@@ -72,12 +72,6 @@ export function usePipeline(partnerId?: string, scope?: OpportunityScope) {
     const stage = stages.find((s) => s.id === stageId);
     if (stage?.kind === 'lost') setPendingLost({ opp, stageId });
     else applyMove(opp, stageId);
-  };
-
-  const dropOn = (stageId: string) => {
-    const opp = opportunities.find((o) => o.id === dragId);
-    setDragId(null);
-    if (opp) moveTo(opp, stageId);
   };
 
   return {
@@ -98,6 +92,5 @@ export function usePipeline(partnerId?: string, scope?: OpportunityScope) {
       setPendingLost(null);
     },
     cancelLost: () => setPendingLost(null),
-    drag: { dragId, start: setDragId, end: () => setDragId(null), dropOn },
   };
 }

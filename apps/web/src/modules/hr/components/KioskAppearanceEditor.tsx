@@ -8,8 +8,10 @@ import {
   type KioskAppearance,
 } from '../domain/kioskAppearance';
 import type { Kiosk } from '../domain/kiosk';
+import { useI18n } from '@/i18n/I18nContext';
 
 export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClose: () => void }) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState<KioskAppearance>({ ...DEFAULT_KIOSK_APPEARANCE });
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -28,7 +30,7 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
         }
       })
       .catch(() => {
-        if (alive.current) setError('No se pudo cargar la configuración. Cierra y vuelve a abrir.');
+        if (alive.current) setError(t('hrTime.appearance.loadFailed'));
       })
       .finally(() => {
         if (alive.current) setLoading(false);
@@ -36,7 +38,7 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
     return () => {
       alive.current = false;
     };
-  }, [kiosk.id]);
+  }, [kiosk.id, t]);
   const change = (patch: Partial<KioskAppearance>) => {
     setDraft((old) => ({ ...old, ...patch }));
     setSaved(false);
@@ -49,18 +51,19 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
       const value = await prepareKioskImage(file, key);
       if (alive.current) change({ [key]: value });
     } catch (e) {
-      if (alive.current) setError(e instanceof Error ? e.message : 'No se pudo leer la imagen.');
+      if (alive.current)
+        setError(e instanceof Error ? e.message : t('hrTime.appearance.imageFailed'));
     } finally {
       if (alive.current) setBusy(false);
     }
   };
   return (
     <Card
-      title={`Personalizar ${kiosk.name}`}
-      subtitle="El aspecto se guarda para este kiosco en todas sus pantallas."
+      title={t('hrTime.appearance.title', { name: kiosk.name })}
+      subtitle={t('hrTime.appearance.subtitle')}
     >
       {loading ? (
-        <p role="status">Cargando aspecto…</p>
+        <p role="status">{t('hrTime.appearance.loading')}</p>
       ) : loaded ? (
         <form
           className="grid gap-8 lg:grid-cols-2"
@@ -76,8 +79,7 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
                 setSaved(true);
               }
             } catch {
-              if (alive.current)
-                setError('No se pudo guardar. Revisa los campos e inténtalo de nuevo.');
+              if (alive.current) setError(t('hrTime.appearance.saveFailed'));
             } finally {
               if (alive.current) setBusy(false);
             }
@@ -85,16 +87,16 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
         >
           <fieldset disabled={busy} className="space-y-5 min-w-0">
             <Input
-              label="Mensaje de bienvenida"
+              label={t('hrTime.appearance.welcome')}
               value={draft.welcomeMessage}
               maxLength={120}
               required
               onChange={(e) => change({ welcomeMessage: e.target.value })}
             />
             <label className="flex items-center justify-between gap-3 text-sm">
-              Color de fondo
+              {t('hrTime.appearance.bgColor')}
               <input
-                aria-label="Color de fondo"
+                aria-label={t('hrTime.appearance.bgColor')}
                 type="color"
                 value={draft.backgroundColor}
                 onChange={(e) => change({ backgroundColor: e.target.value })}
@@ -104,7 +106,9 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
             {(['backgroundImage', 'logoImage'] as const).map((key) => (
               <div key={key} className="space-y-2">
                 <label className="block text-sm font-medium">
-                  {key === 'backgroundImage' ? 'Imagen de fondo' : 'Logo'}
+                  {key === 'backgroundImage'
+                    ? t('hrTime.appearance.bgImage')
+                    : t('hrTime.appearance.logo')}
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
@@ -123,29 +127,26 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
                     size="sm"
                     onClick={() => change({ [key]: '' })}
                   >
-                    Quitar {key === 'backgroundImage' ? 'imagen de fondo' : 'logo'}
+                    {key === 'backgroundImage'
+                      ? t('hrTime.appearance.removeBgImage')
+                      : t('hrTime.appearance.removeLogo')}
                   </Button>
                 )}
               </div>
             ))}
-            <p className="text-xs text-fg-muted">
-              JPG, PNG o WebP, hasta 5 MB. Las imágenes se adaptan automáticamente y se guardan en
-              Keirost.
-            </p>
+            <p className="text-xs text-fg-muted">{t('hrTime.appearance.imageHint')}</p>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
                 checked={draft.soundEnabled}
                 onChange={(e) => change({ soundEnabled: e.target.checked })}
               />
-              Permitir avisos sonoros
+              {t('hrTime.appearance.sound')}
             </label>
-            <p className="text-xs text-fg-muted">
-              En la pantalla del kiosco, pulsa «Activar sonido» una vez para permitir los avisos.
-            </p>
+            <p className="text-xs text-fg-muted">{t('hrTime.appearance.soundHint')}</p>
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={!draft.welcomeMessage.trim()}>
-                {busy ? 'Guardando…' : 'Guardar aspecto'}
+                {busy ? t('hrTime.appearance.saving') : t('hrTime.appearance.save')}
               </Button>
               <Button
                 type="button"
@@ -155,17 +156,17 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
                   setSaved(false);
                 }}
               >
-                Restablecer diseño
+                {t('hrTime.appearance.reset')}
               </Button>
               <Button type="button" variant="ghost" onClick={onClose}>
-                Cerrar
+                {t('hr.common.close')}
               </Button>
             </div>
           </fieldset>
           <div className="space-y-3">
             <p className="flex items-center gap-2 text-sm font-medium">
               <Palette size={16} />
-              Vista previa
+              {t('hrTime.appearance.preview')}
             </p>
             <div
               className="relative isolate overflow-hidden rounded-xl border border-border-subtle text-white"
@@ -183,11 +184,11 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
                 {draft.logoImage ? (
                   <img
                     src={draft.logoImage}
-                    alt="Logo del kiosco"
+                    alt={t('hrTime.appearance.logoAlt')}
                     className="h-9 max-w-32 object-contain"
                   />
                 ) : (
-                  <span className="font-semibold">Fichaje</span>
+                  <span className="font-semibold">{t('hrTime.kioskMode.brand')}</span>
                 )}
                 <span className="text-lg tabular-nums">09:41</span>
               </div>
@@ -195,17 +196,15 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
                 <div className="space-y-5 rounded-xl border border-white/10 bg-slate-950/90 p-6">
                   <CreditCard size={38} className="text-emerald-400" />
                   <p className="break-words text-2xl font-semibold">
-                    {draft.welcomeMessage || 'Acerca tu tarjeta'}
+                    {draft.welcomeMessage || t('hrTime.kioskMode.defaultWelcome')}
                   </p>
-                  <p className="text-sm text-slate-300">
-                    Identifícate para registrar tu entrada, salida o pausa.
-                  </p>
+                  <p className="text-sm text-slate-300">{t('hrTime.kioskMode.identifyHint')}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-center text-xs">
                     <span className="rounded border border-slate-600 bg-slate-800 p-3">
-                      Usar mi QR
+                      {t('hrTime.kioskMode.useQr')}
                     </span>
                     <span className="rounded border border-slate-600 bg-slate-800 p-3">
-                      Usar mi PIN
+                      {t('hrTime.kioskMode.usePin')}
                     </span>
                   </div>
                 </div>
@@ -213,7 +212,7 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
             </div>
             <p className="flex items-start gap-2 text-xs text-fg-muted">
               <Image size={14} className="shrink-0" />
-              El panel oscuro mantiene los textos legibles sobre cualquier fondo.
+              {t('hrTime.appearance.darkPanelHint')}
             </p>
           </div>
         </form>
@@ -225,13 +224,12 @@ export function KioskAppearanceEditor({ kiosk, onClose }: { kiosk: Kiosk; onClos
       )}
       {saved && (
         <p role="status" className="mt-4 text-sm text-success">
-          Aspecto guardado. El kiosco lo recibirá en un minuto; recarga su pantalla para verlo
-          ahora.
+          {t('hrTime.appearance.saved')}
         </p>
       )}
       {!loaded && (
         <Button type="button" variant="ghost" onClick={onClose}>
-          Cerrar
+          {t('hr.common.close')}
         </Button>
       )}
     </Card>

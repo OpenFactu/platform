@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, Loader2, ArrowLeft, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { AuroraBackdrop } from '../components/login/AuroraBackdrop';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Página pública para fijar una nueva contraseña a partir del token recibido
@@ -18,10 +19,11 @@ export const ResetPassword: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get('token') || '';
-    setToken(t);
+    const tk = new URLSearchParams(window.location.search).get('token') || '';
+    setToken(tk);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,11 +31,11 @@ export const ResetPassword: React.FC = () => {
     setError(null);
 
     if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+      setError(t('app.reset.tooShort'));
       return;
     }
     if (password !== confirm) {
-      setError('Las contraseñas no coinciden');
+      setError(t('app.reset.mismatch'));
       return;
     }
 
@@ -50,9 +52,9 @@ export const ResetPassword: React.FC = () => {
       setTimeout(() => navigate('/login'), 2500);
     } catch (err) {
       if (err instanceof ApiError && err.status !== 0) {
-        setError(((err.body as any)?.error as string) || 'El enlace no es válido o ha caducado');
+        setError(((err.body as any)?.error as string) || t('app.reset.invalidLink'));
       } else {
-        setError('No se pudo establecer conexión con el servidor');
+        setError(t('app.login.connectionError'));
       }
     } finally {
       setIsSubmitting(false);
@@ -67,7 +69,7 @@ export const ResetPassword: React.FC = () => {
 
       <div className="w-full max-w-md space-y-6 animate-in fade-in zoom-in-95 duration-500 bg-white/95 dark:bg-[#1A2535]/90 backdrop-blur-md border border-white/40 dark:border-white/10 rounded-[4px] p-6 md:p-8 shadow-2xl relative z-10">
         <div className="flex flex-col items-center mb-2">
-          <KeirostLogo size={48} variant="dark" className="mb-4" />
+          <KeirostLogo size={44} className="mb-4 text-fg-default" />
         </div>
 
         {done ? (
@@ -77,11 +79,9 @@ export const ResetPassword: React.FC = () => {
             </div>
             <div className="space-y-2">
               <h3 className="text-2xl font-black text-fg-default tracking-tight">
-                Contraseña actualizada
+                {t('app.reset.doneTitle')}
               </h3>
-              <p className="text-fg-muted font-medium text-sm">
-                Ya puedes iniciar sesión con tu nueva contraseña. Te redirigimos…
-              </p>
+              <p className="text-fg-muted font-medium text-sm">{t('app.reset.doneBody')}</p>
             </div>
           </div>
         ) : !token ? (
@@ -91,30 +91,25 @@ export const ResetPassword: React.FC = () => {
             </div>
             <div className="space-y-2">
               <h3 className="text-2xl font-black text-fg-default tracking-tight">
-                Enlace no válido
+                {t('app.reset.noTokenTitle')}
               </h3>
-              <p className="text-fg-muted font-medium text-sm">
-                Falta el token de recuperación. Solicita un nuevo enlace desde la pantalla de
-                acceso.
-              </p>
+              <p className="text-fg-muted font-medium text-sm">{t('app.reset.noTokenBody')}</p>
             </div>
             <button
               type="button"
               onClick={() => navigate('/forgot-password')}
               className="w-full bg-[#0D9488] hover:bg-[#0A6E63] text-white font-bold py-3.5 rounded-[4px] transition-all"
             >
-              Solicitar nuevo enlace
+              {t('app.reset.requestNew')}
             </button>
           </div>
         ) : (
           <>
             <div className="space-y-2">
               <h3 className="text-2xl font-black text-fg-default tracking-tight">
-                Nueva contraseña
+                {t('app.reset.newPassword')}
               </h3>
-              <p className="text-fg-muted font-medium text-sm">
-                Elige una contraseña segura para tu cuenta.
-              </p>
+              <p className="text-fg-muted font-medium text-sm">{t('app.reset.subtitle')}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -127,7 +122,7 @@ export const ResetPassword: React.FC = () => {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
-                  Nueva contraseña
+                  {t('app.reset.newPassword')}
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
@@ -154,7 +149,7 @@ export const ResetPassword: React.FC = () => {
 
               <div className="space-y-1.5">
                 <label className="text-xs font-black text-fg-muted uppercase tracking-widest ml-1">
-                  Repetir contraseña
+                  {t('app.reset.repeat')}
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-4 flex items-center text-fg-subtle group-focus-within:text-[#0D9488] transition-colors pointer-events-none">
@@ -179,7 +174,7 @@ export const ResetPassword: React.FC = () => {
                 {isSubmitting ? (
                   <Loader2 className="animate-spin" size={20} />
                 ) : (
-                  'Guardar contraseña'
+                  t('app.reset.save')
                 )}
               </button>
 
@@ -188,7 +183,7 @@ export const ResetPassword: React.FC = () => {
                 onClick={() => navigate('/login')}
                 className="w-full flex items-center justify-center gap-2 text-fg-muted hover:text-[#0D9488] font-bold text-sm"
               >
-                <ArrowLeft size={16} /> Volver a iniciar sesión
+                <ArrowLeft size={16} /> {t('app.forgot.backToLogin')}
               </button>
             </form>
           </>

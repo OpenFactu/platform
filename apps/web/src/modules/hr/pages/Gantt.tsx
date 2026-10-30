@@ -28,17 +28,19 @@ import { useTabs } from '@/context/TabsContext';
 import type { Task } from '../domain/task';
 import type { Employee } from '../domain/employee';
 import { useTaskCalendar } from '../hooks/useTaskCalendar';
+import { useI18n } from '@/i18n/I18nContext';
 
 /** Mismos colores que usa el `Calendar` para cada estado, para la leyenda. */
 const LEYENDA = [
-  { label: 'Por hacer', color: 'var(--k-ink-500, #64748b)' },
-  { label: 'En curso', color: 'rgb(var(--color-accent-rgb))' },
-  { label: 'Bloqueada', color: 'var(--k-danger)' },
-  { label: 'Hecha', color: 'var(--k-success)' },
-  { label: 'Cancelada', color: 'var(--k-ink-400, #94a3b8)' },
+  { label: 'hrTalent.tasks.status.todo', color: 'var(--k-ink-500, #64748b)' },
+  { label: 'hrTalent.tasks.status.in_progress', color: 'rgb(var(--color-accent-rgb))' },
+  { label: 'hrTalent.tasks.status.blocked', color: 'var(--k-danger)' },
+  { label: 'hrTalent.tasks.status.done', color: 'var(--k-success)' },
+  { label: 'hrTalent.tasks.status.cancelled', color: 'var(--k-ink-400, #94a3b8)' },
 ];
 
 export const Gantt: React.FC = () => {
+  const { t } = useI18n();
   const toast = useToast();
   const { openTab } = useTabs();
   const cal = useTaskCalendar();
@@ -51,8 +53,8 @@ export const Gantt: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-4">
       <PageHeader
-        title="Calendario de tareas"
-        subtitle="Arrastra una tarea a otro día u hora para reprogramarla"
+        title={t('hrTalent.gantt.title')}
+        subtitle={t('hrTalent.gantt.subtitle')}
         icon={<CalendarRange size={18} />}
         size="sm"
         actions={
@@ -63,7 +65,7 @@ export const Gantt: React.FC = () => {
               options={cal.projectOptions}
               value={cal.filterProject}
               onChange={(v) => cal.setFilterProject(v)}
-              placeholder="Todos los proyectos"
+              placeholder={t('hrTalent.gantt.allProjects')}
               clearable
               className="w-56"
             />
@@ -72,7 +74,7 @@ export const Gantt: React.FC = () => {
               size="sm"
               onClick={() => setQuickCreate({ title: '', assigneeId: '' })}
             >
-              <Plus size={14} /> Nueva tarea
+              <Plus size={14} /> {t('hrTalent.tasks.new')}
             </Button>
           </div>
         }
@@ -89,22 +91,22 @@ export const Gantt: React.FC = () => {
         date={cal.cursor}
         onDateChange={cal.setCursor}
         maxPorDia={4}
-        emptyMessage="No hay tareas en estas fechas"
+        emptyMessage={t('hrTalent.gantt.empty')}
         onEventChange={cal.reprogramar}
         onSchedule={cal.programar}
         onEventClick={(e) => {
-          const t = cal.tareaDe(e);
-          if (t) setEditing(t);
+          const task = cal.tareaDe(e);
+          if (task) setEditing(task);
         }}
         onSlotClick={() => setQuickCreate({ title: '', assigneeId: '' })}
-        aria-label="Calendario de tareas"
+        aria-label={t('hrTalent.gantt.title')}
       />
 
       <div className="flex items-center gap-3 text-[11px] text-fg-muted flex-wrap">
         {LEYENDA.map((l) => (
           <span key={l.label} className="inline-flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-none" style={{ background: l.color }} />
-            {l.label}
+            {t(l.label)}
           </span>
         ))}
       </div>
@@ -122,23 +124,23 @@ export const Gantt: React.FC = () => {
       <Modal
         isOpen={!!quickCreate}
         onClose={() => setQuickCreate(null)}
-        title="Nueva tarea"
+        title={t('hrTalent.tasks.new')}
         size="md"
         onSubmit={async () => {
           if (!quickCreate) return;
           if (!quickCreate.title.trim()) {
-            toast.error('Título obligatorio');
+            toast.error(t('hrTalent.tasks.titleRequired'));
             return;
           }
           const ok = await cal.crearTarea(quickCreate.title, quickCreate.assigneeId);
           if (ok) setQuickCreate(null);
         }}
-        primaryAction={{ label: 'Crear' }}
+        primaryAction={{ label: t('hr.common.create') }}
       >
         {quickCreate && (
           <div className="space-y-3">
             <Input
-              label="Título"
+              label={t('hrTalent.tasks.titleField')}
               value={quickCreate.title}
               onChange={(e) => setQuickCreate({ ...quickCreate, title: e.target.value })}
               autoFocus
@@ -148,20 +150,17 @@ export const Gantt: React.FC = () => {
               {/* SearchableSelect no tiene prop `label` → se conserva el
                   <label> suelto. El vacío es válido → clearable. */}
               <label className="block text-[10px] font-bold uppercase tracking-wider text-fg-muted mb-1">
-                Asignada a (opcional)
+                {t('hrTalent.gantt.assignedOptional')}
               </label>
               <SearchableSelect
                 options={cal.employeeOptions}
                 value={quickCreate.assigneeId}
                 onChange={(v) => setQuickCreate({ ...quickCreate, assigneeId: v })}
-                placeholder="— sin asignar —"
+                placeholder={t('hrTalent.tasks.unassigned')}
                 clearable
               />
             </div>
-            <p className="text-[11px] text-fg-muted">
-              Se creará sin fechas. Arrástrala desde "Sin programar" a un día del calendario para
-              programarla.
-            </p>
+            <p className="text-[11px] text-fg-muted">{t('hrTalent.gantt.quickHint')}</p>
           </div>
         )}
       </Modal>
@@ -179,6 +178,7 @@ const TaskQuickView: React.FC<{
   onClose: () => void;
   onEditFull: () => void;
 }> = ({ task, employees, onClose, onEditFull }) => {
+  const { t } = useI18n();
   const emp = task ? employees.find((e) => e.id === task.assigneeId) : undefined;
   return (
     <Modal
@@ -187,24 +187,40 @@ const TaskQuickView: React.FC<{
       eyebrow={task?.code}
       title={task?.title}
       size="md"
-      primaryAction={{ label: 'Editar en Tareas', onClick: onEditFull }}
-      cancelLabel="Cerrar"
+      primaryAction={{ label: t('hrTalent.gantt.editInTasks'), onClick: onEditFull }}
+      cancelLabel={t('hr.common.close')}
     >
       {task && (
         <DescriptionList
           items={[
-            { key: 'status', label: 'Estado', value: task.status },
-            { key: 'priority', label: 'Prioridad', value: task.priority },
-            { key: 'start', label: 'Inicio', value: task.startDate?.slice(0, 10) },
-            { key: 'end', label: 'Fin', value: task.dueDate?.slice(0, 10) },
+            {
+              key: 'status',
+              label: t('hr.common.status'),
+              value: t(`hrTalent.tasks.status.${task.status}`),
+            },
+            {
+              key: 'priority',
+              label: t('hrTalent.tasks.priorityLabel'),
+              value: t(`hrTalent.tasks.priority.${task.priority}`),
+            },
+            {
+              key: 'start',
+              label: t('hrTime.shiftTemplates.start'),
+              value: task.startDate?.slice(0, 10),
+            },
+            {
+              key: 'end',
+              label: t('hrTime.shiftTemplates.end'),
+              value: task.dueDate?.slice(0, 10),
+            },
             {
               key: 'hours',
-              label: 'Estimadas',
+              label: t('hrTalent.gantt.estimated'),
               value: task.estimatedHours ? `${Number(task.estimatedHours).toFixed(1)}h` : null,
             },
             {
               key: 'assignee',
-              label: 'Asignada',
+              label: t('hrTalent.gantt.assigned'),
               value: emp ? `${emp.firstName} ${emp.lastName}` : null,
             },
           ]}

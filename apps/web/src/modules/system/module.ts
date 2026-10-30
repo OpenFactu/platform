@@ -12,33 +12,33 @@ const AuditLogs = lazy(() => import('./pages/AuditLogs').then((m) => ({ default:
 export const systemModule: ModuleManifest = {
   nav: {
     id: 'system',
-    label: 'Sistema',
+    label: 'system.nav.system',
     icon: 'Activity',
     superuserOnly: true,
     subTabs: [
-      { id: 'cockpit', label: 'Cockpit', path: '/system/cockpit' },
-      { id: 'tasks', label: 'Tareas en 2º plano', path: '/background-tasks' },
+      { id: 'cockpit', label: 'system.nav.cockpit', path: '/system/cockpit' },
+      { id: 'tasks', label: 'system.nav.tasks', path: '/background-tasks' },
     ],
   },
   routes: [
     {
       pattern: '/system/cockpit',
       Component: ServerCockpit,
-      title: 'Cockpit',
+      title: 'system.routes.cockpit',
       iconName: 'Activity',
       permissionPath: '/system/cockpit',
     },
     {
       pattern: '/background-tasks',
       Component: BackgroundTasks,
-      title: 'Tareas',
+      title: 'system.routes.tasks',
       iconName: 'Activity',
       permissionPath: '/background-tasks',
     },
     {
       pattern: '/audit-logs',
       Component: AuditLogs,
-      title: 'Auditoría',
+      title: 'system.routes.audit',
       iconName: 'ClipboardList',
       permissionPath: '/audit-logs',
     },

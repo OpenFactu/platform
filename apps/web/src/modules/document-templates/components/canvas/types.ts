@@ -46,16 +46,16 @@ export const PAGE_SIZE_MM: Record<
   Label50x25: { width: 50, height: 25 },
 };
 
-/** Etiqueta visible para cada tamaño en el inspector. */
+/** Clave i18n de la etiqueta visible para cada tamaño en el inspector (se traduce al pintar). */
 export const PAGE_SIZE_LABELS: Record<PageSize, string> = {
-  A4: 'A4 (210 × 297 mm)',
-  Letter: 'Letter (216 × 279 mm)',
-  Ticket80: 'Tiquet 80 mm (térmico)',
-  Ticket58: 'Tiquet 58 mm (térmico)',
-  Label100x62: 'Etiqueta 100 × 62 mm',
-  Label70x37: 'Etiqueta 70 × 37 mm',
-  Label50x25: 'Etiqueta 50 × 25 mm',
-  Custom: 'Personalizado…',
+  A4: 'templates.pageSizes.A4',
+  Letter: 'templates.pageSizes.Letter',
+  Ticket80: 'templates.pageSizes.Ticket80',
+  Ticket58: 'templates.pageSizes.Ticket58',
+  Label100x62: 'templates.pageSizes.Label100x62',
+  Label70x37: 'templates.pageSizes.Label70x37',
+  Label50x25: 'templates.pageSizes.Label50x25',
+  Custom: 'templates.pageSizes.Custom',
 };
 
 export interface Margins {

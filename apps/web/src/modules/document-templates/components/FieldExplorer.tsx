@@ -17,6 +17,7 @@ import {
   Box,
   List,
 } from 'lucide-react';
+import { useI18n } from '@/i18n/I18nContext';
 
 const GROUP_ICON: Record<FieldGroup['icon'], React.ReactNode> = {
   FileText: <FileText size={14} />,
@@ -53,6 +54,7 @@ interface Props {
 export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
   const [search, setSearch] = useState('');
   const toast = useToast();
+  const { t } = useI18n();
 
   const filteredGroups = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -69,13 +71,13 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
     const varText = `{{${field.path}}}`;
     if (insertMode === 'insert' && onInsert) {
       onInsert(varText);
-      toast.success(`Insertado: ${field.path}`);
+      toast.success(t('templates.fieldExplorer.inserted', { path: field.path }));
     } else {
       try {
         await navigator.clipboard.writeText(varText);
-        toast.success(`Copiado: ${varText}`);
+        toast.success(t('templates.fieldExplorer.copied', { text: varText }));
       } catch {
-        toast.error('No se pudo copiar');
+        toast.error(t('templates.fieldExplorer.copyError'));
       }
     }
   };
@@ -84,21 +86,21 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
     <div className="flex flex-col h-full">
       <div className="p-3 border-b border-border-subtle flex-shrink-0">
         <div className="flex items-center gap-2 text-[10px] font-black text-fg-subtle uppercase tracking-widest mb-2">
-          <Code2 size={12} /> Campos disponibles
+          <Code2 size={12} /> {t('templates.fieldExplorer.title')}
         </div>
         <div className="relative">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-fg-subtle" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar campo..."
+            placeholder={t('templates.fieldExplorer.searchPlaceholder')}
             className="pl-7 h-8 text-xs"
           />
         </div>
         <p className="text-[9px] text-fg-subtle italic mt-2 leading-tight">
           {insertMode === 'insert'
-            ? 'Click en un campo para insertarlo en el editor'
-            : 'Click en un campo para copiarlo al portapapeles'}
+            ? t('templates.fieldExplorer.hintInsert')
+            : t('templates.fieldExplorer.hintCopy')}
         </p>
       </div>
 
@@ -145,7 +147,7 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
                       </div>
                       {field.example && (
                         <div className="text-[9px] text-fg-subtle italic mt-0.5 font-mono">
-                          ej: {field.example}
+                          {t('templates.fieldExplorer.example', { example: field.example })}
                         </div>
                       )}
                     </div>
@@ -165,7 +167,7 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
           <div className="sticky top-0 px-3 py-2 bg-indigo-50 border-b border-indigo-100 flex items-center gap-2">
             <Code2 size={12} className="text-indigo-600" />
             <span className="text-[10px] font-black text-indigo-700 uppercase tracking-wider">
-              Helpers Handlebars
+              {t('templates.fieldExplorer.helpers')}
             </span>
           </div>
           {HELPERS.map((helper) => (
@@ -183,7 +185,7 @@ export const FieldExplorer: React.FC<Props> = ({ onInsert, insertMode }) => {
 
         {filteredGroups.length === 0 && (
           <div className="p-6 text-center text-fg-subtle text-xs italic">
-            No hay campos que coincidan con"{search}"{' '}
+            {t('templates.fieldExplorer.noMatches', { search })}
           </div>
         )}
       </div>

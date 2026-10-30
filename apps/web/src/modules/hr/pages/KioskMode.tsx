@@ -18,6 +18,8 @@ import './KioskMode.css';
 import { useKioskAppearance } from '../hooks/useKioskAppearance';
 import { useKioskSound } from '../hooks/useKioskSound';
 import { KioskCountdownBar } from '../components/KioskCountdownBar';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDate, formatTime } from '@/i18n/format';
 
 function loadConfig(): KioskConfig {
   const query = new URLSearchParams(window.location.search);
@@ -30,6 +32,7 @@ function loadConfig(): KioskConfig {
   }
 }
 export function KioskMode() {
+  const { t } = useI18n();
   const [config] = useState(loadConfig);
   const [now, setNow] = useState(new Date());
   const [mode, setMode] = useState<'home' | 'pin' | 'qr'>('home');
@@ -89,13 +92,13 @@ export function KioskMode() {
           {appearance.logoImage ? (
             <img
               src={appearance.logoImage}
-              alt="Logo de la empresa"
+              alt={t('hrTime.kioskMode.companyLogo')}
               className="h-12 max-w-40 object-contain"
             />
           ) : (
             <Timer size={28} className="text-emerald-400" />
           )}
-          <h1 className="!text-white text-xl font-semibold">Fichaje</h1>
+          <h1 className="!text-white text-xl font-semibold">{t('hrTime.kioskMode.brand')}</h1>
         </div>
         {configured && appearance.soundEnabled && (
           <div className="flex flex-wrap items-center gap-2">
@@ -107,26 +110,26 @@ export function KioskMode() {
             >
               {sound.enabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
               {sound.unavailable
-                ? 'Reintentar sonido'
+                ? t('hrTime.kioskMode.retrySound')
                 : sound.enabled
-                  ? 'Silenciar'
-                  : 'Activar sonido'}
+                  ? t('hrTime.kioskMode.mute')
+                  : t('hrTime.kioskMode.enableSound')}
             </button>
             <button
               type="button"
               onClick={() => void sound.testSound()}
               className="min-h-11 rounded-lg px-3 text-sm text-slate-300 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300"
             >
-              Probar sonido
+              {t('hrTime.kioskMode.testSound')}
             </button>
           </div>
         )}
         <div className="text-right">
           <div className="text-3xl sm:text-4xl tabular-nums font-semibold">
-            {now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+            {formatTime(now, { hour: '2-digit', minute: '2-digit' })}
           </div>
           <p className="text-sm text-slate-400">
-            {now.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {formatDate(now, { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
       </header>
@@ -134,10 +137,10 @@ export function KioskMode() {
         <div className="w-full max-w-lg space-y-7 rounded-2xl border border-white/10 bg-slate-950/95 p-6 sm:p-8">
           {!configured ? (
             <div role="alert">
-              <h2 className="!text-white text-2xl font-semibold">Configura este kiosco</h2>
-              <p className="mt-3 text-slate-300">
-                Abre el enlace que encontrarás en la gestión de kioscos de tu empresa.
-              </p>
+              <h2 className="!text-white text-2xl font-semibold">
+                {t('hrTime.kioskMode.notConfigured')}
+              </h2>
+              <p className="mt-3 text-slate-300">{t('hrTime.kioskMode.notConfiguredHint')}</p>
             </div>
           ) : (
             <>
@@ -162,26 +165,26 @@ export function KioskMode() {
                         <UserRound className="text-emerald-400" size={26} aria-hidden="true" />
                       </span>
                       <p role="status" className="text-sm font-medium text-emerald-300">
-                        Identificación reconocida
+                        {t('hrTime.kioskMode.recognized')}
                       </p>
                     </div>
                     <h2 className="!text-white text-3xl font-semibold break-words">
                       {identification.employeeName}
                     </h2>
                     <p className="text-lg text-slate-300">
-                      {WORK_STATE_LABEL[identification.state]}
+                      {t(WORK_STATE_LABEL[identification.state])}
                     </p>
-                    <p className="text-sm text-slate-400">Elige qué quieres registrar.</p>
+                    <p className="text-sm text-slate-400">{t('hrTime.kioskMode.choose')}</p>
                     <div
                       role="timer"
                       aria-live="off"
-                      aria-label={`Quedan ${remaining} segundos para elegir el fichaje`}
+                      aria-label={t('hrTime.kioskMode.timerAria', { n: remaining })}
                       className={remaining <= 5 ? 'text-amber-300' : 'text-slate-300'}
                     >
                       <div className="mb-2 flex items-center justify-between gap-3 text-sm">
                         <span className="flex items-center gap-2">
                           <Timer size={16} aria-hidden="true" />
-                          Tiempo para fichar
+                          {t('hrTime.kioskMode.timeLeft')}
                         </span>
                         <span className="font-semibold tabular-nums">
                           00:{String(remaining).padStart(2, '0')}
@@ -214,16 +217,16 @@ export function KioskMode() {
                       void cancel();
                     }}
                   >
-                    Cancelar y volver
+                    {t('hrTime.kioskMode.cancelBack')}
                   </button>
                 </>
               ) : mode === 'qr' ? (
                 <>
                   <div className="space-y-2">
-                    <h2 className="!text-white text-2xl font-semibold">Escanea tu QR</h2>
-                    <p className="text-sm text-slate-400">
-                      Acerca tu QR personal, desde el móvil o en papel.
-                    </p>
+                    <h2 className="!text-white text-2xl font-semibold">
+                      {t('hrTime.kioskMode.scanQr')}
+                    </h2>
+                    <p className="text-sm text-slate-400">{t('hrTime.kioskMode.scanQrHint')}</p>
                   </div>
                   <KioskQrScanner
                     onScan={identifyQr}
@@ -240,7 +243,7 @@ export function KioskMode() {
                   className="space-y-5"
                 >
                   <label htmlFor="kiosk-pin" className="block text-2xl font-semibold">
-                    Introduce tu PIN
+                    {t('hrTime.kioskMode.enterPin')}
                   </label>
                   <input
                     id="kiosk-pin"
@@ -263,9 +266,9 @@ export function KioskMode() {
                           key={key}
                           aria-label={
                             key === 'delete'
-                              ? 'Borrar último dígito'
+                              ? t('hrTime.kioskMode.deleteDigit')
                               : key === 'C'
-                                ? 'Limpiar PIN'
+                                ? t('hrTime.kioskMode.clearPin')
                                 : key
                           }
                           className={button + ' text-2xl'}
@@ -289,7 +292,7 @@ export function KioskMode() {
                     disabled={busy || pin.length < 4}
                     className="w-full min-h-14 rounded-lg bg-emerald-400 text-slate-950 font-semibold disabled:opacity-40"
                   >
-                    {busy ? 'Comprobando…' : 'Continuar'}
+                    {busy ? t('hrTime.kioskMode.checking') : t('hrTime.kioskMode.continue')}
                   </button>
                   <button
                     type="button"
@@ -300,7 +303,7 @@ export function KioskMode() {
                       setMode('home');
                     }}
                   >
-                    Volver
+                    {t('hrTime.qr.back')}
                   </button>
                 </form>
               ) : (
@@ -321,7 +324,7 @@ export function KioskMode() {
                       {appearance.welcomeMessage}
                     </h2>
                     <p className="mt-4 text-lg text-slate-300">
-                      Identifícate para registrar tu entrada, salida o pausa.
+                      {t('hrTime.kioskMode.identifyHint')}
                     </p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -332,7 +335,7 @@ export function KioskMode() {
                       onClick={() => setMode('qr')}
                     >
                       <QrCode size={22} />
-                      Usar mi QR
+                      {t('hrTime.kioskMode.useQr')}
                     </button>
                     <button
                       type="button"
@@ -340,12 +343,12 @@ export function KioskMode() {
                       className={button}
                       onClick={() => setMode('pin')}
                     >
-                      Usar mi PIN
+                      {t('hrTime.kioskMode.usePin')}
                     </button>
                   </div>
                   {busy && (
                     <p role="status" className="text-slate-300">
-                      Comprobando identificación…
+                      {t('hrTime.kioskMode.checkingId')}
                     </p>
                   )}
                 </>
@@ -355,7 +358,7 @@ export function KioskMode() {
         </div>
       </section>
       <footer className="bg-slate-950/90 px-5 py-4 text-center text-xs text-slate-400">
-        Keirost · Kiosco de fichaje
+        {t('hrTime.kioskMode.footer')}
       </footer>
     </main>
   );

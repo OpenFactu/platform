@@ -17,11 +17,13 @@ import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { ListChecks, Plus, Pencil, Trash2, Wand2 } from 'lucide-react';
 import { ApiError } from '@/shared/http';
+import { useI18n } from '@/i18n/I18nContext';
 
+// Etiquetas como claves de i18n; se traducen al pintar.
 const KIND_LABELS: Record<Concept['kind'], string> = {
-  devengo: 'Devengo',
-  deduccion: 'Deducción',
-  aportacion_empresa: 'Apt. Empresa',
+  devengo: 'hrPayroll.concepts.kindShort.devengo',
+  deduccion: 'hrPayroll.concepts.kindShort.deduccion',
+  aportacion_empresa: 'hrPayroll.concepts.kindShort.aportacionEmpresa',
 };
 const KIND_VARIANTS: Record<Concept['kind'], any> = {
   devengo: 'success',
@@ -29,17 +31,17 @@ const KIND_VARIANTS: Record<Concept['kind'], any> = {
   aportacion_empresa: 'info',
 };
 const CALC_LABELS: Record<Concept['calculation'], string> = {
-  fixed: 'Fijo',
-  percent_of_base: '% sobre base',
-  per_hour: 'Por hora',
+  fixed: 'hrPayroll.concepts.calc.fixed',
+  percent_of_base: 'hrPayroll.concepts.calc.percentOfBase',
+  per_hour: 'hrPayroll.concepts.calc.perHour',
 };
 
 // Los desplegables del formulario usan el nombre largo del tipo; KIND_LABELS es
 // la versión abreviada para el Badge del listado, así que no se reutiliza aquí.
 const KIND_OPTIONS = [
-  { value: 'devengo', label: 'Devengo' },
-  { value: 'deduccion', label: 'Deducción' },
-  { value: 'aportacion_empresa', label: 'Aportación empresa' },
+  { value: 'devengo', label: 'hrPayroll.concepts.kind.devengo' },
+  { value: 'deduccion', label: 'hrPayroll.concepts.kind.deduccion' },
+  { value: 'aportacion_empresa', label: 'hrPayroll.concepts.kind.aportacionEmpresa' },
 ];
 const CALC_OPTIONS = (['fixed', 'percent_of_base', 'per_hour'] as const).map((value) => ({
   value,
@@ -59,6 +61,7 @@ const empty = (): Partial<Concept> => ({
 });
 
 export const PayrollConcepts: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const [rows, setRows] = useState<Concept[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +74,7 @@ export const PayrollConcepts: React.FC = () => {
       const d = await payrollConceptsApi.list();
       setRows(Array.isArray(d) ? d : []);
     } catch {
-      toast.error('Error al cargar conceptos');
+      toast.error(t('hrPayroll.concepts.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -85,7 +88,7 @@ export const PayrollConcepts: React.FC = () => {
     e.preventDefault();
     if (!editing) return;
     if (!editing.code || !editing.name || !editing.kind) {
-      toast.error('Código, nombre y tipo son obligatorios');
+      toast.error(t('hrPayroll.concepts.required'));
       return;
     }
     const isNew = !editing.id;
@@ -95,51 +98,61 @@ export const PayrollConcepts: React.FC = () => {
       } else {
         await payrollConceptsApi.update(editing.id!, editing);
       }
-      toast.success(isNew ? 'Concepto creado' : 'Concepto actualizado');
+      toast.success(isNew ? t('hrPayroll.concepts.created') : t('hrPayroll.concepts.updated'));
       setEditing(null);
       fetchAll();
     } catch (err) {
       toast.error(
-        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error al guardar',
+        err instanceof ApiError
+          ? ((err.body as any)?.error ?? err.message)
+          : t('hrPayroll.concepts.saveError'),
       );
     }
   };
 
   const remove = async (c: Concept) => {
     const ok = await popup.confirm({
-      title: `Eliminar ${c.code}`,
-      message: 'Si está en uso, se desactivará en lugar de borrar.',
+      title: t('hrPayroll.concepts.deleteTitle', { code: c.code }),
+      message: t('hrPayroll.concepts.deleteMessage'),
       tone: 'danger',
     });
     if (!ok) return;
     try {
       await payrollConceptsApi.remove(c.id);
-      toast.success('Eliminado');
+      toast.success(t('hr.common.deleted'));
       fetchAll();
     } catch (err) {
-      toast.error(err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error');
+      toast.error(
+        err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : t('hr.common.error'),
+      );
     }
   };
 
   const columns = [
-    { header: 'Código', cell: (r: Concept) => <code className="text-xs">{r.code}</code> },
-    { header: 'Nombre', cell: (r: Concept) => r.name },
     {
-      header: 'Tipo',
-      cell: (r: Concept) => <Badge variant={KIND_VARIANTS[r.kind]}>{KIND_LABELS[r.kind]}</Badge>,
+      header: t('hr.common.code'),
+      cell: (r: Concept) => <code className="text-xs">{r.code}</code>,
     },
-    { header: 'Cálculo', cell: (r: Concept) => CALC_LABELS[r.calculation] },
+    { header: t('hr.common.name'), cell: (r: Concept) => r.name },
+    {
+      header: t('hr.incidents.type'),
+      cell: (r: Concept) => <Badge variant={KIND_VARIANTS[r.kind]}>{t(KIND_LABELS[r.kind])}</Badge>,
+    },
+    {
+      header: t('hrPayroll.concepts.calculation'),
+      cell: (r: Concept) => t(CALC_LABELS[r.calculation]),
+    },
     {
       header: 'IRPF',
-      cell: (r: Concept) => (r.taxableIrpf ? 'Sí' : 'No'),
+      cell: (r: Concept) => (r.taxableIrpf ? t('hr.common.yes') : t('hr.common.no')),
     },
     {
       header: 'SS',
-      cell: (r: Concept) => (r.taxableSs ? 'Sí' : 'No'),
+      cell: (r: Concept) => (r.taxableSs ? t('hr.common.yes') : t('hr.common.no')),
     },
     {
-      header: 'Activo',
-      cell: (r: Concept) => (r.isActive ? 'Sí' : 'No'),
+      header: t('hr.common.active'),
+      cell: (r: Concept) => (r.isActive ? t('hr.common.yes') : t('hr.common.no')),
     },
   ];
 
@@ -147,9 +160,9 @@ export const PayrollConcepts: React.FC = () => {
   // del hover y en el menú de click derecho, así que no hace falta duplicarlas
   // en una columna de botones.
   const rowActions = (r: Concept): RowAction[] => [
-    { label: 'Editar', icon: <Pencil size={14} />, onClick: () => setEditing(r) },
+    { label: t('hr.common.edit'), icon: <Pencil size={14} />, onClick: () => setEditing(r) },
     {
-      label: 'Eliminar',
+      label: t('hr.common.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
       onClick: () => remove(r),
@@ -159,8 +172,8 @@ export const PayrollConcepts: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Conceptos de nómina"
-        subtitle="Catálogo de pluses, complementos y deducciones que pueden añadirse a las nóminas."
+        title={t('hrPayroll.concepts.title')}
+        subtitle={t('hrPayroll.concepts.subtitle')}
         icon={<ListChecks size={18} />}
         size="lg"
         actions={
@@ -173,23 +186,25 @@ export const PayrollConcepts: React.FC = () => {
                 try {
                   const d = await payrollConceptsApi.seedDefaults();
                   if (d.created === 0) {
-                    toast.success('El catálogo ya estaba completo');
+                    toast.success(t('hrPayroll.concepts.seedComplete'));
                   } else {
-                    toast.success(`Creados ${d.created} conceptos estándar`);
+                    toast.success(t('hrPayroll.concepts.seeded', { count: d.created }));
                   }
                   fetchAll();
                 } catch (err) {
                   toast.error(
-                    err instanceof ApiError ? ((err.body as any)?.error ?? err.message) : 'Error',
+                    err instanceof ApiError
+                      ? ((err.body as any)?.error ?? err.message)
+                      : t('hr.common.error'),
                   );
                 }
               }}
-              title="Crea de un click los conceptos típicos: salario base, pluses, IRPF, SS empleado y SS empresa"
+              title={t('hrPayroll.concepts.seedTitle')}
             >
-              <Wand2 size={14} /> Cargar catálogo estándar
+              <Wand2 size={14} /> {t('hrPayroll.concepts.seed')}
             </Button>
             <Button type="button" size="sm" onClick={() => setEditing(empty())}>
-              <Plus size={14} /> Nuevo concepto
+              <Plus size={14} /> {t('hrPayroll.concepts.new')}
             </Button>
           </div>
         }
@@ -200,14 +215,14 @@ export const PayrollConcepts: React.FC = () => {
           <form onSubmit={save} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Input
-                label="Código"
+                label={t('hr.common.code')}
                 value={editing.code || ''}
                 onChange={(e) => setEditing({ ...editing, code: e.target.value })}
                 required
               />
               <div className="md:col-span-2">
                 <Input
-                  label="Nombre"
+                  label={t('hr.common.name')}
                   value={editing.name || ''}
                   onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                   required
@@ -215,16 +230,16 @@ export const PayrollConcepts: React.FC = () => {
               </div>
               {/* Listas estáticas y cortas → Select, que sí tiene prop `label`. */}
               <Select
-                label="Tipo"
-                options={KIND_OPTIONS}
+                label={t('hr.incidents.type')}
+                options={KIND_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                 value={editing.kind || 'devengo'}
                 onChange={(v) => setEditing({ ...editing, kind: v as Concept['kind'] })}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Select
-                label="Cálculo"
-                options={CALC_OPTIONS}
+                label={t('hrPayroll.concepts.calculation')}
+                options={CALC_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
                 value={editing.calculation || 'fixed'}
                 onChange={(v) =>
                   setEditing({ ...editing, calculation: v as Concept['calculation'] })
@@ -233,14 +248,14 @@ export const PayrollConcepts: React.FC = () => {
               <Input
                 type="number"
                 step="0.01"
-                label="Importe por defecto"
+                label={t('hrPayroll.concepts.defaultAmount')}
                 value={editing.defaultAmount ?? ''}
                 onChange={(e) => setEditing({ ...editing, defaultAmount: e.target.value || null })}
               />
               <Input
                 type="number"
                 step="0.001"
-                label="% por defecto"
+                label={t('hrPayroll.concepts.defaultPercent')}
                 value={editing.defaultPercent ?? ''}
                 onChange={(e) => setEditing({ ...editing, defaultPercent: e.target.value || null })}
               />
@@ -252,14 +267,14 @@ export const PayrollConcepts: React.FC = () => {
                     checked={!!editing.taxableIrpf}
                     onChange={(checked) => setEditing({ ...editing, taxableIrpf: checked })}
                   />
-                  Sujeto a IRPF
+                  {t('hrPayroll.concepts.taxableIrpf')}
                 </label>
                 <label className="text-sm flex items-center gap-2 select-none">
                   <Checkbox
                     checked={!!editing.taxableSs}
                     onChange={(checked) => setEditing({ ...editing, taxableSs: checked })}
                   />
-                  Sujeto a SS
+                  {t('hrPayroll.concepts.taxableSs')}
                 </label>
               </div>
             </div>
@@ -269,14 +284,14 @@ export const PayrollConcepts: React.FC = () => {
                   checked={editing.isActive ?? true}
                   onChange={(checked) => setEditing({ ...editing, isActive: checked })}
                 />
-                Activo
+                {t('hr.common.active')}
               </label>
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
-                Cancelar
+                {t('hr.common.cancel')}
               </Button>
-              <Button type="submit">Guardar</Button>
+              <Button type="submit">{t('hr.common.save')}</Button>
             </div>
           </form>
         </Card>

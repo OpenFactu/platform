@@ -2,6 +2,7 @@ import React from 'react';
 import { Input } from '@openfactu/ui';
 import { useGeo } from '../../hooks/useGeo';
 import { normalizePhone, stripPhonePrefix } from '@openfactu/common';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
   countryCode: string;
@@ -20,6 +21,7 @@ interface Props {
  */
 export const PhoneInput: React.FC<Props> = ({ countryCode, value, onChange, disabled, label }) => {
   const { getCountry } = useGeo();
+  const { t } = useI18n();
   const country = getCountry(countryCode);
   const prefix = country?.phonePrefix || '';
 
@@ -29,7 +31,7 @@ export const PhoneInput: React.FC<Props> = ({ countryCode, value, onChange, disa
   return (
     <Input
       type="tel"
-      label={label || 'Teléfono'}
+      label={label || t('app.geo.phone')}
       prefix={prefix || undefined}
       value={localValue}
       onChange={(e) => onChange(e.target.value)}

@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
 export const ReportHeadcount: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,21 +25,29 @@ export const ReportHeadcount: React.FC = () => {
 
   const columns = useMemo(
     () => [
-      { key: 'code', label: 'Código' },
-      { key: 'firstName', label: 'Nombre' },
-      { key: 'lastName', label: 'Apellidos' },
-      { key: 'departmentName', label: 'Departamento' },
-      { key: 'hireDate', label: 'Fecha alta', format: (v: any) => (v ? fmt.date(v) : '—') },
-      { key: 'terminationDate', label: 'Fecha baja', format: (v: any) => (v ? fmt.date(v) : '—') },
-      { key: 'status', label: 'Estado' },
+      { key: 'code', label: t('reports.common.code') },
+      { key: 'firstName', label: t('reports.common.name') },
+      { key: 'lastName', label: t('reports.headcount.lastName') },
+      { key: 'departmentName', label: t('reports.headcount.department') },
+      {
+        key: 'hireDate',
+        label: t('reports.headcount.hireDate'),
+        format: (v: any) => (v ? fmt.date(v) : '—'),
+      },
+      {
+        key: 'terminationDate',
+        label: t('reports.headcount.terminationDate'),
+        format: (v: any) => (v ? fmt.date(v) : '—'),
+      },
+      { key: 'status', label: t('reports.common.status') },
     ],
-    [fmt],
+    [fmt, t],
   );
 
   return (
     <ReportPage
-      title="Plantilla"
-      subtitle="Listado de empleados con fechas, departamento y estado."
+      title={t('reports.headcount.title')}
+      subtitle={t('reports.headcount.subtitle')}
       rows={rows}
       columns={columns as any}
       loading={loading}

@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { Button, Card, Input, Progress } from '@openfactu/ui';
 import { ArrowLeft, ArrowRight, Send } from 'lucide-react';
@@ -55,6 +56,7 @@ const ItemBlock: React.FC<{
   upload?: Props['upload'];
   disabled?: boolean;
 }> = ({ item, runner, assetUrl, upload, disabled }) => {
+  const { t } = useI18n();
   if (item.kind === 'text') return <TextBlockView block={item} />;
   if (item.kind === 'image')
     return (
@@ -75,7 +77,7 @@ const ItemBlock: React.FC<{
     <Card className={error ? 'border-danger-fg' : undefined}>
       <fieldset className="space-y-3">
         <legend className="text-base font-medium text-fg-default">
-          {item.title || 'Pregunta'}
+          {item.title || t('forms.question.question')}
           {item.required && <span className="text-danger-fg"> *</span>}
         </legend>
         {item.description && <RichText text={item.description} variant="muted" className="-mt-1" />}
@@ -112,6 +114,7 @@ export const FormRunner: React.FC<Props> = ({
   submitting,
   submitError,
 }) => {
+  const { t } = useI18n();
   const runner = useFormRunner(definition, {
     initial: initialAnswers,
     shuffleQuestions: settings.shuffleQuestions,
@@ -123,7 +126,7 @@ export const FormRunner: React.FC<Props> = ({
 
   const next = async () => {
     if (runner.isFirst && settings.collectEmail === 'required' && !hideEmail && !email.trim()) {
-      setEmailError('Indica tu correo');
+      setEmailError(t('forms.runner.emailRequired'));
       return;
     }
     setEmailError(null);
@@ -145,9 +148,7 @@ export const FormRunner: React.FC<Props> = ({
   if (previewDone)
     return (
       <Card>
-        <p className="text-base text-fg-default">
-          Fin de la vista previa: aquí se enviaría la respuesta.
-        </p>
+        <p className="text-base text-fg-default">{t('forms.runner.previewEnd')}</p>
         <Button
           type="button"
           variant="secondary"
@@ -157,7 +158,7 @@ export const FormRunner: React.FC<Props> = ({
             setPreviewDone(false);
           }}
         >
-          Empezar de nuevo
+          {t('forms.runner.startOver')}
         </Button>
       </Card>
     );
@@ -184,15 +185,15 @@ export const FormRunner: React.FC<Props> = ({
             className="text-2xl font-bold text-fg-default"
           />
           {intro && runner.isFirst && <RichText text={intro} variant="muted" />}
-          <p className="text-xs text-danger-fg">* Obligatorio</p>
+          <p className="text-xs text-danger-fg">{t('forms.runner.requiredNote')}</p>
         </div>
       </Card>
 
       {settings.showProgress && runner.sectionCount > 1 && (
         <div className="space-y-1">
-          <Progress value={runner.progress} label="Progreso" size="sm" />
+          <Progress value={runner.progress} label={t('forms.runner.progress')} size="sm" />
           <p className="text-xs text-fg-muted">
-            Sección {runner.sectionNumber} de {runner.sectionCount}
+            {t('forms.blocks.sectionOf', { n: runner.sectionNumber, count: runner.sectionCount })}
           </p>
         </div>
       )}
@@ -216,7 +217,11 @@ export const FormRunner: React.FC<Props> = ({
       {askEmail && (
         <Card>
           <Input
-            label={settings.collectEmail === 'required' ? 'Correo *' : 'Correo (opcional)'}
+            label={
+              settings.collectEmail === 'required'
+                ? t('forms.runner.emailRequiredLabel')
+                : t('forms.runner.emailOptionalLabel')
+            }
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -241,7 +246,7 @@ export const FormRunner: React.FC<Props> = ({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {!runner.isFirst ? (
           <Button type="button" variant="secondary" onClick={runner.goBack} disabled={submitting}>
-            <ArrowLeft size={14} /> Atrás
+            <ArrowLeft size={14} /> {t('forms.runner.back')}
           </Button>
         ) : (
           <span />
@@ -249,11 +254,11 @@ export const FormRunner: React.FC<Props> = ({
         <Button type="submit" isLoading={submitting}>
           {runner.isLast ? (
             <>
-              <Send size={14} /> {settings.submitLabel || 'Enviar'}
+              <Send size={14} /> {settings.submitLabel || t('forms.runner.submit')}
             </>
           ) : (
             <>
-              Siguiente <ArrowRight size={14} />
+              {t('forms.runner.next')} <ArrowRight size={14} />
             </>
           )}
         </Button>

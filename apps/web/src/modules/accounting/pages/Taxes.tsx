@@ -3,6 +3,7 @@ import { Card, Button, Input, Table, PageHeader, useToast, Badge } from '@openfa
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { Percent, Plus, Trash2, Edit3, Save, X, Info } from 'lucide-react';
 import { taxesApi } from '../api';
 import type { Tax } from '../domain/accounting';
@@ -13,6 +14,7 @@ const NEW_ROW_ID = '__new';
 
 export const Taxes: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const location = useLocation();
   const canWrite =
     user?.role === 'SUPERUSER' ||
@@ -34,7 +36,7 @@ export const Taxes: React.FC = () => {
       const data = await taxesApi.list();
       setTaxes(Array.isArray(data) ? data : []);
     } catch {
-      toast.error('Error al cargar impuestos');
+      toast.error(t('accounting.taxes.loadError'));
     } finally {
       setLoading(false);
     }
@@ -50,38 +52,33 @@ export const Taxes: React.FC = () => {
     if (!newRow || !newRow.code || !newRow.rate) return;
     try {
       await taxesApi.create(newRow);
-      toast.success('Impuesto creado');
+      toast.success(t('accounting.taxes.created'));
       setNewRow(null);
       fetchTaxes();
     } catch {
-      toast.error('Error al crear impuesto');
+      toast.error(t('accounting.taxes.createError'));
     }
   };
 
   const handleUpdate = async (id: string, code: string, rate: string) => {
     try {
       await taxesApi.update(id, { code, rate });
-      toast.success('Impuesto actualizado');
+      toast.success(t('accounting.taxes.updated'));
       setEditingId(null);
       fetchTaxes();
     } catch {
-      toast.error('Error al actualizar');
+      toast.error(t('accounting.taxes.updateError'));
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        '¿Seguro que deseas eliminar este tipo de IVA? Esto podría afectar a los documentos que lo usen.',
-      )
-    )
-      return;
+    if (!confirm(t('accounting.taxes.deleteConfirm'))) return;
     try {
       await taxesApi.remove(id);
-      toast.success('Impuesto eliminado');
+      toast.success(t('accounting.taxes.deleted'));
       fetchTaxes();
     } catch {
-      toast.error('Error al eliminar');
+      toast.error(t('accounting.common.errorDeleting'));
     }
   };
 
@@ -90,22 +87,22 @@ export const Taxes: React.FC = () => {
 
   const columns: TableColumn<any>[] = [
     {
-      header: 'Código / Identificador',
-      cell: (t) => {
-        if (t.id === NEW_ROW_ID)
+      header: t('accounting.taxes.code'),
+      cell: (tax) => {
+        if (tax.id === NEW_ROW_ID)
           return (
             <Input
-              placeholder="Ej: IVA_21"
+              placeholder={t('accounting.taxes.codePlaceholder')}
               value={newRow?.code ?? ''}
               onChange={(e) => setNewRow({ code: e.target.value, rate: newRow?.rate ?? '' })}
             />
           );
-        if (editingId === t.id)
+        if (editingId === tax.id)
           return (
             <Input
-              value={t.code}
+              value={tax.code}
               onChange={(e) =>
-                setTaxes(taxes.map((x) => (x.id === t.id ? { ...x, code: e.target.value } : x)))
+                setTaxes(taxes.map((x) => (x.id === tax.id ? { ...x, code: e.target.value } : x)))
               }
             />
           );
@@ -115,9 +112,9 @@ export const Taxes: React.FC = () => {
               <Percent size={16} />
             </div>
             <div>
-              <p className="font-black text-fg-default">{t.code}</p>
+              <p className="font-black text-fg-default">{tax.code}</p>
               <p className="text-[10px] text-fg-subtle font-bold uppercase">
-                Identificador Maestro
+                {t('accounting.taxes.masterId')}
               </p>
             </div>
           </div>
@@ -125,10 +122,10 @@ export const Taxes: React.FC = () => {
       },
     },
     {
-      header: 'Porcentaje (%)',
+      header: t('accounting.taxes.rate'),
       align: 'center',
-      cell: (t) => {
-        if (t.id === NEW_ROW_ID)
+      cell: (tax) => {
+        if (tax.id === NEW_ROW_ID)
           return (
             <Input
               type="number"
@@ -138,48 +135,48 @@ export const Taxes: React.FC = () => {
               className="text-center"
             />
           );
-        if (editingId === t.id)
+        if (editingId === tax.id)
           return (
             <Input
               type="number"
-              value={t.rate}
+              value={tax.rate}
               onChange={(e) =>
-                setTaxes(taxes.map((x) => (x.id === t.id ? { ...x, rate: e.target.value } : x)))
+                setTaxes(taxes.map((x) => (x.id === tax.id ? { ...x, rate: e.target.value } : x)))
               }
               className="text-center"
             />
           );
-        return <Badge variant="neutral">{t.rate}%</Badge>;
+        return <Badge variant="neutral">{tax.rate}%</Badge>;
       },
     },
     {
       // Guardar/cancelar tienen que estar siempre visibles mientras se edita,
       // así que se quedan en su columna; editar y eliminar van a `rowActions`.
-      header: 'Acciones',
+      header: t('accounting.taxes.actions'),
       align: 'right',
       width: '11rem',
-      cell: (t) => {
-        if (t.id === NEW_ROW_ID)
+      cell: (tax) => {
+        if (tax.id === NEW_ROW_ID)
           return (
             <div className="flex items-center justify-end gap-2">
               <Button type="button" size="sm" onClick={handleCreate} className="gap-2">
-                <Save size={14} /> Guardar
+                <Save size={14} /> {t('accounting.common.save')}
               </Button>
               <Button type="button" size="sm" variant="secondary" onClick={() => setNewRow(null)}>
                 <X size={14} />
               </Button>
             </div>
           );
-        if (editingId === t.id)
+        if (editingId === tax.id)
           return (
             <div className="flex items-center justify-end gap-2">
               <Button
                 type="button"
                 size="sm"
-                onClick={() => handleUpdate(t.id, t.code, String(t.rate))}
+                onClick={() => handleUpdate(tax.id, tax.code, String(tax.rate))}
                 className="gap-2"
               >
-                <Save size={14} /> Aplicar
+                <Save size={14} /> {t('accounting.taxes.apply')}
               </Button>
               <Button
                 type="button"
@@ -199,31 +196,31 @@ export const Taxes: React.FC = () => {
   // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
   // del hover y en el menú de click derecho, así que los permisos se declaran
   // una vez en lugar de duplicarse entre botones y menú contextual.
-  const rowActions = (t: any): RowAction[] =>
-    t.id === NEW_ROW_ID || editingId === t.id
+  const rowActions = (tax: any): RowAction[] =>
+    tax.id === NEW_ROW_ID || editingId === tax.id
       ? []
       : [
           {
-            label: 'Editar',
+            label: t('accounting.common.edit'),
             icon: <Edit3 size={14} />,
             disabled: !canWrite,
-            onClick: () => setEditingId(t.id),
+            onClick: () => setEditingId(tax.id),
           },
           {
-            label: 'Eliminar',
+            label: t('accounting.common.delete'),
             icon: <Trash2 size={14} />,
             destructive: true,
             disabled: !canDelete,
-            onClick: () => handleDelete(t.id),
+            onClick: () => handleDelete(tax.id),
           },
         ];
 
   return (
     <div className="p-8 w-full space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        eyebrow="Finanzas / Configuración"
-        title="Gestión de Impuestos"
-        subtitle="Configura los tipos de IVA y retenciones aplicables a tus documentos."
+        eyebrow={t('accounting.taxes.eyebrow')}
+        title={t('accounting.taxes.title')}
+        subtitle={t('accounting.taxes.subtitle')}
         icon={<Percent size={18} />}
         size="lg"
         actions={
@@ -233,7 +230,7 @@ export const Taxes: React.FC = () => {
             disabled={!!newRow || !canWrite}
             className="flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all"
           >
-            <Plus size={18} /> Nuevo Impuesto
+            <Plus size={18} /> {t('accounting.taxes.new')}
           </Button>
         }
       />
@@ -243,12 +240,8 @@ export const Taxes: React.FC = () => {
           <Info size={20} />
         </div>
         <div className="text-sm">
-          <p className="font-black uppercase text-[10px] mb-1">Nota importante</p>
-          <p className="font-medium opacity-80">
-            Los impuestos definidos aquí aparecerán automáticamente en la selección de líneas de
-            Pedidos, Albaranes y Facturas. El sistema calculará la cuota de IVA basándose en el
-            porcentaje aquí definido.
-          </p>
+          <p className="font-black uppercase text-[10px] mb-1">{t('accounting.taxes.noteTitle')}</p>
+          <p className="font-medium opacity-80">{t('accounting.taxes.noteBody')}</p>
         </div>
       </div>
 
@@ -261,7 +254,7 @@ export const Taxes: React.FC = () => {
           data={rows}
           isLoading={loading}
           rowActions={rowActions}
-          emptyMessage="No hay impuestos definidos todavía."
+          emptyMessage={t('accounting.taxes.empty')}
         />
       </Card>
     </div>

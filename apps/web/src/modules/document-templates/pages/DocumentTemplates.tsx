@@ -7,10 +7,12 @@ import { DocumentGeneratorModal } from '../components/DocumentGeneratorModal';
 import { AiTemplateGeneratorModal } from '../components/AiTemplateGeneratorModal';
 import type { TemplateRow } from '../components/constants';
 import { templatesApi } from '../api';
+import { useI18n } from '@/i18n/I18nContext';
 
 export const DocumentTemplates: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t: tr } = useI18n();
   const [view, setView] = useState<'list' | 'edit'>('list');
   const [data, setData] = useState<TemplateRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +33,7 @@ export const DocumentTemplates: React.FC = () => {
       const d = await templatesApi.list();
       setData((Array.isArray(d) ? d : []) as unknown as TemplateRow[]);
     } catch {
-      toast.error('Error al cargar plantillas');
+      toast.error(tr('templates.page.loadListError'));
     } finally {
       setLoading(false);
     }
@@ -53,7 +55,7 @@ export const DocumentTemplates: React.FC = () => {
       setSelected(full);
       setView('edit');
     } catch {
-      toast.error('No se pudo cargar la plantilla');
+      toast.error(tr('templates.page.loadError'));
     }
   };
 
@@ -66,10 +68,10 @@ export const DocumentTemplates: React.FC = () => {
   const handleSetDefault = async (row: TemplateRow) => {
     try {
       await templatesApi.setDefault(row.id);
-      toast.success('Plantilla marcada como default');
+      toast.success(tr('templates.page.defaultSet'));
       fetchList();
     } catch {
-      toast.error('No se pudo establecer como default');
+      toast.error(tr('templates.page.defaultSetError'));
     }
   };
 
@@ -78,25 +80,25 @@ export const DocumentTemplates: React.FC = () => {
       const detail = await templatesApi.get(row.id);
       await templatesApi.create({
         docType: detail.docType,
-        name: `${detail.name} (copia)`,
+        name: tr('templates.page.copySuffix', { name: detail.name }),
         html: detail.html,
         isDefault: false,
       });
-      toast.success('Plantilla duplicada');
+      toast.success(tr('templates.page.duplicated'));
       fetchList();
     } catch {
-      toast.error('No se pudo duplicar');
+      toast.error(tr('templates.page.duplicateError'));
     }
   };
 
   const handleDelete = async (row: TemplateRow) => {
-    if (!confirm(`¿Borrar"${row.name}"?`)) return;
+    if (!confirm(tr('templates.page.deleteConfirm', { name: row.name }))) return;
     try {
       await templatesApi.remove(row.id);
-      toast.success('Plantilla borrada');
+      toast.success(tr('templates.page.deleted'));
       fetchList();
     } catch {
-      toast.error('No se pudo borrar');
+      toast.error(tr('templates.page.deleteError'));
     }
   };
 

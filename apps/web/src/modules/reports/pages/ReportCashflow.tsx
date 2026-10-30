@@ -13,19 +13,17 @@ import {
   Legend,
 } from 'recharts';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
 /** Rangos del selector. `value` es texto porque `Select` trabaja con strings;
  *  el estado sigue siendo numérico. */
-const RANGE_OPTIONS = [
-  { value: '7', label: 'Últimos 7 días' },
-  { value: '30', label: 'Últimos 30 días' },
-  { value: '90', label: 'Últimos 90 días' },
-];
+const RANGE_OPTIONS = ['7', '30', '90'];
 
 export const ReportCashflow: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const navigate = useNavigate();
   const [days, setDays] = useState(30);
@@ -46,26 +44,30 @@ export const ReportCashflow: React.FC = () => {
   const totalIn = rows.reduce((s, r) => s + Number(r.inflow || 0), 0);
   const totalOut = rows.reduce((s, r) => s + Number(r.outflow || 0), 0);
   const net = totalIn - totalOut;
+  const rangeOptions = RANGE_OPTIONS.map((value) => ({
+    value,
+    label: t('reports.cashflow.lastDays', { days: value }),
+  }));
 
   return (
     <div className="p-6 w-full space-y-5">
       <PageHeader
-        title="Cash-flow"
-        subtitle={`Cobros vs pagos reales últimos ${days} días.`}
+        title={t('reports.cashflow.title')}
+        subtitle={t('reports.cashflow.subtitle', { days })}
         icon={<LineChartIcon size={18} />}
         size="md"
         breadcrumbs={
           <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> Volver
+            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
           </Button>
         }
         actions={
           <div className="flex items-center gap-2">
             <Select
-              options={RANGE_OPTIONS}
+              options={rangeOptions}
               value={String(days)}
               onChange={(v) => setDays(Number(v))}
-              ariaLabel="Rango de días"
+              ariaLabel={t('reports.cashflow.rangeAria')}
               containerClassName="w-48"
             />
             <Button
@@ -75,7 +77,7 @@ export const ReportCashflow: React.FC = () => {
               className="flex items-center gap-2"
             >
               <RefreshCw size={16} />
-              Actualizar
+              {t('reports.common.refresh')}
             </Button>
           </div>
         }
@@ -84,20 +86,22 @@ export const ReportCashflow: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5 bg-emerald-50 dark:bg-emerald-500/10">
           <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700 dark:text-emerald-300">
-            Entradas
+            {t('reports.cashflow.inflow')}
           </span>
           <div className="text-2xl font-black mt-1">{fmt.money(totalIn)}</div>
         </Card>
         <Card className="p-5 bg-rose-50 dark:bg-rose-500/10">
           <span className="text-[10px] font-black uppercase tracking-widest text-rose-700 dark:text-rose-300">
-            Salidas
+            {t('reports.cashflow.outflow')}
           </span>
           <div className="text-2xl font-black mt-1">{fmt.money(totalOut)}</div>
         </Card>
         <Card
           className={`p-5 ${net >= 0 ? 'bg-blue-50 dark:bg-blue-500/10' : 'bg-amber-50 dark:bg-amber-500/10'}`}
         >
-          <span className="text-[10px] font-black uppercase tracking-widest">Neto</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">
+            {t('reports.cashflow.net')}
+          </span>
           <div
             className={`text-2xl font-black mt-1 ${net >= 0 ? 'text-blue-700 dark:text-blue-300' : 'text-amber-700 dark:text-amber-300'}`}
           >
@@ -110,7 +114,7 @@ export const ReportCashflow: React.FC = () => {
         <div className="h-80">
           {loading ? (
             <div className="h-full flex items-center justify-center text-slate-400 italic">
-              Cargando…
+              {t('reports.common.loading')}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -120,9 +124,25 @@ export const ReportCashflow: React.FC = () => {
                 <YAxis fontSize={10} />
                 <Tooltip formatter={(v: any) => fmt.money(v)} />
                 <Legend />
-                <Line type="monotone" dataKey="inflow" stroke="#10b981" name="Entradas" />
-                <Line type="monotone" dataKey="outflow" stroke="#f43f5e" name="Salidas" />
-                <Line type="monotone" dataKey="net" stroke="#3b82f6" name="Neto" strokeWidth={2} />
+                <Line
+                  type="monotone"
+                  dataKey="inflow"
+                  stroke="#10b981"
+                  name={t('reports.cashflow.inflow')}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="outflow"
+                  stroke="#f43f5e"
+                  name={t('reports.cashflow.outflow')}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="net"
+                  stroke="#3b82f6"
+                  name={t('reports.cashflow.net')}
+                  strokeWidth={2}
+                />
               </LineChart>
             </ResponsiveContainer>
           )}

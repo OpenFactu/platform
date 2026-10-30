@@ -13,6 +13,7 @@ import {
 } from '@openfactu/ui';
 import { CreditCard, Trash2, Inbox, Pencil } from 'lucide-react';
 import { useFormat } from '@/hooks/useFormat';
+import { useI18n } from '@/i18n/I18nContext';
 import type {
   Payment as PaymentRow,
   PaymentMethod as MethodRow,
@@ -38,6 +39,7 @@ export const InvoicePaymentsList: React.FC<Props> = ({
   refreshKey = 0,
   onChanged,
 }) => {
+  const { t } = useI18n();
   const toast = useToast();
   const popup = usePopup();
   const fmt = useFormat();
@@ -70,8 +72,8 @@ export const InvoicePaymentsList: React.FC<Props> = ({
 
   const handleEdit = async (p: PaymentRow) => {
     const result = await popup.show<Record<string, any> | undefined>({
-      title: `Editar ${kind === 'sales' ? 'cobro' : 'pago'}`,
-      subtitle: `Solo se pueden editar los campos informativos. El importe ${fmt.money(Number(p.amount))} no se puede cambiar — si está mal, elimínalo y créalo de nuevo.`,
+      title: kind === 'sales' ? t('payment.editCollection') : t('payment.editPayment'),
+      subtitle: t('payment.editSubtitle', { amount: fmt.money(Number(p.amount)) }),
       maxWidth: 'lg',
       render: (close) => (
         <EditPaymentForm
@@ -85,32 +87,32 @@ export const InvoicePaymentsList: React.FC<Props> = ({
     if (!result) return;
     try {
       await paymentsApi.update(p.id, result);
-      toast.success('Actualizado');
+      toast.success(t('payment.updated'));
       await load();
       onChanged?.();
     } catch (e) {
       toast.error(
-        e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al actualizar',
+        e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : t('payment.updateError'),
       );
     }
   };
 
   const handleDelete = async (p: PaymentRow) => {
     const ok = await popup.confirm({
-      title: `Eliminar ${kind === 'sales' ? 'cobro' : 'pago'}`,
-      message: `${fmt.money(Number(p.amount))} — el estado de la factura se recalculará y el asiento contable (si existe) se reversará automáticamente.`,
+      title: kind === 'sales' ? t('payment.deleteCollection') : t('payment.deletePayment'),
+      message: t('payment.deleteMessage', { amount: fmt.money(Number(p.amount)) }),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('payment.delete'),
     });
     if (!ok) return;
     try {
       await paymentsApi.remove(p.id);
-      toast.success('Eliminado');
+      toast.success(t('payment.deleted'));
       await load();
       onChanged?.();
     } catch (e) {
       toast.error(
-        e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : 'Error al eliminar',
+        e instanceof ApiError ? ((e.body as any)?.error ?? e.message) : t('payment.deleteError'),
       );
     }
   };
@@ -123,7 +125,7 @@ export const InvoicePaymentsList: React.FC<Props> = ({
         <div className="flex items-center justify-between">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400 flex items-center gap-2">
             <CreditCard size={12} />
-            {kind === 'sales' ? 'Cobros registrados' : 'Pagos registrados'}
+            {kind === 'sales' ? t('payment.collectionsTitle') : t('payment.paymentsTitle')}
           </h3>
           {payments.length > 0 && (
             <span className="text-[10px] font-mono text-accent">
@@ -133,11 +135,13 @@ export const InvoicePaymentsList: React.FC<Props> = ({
         </div>
 
         {loading ? (
-          <div className="text-xs text-ink-400 text-center py-6 font-mono">Cargando…</div>
+          <div className="text-xs text-ink-400 text-center py-6 font-mono">
+            {t('payment.loading')}
+          </div>
         ) : payments.length === 0 ? (
           <EmptyState
             icon={<Inbox size={24} />}
-            title={`Sin ${kind === 'sales' ? 'cobros' : 'pagos'} aún`}
+            title={kind === 'sales' ? t('payment.noCollections') : t('payment.noPayments')}
             className="py-6"
           />
         ) : (
@@ -170,7 +174,9 @@ export const InvoicePaymentsList: React.FC<Props> = ({
                     {p.reference && (
                       <>
                         <span className="text-ink-300">·</span>
-                        <span className="font-mono">Ref {p.reference}</span>
+                        <span className="font-mono">
+                          {t('payment.refShort', { ref: p.reference })}
+                        </span>
                       </>
                     )}
                   </div>
@@ -184,7 +190,7 @@ export const InvoicePaymentsList: React.FC<Props> = ({
                     size="sm"
                     onClick={() => handleEdit(p)}
                     className="h-8 w-8 p-0 text-ink-400 hover:text-accent hover:bg-accent/10"
-                    title="Editar"
+                    title={t('payment.edit')}
                   >
                     <Pencil size={13} />
                   </Button>
@@ -193,7 +199,7 @@ export const InvoicePaymentsList: React.FC<Props> = ({
                     size="sm"
                     onClick={() => handleDelete(p)}
                     className="h-8 w-8 p-0 text-ink-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                    title="Eliminar"
+                    title={t('payment.delete')}
                   >
                     <Trash2 size={13} />
                   </Button>
@@ -220,6 +226,7 @@ const EditPaymentForm: React.FC<EditPaymentFormProps> = ({
   onCancel,
   onSave,
 }) => {
+  const { t } = useI18n();
   const [date, setDate] = useState(() => (initial.date ? initial.date.substring(0, 10) : ''));
   const [reference, setReference] = useState(initial.reference || '');
   const [notes, setNotes] = useState(initial.notes || '');
@@ -240,10 +247,15 @@ const EditPaymentForm: React.FC<EditPaymentFormProps> = ({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <DatePicker label="Fecha" value={date} onChange={(v) => setDate(v ?? '')} required />
+        <DatePicker
+          label={t('payment.date')}
+          value={date}
+          onChange={(v) => setDate(v ?? '')}
+          required
+        />
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
-            Nº de referencia <span className="text-rose-600 font-black">*</span>
+            {t('payment.referenceNo')} <span className="text-rose-600 font-black">*</span>
           </label>
           <Input
             value={reference}
@@ -257,14 +269,14 @@ const EditPaymentForm: React.FC<EditPaymentFormProps> = ({
           />
           {!reference.trim() && (
             <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-400 font-medium">
-              Campo obligatorio
+              {t('payment.requiredField')}
             </p>
           )}
         </div>
       </div>
       <div>
         <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
-          Método
+          {t('payment.method')}
         </label>
         <SearchableSelect
           value={methodId}
@@ -274,13 +286,13 @@ const EditPaymentForm: React.FC<EditPaymentFormProps> = ({
           clearable
         />
       </div>
-      <Input label="Notas" value={notes} onChange={(e) => setNotes(e.target.value)} />
+      <Input label={t('invoice.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="secondary" onClick={onCancel}>
-          Cancelar
+          {t('payment.cancel')}
         </Button>
         <Button onClick={submit} disabled={!reference.trim()}>
-          Guardar
+          {t('payment.save')}
         </Button>
       </div>
     </div>

@@ -37,6 +37,7 @@ import { FiscalSettingsTab } from '../components/FiscalSettingsTab';
 import { EmailSettingsTab } from '../components/EmailSettingsTab';
 import { AiSettingsTab } from '../components/AiSettingsTab';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import {
   useTheme,
   type BrandingConfig,
@@ -98,44 +99,44 @@ const CURRENCY_OPTIONS = [
 ];
 
 const THEME_MODE_OPTIONS = [
-  { value: 'light', label: 'Claro' },
-  { value: 'dark', label: 'Oscuro' },
+  { value: 'light', label: 'settingsCompany.page.modes.light' },
+  { value: 'dark', label: 'settingsCompany.page.modes.dark' },
 ];
 
 // Ajustes finos del tema de @openfactu/ui; '' = lo que diga el preset.
 const RADIUS_OPTIONS = [
-  { value: '', label: 'Del tema' },
-  { value: 'none', label: 'Rectas' },
-  { value: 'sm', label: 'Poco redondeadas' },
-  { value: 'md', label: 'Redondeadas' },
-  { value: 'lg', label: 'Muy redondeadas' },
+  { value: '', label: 'settingsCompany.page.fromTheme' },
+  { value: 'none', label: 'settingsCompany.page.radius.none' },
+  { value: 'sm', label: 'settingsCompany.page.radius.sm' },
+  { value: 'md', label: 'settingsCompany.page.radius.md' },
+  { value: 'lg', label: 'settingsCompany.page.radius.lg' },
 ];
 
 const DENSITY_OPTIONS = [
-  { value: '', label: 'Del tema' },
-  { value: 'compact', label: 'Compacta' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'comfortable', label: 'Holgada' },
+  { value: '', label: 'settingsCompany.page.fromTheme' },
+  { value: 'compact', label: 'settingsCompany.page.density.compact' },
+  { value: 'normal', label: 'settingsCompany.page.normal' },
+  { value: 'comfortable', label: 'settingsCompany.page.density.comfortable' },
 ];
 
 const TEXT_SCALE_OPTIONS = [
-  { value: '0.9', label: 'Pequeño' },
-  { value: '1', label: 'Normal' },
-  { value: '1.1', label: 'Grande' },
-  { value: '1.2', label: 'Muy grande' },
+  { value: '0.9', label: 'settingsCompany.page.textScale.small' },
+  { value: '1', label: 'settingsCompany.page.normal' },
+  { value: '1.1', label: 'settingsCompany.page.textScale.large' },
+  { value: '1.2', label: 'settingsCompany.page.textScale.xlarge' },
 ];
 
 const MOTION_CHARACTER_OPTIONS = [
-  { value: '', label: 'Del tema' },
+  { value: '', label: 'settingsCompany.page.fromTheme' },
   ...Object.entries(MOTION_CHARACTERS).map(([value, c]) => ({ value, label: c.label })),
 ];
 
 const MOTION_SPEED_OPTIONS = [
-  { value: '', label: 'Del tema' },
-  { value: 'fast', label: 'Rápida' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'slow', label: 'Lenta' },
-  { value: 'none', label: 'Sin animaciones' },
+  { value: '', label: 'settingsCompany.page.fromTheme' },
+  { value: 'fast', label: 'settingsCompany.page.motionSpeed.fast' },
+  { value: 'normal', label: 'settingsCompany.page.normal' },
+  { value: 'slow', label: 'settingsCompany.page.motionSpeed.slow' },
+  { value: 'none', label: 'settingsCompany.page.motionSpeed.none' },
 ];
 
 const LOCALE_OPTIONS = [
@@ -156,8 +157,8 @@ const DATE_FORMAT_OPTIONS = ['dd/MM/yyyy', 'dd-MM-yyyy', 'yyyy-MM-dd', 'MM/dd/yy
 }));
 
 const WAREHOUSE_LOCATION_OPTIONS = [
-  { value: 'header', label: 'En la cabecera' },
-  { value: 'line', label: 'En cada línea' },
+  { value: 'header', label: 'settingsCompany.page.warehouseLocation.header' },
+  { value: 'line', label: 'settingsCompany.page.warehouseLocation.line' },
 ];
 
 type TabId =
@@ -179,6 +180,7 @@ type TabId =
  * vea sin necesidad de guardar; ThemeContext gestiona la fuente ya aplicada.
  */
 const FontPreview: React.FC<{ fontId: string }> = ({ fontId }) => {
+  const { t } = useI18n();
   const font = fontOptionFor(fontId);
   useEffect(() => {
     const url = googleFontsUrl(font);
@@ -195,7 +197,7 @@ const FontPreview: React.FC<{ fontId: string }> = ({ fontId }) => {
   }, [font]);
   return (
     <p className="mt-2 text-sm text-fg-body" style={{ fontFamily: font.sans }}>
-      AaBbCc 0123 — Ejemplo de texto con esta fuente
+      {t('settingsCompany.page.fontSample')}
     </p>
   );
 };
@@ -215,6 +217,9 @@ export const CompanySettings: React.FC = () => {
     activePresetId,
   } = useTheme();
   const toast = useToast();
+  const { t } = useI18n();
+  const tr = (opts: { value: string; label: string }[]) =>
+    opts.map((o) => ({ ...o, label: t(o.label) }));
   const themePresets = useThemePresets();
   const presetPrimaryColors = Array.from(
     new Set(themePresets.map((p) => presetSwatch(p).colorPrimary)),
@@ -226,7 +231,7 @@ export const CompanySettings: React.FC = () => {
   // a una pestaña concreta de Empresa desde otras partes de la app.
   const initialTab: TabId = (() => {
     if (typeof window === 'undefined') return 'fiscal';
-    const t = new URLSearchParams(window.location.search).get('tab');
+    const tab = new URLSearchParams(window.location.search).get('tab');
     const allowed: TabId[] = [
       'fiscal',
       'branding',
@@ -240,7 +245,7 @@ export const CompanySettings: React.FC = () => {
       'app',
       'ai',
     ];
-    return allowed.includes(t as TabId) ? (t as TabId) : 'fiscal';
+    return allowed.includes(tab as TabId) ? (tab as TabId) : 'fiscal';
   })();
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [fiscal, setFiscal] = useState<CompanyConfig>(EMPTY);
@@ -279,7 +284,7 @@ export const CompanySettings: React.FC = () => {
       const cfg = res.data;
       setFiscal({ ...EMPTY, ...cfg });
     } catch {
-      toast.error('Error al cargar la configuración de empresa');
+      toast.error(t('settingsCompany.page.loadError'));
     } finally {
       setLoading(false);
     }
@@ -297,9 +302,9 @@ export const CompanySettings: React.FC = () => {
       if (!res.ok) throw new Error('http');
       const updated = res.data;
       setFiscal({ ...EMPTY, ...updated });
-      toast.success('Datos de empresa guardados');
+      toast.success(t('settingsCompany.page.fiscalSaved'));
     } catch {
-      toast.error('Error al guardar');
+      toast.error(t('settingsCompany.page.saveError'));
     } finally {
       setSaving(false);
     }
@@ -309,9 +314,11 @@ export const CompanySettings: React.FC = () => {
     setSaving(true);
     try {
       await updateTheme('branding', brandingDraft);
-      toast.success('Branding guardado');
+      toast.success(t('settingsCompany.page.brandingSaved'));
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al guardar');
+      toast.error(
+        (e instanceof Error ? e.message : undefined) || t('settingsCompany.page.saveError'),
+      );
     } finally {
       setSaving(false);
     }
@@ -321,9 +328,11 @@ export const CompanySettings: React.FC = () => {
     setSaving(true);
     try {
       await updateTheme('format', formatDraft);
-      toast.success('Formato guardado');
+      toast.success(t('settingsCompany.page.formatSaved'));
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al guardar');
+      toast.error(
+        (e instanceof Error ? e.message : undefined) || t('settingsCompany.page.saveError'),
+      );
     } finally {
       setSaving(false);
     }
@@ -333,9 +342,11 @@ export const CompanySettings: React.FC = () => {
     setSaving(true);
     try {
       await updateTheme('flags', flagsDraft);
-      toast.success('Comportamiento guardado');
+      toast.success(t('settingsCompany.page.flagsSaved'));
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al guardar');
+      toast.error(
+        (e instanceof Error ? e.message : undefined) || t('settingsCompany.page.saveError'),
+      );
     } finally {
       setSaving(false);
     }
@@ -351,9 +362,11 @@ export const CompanySettings: React.FC = () => {
       };
       const res = await coreApi.raw('PUT', '/api/config/app', appConfig);
       if (!res.ok) throw new Error('http');
-      toast.success('URL pública guardada');
+      toast.success(t('settingsCompany.page.urlSaved'));
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al guardar');
+      toast.error(
+        (e instanceof Error ? e.message : undefined) || t('settingsCompany.page.saveError'),
+      );
     } finally {
       setSaving(false);
     }
@@ -370,24 +383,24 @@ export const CompanySettings: React.FC = () => {
     );
 
   const tabs: { id: TabId; label: string; icon: any }[] = [
-    { id: 'fiscal', label: 'Datos fiscales', icon: FileText },
-    { id: 'branding', label: 'Branding', icon: Palette },
-    { id: 'format', label: 'Formato', icon: Globe },
-    { id: 'flags', label: 'Comportamiento', icon: SlidersHorizontal },
-    { id: 'catalogs', label: 'Fiscal / Pagos', icon: Coins },
-    { id: 'app', label: 'Acceso', icon: Link },
-    { id: 'storage', label: 'Almacenamiento', icon: HardDrive },
-    { id: 'email', label: 'Correo', icon: Mail },
-    { id: 'ai', label: 'IA', icon: Sparkles },
-    { id: 'data', label: 'Importar/Exportar', icon: Upload },
-    { id: 'backups', label: 'Backups', icon: DatabaseBackup },
+    { id: 'fiscal', label: t('settingsCompany.page.tabs.fiscal'), icon: FileText },
+    { id: 'branding', label: t('settingsCompany.page.tabs.branding'), icon: Palette },
+    { id: 'format', label: t('settingsCompany.page.tabs.format'), icon: Globe },
+    { id: 'flags', label: t('settingsCompany.page.tabs.flags'), icon: SlidersHorizontal },
+    { id: 'catalogs', label: t('settingsCompany.page.tabs.catalogs'), icon: Coins },
+    { id: 'app', label: t('settingsCompany.page.tabs.app'), icon: Link },
+    { id: 'storage', label: t('settingsCompany.page.tabs.storage'), icon: HardDrive },
+    { id: 'email', label: t('settingsCompany.page.tabs.email'), icon: Mail },
+    { id: 'ai', label: t('settingsCompany.page.tabs.ai'), icon: Sparkles },
+    { id: 'data', label: t('settingsCompany.page.tabs.data'), icon: Upload },
+    { id: 'backups', label: t('settingsCompany.page.tabs.backups'), icon: DatabaseBackup },
   ];
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <PageHeader
-        title="Configuración de Empresa"
-        subtitle="Datos fiscales, branding, formato y comportamiento."
+        title={t('settingsCompany.page.title')}
+        subtitle={t('settingsCompany.page.subtitle')}
         icon={<Building size={18} />}
         size="md"
         /* Pestañas internas de la pantalla (no la navegación de módulo):
@@ -397,10 +410,10 @@ export const CompanySettings: React.FC = () => {
             variant="underline"
             size="sm"
             scrollable
-            items={tabs.map((t) => ({
-              key: t.id,
-              label: t.label,
-              icon: <t.icon size={13} />,
+            items={tabs.map((tab) => ({
+              key: tab.id,
+              label: tab.label,
+              icon: <tab.icon size={13} />,
             }))}
             value={activeTab}
             onChange={(key) => setActiveTab(key as TabId)}
@@ -413,11 +426,11 @@ export const CompanySettings: React.FC = () => {
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
-                País e identificación
+                {t('settingsCompany.page.sectionIdentification')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <CountrySelect
-                  label="País"
+                  label={t('settingsCompany.page.country')}
                   value={fiscal.country}
                   onChange={(code) => {
                     setFiscal((prev) => ({
@@ -431,7 +444,7 @@ export const CompanySettings: React.FC = () => {
                   }}
                 />
                 <Input
-                  label="Nombre de la empresa"
+                  label={t('settingsCompany.page.companyName')}
                   value={fiscal.name}
                   onChange={(e) => setF('name', e.target.value)}
                 />
@@ -448,9 +461,11 @@ export const CompanySettings: React.FC = () => {
 
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">Domicilio</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
+                {t('settingsCompany.page.sectionAddress')}
+              </h2>
               <Input
-                label="Dirección"
+                label={t('settingsCompany.page.address')}
                 value={fiscal.address}
                 onChange={(e) => setF('address', e.target.value)}
               />
@@ -501,10 +516,12 @@ export const CompanySettings: React.FC = () => {
 
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">Contacto</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
+                {t('settingsCompany.page.sectionContact')}
+              </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
-                  label="Email"
+                  label={t('settingsCompany.page.email')}
                   type="email"
                   value={fiscal.email}
                   onChange={(e) => setF('email', e.target.value)}
@@ -515,12 +532,12 @@ export const CompanySettings: React.FC = () => {
                   onChange={(v) => setF('phone', v)}
                 />
                 <Input
-                  label="Web"
+                  label={t('settingsCompany.page.website')}
                   value={fiscal.website}
                   onChange={(e) => setF('website', e.target.value)}
                 />
                 <Input
-                  label="URL del logo (datos fiscales)"
+                  label={t('settingsCompany.page.fiscalLogoUrl')}
                   value={fiscal.logoUrl}
                   onChange={(e) => setF('logoUrl', e.target.value)}
                 />
@@ -531,17 +548,17 @@ export const CompanySettings: React.FC = () => {
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
-                Preferencias
+                {t('settingsCompany.page.sectionPreferences')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select
-                  label="Moneda"
+                  label={t('settingsCompany.page.currency')}
                   options={CURRENCY_OPTIONS}
                   value={fiscal.currency}
                   onChange={(v) => setF('currency', v)}
                 />
                 <Input
-                  label="Inicio del año fiscal (MM-DD)"
+                  label={t('settingsCompany.page.fiscalYearStart')}
                   value={fiscal.fiscalYearStart}
                   onChange={(e) => setF('fiscalYearStart', e.target.value)}
                   placeholder="01-01"
@@ -553,7 +570,7 @@ export const CompanySettings: React.FC = () => {
           <div className="flex justify-end">
             <Button onClick={saveFiscal} disabled={saving}>
               <Save size={16} className="mr-2" />
-              {saving ? 'Guardando...' : 'Guardar cambios'}
+              {saving ? t('settingsCompany.page.saving') : t('settingsCompany.page.saveChanges')}
             </Button>
           </div>
         </div>
@@ -566,16 +583,15 @@ export const CompanySettings: React.FC = () => {
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <h2 className="font-mono text-[10px] tracking-[1.5px] uppercase text-[var(--k-ink-400)]">
-                    Presets de tema
+                    {t('settingsCompany.page.themePresets')}
                   </h2>
                   <p className="text-[12px] text-[var(--k-ink-500)] mt-1">
-                    Elige un tema de marca prediseñado. También puedes ajustar los colores
-                    manualmente abajo.
+                    {t('settingsCompany.page.themePresetsHelp')}
                   </p>
                 </div>
                 {activePresetId === 'custom' && (
                   <span className="font-mono text-[10px] tracking-[1px] uppercase text-[var(--k-teal-600)] bg-[var(--k-teal-50)] border border-[var(--k-teal-100)] rounded-[2px] px-2 py-1">
-                    Personalizado
+                    {t('settingsCompany.page.custom')}
                   </span>
                 )}
               </div>
@@ -595,14 +611,14 @@ export const CompanySettings: React.FC = () => {
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="font-mono text-[10px] tracking-[1.5px] uppercase text-[var(--k-ink-400)]">
-                Colores
+                {t('settingsCompany.page.colors')}
               </h2>
               {/* ColorInput reemplaza el par «selector nativo + campo hex» que
                   estaba montado a mano; `presets` ofrece la paleta de los
                   presets de marca para no tener que teclear el hex. */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ColorInput
-                  label="Color primario"
+                  label={t('settingsCompany.page.colorPrimary')}
                   value={brandingDraft.colorPrimary}
                   onChange={(v) =>
                     setBrandingDraft({ ...brandingDraft, colorPrimary: v, themePreset: '' })
@@ -610,7 +626,7 @@ export const CompanySettings: React.FC = () => {
                   presets={presetPrimaryColors}
                 />
                 <ColorInput
-                  label="Color acento"
+                  label={t('settingsCompany.page.colorAccent')}
                   value={brandingDraft.colorAccent}
                   onChange={(v) =>
                     setBrandingDraft({ ...brandingDraft, colorAccent: v, themePreset: '' })
@@ -623,22 +639,26 @@ export const CompanySettings: React.FC = () => {
 
           <Card>
             <div className="p-6 space-y-4">
-              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">Marca</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
+                {t('settingsCompany.page.sectionBrand')}
+              </h2>
               <Input
-                label="Nombre de la aplicación"
+                label={t('settingsCompany.page.appName')}
                 value={brandingDraft.appName}
                 onChange={(e) => setBrandingDraft({ ...brandingDraft, appName: e.target.value })}
               />
               <div>
                 <Input
-                  label="URL del logo"
+                  label={t('settingsCompany.page.logoUrl')}
                   value={brandingDraft.logoUrl}
                   onChange={(e) => setBrandingDraft({ ...brandingDraft, logoUrl: e.target.value })}
                   placeholder="https://..."
                 />
                 {brandingDraft.logoUrl && (
                   <div className="mt-3 flex items-center gap-3">
-                    <span className="text-xs text-fg-muted">Vista previa:</span>
+                    <span className="text-xs text-fg-muted">
+                      {t('settingsCompany.page.previewColon')}
+                    </span>
                     <img
                       src={brandingDraft.logoUrl}
                       alt="logo"
@@ -653,13 +673,13 @@ export const CompanySettings: React.FC = () => {
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
-                Apariencia
+                {t('settingsCompany.page.sectionAppearance')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   {/* Opciones derivadas de FONT_OPTIONS (6 entradas) → Select. */}
                   <Select
-                    label="Familia tipográfica"
+                    label={t('settingsCompany.page.fontFamily')}
                     options={FONT_OPTIONS.map((f) => ({ value: f.id, label: f.label }))}
                     value={brandingDraft.fontFamily}
                     onChange={(v) => setBrandingDraft({ ...brandingDraft, fontFamily: v })}
@@ -667,44 +687,44 @@ export const CompanySettings: React.FC = () => {
                   <FontPreview fontId={brandingDraft.fontFamily} />
                 </div>
                 <Select
-                  label="Modo"
-                  options={THEME_MODE_OPTIONS}
+                  label={t('settingsCompany.page.mode')}
+                  options={tr(THEME_MODE_OPTIONS)}
                   value={brandingDraft.themeMode}
                   onChange={(v) =>
                     setBrandingDraft({ ...brandingDraft, themeMode: v as any, themePreset: '' })
                   }
                 />
                 <Select
-                  label="Esquinas"
-                  options={RADIUS_OPTIONS}
+                  label={t('settingsCompany.page.corners')}
+                  options={tr(RADIUS_OPTIONS)}
                   value={brandingDraft.radius}
                   onChange={(v) =>
                     setBrandingDraft({ ...brandingDraft, radius: v as BrandingConfig['radius'] })
                   }
                 />
                 <Select
-                  label="Densidad"
-                  options={DENSITY_OPTIONS}
+                  label={t('settingsCompany.page.densityLabel')}
+                  options={tr(DENSITY_OPTIONS)}
                   value={brandingDraft.density}
                   onChange={(v) =>
                     setBrandingDraft({ ...brandingDraft, density: v as BrandingConfig['density'] })
                   }
                 />
                 <Select
-                  label="Tamaño del texto"
-                  options={TEXT_SCALE_OPTIONS}
+                  label={t('settingsCompany.page.textSize')}
+                  options={tr(TEXT_SCALE_OPTIONS)}
                   value={String(brandingDraft.textScale || 1)}
                   onChange={(v) => setBrandingDraft({ ...brandingDraft, textScale: Number(v) })}
                 />
                 <Select
-                  label="Movimiento"
-                  options={MOTION_CHARACTER_OPTIONS}
+                  label={t('settingsCompany.page.motion')}
+                  options={tr(MOTION_CHARACTER_OPTIONS)}
                   value={brandingDraft.motionCharacter}
                   onChange={(v) => setBrandingDraft({ ...brandingDraft, motionCharacter: v })}
                 />
                 <Select
-                  label="Velocidad de las animaciones"
-                  options={MOTION_SPEED_OPTIONS}
+                  label={t('settingsCompany.page.motionSpeedLabel')}
+                  options={tr(MOTION_SPEED_OPTIONS)}
                   value={brandingDraft.motionSpeed}
                   onChange={(v) =>
                     setBrandingDraft({
@@ -714,16 +734,13 @@ export const CompanySettings: React.FC = () => {
                   }
                 />
               </div>
-              <p className="text-xs text-fg-muted">
-                «Del tema» deja el valor del preset elegido. La fuente por defecto también cede a la
-                del preset cuando trae una propia.
-              </p>
+              <p className="text-xs text-fg-muted">{t('settingsCompany.page.fromThemeHelp')}</p>
             </div>
           </Card>
 
           {!isAdmin && (
             <p className="text-xs text-fg-muted text-right">
-              Solo un administrador puede guardar esta configuración.
+              {t('settingsCompany.page.adminOnly')}
             </p>
           )}
           <div className="flex justify-end gap-2">
@@ -732,11 +749,11 @@ export const CompanySettings: React.FC = () => {
               onClick={() => setBrandingDraft(branding)}
               disabled={saving}
             >
-              Descartar
+              {t('settingsCompany.page.discard')}
             </Button>
             <Button onClick={saveBranding} disabled={saving || !isAdmin}>
               <Save size={16} className="mr-2" />
-              {saving ? 'Guardando...' : 'Guardar branding'}
+              {saving ? t('settingsCompany.page.saving') : t('settingsCompany.page.saveBranding')}
             </Button>
           </div>
         </div>
@@ -747,24 +764,24 @@ export const CompanySettings: React.FC = () => {
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
-                Regionalización
+                {t('settingsCompany.page.regionalization')}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Select
-                  label="Locale"
+                  label={t('settingsCompany.page.locale')}
                   options={LOCALE_OPTIONS}
                   value={formatDraft.locale}
                   onChange={(v) => setFormatDraft({ ...formatDraft, locale: v })}
                 />
                 <Select
-                  label="Formato de fecha"
+                  label={t('settingsCompany.page.dateFormat')}
                   options={DATE_FORMAT_OPTIONS}
                   value={formatDraft.dateFormat}
                   onChange={(v) => setFormatDraft({ ...formatDraft, dateFormat: v })}
                 />
                 {/* `emptyValue="zero"`: 0 decimales es una opción legítima. */}
                 <NumberInput
-                  label="Decimales importes"
+                  label={t('settingsCompany.page.amountDecimals')}
                   value={formatDraft.decimalPrecision}
                   onChange={(v) => setFormatDraft({ ...formatDraft, decimalPrecision: v ?? 0 })}
                   min={0}
@@ -772,7 +789,7 @@ export const CompanySettings: React.FC = () => {
                   emptyValue="zero"
                 />
                 <NumberInput
-                  label="Decimales cantidades"
+                  label={t('settingsCompany.page.quantityDecimals')}
                   value={formatDraft.quantityPrecision}
                   onChange={(v) => setFormatDraft({ ...formatDraft, quantityPrecision: v ?? 0 })}
                   min={0}
@@ -783,17 +800,17 @@ export const CompanySettings: React.FC = () => {
 
               <div className="mt-4 p-4 bg-bg-muted rounded-lg">
                 <p className="text-xs font-black uppercase text-fg-muted tracking-wide mb-2">
-                  Vista previa
+                  {t('settingsCompany.page.preview')}
                 </p>
                 <div className="space-y-1 text-sm text-fg-default">
                   <p>
-                    <span className="text-fg-muted">Importe:</span>{' '}
+                    <span className="text-fg-muted">{t('settingsCompany.page.amountColon')}</span>{' '}
                     <span className="font-bold">
                       {formatCurrency(1234.56, formatDraft, fiscal.currency || 'EUR')}
                     </span>
                   </p>
                   <p>
-                    <span className="text-fg-muted">Fecha:</span>{' '}
+                    <span className="text-fg-muted">{t('settingsCompany.page.dateColon')}</span>{' '}
                     <span className="font-bold">{formatDate(new Date(), formatDraft)}</span>
                   </p>
                 </div>
@@ -803,16 +820,16 @@ export const CompanySettings: React.FC = () => {
 
           {!isAdmin && (
             <p className="text-xs text-fg-muted text-right">
-              Solo un administrador puede guardar esta configuración.
+              {t('settingsCompany.page.adminOnly')}
             </p>
           )}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setFormatDraft(format)} disabled={saving}>
-              Descartar
+              {t('settingsCompany.page.discard')}
             </Button>
             <Button onClick={saveFormat} disabled={saving || !isAdmin}>
               <Save size={16} className="mr-2" />
-              {saving ? 'Guardando...' : 'Guardar formato'}
+              {saving ? t('settingsCompany.page.saving') : t('settingsCompany.page.saveFormat')}
             </Button>
           </div>
         </div>
@@ -823,105 +840,104 @@ export const CompanySettings: React.FC = () => {
           <Card>
             <div className="p-6 space-y-1">
               <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted mb-4">
-                Flags de comportamiento
+                {t('settingsCompany.page.flagsTitle')}
               </h2>
               <FlagRow
-                label="Permitir stock negativo"
-                hint="Si está activo, los albaranes de venta pueden reducir el stock por debajo de cero."
+                label={t('settingsCompany.page.flags.allowNegativeStock.label')}
+                hint={t('settingsCompany.page.flags.allowNegativeStock.hint')}
                 checked={flagsDraft.allowNegativeStock}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, allowNegativeStock: v })}
               />
               <FlagRow
-                label="Auto-confirmar lotes"
-                hint="Al vender un artículo con lotes, el sistema asigna automáticamente FIFO si no se eligen manualmente."
+                label={t('settingsCompany.page.flags.autoConfirmBatches.label')}
+                hint={t('settingsCompany.page.flags.autoConfirmBatches.hint')}
                 checked={flagsDraft.autoConfirmBatches}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, autoConfirmBatches: v })}
               />
               <FlagRow
-                label="Marca de agua BORRADOR en documentos abiertos"
-                hint="Añade la marca BORRADOR a los PDFs de documentos en estado abierto."
+                label={t('settingsCompany.page.flags.watermarkDraft.label')}
+                hint={t('settingsCompany.page.flags.watermarkDraft.hint')}
                 checked={flagsDraft.watermarkDraft}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, watermarkDraft: v })}
               />
               <FlagRow
-                label="Marca de agua PAGADA en facturas cobradas"
-                hint="Añade la marca PAGADA (en verde) a los PDFs de facturas con el cobro completo."
+                label={t('settingsCompany.page.flags.watermarkPaid.label')}
+                hint={t('settingsCompany.page.flags.watermarkPaid.hint')}
                 checked={flagsDraft.watermarkPaid}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, watermarkPaid: v })}
               />
               <FlagRow
-                label="Confirmar antes de cancelar"
-                hint="Pide confirmación al usuario antes de cancelar un documento desde la interfaz."
+                label={t('settingsCompany.page.flags.confirmBeforeCancel.label')}
+                hint={t('settingsCompany.page.flags.confirmBeforeCancel.hint')}
                 checked={flagsDraft.confirmBeforeCancel}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, confirmBeforeCancel: v })}
               />
               <FlagRow
-                label="Permitir facturar presupuestos directamente"
-                hint="Muestra «Crear Factura» en los presupuestos, para facturarlos sin pasar por pedido. Desactívalo si en tu empresa siempre se va de presupuesto a pedido y luego a factura."
+                label={t('settingsCompany.page.flags.quoteDirectInvoiceEnabled.label')}
+                hint={t('settingsCompany.page.flags.quoteDirectInvoiceEnabled.hint')}
                 checked={flagsDraft.quoteDirectInvoiceEnabled !== false}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, quoteDirectInvoiceEnabled: v })}
               />
               <FlagRow
-                label="Forzar zonas de almacén"
-                hint="Exige especificar una zona (warehouseZone) en las líneas de documentos."
+                label={t('settingsCompany.page.flags.enforceWarehouseZones.label')}
+                hint={t('settingsCompany.page.flags.enforceWarehouseZones.hint')}
                 checked={flagsDraft.enforceWarehouseZones}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, enforceWarehouseZones: v })}
               />
               <FlagRow
-                label="Chat de Keiro en seguimiento público"
-                hint="Añade un chat de IA a la página pública de seguimiento (/track/:token) para que el cliente pregunte por su envío o reporte una incidencia — sin login, así que actívalo solo si quieres exponer esa superficie públicamente."
+                label={t('settingsCompany.page.flags.trackingChatEnabled.label')}
+                hint={t('settingsCompany.page.flags.trackingChatEnabled.hint')}
                 checked={!!flagsDraft.trackingChatEnabled}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, trackingChatEnabled: v })}
               />
               <FlagRow
-                label="Modo sólo logística"
-                hint="Oculta Ventas, Compras, Contabilidad, RRHH y Analítica. Solo quedan Inicio, Inventario, Interlocutores y Logística. Útil para clientes que sólo contratan el módulo de reparto."
+                label={t('settingsCompany.page.flags.logisticsOnly.label')}
+                hint={t('settingsCompany.page.flags.logisticsOnly.hint')}
                 checked={!!flagsDraft.logisticsOnly}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, logisticsOnly: v })}
               />
               <FlagRow
-                label="RRHH · Turnos y plantillas"
-                hint="Activa el módulo de plantillas de turno y patrones de rotación cíclica."
+                label={t('settingsCompany.page.flags.hrShiftsEnabled.label')}
+                hint={t('settingsCompany.page.flags.hrShiftsEnabled.hint')}
                 checked={!!flagsDraft.hrShiftsEnabled}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, hrShiftsEnabled: v })}
               />
               <FlagRow
-                label="RRHH · Planificación"
-                hint="Cuadrante mensual de turnos asignados con vista calendario."
+                label={t('settingsCompany.page.flags.hrPlanningEnabled.label')}
+                hint={t('settingsCompany.page.flags.hrPlanningEnabled.hint')}
                 checked={!!flagsDraft.hrPlanningEnabled}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, hrPlanningEnabled: v })}
               />
               <FlagRow
-                label="RRHH · Fichajes"
-                hint="Permite a los empleados fichar entrada/salida desde la web o desde kioskos compartidos."
+                label={t('settingsCompany.page.flags.hrTimeclockEnabled.label')}
+                hint={t('settingsCompany.page.flags.hrTimeclockEnabled.hint')}
                 checked={!!flagsDraft.hrTimeclockEnabled}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, hrTimeclockEnabled: v })}
               />
               <FlagRow
-                label="RRHH · Incidencias y sustituciones"
-                hint="Tipos de incidencia configurables y flujo de sustitución asistida cuando aplican."
+                label={t('settingsCompany.page.flags.hrIncidentsEnabled.label')}
+                hint={t('settingsCompany.page.flags.hrIncidentsEnabled.hint')}
                 checked={!!flagsDraft.hrIncidentsEnabled}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, hrIncidentsEnabled: v })}
               />
               <FlagRow
-                label="RRHH avanzado+ (rendimientos, costes, evaluaciones, comisiones, tareas)"
-                hint="Activa convenios colectivos, evaluaciones de desempeño, objetivos SMART, comisiones comerciales, dashboard de rendimiento, coste laboral, tareas y Gantt."
+                label={t('settingsCompany.page.flags.hrAdvancedEnabled.label')}
+                hint={t('settingsCompany.page.flags.hrAdvancedEnabled.hint')}
                 checked={!!flagsDraft.hrAdvancedEnabled}
                 onChange={(v) => setFlagsDraft({ ...flagsDraft, hrAdvancedEnabled: v })}
               />
               <div className="flex items-center justify-between py-3 border-t border-border-subtle">
                 <div className="flex-1 pr-4">
                   <div className="text-sm font-semibold text-fg-default">
-                    Ubicación del almacén en documentos
+                    {t('settingsCompany.page.warehouseLocationLabel')}
                   </div>
                   <div className="text-xs text-fg-muted mt-0.5">
-                    Elige si el almacén se captura una vez en la cabecera del documento o por línea
-                    (junto con la ubicación/zona).
+                    {t('settingsCompany.page.warehouseLocationHelp')}
                   </div>
                 </div>
                 <Select
-                  ariaLabel="Ubicación del almacén en documentos"
-                  options={WAREHOUSE_LOCATION_OPTIONS}
+                  ariaLabel={t('settingsCompany.page.warehouseLocationLabel')}
+                  options={tr(WAREHOUSE_LOCATION_OPTIONS)}
                   value={flagsDraft.warehouseLocation}
                   onChange={(v) =>
                     setFlagsDraft({ ...flagsDraft, warehouseLocation: v as 'header' | 'line' })
@@ -934,16 +950,16 @@ export const CompanySettings: React.FC = () => {
 
           {!isAdmin && (
             <p className="text-xs text-fg-muted text-right">
-              Solo un administrador puede guardar esta configuración.
+              {t('settingsCompany.page.adminOnly')}
             </p>
           )}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setFlagsDraft(flags)} disabled={saving}>
-              Descartar
+              {t('settingsCompany.page.discard')}
             </Button>
             <Button onClick={saveFlags} disabled={saving || !isAdmin}>
               <Save size={16} className="mr-2" />
-              {saving ? 'Guardando...' : 'Guardar comportamiento'}
+              {saving ? t('settingsCompany.page.saving') : t('settingsCompany.page.saveFlags')}
             </Button>
           </div>
         </div>
@@ -954,14 +970,11 @@ export const CompanySettings: React.FC = () => {
           <Card>
             <div className="p-6 space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-wide text-fg-muted">
-                URL pública
+                {t('settingsCompany.page.publicUrl')}
               </h2>
-              <p className="text-xs text-fg-muted">
-                Esta URL se usa en los emails de seguimiento de envíos, webhooks y enlaces
-                compartidos con clientes. Debe ser accesible desde internet.
-              </p>
+              <p className="text-xs text-fg-muted">{t('settingsCompany.page.publicUrlHelp')}</p>
               <Input
-                label="URL base"
+                label={t('settingsCompany.page.baseUrl')}
                 value={appConfig.publicBaseUrl}
                 onChange={(e) => setAppConfig({ ...appConfig, publicBaseUrl: e.target.value })}
                 placeholder="https://miempresa.com"
@@ -971,7 +984,7 @@ export const CompanySettings: React.FC = () => {
 
           {!isAdmin && (
             <p className="text-xs text-fg-muted text-right">
-              Solo un administrador puede guardar esta configuración.
+              {t('settingsCompany.page.adminOnly')}
             </p>
           )}
           <div className="flex justify-end gap-2">
@@ -980,11 +993,11 @@ export const CompanySettings: React.FC = () => {
               onClick={() => setAppConfig({ publicBaseUrl: appConfig.publicBaseUrl })}
               disabled={saving}
             >
-              Descartar
+              {t('settingsCompany.page.discard')}
             </Button>
             <Button onClick={saveAppConfig} disabled={saving || !isAdmin}>
               <Save size={16} className="mr-2" />
-              {saving ? 'Guardando...' : 'Guardar URL'}
+              {saving ? t('settingsCompany.page.saving') : t('settingsCompany.page.saveUrl')}
             </Button>
           </div>
         </div>

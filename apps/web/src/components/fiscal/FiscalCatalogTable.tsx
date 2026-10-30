@@ -13,6 +13,7 @@ import {
 import type { RowAction, TableColumn } from '@openfactu/ui';
 import { Plus, Trash2, Edit3, Check, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 
 /** Id sintético de la fila de alta — se anexa a `data` para que comparta
  *  columnas (y por tanto anchos) con el resto de la tabla. */
@@ -55,6 +56,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
   const { token, user } = useAuth();
   const toast = useToast();
   const popup = usePopup();
+  const { t } = useI18n();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
       const data = res.data;
       setRows(Array.isArray(data) ? data : []);
     } catch {
-      toast.error(`Error cargando ${title}`);
+      toast.error(t('app.fiscalTable.loadError', { title: t(title) }));
     } finally {
       setLoading(false);
     }
@@ -96,31 +98,31 @@ export const FiscalCatalogTable: React.FC<Props> = ({
       if (isNew) delete body.id;
       const res = await coreApi.raw(method, url, body);
       if (!res.ok) throw new Error(res.data?.error || 'Error');
-      toast.success(isNew ? 'Creado' : 'Actualizado');
+      toast.success(isNew ? t('app.fiscalTable.created') : t('app.fiscalTable.updated'));
       setEditingId(null);
       setCreating(false);
       setDraft({});
       await load();
     } catch (e: any) {
-      toast.error(e.message || 'Error');
+      toast.error(e.message || t('app.common.error'));
     }
   };
 
   const remove = async (id: string) => {
     const ok = await popup.confirm({
-      title: 'Eliminar registro',
-      message: 'Esta acción no se puede deshacer.',
+      title: t('app.fiscalTable.deleteTitle'),
+      message: t('app.common.cannotUndo'),
       tone: 'danger',
-      confirmLabel: 'Eliminar',
+      confirmLabel: t('app.common.delete'),
     });
     if (!ok) return;
     try {
       const res = await coreApi.raw('DELETE', `${endpoint}/${id}`);
       if (!res.ok) throw new Error(res.data?.error || 'Error');
-      toast.success('Eliminado');
+      toast.success(t('app.fiscalTable.deleted'));
       await load();
     } catch (e: any) {
-      toast.error(e.message || 'Error');
+      toast.error(e.message || t('app.common.error'));
     }
   };
 
@@ -158,11 +160,11 @@ export const FiscalCatalogTable: React.FC<Props> = ({
       if (col.type === 'select' && col.options) {
         return (
           <Select
-            options={col.options}
+            options={col.options.map((o) => ({ ...o, label: t(o.label) }))}
             value={(val as string) ?? ''}
             onChange={(v) => setDraft({ ...draft, [col.key]: v })}
             placeholder="—"
-            ariaLabel={col.label}
+            ariaLabel={t(col.label)}
           />
         );
       }
@@ -171,7 +173,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
           <NumberInput
             value={(val as number) ?? null}
             onChange={(v) => setDraft({ ...draft, [col.key]: v })}
-            placeholder={col.placeholder}
+            placeholder={col.placeholder ? t(col.placeholder) : col.placeholder}
             inputSize="sm"
           />
         );
@@ -180,7 +182,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
         <Input
           value={(val as string) ?? ''}
           onChange={(e) => setDraft({ ...draft, [col.key]: e.target.value })}
-          placeholder={col.placeholder}
+          placeholder={col.placeholder ? t(col.placeholder) : col.placeholder}
           inputSize="sm"
         />
       );
@@ -197,7 +199,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
   const tableColumns: TableColumn<any>[] = [
     ...columns.map<TableColumn<any>>((c, i) => ({
       id: c.key,
-      header: c.label,
+      header: t(c.label),
       width: c.width,
       // En pantalla estrecha la Table pinta una tarjeta por fila: la primera
       // columna hace de título y la segunda de subtítulo. En estos catálogos
@@ -210,7 +212,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
     {
       // Guardar/cancelar tienen que estar siempre visibles mientras se edita,
       // así que se quedan en su columna; editar y eliminar van a `rowActions`.
-      header: 'Acciones',
+      header: t('app.common.actions'),
       align: 'right',
       width: '6rem',
       cell: (row) =>
@@ -221,11 +223,17 @@ export const FiscalCatalogTable: React.FC<Props> = ({
               variant="ghost"
               size="sm"
               onClick={() => save(draft, row.id === NEW_ROW_ID)}
-              title="Guardar"
+              title={t('app.common.save')}
             >
               <Check size={14} />
             </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={cancel} title="Cancelar">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={cancel}
+              title={t('app.common.cancel')}
+            >
               <X size={14} />
             </Button>
           </div>
@@ -239,9 +247,9 @@ export const FiscalCatalogTable: React.FC<Props> = ({
     row.id === NEW_ROW_ID || editingId === row.id
       ? []
       : [
-          { label: 'Editar', icon: <Edit3 size={14} />, onClick: () => startEdit(row) },
+          { label: t('app.common.edit'), icon: <Edit3 size={14} />, onClick: () => startEdit(row) },
           {
-            label: 'Eliminar',
+            label: t('app.common.delete'),
             icon: <Trash2 size={14} />,
             destructive: true,
             onClick: () => remove(row.id),
@@ -251,10 +259,10 @@ export const FiscalCatalogTable: React.FC<Props> = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-fg-muted">{title}</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-fg-muted">{t(title)}</h3>
         {!creating && !editingId && (
           <Button type="button" size="sm" variant="outline" onClick={startNew} className="gap-1">
-            <Plus size={14} /> Añadir
+            <Plus size={14} /> {t('app.common.add')}
           </Button>
         )}
       </div>
@@ -270,7 +278,7 @@ export const FiscalCatalogTable: React.FC<Props> = ({
           data={data}
           isLoading={loading}
           rowActions={rowActions}
-          emptyMessage={'Sin datos — pulsa "Añadir" para crear.'}
+          emptyMessage={t('app.fiscalTable.empty')}
         />
       </div>
     </div>

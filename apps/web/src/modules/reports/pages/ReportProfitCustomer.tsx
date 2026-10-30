@@ -2,11 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { SearchableSelect } from '@openfactu/ui';
 import { ReportPage } from '../components/ReportPage';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
 export const ReportProfitCustomer: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const [periods, setPeriods] = useState<any[]>([]);
   const [periodId, setPeriodId] = useState('');
@@ -35,18 +37,18 @@ export const ReportProfitCustomer: React.FC = () => {
 
   const columns = useMemo(
     () => [
-      { key: 'code', label: 'Código' },
-      { key: 'name', label: 'Cliente' },
-      { key: 'count', label: 'Facturas', format: (v: any) => String(v) },
-      { key: 'total', label: 'Facturación', format: (v: any) => fmt.money(v) },
+      { key: 'code', label: t('reports.common.code') },
+      { key: 'name', label: t('reports.common.customer') },
+      { key: 'count', label: t('reports.profitCustomer.invoices'), format: (v: any) => String(v) },
+      { key: 'total', label: t('reports.common.revenue'), format: (v: any) => fmt.money(v) },
     ],
-    [fmt],
+    [fmt, t],
   );
 
   return (
     <ReportPage
-      title="Rentabilidad por cliente"
-      subtitle="Ranking de clientes por facturación del período."
+      title={t('reports.profitCustomer.title')}
+      subtitle={t('reports.profitCustomer.subtitle')}
       rows={rows}
       columns={columns as any}
       loading={loading}
@@ -56,12 +58,14 @@ export const ReportProfitCustomer: React.FC = () => {
       pdfQuery={{ periodId }}
       filters={
         <div className="max-w-sm">
-          <label className="block text-xs font-bold text-fg-body mb-1">Período</label>
+          <label className="block text-xs font-bold text-fg-body mb-1">
+            {t('reports.common.period')}
+          </label>
           <SearchableSelect
             options={periods.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }))}
             value={periodId}
             onChange={setPeriodId}
-            placeholder="— seleccionar período —"
+            placeholder={t('reports.common.selectPeriod')}
           />
         </div>
       }

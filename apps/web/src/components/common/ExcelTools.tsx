@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Button, usePopup, useToast, Textarea, Checkbox, Select } from '@openfactu/ui';
 import { Download, ClipboardPaste } from 'lucide-react';
 import { exportToXlsx, type XlsxColumnType } from '../../utils/exportXlsx';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Utilidades de export/import tipo Excel para cualquier tabla.
@@ -105,26 +106,26 @@ export function ExcelTools<T extends Record<string, any>>({
 }: ExcelToolsProps<T>) {
   const popup = usePopup();
   const toast = useToast();
+  const { t } = useI18n();
 
   const doExport = async () => {
     if (!data.length) {
-      toast.info('No hay datos para exportar');
+      toast.info(t('app.excel.noData'));
       return;
     }
     try {
       await exportToXlsx({ filename, columns, rows: data });
-      toast.success(`Exportadas ${data.length} filas`);
+      toast.success(t('app.excel.exported', { count: data.length }));
     } catch (err: any) {
-      toast.error(err?.message || 'Error al exportar');
+      toast.error(err?.message || t('app.excel.exportError'));
     }
   };
 
   const doImport = async () => {
     if (!onImport) return;
     await popup.show<void>({
-      title: 'Pegar desde Excel',
-      subtitle:
-        'Copia las celdas desde Excel/Calc y pégalas abajo. Se detectan automáticamente las columnas por la primera fila.',
+      title: t('app.excel.pasteTitle'),
+      subtitle: t('app.excel.pasteSubtitle'),
       maxWidth: '3xl',
       render: (close) => (
         <PasteBody
@@ -133,10 +134,10 @@ export function ExcelTools<T extends Record<string, any>>({
           onImport={async (rows) => {
             try {
               await onImport(rows as Partial<T>[]);
-              toast.success(`${rows.length} fila(s) importadas`);
+              toast.success(t('app.excel.imported', { count: rows.length }));
               close();
             } catch (err: any) {
-              toast.error(err?.message || 'Error al importar');
+              toast.error(err?.message || t('app.excel.importError'));
             }
           }}
         />
@@ -150,20 +151,20 @@ export function ExcelTools<T extends Record<string, any>>({
         variant="secondary"
         onClick={doExport}
         className="flex items-center gap-2 whitespace-nowrap"
-        title="Exportar a Excel (.xlsx con formato)"
+        title={t('app.excel.exportHint')}
       >
         <Download size={16} />
-        Exportar
+        {t('app.excel.export')}
       </Button>
       {!exportOnly && onImport && (
         <Button
           variant="secondary"
           onClick={doImport}
           className="flex items-center gap-2 whitespace-nowrap"
-          title="Pegar filas desde Excel o CSV"
+          title={t('app.excel.importHint')}
         >
           <ClipboardPaste size={16} />
-          Importar
+          {t('app.excel.import')}
         </Button>
       )}
     </div>
@@ -181,6 +182,7 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
   const [submitting, setSubmitting] = useState(false);
   const [mapping, setMapping] = useState<Record<number, string | null>>({});
   const [hasHeader, setHasHeader] = useState(true);
+  const { t } = useI18n();
 
   const matrix = useMemo(() => parsePasteText(text), [text]);
   const headerRow = matrix[0] || [];
@@ -237,7 +239,7 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
       <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Pega aquí las celdas copiadas desde Excel..."
+        placeholder={t('app.excel.pastePlaceholder')}
         className="h-40 font-mono text-xs"
       />
 
@@ -245,7 +247,7 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
         <>
           <label className="flex items-center gap-2 text-sm">
             <Checkbox checked={hasHeader} onChange={setHasHeader} />
-            La primera fila es cabecera
+            {t('app.excel.firstRowHeader')}
           </label>
 
           <div className="border border-border-default rounded-lg overflow-auto max-h-80">
@@ -255,7 +257,7 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
                   {headerRow.map((h, i) => (
                     <th key={i} className="p-2 text-left border-b border-border-default">
                       <div className="text-slate-500 mb-1 truncate">
-                        {hasHeader ? h : `Col ${i + 1}`}
+                        {hasHeader ? h : t('app.excel.colShort', { n: i + 1 })}
                       </div>
                       <Select
                         options={columns.map((c) => ({
@@ -264,8 +266,8 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
                         }))}
                         value={mapping[i] || ''}
                         onChange={(v) => setMapping({ ...mapping, [i]: v || null })}
-                        placeholder="— ignorar —"
-                        ariaLabel={`Columna ${hasHeader ? h : i + 1}`}
+                        placeholder={t('app.excel.ignore')}
+                        ariaLabel={t('app.excel.column', { name: hasHeader ? h : i + 1 })}
                       />
                     </th>
                   ))}
@@ -285,16 +287,16 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
             </table>
             {bodyRows.length > 10 && (
               <div className="p-2 text-xs text-slate-500 border-t border-border-default">
-                ... y {bodyRows.length - 10} fila(s) más
+                {t('app.excel.moreRows', { count: bodyRows.length - 10 })}
               </div>
             )}
           </div>
 
           <div className="text-sm text-fg-body">
-            {parsed.length} fila(s) válida(s) para importar
+            {t('app.excel.validRows', { count: parsed.length })}
             {bodyRows.length - parsed.length > 0 && (
               <span className="text-amber-600 ml-2">
-                ({bodyRows.length - parsed.length} descartada(s) por campos obligatorios vacíos)
+                {t('app.excel.discarded', { count: bodyRows.length - parsed.length })}
               </span>
             )}
           </div>
@@ -303,7 +305,7 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
 
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel} disabled={submitting}>
-          Cancelar
+          {t('app.common.cancel')}
         </Button>
         <Button
           onClick={async () => {
@@ -316,7 +318,7 @@ function PasteBody<T>({ columns, onCancel, onImport }: PasteBodyProps<T>) {
           }}
           disabled={submitting || parsed.length === 0}
         >
-          {submitting ? 'Importando…' : `Importar ${parsed.length}`}
+          {submitting ? t('app.excel.importing') : t('app.excel.importN', { count: parsed.length })}
         </Button>
       </div>
     </div>

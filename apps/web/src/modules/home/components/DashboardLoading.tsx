@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card, Skeleton, SkeletonList } from '@openfactu/ui';
+import { useI18n } from '@/i18n/I18nContext';
 
 /** Entrada escalonada: cada bloque aparece un poco después que el anterior. */
 const Appear: React.FC<{ i: number; className?: string; children: React.ReactNode }> = ({
@@ -64,61 +65,68 @@ const ChartSkeleton: React.FC = () => (
  * Carga del Dashboard con la forma real de la página: cabecera, las dos filas
  * de KPI, el gráfico con el donut y las listas; con brillo y entrada escalonada.
  */
-export const DashboardLoading: React.FC = () => (
-  <div role="status" aria-label="Cargando el panel" className="p-4 w-full space-y-6">
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div className="space-y-2">
-        <Skeleton animation="shimmer" width={224} height={28} />
-        <Skeleton animation="shimmer" className="max-w-full" width={288} height={12} />
+export const DashboardLoading: React.FC = () => {
+  const { t } = useI18n();
+  return (
+    <div
+      role="status"
+      aria-label={t('home.dashboard.loadingAria')}
+      className="p-4 w-full space-y-6"
+    >
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <Skeleton animation="shimmer" width={224} height={28} />
+          <Skeleton animation="shimmer" className="max-w-full" width={288} height={12} />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton animation="shimmer" variant="rect" radius="xs" width={160} height={32} />
+          <Skeleton animation="shimmer" variant="rect" radius="full" width={80} height={32} />
+        </div>
       </div>
-      <div className="flex gap-2">
-        <Skeleton animation="shimmer" variant="rect" radius="xs" width={160} height={32} />
-        <Skeleton animation="shimmer" variant="rect" radius="full" width={80} height={32} />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[0, 1, 2, 3].map((i) => (
+          <KpiSkeleton key={i} i={i} />
+        ))}
       </div>
-    </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[4, 5, 6, 7].map((i) => (
+          <KpiSkeleton key={i} i={i} compact />
+        ))}
+      </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {[0, 1, 2, 3].map((i) => (
-        <KpiSkeleton key={i} i={i} />
-      ))}
-    </div>
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {[4, 5, 6, 7].map((i) => (
-        <KpiSkeleton key={i} i={i} compact />
-      ))}
-    </div>
-
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <Appear i={8} className="lg:col-span-2">
-        <Card>
-          <div className="space-y-4">
-            <Skeleton animation="shimmer" width={160} height={16} />
-            <ChartSkeleton />
-          </div>
-        </Card>
-      </Appear>
-      <Appear i={9}>
-        <Card>
-          <div className="flex flex-col items-center gap-4">
-            <Skeleton animation="shimmer" className="self-start" width={128} height={16} />
-            <Skeleton animation="shimmer" variant="circle" width={160} height={160} />
-            <Skeleton animation="shimmer" lines={2} className="w-full" />
-          </div>
-        </Card>
-      </Appear>
-    </div>
-
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {[10, 11].map((i) => (
-        <Appear key={i} i={i}>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Appear i={8} className="lg:col-span-2">
           <Card>
-            <div className="space-y-3">
-              <Skeleton animation="shimmer" width={144} height={16} />
-              <SkeletonList rows={4} showAvatar showMeta animation="shimmer" />
+            <div className="space-y-4">
+              <Skeleton animation="shimmer" width={160} height={16} />
+              <ChartSkeleton />
             </div>
           </Card>
         </Appear>
-      ))}
+        <Appear i={9}>
+          <Card>
+            <div className="flex flex-col items-center gap-4">
+              <Skeleton animation="shimmer" className="self-start" width={128} height={16} />
+              <Skeleton animation="shimmer" variant="circle" width={160} height={160} />
+              <Skeleton animation="shimmer" lines={2} className="w-full" />
+            </div>
+          </Card>
+        </Appear>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {[10, 11].map((i) => (
+          <Appear key={i} i={i}>
+            <Card>
+              <div className="space-y-3">
+                <Skeleton animation="shimmer" width={144} height={16} />
+                <SkeletonList rows={4} showAvatar showMeta animation="shimmer" />
+              </div>
+            </Card>
+          </Appear>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};

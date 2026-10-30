@@ -15,43 +15,48 @@ const CarriersSettings = lazy(() =>
 export const logisticsModule: ModuleManifest = {
   nav: {
     id: 'logistics',
-    label: 'Logística',
+    label: 'logistics.nav.label',
     icon: 'Route',
     /** Visible solo si `flags.logisticsEnabled=true`. El filtrado lo hace
      *  `IconSidebar`/`ModuleTabBar` al leer `useTheme().flags`. */
     featureFlag: 'logisticsEnabled',
-    description: 'Envíos, rutas de reparto y seguimiento en tiempo real.',
+    description: 'logistics.nav.description',
     category: 'Logística',
     subTabs: [
-      { id: 'logistics-hub', label: 'Centro logístico', path: '/logistics', status: 'beta' },
-      { id: 'carriers', label: 'Transportistas', path: '/settings/carriers', status: 'beta' },
+      { id: 'logistics-hub', label: 'logistics.nav.hub', path: '/logistics', status: 'beta' },
+      {
+        id: 'carriers',
+        label: 'logistics.nav.carriers',
+        path: '/settings/carriers',
+        status: 'beta',
+      },
     ],
   },
   routes: [
     {
       pattern: '/logistics',
       Component: LogisticsHub,
-      title: 'Logística',
+      title: 'logistics.nav.label',
       iconName: 'Truck',
       permissionPath: '/logistics',
     },
     {
       pattern: '/logistics/shipments/:id',
       Component: ShipmentDetail,
-      title: 'Envío',
+      title: 'logistics.nav.shipment',
       iconName: 'Truck',
       permissionPath: '/logistics',
     },
     {
       pattern: '/driver',
       Component: DriverApp,
-      title: 'Mi ruta',
+      title: 'logistics.nav.myRoute',
       iconName: 'Navigation',
     },
     {
       pattern: '/settings/carriers',
       Component: CarriersSettings,
-      title: 'Transportistas',
+      title: 'logistics.nav.carriers',
       iconName: 'Truck',
       permissionPath: '/settings/carriers',
     },

@@ -4,6 +4,7 @@ import Map, {
   type MapRef,
   type MapLayerMouseEvent,
 } from 'react-map-gl/maplibre';
+import { useI18n } from '@/i18n/I18nContext';
 
 /**
  * Wrapper común sobre <Map> de react-map-gl/maplibre.
@@ -89,6 +90,7 @@ export const BaseMap = forwardRef<BaseMapHandle, BaseMapProps>(function BaseMap(
   },
   ref,
 ) {
+  const { t } = useI18n();
   const mapRef = useRef<MapRef | null>(null);
   // Satélite por defecto: en zonas rurales OSM suele carecer de edificios,
   // y para colocar un pin en la puerta del cliente la vista aérea es
@@ -156,9 +158,9 @@ export const BaseMap = forwardRef<BaseMapHandle, BaseMapProps>(function BaseMap(
               'px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md transition-colors ' +
               (mode === 'map' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100')
             }
-            title="Mapa"
+            title={t('logistics.map.map')}
           >
-            Mapa
+            {t('logistics.map.map')}
           </button>
           <button
             type="button"
@@ -169,9 +171,9 @@ export const BaseMap = forwardRef<BaseMapHandle, BaseMapProps>(function BaseMap(
                 ? 'bg-slate-900 text-white'
                 : 'text-slate-600 hover:bg-slate-100')
             }
-            title="Satélite"
+            title={t('logistics.map.satellite')}
           >
-            Satélite
+            {t('logistics.map.satellite')}
           </button>
         </div>
       )}

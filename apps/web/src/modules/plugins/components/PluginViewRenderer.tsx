@@ -2,6 +2,7 @@ import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { Table, Card, PageHeader } from '@openfactu/ui';
 import { PluginComponentLoader } from '@/components/plugins/PluginComponentLoader';
+import { useI18n } from '@/i18n/I18nContext';
 
 interface PluginViewRendererProps {
   pluginId: string;
@@ -16,6 +17,7 @@ export const PluginViewRenderer: React.FC<PluginViewRendererProps> = ({
   config,
   title,
 }) => {
+  const { t } = useI18n();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,8 +65,8 @@ export const PluginViewRenderer: React.FC<PluginViewRendererProps> = ({
 
   return (
     <div className="p-8">
-      <Card title="Error de Renderizado">
-        <p className="text-rose-500">El tipo de vista"{type}"no es compatible actualmente.</p>
+      <Card title={t('plugins.view.renderError')}>
+        <p className="text-rose-500">{t('plugins.view.unsupportedType', { type })}</p>
       </Card>
     </div>
   );

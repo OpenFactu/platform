@@ -33,25 +33,32 @@ export default defineConfig({
         'favicon-32.png',
         'apple-touch-icon.png',
         'logo.png',
+        'brand/*.svg',
       ],
       manifest: {
+        id: '/',
         name: 'Keirost ERP',
         short_name: 'Keirost',
-        description: 'Gestión logística, facturación y contabilidad — ERP en tu bolsillo.',
-        theme_color: '#0D9488',
+        description:
+          'ERP en la nube para pymes y autónomos: facturación electrónica, contabilidad, compras, ventas e inventario.',
+        // Mismo color que el meta theme-color oscuro de index.html y la baldosa del icono.
+        theme_color: '#0A1628',
         background_color: '#FAFBFC',
         display: 'standalone',
-        orientation: 'portrait',
+        // Sin `orientation`: bloquearla en vertical impedía usar la app instalada en
+        // tablet o escritorio en horizontal.
         start_url: '/',
         scope: '/',
-        lang: 'es',
+        lang: 'es-ES',
+        categories: ['business', 'finance', 'productivity'],
         icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-          // El mismo 512 lo marcamos como "maskable" para que Android lo
-          // recorte correctamente dentro de la máscara del launcher.
+          { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          // Maskable propio, a sangre y con la K dentro de la zona segura (círculo
+          // del 80%): reutilizar el 512 hacía que Android recortara el logo.
           {
-            src: '/icon-512.png',
+            src: '/icon-maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
@@ -124,6 +131,9 @@ export default defineConfig({
     },
   },
   server: {
+    // Túnel rápido de Cloudflare (cloudflared tunnel --url …) para abrir el
+    // entorno de desarrollo desde fuera, p. ej. los enlaces de formularios.
+    allowedHosts: ['.trycloudflare.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:3000',

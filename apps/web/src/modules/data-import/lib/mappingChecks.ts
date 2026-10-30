@@ -8,6 +8,7 @@
  * idénticos.
  */
 
+import { t } from '@/i18n/i18n';
 import type { ImportField, ImportMode, ImportObject } from '../types';
 
 export interface MappingIssue {
@@ -70,21 +71,21 @@ export function checkMapping(
   const labelOf = (key: string) => object.fields.find((f) => f.key === key)?.label || key;
 
   if (Object.keys(mapping).length === 0) {
-    issues.push({ level: 'error', message: 'No has mapeado ninguna columna.' });
+    issues.push({ level: 'error', message: t('dataImport.checks.noMapping') });
     return issues;
   }
 
   for (const field of unmappedRequired(object, mapping, mode)) {
     issues.push({
       level: 'error',
-      message: `"${field.label}" es obligatorio y no hay ninguna columna que lo alimente.`,
+      message: t('dataImport.checks.requiredUnmapped', { field: field.label }),
     });
   }
 
   for (const field of duplicateTargets(mapping)) {
     issues.push({
       level: 'error',
-      message: `Hay dos columnas apuntando a "${labelOf(field)}": una pisaría a la otra.`,
+      message: t('dataImport.checks.duplicateTarget', { field: labelOf(field) }),
     });
   }
 
@@ -93,12 +94,12 @@ export function checkMapping(
     if (!key) {
       issues.push({
         level: 'error',
-        message: 'Elige por qué campo se busca el registro existente.',
+        message: t('dataImport.checks.chooseMatchBy'),
       });
     } else if (!Object.values(mapping).includes(key.key)) {
       issues.push({
         level: 'error',
-        message: `Buscas por "${key.label}", así que alguna columna tiene que traer ese dato.`,
+        message: t('dataImport.checks.matchByUnmapped', { field: key.label }),
       });
     }
   }
@@ -106,7 +107,10 @@ export function checkMapping(
   if (object.lines && !headers.includes(object.lines.groupBy)) {
     issues.push({
       level: 'error',
-      message: `Falta la columna "${object.lines.groupBy}", que es la que une cada cabecera con sus ${object.lines.label.toLowerCase()}.`,
+      message: t('dataImport.checks.missingGroupBy', {
+        column: object.lines.groupBy,
+        lines: object.lines.label.toLowerCase(),
+      }),
     });
   }
 
@@ -116,8 +120,11 @@ export function checkMapping(
       level: 'warning',
       message:
         ignored.length === 1
-          ? `La columna "${ignored[0]}" no se va a importar.`
-          : `${ignored.length} columnas no se van a importar: ${ignored.slice(0, 4).join(', ')}${ignored.length > 4 ? '…' : ''}`,
+          ? t('dataImport.checks.columnIgnored', { column: ignored[0] })
+          : t('dataImport.checks.columnsIgnored', {
+              count: ignored.length,
+              columns: `${ignored.slice(0, 4).join(', ')}${ignored.length > 4 ? '…' : ''}`,
+            }),
     });
   }
 

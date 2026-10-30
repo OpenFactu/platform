@@ -26,6 +26,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Card, Button, Input, useToast, usePopup } from '@openfactu/ui';
 import { HardDrive, Cloud, CheckCircle2, AlertTriangle, Save, Link2, Unlink } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 
 type Provider = 'local' | 'gdrive' | 'onedrive';
 type CloudProvider = 'gdrive' | 'onedrive';
@@ -66,6 +67,7 @@ const SECRET_SET = '__SET__';
 export const StorageSettingsTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
+  const { t } = useI18n();
   const popup = usePopup();
   const [config, setConfig] = useState<StorageConfig>({ provider: 'local' });
   // Panel que se está viendo/editando — independiente del backend realmente
@@ -109,7 +111,7 @@ export const StorageSettingsTab: React.FC = () => {
         setViewProvider(cfg.provider || 'local');
         await loadOauthStatus();
       } catch {
-        toast.error('No se pudo cargar la configuración de almacenamiento');
+        toast.error(t('settingsCompany.storage.loadError'));
       } finally {
         setLoading(false);
       }
@@ -134,7 +136,11 @@ export const StorageSettingsTab: React.FC = () => {
       popupRef.current = null;
       const provider = data.provider as CloudProvider;
       if (data.ok) {
-        toast.success(`${PROVIDER_LABELS[provider] || provider} conectado`);
+        toast.success(
+          t('settingsCompany.storage.connectedToast', {
+            provider: PROVIDER_LABELS[provider] || provider,
+          }),
+        );
         const status = await loadOauthStatus();
         // Se acaba de conectar de verdad: ahora sí, activarlo como backend.
         if (status?.[provider]?.connected) {
@@ -142,11 +148,15 @@ export const StorageSettingsTab: React.FC = () => {
             await patchConfig({ provider });
             setViewProvider(provider);
           } catch {
-            toast.error('Conectado, pero no se pudo activar como backend activo — pulsa Guardar');
+            toast.error(t('settingsCompany.storage.activateError'));
           }
         }
       } else {
-        toast.error(`Error al conectar: ${data.detail || 'desconocido'}`);
+        toast.error(
+          t('settingsCompany.storage.connectError', {
+            detail: data.detail || t('settingsCompany.storage.unknown'),
+          }),
+        );
         await loadOauthStatus();
       }
     };
@@ -168,11 +178,11 @@ export const StorageSettingsTab: React.FC = () => {
         patch.provider = viewProvider;
       }
       await patchConfig(patch);
-      toast.success('Configuración guardada');
+      toast.success(t('settingsCompany.storage.saved'));
     } catch (e) {
       toast.error(
         (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-          'Error al guardar',
+          t('settingsCompany.storage.saveError'),
       );
     } finally {
       setSaving(false);
@@ -194,29 +204,31 @@ export const StorageSettingsTab: React.FC = () => {
       const body = res.data;
       if (!res.ok || !body.url) throw new Error(body.error || `HTTP ${res.status}`);
       if (popup) popup.location.href = body.url;
-      else toast.error('El navegador bloqueó la ventana de conexión');
+      else toast.error(t('settingsCompany.storage.popupBlocked'));
     } catch (e) {
       popup?.close();
       setConnecting(false);
       toast.error(
         (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-          'Error al iniciar la conexión',
+          t('settingsCompany.storage.startConnectError'),
       );
     }
   };
 
   const disconnect = async (p: CloudProvider) => {
     const ok = await popup.confirm({
-      title: `Desconectar ${PROVIDER_LABELS[p]}`,
-      message: `Los backups y subidas a ${PROVIDER_LABELS[p]} dejarán de funcionar. Los archivos ya subidos siguen accesibles mientras la autorización no se revoque en el proveedor.`,
+      title: t('settingsCompany.storage.disconnectTitle', { provider: PROVIDER_LABELS[p] }),
+      message: t('settingsCompany.storage.disconnectMessage', { provider: PROVIDER_LABELS[p] }),
       tone: 'danger',
-      confirmLabel: 'Desconectar',
+      confirmLabel: t('settingsCompany.storage.disconnect'),
     });
     if (!ok) return;
     try {
       const res = await coreApi.raw('POST', `/api/config/storage/oauth/${p}/disconnect`);
       if (!res.ok) throw new Error(res.data?.error || `HTTP ${res.status}`);
-      toast.success(`${PROVIDER_LABELS[p]} desconectado`);
+      toast.success(
+        t('settingsCompany.storage.disconnectedToast', { provider: PROVIDER_LABELS[p] }),
+      );
       const cfgRes = await coreApi.raw('GET', '/api/config/storage');
       if (cfgRes.ok) {
         const cfg = cfgRes.data;
@@ -227,7 +239,7 @@ export const StorageSettingsTab: React.FC = () => {
     } catch (e) {
       toast.error(
         (e instanceof Error ? (e instanceof Error ? e.message : undefined) : undefined) ||
-          'Error al desconectar',
+          t('settingsCompany.storage.disconnectError'),
       );
     }
   };
@@ -250,7 +262,9 @@ export const StorageSettingsTab: React.FC = () => {
   if (loading)
     return (
       <Card>
-        <div className="p-6 text-sm text-slate-400 italic">Cargando…</div>
+        <div className="p-6 text-sm text-slate-400 italic">
+          {t('settingsCompany.storage.loading')}
+        </div>
       </Card>
     );
 
@@ -264,23 +278,22 @@ export const StorageSettingsTab: React.FC = () => {
         <div className="p-6 space-y-4">
           <div className="flex items-center gap-2 text-fg-body">
             <HardDrive size={18} />
-            <h2 className="text-lg font-bold">Backend de almacenamiento</h2>
+            <h2 className="text-lg font-bold">{t('settingsCompany.storage.backendTitle')}</h2>
           </div>
           <p className="text-sm text-fg-muted leading-snug">
-            Backend activo ahora mismo:{' '}
+            {t('settingsCompany.storage.activeNow')}{' '}
             <strong>
               {activeProvider === 'local'
-                ? 'Local'
+                ? t('settingsCompany.storage.local')
                 : PROVIDER_LABELS[activeProvider as CloudProvider]}
             </strong>
-            . Puedes explorar los otros paneles sin cambiar nada — solo se activa un backend nuevo
-            al conectarlo (o al pulsar Guardar si ya estaba conectado).
+            {t('settingsCompany.storage.activeRest')}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <ProviderCard
               icon={<HardDrive size={18} />}
-              label="Local"
+              label={t('settingsCompany.storage.local')}
               active={activeProvider === 'local'}
               viewing={viewProvider === 'local'}
               onClick={() => setViewProvider('local')}
@@ -309,11 +322,11 @@ export const StorageSettingsTab: React.FC = () => {
         <Card>
           <div className="p-6 space-y-3">
             <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-              Configuración local
+              {t('settingsCompany.storage.localTitle')}
             </h3>
             <Input
-              label="Ruta base (opcional)"
-              placeholder="Por defecto: <repo>/storage/uploads"
+              label={t('settingsCompany.storage.basePath')}
+              placeholder={t('settingsCompany.storage.basePathPlaceholder')}
               value={config.local?.basePath ?? ''}
               onChange={(e) =>
                 setConfig((c) => ({
@@ -323,8 +336,7 @@ export const StorageSettingsTab: React.FC = () => {
               }
             />
             <p className="text-[11px] text-slate-400 leading-snug">
-              Si dejas vacío usa la carpeta por defecto montada en el contenedor server. Útil si
-              quieres apuntar a un volumen externo (NAS, disco dedicado, etc.).
+              {t('settingsCompany.storage.basePathHelp')}
             </p>
           </div>
         </Card>
@@ -345,10 +357,10 @@ export const StorageSettingsTab: React.FC = () => {
       <div className="flex items-center gap-3">
         <Button onClick={save} disabled={saving}>
           <Save size={16} className="mr-2" />
-          {saving ? 'Guardando…' : 'Guardar'}
+          {saving ? t('settingsCompany.storage.saving') : t('settingsCompany.storage.save')}
         </Button>
         <Button variant="secondary" onClick={runHealth} disabled={saving}>
-          Probar conexión
+          {t('settingsCompany.storage.testConnection')}
         </Button>
         {health && (
           <span
@@ -359,7 +371,8 @@ export const StorageSettingsTab: React.FC = () => {
             }`}
           >
             {health.ok ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-            {health.provider} — {health.ok ? 'OK' : 'falla'}
+            {health.provider} —{' '}
+            {health.ok ? t('settingsCompany.storage.ok') : t('settingsCompany.storage.fails')}
             {health.detail && ` · ${health.detail}`}
           </span>
         )}
@@ -377,6 +390,7 @@ const CloudProviderPanel: React.FC<{
   onDisconnect: () => void;
   onFieldChange: (field: keyof CloudSectionConfig, value: string) => void;
 }> = ({ provider, status, section, connecting, onConnect, onDisconnect, onFieldChange }) => {
+  const { t } = useI18n();
   const label = PROVIDER_LABELS[provider];
   const canConnect =
     Boolean(status?.globalAvailable || status?.tenantCredsSet) ||
@@ -386,16 +400,13 @@ const CloudProviderPanel: React.FC<{
     <Card>
       <div className="p-6 space-y-4">
         <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-          Conexión con {label}
+          {t('settingsCompany.storage.connectionWith', { provider: label })}
         </h3>
 
         {status?.status === 'revoked' && (
           <div className="rounded-lg border-2 border-dashed border-rose-300 dark:border-rose-700 bg-rose-50/50 dark:bg-rose-900/20 p-4 text-rose-700 dark:text-rose-200 text-xs flex items-start gap-2">
             <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-            <span>
-              La autorización de {label} fue revocada o caducó. Vuelve a conectar la cuenta para
-              seguir subiendo archivos y backups.
-            </span>
+            <span>{t('settingsCompany.storage.revoked', { provider: label })}</span>
           </div>
         )}
 
@@ -403,54 +414,55 @@ const CloudProviderPanel: React.FC<{
           <div className="flex flex-wrap items-center gap-3">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
               <CheckCircle2 size={13} />
-              Conectado{status.connectedEmail ? ` como ${status.connectedEmail}` : ''}
+              {status.connectedEmail
+                ? t('settingsCompany.storage.connectedAs', { email: status.connectedEmail })
+                : t('settingsCompany.storage.connected')}
             </span>
             <span className="text-[11px] text-slate-400">
               {status.credSource === 'tenant'
-                ? 'Credenciales propias'
-                : 'App global de la plataforma'}
+                ? t('settingsCompany.storage.ownCreds')
+                : t('settingsCompany.storage.globalApp')}
             </span>
             <Button variant="secondary" onClick={onDisconnect}>
               <Unlink size={14} className="mr-1.5" />
-              Desconectar
+              {t('settingsCompany.storage.disconnect')}
             </Button>
           </div>
         ) : (
           <div className="space-y-2">
             <Button onClick={onConnect} disabled={connecting || !canConnect}>
               <Link2 size={15} className="mr-2" />
-              {connecting ? 'Conectando…' : `Conectar con ${label}`}
+              {connecting
+                ? t('settingsCompany.storage.connecting')
+                : t('settingsCompany.storage.connectWith', { provider: label })}
             </Button>
             {!canConnect && (
               <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-snug">
-                No hay credenciales OAuth disponibles: el servidor no tiene configurada la app
-                global de {label}. Introduce unas credenciales propias abajo o pide al administrador
-                de la plataforma que configure las globales.
+                {t('settingsCompany.storage.noCreds', { provider: label })}
               </p>
             )}
           </div>
         )}
 
         <Input
-          label="Carpeta raíz (nombre, opcional)"
-          placeholder="Ej: Keirost o Backups/Keirost"
+          label={t('settingsCompany.storage.rootFolder')}
+          placeholder={t('settingsCompany.storage.rootFolderPlaceholder')}
           value={section.rootFolderId ?? ''}
           onChange={(e) => onFieldChange('rootFolderId', e.target.value)}
         />
         <p className="text-[11px] text-slate-400 leading-snug -mt-2">
-          Nombre de carpeta (o ruta separada por «/») dentro de tu {label} donde se guardarán los
-          archivos. Se crea automáticamente si no existe. Déjalo vacío para usar la raíz.
+          {t('settingsCompany.storage.rootFolderHelp', { provider: label })}
         </p>
 
         <details className="group">
           <summary className="cursor-pointer text-xs font-bold text-fg-muted select-none">
-            Usar credenciales OAuth propias (avanzado)
+            {t('settingsCompany.storage.ownCredsAdvanced')}
           </summary>
           <div className="mt-3 space-y-3">
             <p className="text-[11px] text-slate-400 leading-snug">
-              Si prefieres no depender de la app global de la plataforma, registra tu propia app
-              OAuth ({provider === 'gdrive' ? 'Google Cloud Console' : 'Azure Portal'}) y pega aquí
-              sus credenciales. Guarda y luego pulsa «Conectar».
+              {t('settingsCompany.storage.ownCredsHelp', {
+                console: provider === 'gdrive' ? 'Google Cloud Console' : 'Azure Portal',
+              })}
             </p>
             <Input
               label="Client ID"
@@ -460,7 +472,9 @@ const CloudProviderPanel: React.FC<{
             <Input
               label="Client Secret"
               type="password"
-              placeholder={section.clientSecret === SECRET_SET ? '(guardado)' : ''}
+              placeholder={
+                section.clientSecret === SECRET_SET ? t('settingsCompany.storage.secretSaved') : ''
+              }
               value={section.clientSecret === SECRET_SET ? '' : (section.clientSecret ?? '')}
               onChange={(e) => onFieldChange('clientSecret', e.target.value)}
             />
@@ -478,32 +492,37 @@ const ProviderCard: React.FC<{
   viewing: boolean;
   connected?: boolean;
   onClick: () => void;
-}> = ({ icon, label, active, viewing, connected, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`relative flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all text-sm font-bold ${
-      viewing
-        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
-        : 'border-border-default bg-bg-card text-fg-muted hover:border-border-strong'
-    }`}
-  >
-    {active && (
-      <span
-        className="absolute top-2 right-2 h-2 w-2 rounded-full bg-emerald-500"
-        title="Backend activo"
-      />
-    )}
-    {icon}
-    <span>{label}</span>
-    {connected !== undefined && (
-      <span
-        className={`text-[9px] uppercase tracking-wider ${
-          connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-fg-subtle'
-        }`}
-      >
-        {connected ? 'conectado' : 'sin conectar'}
-      </span>
-    )}
-  </button>
-);
+}> = ({ icon, label, active, viewing, connected, onClick }) => {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all text-sm font-bold ${
+        viewing
+          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
+          : 'border-border-default bg-bg-card text-fg-muted hover:border-border-strong'
+      }`}
+    >
+      {active && (
+        <span
+          className="absolute top-2 right-2 h-2 w-2 rounded-full bg-emerald-500"
+          title={t('settingsCompany.storage.activeBackend')}
+        />
+      )}
+      {icon}
+      <span>{label}</span>
+      {connected !== undefined && (
+        <span
+          className={`text-[9px] uppercase tracking-wider ${
+            connected ? 'text-emerald-600 dark:text-emerald-400' : 'text-fg-subtle'
+          }`}
+        >
+          {connected
+            ? t('settingsCompany.storage.connectedLower')
+            : t('settingsCompany.storage.notConnected')}
+        </span>
+      )}
+    </button>
+  );
+};

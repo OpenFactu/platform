@@ -1,3 +1,4 @@
+import { t } from '@/i18n/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { useGeo } from '@/hooks/useGeo';
 import { partnersApi } from '../api';
@@ -14,25 +15,33 @@ import {
 } from '../domain/partnerChecks';
 import type { PartnerForm } from './usePartnerForm';
 
-/** Pasos del alta de un interlocutor. */
+/** Pasos del alta de un interlocutor. `label` y `hint` son claves de i18n. */
 export const PARTNER_WIZARD_STEPS = [
   {
     id: 'general',
-    label: 'Datos generales',
-    hint: 'Nombre, grupo, país y NIF. El código se asigna solo al crear.',
+    label: 'partners.wizard.steps.general',
+    hint: 'partners.wizard.steps.generalHint',
   },
-  { id: 'contact', label: 'Contacto', hint: 'Teléfono, correo y web de la empresa.' },
+  {
+    id: 'contact',
+    label: 'partners.wizard.steps.contact',
+    hint: 'partners.wizard.steps.contactHint',
+  },
   {
     id: 'addresses',
-    label: 'Direcciones',
-    hint: 'Facturación y envío. Puedes dejarlo para más tarde.',
+    label: 'partners.wizard.steps.addresses',
+    hint: 'partners.wizard.steps.addressesHint',
   },
   {
     id: 'fiscal',
-    label: 'Fiscal y banco',
-    hint: 'Valores por defecto al facturar y cuenta bancaria.',
+    label: 'partners.wizard.steps.fiscal',
+    hint: 'partners.wizard.steps.fiscalHint',
   },
-  { id: 'review', label: 'Revisar', hint: 'Comprueba los datos antes de crear el interlocutor.' },
+  {
+    id: 'review',
+    label: 'partners.wizard.steps.review',
+    hint: 'partners.wizard.steps.reviewHint',
+  },
 ] as const;
 
 /**
@@ -64,7 +73,7 @@ export function usePartnerWizard(form: PartnerForm) {
       case 'general':
         out.push(
           checkName(data.name),
-          data.groupId ? null : 'Elige el grupo',
+          data.groupId ? null : t('partners.wizard.groupRequired'),
           checkNif(data.nif, country),
         );
         break;
@@ -77,9 +86,9 @@ export function usePartnerWizard(form: PartnerForm) {
         break;
       case 'addresses':
         addresses.forEach((a, i) => {
-          const n = addresses.length > 1 ? ` (dirección ${i + 1})` : '';
-          if (!String(a.name ?? '').trim()) out.push(`Falta el nombre${n}`);
-          if (!String(a.street ?? '').trim()) out.push(`Falta la calle${n}`);
+          const n = addresses.length > 1 ? ` ${t('partners.wizard.addressN', { n: i + 1 })}` : '';
+          if (!String(a.name ?? '').trim()) out.push(t('partners.wizard.nameMissing') + n);
+          if (!String(a.street ?? '').trim()) out.push(t('partners.wizard.streetMissing') + n);
           const z = checkPostalCode(String(a.zipCode ?? ''), getCountry(a.countryCode || 'ES'));
           if (z) out.push(z + n);
         });
@@ -88,7 +97,7 @@ export function usePartnerWizard(form: PartnerForm) {
         out.push(checkIban(data.iban));
         const w = Number(data.defaultWithholdingRate);
         if (data.defaultWithholdingRate !== '' && (Number.isNaN(w) || w < 0 || w > 100))
-          out.push('La retención debe estar entre 0 y 100');
+          out.push(t('partners.wizard.withholdingRange'));
         break;
       }
     }
@@ -107,7 +116,7 @@ export function usePartnerWizard(form: PartnerForm) {
 
   const problems = attempted === step ? problemsOf(step) : [];
   if (attempted === step && step === 0 && nifDuplicate)
-    problems.push(`Ya existe «${nifDuplicate.partner.name}» con este NIF`);
+    problems.push(t('partners.wizard.nifExists', { name: nifDuplicate.partner.name }));
 
   const isLast = step === PARTNER_WIZARD_STEPS.length - 1;
 

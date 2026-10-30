@@ -14,6 +14,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Button } from '@openfactu/ui';
 import Editor from '@monaco-editor/react';
 import { useTheme } from '../../context/ThemeContext';
+import { useI18n } from '@/i18n/I18nContext';
 
 const DEFAULT_CODE = `// Solo lectura: usa @openfactu/widget-api para llamar endpoints GET.
 // No hay acceso a post/put/delete — es un cliente deliberadamente capado.
@@ -52,6 +53,7 @@ interface Props {
 
 export const WidgetCodeEditorModal: React.FC<Props> = ({ open, initialCode, onSave, onClose }) => {
   const { branding } = useTheme();
+  const { t } = useI18n();
   const [value, setValue] = useState(initialCode || DEFAULT_CODE);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null);
@@ -69,7 +71,7 @@ export const WidgetCodeEditorModal: React.FC<Props> = ({ open, initialCode, onSa
       const res = await coreApi.raw('POST', '/api/dashboard-widgets/test-compile', { code: value });
       setTestResult(res.data);
     } catch (e: any) {
-      setTestResult({ ok: false, error: e?.message || 'Error de red' });
+      setTestResult({ ok: false, error: e?.message || t('app.widgets.networkError') });
     } finally {
       setTesting(false);
     }
@@ -79,8 +81,8 @@ export const WidgetCodeEditorModal: React.FC<Props> = ({ open, initialCode, onSa
     <Modal
       isOpen={open}
       onClose={onClose}
-      title="Componente del widget"
-      subtitle="Disponible: react, @openfactu/ui, lucide-react, @openfactu/widget-api (solo GET)."
+      title={t('app.widgets.editorTitle')}
+      subtitle={t('app.widgets.editorSubtitle')}
       size="screen"
       fullHeight
       noBodyPadding
@@ -88,9 +90,11 @@ export const WidgetCodeEditorModal: React.FC<Props> = ({ open, initialCode, onSa
       footer={
         <div className="flex items-center gap-2 w-full">
           <Button type="button" variant="accent" size="sm" onClick={runTest} isLoading={testing}>
-            {testing ? 'Compilando…' : '▶ Probar'}
+            {testing ? t('app.widgets.compiling') : t('app.widgets.test')}
           </Button>
-          {testResult?.ok && <span className="text-xs text-success-fg">✓ Compila bien</span>}
+          {testResult?.ok && (
+            <span className="text-xs text-success-fg">{t('app.widgets.compiles')}</span>
+          )}
           {testResult && !testResult.ok && (
             <span className="text-xs text-danger-fg truncate" title={testResult.error}>
               ⚠ {testResult.error}
@@ -98,7 +102,7 @@ export const WidgetCodeEditorModal: React.FC<Props> = ({ open, initialCode, onSa
           )}
           <div className="flex-1" />
           <Button type="button" variant="secondary" size="sm" onClick={onClose}>
-            Cancelar
+            {t('app.common.cancel')}
           </Button>
           <Button
             type="button"
@@ -108,7 +112,7 @@ export const WidgetCodeEditorModal: React.FC<Props> = ({ open, initialCode, onSa
               onClose();
             }}
           >
-            Guardar código
+            {t('app.widgets.saveCode')}
           </Button>
         </div>
       }

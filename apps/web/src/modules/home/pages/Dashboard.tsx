@@ -34,6 +34,9 @@ import {
   Inbox,
 } from 'lucide-react';
 import { Chart } from '@openfactu/ui/charts';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
+import { intlLocale, t as tNow } from '@/i18n/i18n';
 
 interface DashboardSummary {
   period: { id: string; code: string; name: string; startDate: string; endDate: string } | null;
@@ -89,10 +92,10 @@ const computeDelta = (current: number, previous: number) => {
 };
 
 const DOC_TYPE_LABELS: Record<string, string> = {
-  salesInvoice: 'Factura venta',
-  purchaseInvoice: 'Factura compra',
-  salesDeliveryNote: 'Albarán venta',
-  purchaseDeliveryNote: 'Albarán compra',
+  salesInvoice: 'app.docTypes.SINV',
+  purchaseInvoice: 'app.docTypes.PINV',
+  salesDeliveryNote: 'app.docTypes.SDN',
+  purchaseDeliveryNote: 'app.docTypes.PDN',
 };
 const DOC_TYPE_ICONS: Record<string, any> = {
   salesInvoice: FileText,
@@ -102,14 +105,15 @@ const DOC_TYPE_ICONS: Record<string, any> = {
 };
 
 const SCOPE_OPTIONS: { value: 'active' | 'all'; label: string }[] = [
-  { value: 'active', label: 'Periodo activo' },
-  { value: 'all', label: 'Histórico' },
+  { value: 'active', label: 'home.dashboard.scopeActive' },
+  { value: 'all', label: 'home.dashboard.scopeAll' },
 ];
 
 export const Dashboard: React.FC = () => {
   const { token, user } = useAuth();
   const fmt = useFormat();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [data, setData] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,7 +158,7 @@ export const Dashboard: React.FC = () => {
         });
         setError(null);
       } catch {
-        setError('No se pudo cargar el resumen');
+        setError(tNow('home.dashboard.loadError'));
       } finally {
         if (!opts?.silent) setLoading(false);
       }
@@ -222,18 +226,23 @@ export const Dashboard: React.FC = () => {
       const [y, mo] = m.month.split('-');
       const d = new Date(Number(y), Number(mo) - 1, 1);
       return {
-        month: d.toLocaleDateString('es-ES', { month: 'short' }),
+        month: d.toLocaleDateString(intlLocale(), { month: 'short' }),
         Ventas: m.sales,
         Compras: m.purchases,
       };
     });
-  }, [data]);
+    // `t` cambia con el idioma: así se recalculan los nombres de los meses.
+  }, [data, t]);
 
   // Esqueleto con la forma real de la página (cabecera, KPI, gráfico, listas).
   if (loading) return <DashboardLoading />;
 
   if (error || !data) {
-    return <div className="p-12 text-center text-fg-muted">{error || 'Sin datos disponibles'}</div>;
+    return (
+      <div className="p-12 text-center text-fg-muted">
+        {error || t('home.dashboard.noDataAvailable')}
+      </div>
+    );
   }
 
   const salesDelta = computeDelta(data.sales.total, data.sales.prevTotal);
@@ -241,7 +250,7 @@ export const Dashboard: React.FC = () => {
 
   const periodLabel = data.period
     ? `${data.period.name} · ${fmt.date(data.period.startDate)} – ${fmt.date(data.period.endDate)}`
-    : 'Sin periodo activo';
+    : t('home.dashboard.noActivePeriod');
 
   const topCustomersBars = data.topPartners.customers.map((c) => ({
     name: c.name.length > 18 ? c.name.slice(0, 16) + '…' : c.name,
@@ -255,7 +264,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="p-4 w-full space-y-6 duration-500">
       <PageHeader
-        title="Business Overview"
+        title={t('home.dashboard.title')}
         subtitle={
           <span className="flex items-center gap-2">
             <CalendarDays size={14} className="text-fg-subtle" />
@@ -268,21 +277,25 @@ export const Dashboard: React.FC = () => {
             {/* Toggle filtro de período: es un filtro de lo que se está viendo, no
                 un cambio de vista, así que va con SegmentedControl (grupo de radio). */}
             <SegmentedControl
-              options={SCOPE_OPTIONS}
+              options={SCOPE_OPTIONS.map((o) => ({ ...o, label: t(o.label) }))}
               value={scope}
               // SegmentedControl emite string; el estado es la unión 'all' | 'active'.
               onChange={(v) => setScope(v as 'all' | 'active')}
               size="sm"
               uppercase
-              aria-label="Ámbito del periodo"
+              aria-label={t('home.dashboard.scopeAria')}
             />
             <Badge
               variant="success"
               className="px-2.5 py-1 text-[10px] font-black uppercase flex items-center gap-1.5"
-              title={liveEvents > 0 ? `${liveEvents} eventos recibidos` : 'Canal en vivo activo'}
+              title={
+                liveEvents > 0
+                  ? t('home.dashboard.eventsReceived', { count: liveEvents })
+                  : t('home.dashboard.liveActive')
+              }
             >
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="hidden sm:inline">En vivo</span>
+              <span className="hidden sm:inline">{t('home.dashboard.live')}</span>
               {liveEvents > 0 && <RollingNumber value={liveEvents} className="opacity-70" />}
             </Badge>
           </div>
@@ -295,11 +308,11 @@ export const Dashboard: React.FC = () => {
         style={{ animationDelay: '80ms' }}
       >
         <KpiCard
-          label="Ventas del periodo"
+          label={t('home.dashboard.kpiSales')}
           value={data.sales.total}
           subtitle={
             <>
-              <CountUp value={data.sales.count} /> facturas
+              <CountUp value={data.sales.count} /> {t('home.dashboard.invoices')}
             </>
           }
           delta={salesDelta}
@@ -308,11 +321,11 @@ export const Dashboard: React.FC = () => {
           bg="bg-emerald-50 dark:bg-emerald-500/10"
         />
         <KpiCard
-          label="Compras del periodo"
+          label={t('home.dashboard.kpiPurchases')}
           value={data.purchases.total}
           subtitle={
             <>
-              <CountUp value={data.purchases.count} /> facturas
+              <CountUp value={data.purchases.count} /> {t('home.dashboard.invoices')}
             </>
           }
           delta={purchasesDelta}
@@ -321,11 +334,11 @@ export const Dashboard: React.FC = () => {
           bg="bg-blue-50 dark:bg-blue-500/10"
         />
         <KpiCard
-          label="Cobros pendientes"
+          label={t('home.dashboard.kpiReceivables')}
           value={data.receivables.open}
           subtitle={
             <>
-              <CountUp value={data.receivables.openCount} /> facturas abiertas
+              <CountUp value={data.receivables.openCount} /> {t('home.dashboard.openInvoices')}
             </>
           }
           icon={ArrowDownLeft}
@@ -333,11 +346,11 @@ export const Dashboard: React.FC = () => {
           bg="bg-indigo-50 dark:bg-indigo-500/10"
         />
         <KpiCard
-          label="Pagos pendientes"
+          label={t('home.dashboard.kpiPayables')}
           value={data.payables.open}
           subtitle={
             <>
-              <CountUp value={data.payables.openCount} /> facturas abiertas
+              <CountUp value={data.payables.openCount} /> {t('home.dashboard.openInvoices')}
             </>
           }
           icon={ArrowUpRight}
@@ -352,7 +365,7 @@ export const Dashboard: React.FC = () => {
         style={{ animationDelay: '160ms' }}
       >
         <KpiCard
-          label="Pedidos venta"
+          label={t('home.dashboard.salesOrders')}
           value={data.salesOrders.total}
           subtitle={<CountUp value={data.salesOrders.count} />}
           icon={ShoppingCart}
@@ -360,7 +373,7 @@ export const Dashboard: React.FC = () => {
           bg="bg-emerald-50 dark:bg-emerald-500/10"
         />
         <KpiCard
-          label="Pedidos compra"
+          label={t('home.dashboard.purchaseOrders')}
           value={data.purchaseOrders.total}
           subtitle={<CountUp value={data.purchaseOrders.count} />}
           icon={ShoppingCart}
@@ -368,7 +381,7 @@ export const Dashboard: React.FC = () => {
           bg="bg-amber-50 dark:bg-amber-500/10"
         />
         <KpiCard
-          label="Albaranes venta"
+          label={t('home.dashboard.salesDn')}
           value={data.salesDeliveryNotes.total}
           subtitle={<CountUp value={data.salesDeliveryNotes.count} />}
           icon={PackageCheck}
@@ -376,7 +389,7 @@ export const Dashboard: React.FC = () => {
           bg="bg-teal-50 dark:bg-teal-500/10"
         />
         <KpiCard
-          label="Albaranes compra"
+          label={t('home.dashboard.purchaseDn')}
           value={data.purchaseDeliveryNotes.total}
           subtitle={<CountUp value={data.purchaseDeliveryNotes.count} />}
           icon={Inbox}
@@ -392,37 +405,40 @@ export const Dashboard: React.FC = () => {
       >
         <Card
           className="lg:col-span-2"
-          title="Tendencia 12 meses"
-          subtitle="Ventas vs compras facturadas."
+          title={t('home.dashboard.trendTitle')}
+          subtitle={t('home.dashboard.trendSubtitle')}
         >
           <div className="h-72 -ml-2">
             {monthlyData.every((m) => m.Ventas === 0 && m.Compras === 0) ? (
               <EmptyState
                 icon={TrendingUp}
-                title="Sin datos"
-                hint="Aún no hay facturas para mostrar."
+                title={t('home.dashboard.noData')}
+                hint={t('home.dashboard.noDataHint')}
               />
             ) : (
               <Chart
                 type="line"
                 data={monthlyData}
                 xKey="month"
-                series={[{ key: 'Ventas' }, { key: 'Compras' }]}
+                series={[
+                  { key: 'Ventas', label: t('home.dashboard.seriesSales') },
+                  { key: 'Compras', label: t('home.dashboard.seriesPurchases') },
+                ]}
                 height={288}
                 valueFormat={(v) => fmt.money(v)}
-                aria-label="Tendencia mensual de ventas y compras"
+                aria-label={t('home.dashboard.trendAria')}
               />
             )}
           </div>
         </Card>
 
-        <Card title="Estado de facturas" subtitle="Distribución global.">
+        <Card title={t('home.dashboard.statusTitle')} subtitle={t('home.dashboard.statusSubtitle')}>
           <div className="h-72">
             {data.invoiceStatus.length === 0 ? (
               <EmptyState
                 icon={FileText}
-                title="Sin facturas"
-                hint="Todavía no hay facturas registradas."
+                title={t('home.dashboard.noInvoices')}
+                hint={t('home.dashboard.noInvoicesHint')}
               />
             ) : (
               <Chart
@@ -431,7 +447,7 @@ export const Dashboard: React.FC = () => {
                 xKey="label"
                 series={[{ key: 'count' }]}
                 height={288}
-                aria-label="Distribución de facturas por estado"
+                aria-label={t('home.dashboard.statusAria')}
               />
             )}
           </div>
@@ -443,13 +459,16 @@ export const Dashboard: React.FC = () => {
         className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-up animate-duration-500 animate-fill-both"
         style={{ animationDelay: '320ms' }}
       >
-        <Card title="Top clientes" subtitle="Mayor facturación del periodo.">
+        <Card
+          title={t('home.dashboard.topCustomers')}
+          subtitle={t('home.dashboard.topCustomersSubtitle')}
+        >
           <div className="h-64">
             {topCustomersBars.length === 0 ? (
               <EmptyState
                 icon={ShoppingCart}
-                title="Sin clientes"
-                hint="Aún no hay facturación de clientes."
+                title={t('home.dashboard.noCustomers')}
+                hint={t('home.dashboard.noCustomersHint')}
               />
             ) : (
               <Chart
@@ -460,19 +479,22 @@ export const Dashboard: React.FC = () => {
                 series={[{ key: 'total' }]}
                 height={288}
                 valueFormat={(v) => fmt.money(v)}
-                aria-label="Top clientes por facturación"
+                aria-label={t('home.dashboard.topCustomersAria')}
               />
             )}
           </div>
         </Card>
 
-        <Card title="Top proveedores" subtitle="Mayor compra del periodo.">
+        <Card
+          title={t('home.dashboard.topSuppliers')}
+          subtitle={t('home.dashboard.topSuppliersSubtitle')}
+        >
           <div className="h-64">
             {topSuppliersBars.length === 0 ? (
               <EmptyState
                 icon={Truck}
-                title="Sin proveedores"
-                hint="Aún no hay facturación de proveedores."
+                title={t('home.dashboard.noSuppliers')}
+                hint={t('home.dashboard.noSuppliersHint')}
               />
             ) : (
               <Chart
@@ -483,7 +505,7 @@ export const Dashboard: React.FC = () => {
                 series={[{ key: 'total' }]}
                 height={288}
                 valueFormat={(v) => fmt.money(v)}
-                aria-label="Top proveedores por facturación"
+                aria-label={t('home.dashboard.topSuppliersAria')}
               />
             )}
           </div>
@@ -497,14 +519,14 @@ export const Dashboard: React.FC = () => {
       >
         <Card
           className="lg:col-span-2"
-          title="Documentos recientes"
-          subtitle="Últimas facturas y albaranes registrados."
+          title={t('home.dashboard.recentDocs')}
+          subtitle={t('home.dashboard.recentDocsSubtitle')}
         >
           {data.recentDocs.length === 0 ? (
             <EmptyState
               icon={ShoppingCart}
-              title="Sin documentos"
-              hint="Crea una factura o un albarán para verlo aquí."
+              title={t('home.dashboard.noDocs')}
+              hint={t('home.dashboard.noDocsHint')}
             />
           ) : (
             <ul className="divide-y divide-border-subtle">
@@ -516,12 +538,12 @@ export const Dashboard: React.FC = () => {
                       onClick={() => navigate(d.route)}
                       className="w-full flex items-center gap-4 py-3 hover:bg-accent/5 dark:hover:bg-accent/10 rounded-xs px-2 transition-colors text-left group/docrow"
                     >
-                      <div className="p-2 rounded-xs bg-line-2 dark:bg-ink-700 text-ink-700 dark:text-slate-300 group-hover/docrow:bg-accent/20 group-hover/docrow:text-accent transition-colors">
+                      <div className="p-2 rounded-xs bg-bg-muted text-fg-muted group-hover/docrow:bg-accent/20 group-hover/docrow:text-accent transition-colors">
                         <Icon size={16} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-fg-subtle font-bold uppercase tracking-wide">
-                          {DOC_TYPE_LABELS[d.type] || d.type}
+                          {DOC_TYPE_LABELS[d.type] ? t(DOC_TYPE_LABELS[d.type]) : d.type}
                         </p>
                         <p className="text-sm font-bold text-fg-default truncate">{d.code}</p>
                         <p className="text-xs text-fg-muted truncate">{d.partnerName || '—'}</p>
@@ -540,12 +562,15 @@ export const Dashboard: React.FC = () => {
         </Card>
 
         <div className="space-y-4">
-          <Card title="Stock crítico" subtitle="Artículos por debajo del mínimo.">
+          <Card
+            title={t('home.dashboard.lowStock')}
+            subtitle={t('home.dashboard.lowStockSubtitle')}
+          >
             {data.stockAlerts.lowStock.length === 0 ? (
               <EmptyState
                 icon={Package}
-                title="Sin alertas"
-                hint="Todos los stocks están en orden."
+                title={t('home.dashboard.noAlerts')}
+                hint={t('home.dashboard.noAlertsHint')}
               />
             ) : (
               <ul className="space-y-2">
@@ -560,7 +585,7 @@ export const Dashboard: React.FC = () => {
                         {Number(it.stock).toFixed(2)}
                       </p>
                       <p className="text-[11px] text-fg-subtle">
-                        min {Number(it.minStock).toFixed(2)}
+                        {t('home.dashboard.min', { value: Number(it.minStock).toFixed(2) })}
                       </p>
                     </div>
                   </li>
@@ -569,12 +594,15 @@ export const Dashboard: React.FC = () => {
             )}
           </Card>
 
-          <Card title="Lotes próximos a caducar" subtitle="Próximos 30 días.">
+          <Card
+            title={t('home.dashboard.expiring')}
+            subtitle={t('home.dashboard.expiringSubtitle')}
+          >
             {data.stockAlerts.expiringBatches.length === 0 ? (
               <EmptyState
                 icon={AlertTriangle}
-                title="Sin caducidades"
-                hint="Ningún lote a punto de caducar."
+                title={t('home.dashboard.noExpiring')}
+                hint={t('home.dashboard.noExpiringHint')}
               />
             ) : (
               <ul className="space-y-2">
@@ -582,14 +610,16 @@ export const Dashboard: React.FC = () => {
                   <li key={b.id} className="flex items-center justify-between text-sm">
                     <div className="min-w-0">
                       <p className="font-bold text-fg-default truncate">{b.itemName}</p>
-                      <p className="text-[11px] text-fg-subtle">Lote {b.batchNum}</p>
+                      <p className="text-[11px] text-fg-subtle">
+                        {t('home.dashboard.batch', { batch: b.batchNum })}
+                      </p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-amber-600 dark:text-amber-300">
                         {fmt.date(b.expiryDate)}
                       </p>
                       <p className="text-[11px] text-fg-subtle">
-                        {Number(b.quantity).toFixed(2)} ud
+                        {t('home.dashboard.units', { qty: Number(b.quantity).toFixed(2) })}
                       </p>
                     </div>
                   </li>
@@ -605,9 +635,17 @@ export const Dashboard: React.FC = () => {
         className="grid grid-cols-1 lg:grid-cols-3 gap-4 animate-fade-up animate-duration-500 animate-fill-both"
         style={{ animationDelay: '480ms' }}
       >
-        <Card title="Top artículos" subtitle="Más vendidos del periodo." className="lg:col-span-1">
+        <Card
+          title={t('home.dashboard.topItems')}
+          subtitle={t('home.dashboard.topItemsSubtitle')}
+          className="lg:col-span-1"
+        >
           {!data.topItems || data.topItems.length === 0 ? (
-            <EmptyState icon={Package} title="Sin ventas" hint="Aún no hay líneas facturadas." />
+            <EmptyState
+              icon={Package}
+              title={t('home.dashboard.noSales')}
+              hint={t('home.dashboard.noSalesHint')}
+            />
           ) : (
             <ul className="divide-y divide-border-subtle">
               {data.topItems.map((it) => (
@@ -615,7 +653,7 @@ export const Dashboard: React.FC = () => {
                   <div className="min-w-0">
                     <p className="font-bold text-fg-default text-sm truncate">{it.name}</p>
                     <p className="text-[11px] font-mono text-fg-subtle">
-                      {it.code} · {it.qty} uds
+                      {it.code} · {t('home.dashboard.unitsPlural', { qty: it.qty })}
                     </p>
                   </div>
                   <span className="font-black tabular-nums text-emerald-600 dark:text-emerald-400 text-sm">
@@ -628,15 +666,15 @@ export const Dashboard: React.FC = () => {
         </Card>
 
         <Card
-          title="Actividad en vivo"
-          subtitle="Eventos recientes. Se actualiza en tiempo real."
+          title={t('home.dashboard.activity')}
+          subtitle={t('home.dashboard.activitySubtitle')}
           className="lg:col-span-2"
         >
           {!data.activityFeed || data.activityFeed.length === 0 ? (
             <EmptyState
               icon={Clock}
-              title="Sin actividad"
-              hint="Los movimientos aparecerán aquí."
+              title={t('home.dashboard.noActivity')}
+              hint={t('home.dashboard.noActivityHint')}
             />
           ) : (
             <ul className="divide-y divide-border-subtle max-h-96 overflow-y-auto overflow-x-hidden scrollbar-hide">
@@ -668,7 +706,7 @@ export const Dashboard: React.FC = () => {
                         )}
                       </p>
                       <p className="text-[10px] font-mono text-fg-subtle">
-                        {new Date(ev.createdAt).toLocaleString('es-ES', {
+                        {formatDateTime(ev.createdAt, {
                           day: '2-digit',
                           month: 'short',
                           hour: '2-digit',
@@ -719,6 +757,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
   bg,
 }) => {
   const fmt = useFormat();
+  const { t } = useI18n();
   const deltaColor =
     delta == null
       ? 'text-fg-subtle'
@@ -740,13 +779,15 @@ const KpiCard: React.FC<KpiCardProps> = ({
           <p
             className={`text-[10px] sm:text-[11px] font-bold mt-1.5 flex items-center gap-1 truncate ${deltaColor}`}
             title={
-              delta == null ? 'sin comparativa' : `${delta > 0 ? '+' : ''}${delta}% vs anterior`
+              delta == null
+                ? t('home.dashboard.noComparison')
+                : t('home.dashboard.vsPrevious', { delta: `${delta > 0 ? '+' : ''}${delta}` })
             }
           >
             <DeltaIcon size={11} className="shrink-0" />
             <span className="truncate">
               {delta == null ? (
-                'sin comparativa'
+                t('home.dashboard.noComparison')
               ) : (
                 <CountUp
                   value={delta}

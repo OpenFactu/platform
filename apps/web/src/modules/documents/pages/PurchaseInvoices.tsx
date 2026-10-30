@@ -1,3 +1,10 @@
+import { DocumentFormLayout } from '../components/form/DocumentFormLayout';
+import { SeriesPeriodFields } from '../components/form/SeriesPeriodFields';
+import { HeaderSection, LinesSection, PartnerField } from '../components/form/FormPieces';
+import { useFormLineColumns } from '../hooks/useFormLineColumns';
+import { buildFormSteps, formStepStatus } from '../domain/formSteps';
+
+import { ResponsiveActions } from '@/components/common/ResponsiveActions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import {
@@ -12,8 +19,7 @@ import {
   Badge,
   FilterBar,
   PageHeader,
-  SearchableSelect,
-  cn,
+  FormGrid,
 } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
@@ -22,17 +28,12 @@ import { useTabs, useCurrentTab } from '@/context/TabsContext';
 import {
   FileStack,
   Plus,
-  Trash2,
-  ArrowLeft,
   Save,
   FileText,
   AlertCircle,
   Copy,
-  PlusSquare,
-  Barcode,
   Download,
   CreditCard,
-  Mail,
   Eye,
 } from 'lucide-react';
 import { DocumentActionBar } from '../components/DocumentActionBar';
@@ -42,11 +43,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery';
 import { AttachmentsPanel } from '@/components/AttachmentsPanel';
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
-import {
-  buildDetailLineColumns,
-  buildFormLineColumns,
-  statusBadgeProps,
-} from '../components/documentLineCells';
+import { buildDetailLineColumns, statusBadgeProps } from '../components/documentLineCells';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
 import { downloadPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
@@ -54,14 +51,13 @@ import { useTheme } from '@/context/ThemeContext';
 import { formatDocCode } from '@/utils/docCode';
 import { BatchSelectionModal } from '@/modules/inventory/components/BatchSelectionModal';
 import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssignmentPanel';
-import { useItemUoms } from '@/hooks/useItemUoms';
-import { usePluginLineFields } from '@/hooks/usePluginLineFields';
+
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
 import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
 import { useDocumentScanner } from '@/hooks/useDocumentScanner';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
-import { useInternalOrderLineColumn } from '@/hooks/useLineInternalOrderColumn';
+
 import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
 import { PaymentStatusBadge } from '../components/payments/PaymentStatusBadge';
 import { RegisterPaymentModal } from '../components/payments/RegisterPaymentModal';
@@ -70,6 +66,7 @@ import { SendInvoiceModal } from '../components/documents/SendInvoiceModal';
 import { InvoicePaymentsList } from '../components/payments/InvoicePaymentsList';
 import { docsApi } from '../api';
 import { crudApi } from '@/shared/api';
+import { useI18n } from '@/i18n/I18nContext';
 
 // Eliminamos SerialBadges inline para usar el modo Popup limpio
 
@@ -84,6 +81,7 @@ const InvoiceList: React.FC<{
   mastersError?: string | null;
   doc: any;
 }> = ({ data, loading, partners, onCreate, onCreateFromClone, onDetail, mastersError, doc }) => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const [selectedKeys, setSelectedKeys] = useState<Set<string | number>>(new Set());
   const toast = useToast();
@@ -94,7 +92,7 @@ const InvoiceList: React.FC<{
     try {
       await downloadPdf(`/api/purchases/invoices/${id}/pdf`);
     } catch (e) {
-      toast.error((e instanceof Error ? e.message : undefined) || 'Error al descargar PDF');
+      toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
       setDownloadingId(null);
     }
@@ -108,26 +106,26 @@ const InvoiceList: React.FC<{
         {
           key: 'partnerId',
           type: 'select',
-          label: 'Proveedor',
+          label: t('doc.partner.supplier'),
           options: partners.map((p) => ({ label: p.name, value: p.id })),
         },
         {
           key: 'status',
           type: 'select',
-          label: 'Estado',
+          label: t('doc.common.status'),
           options: [
-            { label: 'Borrador', value: 'D' },
-            { label: 'Asentado', value: 'O' },
-            { label: 'Cancelado', value: 'X' },
+            { label: t('doc.status.draft'), value: 'D' },
+            { label: t('doc.status.posted'), value: 'O' },
+            { label: t('doc.status.cancelled'), value: 'X' },
           ],
         },
-        { key: 'date', type: 'date', label: 'Fecha' },
+        { key: 'date', type: 'date', label: t('doc.common.date') },
       ],
     });
 
   const columns = [
     {
-      header: 'Documento',
+      header: t('doc.common.document'),
       card: 'title' as const,
       sortable: true,
       sortAccessor: (item: any) => formatDocCode(item),
@@ -135,43 +133,50 @@ const InvoiceList: React.FC<{
         <div className="flex flex-col">
           <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
           <span className="text-[10px] text-fg-subtle font-mono mt-1 uppercase tracking-tighter">
-            ID: {item.id.substring(0, 8)}
+            {t('doc.common.idShort', { id: item.id.substring(0, 8) })}
           </span>
         </div>
       ),
     },
     {
-      header: 'Fecha',
+      header: t('doc.common.date'),
       card: 'meta' as const,
       sortable: true,
       sortAccessor: (item: any) => new Date(item.date).getTime(),
       accessor: (item: any) => fmt.date(item.date),
     },
     {
-      header: 'Proveedor',
+      header: t('doc.partner.supplier'),
       card: 'subtitle' as const,
       accessor: (item: any) => (
         <div>
           <p className="font-bold text-fg-body leading-tight">{item.partnerName}</p>
+          {item.externalRef && (
+            <p className="text-[10px] text-fg-muted font-mono leading-none mt-1">
+              {t('doc.purchaseInvoices.supplierInvoiceNoShort', { ref: item.externalRef })}
+            </p>
+          )}
           <p className="text-[10px] text-fg-subtle uppercase tracking-widest leading-none mt-1">
-            CIE: {item.partnerId.substring(0, 6)}
+            {t('doc.generic.partnerIdShort', { id: item.partnerId.substring(0, 6) })}
           </p>
         </div>
       ),
     },
     {
-      header: 'Desde Albarán',
+      header: t('doc.invoices.fromDeliveryNote'),
       cell: (item: any) =>
         item.baseDocCode ? (
           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/30 text-[10px] font-black text-indigo-700 dark:text-indigo-200 uppercase tracking-tight">
             <FileText size={11} /> {item.baseDocCode}
           </span>
         ) : (
-          <span className="text-[10px] text-fg-subtle font-bold italic">Directa</span>
+          <span className="text-[10px] text-fg-subtle font-bold italic">
+            {t('doc.invoices.direct')}
+          </span>
         ),
     },
     {
-      header: 'Retención',
+      header: t('invoice.withholdingAmount'),
       align: 'right' as const,
       sortable: true,
       sortAccessor: (item: any) => Number(item.withholdingAmount) || 0,
@@ -188,7 +193,7 @@ const InvoiceList: React.FC<{
         ),
     },
     {
-      header: 'Total',
+      header: t('doc.lines.total'),
       align: 'right' as const,
       sortable: true,
       sortAccessor: (item: any) => Number(item.total) || 0,
@@ -197,20 +202,20 @@ const InvoiceList: React.FC<{
       ),
     },
     {
-      header: 'Estado',
+      header: t('doc.common.status'),
       card: 'status' as const,
       align: 'center' as const,
       sortable: true,
       sortAccessor: (item: any) => item.status || '',
       cell: (item: any) => {
-        if (item.status === 'D') return <Badge variant="warning">Borrador</Badge>;
-        if (item.status === 'O') return <Badge variant="success">Asentado</Badge>;
-        if (item.status === 'X') return <Badge variant="error">Cancelado</Badge>;
+        if (item.status === 'D') return <Badge variant="warning">{t('doc.status.draft')}</Badge>;
+        if (item.status === 'O') return <Badge variant="success">{t('doc.status.posted')}</Badge>;
+        if (item.status === 'X') return <Badge variant="error">{t('doc.status.cancelled')}</Badge>;
         return <Badge variant="neutral">{item.status}</Badge>;
       },
     },
     {
-      header: 'Pago',
+      header: t('doc.purchaseInvoices.colPayment'),
       align: 'center' as const,
       sortable: true,
       sortAccessor: (item: any) => item.paymentStatus || 'pending',
@@ -224,9 +229,9 @@ const InvoiceList: React.FC<{
   // del hover y en el menú de click derecho, así que no hay que duplicarlas
   // entre una columna de botones y el menú contextual.
   const rowActions = (item: any): RowAction[] => [
-    { label: 'Ver Factura', icon: <Eye size={14} />, onClick: () => onDetail(item) },
+    { label: t('doc.invoices.view'), icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
-      label: 'Descargar PDF',
+      label: t('doc.actions.downloadPdf'),
       icon: <Download size={14} />,
       onClick: () => handleQuickPdf(item.id),
     },
@@ -235,8 +240,8 @@ const InvoiceList: React.FC<{
   return (
     <div className="p-4 space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Facturas de Compra"
-        subtitle="Registro para el libro de IVA y pagos a proveedores."
+        title={t('doc.purchaseInvoices.title')}
+        subtitle={t('doc.purchaseInvoices.subtitle')}
         icon={<FileStack size={18} />}
         size="lg"
         divider
@@ -253,14 +258,27 @@ const InvoiceList: React.FC<{
             {doc.state.canWrite && onCreateFromClone && (
               <CloneDocumentActions docType="PINV" onPaste={onCreateFromClone} show="paste" />
             )}
-            <Button
-              type="button"
-              onClick={onCreate}
-              disabled={!doc.state.canWrite}
-              className="flex items-center gap-2 disabled:opacity-50"
+            <ResponsiveActions
+              source="primary:create"
+              actions={[
+                {
+                  id: 'create',
+                  label: t('doc.invoices.newDirect'),
+                  icon: <Plus size={19} />,
+                  onClick: onCreate,
+                  disabled: !doc.state.canWrite,
+                },
+              ]}
             >
-              <Plus size={20} /> Nueva Factura Directa
-            </Button>
+              <Button
+                type="button"
+                onClick={onCreate}
+                disabled={!doc.state.canWrite}
+                className="flex items-center gap-2 disabled:opacity-50"
+              >
+                <Plus size={20} /> {t('doc.invoices.newDirect')}
+              </Button>
+            </ResponsiveActions>
           </div>
         }
       />
@@ -276,22 +294,22 @@ const InvoiceList: React.FC<{
           config={[
             {
               key: 'partnerId',
-              label: 'Proveedor',
+              label: t('doc.partner.supplier'),
               type: 'select',
               options: partners.map((p) => ({ label: p.name, value: p.id })),
             },
             {
               key: 'status',
-              label: 'Estado',
+              label: t('doc.common.status'),
               type: 'select',
               options: [
-                { label: 'Asentado', value: 'O' },
-                { label: 'Cancelado', value: 'X' },
+                { label: t('doc.status.posted'), value: 'O' },
+                { label: t('doc.status.cancelled'), value: 'X' },
               ],
             },
-            { key: 'date', label: 'Fecha', type: 'date' },
+            { key: 'date', label: t('doc.common.date'), type: 'date' },
           ]}
-          searchPlaceholder="Buscar por factura..."
+          searchPlaceholder={t('doc.invoices.search')}
         />
         <BulkSendToolbar
           selectedKeys={selectedKeys}
@@ -329,8 +347,10 @@ const InvoiceForm: React.FC<{
   setViewingBatch: (l: any) => void;
   internalOrderId: string | null;
   setInternalOrderId: (id: string | null) => void;
+  /** Número de la factura del proveedor: obligatorio para registrarla. */
+  externalRef: string;
+  setExternalRef: (v: string) => void;
 }> = ({
-  onBack,
   onSubmit,
   state,
   setState,
@@ -340,11 +360,11 @@ const InvoiceForm: React.FC<{
   setViewingBatch,
   internalOrderId,
   setInternalOrderId,
+  externalRef,
+  setExternalRef,
 }) => {
+  const { t, locale } = useI18n();
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
-  const fmt = useFormat();
-  const itemUoms = useItemUoms();
-  const isMobileForm = useIsMobile();
 
   // Autocompletar IRPF del proveedor en silencio cuando cambie el partner y el
   // doc aún no tenga tasa asignada. El usuario puede sobrescribirla después.
@@ -370,211 +390,109 @@ const InvoiceForm: React.FC<{
     setState.setLines(newLines);
   };
 
-  const pluginLineFields = usePluginLineFields('PurchaseInvoiceLine');
-  const projectCol = useInternalOrderLineColumn(actions.updateLine);
-  const columns = useMemo(() => {
-    const base = buildFormLineColumns({
-      kind: DocKind.Invoice,
-      side: DocSide.Purchase,
-      state,
-      masters,
-      actions,
-      onAssignBatch: setBatchEditingIdx,
-      onViewBatch: setViewingBatch,
-      onDuplicateLine: duplicateLine,
-      fmt,
-      getItemUoms: itemUoms.get,
-      pluginLineFields,
-    });
-    // El builder base ya trae su propia columna 'Proyecto' cuando hay
-    // proyectos en masters — la quitamos para no duplicarla con projectCol.
-    const rest = base.slice(0, -1).filter((c) => c.header !== 'Proyecto');
-    return [...rest, projectCol, base[base.length - 1]];
-  }, [state.lines, masters.items, masters.taxGroups, pluginLineFields, projectCol]);
+  const columns = useFormLineColumns({
+    kind: DocKind.Invoice,
+    side: DocSide.Purchase,
+    state,
+    masters,
+    actions,
+    onAssignBatch: setBatchEditingIdx,
+    onViewBatch: setViewingBatch,
+    onDuplicateLine: duplicateLine,
+    pluginTable: 'PurchaseInvoiceLine',
+  });
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const steps = useMemo(() => buildFormSteps({ fiscal: 'required' }), [locale]);
+  const status = formStepStatus(state, masters, {
+    partnerLabel: t('doc.steps.theSupplier'),
+    extra: { value: externalRef, message: t('doc.purchaseInvoices.supplierInvoiceNoRequired') },
+  });
 
   return (
-    <div className="p-4 space-y-8 animate-in fade-in duration-500">
-      <PageHeader
+    <>
+      <DocumentFormLayout
         title={
           state.lines.some((l: any) => l.baseId)
-            ? 'Facturación de Albarán'
-            : 'Nueva Factura Directa'
+            ? t('doc.salesInvoices.fromDeliveryTitle')
+            : t('doc.purchaseInvoices.newTitle')
         }
-        subtitle={
-          <span className="flex items-center gap-2">
-            <FileText size={14} />
-            Ingreso de gasto y contabilización de impuestos.
-          </span>
+        subtitle={t('doc.purchaseInvoices.formSubtitle')}
+        submitLabel={t('doc.invoices.post')}
+        onSubmit={() => onSubmit()}
+        isSubmitting={state.isSubmitting}
+        canSubmit={!state.seriesError && state.canWrite}
+        steps={steps}
+        status={status}
+        onProblem={(p) => {
+          if (p.batchLine != null) setBatchEditingIdx(p.batchLine);
+        }}
+        totals={
+          <DocumentTotalsBlock
+            variant="plain"
+            subtotal={computations.subtotal}
+            tax={computations.taxTotal}
+            total={computations.total}
+            withholdingAmount={computations.withholdingAmount}
+            withholdingRate={state.pluginData?.__fiscal_withholdingRate ?? state.withholdingRate}
+            totalLabel={t('doc.invoices.totalForm')}
+          />
         }
-        size="lg"
-        divider
-        breadcrumbs={
-          <Button type="button" variant="ghost" size="sm" onClick={onBack} title="Volver">
-            <ArrowLeft size={14} className="mr-1" /> Volver
-          </Button>
-        }
-        actions={
-          <Button
-            type="button"
-            onClick={() => onSubmit()}
-            isLoading={state.isSubmitting}
-            disabled={!!state.seriesError || !state.canWrite}
-            className="flex items-center gap-2 disabled:opacity-50"
-          >
-            <Save size={20} /> Asentar Factura
-          </Button>
-        }
+        sections={{
+          header: (
+            <HeaderSection
+              fields={
+                <FormGrid columns={2}>
+                  <PartnerField
+                    label={t('doc.purchaseOrders.supplierCreditor')}
+                    value={state.partnerId}
+                    onChange={setState.setPartnerId}
+                    partners={masters.partners}
+                    placeholder={t('doc.common.selectSupplier')}
+                  />
+                  <DatePicker
+                    label={t('doc.invoices.date')}
+                    required
+                    value={state.date}
+                    onChange={(v) => setState.setDate(v ?? '')}
+                  />
+                  <Input
+                    label={t('doc.purchaseInvoices.supplierInvoiceNo')}
+                    required
+                    value={externalRef}
+                    onChange={(e) => setExternalRef(e.target.value)}
+                    placeholder={t('doc.purchaseInvoices.supplierInvoiceNoPlaceholder')}
+                    helperText={t('doc.purchaseInvoices.supplierInvoiceNoHelp')}
+                  />
+                  <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
+                </FormGrid>
+              }
+              side={
+                <>
+                  <SeriesPeriodFields state={state} setState={setState} masters={masters} />
+                  <PluginFieldsPanel
+                    tableName="PurchaseInvoice"
+                    values={state.pluginData}
+                    onChange={setState.setPluginField}
+                    disabled={state.isSubmitting}
+                    layout="sidebar"
+                  />
+                </>
+              }
+            />
+          ),
+          lines: (
+            <LinesSection
+              columns={columns}
+              lines={state.lines || []}
+              onAdd={() => actions.addLine()}
+              addLabel={t('doc.purchaseInvoices.addExpenseLine')}
+              emptyMessage={t('doc.invoices.noLines')}
+            />
+          ),
+          fiscal: <DocumentFiscalPanel kind="purchase" state={state} setState={setState} bare />,
+        }}
       />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 md:col-span-2 space-y-6 border-border-subtle">
-          <div className="border-b border-border-subtle pb-3 flex justify-between items-baseline gap-4">
-            <h3 className="font-black text-fg-body uppercase text-[11px] tracking-[0.15em] leading-none">
-              Cabecera de Factura
-            </h3>
-            <span className="text-[9px] font-black text-rose-500 uppercase tracking-wider leading-none">
-              * Campos obligatorios
-            </span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
-                Proveedor / Acreedor *
-              </label>
-              <SearchableSelect
-                value={state.partnerId}
-                onChange={setState.setPartnerId}
-                options={masters.partners.map((p: any) => ({ label: p.name, value: p.id }))}
-                placeholder="Seleccionar proveedor..."
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-black text-fg-subtle uppercase tracking-widest">
-                Fecha Factura *
-              </label>
-              <DatePicker value={state.date} onChange={(v) => setState.setDate(v ?? '')} />
-            </div>
-            <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
-          </div>
-        </Card>
-
-        <DocumentFiscalPanel kind="purchase" state={state} setState={setState} />
-
-        <div className="space-y-6">
-          <Card className="p-6 space-y-6 border-border-subtle bg-bg-muted">
-            <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-widest border-b pb-2">
-              Series y Periodo
-            </h4>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-fg-muted">Serie de Numeración *</label>
-                <SearchableSelect
-                  value={state.seriesId}
-                  onChange={setState.setSeriesId}
-                  options={masters.series.map((s: any) => ({ label: s.name, value: s.id }))}
-                />
-                {state.isManualSeries && (
-                  <div className="mt-2 space-y-1">
-                    <label className="text-[10px] font-bold text-fg-muted">
-                      Número de documento (manual) *
-                    </label>
-                    <Input
-                      type="number"
-                      min={1}
-                      step={1}
-                      value={state.manualNumber}
-                      onChange={(e) => setState.setManualNumber(e.target.value)}
-                      placeholder="Ej: 1050"
-                    />
-                  </div>
-                )}
-                {state.seriesError && (
-                  <p className="text-[10px] text-rose-500 font-bold mt-1 italic">
-                    {state.seriesError}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-fg-muted">Periodo Contable *</label>
-                <SearchableSelect
-                  value={state.periodId}
-                  onChange={setState.setPeriodId}
-                  options={masters.periods.map((p: any) => ({ label: p.name, value: p.id }))}
-                />
-              </div>
-            </div>
-          </Card>
-          <PluginFieldsPanel
-            tableName="PurchaseInvoice"
-            values={state.pluginData}
-            onChange={setState.setPluginField}
-            disabled={state.isSubmitting}
-            layout="sidebar"
-          />
-        </div>
-      </div>
-
-      <Card className="shadow-lg overflow-hidden border-border-subtle" noPadding>
-        {isMobileForm ? (
-          <MobileLineCards
-            columns={columns}
-            lines={state.lines || []}
-            emptyMessage="No hay líneas en la factura."
-          />
-        ) : (
-          <Table
-            responsive="scroll"
-            columns={columns}
-            data={state.lines || []}
-            emptyMessage="No hay líneas en la factura."
-          />
-        )}
-        <div className="p-6 bg-bg-muted flex flex-col md:flex-row justify-between items-start md:items-center border-t border-border-subtle gap-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center bg-bg-card border border-border-default rounded-lg p-1 shadow-sm">
-              {[1, 5, 10].map((n) => (
-                <Button
-                  key={n}
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => Array(n).fill(0).forEach(actions.addLine)}
-                  title={`Añadir ${n} línea${n === 1 ? '' : 's'}`}
-                  className="h-8 min-w-[36px] px-2 text-[10px] font-black"
-                >
-                  +{n}
-                </Button>
-              ))}
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => actions.addLine()}
-              className="text-amber-600 dark:text-amber-300 font-bold flex items-center gap-2 h-10 border-border-default bg-bg-card"
-            >
-              <PlusSquare size={16} /> Línea de Gasto
-            </Button>
-          </div>
-          <div className="flex flex-col items-end min-w-[240px] space-y-2 bg-bg-card p-4 rounded-lg border border-border-subtle shadow-sm">
-            <div className="flex justify-between w-full text-[10px] font-black text-fg-subtle uppercase tracking-widest px-1">
-              <span>Base Imponible:</span>
-              <span className="text-fg-body">{computations.subtotal.toFixed(2)} €</span>
-            </div>
-            <div className="flex justify-between w-full text-[10px] font-black text-amber-500 uppercase tracking-widest px-1">
-              <span>Cuota IVA:</span>
-              <span>{computations.taxTotal.toFixed(2)} €</span>
-            </div>
-            <div className="flex justify-between w-full pt-3 mt-1 border-t items-baseline px-1 border-border-subtle">
-              <span className="text-[10px] uppercase font-black text-fg-subtle tracking-widest">
-                Total Factura:
-              </span>
-              <span className="text-2xl font-black text-fg-default tracking-tighter ml-4">
-                {computations.total.toFixed(2)} €
-              </span>
-            </div>
-          </div>
-        </div>
-      </Card>
 
       <BatchAssignmentPanel
         isOpen={batchEditingIdx !== null}
@@ -587,7 +505,7 @@ const InvoiceForm: React.FC<{
           updates.forEach((u) => actions.updateLine(u.idx, 'batchDetails', u.batchDetails));
         }}
       />
-    </div>
+    </>
   );
 };
 
@@ -602,6 +520,7 @@ const InvoiceDetail: React.FC<{
   setViewingBatch: (l: any) => void;
   canDelete?: boolean;
 }> = ({ invoice, onBack, onCancel, onPost, isPosting, masters, setViewingBatch, canDelete }) => {
+  const { t, locale } = useI18n();
   const fmt = useFormat();
   const isMobile = useIsMobile();
   const partner = masters.partners.find((p: any) => p.id === invoice.partnerId);
@@ -647,13 +566,14 @@ const InvoiceDetail: React.FC<{
         onViewBatch: setViewingBatch,
         fmt,
       }),
-    [invoice.lines, masters.items, masters.taxGroups],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [invoice.lines, masters.items, masters.taxGroups, locale],
   );
 
   return (
     <DocumentDetailLayout
       onBack={onBack}
-      breadcrumb="COMPRAS · FACTURA"
+      breadcrumb={t('doc.purchaseInvoices.breadcrumb')}
       title={formatDocCode(invoice)}
       status={statusBadgeProps(invoice.status, DocKind.Invoice)}
       actions={
@@ -667,10 +587,15 @@ const InvoiceDetail: React.FC<{
           onSendEmail={invoice.status === 'O' ? () => setEmailModalOpen(true) : undefined}
           primary={
             invoice.status === 'D' && onPost
-              ? { label: 'Asentar Factura', icon: Save, onClick: onPost, isLoading: isPosting }
+              ? {
+                  label: t('doc.invoices.postBtn'),
+                  icon: Save,
+                  onClick: onPost,
+                  isLoading: isPosting,
+                }
               : invoice.status === 'O' && remaining > 0
                 ? {
-                    label: 'Registrar pago',
+                    label: t('invoice.registerPaymentPurchase'),
                     icon: CreditCard,
                     onClick: () => setPayModalOpen(true),
                   }
@@ -686,8 +611,10 @@ const InvoiceDetail: React.FC<{
         <InternalOrderChip internalOrderId={invoice.internalOrderId} />
         {invoice.amountPaid != null && Number(invoice.amountPaid) > 0 && (
           <span className="text-xs font-mono text-ink-500 dark:text-ink-400">
-            Pagado {fmt.money(Number(invoice.amountPaid))} ·{' '}
-            {remaining > 0 ? `Pendiente ${fmt.money(remaining)}` : 'Completo'}
+            {t('doc.invoices.paid', { amount: fmt.money(Number(invoice.amountPaid)) })} ·{' '}
+            {remaining > 0
+              ? t('doc.invoices.pending', { amount: fmt.money(remaining) })
+              : t('doc.invoices.complete')}
           </span>
         )}
       </div>
@@ -729,14 +656,19 @@ const InvoiceDetail: React.FC<{
         <Card className="md:col-span-2 border-border-subtle" bodyClassName="p-6 space-y-5">
           <div>
             <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] mb-2">
-              Proveedor
+              {t('doc.partner.supplier')}
             </h4>
             <p className="text-xl font-black text-fg-default tracking-tight">
               {partner?.name || '—'}
             </p>
             {partner?.nif && (
               <p className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider mt-0.5 font-mono">
-                NIF: {partner.nif}
+                {t('doc.common.nif', { nif: partner.nif })}
+              </p>
+            )}
+            {invoice.externalRef && (
+              <p className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider mt-0.5 font-mono">
+                {t('doc.purchaseInvoices.supplierInvoiceNoShort', { ref: invoice.externalRef })}
               </p>
             )}
           </div>
@@ -744,26 +676,26 @@ const InvoiceDetail: React.FC<{
             <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-lg">
               <Copy size={14} className="text-blue-600 dark:text-blue-300 shrink-0" />
               <p className="text-xs text-blue-800 dark:text-blue-200 font-medium leading-tight">
-                Factura generada desde uno o varios albaranes de compra.
+                {t('doc.purchaseInvoices.fromReceiptsNotice')}
               </p>
             </div>
           )}
           <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/30 rounded-lg">
             <FileText size={16} className="text-amber-600 dark:text-amber-300 shrink-0" />
             <p className="text-xs text-amber-800 dark:text-amber-200 font-medium leading-tight">
-              Documento contable firme — genera obligación de pago.
+              {t('doc.purchaseInvoices.firmNotice')}
             </p>
           </div>
         </Card>
 
         <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
           <h4 className="text-[10px] font-black uppercase text-fg-subtle tracking-[0.15em] border-b border-border-subtle pb-2">
-            Información
+            {t('doc.common.information')}
           </h4>
           <dl className="space-y-2.5">
             <div className="flex justify-between items-baseline gap-4">
               <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                Fecha
+                {t('doc.common.date')}
               </dt>
               <dd className="text-sm font-bold text-fg-default tabular-nums">
                 {fmt.date(invoice.date)}
@@ -772,7 +704,7 @@ const InvoiceDetail: React.FC<{
             {series && (
               <div className="flex justify-between items-baseline gap-4">
                 <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                  Serie
+                  {t('doc.common.series')}
                 </dt>
                 <dd className="text-sm font-bold text-fg-default truncate">{series.name}</dd>
               </div>
@@ -780,7 +712,7 @@ const InvoiceDetail: React.FC<{
             {period && (
               <div className="flex justify-between items-baseline gap-4">
                 <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                  Periodo
+                  {t('doc.series.period')}
                 </dt>
                 <dd className="text-sm font-bold text-fg-default truncate">{period.name}</dd>
               </div>
@@ -788,13 +720,13 @@ const InvoiceDetail: React.FC<{
             {docType && (
               <div className="flex justify-between items-baseline gap-4">
                 <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                  Tipo de factura
+                  {t('doc.invoices.invoiceType')}
                 </dt>
                 <dd className="text-sm font-bold text-fg-default truncate flex items-center gap-2">
                   {docType.name}
                   {docType.isRectify && (
                     <span className="px-1.5 py-0.5 rounded-xs text-[9px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                      Rectificativa
+                      {t('doc.invoices.rectifying')}
                     </span>
                   )}
                 </dd>
@@ -803,7 +735,7 @@ const InvoiceDetail: React.FC<{
             {payMethod && (
               <div className="flex justify-between items-baseline gap-4">
                 <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                  Método de pago
+                  {t('invoice.paymentMethod')}
                 </dt>
                 <dd className="text-sm font-bold text-fg-default truncate">{payMethod.name}</dd>
               </div>
@@ -811,7 +743,7 @@ const InvoiceDetail: React.FC<{
             {payTerm && (
               <div className="flex justify-between items-baseline gap-4">
                 <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                  Plazo de pago
+                  {t('doc.fiscal.paymentTerm')}
                 </dt>
                 <dd className="text-sm font-bold text-fg-default truncate">{payTerm.name}</dd>
               </div>
@@ -819,7 +751,7 @@ const InvoiceDetail: React.FC<{
             {invoice.dueDate && (
               <div className="flex justify-between items-baseline gap-4">
                 <dt className="text-[11px] font-bold text-fg-subtle uppercase tracking-wider">
-                  Vencimiento
+                  {t('invoice.dueDate')}
                 </dt>
                 <dd className="text-sm font-bold text-fg-default tabular-nums">
                   {fmt.date(invoice.dueDate)}
@@ -829,7 +761,7 @@ const InvoiceDetail: React.FC<{
             {Number(invoice.withholdingRate) > 0 && (
               <div className="flex justify-between items-baseline gap-4">
                 <dt className="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
-                  Retención IRPF
+                  {t('doc.totals.withholding')}
                 </dt>
                 <dd className="text-sm font-bold text-rose-600 dark:text-rose-400 tabular-nums">
                   {invoice.withholdingRate}% ({fmt.money(invoice.withholdingAmount || 0)})
@@ -852,7 +784,7 @@ const InvoiceDetail: React.FC<{
           total={invoice.total || 0}
           withholdingAmount={invoice.withholdingAmount}
           withholdingRate={invoice.withholdingRate}
-          totalLabel="Total Factura"
+          totalLabel={t('doc.invoices.total')}
         />
       </Card>
 
@@ -862,7 +794,7 @@ const InvoiceDetail: React.FC<{
         onChange={() => {}}
         disabled
         layout="inline"
-        title="Campos de plugin"
+        title={t('doc.common.pluginFields')}
       />
       <AttachmentsPanel entityType="PurchaseInvoice" entityId={invoice.id} />
     </DocumentDetailLayout>
@@ -870,6 +802,7 @@ const InvoiceDetail: React.FC<{
 };
 
 export const PurchaseInvoices: React.FC = () => {
+  const { t } = useI18n();
   const { token, user } = useAuth();
   const { flags } = useTheme();
   const toast = useToast();
@@ -892,6 +825,7 @@ export const PurchaseInvoices: React.FC = () => {
   const [viewingBatch, setViewingBatch] = useState<any>(null);
   const [posting, setPosting] = useState(false);
   const [internalOrderId, setInternalOrderId] = useState<string | null>(null);
+  const [externalRef, setExternalRef] = useState('');
 
   const doc = useDocument({
     token: token || '',
@@ -921,7 +855,7 @@ export const PurchaseInvoices: React.FC = () => {
         }));
         setInvoices(withCode);
       } catch (e) {
-        toast.error('Error al cargar facturas');
+        toast.error(t('doc.invoices.loadListError'));
       } finally {
         setLoading(false);
       }
@@ -938,10 +872,7 @@ export const PurchaseInvoices: React.FC = () => {
         setSelectedInvoice(data);
         currentTab.rename(formatDocCode(data));
       } catch (e) {
-        toast.error(
-          (e instanceof Error ? e.message : undefined) ||
-            'Error al cargar el detalle de la factura',
-        );
+        toast.error((e instanceof Error ? e.message : undefined) || t('doc.invoices.loadError'));
       } finally {
         setDetailLoading(false);
       }
@@ -1013,6 +944,10 @@ export const PurchaseInvoices: React.FC = () => {
   }, [isCreate]);
 
   const handleSubmit = async (extra?: any) => {
+    if (!externalRef.trim()) {
+      toast.error(t('doc.purchaseInvoices.supplierInvoiceNoRequired'));
+      return;
+    }
     try {
       const pd = doc.state.pluginData || {};
       const fiscalFields: Record<string, any> = {};
@@ -1024,9 +959,10 @@ export const PurchaseInvoices: React.FC = () => {
       if ((doc.state as any).withholdingRate)
         fiscalFields.withholdingRate = (doc.state as any).withholdingRate;
       if (internalOrderId) fiscalFields.internalOrderId = internalOrderId;
+      fiscalFields.externalRef = externalRef.trim();
 
       await doc.actions.submitDocument({ ...fiscalFields, ...extra });
-      toast.success('Factura asentada correctamente');
+      toast.success(t('doc.purchaseInvoices.created'));
       notifyDocChange(DocType.PurchaseInvoice);
       currentTab.close();
     } catch (e) {
@@ -1038,17 +974,17 @@ export const PurchaseInvoices: React.FC = () => {
     // El flag de la empresa decide si se pide confirmación — no se toca.
     if (flags.confirmBeforeCancel) {
       const ok = await popup.confirm({
-        title: 'Cancelar factura',
-        message: '¿Estás seguro de cancelar esta factura? Los albaranes se reabrirán.',
+        title: t('doc.invoices.cancelTitle'),
+        message: t('doc.purchaseInvoices.cancelMessage'),
         tone: 'danger',
-        confirmLabel: 'Cancelar factura',
-        cancelLabel: 'Volver',
+        confirmLabel: t('doc.invoices.cancelTitle'),
+        cancelLabel: t('doc.common.back'),
       });
       if (!ok) return;
     }
     try {
       await docsApi.cancel('/api/purchases/invoices', id);
-      toast.success('Factura cancelada y stock/albaranes revertidos');
+      toast.success(t('doc.purchaseInvoices.cancelled'));
       notifyDocChange(DocType.PurchaseInvoice);
       currentTab.close();
     } catch (e) {
@@ -1061,7 +997,7 @@ export const PurchaseInvoices: React.FC = () => {
     try {
       setPosting(true);
       await docsApi.post('/api/purchases/invoices', selectedInvoice.id);
-      toast.success('Factura asentada');
+      toast.success(t('doc.invoices.posted'));
       notifyDocChange(DocType.PurchaseInvoice);
       setSelectedInvoice({ ...selectedInvoice, status: 'O' });
     } catch (e) {
@@ -1102,6 +1038,8 @@ export const PurchaseInvoices: React.FC = () => {
           setViewingBatch={setViewingBatch}
           internalOrderId={internalOrderId}
           setInternalOrderId={setInternalOrderId}
+          externalRef={externalRef}
+          setExternalRef={setExternalRef}
         />
         {viewingBatch && (
           <BatchSelectionModal

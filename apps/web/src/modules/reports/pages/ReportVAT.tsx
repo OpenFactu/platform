@@ -4,11 +4,13 @@ import type { TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, RefreshCw, Receipt } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
 export const ReportVAT: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useI18n();
   const fmt = useFormat();
   const navigate = useNavigate();
   const [from, setFrom] = useState('');
@@ -43,18 +45,38 @@ export const ReportVAT: React.FC = () => {
     arr.reduce((s: number, r: any) => s + Number(r[k] || 0), 0);
 
   const columns: TableColumn<any>[] = [
-    { header: 'Fecha', cell: (r) => fmt.date(r.date), sortable: true, sortAccessor: (r) => r.date },
-    { header: 'Nº Factura', accessor: 'code', sortable: true, primary: true },
-    { header: 'NIF', accessor: 'partnerNif', className: 'font-mono', sortable: true },
     {
-      header: 'Nombre',
+      header: t('reports.common.date'),
+      cell: (r) => fmt.date(r.date),
+      sortable: true,
+      sortAccessor: (r) => r.date,
+    },
+    { header: t('reports.vat.invoiceNumber'), accessor: 'code', sortable: true, primary: true },
+    {
+      header: t('reports.vat.taxId'),
+      accessor: 'partnerNif',
+      className: 'font-mono',
+      sortable: true,
+    },
+    {
+      header: t('reports.common.name'),
       accessor: 'partnerName',
       sortable: true,
       className: 'truncate max-w-[180px]',
     },
-    { header: 'Base', cell: (r) => fmt.money(r.base), align: 'right', sortable: true },
-    { header: 'IVA', cell: (r) => fmt.money(r.tax), align: 'right', sortable: true },
-    { header: 'Total', cell: (r) => fmt.money(r.total), align: 'right', sortable: true },
+    {
+      header: t('reports.vat.base'),
+      cell: (r) => fmt.money(r.base),
+      align: 'right',
+      sortable: true,
+    },
+    { header: t('reports.vat.vat'), cell: (r) => fmt.money(r.tax), align: 'right', sortable: true },
+    {
+      header: t('reports.common.total'),
+      cell: (r) => fmt.money(r.total),
+      align: 'right',
+      sortable: true,
+    },
   ];
 
   /**
@@ -73,7 +95,7 @@ export const ReportVAT: React.FC = () => {
         columns={columns}
         data={rows}
         rowKey={(_r, i) => i}
-        emptyMessage="Sin facturas en el período"
+        emptyMessage={t('reports.vat.empty')}
         density="compact"
         summaryRow={(visible) => [
           null,
@@ -93,13 +115,13 @@ export const ReportVAT: React.FC = () => {
   return (
     <div className="p-6 w-full space-y-5">
       <PageHeader
-        title="Libro de IVA"
-        subtitle="IVA repercutido y soportado (modelo 303)."
+        title={t('reports.vat.title')}
+        subtitle={t('reports.vat.subtitle')}
         icon={<Receipt size={18} />}
         size="md"
         breadcrumbs={
           <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> Volver
+            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
           </Button>
         }
         actions={
@@ -110,7 +132,7 @@ export const ReportVAT: React.FC = () => {
               onClick={load}
               className="flex items-center gap-2"
             >
-              <RefreshCw size={16} /> Actualizar
+              <RefreshCw size={16} /> {t('reports.common.refresh')}
             </Button>
             <Button type="button" onClick={downloadPdf} className="flex items-center gap-2">
               <Download size={16} /> PDF
@@ -120,20 +142,32 @@ export const ReportVAT: React.FC = () => {
       />
 
       <Card className="p-4 flex items-end gap-3 flex-wrap">
-        <DatePicker label="Desde" value={from} onChange={(v) => setFrom(v ?? '')} clearable />
-        <DatePicker label="Hasta" value={to} onChange={(v) => setTo(v ?? '')} clearable />
+        <DatePicker
+          label={t('reports.common.from')}
+          value={from}
+          onChange={(v) => setFrom(v ?? '')}
+          clearable
+        />
+        <DatePicker
+          label={t('reports.common.to')}
+          value={to}
+          onChange={(v) => setTo(v ?? '')}
+          clearable
+        />
       </Card>
 
       {loading || !data ? (
-        <Card className="p-10 text-center text-fg-subtle italic">Cargando…</Card>
+        <Card className="p-10 text-center text-fg-subtle italic">
+          {t('reports.common.loading')}
+        </Card>
       ) : (
         <>
-          <VatBook title="IVA Repercutido (ventas)" rows={data.output} color="text-success-fg" />
-          <VatBook title="IVA Soportado (compras)" rows={data.input} color="text-info-fg" />
+          <VatBook title={t('reports.vat.output')} rows={data.output} color="text-success-fg" />
+          <VatBook title={t('reports.vat.input')} rows={data.input} color="text-info-fg" />
           <Card className={`p-5 ${saldo >= 0 ? 'bg-danger-bg' : 'bg-success-bg'}`}>
             <div className="flex items-baseline justify-between">
               <span className="text-xs font-black uppercase tracking-widest">
-                {saldo >= 0 ? 'A ingresar a Hacienda' : 'A compensar / devolver'}
+                {saldo >= 0 ? t('reports.vat.toPay') : t('reports.vat.toOffset')}
               </span>
               <span
                 className={`text-3xl font-black tabular-nums ${saldo >= 0 ? 'text-danger-fg' : 'text-success-fg'}`}

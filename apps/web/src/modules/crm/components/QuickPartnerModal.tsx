@@ -1,3 +1,4 @@
+import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import { DescriptionList, Input, Modal, Select, useToast } from '@openfactu/ui';
 import { ArrowLeft, ArrowRight, UserPlus } from 'lucide-react';
@@ -24,11 +25,12 @@ interface Props {
 type Form = ReturnType<typeof useQuickPartnerForm>;
 
 const CompanyStep: React.FC<{ f: Form }> = ({ f }) => {
+  const { t } = useI18n();
   const { draft, errors, country } = f;
   return (
     <div className="space-y-4">
       <Input
-        label="Nombre o razón social"
+        label={t('crm.quickPartner.legalName')}
         value={draft.name}
         onChange={(e) => f.set({ name: e.target.value })}
         onBlur={() => f.blur('name')}
@@ -38,16 +40,18 @@ const CompanyStep: React.FC<{ f: Form }> = ({ f }) => {
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <CountrySelect
-          label="País"
+          label={t('crm.quickPartner.country')}
           value={draft.countryCode}
           onChange={(countryCode) => f.set({ countryCode })}
         />
         <Input
           label={
             <>
-              {country?.taxIdLabel || 'NIF'}
+              {country?.taxIdLabel || t('crm.quickPartner.nif')}
               {country?.taxIdExample && (
-                <span className="ml-2 font-normal text-fg-subtle">ej.: {country.taxIdExample}</span>
+                <span className="ml-2 font-normal text-fg-subtle">
+                  {t('crm.quickPartner.example', { example: country.taxIdExample })}
+                </span>
               )}
             </>
           }
@@ -56,12 +60,12 @@ const CompanyStep: React.FC<{ f: Form }> = ({ f }) => {
           onBlur={() => f.blur('nif')}
           error={errors.nif}
           status={draft.nif && !errors.nif && !f.duplicates.length ? 'success' : 'default'}
-          helperText="Opcional ahora; hace falta para facturarle."
+          helperText={t('crm.quickPartner.nifHelp')}
           autoComplete="off"
         />
         {f.groupOptions.length > 1 && (
           <Select
-            label="Grupo"
+            label={t('crm.quickPartner.group')}
             options={f.groupOptions}
             value={draft.groupId}
             onChange={(groupId) => f.set({ groupId })}
@@ -73,14 +77,13 @@ const CompanyStep: React.FC<{ f: Form }> = ({ f }) => {
 };
 
 const ContactStep: React.FC<{ f: Form }> = ({ f }) => {
+  const { t } = useI18n();
   const { draft, errors, country } = f;
   return (
     <div className="space-y-4">
-      <p className="text-sm text-fg-muted">
-        Opcional: si los tienes, el correo sirve para mandarle presupuestos y facturas.
-      </p>
+      <p className="text-sm text-fg-muted">{t('crm.quickPartner.contactHint')}</p>
       <Input
-        label="Correo"
+        label={t('crm.common.email')}
         type="email"
         inputMode="email"
         value={draft.email}
@@ -91,7 +94,7 @@ const ContactStep: React.FC<{ f: Form }> = ({ f }) => {
         autoFocus
       />
       <Input
-        label="Teléfono"
+        label={t('crm.common.phone')}
         type="tel"
         inputMode="tel"
         prefix={country?.phonePrefix || undefined}
@@ -106,6 +109,7 @@ const ContactStep: React.FC<{ f: Form }> = ({ f }) => {
 };
 
 const ReviewStep: React.FC<{ f: Form }> = ({ f }) => {
+  const { t } = useI18n();
   const { draft, country } = f;
   const group = f.groupOptions.find((g) => g.value === draft.groupId);
   return (
@@ -114,22 +118,31 @@ const ReviewStep: React.FC<{ f: Form }> = ({ f }) => {
         variant="surface"
         columns={2}
         items={[
-          { key: 'name', label: 'Nombre', value: draft.name.trim(), fullWidth: true },
-          { key: 'country', label: 'País', value: country?.name ?? draft.countryCode },
-          { key: 'nif', label: country?.taxIdLabel || 'NIF', value: draft.nif || null, mono: true },
-          { key: 'email', label: 'Correo', value: draft.email || null },
+          { key: 'name', label: t('crm.common.name'), value: draft.name.trim(), fullWidth: true },
+          {
+            key: 'country',
+            label: t('crm.quickPartner.country'),
+            value: country?.name ?? draft.countryCode,
+          },
+          {
+            key: 'nif',
+            label: country?.taxIdLabel || t('crm.quickPartner.nif'),
+            value: draft.nif || null,
+            mono: true,
+          },
+          { key: 'email', label: t('crm.common.email'), value: draft.email || null },
           {
             key: 'phone',
-            label: 'Teléfono',
+            label: t('crm.common.phone'),
             value: draft.phone ? `${country?.phonePrefix ?? ''} ${draft.phone}`.trim() : null,
           },
-          ...(group ? [{ key: 'group', label: 'Grupo', value: group.label }] : []),
+          ...(group
+            ? [{ key: 'group', label: t('crm.quickPartner.group'), value: group.label }]
+            : []),
         ]}
         emptyValue={<span className="text-fg-subtle">—</span>}
       />
-      <p className="text-xs text-fg-muted">
-        Dirección, forma de pago y el resto de la ficha se completan luego en Interlocutores.
-      </p>
+      <p className="text-xs text-fg-muted">{t('crm.quickPartner.reviewHint')}</p>
     </div>
   );
 };
@@ -143,17 +156,17 @@ const ReviewStep: React.FC<{ f: Form }> = ({ f }) => {
  * Solo se ofrecen grupos de cliente con prefijo: el código del interlocutor es
  * obligatorio y el servidor solo lo genera a partir de ese prefijo.
  */
-export const QuickPartnerModal: React.FC<Props> = ({
-  initial,
-  title = 'Nuevo cliente',
-  onClose,
-  onCreated,
-}) => {
+export const QuickPartnerModal: React.FC<Props> = ({ initial, title, onClose, onCreated }) => {
+  const { t } = useI18n();
   const toast = useToast();
   const f = useQuickPartnerForm(initial);
 
   const finish = (partner: Partner, existed: boolean) => {
-    toast.success(existed ? `Usando el cliente ${partner.name}` : `Cliente ${partner.name} creado`);
+    toast.success(
+      existed
+        ? t('crm.quickPartner.usingExisting', { name: partner.name })
+        : t('crm.quickPartner.created', { name: partner.name }),
+    );
     onCreated(partner);
     onClose();
   };
@@ -172,12 +185,12 @@ export const QuickPartnerModal: React.FC<Props> = ({
     <Modal
       isOpen={initial !== null}
       onClose={onClose}
-      title={title}
-      subtitle="Lo básico para seguir; el resto de la ficha se completa en Interlocutores"
+      title={title ?? t('crm.quickPartner.title')}
+      subtitle={t('crm.quickPartner.subtitle')}
       size="md"
       steps={QUICK_PARTNER_STEPS.map(({ key, label }, i) => ({
         key,
-        label,
+        label: t(label),
         optional: i === 1,
       }))}
       currentStep={f.step}
@@ -186,16 +199,21 @@ export const QuickPartnerModal: React.FC<Props> = ({
       primaryAction={
         f.isLast
           ? {
-              label: 'Crear cliente',
+              label: t('crm.quickPartner.submit'),
               type: 'submit',
               icon: <UserPlus size={14} />,
               isLoading: f.saving,
             }
-          : { label: 'Siguiente', type: 'submit', icon: <ArrowRight size={14} /> }
+          : { label: t('crm.common.next'), type: 'submit', icon: <ArrowRight size={14} /> }
       }
       secondaryAction={
         f.step > 0
-          ? { label: 'Atrás', variant: 'secondary', icon: <ArrowLeft size={14} />, onClick: f.back }
+          ? {
+              label: t('crm.common.back'),
+              variant: 'secondary',
+              icon: <ArrowLeft size={14} />,
+              onClick: f.back,
+            }
           : undefined
       }
       error={f.serverError ?? f.errors.groupId}

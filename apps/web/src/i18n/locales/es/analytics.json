@@ -1,0 +1,67 @@
+{
+  "analytics": {
+    "nav": {
+      "label": "Analítica",
+      "description": "Centros de coste, centros de beneficio y proyectos/órdenes internas.",
+      "costCenters": "Centros de coste",
+      "profitCenters": "Centros de beneficio",
+      "internalOrders": "Proyectos/Órdenes",
+      "projects": "Proyectos"
+    },
+    "common": {
+      "cancel": "Cancelar",
+      "code": "Código",
+      "create": "Crear",
+      "created": "Creado",
+      "delete": "Eliminar",
+      "deleted": "Eliminado",
+      "edit": "Editar",
+      "errorDeleting": "Error al eliminar",
+      "errorSaving": "Error al guardar",
+      "irreversible": "Esta acción no se puede deshacer.",
+      "name": "Nombre",
+      "new": "Nuevo",
+      "notes": "Notas",
+      "saveChanges": "Guardar cambios",
+      "status": "Estado",
+      "type": "Tipo",
+      "updated": "Actualizado"
+    },
+    "costCenters": {
+      "title": "Centros de coste",
+      "subtitle": "Dimensión analítica jerárquica para imputar gastos e ingresos a unidades de responsabilidad."
+    },
+    "profitCenters": {
+      "title": "Centros de beneficio",
+      "subtitle": "Dimensión ortogonal a centros de coste — útil para segmentar por línea de negocio o mercado."
+    },
+    "headerField": {
+      "label": "Proyecto",
+      "noProjectOption": "— Sin proyecto —",
+      "noProject": "Sin proyecto"
+    },
+    "internalOrders": {
+      "title": "Proyectos y órdenes internas",
+      "subtitle": "Tercera dimensión analítica. Agrupa costes e ingresos por iniciativa, proyecto o WBS.",
+      "types": {
+        "project": "Proyecto",
+        "internalOrder": "Orden interna",
+        "wbs": "WBS"
+      },
+      "statuses": {
+        "open": "Abierto",
+        "closed": "Cerrado"
+      },
+      "loadError": "Error al cargar datos",
+      "nameRequired": "Nombre es obligatorio",
+      "deleteTitle": "Eliminar proyecto",
+      "budget": "Presupuesto",
+      "budgetEur": "Presupuesto (€)",
+      "codePlaceholder": "Auto (PRJ-0001)",
+      "start": "Inicio",
+      "end": "Fin",
+      "costCenter": "Centro de coste",
+      "unassigned": "— sin asignar —"
+    }
+  }
+}
