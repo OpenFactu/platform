@@ -1,10 +1,8 @@
 import type { ChatConversationData, ChatMessageData } from '@openfactu/ui';
 import {
-  documentOf,
   toChatConversation,
   toChatMessage,
   type ConversationDto,
-  type DocumentRef,
   type MemberDto,
   type MessageDto,
   type Translate,
@@ -13,20 +11,26 @@ import { erpApi } from './messagingApi';
 
 /**
  * Lo que el kit de chat no guarda y la mensajería necesita recordar mientras
- * dura la sesión: qué mensajes son documentos y las URL locales de los
- * adjuntos (la descarga del ERP pide sesión, así que no vale un enlace).
+ * dura la sesión: tipo y canal de cada conversación, quién ha leído qué y las
+ * URL locales de los adjuntos (la descarga del ERP pide sesión, así que no
+ * vale un enlace).
  */
 
-const documents = new Map<string, DocumentRef>();
-const conversations = new Map<string, Pick<ConversationDto, 'kind' | 'myRole' | 'title'>>();
+const conversations = new Map<
+  string,
+  Pick<ConversationDto, 'kind' | 'myRole' | 'title' | 'channel' | 'contact'>
+>();
 const urls = new Map<string, string>();
+/** Quién soy: para saber qué mensajes son míos al calcular el "leído". */
+let me = '';
+/** Por conversación: hasta dónde ha leído cada persona y cuándo. */
+const reads = new Map<string, Map<string, { lastRead: string; readAt: string | null }>>();
+/** Por conversación: las personas del equipo que están dentro. */
+const insiders = new Map<string, string[]>();
+
 /** Conversaciones cuyo historial ya se pidió desde el final. */
 const historyStarted = new Set<string>();
 const pending = new Map<string, Promise<string | undefined>>();
-
-export function documentFor(messageId: string): DocumentRef | undefined {
-  return documents.get(messageId);
-}
 
 export function attachmentUrl(attachmentId: string): string | undefined {
   return urls.get(attachmentId);
@@ -79,26 +83,87 @@ export function mapConversation(
   t: Translate,
   readOnly: boolean,
 ): ChatConversationData {
-  conversations.set(dto.id, { kind: dto.kind, myRole: dto.myRole, title: dto.title });
+  insiders.set(dto.id, dto.participantIds);
+  reads.set(
+    dto.id,
+    new Map(
+      (dto.readStates ?? []).map((r) => [
+        r.userId,
+        { lastRead: r.lastReadMessageId, readAt: r.readAt },
+      ]),
+    ),
+  );
+  conversations.set(dto.id, {
+    kind: dto.kind,
+    myRole: dto.myRole,
+    title: dto.title,
+    channel: dto.channel,
+    contact: dto.contact,
+  });
   return { ...toChatConversation(dto, meId, members, t), readOnly };
 }
 
-/** Mensaje del servicio → mensaje del kit, recordando si es un documento. */
+/** Mensaje del servicio → mensaje del kit, con su "leído". */
 export function mapMessage(m: MessageDto, t: Translate): ChatMessageData {
-  const doc = documentOf(m);
-  if (doc) {
-    documents.set(m.id, doc);
-    if (m.clientMsgId) documents.set(m.clientMsgId, doc);
-  }
-  return toChatMessage(m, t, attachmentUrl);
+  return withReceipts(toChatMessage(m, t, attachmentUrl));
+}
+
+export function setMe(userId: string): void {
+  me = userId;
+}
+
+/** Alguien ha leído hasta `messageId` (solo avanza, nunca retrocede). */
+export function updateReadState(
+  conversationId: string,
+  userId: string,
+  messageId: string,
+  readAt: string | null,
+): void {
+  const byUser = reads.get(conversationId) ?? new Map();
+  reads.set(conversationId, byUser);
+  const before = byUser.get(userId);
+  if (!before || before.lastRead < messageId) byUser.set(userId, { lastRead: messageId, readAt });
+}
+
+/**
+ * El "leído" de un mensaje mío: quién lo ha leído (con cuándo, para el detalle)
+ * y estado `read` cuando lo han leído todos los demás. Los ids son UUID v7:
+ * compararlos como texto es compararlos por fecha.
+ *
+ * En las conversaciones con clientes no se pone: el proveedor (Telegram) no
+ * dice si el cliente lo ha leído, y que lo haya leído un compañero no cuenta.
+ */
+export function withReceipts(m: ChatMessageData): ChatMessageData {
+  if (!me || m.senderId !== me || m.status === 'sending' || m.status === 'error') return m;
+  const conv = conversations.get(m.conversationId);
+  if (!conv || conv.kind === 'customer') return m;
+  const recipients = (insiders.get(m.conversationId) ?? []).filter((u) => u !== me);
+  if (!recipients.length) return m;
+  const byUser = reads.get(m.conversationId);
+  const receipts = recipients.flatMap((userId) => {
+    const r = byUser?.get(userId);
+    // Leído implica entregado: misma fecha para los dos.
+    const at = r?.readAt ?? undefined;
+    return r && r.lastRead >= m.id ? [{ userId, deliveredAt: at, readAt: at }] : [];
+  });
+  const allRead = receipts.length === recipients.length;
+  const readAt = allRead
+    ? receipts
+        .map((r) => r.readAt ?? '')
+        .sort()
+        .at(-1) || undefined
+    : undefined;
+  return { ...m, receipts, status: allRead ? 'read' : 'sent', readAt, deliveredAt: readAt };
 }
 
 /** Al cerrar sesión o cambiar de empresa. */
 export function clearMessageCache(): void {
   urls.forEach((url) => URL.revokeObjectURL(url));
   urls.clear();
-  documents.clear();
   conversations.clear();
   historyStarted.clear();
+  reads.clear();
+  insiders.clear();
+  me = '';
   pending.clear();
 }

@@ -1,13 +1,24 @@
 import { apiClient } from '@/shared/http';
 import type {
   AttachmentRef,
+  ChannelAccount,
   ConversationDto,
   DocumentRef,
   MemberDto,
   MessageDto,
   MessagePage,
 } from '../domain/messaging';
+import type { MeetingInput, MeetingItem } from '../domain/meeting';
 import { rtClient } from './rtClient';
+
+/** Un enlace para invitados (el token solo se ve al crearlo). */
+export interface CallInvite {
+  id: string;
+  callId: string | null;
+  meetingId: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
 
 /** API del servicio de mensajería (`/rt/v1`), siempre con el ticket. */
 export const messagingApi = {
@@ -68,6 +79,27 @@ export const messagingApi = {
       payload: doc,
       clientMsgId,
     }),
+  inviteToCall: (callId: string) =>
+    rtClient.request<{ invite: CallInvite; token: string }>('POST', `/calls/${callId}/invites`),
+  inviteToMeeting: (meetingId: string) =>
+    rtClient.request<{ invite: CallInvite; token: string }>(
+      'POST',
+      `/meetings/${meetingId}/invites`,
+    ),
+  invites: (conversationId: string) =>
+    rtClient.request<CallInvite[]>('GET', `/conversations/${conversationId}/invites`),
+  revokeInvite: (id: string) => rtClient.request<void>('DELETE', `/invites/${id}`),
+  meetings: (from: Date, to: Date) =>
+    rtClient.request<MeetingItem[]>(
+      'GET',
+      `/meetings?limit=500&from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
+    ),
+  scheduleMeeting: (id: string, input: MeetingInput) =>
+    rtClient.request<MessageDto>('POST', `/conversations/${id}/meetings`, input),
+  rescheduleMeeting: (meetingId: string, input: MeetingInput) =>
+    rtClient.request<MessageDto>('PATCH', `/meetings/${meetingId}`, input),
+  cancelMeeting: (meetingId: string, summary: string) =>
+    rtClient.request<MessageDto>('POST', `/meetings/${meetingId}/cancel`, { summary }),
   edit: (messageId: string, body: string) =>
     rtClient.request<MessageDto>('PATCH', `/messages/${messageId}`, { body }),
   remove: (messageId: string) => rtClient.request<void>('DELETE', `/messages/${messageId}`),
@@ -75,6 +107,20 @@ export const messagingApi = {
     rtClient.request<void>('POST', `/messages/${messageId}/reactions`, { emoji, active }),
   read: (id: string, messageId: string) =>
     rtClient.request<void>('POST', `/conversations/${id}/read`, { messageId }),
+  /** Reintenta entregar al canal (Telegram…) un mensaje que falló. */
+  retry: (messageId: string) =>
+    rtClient.request<MessageDto>('POST', `/messages/${messageId}/retry`),
+
+  // Canales y contactos
+  channels: () => rtClient.request<ChannelAccount[]>('GET', '/channels'),
+  connectTelegram: (token: string) =>
+    rtClient.request<ChannelAccount>('PUT', '/channels/telegram', { token }),
+  disconnectTelegram: () => rtClient.request<void>('DELETE', '/channels/telegram'),
+  linkContact: (contactId: string, partner: { id: string; name: string } | null) =>
+    rtClient.request<void>('PATCH', `/contacts/${contactId}`, {
+      partnerId: partner?.id ?? null,
+      partnerName: partner?.name ?? null,
+    }),
 };
 
 /** Lo que la mensajería necesita del ERP: personas, ficheros y buscador. */

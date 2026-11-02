@@ -24,6 +24,11 @@ pub enum MessageKind {
     /// Ficheros subidos por el ERP a `/api/attachments` (hasta `MAX_FILES`).
     Attachment,
     System,
+    /// Una reunión programada: su payload es la foto de la reunión
+    /// (`domain::meeting::MeetingSnapshot`). Se crea con `/meetings`.
+    Meeting,
+    /// Una videollamada que ha terminado: quién la empezó y cuánto duró.
+    Call,
 }
 
 impl MessageKind {
@@ -33,6 +38,8 @@ impl MessageKind {
             MessageKind::Document => "document",
             MessageKind::Attachment => "attachment",
             MessageKind::System => "system",
+            MessageKind::Meeting => "meeting",
+            MessageKind::Call => "call",
         }
     }
 
@@ -42,6 +49,8 @@ impl MessageKind {
             "document" => Some(MessageKind::Document),
             "attachment" => Some(MessageKind::Attachment),
             "system" => Some(MessageKind::System),
+            "meeting" => Some(MessageKind::Meeting),
+            "call" => Some(MessageKind::Call),
             _ => None,
         }
     }
@@ -115,6 +124,9 @@ pub fn validate_new(input: NewMessageInput) -> Result<ValidMessage, DomainError>
 
     let payload = match input.kind {
         MessageKind::System => return Err(DomainError::SystemNotAllowed),
+        // Las reuniones tienen su propio endpoint: aquí no se aceptan a mano.
+        MessageKind::Meeting => return Err(DomainError::InvalidPayload("meeting")),
+        MessageKind::Call => return Err(DomainError::InvalidPayload("call")),
         MessageKind::Text => {
             if body.is_none() {
                 return Err(DomainError::EmptyMessage);

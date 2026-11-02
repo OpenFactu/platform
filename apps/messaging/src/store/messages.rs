@@ -4,6 +4,7 @@ use serde_json::Value;
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
+use crate::crypto::Vault;
 use crate::domain::message::{MessageKind, ValidMessage};
 
 #[derive(Debug, Clone, Serialize, FromRow)]
@@ -11,8 +12,13 @@ use crate::domain::message::{MessageKind, ValidMessage};
 pub struct MessageDto {
     pub id: Uuid,
     pub conversation_id: Uuid,
-    /// Usuario autor; `None` en los mensajes de sistema.
+    /// Con qué clave se abre. No sale del servicio.
+    #[serde(skip)]
+    pub tenant_id: String,
+    /// Usuario autor; `None` si lo escribió un cliente o el sistema.
     pub author_id: Option<String>,
+    /// Contacto autor, en las conversaciones con clientes.
+    pub author_contact_id: Option<String>,
     pub kind: String,
     pub body: Option<String>,
     pub payload: Option<Value>,
@@ -20,6 +26,8 @@ pub struct MessageDto {
     pub reply_to_id: Option<Uuid>,
     /// `[{ emoji, userIds }]`, en el orden en que apareció cada emoji.
     pub reactions: Value,
+    /// Si el proveedor (Telegram…) no aceptó el mensaje, por qué.
+    pub delivery_error: Option<String>,
     pub edited_at: Option<DateTime<Utc>>,
     pub deleted_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
@@ -36,24 +44,38 @@ COALESCE((SELECT json_agg(json_build_object('emoji', r.emoji, 'userIds', r.user_
 
 fn select() -> String {
     format!(
-        "SELECT m.id, m.conversation_id, ap.user_id AS author_id, m.kind, m.body, m.payload,
-                m.client_msg_id, m.reply_to_id, {REACTIONS_SQL} AS reactions,
+        "SELECT m.id, m.conversation_id, m.tenant_id, ap.user_id AS author_id,
+                ap.contact_ref AS author_contact_id, m.kind, m.body, m.payload,
+                m.client_msg_id, m.reply_to_id, {REACTIONS_SQL} AS reactions, m.delivery_error,
                 m.edited_at, m.deleted_at, m.created_at
            FROM message m
            LEFT JOIN participant ap ON ap.id = m.author_participant_id"
     )
 }
 
-pub async fn get(db: &PgPool, id: Uuid) -> Result<Option<MessageDto>, sqlx::Error> {
-    sqlx::query_as(&format!("{} WHERE m.id = $1", select()))
+/// Texto y contenido, tal como se leen de la base de datos, en claro.
+async fn opened(vault: &Vault, mut dto: MessageDto) -> Result<MessageDto, sqlx::Error> {
+    let cipher = vault.tenant(&dto.tenant_id).await?;
+    dto.body = cipher.open_opt(dto.body.take());
+    dto.payload = cipher.open_json(dto.payload.take());
+    Ok(dto)
+}
+
+pub async fn get(db: &PgPool, vault: &Vault, id: Uuid) -> Result<Option<MessageDto>, sqlx::Error> {
+    let row: Option<MessageDto> = sqlx::query_as(&format!("{} WHERE m.id = $1", select()))
         .bind(id)
         .fetch_optional(db)
-        .await
+        .await?;
+    match row {
+        Some(dto) => opened(vault, dto).await.map(Some),
+        None => Ok(None),
+    }
 }
 
 /// Una página de mensajes anteriores a `before`, en orden cronológico.
 pub async fn page(
     db: &PgPool,
+    vault: &Vault,
     conversation_id: Uuid,
     before: Option<Uuid>,
     limit: i64,
@@ -69,18 +91,24 @@ pub async fn page(
     .fetch_all(db)
     .await?;
     rows.reverse();
-    Ok(rows)
+    let mut messages = Vec::with_capacity(rows.len());
+    for dto in rows {
+        messages.push(opened(vault, dto).await?);
+    }
+    Ok(messages)
 }
 
 /// Guarda el mensaje. Si el mismo autor ya mandó ese `client_msg_id`, devuelve
 /// el que había (`created = false`) en vez de duplicarlo.
 pub async fn insert(
     db: &PgPool,
+    vault: &Vault,
     tenant_id: &str,
     conversation_id: Uuid,
     author_participant_id: Uuid,
     msg: &ValidMessage,
 ) -> Result<(MessageDto, bool), sqlx::Error> {
+    let cipher = vault.tenant(tenant_id).await?;
     let mut tx = db.begin().await?;
     let id = Uuid::now_v7();
     let inserted: Option<Uuid> = sqlx::query_scalar(
@@ -95,8 +123,8 @@ pub async fn insert(
     .bind(tenant_id)
     .bind(author_participant_id)
     .bind(msg.kind.as_str())
-    .bind(&msg.body)
-    .bind(&msg.payload)
+    .bind(cipher.seal_opt(msg.body.as_deref()))
+    .bind(msg.payload.as_ref().map(|p| cipher.seal_json(p)))
     .bind(&msg.client_msg_id)
     .bind(msg.reply_to_id)
     .fetch_optional(&mut *tx)
@@ -111,7 +139,9 @@ pub async fn insert(
             .execute(&mut *tx)
             .await?;
             // Lo que uno escribe no le cuenta como no leído.
-            sqlx::query("UPDATE participant SET last_read_message_id = $2 WHERE id = $1")
+            sqlx::query(
+                "UPDATE participant SET last_read_message_id = $2, last_read_at = now() WHERE id = $1",
+            )
                 .bind(author_participant_id)
                 .bind(id)
                 .execute(&mut *tx)
@@ -131,7 +161,7 @@ pub async fn insert(
     };
     tx.commit().await?;
 
-    let dto = get(db, id).await?.ok_or(sqlx::Error::RowNotFound)?;
+    let dto = get(db, vault, id).await?.ok_or(sqlx::Error::RowNotFound)?;
     Ok((dto, created))
 }
 
@@ -141,6 +171,8 @@ pub struct MessageOwner {
     pub author_participant_id: Option<Uuid>,
     pub kind: MessageKind,
     pub deleted: bool,
+    /// Su id en el proveedor del canal (Telegram…), si pasó por uno.
+    pub external_id: Option<String>,
 }
 
 #[derive(FromRow)]
@@ -149,6 +181,7 @@ struct OwnerRow {
     author_participant_id: Option<Uuid>,
     kind: String,
     deleted_at: Option<DateTime<Utc>>,
+    external_id: Option<String>,
 }
 
 pub async fn owner(
@@ -157,7 +190,7 @@ pub async fn owner(
     id: Uuid,
 ) -> Result<Option<MessageOwner>, sqlx::Error> {
     let row: Option<OwnerRow> = sqlx::query_as(
-        "SELECT conversation_id, author_participant_id, kind, deleted_at
+        "SELECT conversation_id, author_participant_id, kind, deleted_at, external_id
            FROM message WHERE id = $1 AND tenant_id = $2",
     )
     .bind(id)
@@ -170,17 +203,88 @@ pub async fn owner(
             author_participant_id: r.author_participant_id,
             kind: MessageKind::parse(&r.kind)?,
             deleted: r.deleted_at.is_some(),
+            external_id: r.external_id,
         })
     }))
 }
 
-pub async fn edit(db: &PgPool, id: Uuid, body: &str) -> Result<MessageDto, sqlx::Error> {
+/// El mensaje de esa conversación que el proveedor conoce con ese id.
+pub async fn find_by_external(
+    db: &PgPool,
+    conversation_id: Uuid,
+    external_id: &str,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    sqlx::query_scalar("SELECT id FROM message WHERE conversation_id = $1 AND external_id = $2")
+        .bind(conversation_id)
+        .bind(external_id)
+        .fetch_optional(db)
+        .await
+}
+
+/// Lo que reacciona alguien de fuera llega como "sus reacciones ahora son
+/// estas": se sustituyen las que tuviera en el mensaje.
+pub async fn replace_reactions(
+    db: &PgPool,
+    message_id: Uuid,
+    user_id: &str,
+    emojis: &[String],
+) -> Result<Value, sqlx::Error> {
+    let mut tx = db.begin().await?;
+    sqlx::query("DELETE FROM message_reaction WHERE message_id = $1 AND user_id = $2")
+        .bind(message_id)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await?;
+    for emoji in emojis {
+        sqlx::query(
+            "INSERT INTO message_reaction (message_id, user_id, emoji) VALUES ($1, $2, $3)
+             ON CONFLICT DO NOTHING",
+        )
+        .bind(message_id)
+        .bind(user_id)
+        .bind(emoji)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
+    sqlx::query_scalar(&format!(
+        "SELECT {REACTIONS_SQL} FROM message m WHERE m.id = $1"
+    ))
+    .bind(message_id)
+    .fetch_one(db)
+    .await
+}
+
+/// La reacción más reciente del equipo (no de clientes) en el mensaje: la que
+/// el bot pone en el proveedor, que solo deja una por mensaje.
+pub async fn latest_team_reaction(
+    db: &PgPool,
+    message_id: Uuid,
+) -> Result<Option<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT emoji FROM message_reaction
+          WHERE message_id = $1 AND user_id NOT LIKE 'contact:%'
+          ORDER BY created_at DESC LIMIT 1",
+    )
+    .bind(message_id)
+    .fetch_optional(db)
+    .await
+}
+
+pub async fn edit(
+    db: &PgPool,
+    vault: &Vault,
+    tenant_id: &str,
+    id: Uuid,
+    body: &str,
+) -> Result<MessageDto, sqlx::Error> {
+    let cipher = vault.tenant(tenant_id).await?;
     sqlx::query("UPDATE message SET body = $2, edited_at = now() WHERE id = $1")
         .bind(id)
-        .bind(body)
+        .bind(cipher.seal(body))
         .execute(db)
         .await?;
-    get(db, id).await?.ok_or(sqlx::Error::RowNotFound)
+    get(db, vault, id).await?.ok_or(sqlx::Error::RowNotFound)
 }
 
 /// Borrado suave: queda el hueco ("mensaje eliminado") pero no el contenido.
@@ -204,7 +308,7 @@ pub async fn mark_read(
     message_id: Uuid,
 ) -> Result<bool, sqlx::Error> {
     let done = sqlx::query(
-        "UPDATE participant SET last_read_message_id = $3
+        "UPDATE participant SET last_read_message_id = $3, last_read_at = now()
           WHERE id = $1
             AND (last_read_message_id IS NULL OR last_read_message_id < $3)
             AND EXISTS (SELECT 1 FROM message WHERE id = $3 AND conversation_id = $2)",
@@ -267,4 +371,20 @@ pub async fn set_reaction(
     .bind(message_id)
     .fetch_one(db)
     .await
+}
+
+/// Resultado de entregarlo al proveedor: su id allí o el error.
+pub async fn set_delivery(
+    db: &PgPool,
+    id: Uuid,
+    external_id: Option<&str>,
+    error: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE message SET external_id = $2, delivery_error = $3 WHERE id = $1")
+        .bind(id)
+        .bind(external_id)
+        .bind(error)
+        .execute(db)
+        .await?;
+    Ok(())
 }

@@ -4,7 +4,7 @@ import { TabsHost } from './tabs/TabsHost';
 import { IconSidebar } from './layout/IconSidebar';
 import { TopHeader } from './layout/TopHeader';
 import { ModuleTabBar } from './layout/ModuleTabBar';
-import { MobileBottomNav } from './layout/MobileBottomNav';
+import { MobileActionButton } from './layout/MobileActionButton';
 import { PageLoading } from './PageLoading';
 import { ImportProgressWatcher } from '@/modules/data-import/components/ImportProgressWatcher';
 import { useAuth } from '../context/AuthContext';
@@ -42,11 +42,11 @@ export const MainLayout: React.FC = () => {
           <TopHeader />
           <ModuleTabBar />
           <TabBar />
-          <main className="flex-1 flex flex-col bg-bg-app min-h-0 pb-20 md:pb-0">
+          <main className="flex-1 flex flex-col bg-bg-app min-h-0">
             <TabsHost />
           </main>
         </div>
-        <MobileBottomNav />
+        <MobileActionButton />
         {/* Sigue las importaciones en curso y las pinta en un aviso con barra de
           progreso. Va aquí y no en su pantalla: una carga de miles de filas
           tarda, y quien la lanza se va a trabajar a otro sitio. */}

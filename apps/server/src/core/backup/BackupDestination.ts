@@ -13,6 +13,7 @@
  */
 
 import fs from 'fs';
+import { isBackupFileName } from './backupCrypto';
 import path from 'path';
 import type { BackupConfig } from './backupConfig';
 import { getStorageConfig } from '../config/storageConfig';
@@ -94,7 +95,7 @@ class LocalBackupDestination implements BackupDestination {
     }
     const out: BackupFileInfo[] = [];
     for (const name of entries) {
-      if (!name.endsWith('.zip')) continue;
+      if (!isBackupFileName(name)) continue;
       try {
         const stat = await fs.promises.stat(path.join(this.dir, name));
         out.push({
@@ -160,7 +161,7 @@ class CloudBackupDestination implements BackupDestination {
     const folderId = await this.folder();
     const files: CloudFileInfo[] = await this.client.listChildren(folderId);
     return files
-      .filter((f) => f.name.endsWith('.zip'))
+      .filter((f) => isBackupFileName(f.name))
       .map((f) => ({
         externalId: f.id,
         fileName: f.name,

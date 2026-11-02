@@ -8,6 +8,10 @@ export interface MessagingPeople {
   membersById: Map<string, MemberDto>;
   /** El ticket no da escritura: se ve todo, no se escribe nada. */
   readOnly: boolean;
+  /** Atiende a clientes (ve la bandeja de Telegram…). */
+  customers: boolean;
+  /** Puede conectar los canales de la empresa. */
+  manage: boolean;
 }
 
 export const MessagingPeopleContext = createContext<MessagingPeople | null>(null);

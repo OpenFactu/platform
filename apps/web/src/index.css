@@ -79,6 +79,30 @@
   }
 }
 
+/*
+ * Kit de chat en el teléfono: botones de 48px (mobile.css:71) y burbujas con
+ * mucho relleno; aquí se compacta. El `html` del selector es para ganar a
+ * mobile.css, que va antes con la misma especificidad.
+ */
+@media (max-width: 640px) {
+  html .k-chat-workspace {
+    --k-chat-message-gap: 10px;
+    font-size: 14px;
+  }
+  html .k-chat-workspace .k-chat-header {
+    min-height: 56px;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  html .k-chat-workspace .k-chat-icon-button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  html .k-chat-workspace .k-chat-bubble {
+    padding: 8px 12px 6px;
+  }
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -23,8 +23,8 @@ const ScannerContext = createContext<ScannerContextType | undefined>(undefined);
  * búsqueda de la página activa) gana. Así cualquier pantalla puede
  * suscribirse con `useBarcodeScanner` sin colisionar con otras.
  *
- * También expone `openCamera()` para que el botón central del bottom-nav
- * móvil dispare el modal de cámara aunque el handler viva en otra pantalla.
+ * También expone `openCamera()` para que el botón flotante de móvil dispare
+ * el modal de cámara aunque el handler viva en otra pantalla.
  */
 export const ScannerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const handlersRef = useRef<ScanHandler[]>([]);

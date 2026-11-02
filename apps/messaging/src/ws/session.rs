@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use super::protocol::{ClientEvent, ServerEvent};
 use crate::auth::{AuthError, Session};
+use crate::domain::conversation::ConversationKind;
 use crate::state::AppState;
 use crate::store;
 
@@ -39,7 +40,7 @@ pub async fn run(socket: WebSocket, state: AppState) {
 
     let tenant = session.tenant_id.clone();
     let user = session.user_id.clone();
-    let mut reg = state.hub.register(&tenant, &user);
+    let mut reg = state.hub.register(&tenant, &user, session.customers);
     if reg.came_online {
         state.hub.publish_tenant(
             &tenant,
@@ -74,7 +75,7 @@ pub async fn run(socket: WebSocket, state: AppState) {
                     match msg {
                         Message::Text(text) => {
                             let reply = handle_client_event(
-                                &state, &mut session, &mut last_typing, text.as_str(),
+                                &state, &mut session, reg.id, &mut last_typing, text.as_str(),
                             )
                             .await;
                             match reply {
@@ -113,6 +114,7 @@ pub async fn run(socket: WebSocket, state: AppState) {
         }
     }
 
+    state.calls.connection_closed(&state, reg.id).await;
     if state.hub.unregister(&tenant, &user, reg.id) {
         state.hub.publish_tenant(
             &tenant,
@@ -154,6 +156,7 @@ async fn authenticate(
 async fn handle_client_event(
     state: &AppState,
     session: &mut Session,
+    conn: u64,
     last_typing: &mut HashMap<Uuid, Instant>,
     text: &str,
 ) -> Result<Option<ServerEvent>, &'static str> {
@@ -163,6 +166,48 @@ async fn handle_client_event(
 
     match event {
         ClientEvent::Ping => Ok(Some(ServerEvent::Pong)),
+        ClientEvent::CallJoin { call_id, sdp } => Ok(Some(
+            state.calls.join(state, session, conn, call_id, sdp).await,
+        )),
+        ClientEvent::CallAnswer { call_id, sdp } => {
+            state.calls.answer(conn, call_id, sdp).await;
+            Ok(None)
+        }
+        ClientEvent::CallLeave { call_id } => {
+            state.calls.leave(conn, call_id).await;
+            Ok(None)
+        }
+        ClientEvent::CallChat { call_id, text } => {
+            state.calls.chat(state, conn, call_id, &text);
+            Ok(None)
+        }
+        ClientEvent::CallAdmit {
+            call_id,
+            guest_id,
+            admit,
+        } => {
+            state
+                .calls
+                .decide_guest(state, conn, call_id, guest_id, admit)
+                .await;
+            Ok(None)
+        }
+        ClientEvent::CallQuality { call_id, quality } => {
+            state.calls.set_quality(conn, call_id, &quality).await;
+            Ok(None)
+        }
+        ClientEvent::CallMedia {
+            call_id,
+            mic,
+            cam,
+            screen,
+        } => {
+            state
+                .calls
+                .set_media(state, conn, call_id, (mic, cam, screen))
+                .await;
+            Ok(None)
+        }
         ClientEvent::Auth { .. } => Ok(None),
         ClientEvent::TicketRefresh { ticket } => {
             let fresh = state.tickets.verify(&ticket).map_err(|e| e.code())?;
@@ -195,14 +240,26 @@ async fn publish_typing(
     session: &Session,
     conversation_id: Uuid,
 ) -> Result<(), sqlx::Error> {
-    let member = store::conversations::membership(
+    let member = store::conversations::access(
         &state.db,
         &session.tenant_id,
         conversation_id,
         &session.user_id,
+        session.customers,
     )
     .await?;
-    if member.is_none() {
+    let Some(member) = member else {
+        return Ok(());
+    };
+    let event = ServerEvent::Typing {
+        conversation_id,
+        user_id: session.user_id.clone(),
+    };
+    // En las de clientes, lo ve el resto del equipo que atiende la bandeja.
+    if member.kind == ConversationKind::Customer {
+        state
+            .broadcaster
+            .publish_customers(&session.tenant_id, &event);
         return Ok(());
     }
     let others: Vec<String> = store::conversations::active_user_ids(&state.db, conversation_id)
@@ -210,14 +267,9 @@ async fn publish_typing(
         .into_iter()
         .filter(|u| *u != session.user_id)
         .collect();
-    state.broadcaster.publish(
-        &session.tenant_id,
-        &others,
-        &ServerEvent::Typing {
-            conversation_id,
-            user_id: session.user_id.clone(),
-        },
-    );
+    state
+        .broadcaster
+        .publish(&session.tenant_id, &others, &event);
     Ok(())
 }
 

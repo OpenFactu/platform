@@ -5,6 +5,8 @@ import type {
   ChatReaction,
   ChatUser,
 } from '@openfactu/ui';
+import { MEETING_BLOCK, isMeeting, type MeetingSnapshot } from './meeting';
+import type { CallChatLine, CallState, WaitingGuest } from './call';
 
 /**
  * Tipos del servicio de mensajería (`apps/messaging`) y su traducción a los
@@ -22,13 +24,23 @@ export interface LastMessageDto {
   kind: MessageKind;
   body: string | null;
   authorId: string | null;
+  authorContactId: string | null;
   createdAt: string;
   deleted: boolean;
 }
 
+/** Cliente de fuera, en las conversaciones por un canal (Telegram…). */
+export interface ContactDto {
+  id: string;
+  displayName: string;
+  username: string | null;
+  partnerId: string | null;
+  partnerName: string | null;
+}
+
 export interface ConversationDto {
   id: string;
-  kind: 'direct' | 'group';
+  kind: 'direct' | 'group' | 'customer';
   channel: string;
   title: string | null;
   createdBy: string;
@@ -43,10 +55,19 @@ export interface ConversationDto {
   unread: number;
   participantIds: string[];
   pinnedMessageIds: string[];
+  /** Hasta dónde ha leído cada persona del equipo. */
+  readStates: ReadStateDto[];
   lastMessage: LastMessageDto | null;
+  contact: ContactDto | null;
 }
 
-export type MessageKind = 'text' | 'document' | 'attachment' | 'system';
+export interface ReadStateDto {
+  userId: string;
+  lastReadMessageId: string;
+  readAt: string | null;
+}
+
+export type MessageKind = 'text' | 'document' | 'attachment' | 'system' | 'meeting' | 'call';
 
 export interface DocumentRef {
   docType: DocType;
@@ -65,21 +86,42 @@ export interface MessageDto {
   id: string;
   conversationId: string;
   authorId: string | null;
+  authorContactId: string | null;
   kind: MessageKind;
   body: string | null;
-  payload: DocumentRef | { files: AttachmentRef[] } | null;
+  payload: DocumentRef | { files: AttachmentRef[] } | MeetingSnapshot | CallSummary | null;
   clientMsgId: string | null;
   replyToId: string | null;
   reactions: ChatReaction[];
+  /** El proveedor del canal (Telegram…) no aceptó el mensaje. */
+  deliveryError: string | null;
   editedAt: string | null;
   deletedAt: string | null;
   createdAt: string;
+}
+
+/** Un canal conectado en la empresa (sin la credencial, que no sale del servicio). */
+export interface ChannelAccount {
+  channel: string;
+  displayName: string;
+  config: { username?: string; botId?: number };
+  status: 'active' | 'error' | 'disabled';
+  lastError: string | null;
 }
 
 export interface MessagePage {
   messages: MessageDto[];
   hasMore: boolean;
 }
+
+/** Una llamada que terminó, en la conversación. */
+export interface CallSummary {
+  callId: string;
+  startedBy: string;
+  seconds: number;
+}
+
+export const CALL_BLOCK = 'keirost.call';
 
 export type ServerEvent =
   | { type: 'ready'; userId: string; online: string[] }
@@ -93,11 +135,28 @@ export type ServerEvent =
     }
   | { type: 'message.deleted'; conversationId: string; messageId: string }
   | { type: 'conversation.updated'; conversationId: string }
-  | { type: 'read'; conversationId: string; userId: string; messageId: string }
+  | { type: 'read'; conversationId: string; userId: string; messageId: string; readAt: string }
   | { type: 'typing'; conversationId: string; userId: string }
   | { type: 'presence'; userId: string; online: boolean }
   | { type: 'error'; code: string }
-  | { type: 'pong' };
+  | { type: 'pong' }
+  | { type: 'call.ringing'; call: CallState }
+  | { type: 'call.updated'; call: CallState }
+  | { type: 'call.ended'; callId: string; conversationId: string }
+  | {
+      type: 'call.joined';
+      callId: string;
+      peerId: number;
+      sdp: RTCSessionDescriptionInit;
+      chat: CallChatLine[];
+    }
+  | { type: 'call.chat'; callId: string; line: CallChatLine }
+  | { type: 'call.lobby'; callId: string; waiting: WaitingGuest[] }
+  | { type: 'guest.waiting' }
+  | { type: 'guest.admitted'; call: CallState; iceServers: RTCIceServer[] }
+  | { type: 'guest.rejected' }
+  | { type: 'call.offer'; callId: string; sdp: RTCSessionDescriptionInit }
+  | { type: 'call.error'; callId: string; code: string };
 
 // ── Documentos del ERP que se pueden compartir ─────────────────────────────
 
@@ -123,6 +182,9 @@ export const SEARCH_SECTIONS: { key: string; docType: DocType }[] = [
   { key: 'purchaseDeliveryNotes', docType: 'PDN' },
 ];
 
+/** `kind` del bloque de un documento compartido dentro de la burbuja. */
+export const DOCUMENT_BLOCK = 'keirost.document';
+
 export function isDocType(value: unknown): value is DocType {
   return typeof value === 'string' && value in DOCUMENTS;
 }
@@ -143,12 +205,24 @@ export function documentLabel(ref: DocumentRef, t: Translate): string {
   return ref.number ? `${type} ${ref.number}` : type;
 }
 
+/** En el kit, un contacto de fuera es un "usuario" más con este id. */
+export function contactUserId(contactId: string): string {
+  return `contact:${contactId}`;
+}
+
+/** Remitente para el kit: el usuario del equipo o el contacto de fuera. */
+function senderOf(authorId: string | null, authorContactId: string | null): string {
+  if (authorId) return authorId;
+  return authorContactId ? contactUserId(authorContactId) : '';
+}
+
 export function conversationTitle(
-  conv: Pick<ConversationDto, 'kind' | 'title' | 'participantIds'>,
+  conv: Pick<ConversationDto, 'kind' | 'title' | 'participantIds' | 'contact'>,
   meId: string,
   members: Map<string, MemberDto>,
   t: Translate,
 ): string {
+  if (conv.kind === 'customer' && conv.contact) return conv.contact.displayName;
   if (conv.title) return conv.title;
   const others = conv.participantIds.filter((id) => id !== meId);
   const names = others.map((id) => members.get(id)?.name ?? t('messaging.unknownUser'));
@@ -162,10 +236,21 @@ export function toChatConversation(
   members: Map<string, MemberDto>,
   t: Translate,
 ): ChatConversationData {
+  // En las de clientes, el canal y con quién está vinculado, bajo el nombre.
+  const contact = conv.kind === 'customer' ? conv.contact : null;
+  const channel = t(`messaging.channels.names.${conv.channel}`);
+  const description = contact
+    ? [channel, contact.partnerName ?? (contact.username ? `@${contact.username}` : null)]
+        .filter(Boolean)
+        .join(' · ')
+    : undefined;
   return {
     id: conv.id,
     title: conversationTitle(conv, meId, members, t),
-    participantIds: conv.participantIds,
+    description,
+    participantIds: contact
+      ? [...conv.participantIds, contactUserId(contact.id)]
+      : conv.participantIds,
     unreadCount: conv.unread,
     hasOlderMessages: Boolean(conv.lastMessage),
     favorite: conv.favorite,
@@ -183,7 +268,7 @@ export function lastToChatMessage(conv: ConversationDto, t: Translate): ChatMess
   return {
     id: last.id,
     conversationId: conv.id,
-    senderId: last.authorId ?? '',
+    senderId: senderOf(last.authorId, last.authorContactId),
     text: last.deleted ? '' : previewText(last.kind, last.body, t),
     createdAt: last.createdAt,
     deletedAt: last.deleted ? last.createdAt : undefined,
@@ -212,13 +297,24 @@ export function toChatMessage(
     status: 'ready',
     url: attachmentUrl(f.attachmentId),
   }));
+  const meeting = m.kind === 'meeting' && isMeeting(m.payload) ? m.payload : null;
   return {
     id: m.id,
     conversationId: m.conversationId,
-    senderId: m.authorId ?? '',
-    // El documento va en el texto para que la lista y las búsquedas lo vean;
-    // la burbuja lo pinta como tarjeta (ver DocumentMessage).
-    text: doc ? [documentLabel(doc, t), m.body].filter(Boolean).join('\n') : (m.body ?? ''),
+    senderId: senderOf(m.authorId, m.authorContactId),
+    // El texto de una reunión es para quien solo recibe texto (Telegram): aquí
+    // la pinta su tarjeta.
+    text: meeting ? '' : (m.body ?? ''),
+    // El documento y la reunión van como bloque dentro de la burbuja; su
+    // `summary` es lo que ven la lista, las respuestas y la búsqueda (ver
+    // `MessagingHost`).
+    blocks: doc
+      ? [{ kind: DOCUMENT_BLOCK, data: doc }]
+      : meeting
+        ? [{ kind: MEETING_BLOCK, data: meeting }]
+        : m.kind === 'call' && m.payload
+          ? [{ kind: CALL_BLOCK, data: m.payload }]
+          : undefined,
     createdAt: m.createdAt,
     clientId: m.clientMsgId ?? undefined,
     replyToId: m.replyToId ?? undefined,
@@ -226,8 +322,24 @@ export function toChatMessage(
     editedAt: m.editedAt ?? undefined,
     deletedAt: m.deletedAt ?? undefined,
     attachments: attachments.length ? attachments : undefined,
-    status: 'sent',
+    // Si el canal no lo entregó, el kit lo pinta como fallido con su botón de reintentar.
+    status: m.deliveryError ? 'error' : 'sent',
+    error: m.deliveryError ? t('messaging.channels.notDelivered') : undefined,
   };
+}
+
+/** Un cliente de fuera como "usuario" del kit, para pintar su nombre. */
+export function contactUser(contact: ContactDto): ChatUser {
+  return { id: contactUserId(contact.id), name: contact.displayName };
+}
+
+/** Los clientes de las conversaciones, como "usuarios" del kit para pintar su nombre. */
+export function contactUsers(conversations: ConversationDto[]): ChatUser[] {
+  const seen = new Map<string, ChatUser>();
+  for (const c of conversations) {
+    if (c.contact) seen.set(c.contact.id, contactUser(c.contact));
+  }
+  return [...seen.values()];
 }
 
 export function toChatUsers(members: MemberDto[], online: Set<string>): ChatUser[] {

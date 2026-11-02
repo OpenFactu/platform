@@ -17,5 +17,7 @@ export function messagingErrorText(err: unknown, t: Translate): string {
     if (text !== key) return text;
   }
   if (err instanceof ApiError && err.status === 0) return err.message;
+  // Un Error propio (no de la API) ya trae su texto para el usuario.
+  if (err instanceof Error && !(err instanceof ApiError) && err.message) return err.message;
   return t('messaging.errors.generic');
 }

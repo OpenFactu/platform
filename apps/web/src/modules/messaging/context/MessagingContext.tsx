@@ -19,6 +19,7 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pageTarget, setPageTarget] = useState<HTMLElement | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [focusConversation, setFocusConversation] = useState<string | null>(null);
 
   const enabled =
     isAuthenticated && Boolean(user) && flags.messagingEnabled && canRead(user, '/messaging');
@@ -43,9 +44,11 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setDrawerOpen,
       pageTarget,
       setPageTarget,
+      focusConversation,
+      setFocusConversation,
       retry: () => setAttempt((n) => n + 1),
     }),
-    [enabled, sessionKey, phase, unread, drawerOpen, pageTarget],
+    [enabled, sessionKey, phase, unread, drawerOpen, pageTarget, focusConversation],
   );
   return <MessagingContext.Provider value={value}>{children}</MessagingContext.Provider>;
 };

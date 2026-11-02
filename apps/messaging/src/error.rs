@@ -53,7 +53,9 @@ impl From<AuthError> for ApiError {
 impl From<DomainError> for ApiError {
     fn from(e: DomainError) -> Self {
         let status = match e {
-            DomainError::OnlyOwnerCanRemove | DomainError::OnlyAuthor => StatusCode::FORBIDDEN,
+            DomainError::OnlyOwnerCanRemove
+            | DomainError::OnlyAuthor
+            | DomainError::OnlyOrganizer => StatusCode::FORBIDDEN,
             _ => StatusCode::BAD_REQUEST,
         };
         Self::new(status, e.code(), e.to_string())

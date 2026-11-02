@@ -5,6 +5,7 @@
  */
 
 import crypto from 'crypto';
+import { ENCRYPTED_EXTENSION, isEncryptedBackup } from './backupCrypto';
 import { desc, eq, inArray } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { ClientFactory } from '../tenant/ClientFactory';
@@ -67,10 +68,13 @@ export class BackupService {
 
     try {
       const dest = await resolveBackupDestination(tenantClient, tenant.schemaName, cfg.destination);
+      const warnings: string[] = [];
       const zip = await TenantBackup.exportToZip(tenant.id, {
         includeUploads: cfg.includeUploads,
+        onWarning: (message) => warnings.push(message),
       });
-      const fileName = `keirost_${tenant.schemaName}_${timestampSlug()}.zip`;
+      const extension = isEncryptedBackup(zip) ? ENCRYPTED_EXTENSION : '.zip';
+      const fileName = `keirost_${tenant.schemaName}_${timestampSlug()}${extension}`;
       const stored = await dest.put(fileName, zip);
 
       await tenantClient
@@ -88,6 +92,17 @@ export class BackupService {
         (e) =>
           console.warn(`[BackupService] Retención fallida para ${tenant.schemaName}:`, e?.message),
       );
+
+      if (warnings.length > 0) {
+        await notifyTenant({
+          tenantId: tenant.id,
+          tenantClient,
+          level: 'warn',
+          title: 'Copia de seguridad incompleta o sin cifrar',
+          body: warnings.join(' '),
+          link: '/settings/company?tab=backups',
+        }).catch(() => undefined);
+      }
 
       return { runId, ok: true };
     } catch (e: any) {
@@ -117,7 +132,7 @@ export class BackupService {
   /**
    * Conserva los `retentionCount` backups más recientes del destino (por
    * nombre de archivo, que lleva timestamp) y borra el resto, junto con sus
-   * filas BackupRun. Solo toca archivos `keirost_<schema>_*.zip` — defensa
+   * filas BackupRun. Solo toca archivos `keirost_<schema>_*.zip[.enc]` — defensa
    * por si el destino apunta a una carpeta compartida.
    */
   static async applyRetention(

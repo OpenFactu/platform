@@ -23,7 +23,8 @@ const TTL_SECONDS = 15 * 60;
 /** Mismo valor que DEV_TICKET_SECRET en apps/messaging/src/config.rs. */
 const DEV_TICKET_SECRET = 'keirost-messaging-dev-secret';
 
-function ticketSecret(): string | null {
+/** El secreto compartido con el servicio de mensajería (tickets y token de servicio). */
+export function messagingTicketSecret(): string | null {
   const secret = process.env.MESSAGING_TICKET_SECRET?.trim();
   if (secret) return secret;
   return process.env.NODE_ENV === 'production' ? null : DEV_TICKET_SECRET;
@@ -34,7 +35,7 @@ router.post('/ticket', async (req: any, res) => {
   const tenantId: string | undefined = req.tenantId;
   if (!userId || !tenantId) return res.status(401).json({ error: 'No autorizado' });
 
-  const secret = ticketSecret();
+  const secret = messagingTicketSecret();
   if (!secret) {
     console.error('[Mensajes] Falta MESSAGING_TICKET_SECRET en producción');
     return res.status(503).json({ error: 'La mensajería no está configurada' });
@@ -67,19 +68,24 @@ router.post('/ticket', async (req: any, res) => {
 
     const permissions = await permissionsForRequest(req);
     const canWrite = permissions === null || !!permissions['/messaging']?.write;
+    // Atender clientes (Telegram…) es un permiso aparte del chat del equipo.
+    const customers = permissions === null || !!permissions['/messaging/customers']?.read;
+    // Conectar los canales de la empresa (el bot) es cosa de administradores.
+    const manage = ['ADMIN', 'SUPERUSER'].includes(req.user?.role);
+    const calls = permissions === null || !!permissions['/messaging/calls']?.read;
 
     const ticket = jwt.sign(
       {
         sub: userId,
         tid: tenantId,
         name: req.user?.username ?? '',
-        perms: { read: true, write: canWrite },
+        perms: { read: true, write: canWrite, customers, manage, calls },
       },
       secret,
       { algorithm: 'HS256', audience: AUDIENCE, issuer: ISSUER, expiresIn: TTL_SECONDS },
     );
     res.set('Cache-Control', 'no-store');
-    res.json({ ticket, expiresIn: TTL_SECONDS, canWrite });
+    res.json({ ticket, expiresIn: TTL_SECONDS, canWrite, customers, manage, calls });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }

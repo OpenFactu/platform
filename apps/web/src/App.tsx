@@ -28,6 +28,9 @@ const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default:
 const TrackingPage = lazy(() =>
   import('./pages/public/TrackingPage').then((m) => ({ default: m.TrackingPage })),
 );
+const GuestCallPage = lazy(() =>
+  import('./pages/public/GuestCallPage').then((m) => ({ default: m.GuestCallPage })),
+);
 const PublicFormPage = lazy(() =>
   import('./pages/public/PublicFormPage').then((m) => ({ default: m.PublicFormPage })),
 );
@@ -70,7 +73,9 @@ function App() {
   // El `BrowserRouter` se remonta dentro de cada rama, así que duplicamos el
   // check aquí para el caso "cargando".
   const publicPath =
-    window.location.pathname.startsWith('/track/') || window.location.pathname.startsWith('/f/');
+    window.location.pathname.startsWith('/track/') ||
+    window.location.pathname.startsWith('/f/') ||
+    window.location.pathname.startsWith('/join/');
   const kioskPath = window.location.pathname.startsWith('/kiosk');
 
   if (publicPath) {
@@ -80,6 +85,7 @@ function App() {
           <Routes>
             <Route path="/track/:token" element={<TrackingPage />} />
             <Route path="/f/:tenantId/:slug" element={<PublicFormPage />} />
+            <Route path="/join/:token" element={<GuestCallPage />} />
           </Routes>
         </BrowserRouter>
         <DebugPanel />

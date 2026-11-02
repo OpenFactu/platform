@@ -31,13 +31,8 @@
       "switchSection": "{title}: change section"
     },
     "bottomNav": {
-      "home": "Home",
-      "sales": "Sales",
-      "purchases": "Purchases",
       "scan": "Scan code",
       "search": "Search",
-      "more": "More",
-      "aria": "Bottom navigation",
       "actions": "Actions",
       "quickActions": "Quick actions"
     },

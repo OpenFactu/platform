@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 
-use super::{ChannelAdapter, ChannelCapabilities, ChannelError};
-use crate::store::conversations::Membership;
-use crate::store::messages::MessageDto;
+use super::{ChannelAdapter, ChannelCapabilities, ChannelError, Delivery};
+use crate::state::AppState;
 
 /// El chat del equipo: no sale de Keirost.
 pub struct InternalChannel;
@@ -14,10 +13,13 @@ impl ChannelAdapter for InternalChannel {
     }
 
     fn capabilities(&self) -> ChannelCapabilities {
-        ChannelCapabilities { attachments: true }
+        ChannelCapabilities {
+            attachments: true,
+            documents: true,
+        }
     }
 
-    async fn deliver(&self, _: &Membership, _: &MessageDto) -> Result<(), ChannelError> {
-        Ok(())
+    async fn deliver(&self, _: &AppState, _: Delivery<'_>) -> Result<Option<String>, ChannelError> {
+        Ok(None)
     }
 }

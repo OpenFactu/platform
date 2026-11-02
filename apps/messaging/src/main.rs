@@ -6,11 +6,15 @@
 mod auth;
 mod channels;
 mod config;
+mod crypto;
 mod domain;
+mod erp;
 mod error;
 mod http;
 mod hub;
+mod media;
 mod meetings;
+mod rtc;
 mod state;
 mod store;
 mod ws;
@@ -32,7 +36,16 @@ async fn main() -> anyhow::Result<()> {
 
     let cfg = config::Config::from_env()?;
     let db = store::connect(&cfg.database_url).await?;
-    let app = http::router(state::AppState::new(db, &cfg.ticket_secret));
+    let (calls, notices) = rtc::Calls::start(&cfg.rtc).await;
+    let state = state::AppState::new(db, &cfg, calls);
+    rtc::Calls::run_background(&state, notices).await;
+    state.vault.verify().await?;
+    tokio::spawn(store::encryption::backfill(
+        state.db.clone(),
+        state.vault.clone(),
+    ));
+    state.telegram.start_all(&state).await;
+    let app = http::router(state);
 
     let addr = SocketAddr::new(cfg.host, cfg.port);
     let listener = TcpListener::bind(addr).await?;

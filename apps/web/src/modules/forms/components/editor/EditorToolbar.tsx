@@ -17,7 +17,7 @@ const MAX_IMAGE_MB = 5;
 
 /**
  * Barra para añadir elementos: columna fija junto al lienzo en escritorio y
- * barra flotante abajo en móvil (por encima de la navegación inferior).
+ * barra flotante abajo en móvil.
  */
 export const EditorToolbar: React.FC<Props> = ({
   onQuestion,
@@ -41,7 +41,7 @@ export const EditorToolbar: React.FC<Props> = ({
     <div
       role="toolbar"
       aria-label={t('forms.toolbar.ariaLabel')}
-      className="z-30 flex items-center justify-around gap-1 rounded-xs border border-border-default bg-bg-card p-1 shadow-md max-md:fixed max-md:inset-x-4 max-md:bottom-[calc(80px+1rem+env(safe-area-inset-bottom))] md:sticky md:top-24 md:flex-col"
+      className="z-30 flex items-center justify-around gap-1 rounded-xs border border-border-default bg-bg-card p-1 shadow-md max-md:fixed max-md:inset-x-4 max-md:bottom-[calc(1rem+env(safe-area-inset-bottom))] md:sticky md:top-24 md:flex-col"
     >
       <IconButton label={t('forms.toolbar.addQuestion')} onClick={onQuestion}>
         <PlusCircle size={20} />

@@ -12,6 +12,8 @@ pub const MAX_TITLE_CHARS: usize = 120;
 pub enum ConversationKind {
     Direct,
     Group,
+    /// Con un cliente por un canal externo. La crea el canal, no el usuario.
+    Customer,
 }
 
 impl ConversationKind {
@@ -19,6 +21,7 @@ impl ConversationKind {
         match self {
             ConversationKind::Direct => "direct",
             ConversationKind::Group => "group",
+            ConversationKind::Customer => "customer",
         }
     }
 
@@ -26,6 +29,7 @@ impl ConversationKind {
         match s {
             "direct" => Some(ConversationKind::Direct),
             "group" => Some(ConversationKind::Group),
+            "customer" => Some(ConversationKind::Customer),
             _ => None,
         }
     }
@@ -103,6 +107,7 @@ pub fn validate_new(
                 direct_key: Some(key),
             })
         }
+        ConversationKind::Customer => Err(DomainError::NotEditableConversation),
         ConversationKind::Group => {
             if others.is_empty() {
                 return Err(DomainError::GroupNeedsPeers);
@@ -147,8 +152,10 @@ pub fn validate_patch(
     current_count: usize,
     patch: ConversationPatch,
 ) -> Result<ValidPatch, DomainError> {
-    if kind == ConversationKind::Direct {
-        return Err(DomainError::DirectIsImmutable);
+    match kind {
+        ConversationKind::Direct => return Err(DomainError::DirectIsImmutable),
+        ConversationKind::Customer => return Err(DomainError::NotEditableConversation),
+        ConversationKind::Group => {}
     }
 
     let title = match patch.title {

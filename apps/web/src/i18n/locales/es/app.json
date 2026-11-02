@@ -31,13 +31,8 @@
       "switchSection": "{title}: cambiar de sección"
     },
     "bottomNav": {
-      "home": "Inicio",
-      "sales": "Ventas",
-      "purchases": "Compras",
       "scan": "Escanear código",
       "search": "Buscar",
-      "more": "Más",
-      "aria": "Navegación inferior",
       "actions": "Acciones",
       "quickActions": "Acciones rápidas"
     },

@@ -20,9 +20,15 @@ pub async fn list(
     State(state): State<AppState>,
     session: Session,
 ) -> Result<Json<Vec<ConversationSummary>>, ApiError> {
-    let rows =
-        store::conversations::list_for_user(&state.db, &session.tenant_id, &session.user_id, None)
-            .await?;
+    let rows = store::conversations::list_for_user(
+        &state.db,
+        &state.vault,
+        &session.tenant_id,
+        &session.user_id,
+        session.customers,
+        None,
+    )
+    .await?;
     Ok(Json(rows))
 }
 
@@ -175,9 +181,16 @@ async fn summary(
     session: &Session,
     id: Uuid,
 ) -> Result<ConversationSummary, ApiError> {
-    store::conversations::summary_for_user(&state.db, &session.tenant_id, &session.user_id, id)
-        .await?
-        .ok_or_else(|| ApiError::not_found("conversation_not_found", "Conversación no encontrada"))
+    store::conversations::summary_for_user(
+        &state.db,
+        &state.vault,
+        &session.tenant_id,
+        &session.user_id,
+        session.customers,
+        id,
+    )
+    .await?
+    .ok_or_else(|| ApiError::not_found("conversation_not_found", "Conversación no encontrada"))
 }
 
 /// Todos tienen que ser de la misma empresa que el ticket.

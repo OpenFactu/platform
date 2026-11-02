@@ -1,0 +1,58 @@
+<!doctype html><meta charset=utf-8><title>rtc room</title>
+<body style="font:12px monospace"><div id=vids></div><pre id=o></pre>
+<script>
+// Fuente falsa: un lienzo de un color y un tono.
+function fake(hue, w = 1280, h = 720) {
+  const c = Object.assign(document.createElement('canvas'), { width: w, height: h });
+  const g = c.getContext('2d'); let n = 0;
+  setInterval(() => { g.fillStyle = `hsl(${hue} 80% ${30 + (n++ % 40)}%)`; g.fillRect(0, 0, w, h); }, 33);
+  return c.captureStream(30).getVideoTracks()[0];
+}
+const ac = new AudioContext();
+function tone() { const d = ac.createMediaStreamDestination(); const o = ac.createOscillator(); o.connect(d); o.start(); return d.stream.getAudioTracks()[0]; }
+
+class P {
+  constructor(id, hue) { this.id = id; this.hue = hue; this.remote = {}; this.tracks = {}; }
+  async join() {
+    const pc = this.pc = new RTCPeerConnection();
+    // Las tres pistas de siempre, como hará la web.
+    this.mic = pc.addTransceiver(tone(), { direction: 'sendonly' });
+    this.cam = pc.addTransceiver(fake(this.hue), { direction: 'sendonly',
+      sendEncodings: [{ rid: 'l', scaleResolutionDownBy: 4, maxBitrate: 150000 }, { rid: 'm', scaleResolutionDownBy: 2, maxBitrate: 500000 }, { rid: 'h', maxBitrate: 1500000 }] });
+    this.screen = pc.addTransceiver('video', { direction: 'sendonly' });
+    pc.ontrack = (e) => {
+      const key = e.streams[0]?.id ?? '?';
+      this.tracks[key] = e.track;
+      e.track.onended = () => { delete this.tracks[key]; };
+      if (e.track.kind === 'video') {
+        const v = document.createElement('video'); v.autoplay = v.muted = v.playsInline = true; v.width = 160; v.title = `${this.id}<-${key}`;
+        v.srcObject = new MediaStream([e.track]); vids.append(v); this.remote[key] = v;
+      }
+    };
+    await pc.setLocalDescription(await pc.createOffer());
+    const r = await fetch(`/join/${this.id}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(pc.localDescription) });
+    const a = await r.json(); if (a.error) throw new Error(a.error);
+    await pc.setRemoteDescription(a);
+    this.timer = setInterval(() => this.poll(), 100);
+  }
+  async poll() {
+    const offers = await (await fetch(`/poll/${this.id}`)).json();
+    for (const offer of offers) {
+      await this.pc.setRemoteDescription(offer);
+      await this.pc.setLocalDescription(await this.pc.createAnswer());
+      await fetch(`/answer/${this.id}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(this.pc.localDescription) });
+    }
+  }
+  async share() { await this.screen.sender.replaceTrack(fake(this.hue + 120, 800, 450)); }
+  async leave() { clearInterval(this.timer); await fetch(`/leave/${this.id}`, { method: 'POST' }); this.pc.close(); }
+  async stats() {
+    const inbound = {};
+    (await this.pc.getStats()).forEach((s) => {
+      if (s.type === 'inbound-rtp') { const t = [...this.pc.getTransceivers()].find((x) => x.mid === s.mid); inbound[`${s.kind}#${s.mid}`] = { frames: s.framesDecoded, w: s.frameWidth, bytes: s.bytesReceived, stream: Object.keys(this.tracks).find((k) => this.tracks[k] === t?.receiver.track) }; }
+    });
+    return { state: this.pc.connectionState, streams: Object.keys(this.tracks).sort(), inbound };
+  }
+}
+window.ps = { a: new P(1, 0), b: new P(2, 120), c: new P(3, 240), d: new P(4, 60) };
+window.snap = async () => Object.fromEntries(await Promise.all(Object.entries(ps).filter(([, p]) => p.pc && p.pc.connectionState !== 'closed').map(async ([k, p]) => [k, await p.stats()])));
+</script>

@@ -2,6 +2,7 @@
 //! se valida y se normaliza aquí antes de tocar nada.
 
 pub mod conversation;
+pub mod meeting;
 pub mod message;
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -42,6 +43,20 @@ pub enum DomainError {
     ReplyNotFound,
     #[error("Reacción no válida")]
     InvalidReaction,
+    #[error("Esta conversación no se puede crear ni modificar así")]
+    NotEditableConversation,
+    #[error("Este canal no admite ese tipo de mensaje")]
+    UnsupportedByChannel,
+    #[error("Reunión no válida: {0}")]
+    InvalidMeeting(&'static str),
+    #[error("Ese proveedor de reuniones no está disponible")]
+    UnknownMeetingProvider,
+    #[error("Solo quien organiza la reunión puede cambiarla")]
+    OnlyOrganizer,
+    #[error("La reunión está cancelada")]
+    MeetingCancelled,
+    #[error("Las conversaciones con clientes no admiten llamada")]
+    CallsNotSupported,
 }
 
 impl DomainError {
@@ -65,6 +80,13 @@ impl DomainError {
             DomainError::AttachmentsNotSupported => "attachments_not_supported",
             DomainError::ReplyNotFound => "reply_not_found",
             DomainError::InvalidReaction => "invalid_reaction",
+            DomainError::NotEditableConversation => "conversation_not_editable",
+            DomainError::UnsupportedByChannel => "unsupported_by_channel",
+            DomainError::InvalidMeeting(_) => "invalid_meeting",
+            DomainError::UnknownMeetingProvider => "unknown_meeting_provider",
+            DomainError::OnlyOrganizer => "only_organizer",
+            DomainError::MeetingCancelled => "meeting_cancelled",
+            DomainError::CallsNotSupported => "calls_not_supported",
         }
     }
 }

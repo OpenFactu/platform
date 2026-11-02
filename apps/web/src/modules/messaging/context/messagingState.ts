@@ -28,6 +28,9 @@ export interface MessagingContextValue {
   /** Nodo de la página de Mensajes donde el host pinta el chat. */
   pageTarget: HTMLElement | null;
   setPageTarget: (el: HTMLElement | null) => void;
+  /** Conversación que abrir en cuanto se pueda (desde fuera del `ChatProvider`). */
+  focusConversation: string | null;
+  setFocusConversation: (id: string | null) => void;
   retry: () => void;
 }
 

@@ -16,6 +16,8 @@ use crate::state::AppState;
 
 pub const AUDIENCE: &str = "keirost-messaging";
 pub const ISSUER: &str = "keirost-erp";
+/// Tokens de servicio del ERP para `/internal` (no valen como ticket de usuario).
+pub const SERVICE_AUDIENCE: &str = "keirost-messaging-internal";
 
 /// Lo que este servicio usa del ticket. `aud` e `iss` también vienen, pero los
 /// comprueba `jsonwebtoken` sobre el JSON crudo y no hace falta leerlos aquí.
@@ -23,14 +25,31 @@ pub const ISSUER: &str = "keirost-erp";
 pub struct TicketClaims {
     pub sub: String,
     pub tid: String,
+    /// Cómo se llama: lo que ven los demás en una llamada.
+    #[serde(default)]
+    pub name: String,
     pub exp: u64,
     pub perms: TicketPerms,
+}
+
+#[derive(Debug, Deserialize)]
+struct ServiceClaims {
+    tid: String,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 pub struct TicketPerms {
     pub read: bool,
     pub write: bool,
+    /// Puede ver y atender las conversaciones con clientes.
+    #[serde(default)]
+    pub customers: bool,
+    /// Puede conectar y desconectar los canales de la empresa (administrador).
+    #[serde(default)]
+    pub manage: bool,
+    /// Puede hacer y recibir videollamadas.
+    #[serde(default)]
+    pub calls: bool,
 }
 
 /// Quién está al otro lado de una petición o de un socket.
@@ -38,7 +57,11 @@ pub struct TicketPerms {
 pub struct Session {
     pub user_id: String,
     pub tenant_id: String,
+    pub name: String,
     pub can_write: bool,
+    pub customers: bool,
+    pub manage: bool,
+    pub calls: bool,
     /// Segundos Unix en los que caduca el ticket.
     pub expires_at: u64,
 }
@@ -67,6 +90,7 @@ impl AuthError {
 pub struct TicketVerifier {
     key: DecodingKey,
     validation: Validation,
+    service_validation: Validation,
 }
 
 impl TicketVerifier {
@@ -76,10 +100,26 @@ impl TicketVerifier {
         validation.set_issuer(&[ISSUER]);
         validation.set_required_spec_claims(&["exp", "aud", "iss", "sub"]);
         validation.leeway = 30;
+        let mut service_validation = Validation::new(Algorithm::HS256);
+        service_validation.set_audience(&[SERVICE_AUDIENCE]);
+        service_validation.set_issuer(&[ISSUER]);
+        service_validation.set_required_spec_claims(&["exp", "aud", "iss"]);
+        service_validation.leeway = 30;
         Self {
             key: DecodingKey::from_secret(secret.as_bytes()),
             validation,
+            service_validation,
         }
+    }
+
+    /// Un token de servicio del ERP: devuelve la empresa para la que vale.
+    pub fn verify_service(&self, token: &str) -> Result<String, AuthError> {
+        let data = decode::<ServiceClaims>(token, &self.key, &self.service_validation)
+            .map_err(|_| AuthError::Invalid)?;
+        if data.claims.tid.is_empty() {
+            return Err(AuthError::Invalid);
+        }
+        Ok(data.claims.tid)
     }
 
     pub fn verify(&self, token: &str) -> Result<Session, AuthError> {
@@ -100,13 +140,50 @@ impl TicketVerifier {
         Ok(Session {
             user_id: c.sub,
             tenant_id: c.tid,
+            name: c.name,
             can_write: c.perms.write,
+            customers: c.perms.customers,
+            manage: c.perms.manage,
+            calls: c.perms.calls,
             expires_at: c.exp,
         })
     }
 }
 
 impl Session {
+    pub fn require_manage(&self) -> Result<(), ApiError> {
+        if self.manage {
+            Ok(())
+        } else {
+            Err(ApiError::forbidden(
+                "manage_required",
+                "Solo un administrador puede conectar canales",
+            ))
+        }
+    }
+
+    pub fn require_calls(&self) -> Result<(), ApiError> {
+        if self.calls {
+            Ok(())
+        } else {
+            Err(ApiError::forbidden(
+                "calls_required",
+                "No tienes permiso para videollamadas",
+            ))
+        }
+    }
+
+    pub fn require_customers(&self) -> Result<(), ApiError> {
+        if self.customers {
+            Ok(())
+        } else {
+            Err(ApiError::forbidden(
+                "customers_required",
+                "No tienes permiso para atender a clientes",
+            ))
+        }
+    }
+
     pub fn require_write(&self) -> Result<(), ApiError> {
         if self.can_write {
             Ok(())

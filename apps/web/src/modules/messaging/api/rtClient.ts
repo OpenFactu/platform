@@ -17,6 +17,12 @@ interface Ticket {
   value: string;
   expiresAt: number;
   canWrite: boolean;
+  /** Atiende las conversaciones con clientes (permiso `/messaging/customers`). */
+  customers: boolean;
+  /** Puede conectar los canales de la empresa (administrador). */
+  manage: boolean;
+  /** Puede hacer y recibir videollamadas (permiso `/messaging/calls`). */
+  calls: boolean;
 }
 
 const RENEW_BEFORE_MS = 2 * 60_000;
@@ -60,6 +66,18 @@ class RtClient {
     return this.ticket?.canWrite ?? false;
   }
 
+  get customers(): boolean {
+    return this.ticket?.customers ?? false;
+  }
+
+  get canCall(): boolean {
+    return this.ticket?.calls ?? false;
+  }
+
+  get manage(): boolean {
+    return this.ticket?.manage ?? false;
+  }
+
   getStatus = (): RtStatus => this.status;
 
   subscribeStatus = (listener: () => void): (() => void) => {
@@ -70,6 +88,11 @@ class RtClient {
   subscribe(listener: (event: ServerEvent) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** La señalización de una llamada (ver `callClient`). */
+  sendCall(event: { type: `call.${string}` } & Record<string, unknown>): void {
+    this.send(event);
   }
 
   /** Avisa de que se está escribiendo (el servicio limita la frecuencia). */
@@ -86,12 +109,22 @@ class RtClient {
     }
     if (!this.ticketRequest) {
       this.ticketRequest = apiClient
-        .post<{ ticket: string; expiresIn: number; canWrite: boolean }>('/api/messaging/ticket')
+        .post<{
+          ticket: string;
+          expiresIn: number;
+          canWrite: boolean;
+          customers?: boolean;
+          manage?: boolean;
+          calls?: boolean;
+        }>('/api/messaging/ticket')
         .then((res) => {
           const ticket = {
             value: res.ticket,
             expiresAt: Date.now() + res.expiresIn * 1000,
             canWrite: res.canWrite,
+            customers: Boolean(res.customers),
+            manage: Boolean(res.manage),
+            calls: Boolean(res.calls),
           };
           this.ticket = ticket;
           this.scheduleRenew();

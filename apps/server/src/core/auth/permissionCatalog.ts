@@ -316,6 +316,20 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
     group: 'Mensajes',
     hint: 'Chat del equipo. Con solo lectura se ven las conversaciones pero no se escribe.',
   },
+  {
+    path: '/messaging/customers',
+    label: 'Mensajes de clientes',
+    group: 'Mensajes',
+    parent: '/messaging',
+    hint: 'Ver y contestar lo que escriben los clientes por Telegram y otros canales.',
+  },
+  {
+    path: '/messaging/calls',
+    label: 'Videollamadas',
+    group: 'Mensajes',
+    parent: '/messaging',
+    hint: 'Hacer y recibir videollamadas, y entrar en reuniones de Keirost.',
+  },
 
   // ── Plataforma (no se ofrece: solo SUPERUSER) ─────────────────────────────
   {

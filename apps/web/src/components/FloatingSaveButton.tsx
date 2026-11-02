@@ -39,8 +39,7 @@ export const HeaderSaveButton: React.FC<Pick<Props, 'isNew' | 'label' | 'saving'
  * Es un `type="submit"`: va dentro del <form>. En escritorio se guarda con
  * `HeaderSaveButton`, en la cabecera.
  *
- * Esquiva la barra de navegación inferior (80px, MobileBottomNav) con algo de
- * aire y el margen seguro del dispositivo.
+ * Deja algo de aire abajo, más el margen seguro del dispositivo.
  */
 export const FloatingSaveButton: React.FC<Props> = ({ isNew, label, saving, actions }) => {
   // Ancla dentro del <form>: el menú de móvil envía el formulario desde aquí.
@@ -52,7 +51,7 @@ export const FloatingSaveButton: React.FC<Props> = ({ isNew, label, saving, acti
   return (
     <>
       {!withMenu && (
-        <div className="fixed z-30 right-4 bottom-[calc(80px+1.25rem+env(safe-area-inset-bottom))] md:hidden">
+        <div className="fixed z-30 right-4 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] md:hidden">
           <Tooltip content={label} side="left">
             <Button
               type="submit"
@@ -71,7 +70,7 @@ export const FloatingSaveButton: React.FC<Props> = ({ isNew, label, saving, acti
           <span ref={anchor} hidden />
           <FloatingActionButton
             className="md:hidden"
-            style={{ right: '1rem', bottom: 'calc(80px + 1.25rem + env(safe-area-inset-bottom))' }}
+            style={{ right: '1rem', bottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}
             label={t('app.common.actions')}
             disabled={saving}
             actions={[

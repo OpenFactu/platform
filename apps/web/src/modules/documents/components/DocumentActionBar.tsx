@@ -63,7 +63,7 @@ export const DocumentActionBar: React.FC<Props> = ({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
 
-  // Móvil: todo al botón flotante de la pantalla (MobileBottomNav). La acción
+  // Móvil: todo al botón flotante de la pantalla (MobileActionButton). La acción
   // principal va aparte para quedar la última, junto al pulgar, y cancelar la
   // primera, lejos de él.
   const mobileActions: FloatingAction[] = [

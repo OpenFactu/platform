@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import type { ChatAttachment, ChatMessageData, ChatProviderProps } from '@openfactu/ui';
 import { useI18n } from '@/i18n/I18nContext';
 import { erpApi, messagingApi } from '../api/messagingApi';
-import { documentFor, mapMessage, rememberUpload, startHistory } from '../api/messageCache';
+import { mapMessage, rememberUpload, startHistory } from '../api/messageCache';
 import { messagingErrorText } from '../domain/errors';
+import { MEETING_BLOCK } from '../domain/meeting';
 
 /** Límite del ERP para `/api/attachments` (multer). */
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
@@ -19,6 +20,7 @@ type Transport = Pick<
   | 'onConversationChange'
   | 'onUploadAttachment'
   | 'canEditMessage'
+  | 'canDeleteMessage'
   | 'attachmentLimits'
 >;
 
@@ -31,6 +33,8 @@ export function useChatTransport(): Transport {
   const { t } = useI18n();
 
   return useMemo<Transport>(() => {
+    // Envíos ya intentados: si el canal falló, el siguiente intento es un reintento.
+    const attempted = new Set<string>();
     // El kit enseña `error.message` tal cual: que llegue traducido.
     const friendly =
       <A extends unknown[], R>(fn: (...args: A) => Promise<R>) =>
@@ -51,7 +55,8 @@ export function useChatTransport(): Transport {
           size: a.size,
           mime: a.mediaType,
         }));
-        const dto = files.length
+        // El envío es idempotente por `clientId`: repetirlo devuelve el que había.
+        let dto = files.length
           ? await messagingApi.sendFiles(
               message.conversationId,
               files,
@@ -65,6 +70,11 @@ export function useChatTransport(): Transport {
               clientId,
               message.replyToId,
             );
+        // Si el canal (Telegram…) no lo aceptó y esto es un reintento, se le
+        // vuelve a pedir que lo entregue.
+        if (dto.deliveryError && attempted.has(clientId)) dto = await messagingApi.retry(dto.id);
+        attempted.add(clientId);
+        if (dto.deliveryError) throw new Error(t('messaging.channels.notDelivered'));
         return mapMessage(dto, t);
       }),
 
@@ -120,7 +130,9 @@ export function useChatTransport(): Transport {
       ),
 
       // Solo se edita el texto: un documento compartido o unos ficheros, no.
-      canEditMessage: (message) => !message.attachments?.length && !documentFor(message.id),
+      canEditMessage: (message) => !message.attachments?.length && !message.blocks?.length,
+      // Una reunión no se borra: se cancela desde su tarjeta.
+      canDeleteMessage: (message) => !message.blocks?.some((b) => b.kind === MEETING_BLOCK),
 
       attachmentLimits: { maxFiles: MAX_FILES, maxBytes: MAX_UPLOAD_BYTES },
     };

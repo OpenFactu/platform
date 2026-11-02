@@ -24,6 +24,8 @@ import { eq, sql } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { ClientFactory } from './ClientFactory';
 import { SchemaManager } from './SchemaManager';
+import { exportMessaging, importMessaging } from './messagingTransfer';
+import { backupKey, openBackup, sealBackup } from '../backup/backupCrypto';
 
 const SCHEMA_PLACEHOLDER = '__OFTENANT__';
 
@@ -258,10 +260,14 @@ export class TenantBackup {
    * @param opts.includeUploads — si false, omite la carpeta storage/uploads/<schema>.
    *   Útil cuando solo necesitas el esquema/datos para debug y los archivos
    *   pesan demasiado o ya viven en cloud (gdrive/onedrive).
+   * @param opts.onWarning — lo que queda fuera o sin proteger, sin impedir la
+   *   copia: mejor una copia del ERP sin mensajes que ninguna.
+   *
+   * El resultado va cifrado si hay `BACKUP_ENC_KEY` (ver backupCrypto.ts).
    */
   static async exportToZip(
     tenantId: string,
-    opts: { includeUploads?: boolean } = {},
+    opts: { includeUploads?: boolean; onWarning?: (message: string) => void } = {},
   ): Promise<Buffer> {
     const includeUploads = opts.includeUploads !== false; // default true
     const publicDb = ClientFactory.getClient('public');
@@ -372,18 +378,30 @@ export class TenantBackup {
         // cadenas dentro de datos (pg_dump cita siempre los strings).
         .replace(new RegExp(`\\b${escSchema}\\b`, 'g'), SCHEMA_PLACEHOLDER);
 
+    // Los mensajes los da el servicio de mensajería, en claro: los protege el
+    // cifrado de la copia, no su clave, para poder restaurar en otro servidor.
+    let messaging: Buffer | null = null;
+    try {
+      messaging = await exportMessaging(tenant.id);
+    } catch (e: any) {
+      console.warn(`[TenantBackup.export] Sin mensajería en ${tenant.schemaName}:`, e?.message);
+      opts.onWarning?.(`La copia no incluye los mensajes: ${e?.message}`);
+    }
+
     const meta = {
       name: tenant.name,
       schemaName: tenant.schemaName,
       exportedAt: new Date().toISOString(),
       openfactuVersion: process.env.OPENFACTU_VERSION || 'dev',
       schemaPlaceholder: SCHEMA_PLACEHOLDER,
+      messagingIncluded: messaging !== null,
     };
 
     const zip = new AdmZip();
     zip.addFile('meta.json', Buffer.from(JSON.stringify(meta, null, 2)));
     zip.addFile('schema.sql', Buffer.from(placeholdize(schemaSql)));
     zip.addFile('data.sql', Buffer.from(placeholdize(dataSql)));
+    if (messaging) zip.addFile('messaging.json', messaging);
 
     // uploads/ — best effort. Si la carpeta no existe (sin adjuntos local) la saltamos.
     if (includeUploads) {
@@ -393,6 +411,11 @@ export class TenantBackup {
       }
     }
 
+    const key = backupKey();
+    if (key) return sealBackup(zip.toBuffer(), key);
+    if (process.env.NODE_ENV === 'production') {
+      opts.onWarning?.('La copia no está cifrada: falta BACKUP_ENC_KEY en el servidor');
+    }
     return zip.toBuffer();
   }
 
@@ -403,8 +426,9 @@ export class TenantBackup {
   static async importFromZip(
     zipBuffer: Buffer,
     opts: { newName: string },
-  ): Promise<{ tenantId: string }> {
-    const zip = new AdmZip(zipBuffer);
+  ): Promise<{ tenantId: string; warnings: string[] }> {
+    const zip = new AdmZip(openBackup(zipBuffer));
+    const warnings: string[] = [];
     const metaEntry = zip.getEntry('meta.json');
     const schemaEntry = zip.getEntry('schema.sql');
     const dataEntry = zip.getEntry('data.sql');
@@ -612,7 +636,18 @@ export class TenantBackup {
       }
     }
 
-    return { tenantId };
+    // Mensajes — si fallan, la empresa ya está restaurada: se avisa, no se revierte.
+    const messagingEntry = zip.getEntry('messaging.json');
+    if (messagingEntry) {
+      try {
+        await importMessaging(tenantId, messagingEntry.getData());
+      } catch (e: any) {
+        console.error(`[TenantBackup.import] Sin mensajería en "${slug}":`, e?.message);
+        warnings.push(`No se pudieron restaurar los mensajes: ${e?.message}`);
+      }
+    }
+
+    return { tenantId, warnings };
   }
 }
 

@@ -1,8 +1,45 @@
 import path from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
+import { VitePWA, type ManifestOptions } from 'vite-plugin-pwa';
 import { collectShellScripts } from './scripts/pwa-shell.ts';
+
+/**
+ * Manifest de la PWA. Lo usa `VitePWA` en la build y `pwa-dev-manifest` en el
+ * servidor de desarrollo (ver más abajo).
+ */
+const pwaManifest: Partial<ManifestOptions> = {
+  id: '/',
+  name: 'Keirost ERP',
+  short_name: 'Keirost',
+  description:
+    'ERP en la nube para pymes y autónomos: facturación electrónica, contabilidad, compras, ventas e inventario.',
+  // Mismo color que el meta theme-color oscuro de index.html y la baldosa del icono.
+  theme_color: '#0A1628',
+  // También es el fondo de la ventana de la app instalada: Android lo enseña mientras sube el teclado y en la franja
+  // que queda encima. Claro, dejaba una raya blanca bajo el chat en modo oscuro.
+  background_color: '#0A1628',
+  display: 'standalone',
+  // Sin `orientation`: bloquearla en vertical impedía usar la app instalada en
+  // tablet o escritorio en horizontal.
+  start_url: '/',
+  scope: '/',
+  lang: 'es-ES',
+  categories: ['business', 'finance', 'productivity'],
+  icons: [
+    { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+    { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+    { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+    // Maskable propio, a sangre y con la K dentro de la zona segura (círculo
+    // del 80%): reutilizar el 512 hacía que Android recortara el logo.
+    {
+      src: '/icon-maskable-512.png',
+      sizes: '512x512',
+      type: 'image/png',
+      purpose: 'maskable',
+    },
+  ],
+};
 
 let shellScripts = new Set<string>();
 
@@ -15,6 +52,23 @@ export default defineConfig({
       apply: 'build',
       generateBundle(_, bundle) {
         shellScripts = collectShellScripts(bundle);
+      },
+    },
+    // En desarrollo el service worker va apagado (ver `devOptions` abajo) y, con
+    // él, el plugin deja de servir el manifest: `/manifest.webmanifest` caía en
+    // el fallback de la SPA y devolvía el HTML. El navegador lo veía como una web
+    // cualquiera y no dejaba instalarla (p. ej. al probar desde el móvil por el
+    // túnel). Aquí se sirve el mismo manifest; para instalar ya no hace falta
+    // service worker.
+    {
+      name: 'pwa-dev-manifest',
+      apply: 'serve',
+      configureServer(server) {
+        if (process.env.VITE_PWA_DEV === 'true') return; // ya lo sirve VitePWA
+        server.middlewares.use('/manifest.webmanifest', (_req, res) => {
+          res.setHeader('Content-Type', 'application/manifest+json');
+          res.end(JSON.stringify(pwaManifest));
+        });
       },
     },
     VitePWA({
@@ -35,36 +89,7 @@ export default defineConfig({
         'logo.png',
         'brand/*.svg',
       ],
-      manifest: {
-        id: '/',
-        name: 'Keirost ERP',
-        short_name: 'Keirost',
-        description:
-          'ERP en la nube para pymes y autónomos: facturación electrónica, contabilidad, compras, ventas e inventario.',
-        // Mismo color que el meta theme-color oscuro de index.html y la baldosa del icono.
-        theme_color: '#0A1628',
-        background_color: '#FAFBFC',
-        display: 'standalone',
-        // Sin `orientation`: bloquearla en vertical impedía usar la app instalada en
-        // tablet o escritorio en horizontal.
-        start_url: '/',
-        scope: '/',
-        lang: 'es-ES',
-        categories: ['business', 'finance', 'productivity'],
-        icons: [
-          { src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-          // Maskable propio, a sangre y con la K dentro de la zona segura (círculo
-          // del 80%): reutilizar el 512 hacía que Android recortara el logo.
-          {
-            src: '/icon-maskable-512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable',
-          },
-        ],
-      },
+      manifest: pwaManifest,
       workbox: {
         // Las pantallas lazy se guardan al visitarlas. Precargar todo el JS
         // anularía la carga bajo demanda al instalar/actualizar la PWA.

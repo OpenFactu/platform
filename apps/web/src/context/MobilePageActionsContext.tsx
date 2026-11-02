@@ -15,7 +15,7 @@ import { useCurrentTabId } from './TabsContext';
  *
  * En móvil las acciones de un documento (asentar, PDF, enviar, cancelar…) no van
  * en filas de botones bajo el título: cada componente las registra aquí y
- * `MobileBottomNav` las pinta en su único `FloatingActionButton`, junto a
+ * `MobileActionButton` las pinta en su único `FloatingActionButton`, junto a
  * «Escanear» y «Buscar». Uno solo, porque dos FAB en la misma esquina se tapan.
  *
  * Se guardan por pestaña (varias pueden estar montadas a la vez, ver TabsHost)

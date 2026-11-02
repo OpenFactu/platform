@@ -19,7 +19,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@openfactu/common": "^0.2.1",
     "@openfactu/pdf": "^0.2.0",
-    "@openfactu/site-builder": "^0.1.0",
+    "@openfactu/site-builder": "^0.2.0",
     "@openfactu/ui": "^0.6.1",
     "@phosphor-icons/react": "^2.1.10",
     "@zxing/browser": "^0.1.5",

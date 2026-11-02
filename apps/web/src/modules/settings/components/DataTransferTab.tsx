@@ -303,7 +303,7 @@ export const DataTransferTab: React.FC = () => {
           {/* Zona de subida visible del backup: FileDropzone acepta también
               arrastrar el .zip y muestra el archivo elegido con su tamaño. */}
           <FileDropzone
-            accept=".zip"
+            accept=".zip,.enc"
             label={t('settingsCompany.dataTransfer.dropLabel')}
             hint={t('settingsCompany.dataTransfer.dropHint')}
             files={importFile ? [importFile] : []}

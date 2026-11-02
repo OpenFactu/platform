@@ -21,9 +21,17 @@ const QUEUE: usize = 512;
 pub trait Broadcaster: Send + Sync {
     /// Envía el evento a todas las conexiones de esos usuarios de la empresa.
     fn publish(&self, tenant_id: &str, user_ids: &[String], event: &ServerEvent);
+    /// A todos los de la empresa que atienden a clientes (la bandeja compartida).
+    fn publish_customers(&self, tenant_id: &str, event: &ServerEvent);
 }
 
-type Conns = HashMap<u64, mpsc::Sender<Utf8Bytes>>;
+struct Conn {
+    tx: mpsc::Sender<Utf8Bytes>,
+    /// Puede ver las conversaciones con clientes.
+    customers: bool,
+}
+
+type Conns = HashMap<u64, Conn>;
 
 #[derive(Default)]
 pub struct Hub {
@@ -40,7 +48,7 @@ pub struct Registration {
 }
 
 impl Hub {
-    pub fn register(&self, tenant_id: &str, user_id: &str) -> Registration {
+    pub fn register(&self, tenant_id: &str, user_id: &str, customers: bool) -> Registration {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = mpsc::channel(QUEUE);
         let mut tenants = self.tenants.lock().expect("hub envenenado");
@@ -50,7 +58,7 @@ impl Hub {
             .entry(user_id.to_string())
             .or_default();
         let came_online = conns.is_empty();
-        conns.insert(id, tx);
+        conns.insert(id, Conn { tx, customers });
         Registration {
             id,
             rx,
@@ -87,30 +95,64 @@ impl Hub {
     }
 
     /// A todos los conectados de la empresa (presencia).
+    /// A una sola conexión: la señalización de una llamada es de esa pestaña.
+    pub fn send_to(&self, tenant_id: &str, user_id: &str, conn: u64, event: &ServerEvent) {
+        let Some(text) = encode(event) else { return };
+        let tenants = self.tenants.lock().expect("hub envenenado");
+        let found = tenants
+            .get(tenant_id)
+            .and_then(|users| users.get(user_id))
+            .and_then(|conns| conns.get(&conn));
+        if let Some(conn) = found {
+            deliver(conn, &text, tenant_id, user_id);
+        }
+    }
+
     pub fn publish_tenant(&self, tenant_id: &str, event: &ServerEvent) {
         let users = self.online_users(tenant_id);
         self.publish(tenant_id, &users, event);
     }
 }
 
+fn encode(event: &ServerEvent) -> Option<Utf8Bytes> {
+    match serde_json::to_string(event) {
+        Ok(s) => Some(s.into()),
+        Err(e) => {
+            tracing::error!(error = %e, "No se pudo serializar un evento");
+            None
+        }
+    }
+}
+
+fn deliver(conn: &Conn, text: &Utf8Bytes, tenant_id: &str, user: &str) {
+    if conn.tx.try_send(text.clone()).is_err() {
+        tracing::warn!(tenant_id, user, "Cola llena: evento descartado");
+    }
+}
+
 impl Broadcaster for Hub {
     fn publish(&self, tenant_id: &str, user_ids: &[String], event: &ServerEvent) {
-        let text: Utf8Bytes = match serde_json::to_string(event) {
-            Ok(s) => s.into(),
-            Err(e) => {
-                tracing::error!(error = %e, "No se pudo serializar un evento");
-                return;
-            }
-        };
+        let Some(text) = encode(event) else { return };
         let tenants = self.tenants.lock().expect("hub envenenado");
         let Some(users) = tenants.get(tenant_id) else {
             return;
         };
         for user in user_ids {
-            for tx in users.get(user).into_iter().flat_map(|c| c.values()) {
-                if tx.try_send(text.clone()).is_err() {
-                    tracing::warn!(tenant_id, user, "Cola llena: evento descartado");
-                }
+            for conn in users.get(user).into_iter().flat_map(|c| c.values()) {
+                deliver(conn, &text, tenant_id, user);
+            }
+        }
+    }
+
+    fn publish_customers(&self, tenant_id: &str, event: &ServerEvent) {
+        let Some(text) = encode(event) else { return };
+        let tenants = self.tenants.lock().expect("hub envenenado");
+        let Some(users) = tenants.get(tenant_id) else {
+            return;
+        };
+        for (user, conns) in users {
+            for conn in conns.values().filter(|c| c.customers) {
+                deliver(conn, &text, tenant_id, user);
             }
         }
     }
@@ -123,8 +165,8 @@ mod tests {
     #[test]
     fn presencia_por_primera_y_ultima_conexion() {
         let hub = Hub::default();
-        let a = hub.register("t1", "u1");
-        let b = hub.register("t1", "u1");
+        let a = hub.register("t1", "u1", false);
+        let b = hub.register("t1", "u1", false);
         assert!(a.came_online);
         assert!(!b.came_online);
         assert!(!hub.unregister("t1", "u1", a.id));
@@ -135,10 +177,20 @@ mod tests {
     #[tokio::test]
     async fn solo_reciben_los_usuarios_de_esa_empresa() {
         let hub = Hub::default();
-        let mut mio = hub.register("t1", "u1");
-        let mut ajeno = hub.register("t2", "u1");
+        let mut mio = hub.register("t1", "u1", false);
+        let mut ajeno = hub.register("t2", "u1", false);
         hub.publish("t1", &["u1".to_string()], &ServerEvent::Pong);
         assert!(mio.rx.try_recv().is_ok());
         assert!(ajeno.rx.try_recv().is_err());
+    }
+
+    #[tokio::test]
+    async fn bandeja_de_clientes_solo_para_quien_atiende() {
+        let hub = Hub::default();
+        let mut atiende = hub.register("t1", "u1", true);
+        let mut no = hub.register("t1", "u2", false);
+        hub.publish_customers("t1", &ServerEvent::Pong);
+        assert!(atiende.rx.try_recv().is_ok());
+        assert!(no.rx.try_recv().is_err());
     }
 }

@@ -126,6 +126,7 @@ import tenantsRouter from './api/tenants';
 import configRouter from './api/config';
 import aiRouter from './api/ai';
 import messagingRouter from './api/messaging';
+import messagingInternalRouter from './api/messagingInternal';
 import mcpRouter from './api/mcp';
 import searchRouter from './api/search';
 import geoRouter from './api/geo';
@@ -423,6 +424,14 @@ mountApi(app, '/api/ai', '/ai/chat', aiRouter);
 // El ticket es un POST pero solo da acceso: basta con poder leer Mensajes. Si
 // además puede escribir, va dentro del propio ticket.
 mountApiWithAction(app, '/api/messaging', '/messaging', 'read', messagingRouter);
+// Sin sesión: lo llama el propio servicio de mensajería con su token de
+// servicio (ficheros que entran y salen por Telegram). Ver messagingInternal.ts.
+mountPublic(
+  app,
+  '/api/internal/messaging',
+  'servicio de mensajería, con token de servicio propio',
+  messagingInternalRouter,
+);
 mountApi(app, '/api/mcp', '/ai/chat', mcpRouter);
 // Mira doce entidades a la vez, así que no puede exigir UN permiso: recorta
 // su propia respuesta a lo que el usuario pueda ver (ver api/search.ts).

@@ -142,7 +142,7 @@ export const DocumentFormLayout: React.FC<Props> = ({
       window.scrollTo({ top: 0 });
     };
     return (
-      <div className="p-4 pb-40 space-y-5">
+      <div className="p-4 pb-24 space-y-5">
         {onCancel && (
           <div className="-mb-3 -ml-2">
             <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
@@ -167,10 +167,10 @@ export const DocumentFormLayout: React.FC<Props> = ({
         >
           {content(step.id)}
         </Card>
-        {/* Barra de pasos por encima de la navegación inferior (80px). A la
-            derecha deja sitio al botón flotante de acciones (56px + 20px de
-            margen, MobileBottomNav), que si no quedaba encima de «Siguiente». */}
-        <div className="fixed inset-x-0 z-30 flex gap-2 border-t border-border-default bg-bg-card pl-4 pr-[5.5rem] py-3 bottom-[calc(80px+env(safe-area-inset-bottom))]">
+        {/* Barra de pasos pegada abajo. A la derecha deja sitio al botón
+            flotante de acciones (56px + 20px de margen, MobileActionButton),
+            que si no quedaba encima de «Siguiente». */}
+        <div className="fixed inset-x-0 bottom-0 z-30 flex gap-2 border-t border-border-default bg-bg-card pl-4 pr-[5.5rem] pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <Button
             type="button"
             variant="secondary"

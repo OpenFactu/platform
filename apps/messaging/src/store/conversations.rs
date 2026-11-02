@@ -1,8 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use serde_json::Value;
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
+use crate::crypto::Vault;
 use crate::domain::conversation::{ConversationKind, Role, ValidConversation, ValidPatch};
 
 /// Lo que ve un participante de una conversación en su lista.
@@ -25,7 +27,21 @@ pub struct ConversationSummary {
     pub unread: i64,
     pub participant_ids: Vec<String>,
     pub pinned_message_ids: Vec<Uuid>,
+    /// Hasta dónde ha leído cada persona del equipo: `[{ userId, lastReadMessageId, readAt }]`.
+    pub read_states: Value,
     pub last_message: Option<LastMessage>,
+    /// En las conversaciones con clientes: quién es el cliente.
+    pub contact: Option<ContactInfo>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContactInfo {
+    pub id: Uuid,
+    pub display_name: String,
+    pub username: Option<String>,
+    pub partner_id: Option<String>,
+    pub partner_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -35,6 +51,7 @@ pub struct LastMessage {
     pub kind: String,
     pub body: Option<String>,
     pub author_id: Option<String>,
+    pub author_contact_id: Option<String>,
     pub created_at: DateTime<Utc>,
     pub deleted: bool,
 }
@@ -57,10 +74,17 @@ struct SummaryRow {
     unread: i64,
     participant_ids: Vec<String>,
     pinned_message_ids: Vec<Uuid>,
+    read_states: Value,
+    ct_id: Option<Uuid>,
+    ct_name: Option<String>,
+    ct_username: Option<String>,
+    ct_partner_id: Option<String>,
+    ct_partner_name: Option<String>,
     lm_id: Option<Uuid>,
     lm_kind: Option<String>,
     lm_body: Option<String>,
     lm_author_id: Option<String>,
+    lm_author_contact_id: Option<String>,
     lm_created_at: Option<DateTime<Utc>>,
     lm_deleted_at: Option<DateTime<Utc>>,
 }
@@ -77,8 +101,19 @@ impl From<SummaryRow> for ConversationSummary {
                     r.lm_body
                 },
                 author_id: r.lm_author_id,
+                author_contact_id: r.lm_author_contact_id,
                 created_at,
                 deleted: r.lm_deleted_at.is_some(),
+            }),
+            _ => None,
+        };
+        let contact = match (r.ct_id, r.ct_name) {
+            (Some(id), Some(display_name)) => Some(ContactInfo {
+                id,
+                display_name,
+                username: r.ct_username,
+                partner_id: r.ct_partner_id,
+                partner_name: r.ct_partner_name,
             }),
             _ => None,
         };
@@ -99,19 +134,29 @@ impl From<SummaryRow> for ConversationSummary {
             unread: r.unread,
             participant_ids: r.participant_ids,
             pinned_message_ids: r.pinned_message_ids,
+            read_states: r.read_states,
             last_message,
+            contact,
         }
     }
 }
 
+/// Las conversaciones en las que está (directas y grupos) y, si puede atender
+/// clientes, todas las de clientes de la empresa: esas son de la bandeja, no de
+/// quien participa, así que se ven aunque nunca las haya abierto.
 const SUMMARY_SQL: &str = r#"
 SELECT c.id, c.kind, c.channel, c.title, c.created_by, c.created_at, c.last_message_at,
-       me.role AS my_role, me.muted, me.favorite, me.archived, me.marked_unread,
+       COALESCE(me.role, 'member') AS my_role, COALESCE(me.muted, false) AS muted,
+       COALESCE(me.favorite, false) AS favorite, COALESCE(me.archived, false) AS archived,
+       COALESCE(me.marked_unread, false) AS marked_unread,
        me.last_read_message_id,
        (SELECT count(*) FROM message m
+          LEFT JOIN participant ap ON ap.id = m.author_participant_id
          WHERE m.conversation_id = c.id
            AND m.deleted_at IS NULL
            AND m.author_participant_id IS DISTINCT FROM me.id
+           -- En las de clientes solo cuenta lo que escribe el cliente.
+           AND (c.kind <> 'customer' OR ap.kind = 'contact')
            AND (me.last_read_message_id IS NULL OR m.id > me.last_read_message_id)) AS unread,
        COALESCE((SELECT array_agg(p.user_id ORDER BY p.joined_at) FROM participant p
                   WHERE p.conversation_id = c.id AND p.left_at IS NULL AND p.user_id IS NOT NULL),
@@ -119,85 +164,246 @@ SELECT c.id, c.kind, c.channel, c.title, c.created_by, c.created_at, c.last_mess
        COALESCE((SELECT array_agg(pm.message_id ORDER BY pm.pinned_at) FROM pinned_message pm
                   WHERE pm.conversation_id = c.id),
                 '{}'::uuid[]) AS pinned_message_ids,
+       COALESCE((SELECT json_agg(json_build_object(
+                          'userId', p.user_id,
+                          'lastReadMessageId', p.last_read_message_id,
+                          'readAt', p.last_read_at))
+                   FROM participant p
+                  WHERE p.conversation_id = c.id AND p.left_at IS NULL
+                    AND p.user_id IS NOT NULL AND p.last_read_message_id IS NOT NULL),
+                '[]'::json) AS read_states,
+       ct.id AS ct_id, ct.display_name AS ct_name, ct.username AS ct_username,
+       ct.partner_id AS ct_partner_id, ct.partner_name AS ct_partner_name,
        lm.id AS lm_id, lm.kind AS lm_kind, lm.body AS lm_body, lm.author_id AS lm_author_id,
+       lm.author_contact_id AS lm_author_contact_id,
        lm.created_at AS lm_created_at, lm.deleted_at AS lm_deleted_at
-  FROM participant me
-  JOIN conversation c ON c.id = me.conversation_id
+  FROM conversation c
+  LEFT JOIN participant me
+         ON me.conversation_id = c.id AND me.user_id = $2 AND me.left_at IS NULL
+  LEFT JOIN contact ct ON ct.id = c.contact_id
   LEFT JOIN LATERAL (
-       SELECT m.id, m.kind, m.body, m.created_at, m.deleted_at, ap.user_id AS author_id
+       SELECT m.id, m.kind, m.body, m.created_at, m.deleted_at,
+              ap.user_id AS author_id, ap.contact_ref AS author_contact_id
          FROM message m
          LEFT JOIN participant ap ON ap.id = m.author_participant_id
         WHERE m.conversation_id = c.id
         ORDER BY m.id DESC
         LIMIT 1) lm ON true
- WHERE me.tenant_id = $1 AND me.user_id = $2 AND me.left_at IS NULL
+ WHERE c.tenant_id = $1
+   AND ((c.kind <> 'customer' AND me.id IS NOT NULL) OR (c.kind = 'customer' AND $4))
    AND ($3::uuid IS NULL OR c.id = $3)
  ORDER BY COALESCE(c.last_message_at, c.created_at) DESC
 "#;
 
-/// Conversaciones activas del usuario (o solo `only`, si se pasa).
+/// Conversaciones que ve el usuario (o solo `only`, si se pasa).
 pub async fn list_for_user(
     db: &PgPool,
+    vault: &Vault,
     tenant_id: &str,
     user_id: &str,
+    customers: bool,
     only: Option<Uuid>,
 ) -> Result<Vec<ConversationSummary>, sqlx::Error> {
     let rows: Vec<SummaryRow> = sqlx::query_as(SUMMARY_SQL)
         .bind(tenant_id)
         .bind(user_id)
         .bind(only)
+        .bind(customers)
         .fetch_all(db)
         .await?;
-    Ok(rows.into_iter().map(Into::into).collect())
+    let cipher = vault.tenant(tenant_id).await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| {
+            let mut summary = ConversationSummary::from(row);
+            if let Some(last) = &mut summary.last_message {
+                last.body = cipher.open_opt(last.body.take());
+            }
+            summary
+        })
+        .collect())
 }
 
 pub async fn summary_for_user(
     db: &PgPool,
+    vault: &Vault,
     tenant_id: &str,
     user_id: &str,
+    customers: bool,
     conversation_id: Uuid,
 ) -> Result<Option<ConversationSummary>, sqlx::Error> {
-    Ok(list_for_user(db, tenant_id, user_id, Some(conversation_id))
-        .await?
-        .into_iter()
-        .next())
+    Ok(list_for_user(
+        db,
+        vault,
+        tenant_id,
+        user_id,
+        customers,
+        Some(conversation_id),
+    )
+    .await?
+    .into_iter()
+    .next())
 }
 
-/// Cómo participa alguien en una conversación. `None` si no está (o ya salió),
-/// que para la API es lo mismo que no existir.
+/// Cómo accede alguien a una conversación. `None` si no puede, que para la API
+/// es lo mismo que no existir.
 #[derive(Debug, Clone)]
 pub struct Membership {
     pub participant_id: Uuid,
     pub role: Role,
     pub kind: ConversationKind,
     pub channel: String,
+    /// Identificador de la conversación en el proveedor (chat de Telegram…).
+    pub external_ref: Option<String>,
 }
 
-pub async fn membership(
+#[derive(FromRow)]
+struct AccessRow {
+    kind: String,
+    channel: String,
+    external_ref: Option<String>,
+    participant_id: Option<Uuid>,
+    role: Option<String>,
+}
+
+/// En directas y grupos hay que estar dentro. En las de clientes basta con
+/// poder atenderlos: la primera vez que entra se le apunta como participante,
+/// que es lo que guarda su "leído hasta aquí".
+pub async fn access(
     db: &PgPool,
     tenant_id: &str,
     conversation_id: Uuid,
     user_id: &str,
+    customers: bool,
 ) -> Result<Option<Membership>, sqlx::Error> {
-    let row: Option<(Uuid, String, String, String)> = sqlx::query_as(
-        r#"SELECT me.id, me.role, c.kind, c.channel
-             FROM participant me
-             JOIN conversation c ON c.id = me.conversation_id
-            WHERE c.id = $1 AND c.tenant_id = $2 AND me.user_id = $3 AND me.left_at IS NULL"#,
+    let row: Option<AccessRow> = sqlx::query_as(
+        r#"SELECT c.kind, c.channel, c.external_ref, me.id AS participant_id, me.role
+             FROM conversation c
+             LEFT JOIN participant me
+                    ON me.conversation_id = c.id AND me.user_id = $3 AND me.left_at IS NULL
+            WHERE c.id = $1 AND c.tenant_id = $2"#,
     )
     .bind(conversation_id)
     .bind(tenant_id)
     .bind(user_id)
     .fetch_optional(db)
     .await?;
-    Ok(row.and_then(|(participant_id, role, kind, channel)| {
-        Some(Membership {
-            participant_id,
-            role: Role::parse(&role),
-            kind: ConversationKind::parse(&kind)?,
-            channel,
-        })
+    let Some(row) = row else { return Ok(None) };
+    let Some(kind) = ConversationKind::parse(&row.kind) else {
+        return Ok(None);
+    };
+
+    let participant_id = match (kind, row.participant_id) {
+        (ConversationKind::Customer, _) if !customers => return Ok(None),
+        (_, Some(id)) => id,
+        (ConversationKind::Customer, None) => {
+            sqlx::query_scalar(
+                "INSERT INTO participant (id, conversation_id, tenant_id, kind, user_id, role)
+                 VALUES ($1, $2, $3, 'user', $4, 'member')
+                 ON CONFLICT (conversation_id, user_id) WHERE user_id IS NOT NULL
+                 DO UPDATE SET left_at = NULL
+                 RETURNING id",
+            )
+            .bind(Uuid::now_v7())
+            .bind(conversation_id)
+            .bind(tenant_id)
+            .bind(user_id)
+            .fetch_one(db)
+            .await?
+        }
+        (_, None) => return Ok(None),
+    };
+
+    Ok(Some(Membership {
+        participant_id,
+        role: Role::parse(row.role.as_deref().unwrap_or("member")),
+        kind,
+        channel: row.channel,
+        external_ref: row.external_ref,
     }))
+}
+
+/// Tipo de una conversación (para saber a quién avisar).
+pub async fn kind_of(
+    db: &PgPool,
+    conversation_id: Uuid,
+) -> Result<Option<ConversationKind>, sqlx::Error> {
+    let kind: Option<String> = sqlx::query_scalar("SELECT kind FROM conversation WHERE id = $1")
+        .bind(conversation_id)
+        .fetch_optional(db)
+        .await?;
+    Ok(kind.as_deref().and_then(ConversationKind::parse))
+}
+
+/// La conversación de un cliente por un canal: la que ya había o una nueva.
+/// Devuelve su id, el participante del cliente y si se acaba de crear.
+pub async fn find_or_create_customer(
+    db: &PgPool,
+    tenant_id: &str,
+    channel: &str,
+    external_ref: &str,
+    contact_id: Uuid,
+    title: &str,
+) -> Result<(Uuid, Uuid, bool), sqlx::Error> {
+    let mut tx = db.begin().await?;
+    let inserted: Option<Uuid> = sqlx::query_scalar(
+        "INSERT INTO conversation (id, tenant_id, kind, channel, external_ref, title, contact_id, created_by)
+         VALUES ($1, $2, 'customer', $3, $4, $5, $6, $7)
+         ON CONFLICT (tenant_id, channel, external_ref) WHERE external_ref IS NOT NULL
+         DO NOTHING
+         RETURNING id",
+    )
+    .bind(Uuid::now_v7())
+    .bind(tenant_id)
+    .bind(channel)
+    .bind(external_ref)
+    .bind(title)
+    .bind(contact_id)
+    .bind(format!("channel:{channel}"))
+    .fetch_optional(&mut *tx)
+    .await?;
+    let created = inserted.is_some();
+    let conversation_id = match inserted {
+        Some(id) => id,
+        None => {
+            sqlx::query_scalar(
+                "SELECT id FROM conversation WHERE tenant_id = $1 AND channel = $2 AND external_ref = $3",
+            )
+            .bind(tenant_id)
+            .bind(channel)
+            .bind(external_ref)
+            .fetch_one(&mut *tx)
+            .await?
+        }
+    };
+
+    let contact_ref = contact_id.to_string();
+    let existing: Option<Uuid> = sqlx::query_scalar(
+        "SELECT id FROM participant WHERE conversation_id = $1 AND kind = 'contact' AND contact_ref = $2",
+    )
+    .bind(conversation_id)
+    .bind(&contact_ref)
+    .fetch_optional(&mut *tx)
+    .await?;
+    let participant_id = match existing {
+        Some(id) => id,
+        None => {
+            let id = Uuid::now_v7();
+            sqlx::query(
+                "INSERT INTO participant (id, conversation_id, tenant_id, kind, contact_ref, role)
+                 VALUES ($1, $2, $3, 'contact', $4, 'member')",
+            )
+            .bind(id)
+            .bind(conversation_id)
+            .bind(tenant_id)
+            .bind(&contact_ref)
+            .execute(&mut *tx)
+            .await?;
+            id
+        }
+    };
+    tx.commit().await?;
+    Ok((conversation_id, participant_id, created))
 }
 
 /// Usuarios que siguen dentro: a quién avisar de lo que pasa en la conversación.
@@ -417,4 +623,23 @@ pub async fn set_pinned(
             .await?;
     }
     Ok(())
+}
+
+/// La conversación de un cliente por su id en el proveedor, con su contacto.
+pub async fn customer_by_external(
+    db: &PgPool,
+    tenant_id: &str,
+    channel: &str,
+    external_ref: &str,
+) -> Result<Option<(Uuid, Uuid)>, sqlx::Error> {
+    let row: Option<(Uuid, Option<Uuid>)> = sqlx::query_as(
+        "SELECT id, contact_id FROM conversation
+          WHERE tenant_id = $1 AND channel = $2 AND external_ref = $3 AND kind = 'customer'",
+    )
+    .bind(tenant_id)
+    .bind(channel)
+    .bind(external_ref)
+    .fetch_optional(db)
+    .await?;
+    Ok(row.and_then(|(id, contact)| contact.map(|c| (id, c))))
 }

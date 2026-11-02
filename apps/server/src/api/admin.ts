@@ -7,6 +7,7 @@
  */
 
 import { Router } from 'express';
+import { ENCRYPTED_EXTENSION, isEncryptedBackup } from '../core/backup/backupCrypto';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -74,11 +75,15 @@ router.get('/tenants/:id/export', async (req: any, res) => {
     // ?includeUploads=false  → omite los archivos adjuntos (más rápido y ligero)
     const includeUploads = req.query.includeUploads !== 'false';
     const buf = await TenantBackup.exportToZip(req.params.id, { includeUploads });
-    res.setHeader('Content-Type', 'application/zip');
+    const extension = isEncryptedBackup(buf) ? ENCRYPTED_EXTENSION : '.zip';
+    res.setHeader(
+      'Content-Type',
+      extension === '.zip' ? 'application/zip' : 'application/octet-stream',
+    );
     res.setHeader('Content-Length', String(buf.length));
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="tenant_${req.params.id}_${Date.now()}.zip"`,
+      `attachment; filename="tenant_${req.params.id}_${Date.now()}${extension}"`,
     );
     res.end(buf);
   } catch (e: any) {

@@ -1,12 +1,20 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { useChatActions, useChatState, type ChatMessageData } from '@openfactu/ui';
+import { useChatActions, useChatState, type ChatMessageData, type ChatUser } from '@openfactu/ui';
 import { useI18n } from '@/i18n/I18nContext';
 import { rtClient } from '../api/rtClient';
 import { messagingApi } from '../api/messagingApi';
-import { mapConversation, mapMessage, resolveAttachment } from '../api/messageCache';
 import {
+  mapConversation,
+  mapMessage,
+  resolveAttachment,
+  updateReadState,
+  withReceipts,
+} from '../api/messageCache';
+import {
+  contactUser,
   isAtOrBefore,
   lastToChatMessage,
+  type ConversationDto,
   type MemberDto,
   type ServerEvent,
 } from '../domain/messaging';
@@ -20,6 +28,8 @@ interface BridgeOptions {
   members: Map<string, MemberDto>;
   readOnly: boolean;
   onOnlineChange: (online: Set<string>) => void;
+  /** Un cliente de fuera aparece (o cambia de nombre). */
+  onContact: (contact: ChatUser) => void;
 }
 
 /**
@@ -27,7 +37,13 @@ interface BridgeOptions {
  * por el socket entra al `ChatProvider`, y lo que hace el usuario (abrir una
  * conversación, escribir, leer) se avisa al servicio.
  */
-export function useRealtimeBridge({ meId, members, readOnly, onOnlineChange }: BridgeOptions) {
+export function useRealtimeBridge({
+  meId,
+  members,
+  readOnly,
+  onOnlineChange,
+  onContact,
+}: BridgeOptions) {
   const { t } = useI18n();
   const state = useChatState();
   const actions = useChatActions();
@@ -49,11 +65,36 @@ export function useRealtimeBridge({ meId, members, readOnly, onOnlineChange }: B
 
   // ── Eventos del servicio ───────────────────────────────────────────────────
   useEffect(() => {
+    const rememberContact = (c: ConversationDto) => {
+      if (c.contact) onContact(contactUser(c.contact));
+    };
+
+    // Vuelve a calcular el "leído" de mis mensajes de esa conversación.
+    const refreshReceipts = (conversationId: string, upTo?: string) => {
+      const { actions: a, state: s } = latest.current;
+      const changed = s.messages
+        .filter(
+          (m) =>
+            m.conversationId === conversationId &&
+            m.senderId === meId &&
+            (!upTo || isAtOrBefore(m.id, upTo)),
+        )
+        .map((m) => [m, withReceipts(m)] as const)
+        .filter(
+          ([before, after]) =>
+            before.status !== after.status || before.receipts?.length !== after.receipts?.length,
+        )
+        .map(([, after]) => after);
+      if (changed.length) a.receiveMessages(changed);
+    };
+
     const refreshConversation = async (id: string) => {
       const { actions: a, members: mem, t: tr, readOnly: ro, state: s } = latest.current;
       try {
         const dto = await messagingApi.conversation(id);
+        rememberContact(dto);
         a.updateConversation(mapConversation(dto, meId, mem, tr, ro));
+        refreshReceipts(id);
       } catch {
         // Ya no está dentro (salió o le sacaron): se queda archivada y de solo lectura.
         const before = s.conversations.find((c) => c.id === id);
@@ -70,7 +111,11 @@ export function useRealtimeBridge({ meId, members, readOnly, onOnlineChange }: B
       a.receiveMessages(
         list.map((c) => lastToChatMessage(c, tr)).filter(Boolean) as ChatMessageData[],
       );
-      list.forEach((c) => a.updateConversation(mapConversation(c, meId, mem, tr, ro)));
+      list.forEach((c) => {
+        rememberContact(c);
+        a.updateConversation(mapConversation(c, meId, mem, tr, ro));
+        refreshReceipts(c.id);
+      });
       // Lo que se perdió mientras el socket estuvo caído, en las ya abiertas.
       for (const id of loaded.current) {
         const page = await messagingApi.messages(id).catch(() => null);
@@ -146,25 +191,10 @@ export function useRealtimeBridge({ meId, members, readOnly, onOnlineChange }: B
           void refreshConversation(event.conversationId);
           break;
         case 'read':
-          if (event.userId === meId) {
-            a.markRead(event.conversationId);
-          } else {
-            // Confirmación de lectura: en las directas, lo mío hasta ahí queda leído.
-            const conv = s.conversations.find((c) => c.id === event.conversationId);
-            if (conv && conv.participantIds.length <= 2) {
-              const mine = s.messages.filter(
-                (m) =>
-                  m.conversationId === event.conversationId &&
-                  m.senderId === meId &&
-                  m.status !== 'read' &&
-                  m.status !== 'sending' &&
-                  m.status !== 'error' &&
-                  isAtOrBefore(m.id, event.messageId),
-              );
-              if (mine.length)
-                a.receiveMessages(mine.map((m) => ({ ...m, status: 'read' as const })));
-            }
-          }
+          updateReadState(event.conversationId, event.userId, event.messageId, event.readAt);
+          if (event.userId === meId) a.markRead(event.conversationId);
+          // Lo mío hasta ahí lo ha leído alguien más: "leído" (o uno más en el detalle).
+          else refreshReceipts(event.conversationId, event.messageId);
           break;
         case 'typing':
           setTyping(event.conversationId, event.userId, true);
@@ -179,7 +209,7 @@ export function useRealtimeBridge({ meId, members, readOnly, onOnlineChange }: B
       typingTimers.forEach((timers) => timers.forEach((timer) => clearTimeout(timer)));
       typingTimers.clear();
     };
-  }, [meId, onOnlineChange]);
+  }, [meId, onOnlineChange, onContact]);
 
   // ── Al abrir una conversación, su historial ─────────────────────────────────
   const activeId = state.activeConversationId;

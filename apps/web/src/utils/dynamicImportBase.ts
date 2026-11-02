@@ -17,8 +17,11 @@ export const getDynamicImportApiBase = (): string => {
 
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) return envUrl;
-  // El server (apps/server) no tiene TLS configurado — siempre habla HTTP
-  // plano en el puerto 3000, aunque la web se sirva por HTTPS (modo
+  // En producción nginx (y Caddy delante) sirve la API en el mismo origen; ir al
+  // puerto 3000 fallaría: está cerrado hacia fuera y sería contenido mixto en HTTPS.
+  if (import.meta.env.PROD) return window.location.origin;
+  // En dev el server (apps/server) no tiene TLS — siempre habla HTTP plano en
+  // el puerto 3000, aunque la web se sirva por HTTPS (modo
   // `npm run dev:web:https`). No copiar `window.location.protocol` acá.
   return `http://${window.location.hostname}:3000`;
 };
