@@ -1,6 +1,7 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Card,
   Button,
   Input,
@@ -209,6 +210,7 @@ export const CompanySettings: React.FC = () => {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
   const {
     branding,
+    userTheme,
     format,
     flags,
     update: updateTheme,
@@ -578,6 +580,9 @@ export const CompanySettings: React.FC = () => {
 
       {activeTab === 'branding' && (
         <div className="space-y-6">
+          {(userTheme.preset || userTheme.mode) && (
+            <Alert tone="info">{t('settingsCompany.page.personalThemeNotice')}</Alert>
+          )}
           <Card>
             <div className="p-6 space-y-4">
               <div className="flex items-end justify-between gap-4">

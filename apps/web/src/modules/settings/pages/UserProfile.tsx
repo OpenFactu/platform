@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { TwoFactorSettings } from '../components/TwoFactorSettings';
+import { PersonalThemeCard } from '../components/PersonalThemeCard';
 
 interface Profile {
   id: string;
@@ -286,6 +287,8 @@ export const UserProfile: React.FC = () => {
           <LanguageSwitcher />
         </div>
       </Card>
+
+      <PersonalThemeCard />
 
       <TwoFactorSettings />
 

@@ -52,7 +52,7 @@ interface Props {
 }
 
 export const WidgetCodeEditorModal: React.FC<Props> = ({ open, initialCode, onSave, onClose }) => {
-  const { branding } = useTheme();
+  const { effectiveMode } = useTheme();
   const { t } = useI18n();
   const [value, setValue] = useState(initialCode || DEFAULT_CODE);
   const [testing, setTesting] = useState(false);
@@ -122,7 +122,7 @@ export const WidgetCodeEditorModal: React.FC<Props> = ({ open, initialCode, onSa
       <Editor
         height="100%"
         language="typescript"
-        theme={branding.themeMode === 'dark' ? 'vs-dark' : 'light'}
+        theme={effectiveMode === 'dark' ? 'vs-dark' : 'light'}
         value={value}
         onChange={(v) => setValue(v ?? '')}
         options={{

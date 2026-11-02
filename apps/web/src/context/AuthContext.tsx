@@ -13,6 +13,8 @@ interface User {
   permissions?: Record<string, { read: boolean; write: boolean; delete: boolean }>;
   avatarImageUrl?: string | null;
   locale?: 'es' | 'en' | null;
+  themePreset?: string | null;
+  themeMode?: 'light' | 'dark' | null;
 }
 
 interface AuthContextType {
@@ -25,6 +27,8 @@ interface AuthContextType {
   switchTenant: (tenantId: string) => Promise<void>;
   /** Vuelve a pedir /api/auth/me — útil tras editar el propio perfil (p.ej. la foto). */
   refreshUser: () => Promise<void>;
+  /** Cambia datos del usuario en memoria, sin esperar a /me (p.ej. el tema, que se ve al momento). */
+  patchUser: (patch: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,6 +72,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       /* mantener el usuario anterior si falla el refresh */
     }
   };
+
+  const patchUser = useCallback((patch: Partial<User>) => {
+    setUser((current) => (current ? { ...current, ...patch } : current));
+  }, []);
 
   const login = (newToken: string, userData: User) => {
     localStorage.setItem('openfactu_token', newToken);
@@ -125,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         switchTenant,
         refreshUser,
+        patchUser,
       }}
     >
       {children}

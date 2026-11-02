@@ -2,22 +2,28 @@ import {
   applyTheme,
   contrastRatio,
   fontOptionFor,
+  getRegisteredTokens,
   getThemePreset,
   googleFontsUrl,
+  resolveTheme,
+  themeToAttrs,
+  themeToCssVars,
+  useThemePresets,
   type ThemeInput,
 } from '@openfactu/ui';
-import { coreApi } from '@/shared/api';
+import { authApi, coreApi } from '@/shared/api';
 import React, {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
 import { useAuth } from './AuthContext';
-import { brandingToThemeInput } from './brandingTheme';
+import { brandingToThemeInput, userThemeToInput, type UserTheme } from './brandingTheme';
 import { t as tNow } from '@/i18n/i18n';
 
 export interface BrandingConfig {
@@ -163,7 +169,13 @@ export function detectPreset(b: BrandingConfig): string {
 }
 
 interface ThemeContextType {
+  /** El de la empresa, tal como está guardado. Lo que se ve es `userTheme` encima de esto. */
   branding: BrandingConfig;
+  /** Lo que eligió el usuario en su perfil; los dos en null = el de la empresa. */
+  userTheme: UserTheme;
+  saveUserTheme: (next: UserTheme) => Promise<void>;
+  /** Modo con el que se está pintando la app, sea de la empresa o del usuario. */
+  effectiveMode: 'light' | 'dark';
   format: FormatConfig;
   flags: FlagsConfig;
   loading: boolean;
@@ -207,18 +219,36 @@ export { FONT_OPTIONS, fontOptionFor, googleFontsUrl, type FontOption } from '@o
 
 const CACHE_KEY = 'openfactu_theme';
 
-interface CachedTheme {
+const NO_USER_THEME: UserTheme = { preset: null, mode: null };
+
+/**
+ * Lo que ven igual todos, tenga sesión o no: se enseña a clientes e invitados
+ * (seguimiento, formularios, llamadas) o es un equipo compartido (quiosco), así
+ * que nunca lleva el tema personal. Misma lista en el script de index.html.
+ */
+function isSharedPage(): boolean {
+  return /^\/(track|f|join)\/|^\/kiosk/.test(window.location.pathname);
+}
+
+/** Lo necesario para pintar un tema: lo escribe `applyTheme` y lo repite index.html. */
+interface ThemeLayer {
+  themeMode?: BrandingConfig['themeMode'];
+  vars?: Record<string, string>;
+  attrs?: Record<string, string>;
+  fontUrl?: string;
+}
+
+// Lo que lee el script inline de index.html para pintar el tema antes de montar
+// React. Arriba va siempre el de la empresa, que es el del login y las páginas
+// públicas; `personal` lo pisa solo con sesión. Se borra al cerrarla, para que
+// quien entre después en este navegador no herede el tema de otro.
+interface CachedTheme extends ThemeLayer {
   tenantId?: string;
   branding?: BrandingConfig;
   format?: FormatConfig;
   flags?: FlagsConfig;
-  // Lo que lee el script inline de index.html para pintar el tema antes de
-  // montar React: todas las variables y atributos que dejó el último tema.
-  themeMode?: BrandingConfig['themeMode'];
   appName?: string;
-  vars?: Record<string, string>;
-  attrs?: Record<string, string>;
-  fontUrl?: string;
+  personal?: ThemeLayer & { userTheme: UserTheme };
   // Formato anterior (solo para leerlo: readCachedBranding)
   colorPrimary?: string;
   colorAccent?: string;
@@ -264,9 +294,39 @@ function readCachedFlags(): FlagsConfig {
   return FLAGS_DEFAULTS;
 }
 
+/**
+ * Resuelve un tema sin tocar el DOM. Da lo mismo que `applyTheme` más el relevo
+ * del primario en oscuro: un color principal casi igual que las superficies
+ * (Carbon, Midnight, Forest, Plum…) deja los botones `bg-primary` invisibles
+ * sobre las tarjetas. Si no contrasta (< 3:1), esos botones pasan al acento.
+ */
+function buildThemeLayer(input: ThemeInput) {
+  const resolved = resolveTheme(input);
+  const primaryRelay: Record<string, string> = {};
+  const c = resolved.colors;
+  if (resolved.mode === 'dark' && contrastRatio(hexToRgb(c.primary), hexToRgb(c.bgCard)) < 3) {
+    const accent = hexToRgb(c.accent);
+    primaryRelay['--color-primary-rgb'] = rgbToSpaceString(accent);
+    primaryRelay['--color-primary-hover-rgb'] = rgbToSpaceString(darkenRgb(accent, 0.1));
+    primaryRelay['--color-primary-fg-rgb'] = rgbToSpaceString(contrastingFgRgb(accent));
+  }
+  const layer: ThemeLayer = {
+    themeMode: resolved.mode,
+    vars: { ...themeToCssVars(resolved), ...getRegisteredTokens(), ...primaryRelay },
+    attrs: themeToAttrs(resolved),
+    fontUrl: googleFontsUrl(fontOptionFor(resolved.typography.fontFamily)) || undefined,
+  };
+  return { resolved, primaryRelay, layer };
+}
+
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { token, user } = useAuth();
+  const { token, user, patchUser } = useAuth();
   const [branding, setBranding] = useState<BrandingConfig>(readCachedBranding);
+  // Mientras /me responde solo está el token: lo elegido se saca de la caché, o
+  // la app pasaría un instante por el tema de la empresa al recargar.
+  const [bootUserTheme] = useState<UserTheme>(
+    () => readCache()?.personal?.userTheme ?? NO_USER_THEME,
+  );
   const [format, setFormat] = useState<FormatConfig>(readCachedFormat);
   const [flags, setFlags] = useState<FlagsConfig>(readCachedFlags);
   const [loading, setLoading] = useState(false);
@@ -327,74 +387,97 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     reload();
   }, [reload]);
 
+  const userTheme = useMemo<UserTheme>(() => {
+    if (user) return { preset: user.themePreset ?? null, mode: user.themeMode ?? null };
+    return token ? bootUserTheme : NO_USER_THEME;
+  }, [user, token, bootUserTheme]);
+
+  const saveUserTheme = useCallback(
+    async (next: UserTheme) => {
+      const previous = {
+        themePreset: user?.themePreset ?? null,
+        themeMode: user?.themeMode ?? null,
+      };
+      const saved = { themePreset: next.preset, themeMode: next.mode };
+      // Se ve al momento; si el servidor lo rechaza, se deshace.
+      patchUser(saved);
+      try {
+        await authApi.saveTheme(saved);
+      } catch (e) {
+        patchUser(previous);
+        throw e;
+      }
+    },
+    [user?.themePreset, user?.themeMode, patchUser],
+  );
+
+  // El catálogo de presets: si un plugin aporta o retira uno, hay que recalcular.
+  const presets = useThemePresets();
+  const companyLayer = useMemo(
+    () => buildThemeLayer(brandingToThemeInput(branding)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [branding, presets],
+  );
+  const personalLayer = useMemo(
+    () =>
+      userTheme.preset || userTheme.mode
+        ? buildThemeLayer(userThemeToInput(branding, userTheme))
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [branding, userTheme, presets],
+  );
+  const activeLayer = (!isSharedPage() && personalLayer) || companyLayer;
+
   const themeAppliedOnce = useRef(false);
 
-  // Aplicar branding a :root SÍNCRONAMENTE antes del paint para evitar flashes.
+  // Aplicar el tema a :root SÍNCRONAMENTE antes del paint para evitar flashes.
   // Todo el tema lo escribe `applyTheme` de @openfactu/ui: colores, superficies,
   // fuente (y su <link> de Google Fonts), radios, densidad, movimiento,
-  // cristal… La app solo añade lo que la librería no sabe (abajo).
+  // cristal… La app solo añade lo que la librería no sabe (el relevo del primario).
   useLayoutEffect(() => {
-    const root = document.documentElement;
-    document.title = branding.appName;
-
-    const resolved = applyTheme(brandingToThemeInput(branding), undefined, {
-      transition: themeAppliedOnce.current,
-    });
-    themeAppliedOnce.current = true;
-    // Restos de cuando la app ponía la fuente por su cuenta.
-    document.head.querySelector('link[data-tenant-font]')?.remove();
-
-    // En oscuro, un color principal casi igual que las superficies (Carbon,
-    // Midnight, Forest, Plum…) deja los botones `bg-primary` invisibles sobre
-    // las tarjetas. Si no contrasta (< 3:1), esos botones pasan al acento.
-    // Va después de `applyTheme`, que es quien escribe estas variables.
-    const c = resolved.colors;
-    if (resolved.mode === 'dark') {
-      const primary = hexToRgb(c.primary);
-      if (contrastRatio(primary, hexToRgb(c.bgCard)) < 3) {
-        const accent = hexToRgb(c.accent);
-        root.style.setProperty('--color-primary-rgb', rgbToSpaceString(accent));
-        root.style.setProperty(
-          '--color-primary-hover-rgb',
-          rgbToSpaceString(darkenRgb(accent, 0.1)),
-        );
-        root.style.setProperty(
-          '--color-primary-fg-rgb',
-          rgbToSpaceString(contrastingFgRgb(accent)),
-        );
+    // Un formulario público pinta el tema de SU empresa en cuanto lo recibe
+    // (usePublicForm). Con sesión abierta llegaría después el de la empresa de
+    // quien lo mira, y no debe pisarlo: aquí solo se pinta el primero.
+    const pageOwnsTheme = window.location.pathname.startsWith('/f/');
+    if (!pageOwnsTheme || !themeAppliedOnce.current) {
+      const root = document.documentElement;
+      document.title = branding.appName;
+      applyTheme(activeLayer.resolved, undefined, { transition: themeAppliedOnce.current });
+      themeAppliedOnce.current = true;
+      // Restos de cuando la app ponía la fuente por su cuenta.
+      document.head.querySelector('link[data-tenant-font]')?.remove();
+      // Va después de `applyTheme`, que es quien escribe estas variables.
+      for (const [name, value] of Object.entries(activeLayer.primaryRelay)) {
+        root.style.setProperty(name, value);
       }
     }
 
-    // Persistir cache con las tres secciones completas + el tema ya escrito,
+    // Persistir cache con las tres secciones completas + los temas ya resueltos,
     // para que el script inline en index.html lo aplique antes de React.
     try {
-      const vars: Record<string, string> = {};
-      for (let i = 0; i < root.style.length; i++) {
-        const name = root.style[i];
-        if (name.startsWith('--') && name !== '--k-theme-transition') {
-          vars[name] = root.style.getPropertyValue(name);
-        }
-      }
-      const attrs: Record<string, string> = {};
-      for (const attr of Array.from(root.attributes)) {
-        if (attr.name.startsWith('data-k-')) attrs[attr.name] = attr.value;
-      }
       const payload: CachedTheme = {
         tenantId: user?.tenantId,
         branding,
         format,
         flags,
-        themeMode: resolved.mode,
         appName: branding.appName,
-        vars,
-        attrs,
-        fontUrl: googleFontsUrl(fontOptionFor(resolved.typography.fontFamily)) || undefined,
+        ...companyLayer.layer,
+        ...(personalLayer ? { personal: { ...personalLayer.layer, userTheme } } : {}),
       };
       localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
     } catch {
       /* noop */
     }
-  }, [branding, format, flags, user?.tenantId]);
+  }, [
+    activeLayer,
+    companyLayer,
+    personalLayer,
+    userTheme,
+    branding,
+    format,
+    flags,
+    user?.tenantId,
+  ]);
 
   const applyPreset = useCallback(
     async (presetId: string) => {
@@ -409,7 +492,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   return (
     <ThemeContext.Provider
-      value={{ branding, format, flags, loading, reload, update, applyPreset, activePresetId }}
+      value={{
+        branding,
+        userTheme,
+        saveUserTheme,
+        effectiveMode: activeLayer.resolved.mode,
+        format,
+        flags,
+        loading,
+        reload,
+        update,
+        applyPreset,
+        activePresetId,
+      }}
     >
       {children}
     </ThemeContext.Provider>

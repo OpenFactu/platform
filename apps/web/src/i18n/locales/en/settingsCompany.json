@@ -414,6 +414,7 @@
       "fiscalYearStart": "Fiscal year start (MM-DD)",
       "saving": "Saving...",
       "saveChanges": "Save changes",
+      "personalThemeNotice": "You have a personal theme in your profile: changes here reach the rest of the company, but you'll keep seeing yours.",
       "themePresets": "Theme presets",
       "themePresetsHelp": "Choose a predesigned brand theme. You can also adjust the colors manually below.",
       "custom": "Custom",

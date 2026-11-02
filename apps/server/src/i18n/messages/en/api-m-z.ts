@@ -289,6 +289,8 @@ export default {
   'Sin firma': 'No signature',
   'Error al subir la foto': 'Error uploading photo',
   'Sin foto de perfil': 'No profile photo',
+  'Tema no válido': 'Invalid theme',
+  'Modo de tema no válido': 'Invalid theme mode',
 
   // ── userTables.ts ─────────────────────────────────────────────────────
   'Nombre inválido. Letras/dígitos/"_", 2–41 chars.':

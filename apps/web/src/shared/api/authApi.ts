@@ -11,6 +11,9 @@ export interface AuthUser {
   avatarImageUrl?: string | null;
   /** Idioma elegido en su perfil; null = el del navegador. */
   locale?: 'es' | 'en' | null;
+  /** Tema personal; null = el de la empresa. */
+  themePreset?: string | null;
+  themeMode?: 'light' | 'dark' | null;
 }
 
 export const authApi = {
@@ -19,4 +22,7 @@ export const authApi = {
     apiClient.post<{ token: string; user: AuthUser }>('/api/auth/switch-tenant', { tenantId }),
   /** Guarda el idioma de la interfaz en el perfil del usuario. */
   saveLocale: (locale: 'es' | 'en') => apiClient.patch('/api/profile/me', { locale }),
+  /** Guarda el tema personal; con los dos a null vuelve el de la empresa. */
+  saveTheme: (theme: { themePreset: string | null; themeMode: 'light' | 'dark' | null }) =>
+    apiClient.patch('/api/profile/me', theme),
 };

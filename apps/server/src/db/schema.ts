@@ -48,6 +48,9 @@ export const globalUsers = pgTable('GlobalUser', {
   totpBackupCodes: text('totpBackupCodes'), // JSON con hashes SHA-256 de un solo uso
   // Idioma de la interfaz ('es' | 'en'). Null = el del navegador.
   locale: text('locale'),
+  // Tema personal: va con la persona, no con la empresa. Null = el de la empresa.
+  themePreset: text('themePreset'), // id de un preset de @openfactu/ui
+  themeMode: text('themeMode'), // 'light' | 'dark'
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });

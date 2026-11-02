@@ -185,6 +185,8 @@ router.post('/login', async (req, res) => {
         permissions: effectivePermissions,
         avatarImageUrl: user.avatarImageUrl,
         locale: user.locale ?? null,
+        themePreset: user.themePreset ?? null,
+        themeMode: user.themeMode ?? null,
       },
     });
   } catch (error: any) {
@@ -273,6 +275,8 @@ router.post('/switch-tenant', async (req, res) => {
         permissions: effectivePermissions,
         avatarImageUrl: user.avatarImageUrl,
         locale: user.locale ?? null,
+        themePreset: user.themePreset ?? null,
+        themeMode: user.themeMode ?? null,
       },
     });
   } catch (error: any) {
@@ -354,6 +358,8 @@ router.get('/me', async (req, res) => {
       permissions: effectivePermissions,
       avatarImageUrl: user.avatarImageUrl,
       locale: user.locale ?? null,
+      themePreset: user.themePreset ?? null,
+      themeMode: user.themeMode ?? null,
     });
   } catch (e) {
     res.status(401).json({ error: 'No autorizado' });

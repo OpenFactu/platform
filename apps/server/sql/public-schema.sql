@@ -236,6 +236,8 @@ CREATE TABLE IF NOT EXISTS "GlobalUser" (
 	"totpEnabled" boolean DEFAULT false NOT NULL,
 	"totpBackupCodes" text,
 	"locale" text,
+	"themePreset" text,
+	"themeMode" text,
 	"createdAt" timestamp DEFAULT now() NOT NULL,
 	"updatedAt" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "GlobalUser_email_unique" UNIQUE("email"),
@@ -273,6 +275,10 @@ ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpEnabled" boolean DEFAULT 
 ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "totpBackupCodes" text;
 
 ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "locale" text;
+
+ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "themePreset" text;
+
+ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "themeMode" text;
 
 ALTER TABLE "GlobalUser" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
 

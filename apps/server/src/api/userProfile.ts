@@ -21,6 +21,7 @@ import { and, eq, isNull, desc } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import { StorageResolver } from '../core/storage/StorageResolver';
+import { parseThemePatch } from '../core/auth/themePreference';
 import type { StorageProviderId } from '../core/storage/StorageAdapter';
 
 const router = Router();
@@ -57,7 +58,8 @@ async function findCurrent(tenantClient: any, userId: string, entityType = ENTIT
 }
 
 /**
- * PATCH /api/profile/me — edita datos del perfil (nombre/cargo de firma, idioma).
+ * PATCH /api/profile/me — edita datos del perfil (nombre/cargo de firma, idioma, tema).
+ * El usuario sale siempre del token: no hay forma de tocar el perfil de otro.
  */
 router.patch('/me', async (req: any, res) => {
   try {
@@ -70,6 +72,11 @@ router.patch('/me', async (req: any, res) => {
     if ('signatureRole' in req.body) payload.signatureRole = req.body.signatureRole?.trim() || null;
     if ('locale' in req.body) {
       payload.locale = req.body.locale === 'en' || req.body.locale === 'es' ? req.body.locale : null;
+    }
+    try {
+      Object.assign(payload, parseThemePatch(req.body));
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message });
     }
 
     if (Object.keys(payload).length === 0) {
@@ -89,6 +96,8 @@ router.patch('/me', async (req: any, res) => {
         signatureRole: schema.globalUsers.signatureRole,
         signatureImageUrl: schema.globalUsers.signatureImageUrl,
         locale: schema.globalUsers.locale,
+        themePreset: schema.globalUsers.themePreset,
+        themeMode: schema.globalUsers.themeMode,
       });
     res.json(row);
   } catch (e: any) {
