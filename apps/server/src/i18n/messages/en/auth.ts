@@ -79,7 +79,7 @@ export default {
   'Sumas y saldos': 'Trial balance',
   'Pérdidas y ganancias': 'Profit and loss',
   'Balance de situación': 'Balance sheet',
-  'Libro de IVA': 'VAT book',
+  'Libros e informes fiscales': 'Tax books and reports',
   'Portada · Gestión': 'Overview · Management',
   'Margen por cliente': 'Margin by customer',
   'Margen por artículo': 'Margin by item',

@@ -307,9 +307,9 @@ export function buildChatTools(ctx: ChatToolContext, options: BuildChatToolsOpti
   if (hasModuleAccess(ctx, '/partners')) {
     tools.search_partners = tool({
       description:
-        'Busca interlocutores (clientes y proveedores) por nombre, código o NIF. Devuelve hasta 20.',
+        'Busca interlocutores (clientes y proveedores) por nombre, código o identificación fiscal. Devuelve hasta 20.',
       inputSchema: z.object({
-        query: z.string().describe('Texto a buscar en nombre, código o NIF'),
+        query: z.string().describe('Texto a buscar en nombre, código o identificación fiscal'),
       }),
       execute: async ({ query }: { query: string }) =>
         sandboxQuery(

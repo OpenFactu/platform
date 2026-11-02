@@ -129,7 +129,7 @@ export const masterDataObjects: ImportObjectConfig[] = [
   {
     id: 'taxGroup',
     label: 'Tipos de impuesto',
-    description: 'Los tipos de IVA y equivalentes que usan los documentos.',
+    description: 'Los tipos de impuesto que usan los documentos.',
     group: 'maestros',
     modulePath: '/taxes',
     table: 'TaxGroup',
@@ -139,7 +139,7 @@ export const masterDataObjects: ImportObjectConfig[] = [
     deletePath: (id) => `/${id}`,
     naturalKeys: [{ key: 'code', column: 'code', label: 'Código', unique: true }],
     fields: [
-      { key: 'code', label: 'Código', type: 'string', required: 'onInsert', example: 'IVA21' },
+      { key: 'code', label: 'Código', type: 'string', required: 'onInsert', example: 'TAX21' },
       { key: 'rate', label: 'Porcentaje', type: 'number', required: 'onInsert', example: '21' },
     ],
   },
@@ -201,7 +201,7 @@ export const masterDataObjects: ImportObjectConfig[] = [
         label: 'Tipo de impuesto',
         type: 'ref',
         bodyKey: 'taxGroupId',
-        example: 'IVA21',
+        example: 'TAX21',
         ref: { table: 'TaxGroup', matchBy: ['code'], label: 'tipo de impuesto' },
       },
       { key: 'basePrice', label: 'Precio base', type: 'number', example: '0,45' },

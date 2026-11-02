@@ -50,9 +50,32 @@ function lookup(obj: Messages, path: string): string | undefined {
   return typeof cur === 'string' ? cur : undefined;
 }
 
-function interpolate(template: string, vars?: TranslateVars): string {
-  if (!vars) return template;
-  return template.replace(/\{(\w+)\}/g, (_, key) => (key in vars ? String(vars[key]) : `{${key}}`));
+/** Términos de la normativa de la empresa; sin ella, los genéricos de cada idioma. */
+let localizationTerms: TranslateVars | null = null;
+let termsVersion = 0;
+
+function genericTerm(locale: Locale, key: string): string | undefined {
+  return lookup(MESSAGES[locale], `app.localization.${key}`);
+}
+
+const TERM_KEYS = new Set([
+  'tax',
+  'taxId',
+  'withholding',
+  'incomeTax',
+  'socialEmployee',
+  'socialEmployer',
+]);
+
+function interpolate(locale: Locale, template: string, vars?: TranslateVars): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => {
+    if (vars && key in vars) return String(vars[key]);
+    if (TERM_KEYS.has(key)) {
+      const term = localizationTerms?.[key] ?? genericTerm(locale, key);
+      if (term != null) return String(term);
+    }
+    return `{${key}}`;
+  });
 }
 
 function detectInitialLocale(): Locale {
@@ -89,6 +112,18 @@ export function setLocale(l: Locale): void {
   listeners.forEach((fn) => fn());
 }
 
+/** Fija los términos de la normativa activa, o null para volver a los genéricos. */
+export function setLocalizationTerms(terms: TranslateVars | null): void {
+  localizationTerms = terms;
+  termsVersion++;
+  listeners.forEach((fn) => fn());
+}
+
+/** Cambia con los términos, para que `t` y lo que dependa de ella se recalculen. */
+export function getTermsVersion(): number {
+  return termsVersion;
+}
+
 export function subscribeLocale(fn: () => void): () => void {
   listeners.add(fn);
   return () => listeners.delete(fn);
@@ -109,7 +144,7 @@ function resolve(locale: Locale, path: string, count?: number): string | undefin
 export function translate(locale: Locale, path: string, vars?: TranslateVars): string {
   const count = typeof vars?.count === 'number' ? vars.count : undefined;
   const text = resolve(locale, path, count) ?? resolve(DEFAULT_LOCALE, path, count);
-  return text != null ? interpolate(text, vars) : path;
+  return text != null ? interpolate(locale, text, vars) : path;
 }
 
 /** `t` para código fuera de React; usa el idioma activo en el momento de la llamada. */

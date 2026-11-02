@@ -52,7 +52,7 @@
       "idShort": "ID: {id}",
       "information": "Information",
       "loadError": "Error loading",
-      "nif": "Tax ID (NIF): {nif}",
+      "nif": "Tax ID: {nif}",
       "origin": "Origin",
       "originWeb": "🌐 Web",
       "pdfError": "Error downloading PDF",
@@ -210,7 +210,7 @@
       "tracePending": "pending",
       "unitsShort": "{n} units",
       "uom": "Unit of measure",
-      "vatRate": "VAT %",
+      "vatRate": "{tax} %",
       "warehouse": "Warehouse"
     },
     "nav": {
@@ -294,7 +294,7 @@
       "formSubtitle": "Supplier invoice: expense and taxes.",
       "fromReceiptsNotice": "Invoice generated from one or more goods receipts.",
       "newTitle": "New purchase invoice",
-      "subtitle": "Record for the VAT book and supplier payments.",
+      "subtitle": "Record for the Tax summary and supplier payments.",
       "supplierInvoiceNo": "Supplier invoice no.",
       "supplierInvoiceNoHelp": "It cannot be repeated for the same supplier.",
       "supplierInvoiceNoPlaceholder": "The number shown on their invoice",
@@ -473,8 +473,8 @@
     "totals": {
       "subtotal": "Subtotal",
       "total": "Total",
-      "vat": "VAT",
-      "withholding": "IRPF withholding"
+      "vat": "{tax}",
+      "withholding": "{withholding}"
     },
     "types": {
       "PDN": "Goods receipt",
@@ -496,9 +496,9 @@
     },
     "withholding": {
       "apply": "Apply {rate}%",
-      "customerDefault": "This customer has a default IRPF withholding of {rate}%",
+      "customerDefault": "This customer has a default withholding of {rate}%",
       "saleHint": "If the customer is a withholding company and you are a self-employed professional, it should be applied.",
-      "supplierDefault": "This supplier has a default IRPF withholding of {rate}%",
+      "supplierDefault": "This supplier has a default withholding of {rate}%",
       "withoutIt": "The {doc} will be saved without withholding."
     }
   }

@@ -31,7 +31,7 @@
       },
       "basis": {
         "net": "Net amount (subtotal)",
-        "gross": "Gross amount (total incl. VAT)",
+        "gross": "Gross amount (total incl. taxes)",
         "margin": "Margin (future)"
       },
       "kind": {
@@ -93,13 +93,13 @@
       "seedComplete": "The catalog was already complete",
       "seeded_one": "{count} standard concept created",
       "seeded_other": "{count} standard concepts created",
-      "seedTitle": "Create the typical concepts in one click: base salary, bonuses, IRPF withholding, employee SS and employer SS",
+      "seedTitle": "Create the typical concepts in one click: base salary, bonuses, withholding, employee contribution and employer contribution",
       "seed": "Load standard catalog",
       "new": "New concept",
       "defaultAmount": "Default amount",
       "defaultPercent": "Default %",
-      "taxableIrpf": "Subject to IRPF",
-      "taxableSs": "Subject to SS"
+      "taxableIrpf": "Subject to withholding",
+      "taxableSs": "Subject to contributions"
     },
     "laborCost": {
       "project": "Project",
@@ -109,11 +109,11 @@
       "count": "No. of payslips",
       "totalCost": "Total cost",
       "pctTotal": "% of total",
-      "subtitle": "Gross + employer SS, grouped by dimension. Data from approved payslips and their lines in the range.",
+      "subtitle": "Gross + employer contributions, grouped by dimension. Data from approved payslips and their lines in the range.",
       "groupBy": "Group by",
       "groups": "groups",
       "grossPaid": "Gross paid",
-      "ssEmployer": "Employer SS",
+      "ssEmployer": "{socialEmployer}",
       "empty": "No approved payslips in the selected range."
     },
     "months": {
@@ -160,9 +160,9 @@
       "title": "Payslips",
       "howBefore": "How it works: 1)",
       "howBold": "\"Generate current month\"",
-      "howAfter": "creates a draft for each employee with base salary + automatic IRPF + SS. 2) Edit lines/bonuses if needed. 3) Approve → the journal entry is generated (personnel expense, SS and IRPF).",
+      "howAfter": "creates a draft for each employee with base salary + automatic withholdings + contributions. 2) Edit lines/bonuses if needed. 3) Approve → the journal entry is generated (personnel expense, SS and Withholding).",
       "generateTitle": "Generate payslips for {period}",
-      "generateMessage": "Creates a draft payslip for each active employee, with the base salary from their contract and automatic IRPF/SS. Continue?",
+      "generateMessage": "Creates a draft payslip for each active employee, with the base salary from their contract and automatic withholdings and contributions. Continue?",
       "generate": "Generate",
       "generatedNone": "Nothing new · {skipped} already existed",
       "generatedSome": "{n} generated · {skipped} already existed",
@@ -171,7 +171,7 @@
       "generateHint": "Creates a draft payslip for each active employee with automatic salary and deductions",
       "generateCurrent": "Generate current month",
       "new": "New payslip",
-      "newSubtitle": "Just choose the employee and month. The lines (base salary, bonuses, IRPF, SS) are filled in automatically and you can adjust them afterwards.",
+      "newSubtitle": "Just choose the employee and month. The lines (base salary, bonuses, withholdings, contributions) are filled in automatically and you can adjust them afterwards.",
       "createAndOpen": "Create and open lines",
       "periodLabel": "Period",
       "prevMonth": "Previous month",
@@ -179,15 +179,15 @@
       "autoSalary": "Prefill base salary from contract",
       "autoSalaryBefore": "Takes",
       "autoSalaryAfter": "from the active contract and adds it as a \"Base salary\" line.",
-      "autoTaxes": "Generate IRPF and SS automatically",
-      "autoTaxesHint": "Adds the \"% of base\" concepts from the catalog (IRPF, employee SS, employer SS).",
+      "autoTaxes": "Generate withholdings and contributions automatically",
+      "autoTaxesHint": "Adds the \"% of base\" concepts from the catalog (withholding and employee and employer contributions).",
       "addConcept": "— add concept from catalog —",
-      "autoAlready": "IRPF/SS were already added. Recalculated.",
+      "autoAlready": "Withholdings and contributions were already added. Recalculated.",
       "autoAdded_one": "{count} automatic concept added",
       "autoAdded_other": "{count} automatic concepts added",
-      "noTaxConcepts": "There are no IRPF/SS concepts in the catalog",
-      "autoTaxesTitle": "Automatically adds IRPF and employee/employer SS from the catalog",
-      "autoButton": "Auto IRPF/SS",
+      "noTaxConcepts": "There are no withholding or contribution concepts in the catalog",
+      "autoTaxesTitle": "Automatically adds withholding and contributions from the catalog",
+      "autoButton": "Auto withholdings",
       "noCommissions": "No pending commissions for this period",
       "commissionsImported_one": "{count} commission imported · {total} €",
       "commissionsImported_other": "{count} commissions imported · {total} €",
@@ -195,18 +195,18 @@
       "importCommissions": "Import commissions",
       "missingTaxesBefore": "This payslip has earnings but is missing",
       "and": "and",
-      "ssEmployeeLong": "Employee SS",
-      "missingTaxesAfter": ". The net shown is not real. Press \"Auto IRPF/SS\" or add the concepts manually.",
-      "noLines": "This payslip has no lines yet. Add concepts from the catalog or press \"Auto IRPF/SS\".",
+      "ssEmployeeLong": "{socialEmployee}",
+      "missingTaxesAfter": ". The net shown is not real. Press \"Auto withholdings\" or add the concepts manually.",
+      "noLines": "This payslip has no lines yet. Add concepts from the catalog or press \"Auto withholdings\".",
       "groups": {
         "earningTitle": "➕ Earnings",
         "earningDesc": "What the employee earns (salary, bonuses, overtime…)",
         "deductionTitle": "➖ Deductions",
-        "deductionDesc": "What is withheld (IRPF, employee SS, advances…)",
+        "deductionDesc": "What is withheld (withholding, employee contribution, advances…)",
         "employerTitle": "🏢 Employer cost",
-        "employerDesc": "Contributions paid by the company (employer SS)",
+        "employerDesc": "Contributions paid by the company (employer contribution)",
         "earningEmpty": "No earnings yet. Add \"Base salary\" from the dropdown above so the gross is > 0 and the % are calculated.",
-        "deductionEmpty": "No deductions yet. Press \"Auto IRPF/SS\".",
+        "deductionEmpty": "No deductions yet. Press \"Auto withholdings\".",
         "employerEmpty": "No employer contributions yet."
       },
       "col": {
@@ -215,8 +215,8 @@
         "base": "Base",
         "amount": "Amount"
       },
-      "ssEmployee": "Employee SS",
-      "ssEmployer": "Employer SS",
+      "ssEmployee": "{socialEmployee}",
+      "ssEmployer": "{socialEmployer}",
       "deleteLine": "Delete line"
     }
   }

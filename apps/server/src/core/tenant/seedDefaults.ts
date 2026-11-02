@@ -4,11 +4,6 @@ import { ClientFactory } from './ClientFactory';
 import * as schema from '../../db/schema';
 import type { DocType } from '@openfactu/pdf';
 
-interface SeedTaxGroup {
-  code: string;
-  rate: string;
-}
-
 interface SeedUom {
   code: string;
   name: string;
@@ -28,13 +23,6 @@ interface SeedSeries {
   description: string;
   prefix: string;
 }
-
-const TAX_GROUPS: SeedTaxGroup[] = [
-  { code: 'IVA0', rate: '0.00' },
-  { code: 'IVA4', rate: '4.00' },
-  { code: 'IVA10', rate: '10.00' },
-  { code: 'IVA21', rate: '21.00' },
-];
 
 const UOMS: SeedUom[] = [
   { code: 'UD', name: 'Unidad' },
@@ -98,14 +86,14 @@ const SERIES: SeedSeries[] = [
 ];
 
 /**
- * Siembra los datos básicos en un tenant recién creado: impuestos, unidades de
- * medida, grupos de partners, lista de precios general, categoría base, periodo
- * contable del año actual y series de documentos. Idempotente.
+ * Siembra los datos básicos en un tenant recién creado: unidades de medida,
+ * grupos de partners, lista de precios general, categoría base, periodo
+ * contable del año actual y series de documentos. Idempotente. Los impuestos no
+ * están aquí: dependen del país y los aporta su paquete de localización.
  */
 export async function seedDefaults(schemaName: string) {
   const db = ClientFactory.getClient(schemaName);
 
-  await seedTaxGroups(db);
   await seedUoms(db);
   await seedPartnerGroups(db);
   await seedDefaultPriceList(db);
@@ -114,21 +102,6 @@ export async function seedDefaults(schemaName: string) {
   await seedSeries(db, periodId);
 
   console.log(`[seedDefaults] Datos por defecto sembrados en ${schemaName}`);
-}
-
-async function seedTaxGroups(db: any) {
-  for (const tg of TAX_GROUPS) {
-    const existing = await db
-      .select({ id: schema.taxGroups.id })
-      .from(schema.taxGroups)
-      .where(eq(schema.taxGroups.code, tg.code));
-    if (existing.length > 0) continue;
-    await db.insert(schema.taxGroups).values({
-      id: crypto.randomUUID(),
-      code: tg.code,
-      rate: tg.rate,
-    });
-  }
 }
 
 async function seedUoms(db: any) {

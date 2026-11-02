@@ -102,7 +102,7 @@ const Review: React.FC<{ form: PartnerForm; wizard: PartnerWizard }> = ({ form, 
  * Alta de un interlocutor paso a paso: datos generales, contacto,
  * direcciones, fiscal y banco, y revisión. Usa las mismas secciones que la
  * ficha; cada paso se valida antes de seguir y se avisa si ya existe un
- * interlocutor con el mismo NIF, correo o nombre.
+ * interlocutor con la misma identificación fiscal, correo o nombre.
  */
 export const PartnerCreateWizard: React.FC<Props> = ({ form, onCreate, onCancel }) => {
   const { t } = useI18n();

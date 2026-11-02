@@ -4,7 +4,8 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "plugins/*"
+    "plugins/*",
+    "!plugins/openfactu-plugin-*"
   ],
   "scripts": {
     "dev": "docker compose up -d",

@@ -12,7 +12,7 @@
       "nameTooShort": "El nombre es demasiado corto",
       "nameTooLong": "El nombre admite como mucho 200 caracteres",
       "nifFormat": "El {label} no tiene el formato de {country}",
-      "nif": "NIF",
+      "nif": "Identificación fiscal",
       "thisCountry": "este país",
       "example": "(ej.: {example})",
       "emailInvalid": "El correo no es válido",
@@ -24,7 +24,7 @@
     },
     "duplicates": {
       "reason": {
-        "nif": "el mismo NIF",
+        "nif": "la misma identificación fiscal",
         "email": "el mismo correo",
         "name": "el mismo nombre"
       },
@@ -40,7 +40,7 @@
     "wizard": {
       "steps": {
         "general": "Datos generales",
-        "generalHint": "Nombre, grupo, país y NIF. El código se asigna solo al crear.",
+        "generalHint": "Nombre, grupo, país e identificación fiscal. El código se asigna solo al crear.",
         "contact": "Contacto",
         "contactHint": "Teléfono, correo y web de la empresa.",
         "addresses": "Direcciones",
@@ -55,7 +55,7 @@
       "nameMissing": "Falta el nombre",
       "streetMissing": "Falta la calle",
       "withholdingRange": "La retención debe estar entre 0 y 100",
-      "nifExists": "Ya existe «{name}» con este NIF",
+      "nifExists": "Ya existe «{name}» con esta identificación fiscal",
       "billingCount_one": "{count} de facturación",
       "billingCount_other": "{count} de facturación",
       "shippingCount_one": "{count} de envío",
@@ -136,12 +136,12 @@
       "loadError": "Error al cargar interlocutores",
       "code": "Código",
       "legalName": "Razón Social",
-      "nifVat": "NIF/VAT",
+      "nifVat": "{taxId}",
       "new": "Nuevo Interlocutor",
       "noMatch": "Ningún interlocutor coincide con “{search}”.",
       "empty": "Aún no hay interlocutores.",
       "subtitle": "Gestión centralizada de Clientes y Proveedores.",
-      "searchPlaceholder": "Buscar por código, razón social, NIF, grupo o contacto…"
+      "searchPlaceholder": "Buscar por código, razón social, identificación fiscal, grupo o contacto…"
     },
     "detail": {
       "loadFailed": "No se pudo cargar",

@@ -6,6 +6,8 @@ import { sql } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 import { loadPlugins } from './plugins/loader';
+import { bootstrapLocalization } from './core/localization/bootstrap';
+import localizationRouter from './api/localization';
 import setupRouter from './api/setup';
 import pluginsRouter from './api/plugins';
 import customFieldsRouter from './api/customFields';
@@ -311,7 +313,7 @@ mountApi(app, '/api/company/signature', '/settings/company', companySignatureRou
 // Pero usersRouter ya está montado arriba, así que usamos otro prefix.
 mountShared(app, '/api/profile', 'perfil del propio usuario', userProfileRouter);
 mountShared(app, '/api/2fa', 'doble factor del propio usuario', twoFactorRouter);
-// Un permiso POR INFORME: el libro de IVA y el coste laboral no son lo mismo
+// Un permiso POR INFORME: los libros fiscales y el coste laboral no son lo mismo
 // que la rotación de stock. Antes este router no pedía ninguno.
 mountApiBySubpath(
   app,
@@ -322,7 +324,9 @@ mountApiBySubpath(
     '/trial-balance': '/reports/accounting/trial-balance',
     '/pl': '/reports/accounting/pl',
     '/balance-sheet': '/reports/accounting/balance-sheet',
-    '/vat': '/reports/accounting/vat',
+    // La clave del permiso se conserva para no perder lo ya concedido a cada rol.
+    '/tax-summary': '/reports/accounting/vat',
+    '/plugin': '/reports/accounting/vat',
     '/profit-customer': '/reports/management/profit-customer',
     '/profit-item': '/reports/management/profit-item',
     '/profit-project': '/reports/management/profit-project',
@@ -342,6 +346,12 @@ mountApiBySubpath(
     '/stock-movements': '/reports/stock/movements',
   },
   reportsRouter,
+);
+mountShared(
+  app,
+  '/api/localization',
+  'terminología y normativa que pinta cualquier pantalla',
+  localizationRouter,
 );
 mountApi(app, '/api/hr/employees', '/hr/employees', hrEmployeesRouter);
 mountApi(app, '/api/hr/departments', '/hr/departments', hrDepartmentsRouter);
@@ -539,6 +549,9 @@ const start = async () => {
     console.log('[Bootstrap] Esquemas sincronizados.');
 
     await loadPlugins(app);
+
+    // Con empresas migradas y plugins cargados: cada empresa recibe su normativa.
+    await bootstrapLocalization();
 
     // Cierre por defecto. Va DESPUÉS de los plugins a propósito: ellos también
     // montan rutas y hacerlo antes las dejaría inalcanzables. Cualquier

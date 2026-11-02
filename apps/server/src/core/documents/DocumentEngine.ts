@@ -5,6 +5,10 @@ import { PluginFieldManager } from '../plugins/PluginFieldManager';
 import { DocumentRegistry, type StockAction } from './DocumentRegistry';
 import { getConfigSection } from '../config/systemConfigSection';
 import { FLAGS_DEFAULTS } from '../config/appConfig';
+import { JournalEngine } from '../accounting/JournalEngine';
+import { TaxEngine, componentAmount, type DocSide, type TaxComponent } from '../tax/TaxEngine';
+import { FiscalConnectors, type FiscalResult } from '../fiscal/FiscalConnectors';
+import { buildPaymentDueLines, computeWithholding, latestDueDate } from './invoiceLock';
 import * as schema from '../../db/schema';
 
 export type { StockAction };
@@ -150,6 +154,34 @@ interface LineAmounts {
   withholding: number;
 }
 
+/** Lo necesario para calcular impuestos de un documento, cargado una sola vez. */
+interface DocumentTaxContext {
+  rates: Record<string, number>;
+  groupsById: Map<string, any>;
+  /** Componentes que deciden los plugins, por línea. `null` si ninguno interviene. */
+  lineTaxes: Array<TaxComponent[] | null> | null;
+  side: DocSide;
+}
+
+function sideOf(def: DocumentDefinition): DocSide {
+  return DocumentRegistry.getByTableName(def.tableName)?.side ?? 'sales';
+}
+
+/** Error de negocio con el código HTTP que debe ver quien llama. */
+function statusError(statusCode: number, message: string): Error {
+  const err: any = new Error(message);
+  err.statusCode = statusCode;
+  return err;
+}
+
+const FISCAL_FIELDS: Array<keyof FiscalResult> = [
+  'fiscalHash',
+  'fiscalHashPrev',
+  'fiscalStatus',
+  'fiscalRef',
+  'fiscalSentAt',
+];
+
 export class DocumentEngine {
   /**
    * Motor Universal de Creación de Documentos
@@ -183,9 +215,9 @@ export class DocumentEngine {
       const { docNum, isManualSeries } = await this.resolveDocNumber(tx, def, request);
 
       // 3. Pre-calcular totales para validación de hooks
-      const taxRateMap = await this.buildTaxRateMap(tx);
+      const taxContext = await this.loadTaxContext(tx, tenantId, def, request);
       const { preliminarySubtotal, preliminaryTaxTotal, docWhRate, docWithholding } =
-        this.computePreliminaryTotals(request, taxRateMap);
+        this.computePreliminaryTotals(request, taxContext.rates, taxContext.lineTaxes);
 
       // 4. Hook Before Create
       await HookManager.trigger(`${def.eventPrefix}.beforeCreate`, {
@@ -226,7 +258,7 @@ export class DocumentEngine {
         user,
         def,
         request,
-        taxRateMap,
+        taxContext,
         documentId,
         flags,
       );
@@ -323,8 +355,12 @@ export class DocumentEngine {
         seriesId: header.seriesId,
         periodId: header.periodId,
       } as DocumentCreateRequest;
-      const taxRateMap = await this.buildTaxRateMap(tx);
-      const { docWhRate, docWithholding } = this.computePreliminaryTotals(fullRequest, taxRateMap);
+      const taxContext = await this.loadTaxContext(tx, tenantId, def, fullRequest);
+      const { docWhRate, docWithholding } = this.computePreliminaryTotals(
+        fullRequest,
+        taxContext.rates,
+        taxContext.lineTaxes,
+      );
 
       const values = this.buildHeaderValues(
         def,
@@ -341,13 +377,14 @@ export class DocumentEngine {
       await tx
         .delete(def.lineSchemaTable)
         .where(eq(def.lineSchemaTable[config.lineFk], documentId));
+      await TaxEngine.deleteDocumentTaxes(tx, def.tableName, documentId);
       const { calculatedSubtotal, calculatedTaxTotal, breakdownMap } = await this.processLines(
         tx,
         tenantId,
         user,
         def,
         fullRequest,
-        taxRateMap,
+        taxContext,
         documentId,
         flags,
       );
@@ -406,6 +443,13 @@ export class DocumentEngine {
       .from(def.lineSchemaTable)
       .where(eq(def.lineSchemaTable[config.lineFk], documentId));
 
+    await HookManager.trigger(`${def.eventPrefix}.beforeCancel`, {
+      tenantId,
+      db: tx,
+      data: { ...header, id: documentId },
+      user,
+    });
+
     for (const line of lines) {
       await this.reverseLineStock(tx, def, line);
     }
@@ -418,7 +462,196 @@ export class DocumentEngine {
       await def.hooks.afterCancel({ tx, tenantId, user, def, documentId, header, lines });
     }
 
+    // Solo lo que ya se había asentado existe para la administración.
+    if (header.isLocked) {
+      await this.notifyFiscalConnectors(tx, 'onCancel', {
+        tenantId,
+        user,
+        config,
+        documentId,
+        header: { ...header, status: 'X' },
+        lines,
+      });
+    }
+
+    await HookManager.trigger(`${def.eventPrefix}.afterCancel`, {
+      tenantId,
+      db: tx,
+      data: { ...header, id: documentId, status: 'X' },
+      user,
+    });
+
     return { success: true };
+  }
+
+  /**
+   * Asienta un documento en borrador (D → O): lo bloquea, calcula vencimientos,
+   * avisa a los conectores fiscales y genera su asiento.
+   *
+   * Lo fiscal va en la transacción: si un conector falla, el documento sigue en
+   * borrador. El asiento va después y no impide asentar, igual que siempre: sin
+   * mapeos contables el documento queda asentado, pendiente de contabilizar.
+   */
+  public static async post(
+    tenantId: string,
+    db: any,
+    user: any,
+    def: DocumentDefinition,
+    documentId: string,
+  ) {
+    const config = DocumentRegistry.getByTableName(def.tableName);
+    if (!config) throw new Error(`Tipo de documento no registrado para tabla ${def.tableName}`);
+
+    const { header, paymentDueLines, dueDate } = await db.transaction(async (tx: any) => {
+      const [current] = await tx
+        .select()
+        .from(def.schemaTable)
+        .where(eq(def.schemaTable.id, documentId));
+      if (!current) throw statusError(404, 'No encontrada');
+      if (current.status !== 'D') {
+        throw statusError(400, 'Solo se pueden asentar facturas en estado Borrador.');
+      }
+
+      await HookManager.trigger(`${def.eventPrefix}.beforePost`, {
+        tenantId,
+        db: tx,
+        data: current,
+        user,
+      });
+
+      // Si tiene PaymentTerm, calcular paymentDueLines a partir de date+days.
+      let dues: Array<{ date: string; amount: number }> = [];
+      let due: string | null = current.dueDate || null;
+      if (current.paymentTermId) {
+        const [term] = await tx
+          .select()
+          .from(schema.paymentTerms)
+          .where(eq(schema.paymentTerms.id, current.paymentTermId));
+        if (term && Array.isArray(term.lines) && term.lines.length > 0) {
+          dues = buildPaymentDueLines(
+            new Date(current.date),
+            term.lines as Array<{ days: number; percentage: number }>,
+            Number(current.total),
+          );
+          due = latestDueDate(dues) || due;
+        }
+      }
+
+      // Con tasa de cabecera se recalcula; sin ella, la retención ya guardada
+      // (por importe o por línea) es la que descontó el total y debe seguir ahí.
+      const withholdingAmount =
+        computeWithholding(Number(current.subtotal), current.withholdingRate) ??
+        current.withholdingAmount;
+
+      await tx
+        .update(def.schemaTable)
+        .set({
+          status: 'O',
+          isLocked: true,
+          lockedAt: new Date(),
+          paymentDueLines: dues,
+          dueDate: due,
+          withholdingAmount: withholdingAmount != null ? String(withholdingAmount) : null,
+        })
+        .where(eq(def.schemaTable.id, documentId));
+
+      const lines = await tx
+        .select()
+        .from(def.lineSchemaTable)
+        .where(eq(def.lineSchemaTable[config.lineFk], documentId));
+      await this.notifyFiscalConnectors(tx, 'onPost', {
+        tenantId,
+        user,
+        config,
+        documentId,
+        header: { ...current, status: 'O', isLocked: true },
+        lines,
+      });
+
+      return { header: current, paymentDueLines: dues, dueDate: due };
+    });
+
+    let journalEntryId: string | null = null;
+    try {
+      const fresh = { ...header, isLocked: true };
+      const lines = await db
+        .select()
+        .from(def.lineSchemaTable)
+        .where(eq(def.lineSchemaTable[config.lineFk], documentId));
+      // De momento solo las facturas generan asiento; otros tipos asentables, no.
+      let result: { id: string } | null = null;
+      if (config.category === 'invoice') {
+        result =
+          config.side === 'sales'
+            ? await JournalEngine.createFromSalesInvoice(db, fresh, lines, user?.id, def.tableName)
+            : await JournalEngine.createFromPurchaseInvoice(
+                db,
+                fresh,
+                lines,
+                user?.id,
+                def.tableName,
+              );
+      }
+      if (result) {
+        await JournalEngine.post(db, result.id, user?.id);
+        journalEntryId = result.id;
+      }
+    } catch (je: any) {
+      console.warn(`[${def.eventPrefix} post] No se pudo generar asiento:`, je.message);
+    }
+
+    try {
+      await HookManager.trigger(`${def.eventPrefix}.afterPost`, {
+        tenantId,
+        db,
+        data: { ...header, status: 'O', isLocked: true, id: documentId, journalEntryId },
+        user,
+      });
+    } catch (err: any) {
+      // Ya está asentado: un fallo aquí no puede dejarlo a medias.
+      console.warn(`[${def.eventPrefix} post] Fallo en un hook afterPost:`, err.message);
+    }
+
+    return { success: true, isLocked: true, paymentDueLines, dueDate, journalEntryId };
+  }
+
+  /** Avisa a los conectores fiscales de la empresa y guarda lo que devuelvan. */
+  private static async notifyFiscalConnectors(
+    tx: any,
+    event: 'onPost' | 'onCancel',
+    args: {
+      tenantId: string;
+      user: any;
+      config: NonNullable<ReturnType<typeof DocumentRegistry.getByTableName>>;
+      documentId: string;
+      header: any;
+      lines: any[];
+    },
+  ): Promise<void> {
+    const { tenantId, user, config, documentId, header, lines } = args;
+    if ((config.schemaTable as any).fiscalStatus === undefined) return;
+    for (const connector of FiscalConnectors.activeFor(tenantId)) {
+      const result = await connector[event]?.({
+        tenantId,
+        db: tx,
+        user,
+        docType: config.docType,
+        side: config.side,
+        document: header,
+        lines,
+      });
+      if (!result) continue;
+      const fields: Record<string, unknown> = {};
+      for (const field of FISCAL_FIELDS) {
+        if (result[field] !== undefined) fields[field] = result[field];
+      }
+      if (Object.keys(fields).length > 0) {
+        await tx
+          .update(config.schemaTable)
+          .set(fields)
+          .where(eq(config.schemaTable.id, documentId));
+      }
+    }
   }
 
   private static async resolveDocNumber(
@@ -475,38 +708,73 @@ export class DocumentEngine {
       .where(eq(schema.documentSeries.id, seriesId));
   }
 
-  private static async buildTaxRateMap(tx: any): Promise<Record<string, number>> {
+  private static async loadTaxContext(
+    tx: any,
+    tenantId: string,
+    def: DocumentDefinition,
+    request: DocumentCreateRequest,
+  ): Promise<DocumentTaxContext> {
     const allTaxGroups = await tx.select().from(schema.taxGroups);
-    return allTaxGroups.reduce((acc: any, curr: any) => {
-      acc[curr.id] = Number(curr.rate);
-      return acc;
-    }, {});
+    const side = sideOf(def);
+    return {
+      rates: allTaxGroups.reduce((acc: any, curr: any) => {
+        acc[curr.id] = Number(curr.rate);
+        return acc;
+      }, {}),
+      groupsById: new Map(allTaxGroups.map((g: any) => [g.id, g])),
+      lineTaxes: await TaxEngine.resolveDocument(tx, tenantId, side, def.tableName, request),
+      side,
+    };
   }
 
   // Helper para aplicar discount a nivel línea (explícito o por rate)
-  private static computeLineAmounts(line: any, taxRateMap: Record<string, number>): LineAmounts {
+  private static computeLineAmounts(
+    line: any,
+    taxRateMap: Record<string, number>,
+    components?: TaxComponent[] | null,
+  ): LineAmounts {
     const bruto = Number(line.quantity || 0) * Number(line.price || 0);
     const discRate = Number(line.discountRate || 0);
     const discAmt = Number(line.discountAmount || 0);
     const discount = discAmt > 0 ? discAmt : (bruto * discRate) / 100;
     const neto = bruto - discount;
-    const taxRate = line.taxRate != null ? Number(line.taxRate) : taxRateMap[line.taxGroupId] || 0;
-    const taxAmount = (neto * taxRate) / 100;
     const whAmt = Number(line.withholdingAmount || 0);
     const whRate = Number(line.withholdingRate || 0);
-    const withholding = whAmt > 0 ? whAmt : (neto * whRate) / 100;
+    let withholding = whAmt > 0 ? whAmt : (neto * whRate) / 100;
+
+    if (components) {
+      const taxes = components.filter((c) => !c.isWithholding);
+      const taxAmount = taxes.reduce((sum, c) => sum + componentAmount(c, neto), 0);
+      // El tipo de la línea es solo la suma visible; el detalle está en los componentes.
+      const taxRate =
+        taxes.length === 1
+          ? Number(taxes[0].rate)
+          : neto !== 0
+            ? Number(((taxAmount / neto) * 100).toFixed(2))
+            : 0;
+      if (withholding === 0) {
+        withholding = components
+          .filter((c) => c.isWithholding)
+          .reduce((sum, c) => sum + componentAmount(c, neto), 0);
+      }
+      return { bruto, discount, neto, taxRate, taxAmount, withholding };
+    }
+
+    const taxRate = line.taxRate != null ? Number(line.taxRate) : taxRateMap[line.taxGroupId] || 0;
+    const taxAmount = (neto * taxRate) / 100;
     return { bruto, discount, neto, taxRate, taxAmount, withholding };
   }
 
   private static computePreliminaryTotals(
     request: DocumentCreateRequest,
     taxRateMap: Record<string, number>,
+    lineTaxes?: Array<TaxComponent[] | null> | null,
   ) {
     let preliminarySubtotal = 0;
     let preliminaryTaxTotal = 0;
     let preliminaryWithholding = 0;
-    for (const line of request.lines) {
-      const a = this.computeLineAmounts(line, taxRateMap);
+    for (let i = 0; i < request.lines.length; i++) {
+      const a = this.computeLineAmounts(request.lines[i], taxRateMap, lineTaxes?.[i]);
       preliminarySubtotal += a.neto;
       preliminaryTaxTotal += a.taxAmount;
       preliminaryWithholding += a.withholding;
@@ -604,7 +872,7 @@ export class DocumentEngine {
     user: any,
     def: DocumentDefinition,
     request: DocumentCreateRequest,
-    taxRateMap: Record<string, number>,
+    taxContext: DocumentTaxContext,
     documentId: string,
     flags: any,
   ) {
@@ -623,7 +891,7 @@ export class DocumentEngine {
         line,
         i,
         documentId,
-        taxRateMap,
+        taxContext,
         breakdownMap,
         flags,
       );
@@ -643,7 +911,7 @@ export class DocumentEngine {
     line: DocumentLine,
     index: number,
     documentId: string,
-    taxRateMap: Record<string, number>,
+    taxContext: DocumentTaxContext,
     breakdownMap: Record<string, { base: number; tax: number }>,
     flags: any,
   ): Promise<{ lineSubtotal: number; lineTax: number }> {
@@ -706,14 +974,28 @@ export class DocumentEngine {
       await def.hooks.beforeLine(lineHookCtx);
     }
 
-    const amounts = this.computeLineAmounts(line, taxRateMap);
+    const pluginComponents = taxContext.lineTaxes?.[index] ?? null;
+    const amounts = this.computeLineAmounts(line, taxContext.rates, pluginComponents);
     const lineSubtotal = amounts.neto; // base imponible con descuento aplicado
     const lineTax = amounts.taxAmount;
 
-    const rateKey = String(amounts.taxRate);
-    if (!breakdownMap[rateKey]) breakdownMap[rateKey] = { base: 0, tax: 0 };
-    breakdownMap[rateKey].base += lineSubtotal;
-    breakdownMap[rateKey].tax += lineTax;
+    const components: TaxComponent[] = pluginComponents ?? [
+      TaxEngine.standardComponent(
+        taxContext.side,
+        amounts.taxRate,
+        amounts.taxAmount,
+        amounts.neto,
+        taxContext.groupsById.get(line.taxGroupId) ?? null,
+      ),
+    ];
+
+    for (const c of components) {
+      if (c.isWithholding) continue;
+      const rateKey = String(c.rate);
+      if (!breakdownMap[rateKey]) breakdownMap[rateKey] = { base: 0, tax: 0 };
+      breakdownMap[rateKey].base += c.base != null ? Number(c.base) : lineSubtotal;
+      breakdownMap[rateKey].tax += componentAmount(c, lineSubtotal);
+    }
 
     const lineId = crypto.randomUUID();
     const config = DocumentRegistry.getByTableName(def.tableName);
@@ -747,6 +1029,15 @@ export class DocumentEngine {
     }
 
     await tx.insert(def.lineSchemaTable).values(lineValues);
+    await TaxEngine.saveLineTaxes(
+      tx,
+      def.tableName,
+      documentId,
+      lineId,
+      taxContext.side,
+      lineSubtotal,
+      components,
+    );
 
     // 6. Gestionar Stock y Lotes — pero NO si el documento base de esta
     // línea ya movió ese stock físico él mismo (ver cálculo de

@@ -149,9 +149,9 @@ const ReviewStep: React.FC<{ f: Form }> = ({ f }) => {
 
 /**
  * Alta rápida de un cliente sin salir del CRM, como asistente de tres pasos:
- * empresa (nombre, país y NIF), contacto (correo y teléfono) y revisión.
+ * empresa (nombre, país e identificación fiscal), contacto (correo y teléfono) y revisión.
  * Cada paso se valida antes de seguir y, si ya hay un cliente con el mismo
- * NIF, correo o nombre, lo avisa y deja usar ese en lugar de duplicarlo.
+ * identificación fiscal, correo o nombre, lo avisa y deja usar ese en lugar de duplicarlo.
  *
  * Solo se ofrecen grupos de cliente con prefijo: el código del interlocutor es
  * obligatorio y el servidor solo lo genera a partir de ese prefijo.

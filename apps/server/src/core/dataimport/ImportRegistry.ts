@@ -83,7 +83,7 @@ export interface ImportObjectConfig {
    *
    * `unique` marca las que la base de datos protege con un índice único. Solo
    * esas se comprueban por adelantado: así el simulacro puede avisar de un
-   * código o un NIF repetido ANTES de escribir nada, en vez de dejar que
+   * código o una identificación fiscal repetido ANTES de escribir nada, en vez de dejar que
    * salte el error de Postgres a mitad del fichero. Un campo como el nombre
    * sirve para buscar pero no para eso — hay empresas que se llaman igual.
    */

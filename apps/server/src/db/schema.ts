@@ -297,7 +297,7 @@ export const countries = pgTable('Country', {
   currency: text('currency').notNull(), // 'EUR'
   localeDefault: text('localeDefault').notNull(), // 'es-ES'
   taxIdRegex: text('taxIdRegex').notNull(),
-  taxIdLabel: text('taxIdLabel').notNull(), // 'NIF/CIF'
+  taxIdLabel: text('taxIdLabel').notNull(), // 'Identificación fiscal'
   taxIdExample: text('taxIdExample').notNull(), // 'B12345678'
   postalCodeRegex: text('postalCodeRegex').notNull(),
   postalCodeLabel: text('postalCodeLabel').notNull(),
@@ -377,7 +377,7 @@ export const businessPartners = pgTable('BusinessPartner', {
   code: text('code').unique().notNull(),
   name: text('name').notNull(),
   // nif nullable: muchos clientes ocasionales o partners extranjeros se dan
-  // de alta sin NIF. La unicidad se mantiene solo cuando tiene valor (índice
+  // de alta sin identificación fiscal. La unicidad se mantiene solo cuando tiene valor (índice
   // único parcial creado en la migración 029_partner_nif_nullable.sql).
   nif: text('nif'),
   foreignName: text('foreignName'),
@@ -536,10 +536,11 @@ export const journalEntryLines = pgTable('JournalEntryLine', {
 });
 
 // Reglas de mapeo para generación automática de asientos.
-// kind ∈ {sales_revenue, sales_vat_output, customer_receivable,
-//         purchase_expense, purchase_vat_input, supplier_payable,
-//         cash, bank, payroll_gross, payroll_irpf, payroll_ss_employee,
-//         payroll_ss_employer, payroll_net, retained_earnings, result}
+// kind ∈ {sales_revenue, tax_output, customer_receivable, withholding_receivable,
+//         purchase_expense, tax_input, supplier_payable, withholding_payable,
+//         cash, bank, payroll_gross, payroll_income_tax, payroll_social_employee,
+//         payroll_social_employer, payroll_net, retained_earnings, result}
+// Un impuesto puede pedir su propio kind (ver core/tax/TaxEngine.ts).
 // key permite override por partner, taxGroup, etc. 'default' si no.
 export const accountMappings = pgTable('AccountMapping', {
   id: text('id').primaryKey(),
@@ -644,6 +645,15 @@ export const payrolls = pgTable(
     irpfAmount: decimal('irpfAmount', { precision: 15, scale: 2 }).default('0').notNull(),
     ssEmployee: decimal('ssEmployee', { precision: 15, scale: 2 }).default('0').notNull(),
     ssEmployer: decimal('ssEmployer', { precision: 15, scale: 2 }).default('0').notNull(),
+    // Mig 082 — totales genéricos. Las tres columnas anteriores siguen
+    // escribiéndose hasta retirarlas en una migración posterior.
+    incomeTaxTotal: decimal('incomeTaxTotal', { precision: 15, scale: 2 }).default('0').notNull(),
+    socialEmployeeTotal: decimal('socialEmployeeTotal', { precision: 15, scale: 2 })
+      .default('0')
+      .notNull(),
+    socialEmployerTotal: decimal('socialEmployerTotal', { precision: 15, scale: 2 })
+      .default('0')
+      .notNull(),
     netPay: decimal('netPay', { precision: 15, scale: 2 }).default('0').notNull(),
     status: text('status').default('draft').notNull(),
     journalEntryId: text('journalEntryId'),
@@ -666,6 +676,10 @@ export const payrollConcepts = pgTable('PayrollConcept', {
   kind: text('kind').notNull(),
   taxableIrpf: boolean('taxableIrpf').default(true).notNull(),
   taxableSs: boolean('taxableSs').default(true).notNull(),
+  // Mig 082 — income_tax | social_employee | social_employer; null = otro concepto.
+  category: text('category'),
+  taxableIncomeTax: boolean('taxableIncomeTax').default(true).notNull(),
+  taxableSocial: boolean('taxableSocial').default(true).notNull(),
   calculation: text('calculation').default('fixed').notNull(),
   defaultAmount: decimal('defaultAmount', { precision: 15, scale: 2 }),
   defaultPercent: decimal('defaultPercent', { precision: 6, scale: 3 }),
@@ -1146,6 +1160,40 @@ export const taxGroups = pgTable('TaxGroup', {
   id: text('id').primaryKey(),
   code: text('code').unique().notNull(),
   rate: decimal('rate', { precision: 5, scale: 2 }).notNull(),
+  // Mig 082 — categoría ('tax' salvo que un paquete diga otra), vigencia y origen.
+  category: text('category').default('tax').notNull(),
+  validFrom: date('validFrom'),
+  validTo: date('validTo'),
+  packId: text('packId'),
+});
+
+// Mig 082 — impuestos calculados de cada línea de documento, de cualquier tipo.
+// Es el dato fiscal de un documento emitido: `taxRate`/`taxAmount` de la línea
+// son solo su suma. Conserva paquete y versión con los que se calculó.
+export const documentLineTaxes = pgTable('DocumentLineTax', {
+  id: text('id').primaryKey(),
+  docTable: text('docTable').notNull(),
+  documentId: text('documentId').notNull(),
+  lineId: text('lineId').notNull(),
+  code: text('code').notNull(),
+  category: text('category').default('tax').notNull(),
+  label: text('label'),
+  base: decimal('base', { precision: 15, scale: 4 }).notNull(),
+  rate: decimal('rate', { precision: 7, scale: 4 }).notNull(),
+  amount: decimal('amount', { precision: 15, scale: 4 }).notNull(),
+  accountKind: text('accountKind').notNull(),
+  isWithholding: boolean('isWithholding').default(false).notNull(),
+  packId: text('packId'),
+  packVersion: text('packVersion'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+// Mig 082 — paquetes de localización aplicados en la empresa y su versión.
+export const localizationInstalls = pgTable('LocalizationInstall', {
+  packId: text('packId').primaryKey(),
+  version: text('version').notNull(),
+  accountingVersion: text('accountingVersion'),
+  appliedAt: timestamp('appliedAt').defaultNow().notNull(),
 });
 
 // Listas de Precios

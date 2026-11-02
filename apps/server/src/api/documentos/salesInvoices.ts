@@ -5,11 +5,6 @@ import { DocumentEngine } from '../../core/documents/DocumentEngine';
 import { DocumentRegistry } from '../../core/documents/DocumentRegistry';
 import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
 import { logAudit } from '../../utils/audit';
-import {
-  buildPaymentDueLines,
-  computeWithholding,
-  latestDueDate,
-} from '../../core/documents/invoiceLock';
 
 const router = Router();
 const config = DocumentRegistry.get('SINV');
@@ -213,72 +208,14 @@ router.post('/', async (req: any, res) => {
 // POST — asienta un borrador (D → O) y lockea la factura
 router.post('/:id/post', async (req: any, res) => {
   try {
-    const [header] = await req.tenantClient
-      .select()
-      .from(schema.salesInvoices)
-      .where(eq(schema.salesInvoices.id, req.params.id));
-    if (!header) return res.status(404).json({ error: 'No encontrada' });
-    if (header.status !== 'D')
-      return res.status(400).json({ error: 'Solo se pueden asentar facturas en estado Borrador.' });
-
-    // Si tiene PaymentTerm, calcular paymentDueLines a partir de date+days.
-    let paymentDueLines: Array<{ date: string; amount: number }> = [];
-    let dueDate: string | null = header.dueDate || null;
-    if (header.paymentTermId) {
-      const [term] = await req.tenantClient
-        .select()
-        .from(schema.paymentTerms)
-        .where(eq(schema.paymentTerms.id, header.paymentTermId));
-      if (term && Array.isArray(term.lines) && term.lines.length > 0) {
-        paymentDueLines = buildPaymentDueLines(
-          new Date(header.date),
-          term.lines as Array<{ days: number; percentage: number }>,
-          Number(header.total),
-        );
-        dueDate = latestDueDate(paymentDueLines) || dueDate;
-      }
-    }
-
-    // Calcular withholding del documento si se definió tasa.
-    const withholdingAmount = computeWithholding(Number(header.subtotal), header.withholdingRate);
-
-    await req.tenantClient
-      .update(schema.salesInvoices)
-      .set({
-        status: 'O',
-        isLocked: true,
-        lockedAt: new Date(),
-        paymentDueLines,
-        dueDate,
-        withholdingAmount: withholdingAmount != null ? String(withholdingAmount) : null,
-      })
-      .where(eq(schema.salesInvoices.id, req.params.id));
-
-    // Generación automática de asiento (best-effort). Si faltan mapeos básicos
-    // devuelve null y seguimos — el asiento se puede crear manualmente luego.
-    let journalEntryId: string | null = null;
-    try {
-      const { JournalEngine } = await import('../../core/accounting/JournalEngine');
-      const fresh = { ...header, isLocked: true };
-      const invoiceLines = await req.tenantClient
-        .select()
-        .from(schema.salesInvoiceLines)
-        .where(eq(schema.salesInvoiceLines.invoiceId, req.params.id));
-      const result = await JournalEngine.createFromSalesInvoice(
-        req.tenantClient,
-        fresh,
-        invoiceLines,
-        req.user?.id,
-      );
-      if (result) {
-        await JournalEngine.post(req.tenantClient, result.id, req.user?.id);
-        journalEntryId = result.id;
-      }
-    } catch (je: any) {
-      console.warn('[SalesInvoice post] No se pudo generar asiento:', je.message);
-    }
-
-    res.json({ success: true, isLocked: true, paymentDueLines, dueDate, journalEntryId });
+    const result = await DocumentEngine.post(
+      req.tenantId,
+      req.tenantClient,
+      req.user,
+      config,
+      req.params.id,
+    );
+    res.json(result);
     logAudit({
       tenantClient: req.tenantClient,
       tenantId: req.tenantId || '',
@@ -290,7 +227,7 @@ router.post('/:id/post', async (req: any, res) => {
       newValue: { status: 'O', isLocked: true, lockedAt: new Date() },
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 

@@ -32,7 +32,7 @@ const toGross = (net: number, rate: number) => Math.round(net * (1 + rate / 100)
 
 /**
  * Catálogo público: artículos marcados "Vender en la web" con su precio
- * BRUTO (neto + IVA del grupo de impuestos del artículo) ya formateado.
+ * BRUTO (neto + impuesto del grupo de impuestos del artículo) ya formateado.
  * Con `priceListId` (tarifa de la web del site) el precio efectivo sale de
  * la tarifa; si es menor que el base, el producto se marca como oferta
  * (comparePriceLabel tachado + discountPercent para el badge).

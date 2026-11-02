@@ -246,7 +246,7 @@ export interface TotalsElement extends BaseElement {
   showTotal?: boolean;
 }
 
-/** Código QR. `value` es una expresión tipo campo (p.ej. "verifactu.qrPayload"). */
+/** Código QR. `value` es una expresión tipo campo (p.ej. "qrPayload"). */
 export interface QRElement extends BaseElement {
   kind: 'qr';
   value: string;

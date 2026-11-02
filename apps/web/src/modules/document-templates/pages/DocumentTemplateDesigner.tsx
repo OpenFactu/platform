@@ -2291,7 +2291,7 @@ const ElementPreview: React.FC<{ element: CanvasElement }> = ({ element }) => {
           )}
           {element.showTaxBreakdown !== false && (
             <div className="flex justify-between text-slate-500">
-              <span>IVA …</span>
+              <span>{t('doc.totals.vat')} …</span>
               <span className="font-mono text-slate-400">{`{{…}}`}</span>
             </div>
           )}
@@ -4994,7 +4994,7 @@ function buildDefaultElement(
     case 'totals':
       return { ...base, kind };
     case 'qr':
-      return { ...base, kind, value: 'verifactu.qrPayload' };
+      return { ...base, kind, value: 'qrPayload' };
     case 'barcode':
       return { ...base, kind, value: 'doc.docCode', symbology: 'code128', includeText: true };
     case 'conditional':
@@ -5147,7 +5147,7 @@ const EXPR_COMMANDS: ExprCommand[] = [
   {
     group: 'templates.designer.expr.groups.iteration',
     label: 'templates.designer.expr.labels.vatBreakdown',
-    snippet: '{{#each doc.taxBreakdown}}IVA {{rate}}%: {{formatCurrency amount}}\n{{/each}}',
+    snippet: '{{#each doc.taxBreakdown}}{{label "vat"}} {{rate}}%: {{formatCurrency amount}}\n{{/each}}',
   },
   {
     group: 'templates.designer.expr.groups.codes',

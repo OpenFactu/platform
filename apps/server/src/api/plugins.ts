@@ -3,6 +3,8 @@ import multer from 'multer';
 import AdmZip from 'adm-zip';
 import { MigrationEngine } from '../core/plugins/MigrationEngine';
 import { TenantPluginCache } from '../core/plugins/TenantPluginCache';
+import { PluginLifecycle } from '../core/plugins/PluginLifecycle';
+import { LocalizationInstaller } from '../core/localization/LocalizationInstaller';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import * as schema from '../db/schema';
 import path from 'path';
@@ -204,6 +206,9 @@ router.post('/:pluginId/activate', adminMiddleware, async (req: any, res) => {
 
   try {
     await TenantPluginCache.activate(tenantId, pluginId);
+    // Si el plugin trae normativa, la empresa la recibe ya, sin esperar a reiniciar.
+    await LocalizationInstaller.applyForTenant(tenantId, req.tenantClient);
+    await PluginLifecycle.notifyActivated(pluginId, { tenantId, db: req.tenantClient });
     res.json({ success: true, pluginId, isActive: true });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -224,6 +229,7 @@ router.post('/:pluginId/deactivate', adminMiddleware, async (req: any, res) => {
 
   try {
     await TenantPluginCache.deactivate(tenantId, pluginId);
+    await PluginLifecycle.notifyDeactivated(pluginId, { tenantId, db: req.tenantClient });
     res.json({ success: true, pluginId, isActive: false });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -295,7 +301,7 @@ router.post(
         hasManifest,
         message: activePlugins.includes(pluginName)
           ? 'Plugin actualizado y recargado'
-          : `Plugin instalado pero no cargado: ${reloadResult.error || "su index no exporta init()"}`,
+          : `Plugin instalado pero no cargado: ${reloadResult.error || 'su index no exporta init()'}`,
       });
     } catch (err: any) {
       // Limpiar archivo temporal

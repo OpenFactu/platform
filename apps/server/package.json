@@ -8,6 +8,7 @@
     "copy-assets": "node scripts/copy-assets.mjs",
     "start": "node dist/server.js",
     "test": "node --require ts-node/register/transpile-only --test \"src/**/*.test.ts\"",
+    "check:neutral": "ts-node --transpile-only src/scripts/check-neutral-core.ts",
     "sync": "ts-node src/scripts/sync-all-tenants.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",

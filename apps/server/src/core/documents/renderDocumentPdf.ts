@@ -34,7 +34,9 @@ function injectWatermark(html: string, wm: WatermarkOptions): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
   const overlay = `<div aria-hidden="true" style="position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;z-index:99999;"><span style="color:${wm.color};opacity:${wm.opacity};font-size:${wm.fontSize}pt;font-weight:bold;white-space:nowrap;transform:rotate(${wm.rotation}deg);font-family:-apple-system,'Segoe UI',Roboto,sans-serif;">${text}</span></div>`;
-  return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${overlay}</body>`) : `${html}${overlay}`;
+  return /<\/body>/i.test(html)
+    ? html.replace(/<\/body>/i, `${overlay}</body>`)
+    : `${html}${overlay}`;
 }
 
 /**
@@ -79,7 +81,13 @@ export async function renderDocumentPdf(
   // 2. Construir payload
   // El PDF sale en el idioma de quien lo pide.
   const locale = res.req ? getRequestLocale(res.req) : 'es';
-  const payload = await PdfPayloadBuilder.build(docType, documentId, tenantClient, locale);
+  const payload = await PdfPayloadBuilder.build(
+    docType,
+    documentId,
+    tenantClient,
+    locale,
+    tenantId,
+  );
 
   // 2.b Ejecutar las consultas SQL guardadas en la plantilla (canvasLayout.queries)
   // e inyectar sus filas como `queries.<name>`, igual que hacen el preview del
@@ -127,17 +135,19 @@ export async function renderDocumentPdf(
       };
       finalHtml = injectWatermark(template.html, finalOpts.watermark);
     } else if (flags.watermarkPaid && (payload as any).doc?.paymentStatus === 'paid') {
-      // Si la factura está totalmente pagada, marca de agua "PAGADA" en verde.
+      // Si la factura está totalmente pagada, marca de agua "PAGADA": en verde
+      // salvo en el formato neutro, que no lleva color.
+      const neutral = baseOpts.style === 'neutral';
       finalOpts = {
         ...baseOpts,
         watermark: {
           ...baseOpts.watermark,
           enabled: true,
           text: tr(locale, 'PAGADA'),
-          color: '#16A34A',
-          opacity: 0.18,
+          color: neutral ? '#000000' : '#16A34A',
+          opacity: neutral ? 0.08 : 0.18,
           rotation: -25,
-          fontSize: 140,
+          fontSize: neutral ? 72 : 140,
         },
       };
       finalHtml = injectWatermark(template.html, finalOpts.watermark);

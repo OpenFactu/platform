@@ -80,7 +80,7 @@ const EMPTY: CompanyConfig = {
   address: '',
   city: '',
   zipCode: '',
-  country: 'ES',
+  country: '',
   regionId: '',
   subRegionId: '',
   localityId: '',

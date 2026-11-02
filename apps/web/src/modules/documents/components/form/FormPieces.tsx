@@ -70,7 +70,7 @@ export const HeaderSection: React.FC<{ fields: React.ReactNode; side: React.Reac
 );
 
 /**
- * Aviso de que el interlocutor tiene retención IRPF por defecto y el documento
+ * Aviso de que el interlocutor tiene retención por defecto y el documento
  * va sin ella, con el botón para aplicarla. Estaba copiado en pedidos y
  * albaranes como un recuadro ámbar hecho a mano.
  */

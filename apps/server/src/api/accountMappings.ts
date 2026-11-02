@@ -8,21 +8,33 @@ const router = Router();
 
 export const MAPPING_KINDS = [
   'sales_revenue',
-  'sales_vat_output',
+  'tax_output',
   'customer_receivable',
+  'withholding_receivable',
   'purchase_expense',
-  'purchase_vat_input',
+  'tax_input',
   'supplier_payable',
+  'withholding_payable',
   'cash',
   'bank',
   'payroll_gross',
-  'payroll_irpf',
-  'payroll_ss_employee',
-  'payroll_ss_employer',
+  'payroll_income_tax',
+  'payroll_social_employee',
+  'payroll_social_employer',
   'payroll_net',
   'retained_earnings',
   'result',
 ] as const;
+
+// Nombres anteriores: la migración 082 los copió a los neutros y siguen en la
+// tabla solo por si hay que volver a la versión anterior del servidor.
+const RETIRED_KINDS = new Set([
+  'sales_vat_output',
+  'purchase_vat_input',
+  'payroll_irpf',
+  'payroll_ss_employee',
+  'payroll_ss_employer',
+]);
 
 router.get('/', async (req: any, res) => {
   try {
@@ -30,7 +42,7 @@ router.get('/', async (req: any, res) => {
       .select()
       .from(schema.accountMappings)
       .orderBy(asc(schema.accountMappings.kind), asc(schema.accountMappings.key));
-    res.json(rows);
+    res.json(rows.filter((r: any) => !RETIRED_KINDS.has(r.kind)));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

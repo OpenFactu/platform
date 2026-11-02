@@ -8,6 +8,7 @@ import {
 import uiEn from './ui/en.json';
 import {
   getLocale,
+  getTermsVersion,
   setLocale,
   subscribeLocale,
   translate,
@@ -30,11 +31,14 @@ registerTranslations('en', uiEn as DeepPartial<UiMessages>, { source: 'keirost' 
 
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const locale = useSyncExternalStore(subscribeLocale, getLocale, getLocale);
+  const termsVersion = useSyncExternalStore(subscribeLocale, getTermsVersion, getTermsVersion);
 
-  // Nueva identidad de `t` al cambiar de idioma para que memos y efectos se recalculen.
+  // Nueva identidad de `t` al cambiar de idioma o de normativa para que memos y
+  // efectos se recalculen.
   const t = useCallback(
     (path: string, vars?: TranslateVars): string => translate(locale, path, vars),
-    [locale],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [locale, termsVersion],
   );
 
   return (

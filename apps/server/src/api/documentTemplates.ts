@@ -404,7 +404,13 @@ router.post('/preview', async (req: any, res) => {
     } else {
       try {
         if (sampleDocId) {
-          payload = await PdfPayloadBuilder.build(docType, sampleDocId, req.tenantClient, getRequestLocale(req));
+          payload = await PdfPayloadBuilder.build(
+            docType,
+            sampleDocId,
+            req.tenantClient,
+            getRequestLocale(req),
+            req.tenantId,
+          );
         } else {
           const latestId = req.tenantClient
             ? await PdfPayloadBuilder.findLatestSampleId(docType, req.tenantClient).catch(
@@ -412,9 +418,13 @@ router.post('/preview', async (req: any, res) => {
               )
             : null;
           payload = latestId
-            ? await PdfPayloadBuilder.build(docType, latestId, req.tenantClient, getRequestLocale(req)).catch(() =>
-                PdfPayloadBuilder.fixture(docType),
-              )
+            ? await PdfPayloadBuilder.build(
+                docType,
+                latestId,
+                req.tenantClient,
+                getRequestLocale(req),
+                req.tenantId,
+              ).catch(() => PdfPayloadBuilder.fixture(docType))
             : PdfPayloadBuilder.fixture(docType);
         }
       } catch (err) {

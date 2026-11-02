@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { eq, asc, sql } from 'drizzle-orm';
+import { TaxIdValidators } from '../core/geo/TaxIdValidators';
 import * as schema from '../db/schema';
 import crypto from 'crypto';
 import { logAudit } from '../utils/audit';
@@ -91,12 +92,14 @@ async function fetchPluginValues(req: any): Promise<Map<string, Record<string, a
 }
 
 /**
- * Valida un NIF contra el regex del país. Si el país no está seed o no tiene
- * countryCode, no valida (permisivo). Devuelve null si es válido o string con error.
+ * Valida la identificación fiscal contra el regex del país y los validadores de
+ * los plugins de la empresa. Si el país no está seed o no tiene countryCode, no
+ * valida (permisivo). Devuelve null si es válido o string con error.
  */
 async function checkTaxId(
   nif: string | null | undefined,
   countryCode: string | null | undefined,
+  tenantId?: string,
 ): Promise<string | null> {
   if (!nif || !countryCode) return null;
   try {
@@ -107,12 +110,12 @@ async function checkTaxId(
       .where(eq(schema.countries.code, countryCode.toUpperCase()));
     if (!country) return null;
     if (!validateTaxId(nif, country as any)) {
-      return `El ${country.taxIdLabel || 'NIF'} no cumple el formato de ${country.name}. Ejemplo: ${country.taxIdExample}`;
+      return `El ${country.taxIdLabel || 'identificador fiscal'} no cumple el formato de ${country.name}. Ejemplo: ${country.taxIdExample}`;
     }
   } catch {
     /* ignorar errores de lookup */
   }
-  return null;
+  return TaxIdValidators.check(tenantId, countryCode, nif);
 }
 
 /**
@@ -179,8 +182,8 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
   try {
     const { groupId, code, addresses, ...restBody } = req.body;
 
-    // Validación de NIF según país
-    const taxErr = await checkTaxId(restBody.nif, restBody.countryCode);
+    // Validación de la identificación fiscal según país
+    const taxErr = await checkTaxId(restBody.nif, restBody.countryCode, req.tenantId);
     if (taxErr) return res.status(400).json({ error: taxErr });
 
     // Validación de IBAN si se informa
@@ -283,10 +286,10 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
 
     const { addresses, groupId, ...restBody } = req.body;
 
-    // Validación de NIF según país (si cambian ambos o si se actualiza el nif)
+    // Validación de la identificación fiscal según país (si cambian ambos o si se actualiza el nif)
     const effectiveCountry = restBody.countryCode || oldPartner?.countryCode;
     const effectiveNif = restBody.nif !== undefined ? restBody.nif : oldPartner?.nif;
-    const taxErr = await checkTaxId(effectiveNif, effectiveCountry);
+    const taxErr = await checkTaxId(effectiveNif, effectiveCountry, req.tenantId);
     if (taxErr) return res.status(400).json({ error: taxErr });
 
     // Validación de IBAN si se informa

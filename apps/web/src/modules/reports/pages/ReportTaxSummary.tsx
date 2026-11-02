@@ -8,7 +8,7 @@ import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
 
-export const ReportVAT: React.FC = () => {
+export const ReportTaxSummary: React.FC = () => {
   const { user } = useAuth();
   const { t } = useI18n();
   const fmt = useFormat();
@@ -24,7 +24,7 @@ export const ReportVAT: React.FC = () => {
     if (to) qs.append('to', to);
     setLoading(true);
     reportsApi
-      .get<any>(`/api/reports/vat?${qs.toString()}`)
+      .get<any>(`/api/reports/tax-summary?${qs.toString()}`)
       .then(setData)
       .finally(() => setLoading(false));
   };
@@ -38,7 +38,7 @@ export const ReportVAT: React.FC = () => {
     const qs = new URLSearchParams();
     if (from) qs.append('from', from);
     if (to) qs.append('to', to);
-    await reportsApi.downloadPdf(`/api/reports/vat/pdf?${qs.toString()}`, `libro-iva.pdf`);
+    await reportsApi.downloadPdf(`/api/reports/tax-summary/pdf?${qs.toString()}`, `impuestos.pdf`);
   };
 
   const sum = (arr: any[], k: string) =>
@@ -54,7 +54,7 @@ export const ReportVAT: React.FC = () => {
     { header: t('reports.vat.invoiceNumber'), accessor: 'code', sortable: true, primary: true },
     {
       header: t('reports.vat.taxId'),
-      accessor: 'partnerNif',
+      accessor: 'partnerTaxId',
       className: 'font-mono',
       sortable: true,
     },
@@ -84,7 +84,7 @@ export const ReportVAT: React.FC = () => {
    * dentro del <tbody>: la `Table` la coloca en el <tfoot> alineada con las
    * columnas mediante `summaryRow`.
    */
-  const VatBook: React.FC<{ title: string; rows: any[]; color: string }> = ({
+  const TaxBook: React.FC<{ title: string; rows: any[]; color: string }> = ({
     title,
     rows,
     color,
@@ -162,8 +162,8 @@ export const ReportVAT: React.FC = () => {
         </Card>
       ) : (
         <>
-          <VatBook title={t('reports.vat.output')} rows={data.output} color="text-success-fg" />
-          <VatBook title={t('reports.vat.input')} rows={data.input} color="text-info-fg" />
+          <TaxBook title={t('reports.vat.output')} rows={data.output} color="text-success-fg" />
+          <TaxBook title={t('reports.vat.input')} rows={data.input} color="text-info-fg" />
           <Card className={`p-5 ${saldo >= 0 ? 'bg-danger-bg' : 'bg-success-bg'}`}>
             <div className="flex items-baseline justify-between">
               <span className="text-xs font-black uppercase tracking-widest">
@@ -182,4 +182,4 @@ export const ReportVAT: React.FC = () => {
   );
 };
 
-export default ReportVAT;
+export default ReportTaxSummary;

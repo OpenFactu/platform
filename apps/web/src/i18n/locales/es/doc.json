@@ -52,7 +52,7 @@
       "idShort": "ID: {id}",
       "information": "Información",
       "loadError": "Error al cargar",
-      "nif": "NIF: {nif}",
+      "nif": "Identificación fiscal: {nif}",
       "origin": "Origen",
       "originWeb": "🌐 Web",
       "pdfError": "Error al descargar PDF",
@@ -210,7 +210,7 @@
       "tracePending": "pendiente",
       "unitsShort": "{n} ud.",
       "uom": "Unidad de medida",
-      "vatRate": "% IVA",
+      "vatRate": "% {tax}",
       "warehouse": "Almacén"
     },
     "nav": {
@@ -294,7 +294,7 @@
       "formSubtitle": "Factura de proveedor: gasto e impuestos.",
       "fromReceiptsNotice": "Factura generada desde uno o varios albaranes de compra.",
       "newTitle": "Nueva factura de compra",
-      "subtitle": "Registro para el libro de IVA y pagos a proveedores.",
+      "subtitle": "Registro para el libro de impuestos y pagos a proveedores.",
       "supplierInvoiceNo": "Nº factura del proveedor",
       "supplierInvoiceNoHelp": "No puede repetirse para el mismo proveedor.",
       "supplierInvoiceNoPlaceholder": "El número que figura en su factura",
@@ -473,8 +473,8 @@
     "totals": {
       "subtotal": "Subtotal",
       "total": "Total",
-      "vat": "IVA",
-      "withholding": "Retención IRPF"
+      "vat": "{tax}",
+      "withholding": "{withholding}"
     },
     "types": {
       "PDN": "Albarán Compra",
@@ -496,9 +496,9 @@
     },
     "withholding": {
       "apply": "Aplicar {rate}%",
-      "customerDefault": "Este cliente tiene retención IRPF por defecto del {rate}%",
+      "customerDefault": "Este cliente tiene retención por defecto del {rate}%",
       "saleHint": "Si el cliente es empresa retenedora y tú eres profesional, debería aplicarse.",
-      "supplierDefault": "Este proveedor tiene retención IRPF por defecto del {rate}%",
+      "supplierDefault": "Este proveedor tiene retención por defecto del {rate}%",
       "withoutIt": "El {doc} se registrará sin retención."
     }
   }
