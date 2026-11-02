@@ -366,7 +366,7 @@ const InvoiceForm: React.FC<{
   const { t, locale } = useI18n();
   const [batchEditingIdx, setBatchEditingIdx] = useState<number | null>(null);
 
-  // Autocompletar IRPF del proveedor en silencio cuando cambie el partner y el
+  // Autocompletar la retención del proveedor en silencio cuando cambie el partner y el
   // doc aún no tenga tasa asignada. El usuario puede sobrescribirla después.
   // Los campos fiscales viven en `pluginData` con prefijo `__fiscal_` (ver
   // DocumentFiscalPanel) — el backend los extrae al guardar.

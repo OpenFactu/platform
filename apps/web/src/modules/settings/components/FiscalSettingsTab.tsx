@@ -16,6 +16,7 @@ import { FiscalCatalogTable } from '@/components/fiscal/FiscalCatalogTable';
 import { PaymentTermsEditor } from '@/modules/accounting/components/PaymentTermsEditor';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
+import { useLocalization } from '@/context/LocalizationContext';
 import { validateIban, validateSwift, formatIban } from '@/utils/bankValidation';
 
 /** Paleta de arranque para el color principal del PDF. */
@@ -41,6 +42,7 @@ export const FiscalSettingsTab: React.FC = () => {
   const { token, user } = useAuth();
   const toast = useToast();
   const { t } = useI18n();
+  const { info: localization } = useLocalization();
   // PUT /api/config/fiscal exige ADMIN o SUPERUSER en el backend
   // (adminMiddleware, apps/server/src/api/config.ts).
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPERUSER';
@@ -102,9 +104,31 @@ export const FiscalSettingsTab: React.FC = () => {
     }
   };
 
+  const activePacks = localization?.packs ?? [];
+  const connectors = localization?.fiscalConnectors ?? [];
+
   return (
     <div className="space-y-6">
       {/* ─── Datos bancarios + régimen + color ─── */}
+      <Card>
+        <h3 className="text-sm font-bold text-fg-default mb-2">
+          {t('app.localization.activePacks')}
+        </h3>
+        {activePacks.length > 0 ? (
+          <p className="text-sm text-fg-body">
+            {activePacks.map((pack) => `${pack.name} (${pack.version})`).join(', ')}
+          </p>
+        ) : (
+          <p className="text-sm text-warning-fg">{t('app.localization.noPack')}</p>
+        )}
+        <p className="text-xs text-fg-muted mt-2">
+          {t('app.localization.connectors')}:{' '}
+          {connectors.length > 0
+            ? connectors.map((connector) => connector.name).join(', ')
+            : t('app.localization.noConnectors')}
+        </p>
+      </Card>
+
       <Card>
         <div className="p-6 space-y-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 flex items-center gap-2">

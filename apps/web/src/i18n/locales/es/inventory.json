@@ -227,7 +227,7 @@
       "noBin": "(Sin ubicación)",
       "web": {
         "sellOnline": "Vender en la web",
-        "sellOnlineHint": "El artículo aparecerá en el bloque «Tienda» de tu web pública. El precio mostrado es el precio base con su IVA incluido.",
+        "sellOnlineHint": "El artículo aparecerá en el bloque «Tienda» de tu web pública. El precio mostrado es el precio base con su impuesto incluido.",
         "description": "Descripción para la web",
         "descriptionPlaceholder": "Texto que ven los visitantes (independiente de la descripción interna).",
         "images": "Imágenes del producto",

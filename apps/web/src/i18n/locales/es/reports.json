@@ -15,7 +15,7 @@
         "trialBalance": "Sumas y saldos",
         "pl": "P&L",
         "balanceSheet": "Balance situación",
-        "vat": "Libro IVA",
+        "vat": "Resumen de impuestos",
         "profitCustomer": "Rent. cliente",
         "profitItem": "Rent. producto",
         "profitProject": "Rent. proyecto",
@@ -58,8 +58,8 @@
             "description": "Activo = Pasivo + Patrimonio a una fecha."
           },
           "vat": {
-            "title": "Libro de IVA",
-            "description": "IVA soportado y repercutido para modelo 303."
+            "title": "Resumen de impuestos",
+            "description": "Impuestos repercutidos y soportados del período."
           }
         }
       },
@@ -111,7 +111,7 @@
           },
           "laborCost": {
             "title": "Costes laborales",
-            "description": "Resumen bruto + SS empresa + IRPF del período."
+            "description": "Resumen bruto + cotización de la empresa + retenciones del período."
           },
           "headcount": {
             "title": "Plantilla actual",
@@ -239,11 +239,11 @@
     },
     "laborCost": {
       "title": "Costes laborales",
-      "subtitle": "Año {year} — Bruto + SS empresa + IRPF por mes.",
+      "subtitle": "Año {year} — Bruto + cotización de la empresa + retenciones por mes.",
       "year": "Año",
       "month": "Mes",
-      "ssEmployer": "SS empresa",
-      "irpf": "IRPF",
+      "ssEmployer": "{socialEmployer}",
+      "incomeTax": "{incomeTax}",
       "totalCost": "Coste total"
     },
     "ledger": {
@@ -314,16 +314,16 @@
       "subtitle": "Totales debe/haber por cuenta del período."
     },
     "vat": {
-      "title": "Libro de IVA",
-      "subtitle": "IVA repercutido y soportado (modelo 303).",
+      "title": "Resumen de impuestos",
+      "subtitle": "Impuestos repercutidos y soportados.",
       "invoiceNumber": "Nº Factura",
-      "taxId": "NIF",
+      "taxId": "{taxId}",
       "base": "Base",
-      "vat": "IVA",
+      "vat": "{tax}",
       "empty": "Sin facturas en el período",
-      "output": "IVA Repercutido (ventas)",
-      "input": "IVA Soportado (compras)",
-      "toPay": "A ingresar a Hacienda",
+      "output": "Repercutido (ventas)",
+      "input": "Soportado (compras)",
+      "toPay": "A ingresar",
       "toOffset": "A compensar / devolver"
     }
   }

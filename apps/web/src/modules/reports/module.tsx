@@ -17,7 +17,10 @@ const ReportPL = lazy(() => import('./pages/ReportPL').then((m) => ({ default: m
 const ReportBalanceSheet = lazy(() =>
   import('./pages/ReportBalanceSheet').then((m) => ({ default: m.ReportBalanceSheet })),
 );
-const ReportVAT = lazy(() => import('./pages/ReportVAT').then((m) => ({ default: m.ReportVAT })));
+const ReportPlugin = lazy(() => import('./pages/ReportPlugin'));
+const ReportTaxSummary = lazy(() =>
+  import('./pages/ReportTaxSummary').then((m) => ({ default: m.ReportTaxSummary })),
+);
 const ReportProfitCustomer = lazy(() =>
   import('./pages/ReportProfitCustomer').then((m) => ({ default: m.ReportProfitCustomer })),
 );
@@ -73,7 +76,7 @@ export const reportsModule: ModuleManifest = {
       { id: 'stock-reports', label: 'reports.nav.stock', path: '/reports/stock' },
     ],
   },
-  // Cada informe con su permiso: el libro de IVA y la rotación de stock no
+  // Cada informe con su permiso: los libros fiscales y la rotación de stock no
   // son el mismo dato. Antes ninguna de estas rutas pedía permiso, así que
   // las veía cualquier usuario autenticado.
   routes: withPermissionFromPattern([
@@ -124,7 +127,18 @@ export const reportsModule: ModuleManifest = {
       Component: ReportBalanceSheet,
       title: 'reports.nav.routes.balanceSheet',
     },
-    { pattern: '/reports/accounting/vat', Component: ReportVAT, title: 'reports.nav.routes.vat' },
+    // La ruta conserva "vat" porque de ella sale la clave del permiso, ya concedida a roles.
+    {
+      pattern: '/reports/accounting/vat',
+      Component: ReportTaxSummary,
+      title: 'reports.nav.routes.vat',
+    },
+    {
+      pattern: '/reports/legal/:id',
+      Component: ReportPlugin,
+      title: 'app.localization.legalReports',
+      permissionPath: '/reports/accounting/vat',
+    },
     // Gestión
     {
       pattern: '/reports/management/profit-customer',

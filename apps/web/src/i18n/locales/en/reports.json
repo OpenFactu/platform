@@ -15,7 +15,7 @@
         "trialBalance": "Trial balance",
         "pl": "P&L",
         "balanceSheet": "Balance sheet",
-        "vat": "VAT book",
+        "vat": "Tax summary",
         "profitCustomer": "Customer profit.",
         "profitItem": "Product profit.",
         "profitProject": "Project profit.",
@@ -58,8 +58,8 @@
             "description": "Assets = Liabilities + Equity at a date."
           },
           "vat": {
-            "title": "VAT book",
-            "description": "Input and output VAT for Form 303."
+            "title": "Tax summary",
+            "description": "Output and input taxes for the period."
           }
         }
       },
@@ -111,7 +111,7 @@
           },
           "laborCost": {
             "title": "Labor costs",
-            "description": "Summary of gross + employer social security + IRPF for the period."
+            "description": "Summary of gross + employer contributions + withholdings for the period."
           },
           "headcount": {
             "title": "Current headcount",
@@ -239,11 +239,11 @@
     },
     "laborCost": {
       "title": "Labor costs",
-      "subtitle": "Year {year} — Gross + employer social security + IRPF per month.",
+      "subtitle": "Year {year} — Gross + employer contributions + withholdings per month.",
       "year": "Year",
       "month": "Month",
-      "ssEmployer": "Employer SS",
-      "irpf": "IRPF",
+      "ssEmployer": "{socialEmployer}",
+      "incomeTax": "{incomeTax}",
       "totalCost": "Total cost"
     },
     "ledger": {
@@ -314,16 +314,16 @@
       "subtitle": "Debit/credit totals per account for the period."
     },
     "vat": {
-      "title": "VAT book",
-      "subtitle": "Output and input VAT (Form 303).",
+      "title": "Tax summary",
+      "subtitle": "Output and input taxes.",
       "invoiceNumber": "Invoice no.",
-      "taxId": "Tax ID (NIF)",
+      "taxId": "{taxId}",
       "base": "Tax base",
-      "vat": "VAT",
+      "vat": "{tax}",
       "empty": "No invoices in the period",
-      "output": "Output VAT (sales)",
-      "input": "Input VAT (purchases)",
-      "toPay": "Payable to the tax authority",
+      "output": "Output (sales)",
+      "input": "Input (purchases)",
+      "toPay": "To pay",
       "toOffset": "To offset / refund"
     }
   }

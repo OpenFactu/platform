@@ -10,11 +10,6 @@ import {
 } from '../../core/documents/DocumentRegistry';
 import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
 import { logAudit } from '../../utils/audit';
-import {
-  buildPaymentDueLines,
-  computeWithholding,
-  latestDueDate,
-} from '../../core/documents/invoiceLock';
 import { emitQuoteStatusChanged } from '../../core/crm/quoteListener';
 
 const router = Router();
@@ -425,93 +420,14 @@ router.post('/:docType/:id/post', async (req: any, res) => {
       return res.status(400).json({ error: 'Este tipo de documento no soporta posteo.' });
     }
 
-    const [header] = await req.tenantClient
-      .select()
-      .from(config.schemaTable)
-      .where(eq(config.schemaTable.id, req.params.id));
-
-    if (!header) return res.status(404).json({ error: 'No encontrado' });
-    if (header.status !== 'D') {
-      return res.status(400).json({
-        error: 'Solo se pueden asentar documentos en estado Borrador.',
-      });
-    }
-
-    // Payment terms
-    let paymentDueLines: Array<{ date: string; amount: number }> = [];
-    let dueDate: string | null = header.dueDate || null;
-    if (header.paymentTermId) {
-      const [term] = await req.tenantClient
-        .select()
-        .from(schema.paymentTerms)
-        .where(eq(schema.paymentTerms.id, header.paymentTermId));
-      if (term && Array.isArray(term.lines) && term.lines.length > 0) {
-        paymentDueLines = buildPaymentDueLines(
-          new Date(header.date),
-          term.lines as Array<{ days: number; percentage: number }>,
-          Number(header.total),
-        );
-        dueDate = latestDueDate(paymentDueLines) || dueDate;
-      }
-    }
-
-    // Withholding
-    const withholdingAmount = computeWithholding(Number(header.subtotal), header.withholdingRate);
-
-    await req.tenantClient
-      .update(config.schemaTable)
-      .set({
-        status: 'O',
-        isLocked: true,
-        lockedAt: new Date(),
-        paymentDueLines,
-        dueDate,
-        withholdingAmount: withholdingAmount != null ? String(withholdingAmount) : null,
-      })
-      .where(eq(config.schemaTable.id, req.params.id));
-
-    // Asiento contable (best-effort)
-    let journalEntryId: string | null = null;
-    try {
-      const { JournalEngine } = await import('../../core/accounting/JournalEngine');
-      const fresh = { ...header, isLocked: true };
-      const lines = await req.tenantClient
-        .select()
-        .from(config.lineSchemaTable)
-        .where(eq(config.lineSchemaTable[config.lineFk], req.params.id));
-
-      let jeResult: any;
-      if (docType === 'SINV') {
-        jeResult = await JournalEngine.createFromSalesInvoice(
-          req.tenantClient,
-          fresh,
-          lines,
-          req.user?.id,
-        );
-      } else if (docType === 'PINV') {
-        jeResult = await JournalEngine.createFromPurchaseInvoice(
-          req.tenantClient,
-          fresh,
-          lines,
-          req.user?.id,
-        );
-      }
-
-      if (jeResult) {
-        await JournalEngine.post(req.tenantClient, jeResult.id, req.user?.id);
-        journalEntryId = jeResult.id;
-      }
-    } catch (je: any) {
-      console.warn(`[Document post] No se pudo generar asiento:`, je.message);
-    }
-
-    res.json({
-      success: true,
-      isLocked: true,
-      paymentDueLines,
-      dueDate,
-      journalEntryId,
-    });
+    const result = await DocumentEngine.post(
+      req.tenantId,
+      req.tenantClient,
+      req.user,
+      config,
+      req.params.id,
+    );
+    res.json(result);
 
     logAudit({
       tenantClient: req.tenantClient,
@@ -524,7 +440,7 @@ router.post('/:docType/:id/post', async (req: any, res) => {
       newValue: { status: 'O', isLocked: true, lockedAt: new Date() },
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 

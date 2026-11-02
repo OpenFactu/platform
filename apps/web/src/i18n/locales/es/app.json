@@ -107,7 +107,7 @@
       "journalNumber": "Nº {number}",
       "search": "Buscar",
       "placeholder": "Buscar interlocutores, artículos o documentos…",
-      "empty": "Sin resultados. Prueba con un código, un NIF o parte del nombre.",
+      "empty": "Sin resultados. Prueba con un código, una identificación fiscal o parte del nombre.",
       "close": "Cerrar"
     },
     "attachments": {
@@ -611,7 +611,7 @@
         "title": "3. Primera Empresa",
         "subtitle": "Datos fiscales de tu empresa principal.",
         "name": "Nombre de la Empresa",
-        "nif": "NIF / CIF"
+        "nif": "Identificación fiscal"
       },
       "details": {
         "title": "4. Configuración de Empresa",
@@ -734,6 +734,25 @@
       "unavailableHint": "El enlace no es correcto o el formulario ya no existe.",
       "hello": "Hola, {name}.",
       "editing": "Estás cambiando una respuesta que ya enviaste."
+    },
+    "localization": {
+      "title": "Normativa",
+      "activePacks": "Normativa activa",
+      "noPack": "Esta empresa no tiene un paquete de normativa activo. Sus facturas funcionan, pero sin reglas ni informes legales. Actívalo en Plugins.",
+      "connectors": "Conectores fiscales",
+      "noConnectors": "Ninguno",
+      "tax": "Impuesto",
+      "taxId": "Identificación fiscal",
+      "withholding": "Retención",
+      "incomeTax": "Retención sobre la renta",
+      "socialEmployee": "Cotización del trabajador",
+      "socialEmployer": "Cotización de la empresa",
+      "category": "Tipo de concepto",
+      "categoryOther": "Otro",
+      "categoryIncomeTax": "Retención sobre la renta",
+      "categorySocialEmployee": "Cotización del trabajador",
+      "categorySocialEmployer": "Cotización de la empresa",
+      "legalReports": "Informes legales"
     }
   }
 }

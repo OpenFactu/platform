@@ -611,7 +611,7 @@
         "title": "3. First company",
         "subtitle": "Tax details of your main company.",
         "name": "Company name",
-        "nif": "Tax ID (NIF / CIF)"
+        "nif": "Tax ID"
       },
       "details": {
         "title": "4. Company settings",
@@ -734,6 +734,25 @@
       "unavailableHint": "The link is incorrect or the form no longer exists.",
       "hello": "Hi, {name}.",
       "editing": "You are changing a response you already submitted."
+    },
+    "localization": {
+      "title": "Regulations",
+      "activePacks": "Active regulations",
+      "noPack": "This company has no active regulations pack. Its invoices work, but without legal rules or reports. Activate one in Plugins.",
+      "connectors": "Tax connectors",
+      "noConnectors": "None",
+      "tax": "Tax",
+      "taxId": "Tax ID",
+      "withholding": "Withholding",
+      "incomeTax": "Income tax withholding",
+      "socialEmployee": "Employee social contribution",
+      "socialEmployer": "Employer social contribution",
+      "category": "Concept type",
+      "categoryOther": "Other",
+      "categoryIncomeTax": "Income tax withholding",
+      "categorySocialEmployee": "Employee contribution",
+      "categorySocialEmployer": "Employer contribution",
+      "legalReports": "Legal reports"
     }
   }
 }

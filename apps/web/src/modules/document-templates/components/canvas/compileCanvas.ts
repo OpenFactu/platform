@@ -356,7 +356,7 @@ function renderTotals(el: TotalsElement): string {
   }
   if (showTax) {
     rows.push(
-      `{{#each doc.taxBreakdown}}<div class="totals-row"><span class="totals-label">IVA {{rate}}%</span><span class="totals-value">{{formatCurrency amount}}</span></div>{{/each}}`,
+      `{{#each doc.taxBreakdown}}<div class="totals-row"><span class="totals-label">{{label "vat"}} {{rate}}%</span><span class="totals-value">{{formatCurrency amount}}</span></div>{{/each}}`,
     );
   }
   if (showTotal) {

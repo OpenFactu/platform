@@ -8,7 +8,7 @@ export interface CompanyConfig {
   address: string;
   city: string;
   zipCode: string;
-  country: string; // ISO code 'ES'
+  country: string; // Código ISO de 2 letras
   regionId: string;
   subRegionId: string;
   localityId: string;
@@ -44,7 +44,7 @@ const DEFAULTS: CompanyConfig = {
   address: '',
   city: '',
   zipCode: '',
-  country: 'ES',
+  country: '',
   regionId: '',
   subRegionId: '',
   localityId: '',

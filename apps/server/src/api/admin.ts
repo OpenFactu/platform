@@ -19,7 +19,7 @@ import { TenantBackup, defaultUploadsBase } from '../core/tenant/TenantBackup';
 import { defaultBackupsBasePath } from '../core/backup/BackupDestination';
 import { ErpDataExporter } from '../core/export/ErpDataExporter';
 import { MigrationManager } from '../core/tenant/MigrationManager';
-import { seedAccountingDefaults } from '../core/accounting/seedAccountingDefaults';
+import { LocalizationInstaller } from '../core/localization/LocalizationInstaller';
 
 const router = Router();
 const upload = multer({
@@ -201,13 +201,19 @@ router.get('/tenants/:id/export-data', async (req: any, res) => {
 });
 
 /**
- * POST /api/admin/seed-accounting — siembra plan contable mínimo (PGC
- * abreviado) + mapeos de cuenta por defecto. Idempotente. Pensado para
- * que un usuario no contable pueda probar la contabilidad en un clic.
+ * POST /api/admin/seed-accounting — instala el plan contable y los mapeos de
+ * cuenta de los paquetes de localización activos. Idempotente. Pensado para que
+ * un usuario no contable pueda probar la contabilidad en un clic.
  */
 router.post('/seed-accounting', async (req: any, res) => {
   try {
-    const result = await seedAccountingDefaults(req.tenantClient);
+    const result = await LocalizationInstaller.applyAccounting(req.tenantId, req.tenantClient);
+    if (result.packs.length === 0) {
+      return res.status(409).json({
+        error:
+          'Ningún paquete de localización activo aporta plan contable. Activa el plugin de tu país o crea las cuentas a mano.',
+      });
+    }
     res.json({ ok: true, ...result });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

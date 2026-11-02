@@ -76,15 +76,15 @@
       "noResultsFor": "No results for"
     },
     "pod": {
-      "validationToast": "Enter the ID number (DNI/NIF) or a signature",
+      "validationToast": "Enter the ID number or a signature",
       "title": "Proof of delivery",
       "subtitle": "Recipient details",
       "missingTitle": "Proof of delivery missing.",
-      "missingBefore": "Enter the recipient's ID number (DNI/NIF)",
+      "missingBefore": "Enter the recipient's ID number",
       "missingOr": "or",
       "missingAfter": "capture their signature below.",
       "recipientName": "Recipient name",
-      "document": "ID number (DNI / NIF)",
+      "document": "ID number",
       "required": "(required)",
       "signature": "Signature",
       "signatureHint": "Recipient's signature",

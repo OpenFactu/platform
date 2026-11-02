@@ -7,11 +7,12 @@
  *
  * Las fuentes automáticas (facturas, pagos, nóminas) usan `AccountMapping`
  * para decidir qué cuenta usar para cada concepto (cliente, proveedor,
- * IVA, caja, banco, ventas, compras, etc.).
+ * impuestos, caja, banco, ventas, compras, etc.).
  */
 import crypto from 'crypto';
 import { and, eq, desc } from 'drizzle-orm';
 import * as schema from '../../db/schema';
+import { TaxEngine, defaultAccountKind, summarizeTaxesByAccount } from '../tax/TaxEngine';
 
 export type JournalEntryStatus = 'draft' | 'posted' | 'reversed';
 export type JournalSource =
@@ -80,12 +81,22 @@ export class JournalEngine {
       totalDebit += d;
       totalCredit += c;
     }
-    // Tolerancia 1 céntimo a nivel total (0.01 €) para redondeos de IVA.
+    // Tolerancia de una centésima a nivel total para redondeos de impuestos.
     if (Math.abs(round4(totalDebit) - round4(totalCredit)) > 0.01) {
       throw new Error(
         `Asiento descuadrado: debe=${round4(totalDebit)} ≠ haber=${round4(totalCredit)}`,
       );
     }
+  }
+
+  /** Moneda base de la empresa. Sin ella, cada línea toma el valor por defecto de la columna. */
+  private static async baseCurrency(db: any): Promise<string | undefined> {
+    const [base] = await db
+      .select({ code: schema.currencies.code })
+      .from(schema.currencies)
+      .where(eq(schema.currencies.isBase, true))
+      .limit(1);
+    return base?.code;
   }
 
   /**
@@ -109,6 +120,7 @@ export class JournalEngine {
     };
     await db.insert(schema.journalEntries).values(entryValues);
 
+    const baseCurrency = await this.baseCurrency(db);
     const lineValues = input.lines.map((l, idx) => ({
       id: crypto.randomUUID(),
       entryId: id,
@@ -122,7 +134,7 @@ export class JournalEngine {
       internalOrderId: l.internalOrderId ?? null,
       partnerId: l.partnerId ?? null,
       taxId: l.taxId ?? null,
-      currency: l.currency ?? 'EUR',
+      currency: l.currency ?? baseCurrency,
       exchangeRate: String(toNum(l.exchangeRate ?? 1) || 1),
     }));
     await db.insert(schema.journalEntryLines).values(lineValues);
@@ -285,15 +297,92 @@ export class JournalEngine {
   }
 
   /**
+   * Líneas de impuestos y retenciones de una factura. Con desglose guardado,
+   * una línea por cuenta; sin él (facturas anteriores), una con el total. Lo que
+   * cuadra el asiento son los totales de la cabecera, así que la última línea de
+   * cada grupo absorbe el redondeo de sumar las cuotas de cada línea.
+   */
+  private static async invoiceTaxLines(
+    db: any,
+    invoice: any,
+    docTable: string,
+    side: 'sales' | 'purchase',
+  ): Promise<JournalLineInput[]> {
+    const docNum = invoice.docNum || '';
+    const rows = await TaxEngine.loadDocumentTaxes(db, docTable, invoice.id);
+    const summary = summarizeTaxesByAccount(rows);
+
+    const distribute = (groups: Array<{ accountKind: string; amount: number }>, total: number) => {
+      let remaining = total;
+      return groups.map((g, i) => {
+        const amount = i === groups.length - 1 ? remaining : round4(g.amount);
+        remaining = round4(remaining - amount);
+        return { accountKind: g.accountKind, amount };
+      });
+    };
+
+    const accountFor = (accountKind: string) =>
+      this.resolveAccountChain(db, accountKind, invoice.documentTypeId, invoice.partnerId);
+
+    const lines: JournalLineInput[] = [];
+
+    const taxTotal = round4(toNum(invoice.taxTotal));
+    if (taxTotal > 0) {
+      const taxGroups = summary.filter((g) => !g.isWithholding && g.amount !== 0);
+      const groups = taxGroups.length
+        ? taxGroups
+        : [{ accountKind: defaultAccountKind(side, false), amount: taxTotal }];
+      for (const { accountKind, amount } of distribute(groups, taxTotal)) {
+        const accountId = await accountFor(accountKind);
+        if (!accountId || amount === 0) continue;
+        lines.push({
+          accountId,
+          debit: side === 'sales' ? 0 : amount,
+          credit: side === 'sales' ? amount : 0,
+          description:
+            side === 'sales'
+              ? `Impuesto repercutido factura ${docNum}`
+              : `Impuesto soportado factura ${docNum}`,
+        });
+      }
+    }
+
+    // La retención es lo que el total deja de cobrar o pagar respecto a base + impuestos.
+    const withheld = round4(
+      round4(toNum(invoice.subtotal)) + taxTotal - round4(toNum(invoice.total)),
+    );
+    if (withheld > 0) {
+      const whGroups = summary.filter((g) => g.isWithholding && g.amount !== 0);
+      const groups = whGroups.length
+        ? whGroups
+        : [{ accountKind: defaultAccountKind(side, true), amount: withheld }];
+      for (const { accountKind, amount } of distribute(groups, withheld)) {
+        const accountId = await accountFor(accountKind);
+        if (!accountId) {
+          throw new Error(`Falta el mapeo contable "${accountKind}" para la retención`);
+        }
+        lines.push({
+          accountId,
+          debit: side === 'sales' ? amount : 0,
+          credit: side === 'sales' ? 0 : amount,
+          description: `Retención factura ${docNum}`,
+        });
+      }
+    }
+    return lines;
+  }
+
+  /**
    * Helper para facturas de venta: construye asiento a partir de una
    * SalesInvoice ya cargada. Requiere que existan los mapeos básicos
-   * (sales_revenue, sales_vat_output, customer_receivable).
+   * (sales_revenue, customer_receivable y, si hay impuestos, tax_output).
    */
   static async createFromSalesInvoice(
     db: any,
     invoice: any,
     lines: any[],
     userId?: string | null,
+    docTable = 'salesInvoices',
   ): Promise<{ id: string } | null> {
     const receivable = await this.resolveAccountChain(
       db,
@@ -307,12 +396,6 @@ export class JournalEngine {
       invoice.documentTypeId,
       invoice.partnerId,
     );
-    const vatOut = await this.resolveAccountChain(
-      db,
-      'sales_vat_output',
-      invoice.documentTypeId,
-      invoice.partnerId,
-    );
     if (!receivable || !revenue) {
       // Sin mapeos mínimos no generamos asiento — no es error fatal del posteo
       // del documento; simplemente no se contabiliza todavía.
@@ -320,7 +403,6 @@ export class JournalEngine {
     }
 
     const subtotal = round4(toNum(invoice.subtotal));
-    const taxTotal = round4(toNum(invoice.taxTotal));
     const total = round4(toNum(invoice.total));
 
     const journalLines: JournalLineInput[] = [
@@ -344,14 +426,7 @@ export class JournalEngine {
         internalOrderId: invoice.internalOrderId || null,
       },
     ];
-    if (taxTotal > 0 && vatOut) {
-      journalLines.push({
-        accountId: vatOut,
-        debit: 0,
-        credit: taxTotal,
-        description: `IVA repercutido factura ${invoice.docNum || ''}`,
-      });
-    }
+    journalLines.push(...(await this.invoiceTaxLines(db, invoice, docTable, 'sales')));
 
     return this.create(db, {
       date: invoice.date,
@@ -441,8 +516,8 @@ export class JournalEngine {
 
   /**
    * Asiento desde una nómina aprobada:
-   *   Debe: 640 sueldos brutos, 642 SS empresa
-   *   Haber: 465 remuneraciones pendientes (neto), 4751 HP IRPF, 476 SS acreedora
+   *   Debe: sueldos brutos, cotización a cargo de la empresa
+   *   Haber: remuneraciones pendientes (neto), retención sobre la renta, cotizaciones
    *
    * Imputación analítica: usa el `costCenterId` del empleado si existe.
    */
@@ -454,9 +529,9 @@ export class JournalEngine {
       periodYear: number;
       periodMonth: number;
       gross: number | string;
-      irpfAmount: number | string;
-      ssEmployee: number | string;
-      ssEmployer: number | string;
+      incomeTaxTotal: number | string;
+      socialEmployeeTotal: number | string;
+      socialEmployerTotal: number | string;
       netPay: number | string;
     },
     employee: { id: string; costCenterId: string | null; profitCenterId: string | null },
@@ -464,17 +539,17 @@ export class JournalEngine {
     userId?: string | null,
   ): Promise<{ id: string } | null> {
     const gross = round4(toNum(payroll.gross));
-    const irpf = round4(toNum(payroll.irpfAmount));
-    const ssE = round4(toNum(payroll.ssEmployee));
-    const ssEr = round4(toNum(payroll.ssEmployer));
+    const incomeTax = round4(toNum(payroll.incomeTaxTotal));
+    const socialE = round4(toNum(payroll.socialEmployeeTotal));
+    const socialEr = round4(toNum(payroll.socialEmployerTotal));
     const net = round4(toNum(payroll.netPay));
 
     if (gross <= 0) return null;
 
     const accGross = await this.resolveAccount(db, 'payroll_gross');
-    const accIrpf = await this.resolveAccount(db, 'payroll_irpf');
-    const accSsE = await this.resolveAccount(db, 'payroll_ss_employee');
-    const accSsEr = await this.resolveAccount(db, 'payroll_ss_employer');
+    const accIncomeTax = await this.resolveAccount(db, 'payroll_income_tax');
+    const accSocialE = await this.resolveAccount(db, 'payroll_social_employee');
+    const accSocialEr = await this.resolveAccount(db, 'payroll_social_employer');
     const accNet = await this.resolveAccount(db, 'payroll_net');
 
     if (!accGross || !accNet) return null;
@@ -493,38 +568,38 @@ export class JournalEngine {
         ...dims,
       },
     ];
-    if (ssEr > 0 && accSsEr) {
+    if (socialEr > 0 && accSocialEr) {
       lines.push({
-        accountId: accSsEr,
-        debit: ssEr,
+        accountId: accSocialEr,
+        debit: socialEr,
         credit: 0,
-        description: 'SS empresa',
+        description: 'Cotización a cargo de la empresa',
         ...dims,
       });
     }
-    if (irpf > 0 && accIrpf) {
+    if (incomeTax > 0 && accIncomeTax) {
       lines.push({
-        accountId: accIrpf,
+        accountId: accIncomeTax,
         debit: 0,
-        credit: irpf,
-        description: 'HP IRPF',
+        credit: incomeTax,
+        description: 'Retención sobre la renta',
       });
     }
-    if (ssE > 0 && accSsE) {
+    if (socialE > 0 && accSocialE) {
       lines.push({
-        accountId: accSsE,
+        accountId: accSocialE,
         debit: 0,
-        credit: ssE,
-        description: 'SS trabajador',
+        credit: socialE,
+        description: 'Cotización del trabajador',
       });
     }
-    if (ssEr > 0 && accSsE) {
-      // La SS empresa cruza como acreedora también (misma cuenta 476 por defecto).
+    if (socialEr > 0 && accSocialE) {
+      // La cotización de la empresa también queda como acreedora, en la misma cuenta.
       lines.push({
-        accountId: accSsE,
+        accountId: accSocialE,
         debit: 0,
-        credit: ssEr,
-        description: 'SS empresa acreedora',
+        credit: socialEr,
+        description: 'Cotización de la empresa, acreedora',
       });
     }
     lines.push({
@@ -553,6 +628,7 @@ export class JournalEngine {
     invoice: any,
     lines: any[],
     userId?: string | null,
+    docTable = 'purchaseInvoices',
   ): Promise<{ id: string } | null> {
     const payable = await this.resolveAccountChain(
       db,
@@ -566,16 +642,9 @@ export class JournalEngine {
       invoice.documentTypeId,
       invoice.partnerId,
     );
-    const vatIn = await this.resolveAccountChain(
-      db,
-      'purchase_vat_input',
-      invoice.documentTypeId,
-      invoice.partnerId,
-    );
     if (!payable || !expense) return null;
 
     const subtotal = round4(toNum(invoice.subtotal));
-    const taxTotal = round4(toNum(invoice.taxTotal));
     const total = round4(toNum(invoice.total));
 
     const journalLines: JournalLineInput[] = [
@@ -596,14 +665,7 @@ export class JournalEngine {
         description: `Factura compra ${invoice.docNum || ''}`,
       },
     ];
-    if (taxTotal > 0 && vatIn) {
-      journalLines.push({
-        accountId: vatIn,
-        debit: taxTotal,
-        credit: 0,
-        description: `IVA soportado factura ${invoice.docNum || ''}`,
-      });
-    }
+    journalLines.push(...(await this.invoiceTaxLines(db, invoice, docTable, 'purchase')));
 
     return this.create(db, {
       date: invoice.date,

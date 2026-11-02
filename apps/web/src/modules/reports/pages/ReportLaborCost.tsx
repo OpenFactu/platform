@@ -50,11 +50,15 @@ export const ReportLaborCost: React.FC = () => {
       },
       { key: 'gross', label: t('reports.common.gross'), format: (v: any) => fmt.money(v) },
       {
-        key: 'ssEmployer',
+        key: 'socialEmployer',
         label: t('reports.laborCost.ssEmployer'),
         format: (v: any) => fmt.money(v),
       },
-      { key: 'irpf', label: t('reports.laborCost.irpf'), format: (v: any) => fmt.money(v) },
+      {
+        key: 'incomeTax',
+        label: t('reports.laborCost.incomeTax'),
+        format: (v: any) => fmt.money(v),
+      },
       { key: 'netPay', label: t('reports.common.net'), format: (v: any) => fmt.money(v) },
       {
         key: 'totalCost',

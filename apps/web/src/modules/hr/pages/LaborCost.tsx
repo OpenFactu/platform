@@ -28,7 +28,7 @@ export const LaborCost: React.FC = () => {
     groupBy: 'employee' as 'employee' | 'department' | 'project' | 'costCenter',
   });
   const [rows, setRows] = useState<Row[]>([]);
-  const [totals, setTotals] = useState({ gross: 0, ssEr: 0, total: 0 });
+  const [totals, setTotals] = useState({ gross: 0, socialEmployer: 0, total: 0 });
   const [loading, setLoading] = useState(false);
   const headers = useMemo(
     () => ({ Authorization: `Bearer ${token}`, 'x-tenant-id': user?.tenantId || '' }),
@@ -43,7 +43,7 @@ export const LaborCost: React.FC = () => {
       groupBy: filters.groupBy,
     });
     setRows(d.rows || []);
-    setTotals(d.totals || { gross: 0, ssEr: 0, total: 0 });
+    setTotals(d.totals || { gross: 0, socialEmployer: 0, total: 0 });
     setLoading(false);
   };
   useEffect(() => {
@@ -59,7 +59,7 @@ export const LaborCost: React.FC = () => {
       columns: [
         { key: 'label', label: t('hrPayroll.laborCost.group'), width: 32 },
         { key: 'gross', label: t('hrPayroll.payrolls.gross'), type: 'currency' },
-        { key: 'ssEr', label: t('hrPayroll.payrolls.ssEmployer'), type: 'currency' },
+        { key: 'socialEmployer', label: t('hrPayroll.payrolls.ssEmployer'), type: 'currency' },
         { key: 'total', label: t('hr.common.total'), type: 'currency' },
         { key: 'count', label: t('hrPayroll.laborCost.count'), type: 'integer' },
       ],
@@ -67,7 +67,7 @@ export const LaborCost: React.FC = () => {
       totals: {
         label: t('hr.common.total').toUpperCase(),
         gross: totals.gross,
-        ssEr: totals.ssEr,
+        socialEmployer: totals.socialEmployer,
         total: totals.total,
         count: rows.reduce((s, r) => s + r.count, 0),
       },
@@ -94,8 +94,8 @@ export const LaborCost: React.FC = () => {
       header: t('hrPayroll.payrolls.ssEmployer'),
       align: 'right',
       sortable: true,
-      sortAccessor: (r) => r.ssEr,
-      cell: (r) => <span className="tabular-nums">{fmt(r.ssEr)} €</span>,
+      sortAccessor: (r) => r.socialEmployer,
+      cell: (r) => <span className="tabular-nums">{fmt(r.socialEmployer)} €</span>,
     },
     {
       header: t('hrPayroll.laborCost.totalCost'),
@@ -176,7 +176,9 @@ export const LaborCost: React.FC = () => {
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">
             {t('hrPayroll.laborCost.ssEmployer')}
           </div>
-          <div className="text-2xl font-black tabular-nums mt-1">{fmt(totals.ssEr)} €</div>
+          <div className="text-2xl font-black tabular-nums mt-1">
+            {fmt(totals.socialEmployer)} €
+          </div>
         </div>
         <div className="rounded-lg border-2 border-rose-300 bg-bg-card p-4">
           <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">

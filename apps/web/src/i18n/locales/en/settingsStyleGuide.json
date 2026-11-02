@@ -80,7 +80,7 @@
     "fields": {
       "companyName": "Company name",
       "companyNamePlaceholder": "Example Company Ltd.",
-      "taxId": "Tax ID (NIF)",
+      "taxId": "Tax ID",
       "amount": "Amount",
       "amountPlaceholder": "€0.00"
     },

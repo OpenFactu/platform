@@ -204,7 +204,11 @@ export function renderArticleCell(
 
 function locationCell(line: any, zones?: any[]): React.ReactNode {
   const zoneName = zones?.find((z: any) => z.id === line.zoneId)?.name;
-  return <span className="text-[11px] font-medium text-fg-muted">{zoneName || t('doc.lines.defaultLocation')}</span>;
+  return (
+    <span className="text-[11px] font-medium text-fg-muted">
+      {zoneName || t('doc.lines.defaultLocation')}
+    </span>
+  );
 }
 
 function progressCell(
@@ -485,8 +489,7 @@ function FormArticleCell({
           };
           const IconLead = item?.manageBy === 'S' ? Layers3 : Package;
           const IconTrail = balanced ? CheckCircle2 : partial ? AlertTriangle : Plus;
-          const label =
-            item?.manageBy === 'S' ? t('doc.lines.serials') : t('doc.lines.batches');
+          const label = item?.manageBy === 'S' ? t('doc.lines.serials') : t('doc.lines.batches');
           return (
             <button
               type="button"
@@ -565,7 +568,11 @@ function ZoneSelectCell({
     { label: t('doc.lines.noLocationOption'), value: '' },
     ...filtered.map((z: any) => {
       const sz = stockZones?.find((s) => s.zoneId === z.id);
-      return { label: z.name, value: z.id, secondaryLabel: sz ? t('doc.lines.unitsShort', { n: sz.stock }) : undefined };
+      return {
+        label: z.name,
+        value: z.id,
+        secondaryLabel: sz ? t('doc.lines.unitsShort', { n: sz.stock }) : undefined,
+      };
     }),
   ];
   return (
@@ -757,8 +764,8 @@ export function buildFormLineColumns(opts: FormBuilderOpts): TableColumn<any>[] 
     align: 'center',
     cell: (line: any, idx: number) => {
       const locked = !!line.baseId;
-      // Sin IVA asignado ⇒ mostramos el grupo 0% real (evita duplicar un "0%"
-      // placeholder junto al IVA0 del maestro).
+      // Sin impuesto asignado ⇒ mostramos el grupo 0% real (evita duplicar un "0%"
+      // placeholder junto al del maestro).
       const zeroGroup = (masters.taxGroups ?? []).find((t: any) => Number(t.rate) === 0);
       return (
         <SearchableSelect
@@ -908,18 +915,21 @@ export function statusBadgeProps(
   if (kind === DocKind.Invoice) {
     if (status === 'D') return { label: t('doc.status.draft'), variant: 'warning' };
     if (status === DocStatus.Open) return { label: t('doc.status.posted'), variant: 'success' };
-    if (status === DocStatus.Cancelled) return { label: t('doc.status.cancelled'), variant: 'error' };
+    if (status === DocStatus.Cancelled)
+      return { label: t('doc.status.cancelled'), variant: 'error' };
   }
   if (kind === DocKind.Order) {
     if (status === DocStatus.Open) return { label: t('doc.status.open'), variant: 'warning' };
     if (status === DocStatus.Partial) return { label: t('doc.status.partial'), variant: 'info' };
     if (status === DocStatus.Closed) return { label: t('doc.status.closed'), variant: 'success' };
-    if (status === DocStatus.Cancelled) return { label: t('doc.status.cancelled'), variant: 'error' };
+    if (status === DocStatus.Cancelled)
+      return { label: t('doc.status.cancelled'), variant: 'error' };
   }
   if (kind === DocKind.DeliveryNote) {
     if (status === DocStatus.Open) return { label: t('doc.status.open'), variant: 'warning' };
     if (status === DocStatus.Closed) return { label: t('doc.status.invoiced'), variant: 'success' };
-    if (status === DocStatus.Cancelled) return { label: t('doc.status.cancelled'), variant: 'error' };
+    if (status === DocStatus.Cancelled)
+      return { label: t('doc.status.cancelled'), variant: 'error' };
   }
   return { label: status, variant: 'neutral' };
 }

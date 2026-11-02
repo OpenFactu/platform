@@ -3,6 +3,7 @@ import { ClientFactory } from '../core/tenant/ClientFactory';
 import { SchemaManager } from '../core/tenant/SchemaManager';
 import { AuthService } from '../core/auth/AuthService';
 import { setCompanyConfig } from '../core/config/companyConfig';
+import { LocalizationInstaller } from '../core/localization/LocalizationInstaller';
 import { setConfigSection } from '../core/config/systemConfigSection';
 import { FLAGS_DEFAULTS } from '../core/config/appConfig';
 import * as schema from '../db/schema';
@@ -327,17 +328,22 @@ router.post('/init', async (req, res) => {
     // 2b. Sembrar datos de empresa en SystemConfig del nuevo tenant
     try {
       const tenantDb = ClientFactory.getClient(schemaName);
+      const country = company.country || '';
+      const [countryRow] = country
+        ? await publicDb.select().from(schema.countries).where(eq(schema.countries.code, country))
+        : [];
+      const currency = company.currency || countryRow?.currency || 'EUR';
       await setCompanyConfig(tenantDb, {
         name: company.name,
         taxId: company.nif || '',
         address: company.address || '',
         city: company.city || '',
         zipCode: company.zipCode || '',
-        country: company.country || 'ES',
+        country,
         email: company.email || '',
         phone: company.phone || '',
         website: company.website || '',
-        currency: company.currency || 'EUR',
+        currency,
         fiscalYearStart: company.fiscalYearStart || '01-01',
       });
 
@@ -364,14 +370,16 @@ router.post('/init', async (req, res) => {
         await setConfigSection(tenantDb, 'flags', FLAGS_DEFAULTS, modules);
       }
 
-      // Seed de tipos de documento fiscales según país (F1/F2/R1 en ES,
-      // 33/34/61 en CL, I/E/T en MX...). Idempotente.
+      await LocalizationInstaller.setBaseCurrency(tenantDb, currency);
+      // La normativa del país, si hay un plugin instalado que la aporte. Si los
+      // plugins aún no están cargados, la adopta el siguiente arranque.
+      await LocalizationInstaller.adoptForCountry(tenantId, schemaName, country);
+
+      // Tipos de documento fiscales según país, si su paquete no los ha aportado.
       const { seedDocumentTypesForCountry } = await import('../core/documents/seedDocumentTypes');
-      const count = await seedDocumentTypesForCountry(tenantDb, company.country || 'ES');
+      const count = await seedDocumentTypesForCountry(tenantDb, country);
       if (count > 0) {
-        console.log(
-          `[Setup] Sembrados ${count} tipos de documento para ${company.country || 'ES'}`,
-        );
+        console.log(`[Setup] Sembrados ${count} tipos de documento para ${country}`);
       }
     } catch (err: any) {
       console.warn('[Setup] No se pudieron sembrar datos de empresa en SystemConfig:', err.message);

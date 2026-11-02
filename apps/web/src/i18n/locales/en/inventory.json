@@ -227,7 +227,7 @@
       "noBin": "(No location)",
       "web": {
         "sellOnline": "Sell online",
-        "sellOnlineHint": "The item will appear in the «Shop» block of your public website. The price shown is the base price including VAT.",
+        "sellOnlineHint": "The item will appear in the «Shop» block of your public website. The price shown is the base price including tax.",
         "description": "Website description",
         "descriptionPlaceholder": "Text shown to visitors (separate from the internal description).",
         "images": "Product images",

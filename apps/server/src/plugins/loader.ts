@@ -11,6 +11,16 @@ import { DocumentRegistry } from '../core/documents/DocumentRegistry';
 import { registerDocTypeMeta } from '@openfactu/common';
 import { AiToolRegistry } from '../core/ai/AiToolRegistry';
 import { ClientFactory } from '../core/tenant/ClientFactory';
+import { LocalizationRegistry } from '../core/localization/LocalizationRegistry';
+import { readPackDirectory } from '../core/localization/packFiles';
+import { TaxEngine } from '../core/tax/TaxEngine';
+import { TaxIdValidators } from '../core/geo/TaxIdValidators';
+import { PayrollCalculators } from '../core/hr/payrollCalculation';
+import { PluginReports } from '../core/reports/PluginReports';
+import { FiscalConnectors } from '../core/fiscal/FiscalConnectors';
+import { PluginLifecycle } from '../core/plugins/PluginLifecycle';
+import { unregisterPluginContributions } from '../core/plugins/TenantScopedRegistry';
+import { pluginDbOperators } from './dbOperators';
 import * as schema from '../db/schema';
 
 // Almacén en memoria de plugins cargados (instalados globalmente)
@@ -73,6 +83,38 @@ function applyDashboardWidgetsToManifest(pluginId: string) {
 }
 
 /**
+ * Fichero de entrada de un plugin. El `index.ts` solo se puede cargar si hay un
+ * compilador registrado (en desarrollo); el servidor compilado necesita el
+ * `index.js`, y es mejor decirlo así que con un error de sintaxis de TypeScript.
+ */
+function resolvePluginEntry(pluginPath: string): string | null {
+  const tsEntry = path.resolve(pluginPath, 'index.ts');
+  const jsEntry = path.resolve(pluginPath, 'index.js');
+  const canLoadTs = !!require.extensions['.ts'];
+  if (canLoadTs && fs.existsSync(tsEntry)) return tsEntry;
+  if (fs.existsSync(jsEntry)) return jsEntry;
+  if (fs.existsSync(tsEntry)) {
+    throw new Error(
+      `${pluginPath} solo tiene index.ts y este servidor no compila TypeScript: compila el plugin a index.js.`,
+    );
+  }
+  return null;
+}
+
+/** Registra el paquete de localización de `data/`, si el plugin trae uno. */
+function registerPluginPack(pluginId: string, pluginPath: string): boolean {
+  const pack = readPackDirectory(path.join(pluginPath, 'data'));
+  if (!pack) return false;
+  LocalizationRegistry.register(pluginId, pack);
+  return true;
+}
+
+/** Eventos con nombre `{tabla}.{evento}` a partir del nombre PascalCase de la tabla. */
+function documentEvent(tableName: string, suffix: string): string {
+  return `${tableName.charAt(0).toLowerCase() + tableName.slice(1)}.${suffix}`;
+}
+
+/**
  * Construye el PluginContext que recibe init(). Compartido entre loadPlugins()
  * y reloadPlugin() para no duplicar la lista de capacidades en dos sitios.
  */
@@ -101,12 +143,22 @@ function buildPluginContext(pluginId: string): PluginContext {
     },
     documents: {
       onBeforeCreate: (tableName: string, handler: any) => {
-        const event = `${tableName.charAt(0).toLowerCase() + tableName.slice(1)}.beforeCreate`;
-        HookManager.register(event, handler, pluginId);
+        HookManager.register(documentEvent(tableName, 'beforeCreate'), handler, pluginId);
       },
       onAfterCreate: (tableName: string, handler: any) => {
-        const event = `${tableName.charAt(0).toLowerCase() + tableName.slice(1)}.afterCreate`;
-        HookManager.register(event, handler, pluginId);
+        HookManager.register(documentEvent(tableName, 'afterCreate'), handler, pluginId);
+      },
+      onBeforePost: (tableName: string, handler: any) => {
+        HookManager.register(documentEvent(tableName, 'beforePost'), handler, pluginId);
+      },
+      onAfterPost: (tableName: string, handler: any) => {
+        HookManager.register(documentEvent(tableName, 'afterPost'), handler, pluginId);
+      },
+      onBeforeCancel: (tableName: string, handler: any) => {
+        HookManager.register(documentEvent(tableName, 'beforeCancel'), handler, pluginId);
+      },
+      onAfterCancel: (tableName: string, handler: any) => {
+        HookManager.register(documentEvent(tableName, 'afterCancel'), handler, pluginId);
       },
       register: (config) => {
         if (!config?.docType) {
@@ -149,6 +201,32 @@ function buildPluginContext(pluginId: string): PluginContext {
       public: ClientFactory.getClient('public'),
       forTenant: (tenantId: string) => ClientFactory.getTenantClient(tenantId),
       schema,
+      ops: pluginDbOperators,
+    },
+    localization: {
+      register: (pack) => {
+        LocalizationRegistry.register(pluginId, pack);
+      },
+    },
+    taxes: {
+      registerResolver: (resolver) => TaxEngine.registerResolver(pluginId, resolver),
+    },
+    taxIds: {
+      registerValidator: (country, validate) =>
+        TaxIdValidators.register(pluginId, country, validate),
+    },
+    payroll: {
+      registerCalculator: (calculator) => PayrollCalculators.register(pluginId, calculator),
+    },
+    reports: {
+      register: (definition) => PluginReports.register(pluginId, definition),
+    },
+    fiscal: {
+      registerConnector: (connector) => FiscalConnectors.register(pluginId, connector),
+    },
+    lifecycle: {
+      onActivate: (handler) => PluginLifecycle.onActivate(pluginId, handler),
+      onDeactivate: (handler) => PluginLifecycle.onDeactivate(pluginId, handler),
     },
     widgets: {
       registerDashboard: (widget) => registerDashboardWidget(pluginId, widget),
@@ -176,8 +254,6 @@ export const loadPlugins = async (app: Express) => {
     // Solo procesar si es un directorio
     if (fs.statSync(pluginPath).isDirectory()) {
       try {
-        const pluginModulePath = path.resolve(pluginPath, 'index.ts');
-        const jsPluginModulePath = path.resolve(pluginPath, 'index.js');
         const manifestPath = path.resolve(pluginPath, 'manifest.json');
 
         // 1. Cargar Manifiesto de UI si existe
@@ -193,15 +269,11 @@ export const loadPlugins = async (app: Express) => {
         }
 
         // 2. Cargar Módulo de Servidor
-        let pluginModule: any = null;
+        const hasPack = registerPluginPack(folder, pluginPath);
 
-        if (fs.existsSync(pluginModulePath)) {
-          console.log(`[Plugins] Intentando cargar archivo TS: ${pluginModulePath}`);
-          pluginModule = require(pluginModulePath);
-        } else if (fs.existsSync(jsPluginModulePath)) {
-          console.log(`[Plugins] Intentando cargar archivo JS: ${jsPluginModulePath}`);
-          pluginModule = require(jsPluginModulePath);
-        }
+        const pluginEntry = resolvePluginEntry(pluginPath);
+        if (pluginEntry) console.log(`[Plugins] Intentando cargar archivo: ${pluginEntry}`);
+        const pluginModule: any = pluginEntry ? require(pluginEntry) : null;
 
         // Importante: Handle named export 'init'
         const initFn = pluginModule?.init || pluginModule?.default?.init;
@@ -212,6 +284,10 @@ export const loadPlugins = async (app: Express) => {
           await initFn(context);
           setPluginActive(folder, true);
           console.log(`[Plugins] Plugin cargado y activado exitosamente: ${folder}`);
+        } else if (hasPack) {
+          // Un plugin solo de datos es válido: una normativa no necesita código.
+          setPluginActive(folder, true);
+          console.log(`[Plugins] Paquete de localización cargado: ${folder}`);
         } else {
           console.warn(`[Plugins] El plugin ${folder} no exporta una función 'init'.`);
         }
@@ -252,12 +328,15 @@ export async function reloadPlugin(
   console.log(`[Plugins] Recargando plugin: ${pluginId}...`);
 
   try {
-    // 1. Limpiar hooks y tools de IA
+    // 1. Limpiar hooks, tools de IA y el resto de aportaciones
     HookManager.unregisterPlugin(pluginId);
     AiToolRegistry.unregisterPlugin(pluginId);
+    unregisterPluginContributions(pluginId);
+    PluginLifecycle.removePlugin(pluginId);
 
-    // 2. Limpiar require.cache
-    const resolvedPath = path.resolve(pluginPath);
+    // 2. Limpiar require.cache. Con la ruta real: si el plugin es un junction a
+    // su propio repositorio, Node guarda los módulos bajo el destino del enlace.
+    const resolvedPath = fs.realpathSync(pluginPath);
     Object.keys(require.cache).forEach((key) => {
       if (key.startsWith(resolvedPath)) {
         delete require.cache[key];
@@ -280,15 +359,9 @@ export async function reloadPlugin(
     }
 
     // 4. Re-ejecutar init()
-    const pluginModulePath = path.resolve(pluginPath, 'index.ts');
-    const jsPluginModulePath = path.resolve(pluginPath, 'index.js');
-
-    let pluginModule: any = null;
-    if (fs.existsSync(pluginModulePath)) {
-      pluginModule = require(pluginModulePath);
-    } else if (fs.existsSync(jsPluginModulePath)) {
-      pluginModule = require(jsPluginModulePath);
-    }
+    const hasPack = registerPluginPack(pluginId, pluginPath);
+    const pluginEntry = resolvePluginEntry(pluginPath);
+    const pluginModule: any = pluginEntry ? require(pluginEntry) : null;
 
     const initFn = pluginModule?.init || pluginModule?.default?.init;
 
@@ -298,6 +371,8 @@ export async function reloadPlugin(
       await initFn(context);
       // Un reload con init() exitoso equivale a la carga del arranque: entra en
       // activePlugins aunque hubiera fallado en el boot o sea un plugin nuevo.
+      setPluginActive(pluginId, true);
+    } else if (hasPack) {
       setPluginActive(pluginId, true);
     } else {
       setPluginActive(pluginId, false);

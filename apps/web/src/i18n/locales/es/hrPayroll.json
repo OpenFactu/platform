@@ -31,7 +31,7 @@
       },
       "basis": {
         "net": "Importe neto (subtotal)",
-        "gross": "Importe bruto (total con IVA)",
+        "gross": "Importe bruto (total con impuestos)",
         "margin": "Margen (futuro)"
       },
       "kind": {
@@ -93,13 +93,13 @@
       "seedComplete": "El catálogo ya estaba completo",
       "seeded_one": "Creados {count} conceptos estándar",
       "seeded_other": "Creados {count} conceptos estándar",
-      "seedTitle": "Crea de un click los conceptos típicos: salario base, pluses, IRPF, SS empleado y SS empresa",
+      "seedTitle": "Crea de un click los conceptos típicos: salario base, pluses, retención y cotizaciones del trabajador y la empresa",
       "seed": "Cargar catálogo estándar",
       "new": "Nuevo concepto",
       "defaultAmount": "Importe por defecto",
       "defaultPercent": "% por defecto",
-      "taxableIrpf": "Sujeto a IRPF",
-      "taxableSs": "Sujeto a SS"
+      "taxableIrpf": "Sujeto a retención",
+      "taxableSs": "Sujeto a cotización"
     },
     "laborCost": {
       "project": "Proyecto",
@@ -109,11 +109,11 @@
       "count": "Nº nóminas",
       "totalCost": "Coste total",
       "pctTotal": "% del total",
-      "subtitle": "Bruto + SS empresa, agrupado por dimensión. Datos provenientes de las nóminas aprobadas y sus líneas en el rango.",
+      "subtitle": "Bruto + cotización de la empresa, agrupado por dimensión. Datos provenientes de las nóminas aprobadas y sus líneas en el rango.",
       "groupBy": "Agrupar por",
       "groups": "grupos",
       "grossPaid": "Bruto pagado",
-      "ssEmployer": "SS a cargo empresa",
+      "ssEmployer": "{socialEmployer}",
       "empty": "No hay nóminas aprobadas en el rango seleccionado."
     },
     "months": {
@@ -160,9 +160,9 @@
       "title": "Nóminas",
       "howBefore": "Cómo funciona: 1)",
       "howBold": "\"Generar mes en curso\"",
-      "howAfter": "crea un borrador para cada empleado con salario base + IRPF + SS automáticos. 2) Edita líneas/pluses si hace falta. 3) Aprueba → se genera el asiento contable (gasto de personal, SS e IRPF).",
+      "howAfter": "crea un borrador para cada empleado con salario base + retenciones + cotizaciones automáticos. 2) Edita líneas/pluses si hace falta. 3) Aprueba → se genera el asiento contable (gasto de personal, cotizaciones y retenciones).",
       "generateTitle": "Generar nóminas de {period}",
-      "generateMessage": "Crea un borrador de nómina para cada empleado activo, con salario base de su contrato y IRPF/SS automáticos. ¿Continuar?",
+      "generateMessage": "Crea un borrador de nómina para cada empleado activo, con salario base de su contrato y retenciones y cotizaciones automáticos. ¿Continuar?",
       "generate": "Generar",
       "generatedNone": "Sin novedades · {skipped} ya existían",
       "generatedSome": "Generadas {n} · {skipped} ya existían",
@@ -171,7 +171,7 @@
       "generateHint": "Crea un borrador de nómina por cada empleado activo con salario y deducciones automáticas",
       "generateCurrent": "Generar mes en curso",
       "new": "Nueva nómina",
-      "newSubtitle": "Sólo elige empleado y mes. Las líneas (salario base, pluses, IRPF, SS) se rellenan automáticamente y luego puedes ajustarlas.",
+      "newSubtitle": "Sólo elige empleado y mes. Las líneas (salario base, pluses, retenciones, cotizaciones) se rellenan automáticamente y luego puedes ajustarlas.",
       "createAndOpen": "Crear y abrir líneas",
       "periodLabel": "Periodo",
       "prevMonth": "Mes anterior",
@@ -179,15 +179,15 @@
       "autoSalary": "Prellenar salario base del contrato",
       "autoSalaryBefore": "Toma",
       "autoSalaryAfter": "del contrato activo y lo añade como línea \"Salario base\".",
-      "autoTaxes": "Generar IRPF y SS automáticamente",
-      "autoTaxesHint": "Añade los conceptos \"% de base\" del catálogo (IRPF, SS empleado, SS empresa).",
+      "autoTaxes": "Generar retenciones y cotizaciones automáticamente",
+      "autoTaxesHint": "Añade los conceptos \"% de base\" del catálogo (retención y cotizaciones del trabajador y la empresa).",
       "addConcept": "— añadir concepto del catálogo —",
-      "autoAlready": "IRPF/SS ya estaban añadidos. Recalculado.",
+      "autoAlready": "Las retenciones y cotizaciones ya estaban añadidas. Recalculado.",
       "autoAdded_one": "Añadidos {count} conceptos automáticos",
       "autoAdded_other": "Añadidos {count} conceptos automáticos",
-      "noTaxConcepts": "No hay conceptos IRPF/SS en el catálogo",
-      "autoTaxesTitle": "Añade IRPF y SS Empleado/Empresa automáticamente del catálogo",
-      "autoButton": "Auto IRPF/SS",
+      "noTaxConcepts": "No hay conceptos de retención o cotización en el catálogo",
+      "autoTaxesTitle": "Añade la retención y las cotizaciones automáticamente del catálogo",
+      "autoButton": "Auto retenciones",
       "noCommissions": "No hay comisiones pendientes para este periodo",
       "commissionsImported_one": "Importadas {count} comisiones · {total} €",
       "commissionsImported_other": "Importadas {count} comisiones · {total} €",
@@ -195,18 +195,18 @@
       "importCommissions": "Importar comisiones",
       "missingTaxesBefore": "Esta nómina tiene devengos pero le falta",
       "and": "y",
-      "ssEmployeeLong": "SS Empleado",
-      "missingTaxesAfter": ". El neto que ves no es real. Pulsa \"Auto IRPF/SS\" o añade los conceptos manualmente.",
-      "noLines": "Esta nómina aún no tiene líneas. Añade conceptos del catálogo o pulsa \"Auto IRPF/SS\".",
+      "ssEmployeeLong": "{socialEmployee}",
+      "missingTaxesAfter": ". El neto que ves no es real. Pulsa \"Auto retenciones\" o añade los conceptos manualmente.",
+      "noLines": "Esta nómina aún no tiene líneas. Añade conceptos del catálogo o pulsa \"Auto retenciones\".",
       "groups": {
         "earningTitle": "➕ Devengos",
         "earningDesc": "Lo que cobra el empleado (salario, pluses, horas extra…)",
         "deductionTitle": "➖ Deducciones",
-        "deductionDesc": "Lo que se le retiene (IRPF, SS empleado, anticipos…)",
+        "deductionDesc": "Lo que se le retiene (retención, cotización del trabajador, anticipos…)",
         "employerTitle": "🏢 Coste empresa",
-        "employerDesc": "Aportaciones que paga la empresa (SS empresa)",
+        "employerDesc": "Aportaciones que paga la empresa (cotización de la empresa)",
         "earningEmpty": "Aún no hay devengos. Añade \"Salario base\" desde el desplegable de arriba para que el bruto sea > 0 y los % se calculen.",
-        "deductionEmpty": "Aún no hay deducciones. Pulsa \"Auto IRPF/SS\".",
+        "deductionEmpty": "Aún no hay deducciones. Pulsa \"Auto retenciones\".",
         "employerEmpty": "Aún no hay aportaciones de empresa."
       },
       "col": {
@@ -215,8 +215,8 @@
         "base": "Base",
         "amount": "Importe"
       },
-      "ssEmployee": "SS Trab.",
-      "ssEmployer": "SS Empresa",
+      "ssEmployee": "{socialEmployee}",
+      "ssEmployer": "{socialEmployer}",
       "deleteLine": "Eliminar línea"
     }
   }

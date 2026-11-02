@@ -143,7 +143,7 @@
       "introBefore": "Lanza primero una ",
       "introStrong": "simulación",
       "introAfter": ": recorre el fichero entero sin escribir nada y te dice qué filas no van a entrar.",
-      "simulationNote": "La simulación comprueba el fichero: tipos, campos obligatorios, referencias que no existen y claves repetidas. Las reglas del propio módulo —un NIF con formato inválido, un límite de crédito, la serie de numeración— las aplica {object} al escribir, así que pueden aparecer errores nuevos en la importación real.",
+      "simulationNote": "La simulación comprueba el fichero: tipos, campos obligatorios, referencias que no existen y claves repetidas. Las reglas del propio módulo —una identificación fiscal con formato inválido, un límite de crédito, la serie de numeración— las aplica {object} al escribir, así que pueden aparecer errores nuevos en la importación real.",
       "simulate": "Simular",
       "import": "Importar",
       "simulationBadge": "Simulación",

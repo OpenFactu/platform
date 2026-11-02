@@ -5,6 +5,7 @@ import { AuthService } from '../core/auth/AuthService';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import { SchemaManager } from '../core/tenant/SchemaManager';
 import { setCompanyConfig } from '../core/config/companyConfig';
+import { LocalizationInstaller } from '../core/localization/LocalizationInstaller';
 import * as schema from '../db/schema';
 import { logAudit } from '../utils/audit';
 
@@ -119,19 +120,27 @@ router.post('/', requireAdmin, async (req: any, res) => {
     // Persistir config inicial en SystemConfig del nuevo tenant
     try {
       const tenantDb = ClientFactory.getClient(schemaName);
+      const country = body.country || '';
+      const [countryRow] = country
+        ? await publicDb.select().from(schema.countries).where(eq(schema.countries.code, country))
+        : [];
+      const currency = body.currency || countryRow?.currency || 'EUR';
       await setCompanyConfig(tenantDb, {
         name,
         taxId: nif || '',
         address: body.address || '',
         city: body.city || '',
         zipCode: body.zipCode || '',
-        country: body.country || 'ES',
+        country,
         email: body.email || '',
         phone: body.phone || '',
         website: body.website || '',
-        currency: body.currency || 'EUR',
+        currency,
         fiscalYearStart: body.fiscalYearStart || '01-01',
       });
+      await LocalizationInstaller.setBaseCurrency(tenantDb, currency);
+      // La normativa del país, si hay un plugin instalado que la aporte.
+      await LocalizationInstaller.adoptForCountry(tenantId, schemaName, country);
     } catch (err: any) {
       console.warn('[Tenants] No se pudo sembrar datos de empresa en SystemConfig:', err.message);
     }

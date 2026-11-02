@@ -59,7 +59,7 @@ async function onQuoteStatusChanged({ tenantId, db, user, data }: QuoteStatusCon
       .select({ kind: schema.opportunityStages.kind })
       .from(schema.opportunityStages)
       .where(eq(schema.opportunityStages.id, opp.stageId));
-    // Lo vendido es lo del presupuesto aceptado (sin IVA, como el resto de
+    // Lo vendido es lo del presupuesto aceptado (sin impuestos, como el resto de
     // importes del embudo), no la estimación de los productos de interés.
     const amount = String(quote.subtotal ?? opp.amount);
     if (current?.kind === 'won') {

@@ -13,55 +13,10 @@ interface DocTypeSeed {
 
 /**
  * Tipos de documento fiscales por país. Pensados como punto de partida para
- * el usuario — pueden añadir, editar y desactivar desde la UI. Cuando haya
- * un plugin fiscal del país, éste puede añadir/reemplazar los suyos.
+ * el usuario — pueden añadir, editar y desactivar desde la UI. Un país con
+ * paquete de localización los aporta en su `documentTypes`.
  */
 const TYPES_BY_COUNTRY: Record<string, DocTypeSeed[]> = {
-  ES: [
-    { code: 'F1', name: 'Factura normal', docCategory: 'invoice', sortOrder: 10 },
-    { code: 'F2', name: 'Factura simplificada', docCategory: 'ticket', sortOrder: 20 },
-    {
-      code: 'F3',
-      name: 'Factura emitida en sustitución de facturas simplificadas',
-      docCategory: 'invoice',
-      sortOrder: 30,
-    },
-    {
-      code: 'R1',
-      name: 'Factura rectificativa (art. 80.1 y 80.2)',
-      docCategory: 'credit_note',
-      isRectify: true,
-      sortOrder: 40,
-    },
-    {
-      code: 'R2',
-      name: 'Factura rectificativa (art. 80.3)',
-      docCategory: 'credit_note',
-      isRectify: true,
-      sortOrder: 50,
-    },
-    {
-      code: 'R3',
-      name: 'Factura rectificativa (art. 80.4)',
-      docCategory: 'credit_note',
-      isRectify: true,
-      sortOrder: 60,
-    },
-    {
-      code: 'R4',
-      name: 'Factura rectificativa (resto de causas)',
-      docCategory: 'credit_note',
-      isRectify: true,
-      sortOrder: 70,
-    },
-    {
-      code: 'R5',
-      name: 'Factura rectificativa en facturas simplificadas',
-      docCategory: 'credit_note',
-      isRectify: true,
-      sortOrder: 80,
-    },
-  ],
   MX: [
     { code: 'I', name: 'Ingreso', docCategory: 'invoice', sortOrder: 10 },
     {
@@ -143,9 +98,18 @@ const TYPES_BY_COUNTRY: Record<string, DocTypeSeed[]> = {
 /**
  * Siembra los tipos de documento del país indicado. Es idempotente —
  * comprueba que no exista ya cada `(code, pluginId=null)` antes de insertar.
+ * Los genéricos solo se siembran si la empresa aún no tiene ninguno.
  */
 export async function seedDocumentTypesForCountry(db: any, countryCode: string): Promise<number> {
-  const types = TYPES_BY_COUNTRY[countryCode] || TYPES_BY_COUNTRY.DEFAULT;
+  const ownTypes = TYPES_BY_COUNTRY[countryCode];
+  if (!ownTypes) {
+    const existing = await db
+      .select({ id: schema.documentTypes.id })
+      .from(schema.documentTypes)
+      .limit(1);
+    if (existing.length > 0) return 0;
+  }
+  const types = ownTypes || TYPES_BY_COUNTRY.DEFAULT;
   let inserted = 0;
   for (const t of types) {
     try {

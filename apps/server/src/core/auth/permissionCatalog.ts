@@ -6,7 +6,7 @@
  * servidor que no comprobaba nada. El resultado: 27 pantallas exigían un
  * permiso que el administrador no podía conceder, 6 permisos concedibles no
  * gobernaban ninguna pantalla, y los 24 informes no pedían permiso alguno, así
- * que cualquier usuario veía el libro de IVA y el coste laboral.
+ * que cualquier usuario veía los libros fiscales y el coste laboral.
  *
  * Ahora manda esta lista. La pantalla de Usuarios la pide por
  * `GET /api/permissions/catalog` en vez de llevarla escrita, y el gate de la
@@ -158,7 +158,7 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   },
   {
     path: '/reports/accounting/vat',
-    label: 'Libro de IVA',
+    label: 'Libros e informes fiscales',
     group: 'Informes',
     parent: '/reports/accounting',
   },

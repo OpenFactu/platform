@@ -114,7 +114,7 @@ const LINE_FIELDS: ImportFieldDef[] = [
     type: 'ref',
     bodyKey: 'taxGroupId',
     required: true,
-    example: 'IVA21',
+    example: 'TAX21',
     ref: { table: 'TaxGroup', matchBy: ['code'], label: 'tipo de impuesto' },
   },
   { key: 'lineDescription', label: 'Descripción', type: 'string', bodyKey: 'description' },

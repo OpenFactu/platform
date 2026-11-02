@@ -40,11 +40,11 @@
         "contact": "Contacto",
         "review": "Revisar"
       },
-      "nifExists": "Ya existe «{name}» con este NIF",
+      "nifExists": "Ya existe «{name}» con esta identificación fiscal",
       "createFailed": "No se pudo crear el cliente",
       "legalName": "Nombre o razón social",
       "country": "País",
-      "nif": "NIF",
+      "nif": "Identificación fiscal",
       "example": "ej.: {example}",
       "nifHelp": "Opcional ahora; hace falta para facturarle.",
       "group": "Grupo",

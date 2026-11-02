@@ -51,7 +51,7 @@ interface Props {
 }
 
 /**
- * Modal de prueba de entrega. Requisito mínimo: o firma o DNI/NIF.
+ * Modal de prueba de entrega. Requisito mínimo: o firma o documento de identidad.
  * Foto opcional pero recomendada.
  */
 export const DeliveryProofModal: React.FC<Props> = ({ open, onClose, onConfirm, stopLabel }) => {

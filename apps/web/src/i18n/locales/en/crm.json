@@ -40,11 +40,11 @@
         "contact": "Contact",
         "review": "Review"
       },
-      "nifExists": "«{name}» already exists with this Tax ID (NIF)",
+      "nifExists": "«{name}» already exists with this Tax ID",
       "createFailed": "Could not create the customer",
       "legalName": "Name or company name",
       "country": "Country",
-      "nif": "Tax ID (NIF)",
+      "nif": "Tax ID",
       "example": "e.g.: {example}",
       "nifHelp": "Optional for now; required to invoice them.",
       "group": "Group",

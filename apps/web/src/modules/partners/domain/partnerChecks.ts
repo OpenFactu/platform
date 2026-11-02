@@ -1,7 +1,7 @@
 /**
- * Comprobaciones de un interlocutor antes de darlo de alta: formato de NIF,
+ * Comprobaciones de un interlocutor antes de darlo de alta: formato de la identificación fiscal,
  * correo, teléfono, web, código postal e IBAN, y búsqueda de interlocutores
- * que ya existen con el mismo NIF, correo o nombre. Puro.
+ * que ya existen con la misma identificación fiscal, correo o nombre. Puro.
  */
 import { t } from '@/i18n/i18n';
 import { validatePostalCode, validateTaxId, type CountryMeta } from '@openfactu/common';
@@ -65,7 +65,7 @@ export function checkIban(iban: string): string | null {
   return rest === 1 ? null : t('partners.checks.ibanChecksum');
 }
 
-/** NIF comparable: sin espacios ni guiones, en mayúsculas y sin el prefijo de país (ES…). */
+/** Identificación fiscal comparable: sin espacios ni guiones, en mayúsculas y sin el prefijo de país (p. ej. dos letras). */
 export function normalizeNif(nif: string | null | undefined, countryCode = 'ES'): string {
   const n = (nif ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   return n.startsWith(countryCode.toUpperCase()) && n.length > 9 ? n.slice(2) : n;
@@ -107,7 +107,7 @@ export const DUPLICATE_REASON_LABEL: Record<DuplicateReason, string> = {
   name: 'partners.duplicates.reason.name',
 };
 
-/** Interlocutores que ya existen y casan por NIF, correo o nombre (el NIF primero). */
+/** Interlocutores que ya existen y casan por identificación fiscal, correo o nombre (la identificación fiscal primero). */
 export function findDuplicates<P extends PartnerLike>(
   d: { name: string; nif: string; email: string; countryCode: string },
   partners: P[],

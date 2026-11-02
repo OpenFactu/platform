@@ -47,7 +47,7 @@ export const PARTNER_WIZARD_STEPS = [
 /**
  * Asistente de alta de un interlocutor sobre el estado de `usePartnerForm`:
  * paso actual, validación de cada paso antes de seguir y búsqueda de
- * interlocutores que ya existen con el mismo NIF, correo o nombre.
+ * interlocutores que ya existen con la misma identificación fiscal, correo o nombre.
  */
 export function usePartnerWizard(form: PartnerForm) {
   const { getCountry } = useGeo();

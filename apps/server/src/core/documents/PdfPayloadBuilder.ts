@@ -12,6 +12,8 @@ import type {
 } from '@openfactu/pdf';
 import { amountToWords } from '../../utils/numberToWords';
 import { tr, type Locale } from '../../i18n';
+import { LocalizationRegistry } from '../localization/LocalizationRegistry';
+import { TaxEngine } from '../tax/TaxEngine';
 
 /**
  * Helper que construye un objeto de tablas desde el registry.
@@ -254,6 +256,29 @@ async function attachmentToDataUri(tenantDb: any, att: any): Promise<string | nu
   }
 }
 
+/**
+ * Desglose con el nombre propio de cada impuesto, si algún plugin se lo dio. Sin
+ * nombres (lo normal) devuelve null y vale el desglose por tipo de la cabecera.
+ */
+function namedTaxBreakdown(rows: any[]): TaxBreakdownEntry[] | null {
+  const taxes = rows.filter((r) => !r.isWithholding);
+  if (!taxes.some((r) => r.label)) return null;
+  const groups = new Map<string, TaxBreakdownEntry>();
+  for (const r of taxes) {
+    const key = `${r.label ?? ''}|${Number(r.rate)}`;
+    const group = groups.get(key) ?? {
+      name: r.label ?? undefined,
+      rate: Number(r.rate),
+      base: 0,
+      tax: 0,
+    };
+    group.base += Number(r.base);
+    group.tax += Number(r.amount);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
 export class PdfPayloadBuilder {
   public static async build(
     docType: DocType,
@@ -261,6 +286,8 @@ export class PdfPayloadBuilder {
     db: any,
     /** Idioma de las etiquetas, estados y formatos del PDF. */
     locale: Locale = 'es',
+    /** Empresa, para aplicar la terminología y los textos legales de su normativa. */
+    tenantId?: string | null,
   ): Promise<DocumentPdfPayload> {
     const map = getDocTables(docType);
     const config = map.config;
@@ -561,6 +588,10 @@ export class PdfPayloadBuilder {
     // 10. Total en letras
     const totalInWords = amountToWords(Number(header.total), locale);
 
+    // 11. Lo que depende de la normativa de la empresa
+    const terms = LocalizationRegistry.terminologyFor(tenantId ?? undefined, locale);
+    const taxRows = await TaxEngine.loadDocumentTaxes(db, config.tableName, documentId);
+
     const payload: DocumentPdfPayload = {
       doc: {
         id: header.id,
@@ -585,7 +616,7 @@ export class PdfPayloadBuilder {
             ? Number((header as any).withholdingRate)
             : null,
         totalInWords,
-        taxBreakdown: parseTaxBreakdown(header.taxBreakdown),
+        taxBreakdown: namedTaxBreakdown(taxRows) ?? parseTaxBreakdown(header.taxBreakdown),
         billToAddress: header.billToAddress || null,
         shipToAddress: header.shipToAddress || null,
         baseDocCode,
@@ -666,7 +697,21 @@ export class PdfPayloadBuilder {
 
     const hasBatches = lines.some((l: any) => Array.isArray(l.batches) && l.batches.length > 0);
 
-    return { ...payload, locale, docHash, qrPayload, hasBatches } as DocumentPdfPayload;
+    return {
+      ...payload,
+      locale,
+      docHash,
+      qrPayload,
+      hasBatches,
+      currency: configVal('company_currency', 'companyCurrency') || undefined,
+      labels: {
+        vat: terms.tax,
+        'col.vat': terms.tax,
+        companyTaxId: terms.taxId,
+        withholding: terms.withholding,
+      },
+      legalTexts: LocalizationRegistry.legalTextsFor(tenantId ?? undefined, docType, locale),
+    } as DocumentPdfPayload;
   }
 
   /**

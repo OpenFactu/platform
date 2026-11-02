@@ -9,6 +9,9 @@
 import { Router } from 'express';
 import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
+import { getRequestLocale } from '../i18n';
+import { LocalizationRegistry } from '../core/localization/LocalizationRegistry';
+import { PluginReports } from '../core/reports/PluginReports';
 import {
   renderReportPdf,
   getCompanyHeader,
@@ -107,7 +110,7 @@ router.get('/journal/pdf', async (req: any, res) => {
       { debit: 0, credit: 0 },
     );
 
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const pdf = await renderReportPdf({
       title: 'Diario de asientos',
       subtitle: period ? formatPeriodRange(period) : undefined,
@@ -216,7 +219,7 @@ router.get('/ledger/pdf', async (req: any, res) => {
 
     const totalDebit = rows.reduce((s: number, r: any) => s + Number(r.debit), 0);
     const totalCredit = rows.reduce((s: number, r: any) => s + Number(r.credit), 0);
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const pdf = await renderReportPdf({
       title: `Libro mayor`,
       subtitle: `${account.code} · ${account.name}`,
@@ -313,7 +316,7 @@ router.get('/trial-balance/pdf', async (req: any, res) => {
       },
       { debit: 0, credit: 0 },
     );
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const pdf = await renderReportPdf({
       title: 'Balance de sumas y saldos',
       subtitle: period ? formatPeriodRange(period) : undefined,
@@ -394,7 +397,7 @@ router.get('/pl/pdf', async (req: any, res) => {
       .from(schema.accountingPeriods)
       .where(eq(schema.accountingPeriods.id, req.query.periodId));
     const pl = await queryPL(req.tenantClient, req.query.periodId);
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const sections: ReportSection[] = [
       {
         title: 'Ingresos (grupo 7)',
@@ -487,7 +490,7 @@ router.get('/balance-sheet/pdf', async (req: any, res) => {
       .from(schema.accountingPeriods)
       .where(eq(schema.accountingPeriods.id, req.query.periodId));
     const bs = await queryBalanceSheet(req.tenantClient, req.query.periodId);
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const col = (label: string) => [
       { key: 'code', label: 'Cuenta', width: '15%' },
       { key: 'name', label: 'Denominación' },
@@ -527,10 +530,10 @@ router.get('/balance-sheet/pdf', async (req: any, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────
-// 6) LIBRO DE IVA (modelo 303)
+// 6) RESUMEN DE IMPUESTOS — los libros legales de cada país son de sus plugins
 // ─────────────────────────────────────────────────────────────────
 
-async function queryVat(
+async function queryTaxSummary(
   tenantClient: any,
   filters: { from?: Date; to?: Date; kind: 'output' | 'input' },
 ) {
@@ -545,7 +548,7 @@ async function queryVat(
       date: table.date,
       partnerId: table.partnerId,
       partnerName: schema.businessPartners.name,
-      partnerNif: schema.businessPartners.nif,
+      partnerTaxId: schema.businessPartners.nif,
       subtotal: table.subtotal,
       taxTotal: table.taxTotal,
       total: table.total,
@@ -561,7 +564,7 @@ async function queryVat(
   return rows.map((r: any) => ({
     date: r.date,
     code: `${r.prefix || ''}-${r.periodCode || ''}-${String(r.docNum).padStart(6, '0')}`,
-    partnerNif: r.partnerNif || '',
+    partnerTaxId: r.partnerTaxId || '',
     partnerName: r.partnerName || '',
     base: Number(r.subtotal),
     tax: Number(r.taxTotal),
@@ -569,13 +572,13 @@ async function queryVat(
   }));
 }
 
-router.get('/vat', async (req: any, res) => {
+router.get('/tax-summary', async (req: any, res) => {
   try {
     const from = req.query.from ? new Date(req.query.from) : undefined;
     const to = req.query.to ? new Date(req.query.to) : undefined;
     const [output, input] = await Promise.all([
-      queryVat(req.tenantClient, { from, to, kind: 'output' }),
-      queryVat(req.tenantClient, { from, to, kind: 'input' }),
+      queryTaxSummary(req.tenantClient, { from, to, kind: 'output' }),
+      queryTaxSummary(req.tenantClient, { from, to, kind: 'input' }),
     ]);
     res.json({ output, input });
   } catch (e: any) {
@@ -583,23 +586,24 @@ router.get('/vat', async (req: any, res) => {
   }
 });
 
-router.get('/vat/pdf', async (req: any, res) => {
+router.get('/tax-summary/pdf', async (req: any, res) => {
   try {
     const from = req.query.from ? new Date(req.query.from) : undefined;
     const to = req.query.to ? new Date(req.query.to) : undefined;
     const [output, input] = await Promise.all([
-      queryVat(req.tenantClient, { from, to, kind: 'output' }),
-      queryVat(req.tenantClient, { from, to, kind: 'input' }),
+      queryTaxSummary(req.tenantClient, { from, to, kind: 'output' }),
+      queryTaxSummary(req.tenantClient, { from, to, kind: 'input' }),
     ]);
     const sum = (arr: any[], k: string) => arr.reduce((s, r) => s + Number(r[k] || 0), 0);
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
+    const terms = LocalizationRegistry.terminologyFor(req.tenantId);
     const filters: Array<{ label: string; value: string }> = [];
     if (from) filters.push({ label: 'Desde', value: from.toLocaleDateString('es-ES') });
     if (to) filters.push({ label: 'Hasta', value: to.toLocaleDateString('es-ES') });
     const cols = [
       { key: 'date', label: 'Fecha', format: 'date' as const, width: '10%' },
       { key: 'code', label: 'Nº Factura', width: '14%' },
-      { key: 'partnerNif', label: 'NIF', width: '12%' },
+      { key: 'partnerTaxId', label: terms.taxId, width: '12%' },
       { key: 'partnerName', label: 'Cliente/Proveedor' },
       {
         key: 'base',
@@ -610,7 +614,7 @@ router.get('/vat/pdf', async (req: any, res) => {
       },
       {
         key: 'tax',
-        label: 'Cuota IVA',
+        label: terms.tax,
         format: 'money' as const,
         align: 'right' as const,
         width: '12%',
@@ -624,13 +628,14 @@ router.get('/vat/pdf', async (req: any, res) => {
       },
     ];
     const pdf = await renderReportPdf({
-      title: 'Libro de IVA',
-      subtitle: 'IVA repercutido y soportado',
+      title: 'Resumen de impuestos',
+      subtitle: 'Repercutido y soportado',
+      neutral: true,
       filters,
       orientation: 'landscape',
       sections: [
         {
-          title: 'IVA Repercutido (ventas)',
+          title: 'Repercutido (ventas)',
           columns: cols,
           rows: output,
           totals: {
@@ -643,7 +648,7 @@ router.get('/vat/pdf', async (req: any, res) => {
           },
         },
         {
-          title: 'IVA Soportado (compras)',
+          title: 'Soportado (compras)',
           columns: cols,
           rows: input,
           totals: {
@@ -662,8 +667,8 @@ router.get('/vat/pdf', async (req: any, res) => {
             { key: 'amount', label: 'Importe', format: 'money', align: 'right', width: '20%' },
           ],
           rows: [
-            { label: 'IVA Repercutido', amount: sum(output, 'tax') },
-            { label: 'IVA Soportado', amount: -sum(input, 'tax') },
+            { label: 'Repercutido', amount: sum(output, 'tax') },
+            { label: 'Soportado', amount: -sum(input, 'tax') },
             { label: 'A ingresar / (a compensar)', amount: sum(output, 'tax') - sum(input, 'tax') },
           ],
         },
@@ -673,7 +678,80 @@ router.get('/vat/pdf', async (req: any, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.send(pdf);
   } catch (e: any) {
-    console.error('[reports/vat/pdf]', e);
+    console.error('[reports/tax-summary/pdf]', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Informes legales aportados por los plugins activos en la empresa
+// ─────────────────────────────────────────────────────────────────
+
+function pluginReportFilters(query: any) {
+  return {
+    ...query,
+    from: query.from ? new Date(query.from) : undefined,
+    to: query.to ? new Date(query.to) : undefined,
+  };
+}
+
+router.get('/plugin', (req: any, res) => {
+  res.json(
+    PluginReports.activeFor(req.tenantId).map(({ id, title, description }) => ({
+      id,
+      title,
+      description: description ?? null,
+    })),
+  );
+});
+
+async function runPluginReport(req: any, res: any) {
+  const definition = PluginReports.find(req.tenantId, req.params.id);
+  if (!definition) {
+    res.status(404).json({ error: 'Informe no disponible' });
+    return null;
+  }
+  const filters = pluginReportFilters(req.query);
+  const result = await definition.run({
+    tenantId: req.tenantId,
+    db: req.tenantClient,
+    filters,
+    locale: getRequestLocale(req),
+  });
+  return { definition, filters, result };
+}
+
+router.get('/plugin/:id', async (req: any, res) => {
+  try {
+    const run = await runPluginReport(req, res);
+    if (run) res.json({ title: run.definition.title, ...run.result });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+router.get('/plugin/:id/pdf', async (req: any, res) => {
+  try {
+    const run = await runPluginReport(req, res);
+    if (!run) return;
+    const filterRows: Array<{ label: string; value: string }> = [];
+    if (run.filters.from) {
+      filterRows.push({ label: 'Desde', value: run.filters.from.toLocaleDateString('es-ES') });
+    }
+    if (run.filters.to) {
+      filterRows.push({ label: 'Hasta', value: run.filters.to.toLocaleDateString('es-ES') });
+    }
+    const pdf = await renderReportPdf({
+      ...(await getCompanyHeader(req.tenantClient, req.tenantId)),
+      title: run.definition.title,
+      ...run.result,
+      filters: filterRows,
+      neutral: true,
+    } as any);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.send(pdf);
+  } catch (e: any) {
+    console.error('[reports/plugin/pdf]', e);
     res.status(500).json({ error: e.message });
   }
 });
@@ -991,12 +1069,13 @@ router.get('/payslip/:payrollId/pdf', async (req: any, res) => {
       'Noviembre',
       'Diciembre',
     ];
-    const company = await getCompanyHeader(req.tenantClient);
+    const company = await getCompanyHeader(req.tenantClient, req.tenantId);
     const gross = Number(p.gross);
-    const irpf = Number(p.irpfAmount);
-    const ssE = Number(p.ssEmployee);
-    const ssEr = Number(p.ssEmployer);
+    const incomeTax = Number(p.incomeTaxTotal);
+    const socialE = Number(p.socialEmployeeTotal);
+    const socialEr = Number(p.socialEmployerTotal);
     const net = Number(p.netPay);
+    const terms = LocalizationRegistry.terminologyFor(req.tenantId);
 
     // Líneas reales para mostrar el desglose completo (pluses, conceptos…).
     const lines: any[] = await req.tenantClient
@@ -1031,8 +1110,8 @@ router.get('/payslip/:payrollId/pdf', async (req: any, res) => {
           amount: -Number(l.amount || 0),
         }))
       : [
-          { label: 'Retención IRPF', qty: '', rate: '', amount: -irpf },
-          { label: 'Seguridad Social trabajador', qty: '', rate: '', amount: -ssE },
+          { label: terms.incomeTax, qty: '', rate: '', amount: -incomeTax },
+          { label: terms.socialEmployee, qty: '', rate: '', amount: -socialE },
         ];
 
     const employerRows = employerCosts.length
@@ -1042,13 +1121,14 @@ router.get('/payslip/:payrollId/pdf', async (req: any, res) => {
           rate: l.rate ? Number(l.rate).toFixed(2) + ' %' : '',
           amount: Number(l.amount || 0),
         }))
-      : [{ label: 'Seguridad Social a cargo de la empresa', qty: '', rate: '', amount: ssEr }];
+      : [{ label: terms.socialEmployer, qty: '', rate: '', amount: socialEr }];
 
     const totalDeductions = deductionRows.reduce((s, r) => s + Number(r.amount || 0), 0);
     const totalEmployer = employerRows.reduce((s, r) => s + Number(r.amount || 0), 0);
 
     const pdf = await renderReportPdf({
       title: `Recibo de nómina — ${months[p.periodMonth - 1]} ${p.periodYear}`,
+      neutral: true,
       subtitle: emp ? `${emp.firstName} ${emp.lastName} (${emp.code})` : '',
       sections: [
         {
@@ -1096,8 +1176,8 @@ router.get('/labor-cost', async (req: any, res) => {
       .select({
         month: schema.payrolls.periodMonth,
         gross: sql<string>`COALESCE(SUM(${schema.payrolls.gross}), 0)`,
-        ssEmployer: sql<string>`COALESCE(SUM(${schema.payrolls.ssEmployer}), 0)`,
-        irpf: sql<string>`COALESCE(SUM(${schema.payrolls.irpfAmount}), 0)`,
+        socialEmployer: sql<string>`COALESCE(SUM(${schema.payrolls.socialEmployerTotal}), 0)`,
+        incomeTax: sql<string>`COALESCE(SUM(${schema.payrolls.incomeTaxTotal}), 0)`,
         netPay: sql<string>`COALESCE(SUM(${schema.payrolls.netPay}), 0)`,
       })
       .from(schema.payrolls)
@@ -1108,10 +1188,10 @@ router.get('/labor-cost', async (req: any, res) => {
       rows.map((r: any) => ({
         month: r.month,
         gross: Number(r.gross),
-        ssEmployer: Number(r.ssEmployer),
-        irpf: Number(r.irpf),
+        socialEmployer: Number(r.socialEmployer),
+        incomeTax: Number(r.incomeTax),
         netPay: Number(r.netPay),
-        totalCost: Number(r.gross) + Number(r.ssEmployer),
+        totalCost: Number(r.gross) + Number(r.socialEmployer),
       })),
     );
   } catch (e: any) {
@@ -1446,7 +1526,7 @@ router.get('/hr/labor-cost', async (req: any, res) => {
 
     const groups: Record<
       string,
-      { label: string; gross: number; ssEr: number; total: number; count: number }
+      { label: string; gross: number; socialEmployer: number; total: number; count: number }
     > = {};
     for (const p of inRange) {
       const emp: any = empById.get(p.employeeId);
@@ -1470,11 +1550,11 @@ router.get('/hr/labor-cost', async (req: any, res) => {
         label = d2?.name || key;
       }
       const gross = Number(p.gross || 0);
-      const ssEr = Number(p.ssEmployer || 0);
-      const cur = groups[key] || { label, gross: 0, ssEr: 0, total: 0, count: 0 };
+      const socialEmployer = Number(p.socialEmployerTotal || 0);
+      const cur = groups[key] || { label, gross: 0, socialEmployer: 0, total: 0, count: 0 };
       cur.gross += gross;
-      cur.ssEr += ssEr;
-      cur.total += gross + ssEr;
+      cur.socialEmployer += socialEmployer;
+      cur.total += gross + socialEmployer;
       cur.count += 1;
       groups[key] = cur;
     }
@@ -1483,8 +1563,12 @@ router.get('/hr/labor-cost', async (req: any, res) => {
     res.json({
       rows,
       totals: rows.reduce(
-        (s, r) => ({ gross: s.gross + r.gross, ssEr: s.ssEr + r.ssEr, total: s.total + r.total }),
-        { gross: 0, ssEr: 0, total: 0 },
+        (s, r) => ({
+          gross: s.gross + r.gross,
+          socialEmployer: s.socialEmployer + r.socialEmployer,
+          total: s.total + r.total,
+        }),
+        { gross: 0, socialEmployer: 0, total: 0 },
       ),
     });
   } catch (e: any) {
