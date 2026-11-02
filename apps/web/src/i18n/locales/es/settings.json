@@ -236,6 +236,7 @@
       "themeModeLight": "Claro",
       "themeModeDark": "Oscuro",
       "themeSaveError": "No se ha podido guardar el tema",
+      "themeEnforced": "Esta empresa usa un tema obligatorio para todos. Si tenías uno elegido, se conserva y volverá en cualquier empresa que lo permita.",
       "signatureSection": "Firma para PDFs",
       "signatureHelp": "Rellena tu nombre y cargo. Opcionalmente sube una imagen de tu firma (PNG o JPG, máx. 5 MB). Si rellenas estos campos, prevalecen sobre la firma de la empresa en tus PDFs.",
       "signerName": "Nombre del firmante",

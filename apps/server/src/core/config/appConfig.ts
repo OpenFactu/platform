@@ -16,6 +16,8 @@ export interface BrandingConfig {
   /** Id de MOTION_CHARACTERS (sober, smooth, expressive, playful). */
   motionCharacter: string;
   motionSpeed: '' | 'none' | 'fast' | 'normal' | 'slow';
+  /** Todos ven este tema aunque tengan uno elegido en su perfil, que se conserva. */
+  enforceTheme: boolean;
 }
 
 export interface FormatConfig {
@@ -99,6 +101,7 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   textScale: 1,
   motionCharacter: '',
   motionSpeed: '',
+  enforceTheme: false,
 };
 
 export const FORMAT_DEFAULTS: FormatConfig = {

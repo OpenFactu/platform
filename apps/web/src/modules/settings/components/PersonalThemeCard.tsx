@@ -42,6 +42,19 @@ export const PersonalThemeCard: React.FC = () => {
   const presetKnown = !!userTheme.preset && !!getThemePreset(userTheme.preset);
   const usingCompanyTheme = !userTheme.preset && !userTheme.mode;
 
+  if (branding.enforceTheme) {
+    return (
+      <Card className="p-6 border-border-subtle">
+        <div className="space-y-2">
+          <h2 className="text-xs font-black uppercase tracking-widest text-fg-subtle flex items-center gap-2">
+            <Palette size={14} /> {t('settings.profile.themeSection')}
+          </h2>
+          <p className="text-[11px] text-fg-muted">{t('settings.profile.themeEnforced')}</p>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card className="p-6 border-border-subtle">
       <div className="space-y-2">

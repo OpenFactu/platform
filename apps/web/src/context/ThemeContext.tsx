@@ -44,6 +44,8 @@ export interface BrandingConfig {
   /** Id de MOTION_CHARACTERS de @openfactu/ui. */
   motionCharacter: string;
   motionSpeed: '' | 'none' | 'fast' | 'normal' | 'slow';
+  /** Todos ven este tema aunque tengan uno elegido en su perfil, que se conserva. */
+  enforceTheme: boolean;
 }
 
 export interface FormatConfig {
@@ -114,6 +116,7 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   textScale: 1,
   motionCharacter: '',
   motionSpeed: '',
+  enforceTheme: false,
 };
 
 export const FORMAT_DEFAULTS: FormatConfig = {
@@ -171,7 +174,10 @@ export function detectPreset(b: BrandingConfig): string {
 interface ThemeContextType {
   /** El de la empresa, tal como está guardado. Lo que se ve es `userTheme` encima de esto. */
   branding: BrandingConfig;
-  /** Lo que eligió el usuario en su perfil; los dos en null = el de la empresa. */
+  /**
+   * Lo que eligió el usuario en su perfil; los dos en null = el de la empresa.
+   * Se conserva aunque `branding.enforceTheme` impida usarlo en la empresa activa.
+   */
   userTheme: UserTheme;
   saveUserTheme: (next: UserTheme) => Promise<void>;
   /** Modo con el que se está pintando la app, sea de la empresa o del usuario. */
@@ -418,9 +424,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [branding, presets],
   );
+  // Sin capa personal si la empresa activa obliga a su tema: tampoco llega a la
+  // caché, así que index.html ya pinta el de la empresa al recargar.
   const personalLayer = useMemo(
     () =>
-      userTheme.preset || userTheme.mode
+      !branding.enforceTheme && (userTheme.preset || userTheme.mode)
         ? buildThemeLayer(userThemeToInput(branding, userTheme))
         : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps

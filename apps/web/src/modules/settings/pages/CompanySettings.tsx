@@ -10,6 +10,7 @@ import {
   NumberInput,
   PageHeader,
   Select,
+  Switch,
   Tabs,
   Loader,
   useToast,
@@ -580,7 +581,7 @@ export const CompanySettings: React.FC = () => {
 
       {activeTab === 'branding' && (
         <div className="space-y-6">
-          {(userTheme.preset || userTheme.mode) && (
+          {!branding.enforceTheme && (userTheme.preset || userTheme.mode) && (
             <Alert tone="info">{t('settingsCompany.page.personalThemeNotice')}</Alert>
           )}
           <Card>
@@ -591,7 +592,9 @@ export const CompanySettings: React.FC = () => {
                     {t('settingsCompany.page.themePresets')}
                   </h2>
                   <p className="text-[12px] text-[var(--k-ink-500)] mt-1">
-                    {t('settingsCompany.page.themePresetsHelp')}
+                    {branding.enforceTheme
+                      ? t('settingsCompany.page.themePresetsHelpEnforced')
+                      : t('settingsCompany.page.themePresetsHelp')}
                   </p>
                 </div>
                 {activePresetId === 'custom' && (
@@ -609,6 +612,22 @@ export const CompanySettings: React.FC = () => {
                     onSelect={() => applyPreset(p.id)}
                   />
                 ))}
+              </div>
+              <div className="pt-4 border-t border-border-subtle space-y-1">
+                {/* Se guarda al momento, como los presets de arriba. */}
+                <Switch
+                  label={t('settingsCompany.page.enforceTheme')}
+                  checked={branding.enforceTheme}
+                  disabled={!isAdmin}
+                  onChange={(enforceTheme) =>
+                    updateTheme('branding', { enforceTheme }).catch(() =>
+                      toast.error(t('settingsCompany.page.saveError')),
+                    )
+                  }
+                />
+                <p className="text-[12px] text-fg-muted">
+                  {t('settingsCompany.page.enforceThemeHelp')}
+                </p>
               </div>
             </div>
           </Card>

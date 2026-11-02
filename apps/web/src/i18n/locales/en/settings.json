@@ -236,6 +236,7 @@
       "themeModeLight": "Light",
       "themeModeDark": "Dark",
       "themeSaveError": "Couldn't save the theme",
+      "themeEnforced": "This company requires everyone to use its theme. If you had chosen one, it's kept and comes back in any company that allows it.",
       "signatureSection": "PDF signature",
       "signatureHelp": "Enter your name and job title. Optionally upload an image of your signature (PNG or JPG, max. 5 MB). If you fill in these fields, they take precedence over the company signature on your PDFs.",
       "signerName": "Signer name",
