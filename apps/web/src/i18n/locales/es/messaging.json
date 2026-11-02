@@ -135,7 +135,7 @@
       "linkTitle": "Vincular con un interlocutor",
       "linkHint": "Así sabrás qué cliente del ERP es y podrás abrir su ficha desde la conversación.",
       "partner": "Interlocutor",
-      "partnerPlaceholder": "Busca por nombre, código o NIF",
+      "partnerPlaceholder": "Busca por nombre, código o identificación fiscal",
       "noPartners": "No hay interlocutores que coincidan.",
       "link": "Vincular",
       "unlink": "Desvincular",
