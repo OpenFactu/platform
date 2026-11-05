@@ -10,6 +10,7 @@ import { LabelPrintButton } from '@/modules/document-templates/components/LabelP
 import StockDetailModal from '../components/StockDetailModal';
 import { validateBarcode } from '@/utils/barcodeValidation';
 import { useItemForm } from '../hooks/useItemForm';
+import { useSupplierOptions } from '../hooks/useSupplierOptions';
 import { ItemGeneralFields } from '../components/ItemGeneralFields';
 import { ItemLogisticsFields } from '../components/ItemLogisticsFields';
 import { ItemWebFields } from '../components/ItemWebFields';
@@ -44,6 +45,7 @@ export const ItemDetail: React.FC = () => {
     user?.role === 'SUPERUSER' || user?.role === 'ADMIN' || user?.permissions?.['/items']?.write;
 
   const form = useItemForm();
+  const suppliers = useSupplierOptions();
   const [item, setItem] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -263,6 +265,7 @@ export const ItemDetail: React.FC = () => {
             set={form.set}
             warehouses={warehouses}
             zones={zones}
+            suppliers={suppliers}
           />
         </Card>
         {canSeeItemCosts(user) && (

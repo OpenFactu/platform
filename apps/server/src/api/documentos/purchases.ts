@@ -6,6 +6,7 @@ import { DocumentRegistry } from '../../core/documents/DocumentRegistry';
 import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
 import { logAudit } from '../../utils/audit';
 import { statusError } from '../../core/documents/documentRules';
+import { assertPeriodAccepts } from '../../core/accounting/periodRules';
 
 const router = Router();
 const config = DocumentRegistry.get('PO');
@@ -181,6 +182,75 @@ router.post('/orders/:id/cancel', async (req: any, res) => {
   }
 });
 
+// PUT editar un pedido en borrador
+router.put('/orders/:id', async (req: any, res) => {
+  try {
+    const result = await DocumentEngine.update(
+      req.tenantId,
+      req.tenantClient,
+      req.user,
+      {
+        tableName: config.tableName,
+        schemaTable: config.schemaTable,
+        lineSchemaTable: config.lineSchemaTable,
+        batchSchemaTable: config.batchSchemaTable,
+        eventPrefix: config.eventPrefix,
+        stockAction: config.stockAction,
+        closeBaseDocuments: config.closeBaseDocuments,
+        initialStatus: config.initialStatus,
+        hooks: config.hooks,
+      },
+      req.params.id,
+      req.body,
+    );
+    res.json(result);
+    logAudit({
+      tenantClient: req.tenantClient,
+      tenantId: req.tenantId || '',
+      userId: req.user?.id,
+      entityType: 'PurchaseOrder',
+      entityId: req.params.id,
+      action: 'UPDATE',
+      newValue: { partnerId: req.body?.partnerId, lines: req.body?.lines?.length },
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ error: error.message });
+  }
+});
+
+// POST confirmar un pedido en borrador: desde aquí ya cuenta como pedido y se puede recibir.
+router.post('/orders/:id/confirm', async (req: any, res) => {
+  try {
+    await req.tenantClient.transaction(async (tx: any) => {
+      const [order] = await tx
+        .select()
+        .from(schema.purchaseOrders)
+        .where(eq(schema.purchaseOrders.id, req.params.id))
+        .for('update');
+      if (!order) throw statusError(404, 'Pedido no encontrado');
+      if (order.status !== 'D') throw statusError(409, 'Este pedido no está en borrador.');
+      await assertPeriodAccepts(tx, order.periodId, order.date);
+      await tx
+        .update(schema.purchaseOrders)
+        .set({ status: 'O' })
+        .where(eq(schema.purchaseOrders.id, req.params.id));
+    });
+    res.json({ id: req.params.id, status: 'O' });
+    logAudit({
+      tenantClient: req.tenantClient,
+      tenantId: req.tenantId || '',
+      userId: req.user?.id,
+      entityType: 'PurchaseOrder',
+      entityId: req.params.id,
+      action: 'APPROVE',
+      oldValue: { status: 'D' },
+      newValue: { status: 'O' },
+    });
+  } catch (error: any) {
+    res.status(error.statusCode || 500).json({ error: error.message });
+  }
+});
+
 // PATCH update status (Manual Close)
 router.patch('/orders/:id/status', async (req: any, res) => {
   const { status } = req.body;
@@ -189,6 +259,9 @@ router.patch('/orders/:id/status', async (req: any, res) => {
       .select()
       .from(schema.purchaseOrders)
       .where(eq(schema.purchaseOrders.id, req.params.id));
+    if (old?.status === 'D') {
+      throw statusError(409, 'Este pedido está en borrador: confírmalo o cancélalo.');
+    }
     const [updated] = await req.tenantClient
       .update(schema.purchaseOrders)
       .set({ status })

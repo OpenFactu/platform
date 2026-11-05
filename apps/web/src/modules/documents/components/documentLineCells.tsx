@@ -937,6 +937,7 @@ export function statusBadgeProps(
       return { label: t('doc.status.cancelled'), variant: 'error' };
   }
   if (kind === DocKind.Order) {
+    if (status === 'D') return { label: t('doc.status.draft'), variant: 'neutral' };
     if (status === DocStatus.Open) return { label: t('doc.status.open'), variant: 'warning' };
     if (status === DocStatus.Partial) return { label: t('doc.status.partial'), variant: 'info' };
     if (status === DocStatus.Closed) return { label: t('doc.status.closed'), variant: 'success' };

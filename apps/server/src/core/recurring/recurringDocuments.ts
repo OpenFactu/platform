@@ -12,9 +12,9 @@ import { and, asc, desc, eq, lte, sql } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { DocumentEngine } from '../documents/DocumentEngine';
 import { DocumentRegistry } from '../documents/DocumentRegistry';
+import { autoSeriesFor } from '../documents/autoSeries';
 import { buildDocumentAttachment } from '../documents/documentAttachment';
 import { sendMail } from '../email/Mailer';
-import { openPeriodsFor } from '../accounting/periodRules';
 import { notifyAdmins } from '../realtime/notifyAdmins';
 import { logAudit } from '../../utils/audit';
 import { FREQUENCIES, firstAfter, firstOnOrAfter, isIsoDate, type Frequency } from './schedule';
@@ -315,37 +315,6 @@ export async function getRecurring(db: any, id: string) {
   return { ...row, partnerName: partner?.name ?? '', net: netOf(row.lines), runs };
 }
 
-/**
- * La serie de ese periodo. Las series son por ejercicio: al cambiar de año se busca la que
- * lleva el mismo prefijo que la elegida, y si no, la predeterminada. Nunca una manual: nadie
- * teclearía el número.
- */
-async function seriesAndPeriodFor(tx: any, row: any, date: string) {
-  const open = await openPeriodsFor(tx, date);
-  if (open.length === 0)
-    throw httpError(409, `No hay un periodo contable abierto para el ${date}.`);
-
-  const all = await tx
-    .select()
-    .from(schema.documentSeries)
-    .where(
-      and(
-        eq(schema.documentSeries.docType, row.docType),
-        eq(schema.documentSeries.numberingMode, 'AUTO'),
-      ),
-    );
-  const inPeriod = all.filter((series: any) => open.some((p: any) => p.id === series.periodId));
-  const chosen = all.find((series: any) => series.id === row.seriesId);
-  const series =
-    inPeriod.find((s: any) => s.id === row.seriesId) ??
-    (chosen ? inPeriod.find((s: any) => s.prefix === chosen.prefix) : undefined) ??
-    inPeriod.find((s: any) => s.isDefault) ??
-    inPeriod[0];
-  if (!series)
-    throw httpError(409, `No hay una serie de numeración para el periodo ${open[0].code}.`);
-  return { period: open.find((p: any) => p.id === series.periodId), series };
-}
-
 const definitionOf = (config: any) => ({
   tableName: config.tableName,
   schemaTable: config.schemaTable,
@@ -400,7 +369,7 @@ async function generateOne(
       return null;
     }
 
-    const { period, series } = await seriesAndPeriodFor(tx, row, periodDate);
+    const { period, series } = await autoSeriesFor(tx, row.docType, periodDate, row.seriesId);
     const config = DocumentRegistry.get(row.docType as any);
     const created = await DocumentEngine.create(
       tenantId,

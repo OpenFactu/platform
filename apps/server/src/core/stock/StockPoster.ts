@@ -18,7 +18,7 @@
 import { eq, and, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import * as schema from '../../db/schema';
-import { recordCostEntry } from './itemCost';
+import { recordCostEntry, type CostMovementKind } from './itemCost';
 
 /** Upsert en itemWarehouseStocks sumando `delta`. */
 async function addWarehouseStock(client: any, itemId: string, warehouseId: string, delta: number) {
@@ -49,7 +49,7 @@ async function addWarehouseStock(client: any, itemId: string, warehouseId: strin
     await client.insert(schema.itemWarehouseStocks).values({
       itemId,
       warehouseId,
-      stock: Math.max(0, delta),
+      stock: delta,
       updatedAt: new Date(),
     });
   }
@@ -93,7 +93,7 @@ async function addZoneStock(
       itemId,
       warehouseId,
       zoneId,
-      stock: Math.max(0, delta),
+      stock: delta,
       updatedAt: new Date(),
     });
   }
@@ -150,7 +150,7 @@ async function addBatchStock(
       itemId,
       batchNum,
       warehouseId,
-      quantity: Math.max(0, delta),
+      quantity: delta,
       updatedAt: new Date(),
     });
   }
@@ -241,6 +241,12 @@ export async function postTransferReceived(client: any, transferId: string) {
 }
 
 // ── Entradas ────────────────────────────────────────────────────────────
+/** Por qué entra, para el historial del coste. */
+function entryCostKind(sourceDocType?: string | null): CostMovementKind {
+  if (sourceDocType === 'InventoryCount') return 'count';
+  return sourceDocType ? 'sales_return' : 'receipt';
+}
+
 export async function postReceipt(client: any, receiptId: string) {
   const [doc] = await client
     .select()
@@ -256,7 +262,7 @@ export async function postReceipt(client: any, receiptId: string) {
     if (l.unitCost != null) {
       await recordCostEntry(client, {
         itemId: l.itemId,
-        kind: doc.sourceDocId ? 'sales_return' : 'receipt',
+        kind: entryCostKind(doc.sourceDocType),
         quantity: Number(l.quantity),
         unitCost: Number(l.unitCost),
         docType: 'GoodsReceipt',
@@ -296,6 +302,7 @@ export async function postIssue(client: any, issueId: string) {
     }
     await applyDelta(client, l.itemId, doc.warehouseId, l.zoneId || null, -Number(l.quantity));
     if (l.batchNum) {
+      await ensureBatch(client, l.itemId, l.batchNum, -Number(l.quantity));
       await addBatchStock(client, l.itemId, l.batchNum, doc.warehouseId, -Number(l.quantity));
     }
   }

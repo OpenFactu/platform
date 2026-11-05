@@ -1047,6 +1047,12 @@ export class DocumentEngine {
       headerValues.validUntil = new Date((request as any).validUntil);
     }
 
+    // Entrega prevista de un pedido.
+    if ((def.schemaTable as any).deliveryDate !== undefined && 'deliveryDate' in request) {
+      const deliveryDate = (request as any).deliveryDate;
+      headerValues.deliveryDate = deliveryDate ? new Date(deliveryDate) : null;
+    }
+
     // Proyecto en cabecera (las líneas heredan si no traen propio).
     if (def.schemaTable.internalOrderId) {
       headerValues.internalOrderId = (request as any).internalOrderId || null;
@@ -1755,11 +1761,12 @@ export class DocumentEngine {
             eq(schema.itemWarehouseStocks.warehouseId, warehouseId),
           ),
         );
-    } else if (action === 'IN') {
+    } else {
+      // Sin fila también se apunta la salida: el artículo ya la ha restado.
       await tx.insert(schema.itemWarehouseStocks).values({
         itemId: item.id,
         warehouseId,
-        stock: qty,
+        stock: action === 'OUT' ? -qty : qty,
         updatedAt: new Date(),
       });
     }
@@ -1804,12 +1811,12 @@ export class DocumentEngine {
             eq(schema.itemZoneStocks.zoneId, zoneId),
           ),
         );
-    } else if (action === 'IN') {
+    } else {
       await tx.insert(schema.itemZoneStocks).values({
         itemId: item.id,
         warehouseId,
         zoneId,
-        stock: qty,
+        stock: action === 'OUT' ? -qty : qty,
         updatedAt: new Date(),
       });
     }

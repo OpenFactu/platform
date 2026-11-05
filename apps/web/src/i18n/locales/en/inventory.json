@@ -163,7 +163,8 @@
         "sales_return": "Customer return",
         "purchase_return": "Return to supplier",
         "undo_exit": "Issue cancelled",
-        "undo_entry": "Receipt cancelled"
+        "undo_entry": "Receipt cancelled",
+        "count": "Stock count"
       }
     },
     "itemDetail": {
@@ -264,6 +265,16 @@
         "remove": "Remove",
         "add": "Add",
         "imagesHint": "From the Website module media library; the first one is the cover."
+      },
+      "replenishment": {
+        "title": "Replenishment",
+        "hint": "It shows up in Replenishment when the projected stock falls below the minimum.",
+        "minStock": "Minimum stock",
+        "reorderQty": "Reorder quantity",
+        "reorderHint": "How much to order at once. Empty: whatever is missing to reach the minimum.",
+        "supplier": "Usual supplier",
+        "noSupplier": "No supplier",
+        "leadTime": "Lead time (days)"
       }
     },
     "items": {
@@ -324,7 +335,9 @@
       "categories": "Categories",
       "uom": "Units",
       "warehouses": "Warehouses",
-      "stockMovements": "Movements"
+      "stockMovements": "Movements",
+      "counts": "Stock counts",
+      "replenishment": "Replenishment"
     },
     "routes": {
       "items": "Catalog",
@@ -332,7 +345,10 @@
       "categories": "Categories",
       "uom": "Units",
       "warehouses": "Bin management",
-      "stockMovements": "Stock movements"
+      "stockMovements": "Stock movements",
+      "counts": "Stock counts",
+      "countDetail": "Stock count",
+      "replenishment": "Replenishment"
     },
     "stockDetail": {
       "title": "Inventory detail",
@@ -556,6 +572,142 @@
       "geoLocationPlaceholder": "E.g. Floor 2, South sector",
       "cancel": "Cancel",
       "create": "Create warehouse"
+    },
+    "counts": {
+      "title": "Stock counts",
+      "subtitle": "Count what is there and correct the differences, without stopping the warehouse.",
+      "new": "New count",
+      "newTitle": "New count",
+      "code": "Code",
+      "scope": "What is counted",
+      "date": "Date",
+      "statusLabel": "Status",
+      "status": {
+        "open": "Counting",
+        "review": "Under review",
+        "closed": "Closed",
+        "cancelled": "Cancelled"
+      },
+      "listEmptyTitle": "No counts yet",
+      "listEmptyHint": "Open one to count a warehouse, a zone or a category.",
+      "warehouse": "Warehouse",
+      "chooseWarehouse": "Choose a warehouse",
+      "zone": "Zone",
+      "allZones": "The whole warehouse",
+      "category": "Category",
+      "allCategories": "All categories",
+      "blind": "Blind count",
+      "blindHint": "Whoever counts does not see what the system says. It shows at review.",
+      "blindBadge": "Blind",
+      "notes": "Notes",
+      "openAction": "Open count",
+      "cancelAction": "Cancel",
+      "back": "Back",
+      "loadError": "The count could not be loaded",
+      "saveError": "It could not be saved",
+      "notFound": "Count not found",
+      "scan": "Scan",
+      "scanned": "{item}: {quantity}",
+      "scanChoose": "It is on several lines: choose which one you counted.",
+      "addAction": "Add",
+      "addTitle": "Add what was not listed",
+      "changeItem": "Change",
+      "searchItem": "Search by code, name or barcode",
+      "searchLine": "Search the lines",
+      "batch": "Batch",
+      "serial": "Serial",
+      "batchNeeded": "This item is managed by batch: say which batch.",
+      "serialNeeded": "This item is managed by serial number: say which one.",
+      "noBatch": "No batch",
+      "added": "Added",
+      "counted": "Counted",
+      "notCounted": "Not counted",
+      "quantity": "Quantity",
+      "expectedInline": "Expected: {quantity} {unit}",
+      "progress": "{counted} of {total} lines counted",
+      "openedOn": "Opened on {date}",
+      "filterLabel": "Which lines to see",
+      "filterPending": "Not counted ({count})",
+      "filterCounted": "Counted ({count})",
+      "filterDifference": "With a difference ({count})",
+      "filterAll": "All",
+      "finishAction": "Send to review",
+      "reopenAction": "Keep counting",
+      "closeAction": "Close and adjust",
+      "cancelCount": "Cancel count",
+      "saveAction": "Save",
+      "emptyTitle": "Nothing to count",
+      "emptyHint": "No stock is recorded here. If you find something, add it or scan it.",
+      "noLinesHere": "No lines with this filter",
+      "noLines": "No lines with this filter",
+      "waitingReview": "Counting is done. Someone still has to review the differences and close it.",
+      "uncountedWarning": "{count} lines were not counted: closing leaves those untouched.",
+      "closed": "Count closed",
+      "closedSummary": "{count} lines with a difference. Movements: {documents}.",
+      "noDocuments": "none",
+      "problemsTitle": "It cannot be closed yet",
+      "item": "Item",
+      "where": "Where",
+      "noZone": "No location",
+      "expected": "When opened",
+      "movedBefore": "Moved before counting",
+      "movedAfter": "Moved afterwards",
+      "difference": "Difference",
+      "final": "Will be",
+      "value": "Value",
+      "goesTo": "Applies to",
+      "pickBatch": "Say the batch",
+      "pendingBatch": "Batch missing",
+      "batchTitle": "Which batch the difference belongs to",
+      "batchMissing": "{quantity} of {item} are missing. Say from which batch.",
+      "batchExtra": "{quantity} of {item} are left over. Say in which batch.",
+      "chooseBatch": "Choose",
+      "addRow": "Another batch",
+      "removeRow": "Remove",
+      "batchGap": "{quantity} still to assign.",
+      "confirm": {
+        "finish": {
+          "title": "Send to review",
+          "message": "Counting stops and the reviewer sees the differences. {pending} lines are not counted.",
+          "action": "Send to review"
+        },
+        "close": {
+          "title": "Close and adjust the stock",
+          "message": "Adjustments will be posted for {differences} lines with a difference, at average cost. What was not counted ({pending}) stays untouched. This cannot be undone.",
+          "action": "Close and adjust"
+        },
+        "cancel": {
+          "title": "Cancel the count",
+          "message": "What was counted is not applied and the stock does not change.",
+          "action": "Cancel count"
+        }
+      }
+    },
+    "replenishment": {
+      "title": "Replenishment",
+      "subtitle": "Projected stock below the minimum: stock, minus committed, plus on order.",
+      "item": "Item",
+      "stock": "Stock",
+      "committed": "Committed",
+      "ordered": "On order",
+      "projected": "Projected",
+      "minimum": "Minimum",
+      "inDraft": "In draft",
+      "supplier": "Supplier",
+      "chooseSupplier": "Choose a supplier",
+      "toOrder": "To order",
+      "createOrders_one": "Create {count} draft order",
+      "createOrders_other": "Create {count} draft orders",
+      "createdTitle": "Draft orders created",
+      "createdHint": "Review and confirm them: until then they do not count as on order.",
+      "openOrder": "Open order {num}",
+      "created_one": "{count} order created",
+      "created_other": "{count} orders created",
+      "loadError": "Replenishment could not be loaded",
+      "createError": "The orders could not be created",
+      "emptyTitle": "Nothing below the minimum",
+      "emptyHint": "Only items with a minimum stock show up: it is set on their card.",
+      "purchasesOff": "Purchasing is turned off: you can see what is missing, but no orders are created."
     }
   }
 }

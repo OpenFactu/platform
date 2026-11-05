@@ -206,6 +206,16 @@ export const masterDataObjects: ImportObjectConfig[] = [
       },
       { key: 'basePrice', label: 'Precio base', type: 'number', example: '0,45' },
       { key: 'minStock', label: 'Stock mínimo', type: 'number', example: '100' },
+      { key: 'reorderQty', label: 'Cantidad a pedir', type: 'number', example: '50' },
+      {
+        key: 'preferredSupplier',
+        label: 'Proveedor habitual',
+        type: 'ref',
+        bodyKey: 'preferredSupplierId',
+        example: 'P0001',
+        ref: { table: 'BusinessPartner', matchBy: ['code', 'nif', 'name'], label: 'proveedor' },
+      },
+      { key: 'leadTimeDays', label: 'Plazo de entrega (días)', type: 'number', example: '7' },
       {
         key: 'manageBy',
         label: 'Gestión',

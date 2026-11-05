@@ -126,8 +126,10 @@ const CONFIGS: DocumentTypeConfig[] = [
     hasWarehouse: true,
     hasInternalOrder: true,
     hasSalesAgent: false,
-    statusLabels: { O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
+    statusLabels: { D: 'Borrador', O: 'Abierto', P: 'Parcial', C: 'Cerrado', X: 'Cancelado' },
     uiRoute: '/purchase-orders',
+    // Nace abierto; en borrador solo los de la reposición, para mirarlos antes de pedir.
+    editableStatuses: ['D'],
   },
   {
     docType: 'SDN',

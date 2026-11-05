@@ -117,6 +117,7 @@ export async function startDocumentsHarness(): Promise<DocumentsHarness> {
     goodsReceiptsRouter,
     goodsIssuesRouter,
     transferNotesRouter,
+    stockLookupRouter,
   } = require('../../../api/stockMovements');
   const {
     bankAccountOptionsRouter,
@@ -124,6 +125,9 @@ export async function startDocumentsHarness(): Promise<DocumentsHarness> {
     bankStatementsRouter,
     paymentBatchesRouter,
   } = require('../../../api/banking');
+  const { default: inventoryCounts } = require('../../../api/inventoryCounts');
+  const { default: replenishment } = require('../../../api/replenishment');
+  const { default: purchases } = require('../../../api/documentos/purchases');
   const { hideItemCosts } = require('../../../api/middleware/hideItemCosts');
   /* eslint-enable @typescript-eslint/no-var-requires */
 
@@ -151,6 +155,11 @@ export async function startDocumentsHarness(): Promise<DocumentsHarness> {
   app.use('/api/goods-receipts', goodsReceiptsRouter);
   app.use('/api/goods-issues', goodsIssuesRouter);
   app.use('/api/transfer-notes', transferNotesRouter);
+  app.use('/api/stock', stockLookupRouter);
+  app.use('/api/inventory-counts', inventoryCounts);
+  app.use('/api/replenishment', replenishment);
+  app.use('/api/purchases/invoices', purchaseInvoices);
+  app.use('/api/purchases', purchases);
   app.use('/api/sales/invoices', salesInvoices);
   app.use('/api/purchases/invoices', purchaseInvoices);
   app.use('/api/sales/delivery-notes', salesDeliveryNotes);

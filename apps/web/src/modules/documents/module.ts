@@ -211,6 +211,13 @@ export const documentsModule: ModuleManifest = {
       permissionPath: '/purchases/invoices',
     },
     // Compras
+    {
+      pattern: '/purchase-orders/:id/edit',
+      Component: PurchaseOrders,
+      title: 'doc.types.PO',
+      iconName: 'FileDigit',
+      permissionPath: '/purchase-orders',
+    },
     ...['/purchase-orders', '/purchase-orders/new', '/purchase-orders/:id'].map((pattern, i) => ({
       pattern,
       Component: PurchaseOrders,

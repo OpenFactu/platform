@@ -35,7 +35,17 @@ import { useAuth } from '@/context/AuthContext';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
 import { useTheme } from '@/context/ThemeContext';
 import { formatDocCode } from '@/utils/docCode';
-import { FileDigit, Plus, AlertCircle, Copy, Eye, Ban, FileText } from 'lucide-react';
+import {
+  CheckCircle2,
+  FileDigit,
+  Pencil,
+  Plus,
+  AlertCircle,
+  Copy,
+  Eye,
+  Ban,
+  FileText,
+} from 'lucide-react';
 import { DocumentActionBar } from '../components/DocumentActionBar';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
@@ -59,6 +69,7 @@ import { useDocumentScanner } from '@/hooks/useDocumentScanner';
 import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
 import { docsApi } from '../api';
+import { apiClient } from '@/shared/http';
 import { useI18n } from '@/i18n/I18nContext';
 
 // --- Sub-componente: VISTA DE LISTADO ---
@@ -118,6 +129,7 @@ const POList: React.FC<{
           type: 'select',
           label: t('doc.common.status'),
           options: [
+            { label: t('doc.status.draft'), value: 'D' },
             { label: t('doc.status.open'), value: 'O' },
             { label: t('doc.status.partial'), value: 'P' },
             { label: t('doc.status.closed'), value: 'C' },
@@ -173,6 +185,7 @@ const POList: React.FC<{
       sortAccessor: (item: any) => item.status || '',
       cell: (item: any) => (
         <>
+          {item.status === 'D' && <Badge variant="neutral">{t('doc.status.draft')}</Badge>}
           {item.status === 'O' && <Badge variant="warning">{t('doc.status.open')}</Badge>}
           {item.status === 'P' && <Badge variant="info">{t('doc.status.partial')}</Badge>}
           {item.status === 'C' && <Badge variant="success">{t('doc.status.closed')}</Badge>}
@@ -187,8 +200,8 @@ const POList: React.FC<{
   // (abierto / parcial / cerrado) se declaran una vez en lugar de duplicarse
   // entre una columna de botones y el menú contextual.
   const rowActions = (item: any): RowAction[] => {
-    const canBeCancelled = item.status === 'O' || item.status === 'P';
-    const canBeReceived = item.status !== 'C' && item.status !== 'X';
+    const canBeCancelled = item.status === 'D' || item.status === 'O' || item.status === 'P';
+    const canBeReceived = item.status === 'O' || item.status === 'P';
     return [
       { label: t('doc.salesOrders.view'), icon: <Eye size={14} />, onClick: () => onDetail(item) },
       {
@@ -283,6 +296,7 @@ const POList: React.FC<{
               label: t('doc.common.status'),
               type: 'select',
               options: [
+                { label: t('doc.status.draft'), value: 'D' },
                 { label: t('doc.status.open'), value: 'O' },
                 { label: t('doc.status.partial'), value: 'P' },
                 { label: t('doc.status.closed'), value: 'C' },
@@ -335,6 +349,8 @@ const POForm: React.FC<{
     setShipToAddress: any;
   };
   setViewingBatch?: (l: any) => void;
+  /** Editando un borrador: su número y su serie ya no cambian. */
+  editingCode?: string;
 }> = ({
   onSubmit,
   state,
@@ -344,6 +360,7 @@ const POForm: React.FC<{
   computations,
   extraState,
   setViewingBatch,
+  editingCode,
 }) => {
   // El pedido de compra no asigna lotes (se hace al recibir), pero el builder
   // de columnas pide el callback.
@@ -380,7 +397,7 @@ const POForm: React.FC<{
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const steps = useMemo(() => buildFormSteps({ fiscal: 'optional' }), [locale]);
   const status = formStepStatus(
-    state,
+    editingCode ? { ...state, isManualSeries: false } : state,
     masters,
     { partnerLabel: t('doc.steps.theSupplier'), warehouse: warehouseLocation !== 'line' },
     { batches: false },
@@ -390,8 +407,12 @@ const POForm: React.FC<{
   return (
     <>
       <DocumentFormLayout
-        title={t('doc.purchaseOrders.newTitle')}
-        submitLabel={t('doc.salesOrders.confirm')}
+        title={
+          editingCode
+            ? t('doc.common.editCode', { code: editingCode })
+            : t('doc.purchaseOrders.newTitle')
+        }
+        submitLabel={editingCode ? t('doc.common.saveChanges') : t('doc.salesOrders.confirm')}
         onSubmit={() => onSubmit(undefined)}
         isSubmitting={state.isSubmitting}
         canSubmit={!state.seriesError && state.canWrite}
@@ -451,7 +472,9 @@ const POForm: React.FC<{
                     label={t('doc.salesOrders.date')}
                     required
                     value={state.date}
-                    onChange={(v) => actions.selectDate(v ?? '')}
+                    onChange={(v) =>
+                      editingCode ? setState.setDate(v ?? '') : actions.selectDate(v ?? '')
+                    }
                   />
                   <DatePicker
                     label={t('doc.salesOrders.expectedDelivery')}
@@ -466,7 +489,12 @@ const POForm: React.FC<{
               }
               side={
                 <>
-                  <SeriesPeriodFields state={state} setState={setState} masters={masters} />
+                  <SeriesPeriodFields
+                    state={state}
+                    setState={setState}
+                    masters={masters}
+                    locked={!!editingCode}
+                  />
                   <PluginFieldsPanel
                     tableName="TABLEPOForm"
                     values={state.pluginData}
@@ -510,15 +538,28 @@ const PODetail: React.FC<{
   onBack: () => void;
   onCopyToDelivery: () => void;
   onCancel?: (id: string) => void;
+  onConfirm?: () => void;
+  onEdit?: () => void;
   masters: any;
   setViewingBatch?: (l: any) => void;
-}> = ({ order, onBack, onCopyToDelivery, onCancel, masters, setViewingBatch }) => {
+}> = ({
+  order,
+  onBack,
+  onCopyToDelivery,
+  onCancel,
+  onConfirm,
+  onEdit,
+  masters,
+  setViewingBatch,
+}) => {
   const { t, locale } = useI18n();
   const fmt = useFormat();
   const isMobile = useIsMobile();
   const partner = masters.partners.find((p: any) => p.id === order.partnerId);
-  const canBeCancelled = order.status === 'O' || order.status === 'P';
-  const canBeReceived = order.status !== 'C' && order.status !== 'X';
+  const isDraft = order.status === 'D';
+  const canBeCancelled = isDraft || order.status === 'O' || order.status === 'P';
+  const canBeReceived = order.status === 'O' || order.status === 'P';
+  const hasZeroPrice = isDraft && (order.lines || []).some((l: any) => !Number(l.price));
 
   const columns = useMemo(
     () =>
@@ -550,17 +591,39 @@ const PODetail: React.FC<{
           onCancel={onCancel ? () => onCancel(order.id) : undefined}
           showCancel={canBeCancelled && !!onCancel}
           primary={
-            canBeReceived
+            isDraft && onConfirm
               ? {
-                  label: t('doc.purchaseOrders.createReceipt'),
-                  icon: Copy,
-                  onClick: onCopyToDelivery,
+                  label: t('doc.purchaseOrders.confirmDraft'),
+                  icon: CheckCircle2,
+                  onClick: onConfirm,
                 }
-              : undefined
+              : canBeReceived
+                ? {
+                    label: t('doc.purchaseOrders.createReceipt'),
+                    icon: Copy,
+                    onClick: onCopyToDelivery,
+                  }
+                : undefined
           }
         />
       }
     >
+      {isDraft && (
+        <Alert
+          tone="info"
+          className="mb-4"
+          action={
+            onEdit ? (
+              <Button size="sm" variant="secondary" className="gap-1" onClick={onEdit}>
+                <Pencil size={14} /> {t('doc.purchaseOrders.editDraft')}
+              </Button>
+            ) : undefined
+          }
+        >
+          {t('doc.purchaseOrders.draftNotice')}
+          {hasZeroPrice && <span className="block">{t('doc.purchaseOrders.zeroPriceNotice')}</span>}
+        </Alert>
+      )}
       <div className="flex items-center gap-3 mb-4 -mt-2 flex-wrap">
         <CloneDocumentActions docType="PO" doc={order} show="copy" size={14} />
         <TraceabilityButton type="PO" id={order.id} docCode={formatDocCode(order)} />
@@ -675,8 +738,9 @@ export const PurchaseOrders: React.FC = () => {
 
   const detailId = params.id;
   const isCreate = location.pathname.endsWith('/new');
-  const isDetail = !!detailId;
-  const isList = !isCreate && !isDetail;
+  const isEdit = !!detailId && location.pathname.endsWith('/edit');
+  const isDetail = !!detailId && !isEdit;
+  const isList = !isCreate && !isDetail && !isEdit;
 
   const dataVersion = useDataVersion(DocType.PurchaseOrder);
   const [orders, setOrders] = useState<any[]>([]);
@@ -697,7 +761,7 @@ export const PurchaseOrders: React.FC = () => {
     apiEndpoint: '/api/purchases/orders',
     permissions: (user as any)?.permissions?.['/purchase-orders'],
   });
-  useDocumentScanner(doc, isCreate);
+  useDocumentScanner(doc, isCreate || isEdit);
 
   // Clone from clipboard (se dispara cuando entramos en modo create).
   useEffect(() => {
@@ -796,6 +860,85 @@ export const PurchaseOrders: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCreate, doc.state.lines, doc.state.partnerId]);
 
+  // Editar un borrador: se carga en el mismo formulario del alta.
+  const [editing, setEditing] = useState<any>(null);
+  useEffect(() => {
+    if (!isEdit || !detailId || !token || !user?.tenantId) return;
+    (async () => {
+      try {
+        const order: any = await docsApi.get('/api/purchases/orders', detailId);
+        setEditing(order);
+        currentTab.rename(t('doc.common.editCode', { code: formatDocCode(order) }));
+        doc.setState.setPartnerId(order.partnerId);
+        doc.setState.setSeriesId(order.seriesId);
+        doc.setState.setPeriodId(order.periodId);
+        if (order.date) doc.setState.setDate(String(order.date).slice(0, 10));
+        doc.setState.setWarehouseId?.(order.warehouseId ?? '');
+        setDeliveryDate(order.deliveryDate ? String(order.deliveryDate).slice(0, 10) : '');
+        setBillToAddress(order.billToAddress ?? '');
+        setShipToAddress(order.shipToAddress ?? '');
+        setInternalOrderId(order.internalOrderId ?? null);
+        doc.setState.setLines(
+          (order.lines || []).map((l: any) => ({
+            itemId: l.itemId,
+            quantity: Number(l.orderedQty ?? l.quantity) || 0,
+            price: Number(l.price) || 0,
+            taxGroupId: l.taxGroupId,
+            warehouseId: l.warehouseId,
+            zoneId: l.zoneId,
+            uomId: l.uomId,
+            uomFactor: l.uomFactor != null ? Number(l.uomFactor) : undefined,
+            description: l.description,
+            discountRate: l.discountRate != null ? Number(l.discountRate) : undefined,
+            costCenterId: l.costCenterId,
+            profitCenterId: l.profitCenterId,
+            internalOrderId: l.internalOrderId,
+          })),
+        );
+      } catch (err) {
+        toast.error(
+          (err instanceof Error ? err.message : undefined) ||
+            t('doc.purchaseOrders.networkLoadError'),
+        );
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, detailId, token, user?.tenantId]);
+
+  const handleSaveEdit = async () => {
+    if (!editing) return;
+    try {
+      await apiClient.put(`/api/purchases/orders/${editing.id}`, {
+        partnerId: doc.state.partnerId,
+        date: doc.state.date,
+        warehouseId: doc.state.warehouseId,
+        deliveryDate,
+        billToAddress,
+        shipToAddress,
+        internalOrderId,
+        lines: doc.state.lines,
+        ...doc.state.pluginData,
+      });
+      toast.success(t('doc.purchaseOrders.updated'));
+      notifyDocChange(DocType.PurchaseOrder);
+      currentTab.close();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : undefined);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!selectedOrder) return;
+    try {
+      await apiClient.post(`/api/purchases/orders/${selectedOrder.id}/confirm`);
+      toast.success(t('doc.purchaseOrders.confirmed'));
+      notifyDocChange(DocType.PurchaseOrder);
+      setSelectedOrder(await docsApi.get('/api/purchases/orders', selectedOrder.id));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : undefined);
+    }
+  };
+
   const handleSubmit = async (e: any) => {
     try {
       const data = await doc.actions.submitDocument({
@@ -823,6 +966,39 @@ export const PurchaseOrders: React.FC = () => {
     }
   };
 
+  const formExtra = {
+    deliveryDate,
+    setDeliveryDate,
+    internalOrderId,
+    setInternalOrderId,
+    billToAddress,
+    setBillToAddress,
+    shipToAddress,
+    setShipToAddress,
+  };
+
+  if (isEdit) {
+    if (!editing) {
+      return (
+        <div className="p-8 text-center text-fg-subtle text-sm">
+          {t('doc.purchaseOrders.loading')}
+        </div>
+      );
+    }
+    return (
+      <POForm
+        onSubmit={handleSaveEdit}
+        state={doc.state}
+        setState={doc.setState}
+        masters={doc.masters}
+        actions={doc.actions}
+        computations={doc.computations}
+        extraState={formExtra}
+        editingCode={formatDocCode(editing)}
+      />
+    );
+  }
+
   if (isCreate)
     return (
       <POForm
@@ -832,16 +1008,7 @@ export const PurchaseOrders: React.FC = () => {
         masters={doc.masters}
         actions={doc.actions}
         computations={doc.computations}
-        extraState={{
-          deliveryDate,
-          setDeliveryDate,
-          internalOrderId,
-          setInternalOrderId,
-          billToAddress,
-          setBillToAddress,
-          shipToAddress,
-          setShipToAddress,
-        }}
+        extraState={formExtra}
       />
     );
   if (isDetail) {
@@ -863,6 +1030,15 @@ export const PurchaseOrders: React.FC = () => {
           });
         }}
         onCancel={handleCancelOrder}
+        onConfirm={doc.state.canWrite ? handleConfirm : undefined}
+        onEdit={
+          doc.state.canWrite
+            ? () =>
+                openTab(`/purchase-orders/${selectedOrder.id}/edit`, {
+                  title: t('doc.common.editCode', { code: formatDocCode(selectedOrder) }),
+                })
+            : undefined
+        }
         masters={doc.masters}
       />
     );

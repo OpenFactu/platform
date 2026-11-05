@@ -2,6 +2,7 @@ import React from 'react';
 import { NumberInput, RadioGroup, SearchableSelect } from '@openfactu/ui';
 import type { ItemFormValues } from '../hooks/useItemForm';
 import type { Warehouse, Zone } from '../domain/warehouse';
+import { useTheme } from '@/context/ThemeContext';
 import { useI18n } from '@/i18n/I18nContext';
 
 interface Props {
@@ -9,6 +10,8 @@ interface Props {
   set: <K extends keyof ItemFormValues>(key: K, value: ItemFormValues[K]) => void;
   warehouses: Warehouse[];
   zones: Zone[];
+  /** A quién se le puede pedir. Sin permiso de interlocutores, nadie. */
+  suppliers?: Array<{ id: string; name: string }>;
 }
 
 /** Producto normal o caja de embalaje (las cajas salen en Logística → Paquetes). */
@@ -59,8 +62,15 @@ const BOX_KG_FIELDS = [
  * Sección "Logística": tipo de artículo (producto/caja con dimensiones),
  * trazabilidad y ubicación por defecto. JSX extraído del antiguo modal.
  */
-export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, zones }) => {
+export const ItemLogisticsFields: React.FC<Props> = ({
+  values,
+  set,
+  warehouses,
+  zones,
+  suppliers = [],
+}) => {
   const { t } = useI18n();
+  const { format } = useTheme();
   const translateOptions = (opts: { value: string; label: string; description: string }[]) =>
     opts.map((o) => ({ ...o, label: t(o.label), description: t(o.description) }));
   const warehouseOptions = warehouses.map((w) => ({ value: w.id, label: w.name }));
@@ -164,6 +174,51 @@ export const ItemLogisticsFields: React.FC<Props> = ({ values, set, warehouses, 
               placeholder={t('inventory.itemFields.noBin')}
             />
           </div>
+        </div>
+      </div>
+
+      <div className="p-4 bg-bg-muted border border-border-default">
+        <label className="text-[11px] font-black text-fg-default uppercase tracking-widest mb-3 block">
+          {t('inventory.itemFields.replenishment.title')}
+        </label>
+        <p className="text-[11px] text-fg-muted mb-4">
+          {t('inventory.itemFields.replenishment.hint')}
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <NumberInput
+            label={t('inventory.itemFields.replenishment.minStock')}
+            value={values.minStock}
+            onChange={(v) => set('minStock', v)}
+            min={0}
+            precision={format.quantityPrecision}
+            thousandSeparator={false}
+            inputMode="decimal"
+          />
+          <NumberInput
+            label={t('inventory.itemFields.replenishment.reorderQty')}
+            helperText={t('inventory.itemFields.replenishment.reorderHint')}
+            value={values.reorderQty}
+            onChange={(v) => set('reorderQty', v)}
+            min={0}
+            precision={format.quantityPrecision}
+            thousandSeparator={false}
+            inputMode="decimal"
+          />
+          <SearchableSelect
+            label={t('inventory.itemFields.replenishment.supplier')}
+            options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+            value={values.preferredSupplierId}
+            onChange={(v) => set('preferredSupplierId', v)}
+            clearable
+            placeholder={t('inventory.itemFields.replenishment.noSupplier')}
+          />
+          <NumberInput
+            label={t('inventory.itemFields.replenishment.leadTime')}
+            value={values.leadTimeDays}
+            onChange={(v) => set('leadTimeDays', v)}
+            min={0}
+            inputMode="numeric"
+          />
         </div>
       </div>
     </div>

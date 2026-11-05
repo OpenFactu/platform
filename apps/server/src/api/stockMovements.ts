@@ -165,15 +165,17 @@ async function validateBatchesForLines(
   // ── Validación de existencia/unicidad de series ───────────────────────
   const serialLines = lines.filter((l) => manageMap.get(l.itemId) === 'S' && l.batchNum);
   if (serialLines.length > 0) {
+    // Las series se guardan como lotes de cantidad 1: es lo que escriben entradas y documentos.
     const serialNums = [...new Set(serialLines.map((l) => l.batchNum!.trim()))];
-    const existing = await tenantClient
-      .select({
-        serialNum: schema.itemSerials.serialNum,
-        itemId: schema.itemSerials.itemId,
-      })
-      .from(schema.itemSerials)
-      .where(inArray(schema.itemSerials.serialNum, serialNums));
-    const existsMap = new Map<string, string>(existing.map((r: any) => [r.serialNum, r.itemId]));
+    const existing: Array<{ batchNum: string; itemId: string; quantity: number }> =
+      await tenantClient
+        .select({
+          batchNum: schema.itemBatches.batchNum,
+          itemId: schema.itemBatches.itemId,
+          quantity: schema.itemBatches.quantity,
+        })
+        .from(schema.itemBatches)
+        .where(inArray(schema.itemBatches.batchNum, serialNums));
 
     // Decide si el contexto ESPERA que exista o que NO exista.
     const isCreatingSerial =
@@ -182,23 +184,25 @@ async function validateBatchesForLines(
 
     for (const l of serialLines) {
       const serial = l.batchNum!.trim();
-      const owner = existsMap.get(serial);
+      const rows = existing.filter((row) => row.batchNum === serial);
+      const own = rows.find((row) => row.itemId === l.itemId);
       const label = itemLabel.get(l.itemId) || l.itemId;
 
       if (isCreatingSerial) {
-        if (owner) {
+        // Una que ya salió puede volver a entrar: solo estorba la que sigue en stock.
+        if (own && Number(own.quantity) > 0) {
           throw new Error(
             `La serie "${serial}" ya existe — no puedes darla de alta otra vez (${label}).`,
           );
         }
       } else {
         // transfer / issue / receipt return
-        if (!owner) {
+        if (rows.length === 0) {
           throw new Error(
             `La serie "${serial}" no existe en el sistema — sólo puedes mover/sacar series registradas (${label}).`,
           );
         }
-        if (owner !== l.itemId) {
+        if (!own) {
           throw new Error(`La serie "${serial}" pertenece a otro artículo, no a ${label}.`);
         }
       }
@@ -251,12 +255,12 @@ stockLookupRouter.get('/items/:id/serials', async (req: any, res) => {
   try {
     const rows = await req.tenantClient
       .select({
-        id: schema.itemSerials.id,
-        serialNum: schema.itemSerials.serialNum,
+        id: schema.itemBatches.id,
+        serialNum: schema.itemBatches.batchNum,
       })
-      .from(schema.itemSerials)
-      .where(eq(schema.itemSerials.itemId, req.params.id))
-      .orderBy(asc(schema.itemSerials.serialNum));
+      .from(schema.itemBatches)
+      .where(and(eq(schema.itemBatches.itemId, req.params.id), gt(schema.itemBatches.quantity, 0)))
+      .orderBy(asc(schema.itemBatches.batchNum));
     res.json(rows);
   } catch (e: any) {
     res.status(500).json({ error: e.message });

@@ -35,6 +35,9 @@ async function assertOrderHasRoom(
     .for('update');
   if (!order) throw conflict('El pedido de este albarán ya no existe.');
   if (order.status === DocStatus.Cancelled) throw conflict('Este pedido está cancelado.');
+  if (order.status === 'D') {
+    throw conflict('Este pedido está en borrador: confírmalo antes de recibirlo.');
+  }
   if (order.status === DocStatus.Closed) {
     throw conflict(`Este pedido ya está cerrado: no queda nada por ${verb}.`);
   }

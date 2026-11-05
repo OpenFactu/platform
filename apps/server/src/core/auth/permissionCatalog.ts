@@ -54,6 +54,24 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
     group: 'Catálogos',
     hint: 'El histórico de entradas y salidas de cada artículo.',
   },
+  {
+    path: '/inventory/counts',
+    label: 'Recuentos de inventario',
+    group: 'Catálogos',
+    hint: 'Abrir recuentos y apuntar lo contado.',
+  },
+  {
+    path: '/inventory/count-review',
+    label: 'Revisar y cerrar recuentos',
+    group: 'Catálogos',
+    hint: 'Ver las diferencias y ajustar el stock al cerrar. Va aparte para que quien cuenta a ciegas no vea lo esperado.',
+  },
+  {
+    path: '/inventory/replenishment',
+    label: 'Reposición',
+    group: 'Catálogos',
+    hint: 'Qué queda por debajo del mínimo. Crear los pedidos pide además el permiso de pedidos de compra.',
+  },
 
   // ── Formularios ───────────────────────────────────────────────────────
   {

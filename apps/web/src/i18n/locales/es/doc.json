@@ -451,7 +451,13 @@
       "receiptFrom": "Albarán ← {code}",
       "subtitle": "Gestión de aprovisionamiento y órdenes a proveedores.",
       "supplierCreditor": "Proveedor / acreedor",
-      "title": "Pedidos de Compra"
+      "title": "Pedidos de Compra",
+      "confirmDraft": "Confirmar pedido",
+      "editDraft": "Editar",
+      "confirmed": "Pedido confirmado",
+      "updated": "Pedido actualizado",
+      "draftNotice": "Es un borrador: no cuenta como pedido ni se puede recibir hasta confirmarlo.",
+      "zeroPriceNotice": "Hay líneas sin precio: no se conocía un coste de compra."
     },
     "quotes": {
       "accept": "Aceptar",

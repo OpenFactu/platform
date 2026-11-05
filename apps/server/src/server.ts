@@ -149,6 +149,8 @@ import searchRouter from './api/search';
 import geoRouter from './api/geo';
 import factuApiRouter from './api/factuapi';
 import documentRouter from './api/documentos/documentRouter';
+import inventoryCountsRouter from './api/inventoryCounts';
+import replenishmentRouter from './api/replenishment';
 import { tenantContextMiddleware } from './api/middleware/tenantContext';
 import { hideItemCosts } from './api/middleware/hideItemCosts';
 import { i18nMiddleware } from './i18n';
@@ -303,6 +305,8 @@ mountApi(app, '/api/warehouses', '/warehouses', warehousesRouter);
 mountApi(app, '/api/transfer-notes', '/logistics/stock-movements', transferNotesRouter);
 mountApi(app, '/api/goods-receipts', '/logistics/stock-movements', goodsReceiptsRouter);
 mountApi(app, '/api/goods-issues', '/logistics/stock-movements', goodsIssuesRouter);
+mountApi(app, '/api/inventory-counts', '/inventory/counts', inventoryCountsRouter);
+mountApi(app, '/api/replenishment', '/inventory/replenishment', replenishmentRouter);
 mountShared(
   app,
   '/api/stock',

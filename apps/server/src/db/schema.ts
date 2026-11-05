@@ -1269,6 +1269,10 @@ export const items = pgTable('Item', {
   lastPurchaseCost: decimal('lastPurchaseCost', { precision: 18, scale: 6 }),
   stock: doublePrecision('stock').default(0).notNull(),
   minStock: doublePrecision('minStock').default(0).notNull(),
+  /** Mig 101 — reposición: cuánto se pide de una vez, a quién y cuánto tarda. */
+  reorderQty: doublePrecision('reorderQty').default(0).notNull(),
+  preferredSupplierId: text('preferredSupplierId'),
+  leadTimeDays: integer('leadTimeDays'),
   defaultWarehouseId: text('defaultWarehouseId'),
   defaultZoneId: text('defaultZoneId'),
   /** `product` (default) | `box` (caja/embalaje). Se gestiona como cualquier
@@ -2977,11 +2981,64 @@ export const goodsIssues = pgTable('GoodsIssue', {
   type: text('type').default('internal').notNull(),
   /** draft | posted | cancelled */
   status: text('status').default('draft').notNull(),
+  /** Mig 101 — el documento que la generó, si no se hizo a mano. */
+  sourceDocType: text('sourceDocType'),
+  sourceDocId: text('sourceDocId'),
   notes: text('notes'),
   postedAt: timestamp('postedAt'),
   createdByUserId: text('createdByUserId'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+/** Mig 101 — recuento de inventario. Ver `core/inventory/inventoryCounts.ts`. */
+export const inventoryCounts = pgTable('InventoryCount', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull(),
+  warehouseId: text('warehouseId').notNull(),
+  zoneId: text('zoneId'),
+  categoryId: text('categoryId'),
+  blind: boolean('blind').default(false).notNull(),
+  /** open | review | closed | cancelled */
+  status: text('status').default('open').notNull(),
+  notes: text('notes'),
+  receiptId: text('receiptId'),
+  issueId: text('issueId'),
+  createdBy: text('createdBy'),
+  closedBy: text('closedBy'),
+  closedAt: timestamp('closedAt'),
+  cancelledBy: text('cancelledBy'),
+  cancelledAt: timestamp('cancelledAt'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+export const inventoryCountLines = pgTable('InventoryCountLine', {
+  id: text('id').primaryKey(),
+  countId: text('countId')
+    .notNull()
+    .references(() => inventoryCounts.id, { onDelete: 'cascade' }),
+  itemId: text('itemId')
+    .notNull()
+    .references(() => items.id),
+  zoneId: text('zoneId'),
+  batchNum: text('batchNum'),
+  /** Lo que decía el sistema al abrir. */
+  expectedQty: doublePrecision('expectedQty').default(0).notNull(),
+  countedQty: doublePrecision('countedQty'),
+  /** Lo que decía el sistema al contar: la diferencia se mide contra esto. */
+  systemAtCount: doublePrecision('systemAtCount'),
+  countedAt: timestamp('countedAt'),
+  countedBy: text('countedBy'),
+  addedDuringCount: boolean('addedDuringCount').default(false).notNull(),
+  /** De qué lote es la diferencia, cuando el sistema no lo puede saber. */
+  allocations:
+    jsonb('allocations').$type<
+      Array<{ zoneId: string | null; batchNum: string | null; quantity: number }>
+    >(),
+  /** Al cerrar: lo que se aplicó y a qué coste medio. */
+  appliedQty: doublePrecision('appliedQty'),
+  unitCost: decimal('unitCost', { precision: 18, scale: 6 }),
 });
 
 // ─────────────────────────────────────────────────────────────────────────

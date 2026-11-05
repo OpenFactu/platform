@@ -29,6 +29,10 @@ export interface ItemFormValues {
   boxTareWeightKg: number | null;
   defaultWarehouseId: string;
   defaultZoneId: string;
+  minStock: number | null;
+  reorderQty: number | null;
+  preferredSupplierId: string;
+  leadTimeDays: number | null;
   webVisible: boolean;
   webDescription: string;
   webImages: string[];
@@ -54,6 +58,10 @@ export function emptyItemForm(): ItemFormValues {
     boxTareWeightKg: null,
     defaultWarehouseId: '',
     defaultZoneId: '',
+    minStock: null,
+    reorderQty: null,
+    preferredSupplierId: '',
+    leadTimeDays: null,
     webVisible: false,
     webDescription: '',
     webImages: [],
@@ -91,6 +99,10 @@ export function itemToForm(item: Partial<Item>): ItemFormValues {
     boxTareWeightKg: num(item.boxTareWeightKg),
     defaultWarehouseId: item.defaultWarehouseId || '',
     defaultZoneId: item.defaultZoneId || '',
+    minStock: num(item.minStock) || null,
+    reorderQty: num(item.reorderQty) || null,
+    preferredSupplierId: item.preferredSupplierId || '',
+    leadTimeDays: num(item.leadTimeDays),
     webVisible: !!item.webVisible,
     webDescription: item.webDescription || '',
     webImages: Array.isArray(item.webImages) ? item.webImages : [],
@@ -117,6 +129,10 @@ export function buildItemPayload(v: ItemFormValues): Record<string, unknown> {
     boxTareWeightKg: v.kind === 'box' && v.boxTareWeightKg ? v.boxTareWeightKg : null,
     defaultWarehouseId: v.defaultWarehouseId || null,
     defaultZoneId: v.defaultZoneId || null,
+    minStock: v.minStock || 0,
+    reorderQty: v.reorderQty || 0,
+    preferredSupplierId: v.preferredSupplierId || null,
+    leadTimeDays: v.leadTimeDays ?? null,
     webVisible: v.webVisible,
     webDescription: v.webDescription.trim() || null,
     webImages: v.webImages,

@@ -15,6 +15,8 @@ export type CostMovementKind =
   | 'purchase'
   /** Entrada manual con coste. */
   | 'receipt'
+  /** Sobró en un recuento: entra a la media que haya, así que no la cambia. */
+  | 'count'
   /** Devolución de un cliente: vuelve al coste con el que salió. */
   | 'sales_return'
   /** Devolución al proveedor: sale al coste con el que entró. */

@@ -451,7 +451,13 @@
       "receiptFrom": "Goods receipt ← {code}",
       "subtitle": "Procurement and supplier order management.",
       "supplierCreditor": "Supplier / creditor",
-      "title": "Purchase orders"
+      "title": "Purchase orders",
+      "confirmDraft": "Confirm order",
+      "editDraft": "Edit",
+      "confirmed": "Order confirmed",
+      "updated": "Order updated",
+      "draftNotice": "This is a draft: it does not count as on order and cannot be received until confirmed.",
+      "zeroPriceNotice": "Some lines have no price: no purchase cost was known."
     },
     "quotes": {
       "accept": "Accept",

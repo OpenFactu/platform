@@ -17,6 +17,10 @@ export interface Item {
   boxTareWeightKg?: number | null;
   defaultWarehouseId?: string | null;
   defaultZoneId?: string | null;
+  minStock?: number | string | null;
+  reorderQty?: number | string | null;
+  preferredSupplierId?: string | null;
+  leadTimeDays?: number | null;
   webVisible?: boolean | null;
   webDescription?: string | null;
   webImages?: string[] | null;

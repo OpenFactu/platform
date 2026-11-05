@@ -8,6 +8,7 @@ import { requireScope } from './middleware/apiToken';
 import { HookManager } from '../core/plugins/HookManager';
 import { invalidateSiteCache } from '../core/website/renderSite';
 import { requirePermission } from './middleware/requirePermission';
+import { committedQty, orderedQty } from '../core/stock/availability';
 
 const router = Router();
 
@@ -36,8 +37,8 @@ router.get('/', requireScope('read:maestros'), async (req: any, res) => {
         webVisible: schema.items.webVisible,
         webDescription: schema.items.webDescription,
         webImages: schema.items.webImages,
-        committed: sql`(SELECT COALESCE(SUM("quantity" - "deliveredQty"), 0) FROM "SalesOrderLine" WHERE "itemId" = ${schema.items.id})`,
-        ordered: sql`(SELECT COALESCE(SUM("quantity" - "receivedQty"), 0) FROM "PurchaseOrderLine" WHERE "itemId" = ${schema.items.id})`,
+        committed: committedQty,
+        ordered: orderedQty,
       })
       .from(schema.items)
       .leftJoin(schema.unitsOfMeasure, eq(schema.items.uomId, schema.unitsOfMeasure.id))
