@@ -118,6 +118,12 @@ export async function startDocumentsHarness(): Promise<DocumentsHarness> {
     goodsIssuesRouter,
     transferNotesRouter,
   } = require('../../../api/stockMovements');
+  const {
+    bankAccountOptionsRouter,
+    bankAccountsRouter,
+    bankStatementsRouter,
+    paymentBatchesRouter,
+  } = require('../../../api/banking');
   const { hideItemCosts } = require('../../../api/middleware/hideItemCosts');
   /* eslint-enable @typescript-eslint/no-var-requires */
 
@@ -150,6 +156,10 @@ export async function startDocumentsHarness(): Promise<DocumentsHarness> {
   app.use('/api/sales/delivery-notes', salesDeliveryNotes);
   app.use('/api/documents', documents);
   app.use('/api/payments', payments);
+  app.use('/api/bank-accounts', bankAccountsRouter);
+  app.use('/api/bank-account-options', bankAccountOptionsRouter);
+  app.use('/api/bank-statements', bankStatementsRouter);
+  app.use('/api/payment-batches', paymentBatchesRouter);
   app.use('/api/reports', reports);
   app.use('/api/custom-fields', customFields);
   app.use('/api/linked-objects', linkedObjects);

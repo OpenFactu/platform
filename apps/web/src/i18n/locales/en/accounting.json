@@ -113,7 +113,8 @@
         "payroll": "Payroll",
         "periodClose": "Closing",
         "periodOpen": "Opening",
-        "reversal": "Reversal"
+        "reversal": "Reversal",
+        "bank": "Bank"
       },
       "statuses": {
         "draft": "Draft",

@@ -37,6 +37,8 @@ export interface Partner {
   iban?: string | null;
   bankName?: string | null;
   bankSwift?: string | null;
+  mandateRef?: string | null;
+  mandateDate?: string | null;
   addresses?: PartnerAddress[];
   [key: string]: unknown;
 }

@@ -100,6 +100,12 @@ import purchaseDeliveryNotesRouter from './api/documentos/purchaseDeliveryNotes'
 import purchaseInvoicesRouter from './api/documentos/purchaseInvoices';
 import salesOrdersRouter from './api/documentos/salesOrders';
 import salesDeliveryNotesRouter from './api/documentos/salesDeliveryNotes';
+import {
+  bankAccountOptionsRouter,
+  bankAccountsRouter,
+  bankStatementsRouter,
+  paymentBatchesRouter,
+} from './api/banking';
 import salesInvoicesRouter from './api/documentos/salesInvoices';
 import paymentsRouter from './api/payments';
 import {
@@ -484,6 +490,23 @@ mountShared(
 mountShared(app, '/api/geo', 'países, provincias y localidades', geoRouter);
 mountApi(app, '/api/factuapi', '/documents', factuApiRouter);
 mountApi(app, '/api/payments', '/payments', paymentsRouter);
+mountApi(app, '/api/bank-accounts', '/banking/accounts', bankAccountsRouter);
+mountApiAny(
+  app,
+  '/api/bank-account-options',
+  [
+    '/banking/accounts',
+    '/banking/reconciliation',
+    '/banking/batches',
+    '/payments',
+    '/sales/invoices',
+    '/purchases/invoices',
+  ],
+  [],
+  bankAccountOptionsRouter,
+);
+mountApi(app, '/api/bank-statements', '/banking/reconciliation', bankStatementsRouter);
+mountApi(app, '/api/payment-batches', '/banking/batches', paymentBatchesRouter);
 mountShared(app, '/api/currencies', 'catálogo de divisas', currenciesRouter);
 mountShared(app, '/api/document-types', 'catálogo de tipos de documento', documentTypesRouter);
 mountShared(app, '/api/payment-methods', 'catálogo de formas de pago', paymentMethodsRouter);

@@ -153,6 +153,8 @@
         "readMastersDesc": "GET customers/suppliers and items (stock, batches, units)",
         "writeMasters": "Write master data",
         "writeMastersDesc": "Create/edit/delete customers/suppliers and items",
+        "writeBanking": "Banking",
+        "writeBankingDesc": "Accounts, statements, reconciliation and batches",
         "mcpRead": "MCP — read",
         "mcpReadDesc": "MCP server (Claude Desktop/Code): search customers/items, list documents",
         "mcpSql": "MCP — read-only SQL",

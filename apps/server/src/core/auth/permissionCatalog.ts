@@ -135,6 +135,26 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   { path: '/document-series', label: 'Series de numeración', group: 'Documentos' },
   { path: '/document-templates', label: 'Plantillas PDF', group: 'Documentos' },
 
+  // ── Bancos ─────────────────────────────────
+  {
+    path: '/banking/accounts',
+    label: 'Cuentas bancarias',
+    group: 'Bancos',
+    hint: 'Las cuentas de la empresa, con su IBAN y su cuenta contable.',
+  },
+  {
+    path: '/banking/reconciliation',
+    label: 'Conciliación bancaria',
+    group: 'Bancos',
+    hint: 'Importar extractos y enlazar sus movimientos con cobros y pagos. Con escritura, crea cobros y asientos.',
+  },
+  {
+    path: '/banking/batches',
+    label: 'Remesas',
+    group: 'Bancos',
+    hint: 'Preparar remesas de cobro y de pago, generar su fichero, cerrarlas y anotar devoluciones.',
+  },
+
   // ── Contabilidad ──────────────────────────────────────────────────────────
   { path: '/chart-of-accounts', label: 'Plan contable', group: 'Contabilidad' },
   { path: '/journal-entries', label: 'Asientos', group: 'Contabilidad' },

@@ -24,7 +24,8 @@ export type JournalSource =
   | 'payroll'
   | 'period_close'
   | 'period_open'
-  | 'reversal';
+  | 'reversal'
+  | 'bank';
 
 export interface JournalLineInput {
   accountId: string;
@@ -509,9 +510,17 @@ export class JournalEngine {
     // Un importe negativo es una devolución: el asiento del cobro al revés.
     const amount = Math.abs(signed);
 
-    // Cuenta de contrapartida (tesorería): caja si método es 'cash', si no banco.
+    // Cuenta de contrapartida (tesorería): la del banco por el que entra, si no la del método
+    // y si no, la general.
+    const [bankAccount] = payment.bankAccountId
+      ? await db
+          .select({ accountId: schema.companyBankAccounts.accountId })
+          .from(schema.companyBankAccounts)
+          .where(eq(schema.companyBankAccounts.id, payment.bankAccountId))
+      : [];
     const methodKey = payment.paymentMethodId ? `method:${payment.paymentMethodId}` : null;
-    let treasury =
+    const treasury =
+      bankAccount?.accountId ||
       (await this.resolveAccount(db, 'bank', methodKey)) ||
       (await this.resolveAccount(db, 'cash', methodKey)) ||
       (await this.resolveAccount(db, 'bank')) ||

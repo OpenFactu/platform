@@ -1,3 +1,5 @@
+import { bankAccountsApi } from '@/modules/banking/api/bankingApi';
+import type { BankAccountOption } from '@/modules/banking/domain/banking';
 import { useFormat } from '@/hooks/useFormat';
 import { paymentMethodsApi, paymentsApi } from '@/modules/accounting/api';
 import { ApiError } from '@/shared/http';
@@ -46,6 +48,8 @@ export const RegisterPaymentModal: React.FC<Props> = ({
   const [notes, setNotes] = useState('');
   const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [methodId, setMethodId] = useState('');
+  const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
+  const [bankAccountId, setBankAccountId] = useState('');
   const [saving, setSaving] = useState(false);
   const heading = refund
     ? t('doc.creditNote.refund')
@@ -64,6 +68,13 @@ export const RegisterPaymentModal: React.FC<Props> = ({
         if (rows && rows.length > 0 && !methodId) setMethodId(rows[0].id);
       })
       .catch(() => setMethods([]));
+    bankAccountsApi
+      .options()
+      .then((rows) => {
+        setBankAccounts(rows);
+        setBankAccountId((current) => current || rows.find((row) => row.isDefault)?.id || '');
+      })
+      .catch(() => setBankAccounts([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -89,6 +100,7 @@ export const RegisterPaymentModal: React.FC<Props> = ({
         reference: reference.trim(),
         notes: notes.trim() || null,
         paymentMethodId: methodId || null,
+        bankAccountId: bankAccountId || null,
       };
       if (kind === 'sales') body.salesInvoiceId = invoiceId;
       else body.purchaseInvoiceId = invoiceId;
@@ -152,6 +164,23 @@ export const RegisterPaymentModal: React.FC<Props> = ({
               clearable
             />
           </div>
+          {bankAccounts.length > 0 && (
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 mb-1.5">
+                {t('banking.payment.bankAccount')}
+              </label>
+              <SearchableSelect
+                value={bankAccountId}
+                onChange={setBankAccountId}
+                options={bankAccounts.map((account) => ({
+                  value: account.id,
+                  label: account.name,
+                }))}
+                placeholder={t('banking.payment.noBankAccount')}
+                clearable
+              />
+            </div>
+          )}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
               {t('payment.reference')} <span className="text-danger font-black">*</span>

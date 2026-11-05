@@ -58,6 +58,7 @@ const SOURCE_LABELS: Record<string, string> = {
   period_close: 'accounting.journal.sources.periodClose',
   period_open: 'accounting.journal.sources.periodOpen',
   reversal: 'accounting.journal.sources.reversal',
+  bank: 'accounting.journal.sources.bank',
 };
 
 const STATUS_VARIANT: Record<string, any> = {

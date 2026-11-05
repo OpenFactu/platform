@@ -12,6 +12,7 @@ import type { PayrollCalculator } from '../core/hr/payrollCalculation';
 import type { PluginReportDefinition } from '../core/reports/PluginReports';
 import type { FiscalConnector } from '../core/fiscal/FiscalConnectors';
 import type { LinkableObject } from '../core/customFields/linkableObjects';
+import type { BatchExporter, StatementParser } from '../core/banking/bankFormats';
 import type { PluginLifecycleContext } from '../core/plugins/PluginLifecycle';
 import * as schema from '../db/schema';
 import type { pluginDbOperators } from './dbOperators';
@@ -136,6 +137,11 @@ export interface PluginContext {
   /** Objetos propios a los que se puede enlazar un campo de usuario. */
   linkableObjects: {
     register: (object: LinkableObject) => void;
+  };
+  /** Formatos de los bancos: leer extractos y generar el fichero de una remesa. */
+  bankFormats: {
+    registerStatementParser: (parser: StatementParser) => void;
+    registerBatchExporter: (exporter: BatchExporter) => void;
   };
   fiscal: {
     registerConnector: (connector: FiscalConnector) => void;

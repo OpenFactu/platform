@@ -113,7 +113,8 @@
         "payroll": "Nómina",
         "periodClose": "Cierre",
         "periodOpen": "Apertura",
-        "reversal": "Reversión"
+        "reversal": "Reversión",
+        "bank": "Banco"
       },
       "statuses": {
         "draft": "Borrador",

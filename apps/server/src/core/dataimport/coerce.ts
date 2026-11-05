@@ -36,7 +36,7 @@ function isBlank(raw: any): boolean {
  * decimal. Si solo hay uno y separa grupos de tres dígitos exactos, se trata
  * como millares ("1.234" son mil doscientos treinta y cuatro, no 1,234).
  */
-function parseNumber(text: string): number | null {
+export function parseNumber(text: string): number | null {
   let s = text.trim().replace(/[\s €$%]/g, '');
   if (!s) return null;
 
@@ -71,7 +71,7 @@ function toIsoDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function parseDate(raw: any): string | null {
+export function parseDate(raw: any): string | null {
   if (raw instanceof Date && !Number.isNaN(raw.getTime())) {
     // `cellDates: true` devuelve la fecha ya construida en hora local; se
     // normaliza a UTC para que no se desplace un día al serializar.

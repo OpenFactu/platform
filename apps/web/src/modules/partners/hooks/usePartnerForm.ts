@@ -27,6 +27,8 @@ export interface PartnerFormData {
   iban: string;
   bankName: string;
   bankSwift: string;
+  mandateRef: string;
+  mandateDate: string;
 }
 
 export const EMPTY_PARTNER: PartnerFormData = {
@@ -50,6 +52,8 @@ export const EMPTY_PARTNER: PartnerFormData = {
   iban: '',
   bankName: '',
   bankSwift: '',
+  mandateRef: '',
+  mandateDate: '',
 };
 
 function toFormData(p: Partner): PartnerFormData {
@@ -74,6 +78,8 @@ function toFormData(p: Partner): PartnerFormData {
     iban: p.iban || '',
     bankName: p.bankName || '',
     bankSwift: p.bankSwift || '',
+    mandateRef: p.mandateRef || '',
+    mandateDate: p.mandateDate ? String(p.mandateDate).slice(0, 10) : '',
   };
 }
 

@@ -417,6 +417,9 @@ export const businessPartners = pgTable('BusinessPartner', {
   iban: text('iban'),
   bankName: text('bankName'),
   bankSwift: text('bankSwift'),
+  // Mig 100 — el mandato de cobro, sin suponer un país.
+  mandateRef: text('mandateRef'),
+  mandateDate: date('mandateDate'),
 });
 
 export const partnerAddresses = pgTable('PartnerAddress', {
@@ -2374,12 +2377,129 @@ export const payments = pgTable('Payment', {
   exchangeRate: decimal('exchangeRate', { precision: 12, scale: 6 }).default('1'),
   amountBase: decimal('amountBase', { precision: 15, scale: 4 }),
   paymentMethodId: text('paymentMethodId').references(() => paymentMethods.id),
+  /** Mig 100 — la cuenta de la empresa por la que entra o sale. */
+  bankAccountId: text('bankAccountId'),
   reference: text('reference'),
   notes: text('notes'),
   source: text('source').default('manual'),
   sourceRef: text('sourceRef'),
   createdBy: text('createdBy'),
   createdAt: timestamp('createdAt').defaultNow(),
+});
+
+// ────────────────────────────────────────────────────────────────
+// Mig 100 — Bancos: cuentas, extractos, conciliación y remesas
+// ────────────────────────────────────────────────────────────────
+export const companyBankAccounts = pgTable('CompanyBankAccount', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  iban: text('iban'),
+  swift: text('swift'),
+  bankName: text('bankName'),
+  currencyId: text('currencyId').references(() => currencies.id),
+  accountId: text('accountId').references(() => chartOfAccounts.id),
+  /** Con qué se identifica la empresa ante el banco al cobrar por remesa. */
+  creditorId: text('creditorId'),
+  isDefault: boolean('isDefault').default(false).notNull(),
+  isActive: boolean('isActive').default(true).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+export const bankStatementImports = pgTable('BankStatementImport', {
+  id: text('id').primaryKey(),
+  bankAccountId: text('bankAccountId')
+    .notNull()
+    .references(() => companyBankAccounts.id),
+  fileName: text('fileName').notNull(),
+  format: text('format').notNull(),
+  addedCount: integer('addedCount').default(0).notNull(),
+  skippedCount: integer('skippedCount').default(0).notNull(),
+  createdBy: text('createdBy'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const bankStatementLines = pgTable('BankStatementLine', {
+  id: text('id').primaryKey(),
+  bankAccountId: text('bankAccountId')
+    .notNull()
+    .references(() => companyBankAccounts.id),
+  importId: text('importId').references(() => bankStatementImports.id, { onDelete: 'set null' }),
+  date: date('date').notNull(),
+  valueDate: date('valueDate'),
+  /** Positivo si entra en la cuenta, negativo si sale. */
+  amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
+  description: text('description'),
+  reference: text('reference'),
+  counterparty: text('counterparty'),
+  balance: decimal('balance', { precision: 15, scale: 2 }),
+  /** Identifica el movimiento: importar otra vez el mismo fichero no lo repite. */
+  fingerprint: text('fingerprint').notNull(),
+  /** open | matched | ignored */
+  status: text('status').default('open').notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const bankMatches = pgTable('BankMatch', {
+  id: text('id').primaryKey(),
+  statementLineId: text('statementLineId')
+    .notNull()
+    .references(() => bankStatementLines.id, { onDelete: 'cascade' }),
+  paymentId: text('paymentId').references(() => payments.id),
+  journalEntryId: text('journalEntryId'),
+  /** Con su signo: lo que explica del movimiento. */
+  amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
+  /** Nació de la conciliación: deshacerla lo deshace también. */
+  createdFromLine: boolean('createdFromLine').default(false).notNull(),
+  createdBy: text('createdBy'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const paymentBatches = pgTable('PaymentBatch', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  /** collection: cobros a clientes | payment: pagos a proveedores */
+  kind: text('kind').notNull(),
+  bankAccountId: text('bankAccountId')
+    .notNull()
+    .references(() => companyBankAccounts.id),
+  /** draft | generated | closed */
+  status: text('status').default('draft').notNull(),
+  chargeDate: date('chargeDate').notNull(),
+  total: decimal('total', { precision: 15, scale: 2 }).default('0').notNull(),
+  exporterId: text('exporterId'),
+  fileName: text('fileName'),
+  fileType: text('fileType'),
+  fileContent: text('fileContent'),
+  notes: text('notes'),
+  createdBy: text('createdBy'),
+  generatedAt: timestamp('generatedAt'),
+  closedAt: timestamp('closedAt'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const paymentBatchLines = pgTable('PaymentBatchLine', {
+  id: text('id').primaryKey(),
+  batchId: text('batchId')
+    .notNull()
+    .references(() => paymentBatches.id, { onDelete: 'cascade' }),
+  salesInvoiceId: text('salesInvoiceId').references(() => salesInvoices.id),
+  purchaseInvoiceId: text('purchaseInvoiceId').references(() => purchaseInvoices.id),
+  partnerId: text('partnerId')
+    .notNull()
+    .references(() => businessPartners.id),
+  dueDate: date('dueDate').notNull(),
+  amount: decimal('amount', { precision: 15, scale: 2 }).notNull(),
+  /** Los datos del interlocutor al generar el fichero: lo generado ya no cambia. */
+  iban: text('iban'),
+  swift: text('swift'),
+  mandateRef: text('mandateRef'),
+  mandateDate: date('mandateDate'),
+  paymentId: text('paymentId').references(() => payments.id),
+  /** open | returned */
+  status: text('status').default('open').notNull(),
+  returnedAt: timestamp('returnedAt'),
+  returnReason: text('returnReason'),
 });
 
 // ────────────────────────────────────────────────────────────────

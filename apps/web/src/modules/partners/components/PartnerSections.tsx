@@ -1,6 +1,14 @@
 import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
-import { Button, Checkbox, EmptyState, Input, SearchableSelect, Select } from '@openfactu/ui';
+import {
+  Button,
+  Checkbox,
+  DatePicker,
+  EmptyState,
+  Input,
+  SearchableSelect,
+  Select,
+} from '@openfactu/ui';
 import { MapPin, Plus, Trash2 } from 'lucide-react';
 import { useGeo } from '@/hooks/useGeo';
 import { TaxIdInput } from '@/components/geo/TaxIdInput';
@@ -244,6 +252,24 @@ export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) 
               )}
             </div>
           </div>
+        </div>
+      </div>
+      <div className="pt-4 border-t border-border-default">
+        <h3 className={sectionTitleCls}>{t('banking.partner.mandate')}</h3>
+        <p className={sectionDescCls}>{t('banking.partner.mandateHint')}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input
+            label={t('banking.partner.mandateRef')}
+            value={data.mandateRef}
+            onChange={(e) => set('mandateRef', e.target.value)}
+            disabled={disabled}
+          />
+          <DatePicker
+            label={t('banking.partner.mandateDate')}
+            value={data.mandateDate}
+            onChange={(date) => set('mandateDate', date ?? '')}
+            disabled={disabled}
+          />
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { formsModule } from './forms/module';
 import { messagingModule } from './messaging/module';
 import { analyticsModule } from './analytics/module';
 import { accountingModule } from './accounting/module';
+import { bankingModule } from './banking/module';
 import { reportsModule } from './reports/module';
 import { documentsModule } from './documents/module';
 import { documentTemplatesModule } from './document-templates/module';
@@ -35,6 +36,7 @@ export const moduleManifests: ModuleManifest[] = [
   formsModule,
   messagingModule,
   accountingModule,
+  bankingModule,
   analyticsModule,
   reportsModule,
   documentsModule,
@@ -62,6 +64,7 @@ const NAV_ORDER = [
   'forms',
   'messaging',
   'accounting',
+  'banking',
   'analytics',
   'reports',
   'hr',

@@ -153,6 +153,8 @@
         "readMastersDesc": "GET clientes/proveedores y artículos (stock, lotes, unidades)",
         "writeMasters": "Escribir maestros",
         "writeMastersDesc": "Crear/editar/borrar clientes/proveedores y artículos",
+        "writeBanking": "Bancos",
+        "writeBankingDesc": "Cuentas, extractos, conciliación y remesas",
         "mcpRead": "MCP — lectura",
         "mcpReadDesc": "Servidor MCP (Claude Desktop/Code): buscar clientes/artículos, listar documentos",
         "mcpSql": "MCP — SQL de lectura",

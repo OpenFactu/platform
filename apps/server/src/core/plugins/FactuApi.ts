@@ -1,12 +1,10 @@
-import { paymentPeriodFor } from '../accounting/periodRules';
 import { DocumentEngine, type DocumentCreateRequest } from '../documents/DocumentEngine';
 import { DocumentRegistry } from '../documents/DocumentRegistry';
-import { lockInvoiceForPayment } from '../documents/creditNoteMoney';
-import { recalcInvoicePaymentStatus } from '../documents/paymentStatusRecalc';
 import { PluginFieldManager } from './PluginFieldManager';
 import { ClientFactory } from '../tenant/ClientFactory';
 import { AuthService } from '../auth/AuthService';
 import { eq, and, asc, gte, lte } from 'drizzle-orm';
+import { registerPayment } from '../payments/paymentService';
 import * as crypto from 'crypto';
 import * as schema from '../../db/schema';
 import {
@@ -405,60 +403,27 @@ export class FactuApiTransaction {
     }
     if (!opts.amount || opts.amount <= 0) throw new Error('amount debe ser > 0');
 
-    const id = crypto.randomUUID();
     const date = opts.date
       ? typeof opts.date === 'string'
         ? opts.date
         : opts.date.toISOString().slice(0, 10)
       : new Date().toISOString().slice(0, 10);
 
-    let paymentPeriodId = '';
-    const invoice = await this._db.transaction(async (tx: any) => {
-      const locked = await lockInvoiceForPayment(tx, opts.direction, opts.invoiceId, opts.amount);
-      paymentPeriodId = await paymentPeriodFor(tx, date, locked.periodId);
-      await tx.insert(schema.payments).values({
-        id,
-        salesInvoiceId: opts.direction === 'sales' ? opts.invoiceId : null,
-        purchaseInvoiceId: opts.direction === 'purchase' ? opts.invoiceId : null,
-        date,
-        amount: String(opts.amount),
-        currencyId: null,
-        exchangeRate: '1',
-        amountBase: String(opts.amount),
-        paymentMethodId: opts.paymentMethodId || null,
-        reference: opts.reference.trim(),
-        notes: opts.notes || null,
-        source: 'manual',
-        sourceRef: null,
-        createdBy: this._user?.id || null,
-      });
-      await recalcInvoicePaymentStatus(tx, opts.direction, opts.invoiceId);
-      return locked;
-    });
-
-    let journalEntryId: string | null = null;
-    try {
-      const je = await JournalEngine.createFromPayment(
-        this._db,
-        { id, amount: opts.amount, date, paymentMethodId: opts.paymentMethodId || null },
+    const { id, journalEntryId } = await this._db.transaction((tx: any) =>
+      registerPayment(
+        tx,
         {
-          id: invoice.id,
-          partnerId: invoice.partnerId,
-          periodId: paymentPeriodId,
-          docNum: invoice.docNum,
+          kind: opts.direction,
+          invoiceId: opts.invoiceId,
+          date,
+          amount: opts.amount,
+          reference: opts.reference,
+          paymentMethodId: opts.paymentMethodId,
+          notes: opts.notes,
         },
-        opts.direction,
         this._user?.id,
-      );
-      if (je) {
-        await JournalEngine.post(this._db, je.id, this._user?.id);
-        journalEntryId = je.id;
-      }
-    } catch (err: any) {
-      // best-effort — no bloquea el registro del pago
-      console.warn('[FactuApi.registerPayment] No se pudo generar asiento:', err.message);
-    }
-
+      ),
+    );
     return { id, journalEntryId };
   }
 

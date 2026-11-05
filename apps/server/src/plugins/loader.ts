@@ -19,6 +19,7 @@ import { PayrollCalculators } from '../core/hr/payrollCalculation';
 import { PluginReports } from '../core/reports/PluginReports';
 import { FiscalConnectors } from '../core/fiscal/FiscalConnectors';
 import { LinkableObjects } from '../core/customFields/linkableObjects';
+import { BankFormats } from '../core/banking/bankFormats';
 import { PluginLifecycle } from '../core/plugins/PluginLifecycle';
 import { PluginTranslations } from '../core/plugins/PluginTranslations';
 import { unregisterPluginContributions } from '../core/plugins/TenantScopedRegistry';
@@ -225,6 +226,10 @@ function buildPluginContext(pluginId: string): PluginContext {
     },
     linkableObjects: {
       register: (object) => LinkableObjects.register(pluginId, object),
+    },
+    bankFormats: {
+      registerStatementParser: (parser) => BankFormats.registerStatementParser(pluginId, parser),
+      registerBatchExporter: (exporter) => BankFormats.registerBatchExporter(pluginId, exporter),
     },
     fiscal: {
       registerConnector: (connector) => FiscalConnectors.register(pluginId, connector),

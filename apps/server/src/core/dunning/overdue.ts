@@ -33,11 +33,12 @@ export interface OverdueAmount {
 }
 
 /**
- * Lo vencido de una factura hoy. Lo cobrado cubre los plazos por orden. Sin plazos vence
- * entera en su fecha de vencimiento y, si no tiene, el día de la factura. `null` si no hay
- * nada vencido: lo que vence hoy aún no lo está.
+ * Los plazos que quedan por pagar de una factura. Lo cobrado cubre los plazos por orden. Sin
+ * plazos vence entera en su fecha de vencimiento y, si no tiene, el día de la factura.
  */
-export function overdueOf(invoice: InvoiceForDunning, today: string): OverdueAmount | null {
+export function unpaidInstallments(
+  invoice: InvoiceForDunning,
+): Array<{ date: string; amount: number }> {
   const dues =
     Array.isArray(invoice.paymentDueLines) && invoice.paymentDueLines.length > 0
       ? [...invoice.paymentDueLines].sort((a, b) => a.date.localeCompare(b.date))
@@ -49,18 +50,26 @@ export function overdueOf(invoice: InvoiceForDunning, today: string): OverdueAmo
         ];
 
   let paid = cents(Number(invoice.amountPaid ?? 0));
-  let overdue = 0;
-  let first: string | null = null;
+  const unpaid: Array<{ date: string; amount: number }> = [];
   for (const due of dues) {
     const amount = cents(Number(due.amount));
     const covered = Math.min(paid, amount);
     paid -= covered;
-    const unpaid = amount - covered;
-    if (unpaid > 0 && toIsoDate(due.date) < today) {
-      overdue += unpaid;
-      first ??= toIsoDate(due.date);
+    if (amount > covered) {
+      unpaid.push({ date: toIsoDate(due.date), amount: (amount - covered) / 100 });
     }
   }
+  return unpaid;
+}
+
+/**
+ * Lo vencido de una factura hoy, por los plazos sin pagar. `null` si no hay nada vencido: lo que
+ * vence hoy aún no lo está.
+ */
+export function overdueOf(invoice: InvoiceForDunning, today: string): OverdueAmount | null {
+  const late = unpaidInstallments(invoice).filter((due) => due.date < today);
+  const overdue = late.reduce((sum, due) => sum + cents(due.amount), 0);
+  const first = late[0]?.date ?? null;
   if (overdue <= 0 || !first) return null;
   const issued = invoice.lockedAt ? toIsoDate(invoice.lockedAt) : null;
   const countsFrom = issued && issued > first ? issued : first;

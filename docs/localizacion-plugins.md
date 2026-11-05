@@ -150,6 +150,37 @@ Lo calculado se guarda en `DocumentLineTax`. **Una norma nueva nunca cambia un d
 
 Sin regla, la línea usa el impuesto que lleve. Al crearla es el del interlocutor (`partner.defaultTaxGroupId`) y, si no tiene, el del artículo. Se puede cambiar a mano en cada línea.
 
+### Formatos de los bancos
+
+El núcleo lee extractos en CSV o Excel y genera las remesas en CSV. Lo que dependa de un país va en el plugin, y solo se ofrece en las empresas que lo tengan activo. Es lo que hace `D:\dev\openfactu-plugin-es` con Norma 43 y SEPA.
+
+```ts
+export const init = async ({ bankFormats }: PluginContext) => {
+  bankFormats.registerStatementParser({
+    id: 'mi-formato',
+    label: 'Mi formato',
+    extensions: ['txt'],
+    // Importe positivo si entra en la cuenta. Lo que lance se le enseña a quien sube el fichero.
+    parse: (content, fileName) => [{ date: '2026-06-15', amount: 12.5, description: 'Cobro' }],
+  });
+
+  bankFormats.registerBatchExporter({
+    id: 'mi-remesa',
+    label: 'Mi remesa',
+    kinds: ['collection', 'payment'],
+    // Lo que le falta, en palabras de quien la prepara. Con algo aquí, no se genera.
+    validate: (batch) => (batch.account.iban ? [] : ['Falta el IBAN de la cuenta.']),
+    generate: (batch) => ({
+      fileName: `${batch.code}.txt`,
+      contentType: 'text/plain',
+      content: '...',
+    }),
+  });
+};
+```
+
+Un fichero de remesa solo se da por bueno cuando lo acepte un banco de verdad.
+
 ## Nivel 3: integración con la administración
 
 ```ts
