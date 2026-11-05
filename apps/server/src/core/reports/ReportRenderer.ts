@@ -10,6 +10,7 @@
 import { PdfRenderer } from '@openfactu/pdf';
 import { getCompanyConfig } from '../config/companyConfig';
 import { LocalizationRegistry } from '../localization/LocalizationRegistry';
+import { intlLocale, tr } from '../../i18n';
 
 export interface ReportColumn {
   key: string;
@@ -58,6 +59,8 @@ export interface ReportInput {
   currency?: string;
   /** Formato sin color, igual que los documentos. */
   neutral?: boolean;
+  /** Idioma de los formatos y de los textos fijos. Sin indicar, español. */
+  locale?: string;
 }
 
 const BRAND_COLORS = {
@@ -88,30 +91,35 @@ const NEUTRAL_COLORS: typeof BRAND_COLORS = {
   totalsFg: '#000',
 };
 
-function formatValue(v: any, fmt?: ReportColumn['format'], currency = 'EUR'): string {
+function formatValue(
+  v: any,
+  fmt?: ReportColumn['format'],
+  currency = 'EUR',
+  intl = 'es-ES',
+): string {
   if (v === null || v === undefined || v === '') return '';
   switch (fmt) {
     case 'money': {
       const n = typeof v === 'string' ? parseFloat(v) : Number(v);
       if (!Number.isFinite(n)) return String(v);
-      return currency === 'EUR'
-        ? n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
-        : n.toLocaleString('es-ES', { style: 'currency', currency });
+      return currency === 'EUR' && intl === 'es-ES'
+        ? n.toLocaleString(intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €'
+        : n.toLocaleString(intl, { style: 'currency', currency });
     }
     case 'integer': {
       const n = typeof v === 'string' ? parseInt(v, 10) : Number(v);
-      return Number.isFinite(n) ? n.toLocaleString('es-ES') : String(v);
+      return Number.isFinite(n) ? n.toLocaleString(intl) : String(v);
     }
     case 'percent': {
       const n = typeof v === 'string' ? parseFloat(v) : Number(v);
       return Number.isFinite(n)
-        ? n.toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + ' %'
+        ? n.toLocaleString(intl, { minimumFractionDigits: 1, maximumFractionDigits: 2 }) + ' %'
         : String(v);
     }
     case 'date': {
-      if (v instanceof Date) return v.toLocaleDateString('es-ES');
+      if (v instanceof Date) return v.toLocaleDateString(intl);
       const d = new Date(v);
-      return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('es-ES');
+      return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString(intl);
     }
     default:
       return String(v);
@@ -131,7 +139,9 @@ function buildHtml(input: ReportInput): string {
   const font = input.neutral
     ? `Arial, Helvetica, 'Liberation Sans', FreeSans, sans-serif`
     : `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  const value = (v: any, fmt?: ReportColumn['format']) => formatValue(v, fmt, input.currency);
+  const locale = input.locale ?? 'es';
+  const intl = intlLocale(locale);
+  const value = (v: any, fmt?: ReportColumn['format']) => formatValue(v, fmt, input.currency, intl);
 
   const sections = input.sections
     .map((s) => {
@@ -169,7 +179,7 @@ function buildHtml(input: ReportInput): string {
         ${sectionTitle}
         <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
           <thead><tr>${headerHtml}</tr></thead>
-          <tbody>${bodyHtml || `<tr><td colspan="${s.columns.length}" style="padding:24px;text-align:center;color:${c.faint};font-style:italic;">Sin datos</td></tr>`}</tbody>
+          <tbody>${bodyHtml || `<tr><td colspan="${s.columns.length}" style="padding:24px;text-align:center;color:${c.faint};font-style:italic;">${escapeHtml(tr(locale, 'Sin datos'))}</td></tr>`}</tbody>
           ${totalsHtml}
         </table>`;
     })
@@ -188,7 +198,7 @@ function buildHtml(input: ReportInput): string {
     ? `<img src="${escapeHtml(input.companyLogoUrl)}" alt="" style="height:42px;object-fit:contain;${input.neutral ? 'filter:grayscale(100%);' : ''}" />`
     : '';
 
-  const now = new Date().toLocaleString('es-ES');
+  const now = new Date().toLocaleString(intl);
 
   return `<!doctype html>
 <html><head><meta charset="utf-8">
@@ -216,7 +226,7 @@ function buildHtml(input: ReportInput): string {
   ${sections}
   <div class="footer">
     <span>${escapeHtml(input.footerText || '')}</span>
-    <span>Generado ${escapeHtml(now)}</span>
+    <span>${escapeHtml(tr(locale, 'Generado {date}', { date: now }))}</span>
   </div>
 </body></html>`;
 }
@@ -241,6 +251,7 @@ export async function renderReportPdf(input: ReportInput): Promise<Buffer> {
 export async function getCompanyHeader(
   tenantClient: any,
   tenantId?: string,
+  locale?: string,
 ): Promise<{
   companyName?: string;
   companyNif?: string;
@@ -255,7 +266,7 @@ export async function getCompanyHeader(
     return {
       companyName: cfg.name || undefined,
       companyNif: cfg.taxId || undefined,
-      companyTaxIdLabel: LocalizationRegistry.terminologyFor(tenantId).taxId,
+      companyTaxIdLabel: LocalizationRegistry.terminologyFor(tenantId, locale).taxId,
       companyAddress: addressParts.join(', ') || undefined,
       companyLogoUrl: cfg.logoUrl || undefined,
       currency: cfg.currency || undefined,

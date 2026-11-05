@@ -3,7 +3,7 @@ export interface BrandingConfig {
   colorAccent: string;
   logoUrl: string;
   appName: string;
-  /** Id del catálogo de fuentes de la web (FONT_OPTIONS); 'sans' es el default. */
+  /** Id del catálogo de fuentes de la web (FONT_OPTIONS); vacío = la del tema. */
   fontFamily: string;
   themeMode: 'light' | 'dark';
   /** Id de un preset de @openfactu/ui (vacío = colores a medida). */
@@ -93,7 +93,7 @@ export const BRANDING_DEFAULTS: BrandingConfig = {
   colorAccent: '#0D9488',
   logoUrl: '',
   appName: 'Keirost',
-  fontFamily: 'sans',
+  fontFamily: '',
   themeMode: 'light',
   themePreset: '',
   radius: '',

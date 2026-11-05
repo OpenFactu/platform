@@ -11,6 +11,10 @@ import crypto from 'crypto';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import * as schema from '../db/schema';
 import { logAudit } from '../utils/audit';
+import {
+  effectiveRefObject,
+  linkableObjectById,
+} from '../core/customFields/linkableObjects';
 
 const router = Router();
 
@@ -120,8 +124,20 @@ interface CreateBody {
     pattern?: string;
     unique?: boolean;
   };
+  /** El objeto enlazado. Los campos antiguos traen solo `refTable`. */
+  refObject?: string;
   refTable?: string;
   refDisplayField?: string;
+}
+
+/** El objeto de un campo enlazado, con su tabla y lo que se enseña. */
+async function linkedFieldValues(db: any, req: any, tenantId: string, body: CreateBody) {
+  const objectId = effectiveRefObject({ refObject: body.refObject, refTable: body.refTable });
+  const object = objectId
+    ? await linkableObjectById({ db: req.tenantClient, publicDb: db, tenantId }, objectId)
+    : null;
+  if (!object) return null;
+  return { refObject: object.id, refTable: object.table, refDisplayField: object.display[0] };
 }
 
 function normalizeOptions(options: any): any {
@@ -227,10 +243,10 @@ router.post('/', async (req: any, res) => {
         return res.status(400).json({ error: 'Se requiere al menos una opción.' });
       }
     }
-    if (fieldType === 'REFERENCE') {
-      if (!body.refTable || !availableTables.includes(body.refTable)) {
-        return res.status(400).json({ error: 'refTable requerida y válida.' });
-      }
+    const linked =
+      fieldType === 'REFERENCE' ? await linkedFieldValues(db, req, tenantId, body) : null;
+    if (fieldType === 'REFERENCE' && !linked) {
+      return res.status(400).json({ error: 'Elige a qué objeto se enlaza.' });
     }
 
     const prefixed = fieldName.startsWith('p_') ? fieldName : `p_${fieldName}`;
@@ -243,7 +259,7 @@ router.post('/', async (req: any, res) => {
       ),
     );
 
-    const normalized = normalizeField(body);
+    const normalized = { ...normalizeField(body), refObject: null, ...linked };
 
     const [existing] = await db
       .select()
@@ -460,6 +476,7 @@ router.post('/import', async (req: any, res) => {
         readRoles: f.readRoles ?? null,
         writeRoles: f.writeRoles ?? null,
         validation: f.validation ?? null,
+        refObject: f.refObject ?? null,
         refTable: f.refTable ?? null,
         refDisplayField: f.refDisplayField ?? null,
         isManaged: false,
@@ -614,30 +631,6 @@ router.post('/packs/:id/install', async (req: any, res) => {
       installed++;
     }
     res.json({ ok: true, installed });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ── GET /ref/:tableName?q=... — búsqueda para el selector REFERENCE ─
-router.get('/ref/:tableName', async (req: any, res) => {
-  try {
-    const { schemaName } = await ensureTenant(req);
-    const t = req.params.tableName;
-    const q = String(req.query.q || '').trim();
-    const display = String(req.query.display || 'name');
-    const available = await getTenantTables(schemaName);
-    if (!available.includes(t)) return res.status(400).json({ error: 'Tabla no permitida.' });
-
-    const tenantDb = ClientFactory.getClient(schemaName);
-    const safeCol = /^[A-Za-z_][A-Za-z0-9_]*$/.test(display) ? display : 'name';
-    const where = q ? `WHERE "${safeCol}"::text ILIKE '%${q.replace(/'/g, "''")}%'` : '';
-    const result: any = await tenantDb.execute(
-      sql.raw(
-        `SELECT id, "${safeCol}"::text AS label FROM "${schemaName}"."${t}" ${where} ORDER BY label LIMIT 20`,
-      ),
-    );
-    res.json(result.rows || result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

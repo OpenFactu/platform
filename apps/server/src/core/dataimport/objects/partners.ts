@@ -23,7 +23,7 @@ export const partnerObject: ImportObjectConfig = {
   updatePath: (id) => `/${id}`,
   updateMethod: 'PATCH',
   deletePath: (id) => `/${id}`,
-  dependsOn: ['partnerGroup'],
+  dependsOn: ['partnerGroup', 'taxGroup'],
 
   naturalKeys: [
     // `code` es UNIQUE y `nif` tiene índice único parcial (mig 029). El
@@ -84,6 +84,14 @@ export const partnerObject: ImportObjectConfig = {
       label: 'Retención por defecto (%)',
       type: 'number',
       example: '15',
+    },
+    {
+      key: 'defaultTaxGroup',
+      label: 'Tipo de impuesto por defecto',
+      type: 'ref',
+      bodyKey: 'defaultTaxGroupId',
+      help: 'Manda sobre el del artículo al añadir líneas.',
+      ref: { table: 'TaxGroup', matchBy: ['code'], label: 'tipo de impuesto' },
     },
 
     // Dirección principal — columnas planas que el transform agrupa.

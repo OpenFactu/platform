@@ -46,6 +46,8 @@ export interface PluginFieldDef {
     pattern?: string;
     unique?: boolean;
   } | null;
+  /** El objeto del sistema de un campo enlazado (`/api/linked-objects`). */
+  refObject?: string | null;
   refTable?: string | null;
   refDisplayField?: string | null;
 }

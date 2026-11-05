@@ -31,6 +31,9 @@ export interface Partner {
   defaultPaymentMethodId?: string | null;
   defaultPaymentTermId?: string | null;
   defaultWithholdingRate?: number | string | null;
+  defaultTaxGroupId?: string | null;
+  creditLimit?: string | number | null;
+  dunningExcluded?: boolean;
   iban?: string | null;
   bankName?: string | null;
   bankSwift?: string | null;

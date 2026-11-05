@@ -156,8 +156,7 @@ export const PluginFieldInput: React.FC<Props> = ({
         <ReferenceSelect
           value={value || ''}
           onChange={onChange}
-          refTable={def.refTable || ''}
-          refDisplayField={def.refDisplayField || 'name'}
+          refObject={def.refObject || ''}
           disabled={isDisabled}
           placeholder={ph}
         />

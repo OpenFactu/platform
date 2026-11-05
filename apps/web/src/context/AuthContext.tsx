@@ -12,7 +12,7 @@ interface User {
   tenantName?: string;
   permissions?: Record<string, { read: boolean; write: boolean; delete: boolean }>;
   avatarImageUrl?: string | null;
-  locale?: 'es' | 'en' | null;
+  locale?: string | null;
   themePreset?: string | null;
   themeMode?: 'light' | 'dark' | null;
 }
@@ -97,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // El idioma va con la persona: si lo eligió en su perfil, manda sobre el del navegador.
   useEffect(() => {
-    if (user?.locale === 'es' || user?.locale === 'en') setLocale(user.locale);
+    if (user?.locale) setLocale(user.locale);
   }, [user?.locale]);
 
   // Empuja el estado de auth al cliente HTTP central (único dueño de fetch).

@@ -2,6 +2,12 @@ import { ClientFactory } from '../tenant/ClientFactory';
 import { TenantPluginCache } from './TenantPluginCache';
 import * as schema from '../../db/schema';
 import { and, eq, sql } from 'drizzle-orm';
+import {
+  effectiveRefObject,
+  linkableObjectById,
+  linkContextForTenant,
+  linkedObjectLabels,
+} from '../customFields/linkableObjects';
 
 const URL_RE = /^https?:\/\/[^\s]+$/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -96,6 +102,10 @@ export class PluginFieldManager {
         }
       }
 
+      if (def.fieldType === 'REFERENCE' && tenantId) {
+        await this.assertLinkedValueExists(d, value, tenantId, publicDb);
+      }
+
       // Unicidad dentro de la tabla.
       if (v.unique && schemaName) {
         const tenantDb = ClientFactory.getClient(schemaName);
@@ -112,6 +122,57 @@ export class PluginFieldManager {
     }
 
     return extracted;
+  }
+
+  /**
+   * Comprueba solo los campos enlazados que vengan en el body, para las rutas que
+   * guardan columnas `p_*` por su cuenta y no pasan por `validateAndExtract`.
+   */
+  public static async assertLinkedValues(
+    tableName: string,
+    body: Record<string, any>,
+    tenantId: string,
+  ): Promise<void> {
+    if (Object.keys(body).length === 0) return;
+    const publicDb = ClientFactory.getClient('public');
+    const definitions = await publicDb
+      .select()
+      .from(schema.pluginFields)
+      .where(
+        and(
+          eq(schema.pluginFields.tableName, tableName),
+          eq(schema.pluginFields.fieldType, 'REFERENCE'),
+        ),
+      );
+    for (const def of definitions) {
+      const d = def as any;
+      const value = body[def.fieldName];
+      if (value === undefined || value === null || value === '') continue;
+      if (d.pluginId === '__user__' && d.tenantId !== tenantId) continue;
+      await this.assertLinkedValueExists(d, value, tenantId, publicDb);
+    }
+  }
+
+  /** Un campo enlazado no puede apuntar a algo que no existe. */
+  private static async assertLinkedValueExists(
+    def: any,
+    value: unknown,
+    tenantId: string,
+    publicDb: any,
+  ) {
+    const objectId = effectiveRefObject(def);
+    if (!objectId) return;
+    const ctx = await linkContextForTenant(
+      publicDb,
+      (name) => ClientFactory.getClient(name),
+      tenantId,
+    );
+    const object = ctx && (await linkableObjectById(ctx, objectId));
+    if (!ctx || !object) return;
+    const labels = await linkedObjectLabels(ctx.db, object, [String(value)]);
+    if (!labels.has(String(value))) {
+      throw new Error(`"${def.label || def.fieldName}": ese registro no existe.`);
+    }
   }
 
   private static isValidType(value: any, expectedType: string, options?: any): boolean {

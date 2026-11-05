@@ -66,6 +66,18 @@ export function componentAmount(c: TaxComponent, neto: number): number {
   return ((c.base != null ? Number(c.base) : neto) * Number(c.rate)) / 100;
 }
 
+/**
+ * Impuesto de una línea nueva: el del interlocutor manda sobre el del artículo.
+ * Lo eligen quienes crean líneas (la web, la IA, el CRM); el motor calcula con
+ * lo que le llegue y no rellena nada por su cuenta.
+ */
+export function defaultLineTaxGroupId(
+  partner: { defaultTaxGroupId?: string | null } | null | undefined,
+  item: { taxGroupId?: string | null } | null | undefined,
+): string | null {
+  return partner?.defaultTaxGroupId || item?.taxGroupId || null;
+}
+
 export const TaxEngine = {
   registerResolver(pluginId: string, resolver: TaxResolver): void {
     resolvers.add(pluginId, resolver);

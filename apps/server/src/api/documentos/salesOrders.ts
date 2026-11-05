@@ -5,6 +5,7 @@ import { DocumentEngine } from '../../core/documents/DocumentEngine';
 import { DocumentRegistry } from '../../core/documents/DocumentRegistry';
 import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
 import { logAudit } from '../../utils/audit';
+import { statusError } from '../../core/documents/documentRules';
 
 const router = Router();
 const config = DocumentRegistry.get('SO');
@@ -22,7 +23,7 @@ router.get('/:id/pdf', async (req: any, res) => {
     );
   } catch (error: any) {
     console.error('[SalesOrder PDF] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -54,7 +55,7 @@ router.get('/', async (req: any, res) => {
 
     res.json(orders);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -91,7 +92,7 @@ router.post('/', async (req: any, res) => {
     });
   } catch (error: any) {
     console.error('[SalesOrder API] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message, ...error.body });
   }
 });
 
@@ -128,7 +129,7 @@ router.get('/:id', async (req: any, res) => {
       lines,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -140,8 +141,8 @@ router.post('/:id/cancel', async (req: any, res) => {
         .select()
         .from(schema.salesOrders)
         .where(eq(schema.salesOrders.id, req.params.id));
-      if (!header) throw new Error('Pedido no encontrado');
-      if (header.status === 'X') throw new Error('El pedido ya está cancelado');
+      if (!header) throw statusError(404, 'Pedido no encontrado');
+      if (header.status === 'X') throw statusError(409, 'El pedido ya está cancelado');
 
       // Comprobar que no hay albaranes vigentes vinculados
       const activeSdns = await tx
@@ -151,7 +152,8 @@ router.post('/:id/cancel', async (req: any, res) => {
           sql`${schema.salesDeliveryNotes.orderId} = ${req.params.id} AND ${schema.salesDeliveryNotes.status} != 'X'`,
         );
       if (activeSdns.length > 0) {
-        throw new Error(
+        throw statusError(
+          409,
           'No se puede cancelar: existen albaranes vigentes vinculados. Cancela los albaranes primero.',
         );
       }
@@ -171,12 +173,12 @@ router.post('/:id/cancel', async (req: any, res) => {
       userId: req.user?.id,
       entityType: 'SalesOrder',
       entityId: req.params.id,
-      action: 'DELETE',
+      action: 'CANCEL',
       oldValue: { status: result.old.status },
       newValue: { status: 'X' },
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 

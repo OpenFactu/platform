@@ -194,7 +194,7 @@ export const DocumentSeries: React.FC = () => {
       header: t('doc.series.colRange'),
       cell: (c: any) =>
         c.numberingMode === 'MANUAL' ? (
-          <span className="text-slate-400 text-xs italic">{t('doc.series.manual')}</span>
+          <span className="text-fg-subtle text-xs italic">{t('doc.series.manual')}</span>
         ) : (
           <span className="font-mono text-xs">
             {c.prefix ? `${c.prefix}-` : ''}
@@ -207,7 +207,7 @@ export const DocumentSeries: React.FC = () => {
       header: t('doc.series.colNext'),
       cell: (c: any) =>
         c.numberingMode === 'MANUAL' ? (
-          <span className="text-slate-400">—</span>
+          <span className="text-fg-subtle">—</span>
         ) : (
           <Badge variant="neutral" className="font-mono">
             {c.nextNumber}

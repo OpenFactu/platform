@@ -1,12 +1,14 @@
+import { PageBack } from '@/components/common/PageBack';
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { Button, Card, Loader, PageHeader, useToast } from '@openfactu/ui';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, FileText, Save } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { PluginFieldsSection } from '@/components/plugin-fields';
 import { useI18n } from '@/i18n/I18nContext';
+import { openPdf } from '@/utils/downloadPdf';
 
 export const UserTableDetail: React.FC = () => {
   const { name, id } = useParams();
@@ -22,6 +24,7 @@ export const UserTableDetail: React.FC = () => {
   const [values, setValues] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [isDocument, setIsDocument] = useState(false);
 
   const headers = {
     'Content-Type': 'application/json',
@@ -38,6 +41,28 @@ export const UserTableDetail: React.FC = () => {
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew, id, tblName, user?.tenantId]);
+
+  useEffect(() => {
+    if (isNew || !user?.tenantId) return;
+    coreApi
+      .get('/api/user-tables')
+      .then((tables) => {
+        const table = (Array.isArray(tables) ? tables : []).find(
+          (x: any) => x.tableName === tblName,
+        );
+        setIsDocument(table?.kind === 'document');
+      })
+      .catch(() => setIsDocument(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNew, tblName, user?.tenantId]);
+
+  const downloadRecordPdf = async () => {
+    try {
+      await openPdf(`/api/user-tables/${tblName}/rows/${id}/pdf`, `${tblName}.pdf`);
+    } catch {
+      toast.error(t('userTables.list.pdfError'));
+    }
+  };
 
   const setField = (key: string, v: any) => setValues((prev) => ({ ...prev, [key]: v }));
 
@@ -76,27 +101,42 @@ export const UserTableDetail: React.FC = () => {
         divider
         className="pb-4"
         breadcrumbs={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => openTab(`/u/${name}`)}
-            title={t('userTables.detail.back')}
-            className="w-fit"
-          >
-            <ArrowLeft size={14} />
-          </Button>
+          <PageBack onBack={() => openTab(`/u/${name}`)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => openTab(`/u/${name}`)}
+              title={t('userTables.detail.back')}
+              className="w-fit"
+            >
+              <ArrowLeft size={14} />
+            </Button>
+          </PageBack>
         }
         actions={
-          <Button
-            type="button"
-            onClick={save}
-            disabled={saving}
-            className="flex items-center gap-2"
-          >
-            <Save size={14} />
-            {saving ? t('userTables.detail.saving') : t('userTables.detail.save')}
-          </Button>
+          <div className="flex items-center gap-2">
+            {isDocument && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={downloadRecordPdf}
+                className="flex items-center gap-2"
+              >
+                <FileText size={14} />
+                {t('userTables.list.pdf')}
+              </Button>
+            )}
+            <Button
+              type="button"
+              onClick={save}
+              disabled={saving}
+              className="flex items-center gap-2"
+            >
+              <Save size={14} />
+              {saving ? t('userTables.detail.saving') : t('userTables.detail.save')}
+            </Button>
+          </div>
         }
       />
 

@@ -1,4 +1,6 @@
+import { PageBack } from '@/components/common/PageBack';
 import { useI18n } from '@/i18n/I18nContext';
+import { PartnerCreditBalance } from '@/modules/documents/components/documents/PartnerCreditBalance';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Card, Loader, PageHeader, useIsMobile, useToast } from '@openfactu/ui';
@@ -19,6 +21,7 @@ import {
 } from '../components/PartnerSections';
 import { FloatingSaveButton, HeaderSaveButton } from '@/components/FloatingSaveButton';
 import { PartnerCreateWizard } from '../components/PartnerCreateWizard';
+import { PartnerCreditCard } from '../components/PartnerCreditCard';
 
 /**
  * Ficha completa de un interlocutor (/partners/:partnerId, o /partners/new
@@ -139,16 +142,18 @@ export const PartnerDetail: React.FC = () => {
           )
         }
         breadcrumbs={
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={back}
-            // En móvil ya está la flecha de volver de la barra superior.
-            className="w-fit gap-1 max-md:hidden"
-          >
-            <ArrowLeft size={12} /> {t('partners.nav.label')}
-          </Button>
+          <PageBack onBack={back}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={back}
+              // En móvil ya está la flecha de volver de la barra superior.
+              className="w-fit gap-1 max-md:hidden"
+            >
+              <ArrowLeft size={12} /> {t('partners.nav.label')}
+            </Button>
+          </PageBack>
         }
         title={
           <>
@@ -199,6 +204,7 @@ export const PartnerDetail: React.FC = () => {
           <PartnerFiscalFields form={form} disabled={disabled} />
         </Card>
         <div className="space-y-6">
+          {!isNew && <PartnerCreditCard form={form} partnerId={partnerId} disabled={disabled} />}
           <Card title={t('partners.common.customFields')}>
             <PluginFieldsPanel
               tableName="BusinessPartner"
@@ -214,6 +220,11 @@ export const PartnerDetail: React.FC = () => {
             </Card>
           )}
         </div>
+        {!isNew && (
+          <div className="xl:col-span-2 empty:hidden">
+            <PartnerCreditBalance partnerId={partnerId} />
+          </div>
+        )}
         {!isNew && flags.crmEnabled && (
           // Los formularios del CRM viven en modales (portal), pero el submit
           // sintético de React sube por el árbol y llegaría al <form> de la ficha.

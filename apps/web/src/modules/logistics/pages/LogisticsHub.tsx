@@ -1,56 +1,53 @@
 import React, { useState } from 'react';
 import {
-  Truck,
+  AlertTriangle,
+  BarChart3,
+  CalendarCheck,
+  ClipboardCheck,
   MapPin,
   Package as PackageIcon,
-  Warehouse,
-  ClipboardCheck,
-  Building2,
-  AlertTriangle,
+  Truck,
 } from 'lucide-react';
 import { PageHeader, Tabs } from '@openfactu/ui';
 import { useI18n } from '@/i18n/I18nContext';
-import { ShipmentsTab } from '../components/ShipmentsTab';
-import { RoutesTab } from '../components/RoutesTab';
-import { PackagesTab } from '../components/PackagesTab';
-import { StagingAreasTab } from '../components/StagingAreasTab';
-import { VehiclesTab } from '../components/VehiclesTab';
-import { PreparationTab } from '../components/PreparationTab';
-import { PlatformsTab } from '../components/PlatformsTab';
 import { IncidentsTab } from '../components/IncidentsTab';
+import { PackagesTab } from '../components/PackagesTab';
+import { PreparationTab } from '../components/PreparationTab';
+import { ReportsTab } from '../components/ReportsTab';
+import { RoutesTab } from '../components/RoutesTab';
+import { ShipmentsTab } from '../components/ShipmentsTab';
+import { TodayTab } from '../components/TodayTab';
 
-type Tab =
-  | 'shipments'
+type OperationTab =
+  | 'today'
   | 'preparation'
-  | 'incidents'
+  | 'shipments'
   | 'routes'
-  | 'vehicles'
   | 'packages'
-  | 'staging'
-  | 'platforms';
+  | 'incidents'
+  | 'reports';
 
+/** El día a día de la logística. Lo que se configura una vez está en su propio submenú. */
 export const LogisticsHub: React.FC = () => {
   const { t } = useI18n();
-  const [tab, setTab] = useState<Tab>('preparation');
+  const [operation, setOperation] = useState<OperationTab>('today');
 
-  // Fuente de verdad de las pestañas: `Tabs` deriva sus items de aquí.
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
+  const operationTabs: { key: OperationTab; label: string; icon: React.ReactNode }[] = [
+    { key: 'today', label: t('logistics.hub.tabs.today'), icon: <CalendarCheck size={14} /> },
     {
       key: 'preparation',
       label: t('logistics.hub.tabs.preparation'),
       icon: <ClipboardCheck size={14} />,
     },
     { key: 'shipments', label: t('logistics.hub.tabs.shipments'), icon: <Truck size={14} /> },
+    { key: 'routes', label: t('logistics.hub.tabs.routes'), icon: <MapPin size={14} /> },
+    { key: 'packages', label: t('logistics.hub.tabs.packages'), icon: <PackageIcon size={14} /> },
     {
       key: 'incidents',
       label: t('logistics.hub.tabs.incidents'),
       icon: <AlertTriangle size={14} />,
     },
-    { key: 'routes', label: t('logistics.hub.tabs.routes'), icon: <MapPin size={14} /> },
-    { key: 'vehicles', label: t('logistics.hub.tabs.vehicles'), icon: <Truck size={14} /> },
-    { key: 'packages', label: t('logistics.hub.tabs.packages'), icon: <PackageIcon size={14} /> },
-    { key: 'staging', label: t('logistics.hub.tabs.staging'), icon: <Warehouse size={14} /> },
-    { key: 'platforms', label: t('logistics.hub.tabs.platforms'), icon: <Building2 size={14} /> },
+    { key: 'reports', label: t('logistics.hub.tabs.reports'), icon: <BarChart3 size={14} /> },
   ];
 
   return (
@@ -61,19 +58,22 @@ export const LogisticsHub: React.FC = () => {
         icon={<Truck size={18} />}
         size="sm"
         tabs={
-          /* Scroll horizontal cuando no caben, sin wrap (patrón CompanySettings). */
-          <Tabs items={tabs} value={tab} onChange={(k) => setTab(k as Tab)} scrollable />
+          <Tabs
+            items={operationTabs}
+            value={operation}
+            onChange={(key) => setOperation(key as OperationTab)}
+            scrollable
+          />
         }
       />
 
-      {tab === 'preparation' && <PreparationTab />}
-      {tab === 'shipments' && <ShipmentsTab />}
-      {tab === 'incidents' && <IncidentsTab />}
-      {tab === 'routes' && <RoutesTab />}
-      {tab === 'vehicles' && <VehiclesTab />}
-      {tab === 'packages' && <PackagesTab />}
-      {tab === 'staging' && <StagingAreasTab />}
-      {tab === 'platforms' && <PlatformsTab />}
+      {operation === 'today' && <TodayTab onOpenSection={setOperation} />}
+      {operation === 'preparation' && <PreparationTab />}
+      {operation === 'shipments' && <ShipmentsTab />}
+      {operation === 'routes' && <RoutesTab />}
+      {operation === 'packages' && <PackagesTab />}
+      {operation === 'incidents' && <IncidentsTab />}
+      {operation === 'reports' && <ReportsTab />}
     </div>
   );
 };

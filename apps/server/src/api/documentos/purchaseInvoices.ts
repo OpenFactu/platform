@@ -1,12 +1,15 @@
 import { Router } from 'express';
+import { creditNoteRoutes } from './creditNoteRoutes';
 import { eq, sql, desc } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { DocumentEngine } from '../../core/documents/DocumentEngine';
 import { DocumentRegistry } from '../../core/documents/DocumentRegistry';
 import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
 import { logAudit } from '../../utils/audit';
+import { statusError } from '../../core/documents/documentRules';
 
 const router = Router();
+router.use(creditNoteRoutes('purchase'));
 const config = DocumentRegistry.get('PINV');
 
 // GET all invoices
@@ -26,6 +29,11 @@ router.get('/', async (req: any, res) => {
         paymentStatus: schema.purchaseInvoices.paymentStatus,
         amountPaid: schema.purchaseInvoices.amountPaid,
         isLocked: schema.purchaseInvoices.isLocked,
+        rectifiesInvoiceId: schema.purchaseInvoices.rectifiesInvoiceId,
+        creditNoteCount: sql<number>`(
+          SELECT COUNT(*)::int FROM "PurchaseInvoice" note
+          WHERE note."rectifiesInvoiceId" = ${schema.purchaseInvoices.id} AND note."status" <> 'X'
+        )`,
         dueDate: schema.purchaseInvoices.dueDate,
         externalRef: schema.purchaseInvoices.externalRef,
         baseDocCode: sql<string | null>`(
@@ -52,7 +60,7 @@ router.get('/', async (req: any, res) => {
       .orderBy(desc(schema.purchaseInvoices.date));
     res.json(results);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -108,7 +116,7 @@ router.get('/:id', async (req: any, res) => {
       lines: linesWithBatches,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -125,7 +133,7 @@ router.get('/:id/pdf', async (req: any, res) => {
     );
   } catch (error: any) {
     console.error('[PurchaseInvoice PDF] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -162,7 +170,7 @@ router.post('/', async (req: any, res) => {
     });
   } catch (error: any) {
     console.error('[PurchaseInvoice API] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -204,8 +212,8 @@ async function cancelPurchaseInvoice(req: any, res: any) {
         .select()
         .from(schema.purchaseInvoices)
         .where(eq(schema.purchaseInvoices.id, req.params.id));
-      if (!header) throw new Error('No encontrado');
-      if (header.status === 'X') throw new Error('Ya está cancelada');
+      if (!header) throw statusError(404, 'No encontrado');
+      if (header.status === 'X') throw statusError(409, 'Ya está cancelada');
 
       // Revierte stock (global/almacén/zona/lotes) solo para líneas directas
       // (si vino de un PDN, la factura nunca movió stock, solo reabre el PDN
@@ -236,11 +244,11 @@ async function cancelPurchaseInvoice(req: any, res: any) {
         userId: req.user?.id,
         entityType: 'PurchaseInvoice',
         entityId: req.params.id,
-        action: 'DELETE',
+        action: 'CANCEL',
         oldValue: { status: old.status },
       });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message, code: error.code });
   }
 }
 

@@ -32,6 +32,7 @@ const SALIDA = path.join(raizServidor, 'sql', 'public-schema.sql');
  */
 const TABLAS_PUBLICAS = [
   'Tenant',
+  'ShipmentToken',
   'GlobalUser',
   'UserTenantMembership',
   'AuditLog',

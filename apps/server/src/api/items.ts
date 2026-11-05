@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { PluginFieldManager } from '../core/plugins/PluginFieldManager';
 import * as schema from '../db/schema';
 import { eq, desc, like, sql, and } from 'drizzle-orm';
 import crypto from 'crypto';
@@ -6,6 +7,7 @@ import { logAudit } from '../utils/audit';
 import { requireScope } from './middleware/apiToken';
 import { HookManager } from '../core/plugins/HookManager';
 import { invalidateSiteCache } from '../core/website/renderSite';
+import { requirePermission } from './middleware/requirePermission';
 
 const router = Router();
 
@@ -25,6 +27,7 @@ router.get('/', requireScope('read:maestros'), async (req: any, res) => {
         uomCode: schema.unitsOfMeasure.code,
         uomName: schema.unitsOfMeasure.name,
         categoryId: schema.items.categoryId,
+        taxGroupId: schema.items.taxGroupId,
         basePrice: schema.items.basePrice,
         stock: schema.items.stock,
         manageBy: schema.items.manageBy,
@@ -114,6 +117,28 @@ router.get('/:id', requireScope('read:maestros'), async (req: any, res) => {
 });
 
 /**
+ * GET /api/items/:id/cost-movements — por qué cambió su coste, lo último primero.
+ */
+router.get(
+  '/:id/cost-movements',
+  requireScope('read:maestros'),
+  requirePermission('/item-costs', 'read'),
+  async (req: any, res) => {
+    try {
+      const rows = await req.tenantClient
+        .select()
+        .from(schema.itemCostMovements)
+        .where(eq(schema.itemCostMovements.itemId, req.params.id))
+        .orderBy(desc(schema.itemCostMovements.createdAt))
+        .limit(100);
+      res.json(rows);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+/**
  * POST /api/items
  */
 router.post('/', requireScope('write:maestros'), async (req: any, res) => {
@@ -156,6 +181,7 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
     // Separar los campos custom (`p_*`) — Drizzle no los conoce, así que
     // los metemos con un UPDATE crudo después del INSERT.
     const { customCols, coreBody } = splitCustomCols(req.body);
+    await PluginFieldManager.assertLinkedValues('Item', customCols, req.tenantId);
 
     const id = crypto.randomUUID();
     const [item] = await req.tenantClient
@@ -172,7 +198,7 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
 
     logAudit({
       tenantClient: req.tenantClient,
-      tenantId: req.headers['x-tenant-id'] || '',
+      tenantId: req.tenantId || '',
       userId: req.user?.id,
       entityType: 'Item',
       entityId: id,
@@ -184,11 +210,15 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
   }
 });
 
+/** El coste lo mueve el stock, nunca la ficha: ver `core/stock/itemCost.ts`. */
+const COST_FIELDS = new Set(['averageCost', 'lastPurchaseCost']);
+
 /** Separa claves `p_*` del body. */
 function splitCustomCols(body: any) {
   const coreBody: Record<string, any> = {};
   const customCols: Record<string, any> = {};
   for (const [k, v] of Object.entries(body || {})) {
+    if (COST_FIELDS.has(k)) continue;
     if (k.startsWith('p_')) customCols[k] = v;
     else coreBody[k] = v;
   }
@@ -232,6 +262,7 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
       .where(eq(schema.items.id, id));
 
     const { coreBody, customCols } = splitCustomCols(req.body);
+    await PluginFieldManager.assertLinkedValues('Item', customCols, req.tenantId);
 
     const [item] = await req.tenantClient
       .update(schema.items)
@@ -247,7 +278,7 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
 
     logAudit({
       tenantClient: req.tenantClient,
-      tenantId: req.headers['x-tenant-id'] || '',
+      tenantId: req.tenantId || '',
       userId: req.user?.id,
       entityType: 'Item',
       entityId: id,
@@ -278,7 +309,7 @@ router.delete('/:id', requireScope('write:maestros'), async (req: any, res) => {
     if (oldItem) {
       logAudit({
         tenantClient: req.tenantClient,
-        tenantId: req.headers['x-tenant-id'] || '',
+        tenantId: req.tenantId || '',
         userId: req.user?.id,
         entityType: 'Item',
         entityId: id,

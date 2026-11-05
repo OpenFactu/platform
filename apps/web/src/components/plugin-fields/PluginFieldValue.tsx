@@ -1,6 +1,7 @@
 import React from 'react';
 import type { PluginFieldDef } from './types';
 import { useI18n } from '@/i18n/I18nContext';
+import { LinkedObjectValue } from './LinkedObjectLink';
 
 interface Fmt {
   money?: (v: number | string | null | undefined) => string;
@@ -123,11 +124,7 @@ export const PluginFieldValue: React.FC<Props> = ({ def, value, fmt }) => {
       );
 
     case 'REFERENCE':
-      // Sin caché de etiquetas aquí; mostramos el id crudo. Para resolver
-      // a label se puede hacer una lookup explícita en la página.
-      return (
-        <span className="font-mono text-[11px] text-fg-body">{String(value).slice(0, 8)}…</span>
-      );
+      return <LinkedObjectValue objectId={def.refObject} value={value} />;
 
     default:
       return <span className="text-xs text-fg-body">{String(value)}</span>;

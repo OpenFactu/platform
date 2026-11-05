@@ -1,5 +1,8 @@
+import { paymentPeriodFor } from '../accounting/periodRules';
 import { DocumentEngine, type DocumentCreateRequest } from '../documents/DocumentEngine';
 import { DocumentRegistry } from '../documents/DocumentRegistry';
+import { lockInvoiceForPayment } from '../documents/creditNoteMoney';
+import { recalcInvoicePaymentStatus } from '../documents/paymentStatusRecalc';
 import { PluginFieldManager } from './PluginFieldManager';
 import { ClientFactory } from '../tenant/ClientFactory';
 import { AuthService } from '../auth/AuthService';
@@ -402,14 +405,6 @@ export class FactuApiTransaction {
     }
     if (!opts.amount || opts.amount <= 0) throw new Error('amount debe ser > 0');
 
-    const invoiceTable =
-      opts.direction === 'sales' ? schema.salesInvoices : schema.purchaseInvoices;
-    const [invoice] = await this._db
-      .select()
-      .from(invoiceTable)
-      .where(eq(invoiceTable.id, opts.invoiceId));
-    if (!invoice) throw new Error('Factura no encontrada');
-
     const id = crypto.randomUUID();
     const date = opts.date
       ? typeof opts.date === 'string'
@@ -417,21 +412,28 @@ export class FactuApiTransaction {
         : opts.date.toISOString().slice(0, 10)
       : new Date().toISOString().slice(0, 10);
 
-    await this._db.insert(schema.payments).values({
-      id,
-      salesInvoiceId: opts.direction === 'sales' ? opts.invoiceId : null,
-      purchaseInvoiceId: opts.direction === 'purchase' ? opts.invoiceId : null,
-      date,
-      amount: String(opts.amount),
-      currencyId: null,
-      exchangeRate: '1',
-      amountBase: String(opts.amount),
-      paymentMethodId: opts.paymentMethodId || null,
-      reference: opts.reference.trim(),
-      notes: opts.notes || null,
-      source: 'manual',
-      sourceRef: null,
-      createdBy: this._user?.id || null,
+    let paymentPeriodId = '';
+    const invoice = await this._db.transaction(async (tx: any) => {
+      const locked = await lockInvoiceForPayment(tx, opts.direction, opts.invoiceId, opts.amount);
+      paymentPeriodId = await paymentPeriodFor(tx, date, locked.periodId);
+      await tx.insert(schema.payments).values({
+        id,
+        salesInvoiceId: opts.direction === 'sales' ? opts.invoiceId : null,
+        purchaseInvoiceId: opts.direction === 'purchase' ? opts.invoiceId : null,
+        date,
+        amount: String(opts.amount),
+        currencyId: null,
+        exchangeRate: '1',
+        amountBase: String(opts.amount),
+        paymentMethodId: opts.paymentMethodId || null,
+        reference: opts.reference.trim(),
+        notes: opts.notes || null,
+        source: 'manual',
+        sourceRef: null,
+        createdBy: this._user?.id || null,
+      });
+      await recalcInvoicePaymentStatus(tx, opts.direction, opts.invoiceId);
+      return locked;
     });
 
     let journalEntryId: string | null = null;
@@ -442,7 +444,7 @@ export class FactuApiTransaction {
         {
           id: invoice.id,
           partnerId: invoice.partnerId,
-          periodId: invoice.periodId,
+          periodId: paymentPeriodId,
           docNum: invoice.docNum,
         },
         opts.direction,

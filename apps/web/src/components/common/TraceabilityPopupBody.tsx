@@ -4,7 +4,8 @@ import { Badge, EmptyState, Skeleton, useToast } from '@openfactu/ui';
 import { ArrowDown, ArrowUp, CreditCard, Link2, ScrollText } from 'lucide-react';
 import { useTabs } from '../../context/TabsContext';
 import { useFormat } from '../../hooks/useFormat';
-import { DocType, DOC_TYPE_LABELS, DOC_TYPE_ROUTES } from '@openfactu/common';
+import { decomposeDocType, DocType, DOC_TYPE_LABELS, DOC_TYPE_ROUTES } from '@openfactu/common';
+import { statusBadgeProps } from '@/modules/documents/components/documentLineCells';
 import { useI18n } from '@/i18n/I18nContext';
 
 interface DocRef {
@@ -14,15 +15,26 @@ interface DocRef {
   date: string;
   total: number;
   status: string;
+  /** Es un abono: vive en la misma tabla que las facturas, pero no es lo mismo. */
+  isCreditNote?: boolean;
+  documentTypeName?: string | null;
   /** Saltos hasta el documento consultado: negativo hacia atrás, positivo hacia delante. */
   depth: number;
 }
 
 interface LinkedData {
+  current: Omit<DocRef, 'depth'> | null;
   parents: DocRef[];
   children: DocRef[];
   journalEntries: Array<{ id: string; number: number; date: string; status: string }>;
-  payments: Array<{ id: string; date: string; amount: number; reference: string | null }>;
+  payments: Array<{
+    id: string;
+    date: string;
+    amount: number;
+    reference: string | null;
+    /** La aplicación de un abono: el otro documento, no un cobro de verdad. */
+    linked?: Pick<DocRef, 'type' | 'id' | 'code'>;
+  }>;
 }
 
 interface Props {
@@ -157,12 +169,24 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
     [data],
   );
 
-  const go = (ref: DocRef) => {
+  // Un abono se dice abono; lo demás, por su tipo de documento.
+  const docEyebrow = (d: Pick<DocRef, 'type' | 'isCreditNote' | 'documentTypeName'>) =>
+    d.isCreditNote
+      ? [t('app.trace.creditNote'), d.documentTypeName].filter(Boolean).join(' · ')
+      : docLabel(d.type);
+
+  // El estado por su nombre, nunca la letra con la que se guarda.
+  const statusBadge = (d: Pick<DocRef, 'type' | 'status'>) => {
+    const status = statusBadgeProps(d.status, decomposeDocType(d.type).kind);
+    return status ? <Badge variant={status.variant}>{status.label}</Badge> : undefined;
+  };
+
+  const go = (ref: Pick<DocRef, 'type' | 'id' | 'code'>) => {
     openTab(`${DOC_TYPE_ROUTES[ref.type]}/${ref.id}`, { title: ref.code });
     onNavigated?.();
   };
 
-  const docMeta = (d: DocRef) =>
+  const docMeta = (d: Pick<DocRef, 'date' | 'total'>) =>
     [d.date ? fmt.date(d.date) : null, d.total ? fmt.money(d.total) : null]
       .filter(Boolean)
       .join(' · ');
@@ -177,6 +201,7 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
     );
   }
 
+  const current = data?.current ?? null;
   const payments = data?.payments ?? [];
   const journalEntries = data?.journalEntries ?? [];
   const isolated =
@@ -203,10 +228,10 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
             {origins.map((d) => (
               <ChainRow
                 key={`${d.type}:${d.id}`}
-                eyebrow={docLabel(d.type)}
+                eyebrow={docEyebrow(d)}
                 code={d.code}
                 meta={docMeta(d)}
-                right={d.status ? <Badge variant="neutral">{d.status}</Badge> : undefined}
+                right={statusBadge(d)}
                 onClick={() => go(d)}
               />
             ))}
@@ -218,8 +243,10 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
         <GroupTitle icon={<Link2 size={12} />}>{t('app.trace.thisDocument')}</GroupTitle>
         <ul>
           <ChainRow
-            eyebrow={docLabel(type)}
-            code={currentCode || t('app.trace.current')}
+            eyebrow={current ? docEyebrow(current) : docLabel(type)}
+            code={currentCode || current?.code || t('app.trace.current')}
+            meta={current ? docMeta(current) : undefined}
+            right={current ? statusBadge(current) : undefined}
             tone="current"
           />
         </ul>
@@ -234,10 +261,10 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
             {derived.map((d) => (
               <ChainRow
                 key={`${d.type}:${d.id}`}
-                eyebrow={docLabel(d.type)}
+                eyebrow={docEyebrow(d)}
                 code={d.code}
                 meta={docMeta(d)}
-                right={d.status ? <Badge variant="neutral">{d.status}</Badge> : undefined}
+                right={statusBadge(d)}
                 onClick={() => go(d)}
               />
             ))}
@@ -255,14 +282,19 @@ export const TraceabilityPopupBody: React.FC<Props> = ({ type, id, currentCode, 
               <ChainRow
                 key={p.id}
                 tone="success"
-                eyebrow={t('app.trace.payment')}
+                eyebrow={p.linked ? t('app.trace.creditApplied') : t('app.trace.payment')}
                 code={fmt.money(p.amount)}
                 meta={[
                   fmt.date(p.date),
-                  p.reference ? t('app.trace.ref', { ref: p.reference }) : null,
+                  p.linked
+                    ? p.linked.code
+                    : p.reference
+                      ? t('app.trace.ref', { ref: p.reference })
+                      : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')}
+                onClick={p.linked ? () => go(p.linked!) : undefined}
               />
             ))}
             {journalEntries.map((j) => (

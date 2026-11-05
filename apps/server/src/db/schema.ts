@@ -24,6 +24,18 @@ export const tenants = pgTable('Tenant', {
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
+/**
+ * Índice común de los tokens públicos de los envíos. Una petición sin sesión
+ * solo trae el token: esto dice de qué empresa es sin recorrerlas todas.
+ */
+export const shipmentTokens = pgTable('ShipmentToken', {
+  token: text('token').primaryKey(),
+  tenantId: text('tenantId').notNull(),
+  shipmentId: text('shipmentId').notNull(),
+  /** `report` = enlace del cliente; `tracker` = dispositivo del conductor. */
+  kind: text('kind').notNull(),
+});
+
 export const globalUsers = pgTable('GlobalUser', {
   id: text('id').primaryKey(),
   email: text('email').unique().notNull(),
@@ -116,6 +128,8 @@ export const pluginFields = pgTable('PluginField', {
   /** Reglas extra: `{min, max, pattern, minLength, maxLength, unique}`. */
   validation: jsonb('validation'),
   /** Para `REFERENCE`: tabla referenciada (p.ej. `BusinessPartner`). */
+  /** En un campo enlazado, el objeto del sistema (`core/customFields/linkableObjects.ts`). */
+  refObject: text('refObject'),
   refTable: text('refTable'),
   /** Para `REFERENCE`: campo a mostrar (default `name`). */
   refDisplayField: text('refDisplayField'),
@@ -395,6 +409,11 @@ export const businessPartners = pgTable('BusinessPartner', {
   defaultPaymentMethodId: text('defaultPaymentMethodId'),
   defaultPaymentTermId: text('defaultPaymentTermId'),
   defaultWithholdingRate: decimal('defaultWithholdingRate', { precision: 5, scale: 2 }),
+  // Mig 083 — al añadir una línea manda sobre el impuesto del artículo.
+  defaultTaxGroupId: text('defaultTaxGroupId').references(() => taxGroups.id),
+  // Mig 095 — vacío es sin límite; cero, nada a crédito.
+  creditLimit: decimal('creditLimit', { precision: 15, scale: 2 }),
+  dunningExcluded: boolean('dunningExcluded').default(false).notNull(),
   iban: text('iban'),
   bankName: text('bankName'),
   bankSwift: text('bankSwift'),
@@ -1242,6 +1261,9 @@ export const items = pgTable('Item', {
   taxGroupId: text('taxGroupId').references(() => taxGroups.id),
   manageBy: text('manageBy').default('N').notNull(),
   basePrice: decimal('basePrice', { precision: 12, scale: 4 }).notNull(),
+  /** Mig 093 — precio medio ponderado, en moneda base. Solo lo mueve `core/stock/itemCost.ts`. */
+  averageCost: decimal('averageCost', { precision: 18, scale: 6 }).default('0').notNull(),
+  lastPurchaseCost: decimal('lastPurchaseCost', { precision: 18, scale: 6 }),
   stock: doublePrecision('stock').default(0).notNull(),
   minStock: doublePrecision('minStock').default(0).notNull(),
   defaultWarehouseId: text('defaultWarehouseId'),
@@ -1394,6 +1416,10 @@ export const categories = pgTable('Category', {
 
 export const salesOrders = pgTable('SalesOrder', {
   id: text('id').primaryKey(),
+  /** Quién canceló el documento y cuándo. */
+  cancelledAt: timestamp('cancelledAt'),
+  cancelledBy: text('cancelledBy'),
+  cancelReason: text('cancelReason'),
   seriesId: text('seriesId')
     .references(() => documentSeries.id)
     .notNull(),
@@ -1468,6 +1494,10 @@ export const salesOrderLines = pgTable('SalesOrderLine', {
 // (no mueve ni reserva stock), con validez y ciclo O/A/R/X.
 export const salesQuotes = pgTable('SalesQuote', {
   id: text('id').primaryKey(),
+  /** Quién canceló el documento y cuándo. */
+  cancelledAt: timestamp('cancelledAt'),
+  cancelledBy: text('cancelledBy'),
+  cancelReason: text('cancelReason'),
   seriesId: text('seriesId')
     .references(() => documentSeries.id)
     .notNull(),
@@ -1530,6 +1560,10 @@ export const salesQuoteLines = pgTable('SalesQuoteLine', {
 
 export const salesDeliveryNotes = pgTable('SalesDeliveryNote', {
   id: text('id').primaryKey(),
+  /** Quién canceló el documento y cuándo. */
+  cancelledAt: timestamp('cancelledAt'),
+  cancelledBy: text('cancelledBy'),
+  cancelReason: text('cancelReason'),
   seriesId: text('seriesId')
     .references(() => documentSeries.id)
     .notNull(),
@@ -1559,6 +1593,8 @@ export const salesDeliveryNotes = pgTable('SalesDeliveryNote', {
 });
 
 export const salesDeliveryNoteLines = pgTable('SalesDeliveryNoteLine', {
+  /** Mig 093 — coste unitario en moneda base y unidad base, fijado al moverse. */
+  unitCost: decimal('unitCost', { precision: 18, scale: 6 }),
   id: text('id').primaryKey(),
   deliveryId: text('deliveryId')
     .references(() => salesDeliveryNotes.id)
@@ -1604,6 +1640,12 @@ export const salesDeliveryNoteLineBatches = pgTable('SalesDeliveryNoteLineBatch'
 
 export const salesInvoices = pgTable('SalesInvoice', {
   id: text('id').primaryKey(),
+  /** Quién canceló el documento y cuándo. */
+  cancelledAt: timestamp('cancelledAt'),
+  cancelledBy: text('cancelledBy'),
+  cancelReason: text('cancelReason'),
+  /** Si su stock ya se ha movido: lo hace al asentarla. Las anteriores lo movieron al crearse. */
+  stockMoved: boolean('stockMoved').default(true).notNull(),
   seriesId: text('seriesId')
     .references(() => documentSeries.id)
     .notNull(),
@@ -1646,6 +1688,8 @@ export const salesInvoices = pgTable('SalesInvoice', {
   rectifyRef: text('rectifyRef'),
   rectifyReason: text('rectifyReason'),
   rectifyType: text('rectifyType'),
+  /** La factura que corrige este abono. Sus importes van en negativo. */
+  rectifiesInvoiceId: text('rectifiesInvoiceId'),
   /** Referencia externa (mig 081): ventas, la del cliente; compras, el número de factura del proveedor. */
   externalRef: text('externalRef'),
   // ── Multi-divisa ──────────────────────────────────────────────
@@ -1673,7 +1717,11 @@ export const salesInvoices = pgTable('SalesInvoice', {
 });
 
 export const salesInvoiceLines = pgTable('SalesInvoiceLine', {
+  /** Mig 093 — coste unitario en moneda base y unidad base, fijado al moverse. */
+  unitCost: decimal('unitCost', { precision: 18, scale: 6 }),
   id: text('id').primaryKey(),
+  /** En un abono: esta línea devolvió la mercancía al almacén. */
+  stockReturned: boolean('stockReturned').default(false).notNull(),
   invoiceId: text('invoiceId')
     .references(() => salesInvoices.id)
     .notNull(),
@@ -1710,6 +1758,8 @@ export const salesInvoiceLines = pgTable('SalesInvoiceLine', {
 
 export const salesInvoiceLineBatches = pgTable('SalesInvoiceLineBatch', {
   id: text('id').primaryKey(),
+  /** La caducidad de un lote elegido en un borrador, para cuando entre. */
+  expiryDate: timestamp('expiryDate'),
   invoiceLineId: text('invoiceLineId')
     .notNull()
     .references(() => salesInvoiceLines.id),
@@ -1722,6 +1772,10 @@ export const salesInvoiceLineBatches = pgTable('SalesInvoiceLineBatch', {
 
 export const purchaseOrders = pgTable('PurchaseOrder', {
   id: text('id').primaryKey(),
+  /** Quién canceló el documento y cuándo. */
+  cancelledAt: timestamp('cancelledAt'),
+  cancelledBy: text('cancelledBy'),
+  cancelReason: text('cancelReason'),
   seriesId: text('seriesId')
     .references(() => documentSeries.id)
     .notNull(),
@@ -1789,6 +1843,10 @@ export const purchaseOrderLines = pgTable('PurchaseOrderLine', {
 
 export const purchaseDeliveryNotes = pgTable('PurchaseDeliveryNote', {
   id: text('id').primaryKey(),
+  /** Quién canceló el documento y cuándo. */
+  cancelledAt: timestamp('cancelledAt'),
+  cancelledBy: text('cancelledBy'),
+  cancelReason: text('cancelReason'),
   seriesId: text('seriesId')
     .references(() => documentSeries.id)
     .notNull(),
@@ -1817,6 +1875,8 @@ export const purchaseDeliveryNotes = pgTable('PurchaseDeliveryNote', {
 });
 
 export const purchaseDeliveryNoteLines = pgTable('PurchaseDeliveryNoteLine', {
+  /** Mig 093 — coste unitario en moneda base y unidad base, fijado al moverse. */
+  unitCost: decimal('unitCost', { precision: 18, scale: 6 }),
   id: text('id').primaryKey(),
   deliveryId: text('deliveryId')
     .references(() => purchaseDeliveryNotes.id)
@@ -1853,6 +1913,12 @@ export const purchaseDeliveryNoteLines = pgTable('PurchaseDeliveryNoteLine', {
 
 export const purchaseInvoices = pgTable('PurchaseInvoice', {
   id: text('id').primaryKey(),
+  /** Quién canceló el documento y cuándo. */
+  cancelledAt: timestamp('cancelledAt'),
+  cancelledBy: text('cancelledBy'),
+  cancelReason: text('cancelReason'),
+  /** Si su stock ya se ha movido: lo hace al asentarla. Las anteriores lo movieron al crearse. */
+  stockMoved: boolean('stockMoved').default(true).notNull(),
   seriesId: text('seriesId')
     .references(() => documentSeries.id)
     .notNull(),
@@ -1889,6 +1955,8 @@ export const purchaseInvoices = pgTable('PurchaseInvoice', {
   rectifyRef: text('rectifyRef'),
   rectifyReason: text('rectifyReason'),
   rectifyType: text('rectifyType'),
+  /** La factura que corrige este abono. Sus importes van en negativo. */
+  rectifiesInvoiceId: text('rectifiesInvoiceId'),
   /** Referencia externa (mig 081): ventas, la del cliente; compras, el número de factura del proveedor. */
   externalRef: text('externalRef'),
   currencyId: text('currencyId'),
@@ -1911,7 +1979,11 @@ export const purchaseInvoices = pgTable('PurchaseInvoice', {
 });
 
 export const purchaseInvoiceLines = pgTable('PurchaseInvoiceLine', {
+  /** Mig 093 — coste unitario en moneda base y unidad base, fijado al moverse. */
+  unitCost: decimal('unitCost', { precision: 18, scale: 6 }),
   id: text('id').primaryKey(),
+  /** En un abono: esta línea devolvió la mercancía al almacén. */
+  stockReturned: boolean('stockReturned').default(false).notNull(),
   invoiceId: text('invoiceId')
     .references(() => purchaseInvoices.id)
     .notNull(),
@@ -2389,9 +2461,18 @@ export const shipments = pgTable('Shipment', {
   driverName: text('driverName'),
   driverPhone: text('driverPhone'),
   vehiclePlate: text('vehiclePlate'),
-  /** Token público para reportar posición desde el dispositivo del conductor
-   *  (aplicación móvil, tracker GPS, script externo, etc.). */
+  /** Token del enlace de seguimiento que recibe el cliente: solo sirve para mirar. */
   reportToken: text('reportToken').unique().notNull(),
+  /** Token para enviar la posición desde el dispositivo del conductor
+   *  (aplicación móvil, tracker GPS, script externo, etc.). */
+  trackerToken: text('trackerToken').unique().notNull(),
+  /** Marcado al "borrar" un envío con historia; el registro permanece. */
+  archivedAt: timestamp('archivedAt'),
+  /** Número del envío (ENV-2026-00042). `trackingNumber` es el del transportista. */
+  code: text('code').unique(),
+  /** Franja en la que el cliente puede recibirlo, como HH:mm. */
+  timeWindowFrom: text('timeWindowFrom'),
+  timeWindowTo: text('timeWindowTo'),
   /** Destino — dirección libre + coordenadas opcionales. */
   destinationAddress: text('destinationAddress'),
   destinationLat: doublePrecision('destinationLat'),
@@ -2442,16 +2523,33 @@ export const pickingTasks = pgTable('PickingTask', {
   pickedByUserId: text('pickedByUserId'),
   pickedAt: timestamp('pickedAt'),
   notes: text('notes'),
+  /** Falta ya corregida en el albarán. Con valor, la tarea no se puede cambiar. */
+  shortageQty: doublePrecision('shortageQty'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
 });
 
+/** Contadores de los códigos correlativos de logística, por prefijo y año. */
+export const logisticsCounters = pgTable('LogisticsCounter', {
+  key: text('key').primaryKey(),
+  value: integer('value').default(0).notNull(),
+});
+
 /** Eventos en el ciclo de vida del envío (cambios de estado, incidencias). */
+/** El PDF de la etiqueta del transportista, aparte: pesa demasiado para ir en cada listado. */
+export const shipmentCarrierLabels = pgTable('ShipmentCarrierLabel', {
+  shipmentId: text('shipmentId')
+    .primaryKey()
+    .references(() => shipments.id, { onDelete: 'cascade' }),
+  pdf: text('pdf').notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
 export const shipmentEvents = pgTable('ShipmentEvent', {
   id: text('id').primaryKey(),
   shipmentId: text('shipmentId')
     .notNull()
     .references(() => shipments.id, { onDelete: 'cascade' }),
-  /** `status_change|incident|note|photo` */
+  /** `status_change|incident|shortage|note|photo` */
   kind: text('kind').default('note').notNull(),
   status: text('status'),
   description: text('description'),
@@ -2550,6 +2648,24 @@ export const packages = pgTable('Package', {
   pickedByUserId: text('pickedByUserId'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
   sealedAt: timestamp('sealedAt'),
+  /** Cuándo subió a la furgoneta, si la empresa pide cargar antes de salir. */
+  loadedAt: timestamp('loadedAt'),
+});
+
+/** Problemas e ideas sobre la propia aplicación, no sobre el reparto. */
+export const appReports = pgTable('AppReport', {
+  id: text('id').primaryKey(),
+  userId: text('userId'),
+  userName: text('userName'),
+  /** `bug|idea|other` */
+  category: text('category').default('other').notNull(),
+  message: text('message').notNull(),
+  photo: text('photo'),
+  context: text('context'),
+  /** `open|resolved` */
+  status: text('status').default('open').notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  resolvedAt: timestamp('resolvedAt'),
 });
 
 export const packageLines = pgTable('PackageLine', {
@@ -2611,6 +2727,8 @@ export const routes = pgTable('Route', {
   completedAt: timestamp('completedAt'),
   notes: text('notes'),
   createdAt: timestamp('createdAt').defaultNow().notNull(),
+  /** Marcado al "borrar" una ruta con actividad: conserva sus pruebas de entrega. */
+  archivedAt: timestamp('archivedAt'),
 });
 
 export const routeStops = pgTable('RouteStop', {
@@ -2634,6 +2752,8 @@ export const routeStops = pgTable('RouteStop', {
   signatureImage: text('signatureImage'),
   photoImage: text('photoImage'),
   podNotes: text('podNotes'),
+  /** A quién o dónde se dejó: en mano, en portería, en un sitio seguro… */
+  handover: text('handover'),
 });
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -2682,6 +2802,9 @@ export const goodsReceipts = pgTable('GoodsReceipt', {
   type: text('type').default('internal').notNull(),
   /** draft | posted | cancelled */
   status: text('status').default('draft').notNull(),
+  /** Mig 099 — el albarán del que vuelve, si es una devolución de logística. */
+  sourceDocType: text('sourceDocType'),
+  sourceDocId: text('sourceDocId'),
   notes: text('notes'),
   postedAt: timestamp('postedAt'),
   createdByUserId: text('createdByUserId'),
@@ -2689,7 +2812,29 @@ export const goodsReceipts = pgTable('GoodsReceipt', {
   updatedAt: timestamp('updatedAt').defaultNow().notNull(),
 });
 
+/** Mig 093 — por qué cambió la media de cada artículo. */
+export const itemCostMovements = pgTable('ItemCostMovement', {
+  id: text('id').primaryKey(),
+  itemId: text('itemId')
+    .notNull()
+    .references(() => items.id),
+  kind: text('kind').notNull(),
+  quantity: decimal('quantity', { precision: 18, scale: 4 }).default('0').notNull(),
+  unitCost: decimal('unitCost', { precision: 18, scale: 6 }).default('0').notNull(),
+  stockBefore: decimal('stockBefore', { precision: 18, scale: 4 }).default('0').notNull(),
+  costBefore: decimal('costBefore', { precision: 18, scale: 6 }).default('0').notNull(),
+  costAfter: decimal('costAfter', { precision: 18, scale: 6 }).default('0').notNull(),
+  docType: text('docType'),
+  docId: text('docId'),
+  lineId: text('lineId'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
 export const goodsReceiptLines = pgTable('GoodsReceiptLine', {
+  /** Mig 093 — coste unitario en moneda base y unidad base, fijado al moverse. */
+  unitCost: decimal('unitCost', { precision: 18, scale: 6 }),
+  /** Mig 099 — la línea del albarán de la que vuelve. */
+  sourceLineId: text('sourceLineId'),
   id: text('id').primaryKey(),
   receiptId: text('receiptId')
     .notNull()
@@ -2777,6 +2922,8 @@ export const webhookSubscriptions = pgTable('WebhookSubscription', {
 });
 
 export const goodsIssueLines = pgTable('GoodsIssueLine', {
+  /** Mig 093 — coste unitario en moneda base y unidad base, fijado al moverse. */
+  unitCost: decimal('unitCost', { precision: 18, scale: 6 }),
   id: text('id').primaryKey(),
   issueId: text('issueId')
     .notNull()
@@ -2926,4 +3073,79 @@ export const dataImportMappings = pgTable('DataImportMapping', {
   matchBy: text('matchBy'),
   createdBy: text('createdBy'),
   createdAt: timestamp('createdAt').defaultNow(),
+});
+
+// --- RECLAMACIÓN DE IMPAGOS (mig 095) ---
+
+export const dunningLetters = pgTable('DunningLetter', {
+  id: text('id').primaryKey(),
+  partnerId: text('partnerId')
+    .notNull()
+    .references(() => businessPartners.id),
+  level: integer('level').notNull(),
+  // 'sending', 'sent' o 'failed'. Solo las enviadas suben de nivel.
+  status: text('status').default('sending').notNull(),
+  toAddress: text('toAddress').notNull(),
+  subject: text('subject').notNull(),
+  html: text('html').notNull(),
+  total: decimal('total', { precision: 15, scale: 2 }).default('0').notNull(),
+  auto: boolean('auto').default(false).notNull(),
+  error: text('error'),
+  createdBy: text('createdBy'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  sentAt: timestamp('sentAt'),
+});
+
+export const dunningLetterLines = pgTable('DunningLetterLine', {
+  id: text('id').primaryKey(),
+  letterId: text('letterId')
+    .notNull()
+    .references(() => dunningLetters.id, { onDelete: 'cascade' }),
+  invoiceId: text('invoiceId')
+    .notNull()
+    .references(() => salesInvoices.id),
+  level: integer('level').notNull(),
+  amount: decimal('amount', { precision: 15, scale: 2 }).default('0').notNull(),
+  dueDate: date('dueDate'),
+  daysOverdue: integer('daysOverdue').default(0).notNull(),
+});
+
+// --- FACTURAS RECURRENTES (mig 095) ---
+
+export const recurringDocuments = pgTable('RecurringDocument', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  docType: text('docType').default('SINV').notNull(),
+  partnerId: text('partnerId')
+    .notNull()
+    .references(() => businessPartners.id),
+  seriesId: text('seriesId'),
+  warehouseId: text('warehouseId'),
+  header: jsonb('header').default({}).notNull(),
+  lines: jsonb('lines').default([]).notNull(),
+  frequency: text('frequency').notNull(),
+  startDate: date('startDate').notNull(),
+  nextDate: date('nextDate'),
+  endDate: date('endDate'),
+  // 'active', 'paused' o 'finished'.
+  status: text('status').default('active').notNull(),
+  autoPost: boolean('autoPost').default(false).notNull(),
+  autoSend: boolean('autoSend').default(false).notNull(),
+  lastError: text('lastError'),
+  lastErrorAt: timestamp('lastErrorAt'),
+  createdBy: text('createdBy'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const recurringDocumentRuns = pgTable('RecurringDocumentRun', {
+  id: text('id').primaryKey(),
+  recurringId: text('recurringId')
+    .notNull()
+    .references(() => recurringDocuments.id, { onDelete: 'cascade' }),
+  periodDate: date('periodDate').notNull(),
+  documentId: text('documentId').notNull(),
+  docNum: integer('docNum'),
+  // Lo que no salió bien después de crearla: emitirla o enviarla.
+  note: text('note'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
 });

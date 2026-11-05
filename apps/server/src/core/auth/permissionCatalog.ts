@@ -37,6 +37,12 @@ export interface PermissionEntry {
 export const PERMISSION_CATALOG: PermissionEntry[] = [
   // ── Catálogos ─────────────────────────────────────────────────────────────
   { path: '/items', label: 'Artículos', group: 'Catálogos' },
+  {
+    path: '/item-costs',
+    label: 'Costes de artículos',
+    group: 'Catálogos',
+    hint: 'Ver el coste medio y los márgenes; con escritura, poner coste en una entrada manual.',
+  },
   { path: '/categories', label: 'Categorías', group: 'Catálogos' },
   { path: '/uom', label: 'Unidades de medida', group: 'Catálogos' },
   { path: '/taxes', label: 'Impuestos', group: 'Catálogos' },
@@ -60,6 +66,12 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   // ── Terceros ──────────────────────────────────────────────────────────────
   { path: '/partners', label: 'Interlocutores', group: 'Terceros' },
   { path: '/partner-groups', label: 'Grupos de interlocutores', group: 'Terceros' },
+  {
+    path: '/credit-override',
+    label: 'Superar el límite de crédito',
+    group: 'Terceros',
+    hint: 'Seguir adelante con un documento que el límite de crédito bloquea, y cambiar el límite de un interlocutor.',
+  },
 
   // ── CRM ───────────────────────────────────────────────────────────────────
   {
@@ -89,6 +101,24 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   { path: '/sales-orders', label: 'Pedidos de venta', group: 'Ventas' },
   { path: '/sales/delivery-notes', label: 'Albaranes de venta', group: 'Ventas' },
   { path: '/sales/invoices', label: 'Facturas de venta', group: 'Ventas' },
+  {
+    path: '/sales/dunning',
+    label: 'Reclamación de impagos',
+    group: 'Ventas',
+    hint: 'Ver lo vencido por cliente y, con escritura, enviar reclamaciones.',
+  },
+  {
+    path: '/sales/recurring',
+    label: 'Facturas recurrentes',
+    group: 'Ventas',
+    hint: 'Las facturas que se repiten solas cada cierto tiempo.',
+  },
+  {
+    path: '/sales/settings',
+    label: 'Ajustes de ventas',
+    group: 'Ventas',
+    hint: 'Si el límite de crédito avisa o bloquea, y los niveles de reclamación de impagos.',
+  },
 
   // ── Compras ───────────────────────────────────────────────────────────────
   { path: '/purchase-orders', label: 'Pedidos de compra', group: 'Compras' },
@@ -280,6 +310,12 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
     label: 'Centro logístico',
     group: 'Logística',
     hint: 'Envíos, rutas y seguimiento — es una sola pantalla con pestañas.',
+  },
+  {
+    path: '/driver',
+    label: 'App del conductor',
+    group: 'Logística',
+    hint: 'Solo sus rutas: ver, salir, entregar y aplazar. Nada del centro logístico.',
   },
   { path: '/settings/carriers', label: 'Transportistas', group: 'Logística' },
   { path: '/logistics/zones', label: 'Zonas de almacén', group: 'Logística' },

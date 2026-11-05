@@ -16,6 +16,7 @@ import { ResponsiveActions } from '@/components/common/ResponsiveActions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import {
+  Alert,
   Table,
   Card,
   Button,
@@ -36,7 +37,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
 import { useTheme } from '@/context/ThemeContext';
 import { formatDocCode } from '@/utils/docCode';
-import { FileDigit, Plus, Copy, AlertCircle, Download, Eye, Ban } from 'lucide-react';
+import { FileDigit, Plus, Copy, AlertCircle, Eye, Ban, FileText } from 'lucide-react';
 import { DocumentActionBar } from '../components/DocumentActionBar';
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
 import { MobileLineCards } from '../components/MobileLineCards';
@@ -51,7 +52,7 @@ import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderC
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import { buildDetailLineColumns, statusBadgeProps } from '../components/documentLineCells';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
-import { downloadPdf } from '@/utils/downloadPdf';
+import { openPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
 import { BatchSelectionModal } from '@/modules/inventory/components/BatchSelectionModal';
 import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssignmentPanel';
@@ -59,7 +60,11 @@ import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssign
 import { useZonesWithStock } from '@/hooks/useZonesWithStock';
 
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
-import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDocument } from '../hooks/useDocument';
+import { useCreditSubmit } from '../hooks/useCreditLimit';
+import { newExposure } from '../domain/sales';
+import { PartnerCreditNotice } from '../components/documents/PartnerCreditNotice';
 import { useDocumentScanner } from '@/hooks/useDocumentScanner';
 import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
 import { docsApi } from '../api';
@@ -98,7 +103,7 @@ const SOList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`/api/sales/${id}/pdf`);
+      await openPdf(`/api/sales/${id}/pdf`);
     } catch (e) {
       toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
@@ -203,7 +208,7 @@ const SOList: React.FC<{
       { label: t('doc.salesOrders.view'), icon: <Eye size={14} />, onClick: () => onDetail(item) },
       {
         label: t('doc.actions.downloadPdf'),
-        icon: <Download size={14} />,
+        icon: <FileText size={14} />,
         onClick: () => handleQuickPdf(item.id),
       },
       ...(canBeDelivered
@@ -239,14 +244,7 @@ const SOList: React.FC<{
         icon={<FileDigit size={18} />}
         title={t('doc.salesOrders.title')}
         subtitle={t('doc.salesOrders.subtitle')}
-        toolbar={
-          doc.state.mastersError && (
-            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg text-amber-700 dark:text-amber-200 text-xs font-bold animate-in slide-in-from-top">
-              <AlertCircle size={16} />
-              {doc.state.mastersError}
-            </div>
-          )
-        }
+        toolbar={doc.state.mastersError && <Alert tone="warning">{doc.state.mastersError}</Alert>}
         actions={
           <div className="flex items-center gap-3">
             {doc.state.canWrite && onCreateFromClone && (
@@ -373,7 +371,7 @@ const SOForm: React.FC<{
   const zonesWithStock = useZonesWithStock();
   // Al elegir el interlocutor se rellenan sus direcciones por defecto.
   const handlePartnerChange = (id: string) => {
-    setState.setPartnerId(id);
+    actions.selectPartner(id);
     const addr = defaultAddresses(masters.partners.find((x: any) => x.id === id));
     if (addr) {
       extraState.setBillToAddress(addr.bill);
@@ -470,7 +468,7 @@ const SOForm: React.FC<{
                     label={t('doc.salesOrders.date')}
                     required
                     value={state.date}
-                    onChange={(v) => setState.setDate(v ?? '')}
+                    onChange={(v) => actions.selectDate(v ?? '')}
                   />
                   <DatePicker
                     label={t('doc.salesOrders.expectedDelivery')}
@@ -481,6 +479,12 @@ const SOForm: React.FC<{
                     value={extraState.internalOrderId}
                     onChange={extraState.setInternalOrderId}
                   />
+                  <div className="sm:col-span-2 empty:hidden">
+                    <PartnerCreditNotice
+                      partnerId={state.partnerId}
+                      amount={newExposure(state.lines, computations.total)}
+                    />
+                  </div>
                 </FormGrid>
               }
               side={
@@ -569,6 +573,8 @@ const SODetail: React.FC<{
       onBack={onBack}
       breadcrumb={t('doc.salesOrders.breadcrumb')}
       title={formatDocCode(order)}
+      cancelledAt={order.cancelledAt}
+      cancelReason={order.cancelReason}
       status={statusBadgeProps(order.status, DocKind.Order)}
       actions={
         <DocumentActionBar
@@ -844,15 +850,24 @@ export const SalesOrders: React.FC = () => {
     })();
   }, [isDetail, detailId, token, user?.tenantId, dataVersion]);
 
+  const creditSubmit = useCreditSubmit();
+
   const handleSubmit = async (e: any) => {
     try {
-      const data = await doc.actions.submitDocument({
-        deliveryDate,
-        billToAddress,
-        shipToAddress,
-        internalOrderId,
-        ...(quoteId ? { quoteId } : {}),
-      });
+      const data = await creditSubmit(
+        doc.state.partnerId,
+        newExposure(doc.state.lines, doc.computations.total),
+        (credit) =>
+          doc.actions.submitDocument({
+            deliveryDate,
+            billToAddress,
+            shipToAddress,
+            internalOrderId,
+            ...(quoteId ? { quoteId } : {}),
+            ...credit,
+          }),
+      );
+      if (!data) return;
       toast.success(t('doc.salesOrders.created', { num: data.docNum }));
       notifyDocChange(DocType.SalesOrder);
       currentTab.close();

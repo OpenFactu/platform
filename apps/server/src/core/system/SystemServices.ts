@@ -11,6 +11,7 @@ import path from 'path';
 import { spawnSync } from 'child_process';
 import { sql } from 'drizzle-orm';
 import { ClientFactory } from '../tenant/ClientFactory';
+import { PluginTranslations } from '../plugins/PluginTranslations';
 import { activePlugins, activePluginManifests } from '../../plugins/loader';
 
 export interface PluginInfo {
@@ -25,7 +26,7 @@ export function collectPlugins(): PluginInfo[] {
   for (const m of activePluginManifests) {
     byId.set(m.id, {
       id: m.id,
-      name: m.name || m.id,
+      name: m.name ? PluginTranslations.textOf(m.id, 'es', m.name) : m.id,
       version: m.version,
       loaded: activePlugins.includes(m.id),
     });

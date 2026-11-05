@@ -1,8 +1,9 @@
+import { useGoBack } from '@/hooks/useGoBack';
+import { PageBack } from '@/components/common/PageBack';
 import React, { useEffect, useState } from 'react';
 import { Card, Button, DatePicker, PageHeader, Table } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, RefreshCw, Receipt } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
@@ -12,7 +13,7 @@ export const ReportTaxSummary: React.FC = () => {
   const { user } = useAuth();
   const { t } = useI18n();
   const fmt = useFormat();
-  const navigate = useNavigate();
+  const goBack = useGoBack();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [data, setData] = useState<{ output: any[]; input: any[] } | null>(null);
@@ -38,7 +39,7 @@ export const ReportTaxSummary: React.FC = () => {
     const qs = new URLSearchParams();
     if (from) qs.append('from', from);
     if (to) qs.append('to', to);
-    await reportsApi.downloadPdf(`/api/reports/tax-summary/pdf?${qs.toString()}`, `impuestos.pdf`);
+    await reportsApi.openPdf(`/api/reports/tax-summary/pdf?${qs.toString()}`, `impuestos.pdf`);
   };
 
   const sum = (arr: any[], k: string) =>
@@ -120,9 +121,11 @@ export const ReportTaxSummary: React.FC = () => {
         icon={<Receipt size={18} />}
         size="md"
         breadcrumbs={
-          <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
-          </Button>
+          <PageBack onBack={goBack}>
+            <Button type="button" variant="ghost" size="sm" onClick={goBack}>
+              <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
+            </Button>
+          </PageBack>
         }
         actions={
           <div className="flex items-center gap-2">

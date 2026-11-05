@@ -15,6 +15,7 @@ export interface ItemFormValues {
   name: string;
   uomId: string;
   categoryId: string;
+  taxGroupId: string;
   // Numéricos puros: antes eran string porque venían de `e.target.value` de un
   // <input type="number">; con CurrencyInput/NumberInput el valor ya llega
   // numérico y `null` representa el campo vacío.
@@ -42,6 +43,7 @@ export function emptyItemForm(): ItemFormValues {
     name: '',
     uomId: '',
     categoryId: '',
+    taxGroupId: '',
     basePrice: 0,
     manageBy: 'N',
     kind: 'product',
@@ -67,7 +69,7 @@ const num = (v: unknown): number | null => {
 };
 
 /** Pre-rellena el formulario desde un item de la API (edición/duplicado). */
-export function itemToForm(item: any): ItemFormValues {
+export function itemToForm(item: Partial<Item>): ItemFormValues {
   const customValues: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(item ?? {})) {
     if (k.startsWith('p_')) customValues[k] = v;
@@ -78,6 +80,7 @@ export function itemToForm(item: any): ItemFormValues {
     name: item.name || '',
     uomId: item.uomId || '',
     categoryId: item.categoryId || '',
+    taxGroupId: item.taxGroupId || '',
     basePrice: Number(item.basePrice) || 0,
     manageBy: item.manageBy || 'N',
     kind: item.kind === 'box' ? 'box' : 'product',
@@ -103,6 +106,7 @@ export function buildItemPayload(v: ItemFormValues): Record<string, unknown> {
     name: v.name,
     uomId: v.uomId,
     categoryId: v.categoryId || null,
+    taxGroupId: v.taxGroupId || null,
     basePrice: v.basePrice || 0,
     manageBy: v.manageBy,
     kind: v.kind,
@@ -120,7 +124,7 @@ export function buildItemPayload(v: ItemFormValues): Record<string, unknown> {
   };
 }
 
-export function useItemForm(initialItem?: any | null) {
+export function useItemForm(initialItem?: Partial<Item> | null) {
   const [values, setValues] = useState<ItemFormValues>(() =>
     initialItem ? itemToForm(initialItem) : emptyItemForm(),
   );
@@ -132,7 +136,8 @@ export function useItemForm(initialItem?: any | null) {
   const setCustom = (key: string, value: unknown) =>
     setValues((v) => ({ ...v, customValues: { ...v.customValues, [key]: value } }));
 
-  const reset = (item?: any | null) => setValues(item ? itemToForm(item) : emptyItemForm());
+  const reset = (item?: Partial<Item> | null) =>
+    setValues(item ? itemToForm(item) : emptyItemForm());
 
   /** Crea (sin id) o actualiza (con id). Lanza ApiError si el backend falla. */
   const submit = async (existingId?: string): Promise<Item> => {

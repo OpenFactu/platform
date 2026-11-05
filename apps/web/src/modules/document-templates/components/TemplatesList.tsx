@@ -1,36 +1,54 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Table, Card, Button, Badge, Loader, PageHeader, useToast } from '@openfactu/ui';
-import type { RowAction } from '@openfactu/ui';
+import React, { useMemo, useState } from 'react';
 import {
-  FileCode,
-  Plus,
-  Trash2,
-  Copy,
-  Star,
+  Badge,
+  Button,
+  Card,
+  DropdownMenu,
+  EmptyState,
+  List,
+  Loader,
+  PageHeader,
+  SearchInput,
+  usePopup,
+  useToast,
+  type ListSectionData,
+} from '@openfactu/ui';
+import {
   AlertCircle,
-  RefreshCw,
+  Copy,
+  FileCode,
   FileDown,
+  FileText,
+  MoreHorizontal,
+  Palette,
   Pencil,
+  Plus,
+  RefreshCw,
   Sparkles,
+  Star,
+  Trash2,
 } from 'lucide-react';
+import { getCachedDocType } from '@/modules/documents/domain/docTypeRegistry';
+import { useI18n } from '@/i18n/I18nContext';
+import { formatDateTime } from '@/i18n/format';
+import { templatesApi } from '../api';
 import {
-  DOC_TYPE_LABELS,
   getDocTypeLabel,
-  getDocTypeColor,
+  isUserDocType,
   useDocTypeOptions,
   type DocType,
   type TemplateRow,
 } from './constants';
-import { useAuth } from '@/context/AuthContext';
-import { templatesApi } from '../api';
-import { useI18n } from '@/i18n/I18nContext';
-import { formatDateTime } from '@/i18n/format';
+import { useTemplatePreviewPdf } from './useTemplatePreviewPdf';
 
 interface Props {
   data: TemplateRow[];
   loading: boolean;
-  onCreate: () => void;
+  onCreate: (docType: DocType) => void;
+  /** Abre el editor que le corresponde a esa plantilla. */
   onEdit: (t: TemplateRow) => void;
+  /** Abre el lienzo, aunque la plantilla no se haya hecho en él. */
+  onDesign: (t: TemplateRow) => void;
   onSetDefault: (t: TemplateRow) => Promise<void>;
   onDuplicate: (t: TemplateRow) => Promise<void>;
   onDelete: (t: TemplateRow) => Promise<void>;
@@ -40,11 +58,18 @@ interface Props {
   onReload?: () => void;
 }
 
+const isFreeType = (docType: string) => docType === 'FREE' || docType === 'LABEL';
+
+/**
+ * Plantillas por tipo de documento: se elige el tipo, se elige la plantilla y a la
+ * derecha se ve cómo queda, con lo que se puede hacer con ella a la vista.
+ */
 export const TemplatesList: React.FC<Props> = ({
   data,
   loading,
   onCreate,
   onEdit,
+  onDesign,
   onSetDefault,
   onDuplicate,
   onDelete,
@@ -52,228 +77,296 @@ export const TemplatesList: React.FC<Props> = ({
   onAiGenerate,
   onReload,
 }) => {
-  const { token, user } = useAuth();
   const toast = useToast();
+  const popup = usePopup();
   const { t } = useI18n();
-  const [resyncing, setResyncing] = useState(false);
-  const [selectedType, setSelectedType] = useState<DocType | null>(null);
+  const [chosenType, setChosenType] = useState<DocType | null>(null);
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
-  // Tipos desde el registry del servidor (+FREE/LABEL); fallback a los 8
-  // estáticos mientras carga.
-  const DOC_TYPES = useDocTypeOptions().map((o) => o.value);
+  const docTypes = useDocTypeOptions();
 
   const handleResyncDefaults = async () => {
-    if (!confirm(t('templates.list.resyncConfirm'))) return;
-    setResyncing(true);
+    const ok = await popup.confirm({
+      title: t('templates.list.resync'),
+      message: t('templates.list.resyncConfirm'),
+      confirmLabel: t('templates.list.resync'),
+    });
+    if (!ok) return;
     try {
       const body: any = await templatesApi.resyncDefaults();
       toast.success(t('templates.list.resyncDone', { count: body.count }));
       onReload?.();
     } catch (e) {
       toast.error((e instanceof Error ? e.message : undefined) || t('templates.list.resyncError'));
-    } finally {
-      setResyncing(false);
     }
   };
 
   const grouped = useMemo(() => {
     const map: Record<string, TemplateRow[]> = {};
-    for (const row of data) {
-      if (!map[row.docType]) map[row.docType] = [];
-      map[row.docType].push(row);
-    }
+    for (const row of data) (map[row.docType] ??= []).push(row);
     return map;
   }, [data]);
 
-  // Selecciona por defecto el primer tipo que tenga plantillas.
-  useEffect(() => {
-    if (selectedType && (grouped[selectedType]?.length ?? 0) >= 0) return;
-    const firstWith = DOC_TYPES.find((t) => (grouped[t]?.length ?? 0) > 0) ?? DOC_TYPES[0];
-    setSelectedType((prev) => prev ?? firstWith);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grouped]);
+  // Por defecto, el primer tipo que tenga plantillas.
+  const selectedType =
+    chosenType ??
+    docTypes.find((option) => (grouped[option.value]?.length ?? 0) > 0)?.value ??
+    docTypes[0]?.value ??
+    null;
 
-  const rows = selectedType ? grouped[selectedType] || [] : [];
+  const query = search.trim().toLowerCase();
+  const rows = query
+    ? data.filter(
+        (row) =>
+          row.name.toLowerCase().includes(query) ||
+          getDocTypeLabel(row.docType).toLowerCase().includes(query),
+      )
+    : selectedType
+      ? (grouped[selectedType] ?? [])
+      : [];
 
-  const columns = [
-    {
-      header: t('templates.list.colName'),
-      accessor: (item: TemplateRow) => (
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-fg-default">{item.name}</span>
-          {item.isDefault && (
-            <Badge variant="success" className="text-[9px] font-black uppercase">
-              {t('templates.list.defaultBadge')}
-            </Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      header: t('templates.list.colUpdated'),
-      accessor: (item: TemplateRow) => (item.updatedAt ? formatDateTime(item.updatedAt) : '—'),
-    },
-  ];
+  // La plantilla que se enseña: la elegida o, si no sigue en la lista, la predeterminada.
+  const selected =
+    rows.find((row) => row.id === chosenId) ?? rows.find((row) => row.isDefault) ?? rows[0] ?? null;
 
-  // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
-  // del hover y en el menú de click derecho, así que los condicionales de cada
-  // acción se declaran una vez en lugar de duplicarse entre una columna de
-  // botones y el menú.
-  const rowActions = (item: TemplateRow): RowAction[] => [
-    { label: t('templates.list.edit'), icon: <Pencil size={14} />, onClick: () => onEdit(item) },
-    ...(onGenerate && (item.docType === 'FREE' || item.docType === 'LABEL')
+  const { url: previewUrl, loading: previewLoading, failed } = useTemplatePreviewPdf(selected);
+
+  const typeSections = useMemo<ListSectionData[]>(() => {
+    const groups: Record<string, DocType[]> = { sales: [], purchase: [], own: [], other: [] };
+    for (const { value } of docTypes) {
+      if (isUserDocType(value)) groups.own.push(value);
+      else if (isFreeType(value)) groups.other.push(value);
+      else groups[getCachedDocType(value)?.side === 'purchase' ? 'purchase' : 'sales'].push(value);
+    }
+    return Object.entries(groups)
+      .filter(([, list]) => list.length > 0)
+      .map(([key, list]) => ({
+        key,
+        label: t(`templates.list.groups.${key}`),
+        items: list.map((docType) => ({
+          id: docType,
+          title: getDocTypeLabel(docType),
+          badge: <Badge variant="neutral">{grouped[docType]?.length ?? 0}</Badge>,
+          onClick: () => {
+            setSearch('');
+            setChosenType(docType);
+            setChosenId(null);
+          },
+        })),
+      }));
+  }, [docTypes, grouped, t]);
+
+  const editorLabel = (row: TemplateRow) => t(`templates.list.editors.${row.editor ?? 'visual'}`);
+
+  const moreActions = (row: TemplateRow) => [
+    ...(row.editor !== 'designer'
+      ? [
+          {
+            label: t('templates.list.design'),
+            icon: <Palette size={14} />,
+            onClick: () => onDesign(row),
+          },
+        ]
+      : []),
+    ...(onGenerate && isFreeType(row.docType)
       ? [
           {
             label: t('templates.list.generateDocument'),
             icon: <FileDown size={14} />,
-            onClick: () => onGenerate(item),
-          },
-        ]
-      : []),
-    ...(!item.isDefault
-      ? [
-          {
-            label: t('templates.list.setDefault'),
-            icon: <Star size={14} />,
-            onClick: () => onSetDefault(item),
+            onClick: () => onGenerate(row),
           },
         ]
       : []),
     {
       label: t('templates.list.duplicate'),
       icon: <Copy size={14} />,
-      onClick: () => onDuplicate(item),
+      onClick: () => void onDuplicate(row),
     },
     {
       label: t('templates.list.delete'),
       icon: <Trash2 size={14} />,
       destructive: true,
-      onClick: () => onDelete(item),
       separatorBefore: true,
+      onClick: () => void onDelete(row),
     },
   ];
 
   return (
-    <div className="p-4 space-y-6 animate-in fade-in duration-500">
+    <div className="p-4 space-y-4 animate-in fade-in duration-300">
       <PageHeader
         title={t('templates.list.title')}
         subtitle={t('templates.list.subtitle')}
         icon={<FileCode size={18} />}
-        size="lg"
+        size="sm"
         divider
         actions={
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              type="button"
-              onClick={handleResyncDefaults}
-              disabled={resyncing}
-              variant="outline"
-              className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
-              title={t('templates.list.resyncTooltip')}
+          <div className="flex items-center gap-2 flex-wrap">
+            <DropdownMenu
+              align="end"
+              aria-label={t('templates.list.more')}
+              items={[
+                {
+                  label: t('templates.list.resync'),
+                  icon: <RefreshCw size={14} />,
+                  onClick: () => void handleResyncDefaults(),
+                },
+              ]}
             >
-              <RefreshCw size={16} className={resyncing ? 'animate-spin' : ''} />
-              {resyncing ? t('templates.list.resyncing') : t('templates.list.resync')}
-            </Button>
+              <Button type="button" variant="ghost" aria-label={t('templates.list.more')}>
+                <MoreHorizontal size={16} />
+              </Button>
+            </DropdownMenu>
             {onAiGenerate && (
               <Button
                 type="button"
-                onClick={onAiGenerate}
-                variant="outline"
-                className="flex items-center gap-2 h-12 px-5 border-accent/40 text-accent hover:bg-accent/5"
+                variant="secondary"
+                className="gap-2"
                 title={t('templates.list.aiTooltip')}
+                onClick={onAiGenerate}
               >
-                <Sparkles size={16} /> {t('templates.list.aiGenerate')}
+                <Sparkles size={14} /> {t('templates.list.aiGenerate')}
               </Button>
             )}
-            <Button type="button" onClick={onCreate} className="flex items-center gap-2 h-12 px-6">
-              <Plus size={18} /> {t('templates.list.newTemplate')}
+            <Button
+              type="button"
+              className="gap-2"
+              onClick={() => onCreate(selectedType ?? ('SINV' as DocType))}
+            >
+              <Plus size={14} /> {t('templates.list.newTemplate')}
             </Button>
           </div>
         }
       />
 
-      {loading && <Loader />}
-
-      {!loading && (
-        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 items-start">
-          {/* Panel izquierdo: tipos */}
-          <Card noPadding className="overflow-hidden border-border-subtle">
-            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-border-subtle">
-              {t('templates.list.docTypeHeader')}
-            </div>
-            <ul>
-              {DOC_TYPES.map((docType) => {
-                const count = grouped[docType]?.length ?? 0;
-                const active = selectedType === docType;
-                return (
-                  <li key={docType}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedType(docType)}
-                      className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left border-l-2 transition-colors ${
-                        active
-                          ? 'border-accent bg-accent/5'
-                          : 'border-transparent hover:bg-bg-hover'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2 min-w-0">
-                        <span
-                          className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${getDocTypeColor(docType)}`}
-                        >
-                          {docType}
-                        </span>
-                        <span
-                          className={`text-sm truncate ${active ? 'font-bold text-fg-default' : 'text-fg-body'}`}
-                        >
-                          {getDocTypeLabel(docType)}
-                        </span>
-                      </span>
-                      <span
-                        className={`text-[10px] font-bold shrink-0 ${count > 0 ? 'text-slate-500' : 'text-fg-subtle'}`}
-                      >
-                        {count}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+      {loading ? (
+        <div className="py-20 flex justify-center">
+          <Loader />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-[230px_300px_1fr] gap-4 items-start">
+          <Card noPadding>
+            <List
+              sections={typeSections}
+              activeId={query ? null : selectedType}
+              density="compact"
+              staggerAnimation={false}
+              aria-label={t('templates.list.docTypeHeader')}
+            />
           </Card>
 
-          {/* Panel derecho: plantillas del tipo seleccionado */}
-          <Card
-            noPadding
-            className="overflow-hidden shadow-lg dark:bg-transparent border-border-subtle"
-          >
-            {selectedType && (
-              <div
-                className={`px-6 py-3 border-b flex items-center justify-between ${getDocTypeColor(selectedType)}`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest">
-                    {selectedType}
-                  </span>
-                  <span className="font-bold text-sm">{getDocTypeLabel(selectedType)}</span>
-                </div>
-                <span className="text-[10px] font-bold opacity-70">
-                  {t('templates.list.templateCount', { count: rows.length })}
-                </span>
-              </div>
-            )}
+          <Card noPadding>
+            <div className="p-3 border-b border-border-subtle">
+              <SearchInput
+                value={search}
+                onChange={setSearch}
+                placeholder={t('templates.list.search')}
+                clearable
+                inputSize="sm"
+              />
+            </div>
             {rows.length === 0 ? (
-              <div className="p-10 text-center text-fg-subtle text-sm italic flex items-center justify-center gap-2">
-                <AlertCircle size={14} /> {t('templates.list.emptyForType')}
-              </div>
+              <EmptyState
+                variant="compact"
+                icon={<AlertCircle size={16} />}
+                title={query ? t('templates.list.noMatches') : t('templates.list.emptyForType')}
+                action={
+                  query || !selectedType ? undefined : (
+                    <Button size="sm" className="gap-1" onClick={() => onCreate(selectedType)}>
+                      <Plus size={12} /> {t('templates.list.newTemplate')}
+                    </Button>
+                  )
+                }
+              />
             ) : (
-              <Table
-                className="max-md:p-3"
-                columns={columns}
-                data={rows}
-                rowActions={rowActions}
-                onRowClick={onEdit}
+              <List
+                activeId={selected?.id}
+                density="compact"
+                staggerAnimation={false}
+                aria-label={t('templates.list.colName')}
+                items={rows.map((row) => ({
+                  id: row.id,
+                  icon: <FileText size={15} />,
+                  title: row.name,
+                  subtitle: query
+                    ? getDocTypeLabel(row.docType)
+                    : `${editorLabel(row)}${row.updatedAt ? ` · ${formatDateTime(row.updatedAt)}` : ''}`,
+                  content: (row.isDefault || row.isFactoryDefault) && (
+                    <span className="flex items-center gap-1 pt-1">
+                      {row.isDefault && (
+                        <Badge variant="success">{t('templates.list.defaultBadge')}</Badge>
+                      )}
+                      {row.isFactoryDefault && (
+                        <Badge variant="neutral">{t('templates.list.factoryBadge')}</Badge>
+                      )}
+                    </span>
+                  ),
+                  onClick: () => setChosenId(row.id),
+                }))}
               />
             )}
           </Card>
+
+          {selected ? (
+            <Card
+              noPadding
+              title={selected.name}
+              subtitle={`${getDocTypeLabel(selected.docType)} · ${editorLabel(selected)}`}
+              headerAction={
+                <div className="flex items-center gap-2">
+                  {!selected.isDefault && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => void onSetDefault(selected)}
+                    >
+                      <Star size={14} /> {t('templates.list.setDefault')}
+                    </Button>
+                  )}
+                  <Button size="sm" className="gap-2" onClick={() => onEdit(selected)}>
+                    <Pencil size={14} /> {t('templates.list.edit')}
+                  </Button>
+                  <DropdownMenu
+                    align="end"
+                    aria-label={t('templates.list.more')}
+                    items={moreActions(selected)}
+                  >
+                    <Button variant="ghost" size="sm" aria-label={t('templates.list.more')}>
+                      <MoreHorizontal size={16} />
+                    </Button>
+                  </DropdownMenu>
+                </div>
+              }
+            >
+              <div className="h-[calc(100vh-300px)] min-h-[420px] bg-bg-muted flex items-center justify-center">
+                {previewUrl ? (
+                  <iframe
+                    src={`${previewUrl}#navpanes=0`}
+                    title={selected.name}
+                    className="w-full h-full border-0"
+                  />
+                ) : previewLoading ? (
+                  <Loader label={t('templates.preview.generating')} />
+                ) : (
+                  failed && (
+                    <EmptyState
+                      variant="compact"
+                      icon={<AlertCircle size={16} />}
+                      title={t('templates.list.previewFailed')}
+                    />
+                  )
+                )}
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <EmptyState
+                icon={<FileCode size={18} />}
+                title={t('templates.list.nothingSelected')}
+              />
+            </Card>
+          )}
         </div>
       )}
     </div>

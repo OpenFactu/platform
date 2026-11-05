@@ -1,9 +1,12 @@
+import { effectiveRefObject } from '../core/customFields/linkableObjects';
 import { Router } from 'express';
 import multer from 'multer';
 import AdmZip from 'adm-zip';
 import { MigrationEngine } from '../core/plugins/MigrationEngine';
 import { TenantPluginCache } from '../core/plugins/TenantPluginCache';
 import { PluginLifecycle } from '../core/plugins/PluginLifecycle';
+import { PluginTranslations } from '../core/plugins/PluginTranslations';
+import { getRequestLocale } from '../i18n';
 import { LocalizationInstaller } from '../core/localization/LocalizationInstaller';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import * as schema from '../db/schema';
@@ -42,8 +45,14 @@ router.get('/available', (req: any, res) => {
   // Plugins con manifest UI cargado:
   for (const m of activePluginManifests) {
     const loaded = loadedById.has(m.id);
+    // Con su propio catálogo: un plugin sin activar también se ve en su idioma.
+    const locale = getRequestLocale(req);
     result.push({
       ...m,
+      name: m.name ? PluginTranslations.textOf(m.id, locale, m.name) : m.name,
+      description: m.description
+        ? PluginTranslations.textOf(m.id, locale, m.description)
+        : m.description,
       isActive: activeForTenant.includes(m.id),
       loaded,
       ...(loaded
@@ -183,7 +192,11 @@ router.get('/fields/:tableName?', async (req: any, res) => {
     });
   }
 
-  res.json(fields);
+  res.json(
+    fields.map((f: any) =>
+      f.fieldType === 'REFERENCE' ? { ...f, refObject: effectiveRefObject(f) } : f,
+    ),
+  );
 });
 
 // ── Endpoints con :pluginId ──
@@ -482,7 +495,7 @@ router.get('/sdk/*', (req, res) => {
       'Button, Card, Table, Badge, Input, NavItem, Loader, Toast, ToastProvider, useToast',
     'react-router-dom': 'Link, useNavigate, useParams, useLocation, NavLink, Outlet',
     '@openfactu/common': 'useDocument, useDataTable',
-    '@openfactu/widget-api': 'get',
+    '@openfactu/widget-api': 'get, t, useTranslation',
   };
 
   const namedExports = namedExportsMap[pkg] || '';

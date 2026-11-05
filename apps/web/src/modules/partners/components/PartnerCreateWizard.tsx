@@ -1,9 +1,11 @@
+import { PageBack } from '@/components/common/PageBack';
 import { useI18n } from '@/i18n/I18nContext';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Button, Card, DescriptionList, PageHeader, Stepper } from '@openfactu/ui';
 import { ArrowLeft, ArrowRight, Plus, UserPlus } from 'lucide-react';
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
+import { useTaxGroupOptions } from '@/hooks/useTaxGroupOptions';
 import type { PartnerForm } from '../hooks/usePartnerForm';
 import {
   PARTNER_WIZARD_STEPS,
@@ -29,6 +31,7 @@ interface Props {
 const Review: React.FC<{ form: PartnerForm; wizard: PartnerWizard }> = ({ form, wizard }) => {
   const { t } = useI18n();
   const { data, addresses, lookups } = form;
+  const taxGroupOptions = useTaxGroupOptions();
   const nameOf = (rows: Array<{ id: string; name: string }>, id: string) =>
     rows.find((r) => r.id === id)?.name ?? null;
   const billing = addresses.filter((a) => a.type === 'B').length;
@@ -92,6 +95,11 @@ const Review: React.FC<{ form: PartnerForm; wizard: PartnerWizard }> = ({ form, 
           label: t('partners.fields.paymentTerm'),
           value: nameOf(lookups.paymentTerms, data.defaultPaymentTermId),
         },
+        {
+          key: 'tax',
+          label: t('partners.fields.defaultTax'),
+          value: taxGroupOptions.find((o) => o.value === data.defaultTaxGroupId)?.label ?? null,
+        },
         { key: 'iban', label: 'IBAN', value: data.iban || null, mono: true },
       ]}
     />
@@ -131,16 +139,18 @@ export const PartnerCreateWizard: React.FC<Props> = ({ form, onCreate, onCancel 
       <PageHeader
         size="md"
         breadcrumbs={
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onCancel}
-            // En móvil ya está la flecha de volver de la barra superior.
-            className="w-fit gap-1 max-md:hidden"
-          >
-            <ArrowLeft size={12} /> {t('partners.nav.label')}
-          </Button>
+          <PageBack onBack={onCancel}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onCancel}
+              // En móvil ya está la flecha de volver de la barra superior.
+              className="w-fit gap-1 max-md:hidden"
+            >
+              <ArrowLeft size={12} /> {t('partners.nav.label')}
+            </Button>
+          </PageBack>
         }
         title={form.data.name.trim() || t('partners.wizard.newTitle')}
         subtitle={`${t('partners.wizard.stepOf', {

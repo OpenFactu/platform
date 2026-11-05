@@ -23,6 +23,7 @@ import AdmZip from 'adm-zip';
 import { eq, sql } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { ClientFactory } from './ClientFactory';
+import { indexTenantShipmentTokens } from '../logistics/shipmentTokens';
 import { SchemaManager } from './SchemaManager';
 import { exportMessaging, importMessaging } from './messagingTransfer';
 import { backupKey, openBackup, sealBackup } from '../backup/backupCrypto';
@@ -605,6 +606,9 @@ export class TenantBackup {
             `capturó todas las referencias — revisa los logs del server.`,
         );
       }
+
+      // Los enlaces de seguimiento de los envíos importados tienen que resolver.
+      await indexTenantShipmentTokens(tenantId, ClientFactory.getClient(slug));
     } catch (err: any) {
       console.error(
         `[TenantBackup.import] Fallo tras crear el tenant "${slug}" — revirtiendo:`,

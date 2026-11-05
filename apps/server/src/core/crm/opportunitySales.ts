@@ -3,11 +3,13 @@
  * y los documentos que han salido de ella.
  */
 import crypto from 'crypto';
-import { and, asc, desc, eq, inArray, lte } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { DocumentEngine } from '../documents/DocumentEngine';
+import { openPeriodsFor } from '../accounting/periodRules';
 import { DocumentRegistry } from '../documents/DocumentRegistry';
 import { pricesForPartner } from '../pricing/effectivePrices';
+import { defaultLineTaxGroupId } from '../tax/TaxEngine';
 import { hydrate, walkChain, type DocRef } from '../documents/documentChain';
 import type { DocType } from '@openfactu/common';
 
@@ -92,31 +94,17 @@ export async function replaceLines(
 
 /** Serie y periodo por defecto para un tipo de documento en una fecha. */
 async function defaultSeriesAndPeriod(db: any, docType: string, date: string) {
-  const periods = await db
-    .select()
-    .from(schema.accountingPeriods)
-    .where(
-      and(
-        eq(schema.accountingPeriods.status, 'O'),
-        lte(schema.accountingPeriods.startDate, new Date(`${date}T23:59:59`)),
-      ),
-    )
-    .orderBy(desc(schema.accountingPeriods.startDate));
-  const period =
-    periods.find((p: any) => new Date(p.endDate).toISOString().slice(0, 10) >= date) ??
-    periods[0] ??
-    null;
+  const [period] = await openPeriodsFor(db, date);
   if (!period) throw new Error('No hay ningún periodo contable abierto');
 
   const series = await db
     .select()
     .from(schema.documentSeries)
     .where(eq(schema.documentSeries.docType, docType));
+  // Una serie de otro periodo no vale: el motor la rechazaría.
   const pick =
     series.find((s: any) => s.periodId === period.id && s.isDefault) ??
-    series.find((s: any) => s.periodId === period.id) ??
-    series.find((s: any) => s.isDefault) ??
-    series[0];
+    series.find((s: any) => s.periodId === period.id);
   if (!pick) throw new Error('No hay ninguna serie de presupuestos configurada');
   return { period, series: pick };
 }
@@ -146,7 +134,11 @@ export async function createQuoteFromOpportunity(
         lines.map((l: any) => l.itemId),
       ),
     );
-  const taxByItem = new Map(itemRows.map((i: any) => [i.id, i.taxGroupId]));
+  const itemsById = new Map<string, any>(itemRows.map((i: any) => [i.id, i]));
+  const [partner] = await db
+    .select({ defaultTaxGroupId: schema.businessPartners.defaultTaxGroupId })
+    .from(schema.businessPartners)
+    .where(eq(schema.businessPartners.id, opportunity.partnerId));
 
   const date = new Date().toISOString().slice(0, 10);
   const { period, series } = await defaultSeriesAndPeriod(db, 'SQ', date);
@@ -179,7 +171,7 @@ export async function createQuoteFromOpportunity(
         quantity: Number(l.quantity),
         price: Number(l.price),
         discountRate: Number(l.discount) || 0,
-        taxGroupId: taxByItem.get(l.itemId) as string,
+        taxGroupId: defaultLineTaxGroupId(partner, itemsById.get(l.itemId)) as string,
         description: l.description || undefined,
       })),
     },

@@ -11,6 +11,7 @@ import type { TaxIdValidator } from '../core/geo/TaxIdValidators';
 import type { PayrollCalculator } from '../core/hr/payrollCalculation';
 import type { PluginReportDefinition } from '../core/reports/PluginReports';
 import type { FiscalConnector } from '../core/fiscal/FiscalConnectors';
+import type { LinkableObject } from '../core/customFields/linkableObjects';
 import type { PluginLifecycleContext } from '../core/plugins/PluginLifecycle';
 import * as schema from '../db/schema';
 import type { pluginDbOperators } from './dbOperators';
@@ -132,8 +133,21 @@ export interface PluginContext {
     register: (definition: PluginReportDefinition) => void;
   };
   /** Firma, encadenado y envío a la administración, al asentar y cancelar. */
+  /** Objetos propios a los que se puede enlazar un campo de usuario. */
+  linkableObjects: {
+    register: (object: LinkableObject) => void;
+  };
   fiscal: {
     registerConnector: (connector: FiscalConnector) => void;
+  };
+  /**
+   * Traducciones. Lo habitual es dejarlas en `i18n/<idioma>.json`, que se cargan
+   * solas; desde aquí se pueden leer en el servidor.
+   */
+  i18n: {
+    /** Traduce una clave de este plugin. Si no existe, devuelve el texto tal cual. */
+    t: (locale: string, key: string, vars?: Record<string, string | number>) => string;
+    register: (locale: string, catalog: Record<string, unknown>) => void;
   };
   /** Avisos cuando una empresa activa o desactiva este plugin. */
   lifecycle: {

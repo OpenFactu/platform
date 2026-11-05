@@ -11,11 +11,13 @@ import localizationRouter from './api/localization';
 import setupRouter from './api/setup';
 import pluginsRouter from './api/plugins';
 import customFieldsRouter from './api/customFields';
+import linkedObjectsRouter from './api/linkedObjects';
 import userTablesRouter from './api/userTables';
 import userModulesRouter from './api/userModules';
 import automationsRouter from './api/automations';
 import dashboardWidgetsRouter from './api/dashboardWidgets';
-import logisticsRouter, { publicTrackRouter } from './api/logistics';
+import logisticsRouter, { driverRouter, publicTrackRouter } from './api/logistics';
+import { backfillShipmentTokens } from './core/logistics/shipmentTokens';
 import { publicSiteHostMiddleware, publicSiteRouter } from './api/publicSite';
 import websiteRouter from './api/website';
 import apiTokensRouter from './api/apiTokens';
@@ -28,6 +30,10 @@ import itemsRouter from './api/items';
 import categoriesRouter from './api/categories';
 import uomRouter from './api/uom';
 import partnersRouter from './api/partners';
+import partnerCreditRouter from './api/partnerCredit';
+import salesSettingsRouter from './api/salesSettings';
+import dunningRouter from './api/dunning';
+import recurringDocumentsRouter from './api/recurringDocuments';
 import crmContactsRouter from './api/crm/contacts';
 import crmOpportunitiesRouter from './api/crm/opportunities';
 import crmStagesRouter from './api/crm/stages';
@@ -42,6 +48,8 @@ import membersRouter from './api/members';
 import { registerCrmQuoteListener } from './core/crm/quoteListener';
 import { registerCrmLeadListener } from './core/crm/leads';
 import { startCrmCron } from './core/crm/crmCron';
+import { startDunningCron } from './core/dunning/dunningCron';
+import { startRecurringCron } from './core/recurring/recurringCron';
 import pricelistsRouter from './api/pricelists';
 import zonesRouter from './api/zones';
 import warehousesRouter from './api/warehouses';
@@ -118,6 +126,7 @@ import {
   denyUndeclared,
   mountReport,
   PUBLIC_SUBPATH,
+  mountApiAny,
 } from './core/auth/apiMounts';
 import systemRouter from './api/system';
 import emailRouter from './api/email';
@@ -135,9 +144,11 @@ import geoRouter from './api/geo';
 import factuApiRouter from './api/factuapi';
 import documentRouter from './api/documentos/documentRouter';
 import { tenantContextMiddleware } from './api/middleware/tenantContext';
+import { hideItemCosts } from './api/middleware/hideItemCosts';
 import { i18nMiddleware } from './i18n';
 import { MigrationManager } from './core/tenant/MigrationManager';
 import { startPeriodCloseCron } from './core/cron/periodCloseCron';
+import { startCarrierTrackingCron } from './core/cron/carrierTrackingCron';
 import { startBackupCron } from './core/cron/backupCron';
 import { startEventSocket, broadcastEvent } from './core/realtime/EventSocket';
 import { adminMiddleware } from './api/middleware/adminAuth';
@@ -222,6 +233,8 @@ app.use('/api', apiTokenMiddleware);
 
 // 2. Middleware de Contexto (Inyecta Prisma Tenant en req)
 app.use('/api', tenantContextMiddleware);
+// Sin el permiso de costes, ninguna respuesta los lleva.
+app.use('/api', hideItemCosts);
 
 // 2b. Gestión de tokens de API (solo admins).
 mountApi(app, '/api/admin/api-tokens', '/settings/api-tokens', apiTokensRouter);
@@ -238,6 +251,12 @@ mountShared(
   pluginsRouter,
 );
 mountApi(app, '/api/custom-fields', '/custom-fields', customFieldsRouter);
+mountShared(
+  app,
+  '/api/linked-objects',
+  'Búsqueda de los campos enlazados: cada objeto comprueba el permiso que pide.',
+  linkedObjectsRouter,
+);
 mountApi(app, '/api/user-tables', '/user-tables', userTablesRouter);
 mountShared(app, '/api/user-modules', 'módulos propios que pintan el menú', userModulesRouter);
 mountApi(app, '/api/automations', '/automations', automationsRouter);
@@ -252,6 +271,7 @@ mountShared(
   'widgets del panel y su código, que carga el navegador sin cabeceras',
   dashboardWidgetsRouter,
 );
+mountApiAny(app, '/api/logistics/my', ['/driver', '/logistics'], ['DRIVER'], driverRouter);
 mountApi(app, '/api/logistics', '/logistics', logisticsRouter);
 mountApi(app, '/api/website', '/website/pages', websiteRouter);
 mountApi(app, '/api/dev-keys', '/settings/api-tokens', devKeysRouter);
@@ -261,6 +281,16 @@ mountApi(app, '/api/items', '/items', itemsRouter);
 mountApi(app, '/api/categories', '/categories', categoriesRouter);
 mountApi(app, '/api/uom', '/uom', uomRouter);
 mountApi(app, '/api/partners', '/partners', partnersRouter);
+mountApiAny(
+  app,
+  '/api/partner-credit',
+  ['/partners', '/sales-orders', '/sales/delivery-notes', '/sales/invoices'],
+  [],
+  partnerCreditRouter,
+);
+mountApi(app, '/api/sales-settings', '/sales/settings', salesSettingsRouter);
+mountApi(app, '/api/dunning', '/sales/dunning', dunningRouter);
+mountApi(app, '/api/recurring-documents', '/sales/recurring', recurringDocumentsRouter);
 mountApi(app, '/api/pricelists', '/pricelists', pricelistsRouter);
 mountApi(app, '/api/zones', '/logistics/zones', zonesRouter);
 mountApi(app, '/api/warehouses', '/warehouses', warehousesRouter);
@@ -392,7 +422,7 @@ mountApi(app, '/api/sales/invoices', '/sales/invoices', salesInvoicesRouter);
 mountApi(app, '/api/sales', '/sales-orders', salesOrdersRouter);
 // Generic document router (new unified API)
 mountApi(app, '/api/documents', '/documents', documentRouter);
-mountApi(app, '/api/taxes', '/taxes', taxesRouter);
+mountShared(app, '/api/taxes', 'catálogo de impuestos', taxesRouter);
 mountApi(app, '/api/audit-logs', '/audit-logs', auditLogsRouter);
 // El selector de empresa del login vive aquí y se consulta ANTES de que haya
 // sesión: si se mete entero detrás del permiso de usuarios, no se puede ni
@@ -556,6 +586,7 @@ const start = async () => {
     console.log('[Bootstrap] Sincronizando esquemas de empresas...');
     await MigrationManager.syncAllTenants();
     console.log('[Bootstrap] Esquemas sincronizados.');
+    await backfillShipmentTokens();
 
     await loadPlugins(app);
 
@@ -576,9 +607,12 @@ const start = async () => {
     // Cron de cierre de período — notifica a los admins cuando un periodo
     // vence pero NO cierra automáticamente (requiere confirmación UI).
     startPeriodCloseCron();
+    startCarrierTrackingCron();
 
     // Avisos del CRM (presupuestos caducados, recordatorios…) — solo empresas con el CRM activo.
     startCrmCron();
+    startDunningCron();
+    startRecurringCron();
     // Limpieza de archivos subidos a formularios que nunca se enviaron.
     startFormsCron();
 

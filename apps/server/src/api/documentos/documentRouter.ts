@@ -11,6 +11,8 @@ import {
 import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
 import { logAudit } from '../../utils/audit';
 import { emitQuoteStatusChanged } from '../../core/crm/quoteListener';
+import { statusError } from '../../core/documents/documentRules';
+import { withReturnState } from '../../core/documents/deliveryReturns';
 
 const router = Router();
 
@@ -138,9 +140,7 @@ async function getDocumentWithLines(
   if (tenantSchema) {
     try {
       const rawHeader: any = await tenantClient.execute(
-        sql.raw(
-          `SELECT * FROM "${tenantSchema}"."${config.headerPgName}" WHERE "id" = '${documentId}'`,
-        ),
+        sql`SELECT * FROM ${sql.identifier(tenantSchema)}.${sql.identifier(config.headerPgName)} WHERE "id" = ${documentId}`,
       );
       const rawHeaderRow = rawHeader.rows?.[0] || {};
       const pluginCols: Record<string, any> = {};
@@ -241,7 +241,7 @@ router.get('/:docType', async (req: any, res) => {
     const results = await buildListQuery(config, req.tenantClient);
     res.json(results);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -260,9 +260,9 @@ router.get('/:docType/:id', async (req: any, res) => {
       req.tenantSchema || req.tenant?.schemaName,
     );
     if (!result) return res.status(404).json({ error: 'No encontrado' });
-    res.json(result);
+    res.json(docType === 'SDN' ? await withReturnState(req.tenantClient, result) : result);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -279,10 +279,11 @@ router.get('/:docType/:id/pdf', async (req: any, res) => {
       req.query.templateId as string | undefined,
       req.tenantClient,
       res,
+      req.tenantId,
     );
   } catch (error: any) {
     console.error(`[Document PDF] Error:`, error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -325,7 +326,7 @@ router.post('/:docType', async (req: any, res) => {
     });
   } catch (error: any) {
     console.error('[Document Create] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message, ...error.body });
   }
 });
 
@@ -463,12 +464,12 @@ router.post('/:docType/:id/cancel', async (req: any, res) => {
         .select()
         .from(config.schemaTable)
         .where(eq(config.schemaTable.id, req.params.id));
-      if (!header) throw new Error('No encontrado');
-      if (header.status === 'X') throw new Error('Ya está cancelado');
+      if (!header) throw statusError(404, 'No encontrado');
+      if (header.status === 'X') throw statusError(409, 'Ya está cancelado');
       // Antes esta ruta genérica no comprobaba esto — un albarán ya
       // facturado (status 'C') no debe poder cancelarse por aquí tampoco.
       if (config.category === 'delivery_note' && header.status === 'C') {
-        throw new Error('No se puede cancelar: el documento ya está facturado.');
+        throw statusError(409, 'No se puede cancelar: el documento ya está facturado.');
       }
 
       // Revierte stock (global/almacén/zona/lotes) respetando
@@ -489,6 +490,7 @@ router.post('/:docType/:id/cancel', async (req: any, res) => {
           hooks: config.hooks,
         },
         req.params.id,
+        { reason: req.body?.reason },
       );
 
       return { success: true };
@@ -502,11 +504,11 @@ router.post('/:docType/:id/cancel', async (req: any, res) => {
       userId: req.user?.id,
       entityType: config.headerPgName,
       entityId: req.params.id,
-      action: 'DELETE',
+      action: 'CANCEL',
       oldValue: { status: old?.status },
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message, code: error.code });
   }
 });
 
@@ -577,7 +579,7 @@ router.post('/:docType/:id/status', async (req: any, res) => {
       newValue: { status: newStatus },
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 

@@ -1,4 +1,15 @@
 import { apiClient } from '@/shared/http';
+import type {
+  CreditNoteBody,
+  CreditNotePreparation,
+  InvoiceCreditNotes,
+  InvoiceSide,
+} from '../domain/creditNote';
+import type {
+  NoteReturnBody,
+  NoteReturnPreparation,
+  NoteReturnResult,
+} from '../domain/deliveryReturn';
 
 /**
  * Operaciones comunes del motor de documentos sobre su endpoint REST
@@ -12,6 +23,58 @@ export const docsApi = {
   /** Asentar (post) el documento. */
   post: (endpoint: string, id: string) => apiClient.post<unknown>(`${endpoint}/${id}/post`),
   cancel: (endpoint: string, id: string) => apiClient.post<unknown>(`${endpoint}/${id}/cancel`),
+};
+
+export interface CreditBalance {
+  total: number;
+  notes: Array<{
+    id: string;
+    docNum: number;
+    date: string;
+    total: number;
+    applied: number;
+    available: number;
+  }>;
+}
+
+export interface CreditTarget {
+  id: string;
+  docNum: number;
+  date: string;
+  total: string;
+  amountPaid: string | null;
+  seriesPrefix: string | null;
+  periodCode: string | null;
+  remaining: number;
+}
+
+const invoicesApi = (side: InvoiceSide) =>
+  side === 'sales' ? '/api/sales/invoices' : '/api/purchases/invoices';
+
+/** Abonos: corregir una factura emitida y usar lo que quede a favor. */
+export const creditNoteApi = {
+  ofInvoice: (side: InvoiceSide, id: string) =>
+    apiClient.get<InvoiceCreditNotes>(`${invoicesApi(side)}/${id}/credit-notes`),
+  prepare: (side: InvoiceSide, id: string) =>
+    apiClient.get<CreditNotePreparation>(`${invoicesApi(side)}/${id}/credit-note`),
+  create: (side: InvoiceSide, id: string, data: CreditNoteBody) =>
+    apiClient.post<{ id: string; docNum: number }>(`${invoicesApi(side)}/${id}/credit-note`, data),
+  balance: (side: InvoiceSide, partnerId: string) =>
+    apiClient.get<CreditBalance>(
+      `${invoicesApi(side)}/credit-balance?partnerId=${encodeURIComponent(partnerId)}`,
+    ),
+  targets: (side: InvoiceSide, id: string) =>
+    apiClient.get<CreditTarget[]>(`${invoicesApi(side)}/${id}/credit-targets`),
+  apply: (side: InvoiceSide, id: string, data: { targetInvoiceId: string; amount: number }) =>
+    apiClient.post<unknown>(`${invoicesApi(side)}/${id}/apply-credit`, data),
+};
+
+/** Devolver mercancía desde un albarán sin facturar. */
+export const deliveryReturnApi = {
+  prepare: (noteId: string) =>
+    apiClient.get<NoteReturnPreparation>(`/api/sales/delivery-notes/${noteId}/return`),
+  create: (noteId: string, data: NoteReturnBody) =>
+    apiClient.post<NoteReturnResult>(`/api/sales/delivery-notes/${noteId}/return`, data),
 };
 
 /** Envío de documentos por email. */

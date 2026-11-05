@@ -164,23 +164,22 @@ router.post('/accounts/:id/test', async (req: any, res) => {
     if (!c) return res.status(404).json({ error: 'Carrier no encontrado' });
 
     const adapter = CarrierRegistry.get(c.adapterId);
-    if (!adapter) {
+    if (!adapter || adapter.manual) {
       return res.json({
         ok: false,
         manual: true,
         message: 'Este carrier es manual — no hay adapter para probar.',
       });
     }
-
-    const result = await adapter.createShipment(acc.credentials as any, {
-      shipmentId: 'TEST',
-      destinationAddress: 'Dirección de prueba, 28013 Madrid',
-      destinationZip: '28013',
-      destinationCity: 'Madrid',
-      destinationCountryCode: 'ES',
-      weightKg: 1,
-    });
-    res.json({ ok: true, trackingNumber: result.trackingNumber });
+    // Probar no puede crear un envío de verdad: cada adaptador sabe cómo comprobarse.
+    if (!adapter.testConnection) {
+      return res.json({
+        ok: false,
+        message: 'Este transportista no permite probar la conexión desde aquí.',
+      });
+    }
+    await adapter.testConnection(acc.credentials as any);
+    res.json({ ok: true });
   } catch (e: any) {
     res.status(400).json({ ok: false, error: e?.message || String(e) });
   }

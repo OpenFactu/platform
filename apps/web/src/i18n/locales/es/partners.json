@@ -93,6 +93,8 @@
       "documentType": "Tipo de documento",
       "paymentMethodLong": "Método de pago",
       "withholding": "Retención %",
+      "defaultTax": "{tax} por defecto",
+      "defaultTaxHelp": "Manda sobre el del artículo al añadir líneas.",
       "bank": "Banco",
       "name": "Nombre",
       "type": "Tipo"
@@ -183,6 +185,21 @@
       "codePlaceholder": "Cód (Ej: VIP)",
       "namePlaceholder": "Nombre del Grupo",
       "prefixPlaceholder": "Prefijo (Ej: V)"
+    },
+    "credit": {
+      "title": "Crédito y reclamaciones",
+      "hint": "Cuánto puede deber este cliente y lo que debe ahora.",
+      "limit": "Límite de crédito",
+      "limitHint": "Vacío: sin límite. Cero: nada a crédito.",
+      "limitNoPermission": "Cambiarlo pide el permiso de superar el límite de crédito.",
+      "usedOf": "{used} de {limit}",
+      "invoices": "Facturas pendientes",
+      "deliveryNotes": "Albaranes sin facturar",
+      "orders": "Pedidos por servir",
+      "balance": "Saldo a favor",
+      "used": "Usado",
+      "available": "Disponible",
+      "excluded": "No reclamar impagos a este cliente"
     }
   }
 }

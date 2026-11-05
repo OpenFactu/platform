@@ -66,14 +66,13 @@ mount<FlagsConfig>('flags', FLAGS_DEFAULTS, 'FlagsConfig');
 mount<AppConfig>('app', APP_DEFAULTS, 'AppConfig');
 
 // Sección fiscal — agrupa las claves SystemConfig añadidas en la mig 032
-// (IBAN, SWIFT, régimen fiscal, pie legal, color del PDF…).
+// (IBAN, SWIFT, régimen fiscal, pie legal…).
 interface FiscalConfig {
   company_iban: string;
   company_bank_name: string;
   company_bank_swift: string;
   company_fiscal_regime: string;
   company_invoice_footer: string;
-  company_invoice_color: string;
   // Firma / representante legal — aparece en el PDF de la factura
   signature_name: string; // nombre del firmante (p.ej. "Juan García Pérez")
   signature_role: string; // cargo (p.ej. "Administrador único")
@@ -86,7 +85,6 @@ const FISCAL_DEFAULTS: FiscalConfig = {
   company_bank_swift: '',
   company_fiscal_regime: '',
   company_invoice_footer: '',
-  company_invoice_color: '#0D9488',
   signature_name: '',
   signature_role: '',
   signature_image_url: '',

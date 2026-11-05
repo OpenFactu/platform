@@ -1,3 +1,4 @@
+import { PageBack } from '@/components/common/PageBack';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -168,16 +169,18 @@ function EmployeeDetailPage() {
             className="flex-1 min-w-0"
             size="md"
             breadcrumbs={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => void back()}
-                className="w-fit gap-1"
-              >
-                <ArrowLeft size={12} />
-                {t('hr.employees.title')}
-              </Button>
+              <PageBack onBack={() => void back()}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => void back()}
+                  className="w-fit gap-1"
+                >
+                  <ArrowLeft size={12} />
+                  {t('hr.employees.title')}
+                </Button>
+              </PageBack>
             }
             title={
               <>

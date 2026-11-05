@@ -158,6 +158,10 @@
       "item": "Item",
       "loading": "Loading…",
       "margin": "Margin",
+      "cost": "Cost",
+      "noCost": "No cost",
+      "marginRate": "Margin %",
+      "uncostedNotice": "Some sales have no recorded cost: their margin looks higher than it really is.",
       "name": "Name",
       "net": "Net",
       "noRows": "No records match the current filters.",
@@ -305,8 +309,11 @@
     },
     "stockValuation": {
       "title": "Inventory valuation",
-      "subtitle": "Stock × average price. Total value: {total}",
-      "unitPrice": "Unit price",
+      "subtitle": "Stock × average cost. Total value: {total}",
+      "subtitleNoCost": "Units in stock.",
+      "unitPrice": "Average cost",
+      "noCost": "No cost",
+      "uncostedNotice": "Some items in stock have no cost: they are not included in the total value.",
       "value": "Value"
     },
     "trialBalance": {

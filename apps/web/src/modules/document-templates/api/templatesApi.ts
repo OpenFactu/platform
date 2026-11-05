@@ -8,6 +8,13 @@ export interface DocumentTemplate {
   [key: string]: unknown;
 }
 
+/** Una tabla propia de tipo documento: su tipo es el nombre de la tabla. */
+export interface UserDocType {
+  docType: string;
+  label: string;
+  displayField: string | null;
+}
+
 export const templatesApi = {
   list: (docType?: string) =>
     apiClient.get<DocumentTemplate[]>('/api/document-templates', { query: { docType } }),
@@ -23,6 +30,9 @@ export const templatesApi = {
   /** Preview renderizada como PDF (blob). */
   previewPdf: (data: Record<string, unknown>) =>
     apiClient.postBlob('/api/document-templates/preview', data),
+  /** El HTML de cada elemento del lienzo, resuelto igual que en el PDF. */
+  renderElements: (data: Record<string, unknown>) =>
+    apiClient.post<{ html: (string | null)[] }>('/api/document-templates/render-elements', data),
   testQuery: (data: Record<string, unknown>) =>
     apiClient.post<unknown>('/api/document-templates/test-query', data),
   /** Render libre de la plantilla (PDF); las queries fallidas van en la cabecera X-Render-Free-Errors. */
@@ -36,4 +46,5 @@ export const templatesApi = {
     apiClient.post<unknown>('/api/document-templates/generate', data),
   resyncDefaults: () => apiClient.post<unknown>('/api/document-templates/resync-defaults'),
   schemaInfo: () => apiClient.get<unknown>('/api/document-templates/schema-info'),
+  userDocTypes: () => apiClient.get<UserDocType[]>('/api/document-templates/user-doc-types'),
 };

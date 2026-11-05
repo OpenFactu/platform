@@ -704,11 +704,14 @@ export const CompanySettings: React.FC = () => {
                   {/* Opciones derivadas de FONT_OPTIONS (6 entradas) → Select. */}
                   <Select
                     label={t('settingsCompany.page.fontFamily')}
-                    options={FONT_OPTIONS.map((f) => ({ value: f.id, label: f.label }))}
+                    options={[
+                      { value: '', label: t('settingsCompany.page.fromTheme') },
+                      ...FONT_OPTIONS.map((f) => ({ value: f.id, label: f.label })),
+                    ]}
                     value={brandingDraft.fontFamily}
                     onChange={(v) => setBrandingDraft({ ...brandingDraft, fontFamily: v })}
                   />
-                  <FontPreview fontId={brandingDraft.fontFamily} />
+                  {brandingDraft.fontFamily && <FontPreview fontId={brandingDraft.fontFamily} />}
                 </div>
                 <Select
                   label={t('settingsCompany.page.mode')}

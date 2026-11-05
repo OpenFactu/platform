@@ -1,4 +1,10 @@
+import type { DeliveryFlow } from './deliveryFlow';
 import type { Shipment } from './shipment';
+
+/** Lo que no impide planificar, pero quien lo hace tiene que saber. */
+export type RouteWarning =
+  | { kind: 'over_capacity'; loadKg: number; capacityKg: number }
+  | { kind: 'driver_busy'; routes: string[] };
 
 export interface Route {
   id: string;
@@ -10,6 +16,12 @@ export interface Route {
   driverEmployeeId?: string | null;
   vehiclePlate?: string | null;
   vehicleId?: string | null;
+  archivedAt?: string | null;
+  stopsTotal?: number;
+  stopsOpen?: number;
+  stopsDelivered?: number;
+  loadKg?: number;
+  capacityKg?: number | null;
   [key: string]: unknown;
 }
 
@@ -24,6 +36,7 @@ export interface RouteVehicleOption {
 
 export interface RouteStop {
   id: string;
+  handover?: string | null;
   sequence: number;
   shipmentId: string | null;
   address: string | null;
@@ -32,6 +45,7 @@ export interface RouteStop {
   status: string;
   arrivedAt: string | null;
   departedAt: string | null;
+  plannedAt?: string | null;
   podNotes?: string | null;
 }
 
@@ -62,16 +76,30 @@ export interface RoutePickup {
 }
 
 /** Detalle de ruta para la app del conductor. */
+/** Un bulto de la ruta, lo que el conductor comprueba al entregar. */
+export interface RoutePackage {
+  id: string;
+  code: string;
+  shipmentId: string;
+  weightKg: string | number | null;
+  status: string;
+  stagingAreaId?: string | null;
+  loadedAt?: string | null;
+}
+
 export interface RouteDetail {
   route: Route;
   stops: RouteStop[];
   shipments: Shipment[];
   vehicle?: RouteVehicleInfo | null;
   pickups?: RoutePickup[];
+  packages?: RoutePackage[];
+  flow?: DeliveryFlow;
 }
 
 export interface UnroutedShipment {
   id: string;
+  code?: string | null;
   trackingNumber: string | null;
   status: string;
   destinationAddress: string | null;

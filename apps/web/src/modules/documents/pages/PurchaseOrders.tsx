@@ -15,6 +15,7 @@ import { ResponsiveActions } from '@/components/common/ResponsiveActions';
 
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Table,
   Card,
   Button,
@@ -34,7 +35,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
 import { useTheme } from '@/context/ThemeContext';
 import { formatDocCode } from '@/utils/docCode';
-import { FileDigit, Plus, AlertCircle, Copy, Download, Eye, Ban } from 'lucide-react';
+import { FileDigit, Plus, AlertCircle, Copy, Eye, Ban, FileText } from 'lucide-react';
 import { DocumentActionBar } from '../components/DocumentActionBar';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
@@ -48,11 +49,12 @@ import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel
 import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import { buildDetailLineColumns, statusBadgeProps } from '../components/documentLineCells';
-import { downloadPdf } from '@/utils/downloadPdf';
+import { openPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
 
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
-import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDocument } from '../hooks/useDocument';
 import { useDocumentScanner } from '@/hooks/useDocumentScanner';
 import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
@@ -93,7 +95,7 @@ const POList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`/api/purchases/orders/${id}/pdf`);
+      await openPdf(`/api/purchases/orders/${id}/pdf`);
     } catch (e) {
       toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
@@ -191,7 +193,7 @@ const POList: React.FC<{
       { label: t('doc.salesOrders.view'), icon: <Eye size={14} />, onClick: () => onDetail(item) },
       {
         label: t('doc.actions.downloadPdf'),
-        icon: <Download size={14} />,
+        icon: <FileText size={14} />,
         onClick: () => handleQuickPdf(item.id),
       },
       ...(canBeReceived
@@ -228,10 +230,7 @@ const POList: React.FC<{
         divider
         toolbar={
           doc.state.mastersError ? (
-            <div className="flex items-center gap-2 p-3 bg-warning-bg border border-warning rounded-lg text-warning-fg text-xs font-bold animate-in slide-in-from-top">
-              <AlertCircle size={16} />
-              {doc.state.mastersError}
-            </div>
+            <Alert tone="warning">{doc.state.mastersError}</Alert>
           ) : undefined
         }
         actions={
@@ -356,7 +355,7 @@ const POForm: React.FC<{
 
   // Al elegir el interlocutor se rellenan sus direcciones por defecto.
   const handlePartnerChange = (id: string) => {
-    setState.setPartnerId(id);
+    actions.selectPartner(id);
     const addr = defaultAddresses(masters.partners.find((x: any) => x.id === id));
     if (addr) {
       extraState.setBillToAddress(addr.bill);
@@ -452,7 +451,7 @@ const POForm: React.FC<{
                     label={t('doc.salesOrders.date')}
                     required
                     value={state.date}
-                    onChange={(v) => setState.setDate(v ?? '')}
+                    onChange={(v) => actions.selectDate(v ?? '')}
                   />
                   <DatePicker
                     label={t('doc.salesOrders.expectedDelivery')}
@@ -539,6 +538,8 @@ const PODetail: React.FC<{
       onBack={onBack}
       breadcrumb={t('doc.purchaseOrders.breadcrumb')}
       title={formatDocCode(order)}
+      cancelledAt={order.cancelledAt}
+      cancelReason={order.cancelReason}
       status={statusBadgeProps(order.status, DocKind.Order)}
       actions={
         <DocumentActionBar

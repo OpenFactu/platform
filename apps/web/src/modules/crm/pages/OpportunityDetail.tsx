@@ -1,3 +1,4 @@
+import { PageBack } from '@/components/common/PageBack';
 import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -125,16 +126,18 @@ export const OpportunityDetail: React.FC = () => {
       <PageHeader
         size="md"
         breadcrumbs={
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={back}
-            // En móvil ya está la flecha de volver de la barra superior.
-            className="w-fit gap-1 max-md:hidden"
-          >
-            <ArrowLeft size={12} /> {t('crm.nav.opportunities')}
-          </Button>
+          <PageBack onBack={back}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={back}
+              // En móvil ya está la flecha de volver de la barra superior.
+              className="w-fit gap-1 max-md:hidden"
+            >
+              <ArrowLeft size={12} /> {t('crm.nav.opportunities')}
+            </Button>
+          </PageBack>
         }
         title={
           <>

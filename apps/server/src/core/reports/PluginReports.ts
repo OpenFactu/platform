@@ -32,10 +32,13 @@ export interface PluginReportRunContext {
   /** Filtros de la petición: `from` y `to` ya como Date. */
   filters: { from?: Date; to?: Date; [key: string]: any };
   locale: string;
+  /** Traduce una clave al idioma de la petición. Hace falta para el texto de las filas. */
+  t: (key: string, vars?: Record<string, string | number>) => string;
 }
 
 export interface PluginReportDefinition {
   id: string;
+  /** Títulos y etiquetas pueden ser claves de `i18n/` o texto plano. */
   title: string;
   description?: string;
   run: (ctx: PluginReportRunContext) => Promise<PluginReportResult> | PluginReportResult;
@@ -64,3 +67,25 @@ export const PluginReports = {
     reports.clear();
   },
 };
+
+/** Traduce los títulos y etiquetas del resultado; las filas ya vienen en su idioma. */
+export function translateReportResult(
+  result: PluginReportResult,
+  translate: (text: string) => string,
+): PluginReportResult {
+  return {
+    ...result,
+    // Sin claves vacías: un `title: undefined` pisaría el título del informe al combinarlos.
+    ...(result.title ? { title: translate(result.title) } : {}),
+    ...(result.subtitle ? { subtitle: translate(result.subtitle) } : {}),
+    sections: result.sections.map((section) => ({
+      ...section,
+      title: section.title && translate(section.title),
+      columns: section.columns.map((col) => ({
+        ...col,
+        label: col.label && translate(col.label),
+      })),
+      totals: section.totals && { ...section.totals, label: translate(section.totals.label) },
+    })),
+  };
+}

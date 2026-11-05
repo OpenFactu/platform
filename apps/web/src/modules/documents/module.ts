@@ -10,6 +10,12 @@ const SalesOrders = lazy(() =>
 const SalesDeliveryNotes = lazy(() =>
   import('./pages/SalesDeliveryNotes').then((m) => ({ default: m.SalesDeliveryNotes })),
 );
+const CreditNoteCreate = lazy(() =>
+  import('./pages/CreditNoteCreate').then((m) => ({ default: m.CreditNoteCreate })),
+);
+const DeliveryReturnCreate = lazy(() =>
+  import('./pages/DeliveryReturnCreate').then((m) => ({ default: m.DeliveryReturnCreate })),
+);
 const SalesInvoices = lazy(() =>
   import('./pages/SalesInvoices').then((m) => ({ default: m.SalesInvoices })),
 );
@@ -21,6 +27,22 @@ const PurchaseDeliveryNotes = lazy(() =>
 );
 const PurchaseInvoices = lazy(() =>
   import('./pages/PurchaseInvoices').then((m) => ({ default: m.PurchaseInvoices })),
+);
+const Dunning = lazy(() => import('./pages/Dunning').then((m) => ({ default: m.Dunning })));
+const DunningLetterPage = lazy(() =>
+  import('./pages/DunningLetterPage').then((m) => ({ default: m.DunningLetterPage })),
+);
+const SalesSettings = lazy(() =>
+  import('./pages/SalesSettings').then((m) => ({ default: m.SalesSettings })),
+);
+const RecurringDocuments = lazy(() =>
+  import('./pages/RecurringDocuments').then((m) => ({ default: m.RecurringDocuments })),
+);
+const RecurringDocumentDetail = lazy(() =>
+  import('./pages/RecurringDocumentDetail').then((m) => ({ default: m.RecurringDocumentDetail })),
+);
+const RecurringDocumentForm = lazy(() =>
+  import('./pages/RecurringDocumentForm').then((m) => ({ default: m.RecurringDocumentForm })),
 );
 const Documents = lazy(() => import('./pages/Documents'));
 const DocumentSeries = lazy(() =>
@@ -54,7 +76,10 @@ export const documentsModule: ModuleManifest = {
           path: '/sales/delivery-notes',
         },
         { id: 'sales-invoices', label: 'doc.nav.invoices', path: '/sales/invoices' },
+        { id: 'sales-recurring', label: 'doc.nav.recurring', path: '/sales/recurring' },
+        { id: 'sales-dunning', label: 'doc.nav.dunning', path: '/sales/dunning' },
         { id: 'pricelists', label: 'doc.nav.priceLists', path: '/pricelists' },
+        { id: 'sales-settings', label: 'doc.nav.salesSettings', path: '/sales/settings' },
       ],
     },
     {
@@ -115,6 +140,76 @@ export const documentsModule: ModuleManifest = {
       iconName: 'FileStack',
       permissionPath: '/sales/invoices',
     })),
+    {
+      pattern: '/sales/recurring',
+      Component: RecurringDocuments,
+      title: 'doc.nav.recurring',
+      iconName: 'Repeat',
+      permissionPath: '/sales/recurring',
+    },
+    {
+      pattern: '/sales/recurring/new',
+      Component: RecurringDocumentForm,
+      title: 'doc.recurring.new',
+      iconName: 'Repeat',
+      permissionPath: '/sales/recurring',
+    },
+    {
+      pattern: '/sales/recurring/:id',
+      Component: RecurringDocumentDetail,
+      title: 'doc.nav.recurring',
+      iconName: 'Repeat',
+      permissionPath: '/sales/recurring',
+    },
+    {
+      pattern: '/sales/recurring/:id/edit',
+      Component: RecurringDocumentForm,
+      title: 'doc.recurring.editTitle',
+      iconName: 'Repeat',
+      permissionPath: '/sales/recurring',
+    },
+    {
+      pattern: '/sales/dunning',
+      Component: Dunning,
+      title: 'doc.nav.dunning',
+      iconName: 'BellRing',
+      permissionPath: '/sales/dunning',
+    },
+    {
+      pattern: '/sales/dunning/:partnerId',
+      Component: DunningLetterPage,
+      title: 'doc.dunning.letterTitle',
+      iconName: 'BellRing',
+      permissionPath: '/sales/dunning',
+    },
+    {
+      pattern: '/sales/settings',
+      Component: SalesSettings,
+      title: 'doc.salesSettings.title',
+      iconName: 'Settings',
+      permissionPath: '/sales/settings',
+    },
+    {
+      pattern: '/sales/delivery-notes/:id/return',
+      Component: DeliveryReturnCreate,
+      title: 'doc.routes.newDeliveryReturn',
+      iconName: 'Undo2',
+      permissionPath: '/sales/delivery-notes',
+    },
+    {
+      pattern: '/sales/invoices/:id/credit-note',
+      Component: CreditNoteCreate,
+      title: 'doc.routes.newCreditNote',
+      iconName: 'FileStack',
+      permissionPath: '/sales/invoices',
+    },
+    {
+      pattern: '/purchases/invoices/:id/credit-note',
+      Component: CreditNoteCreate,
+      title: 'doc.routes.newCreditNote',
+      iconName: 'FileStack',
+      permissionPath: '/purchases/invoices',
+    },
     // Compras
     ...['/purchase-orders', '/purchase-orders/new', '/purchase-orders/:id'].map((pattern, i) => ({
       pattern,

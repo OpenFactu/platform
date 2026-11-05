@@ -1,2 +1,2 @@
 export { templatesApi } from './templatesApi';
-export type { DocumentTemplate } from './templatesApi';
+export type { DocumentTemplate, UserDocType } from './templatesApi';

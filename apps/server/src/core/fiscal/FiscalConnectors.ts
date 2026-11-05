@@ -22,6 +22,8 @@ export interface FiscalContext {
   side: 'sales' | 'purchase';
   document: any;
   lines: any[];
+  /** En un abono, la factura que corrige: su número, fecha y campos fiscales. */
+  rectifies?: any;
 }
 
 export interface FiscalConnector {

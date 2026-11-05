@@ -116,7 +116,7 @@ export const PlatformsTab: React.FC = () => {
           <Loader />
         </div>
       ) : rows.length === 0 ? (
-        <Card bodyClassName="py-10 text-center text-sm text-slate-500">
+        <Card bodyClassName="py-10 text-center text-sm text-fg-muted">
           {t('logistics.platforms.empty')}
         </Card>
       ) : (
@@ -131,7 +131,7 @@ export const PlatformsTab: React.FC = () => {
                     archived ? 'opacity-60' : ''
                   }`}
                 >
-                  <Building2 size={16} className="text-slate-400 shrink-0" />
+                  <Building2 size={16} className="text-fg-subtle shrink-0" />
                   <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                     {p.code}
                   </code>

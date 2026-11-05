@@ -1,3 +1,4 @@
+import { PageBack } from '@/components/common/PageBack';
 import { useI18n } from '@/i18n/I18nContext';
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -53,16 +54,18 @@ export const FormEditor: React.FC = () => {
         size="sm"
         icon={<ClipboardList size={18} />}
         breadcrumbs={
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            onClick={() => navigate('/forms')}
-            // En móvil ya está la flecha de volver de la barra superior.
-            className="max-md:hidden"
-          >
-            <ArrowLeft size={14} /> {t('forms.nav.list')}
-          </Button>
+          <PageBack onBack={() => navigate('/forms')}>
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              onClick={() => navigate('/forms')}
+              // En móvil ya está la flecha de volver de la barra superior.
+              className="max-md:hidden"
+            >
+              <ArrowLeft size={14} /> {t('forms.nav.list')}
+            </Button>
+          </PageBack>
         }
         subtitle={
           <SaveIndicator status={editor.status} error={editor.error} onRetry={editor.retry} />

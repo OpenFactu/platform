@@ -1,3 +1,4 @@
+import { PageBack } from '@/components/common/PageBack';
 import { useI18n } from '@/i18n/I18nContext';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -158,9 +159,11 @@ export const PageEditor: React.FC = () => {
     >
       <header className="flex items-center justify-between gap-4 px-4 py-3 border-b border-border-default bg-bg-card">
         <div className="flex items-center gap-3 min-w-0">
-          <Button size="sm" variant="secondary" onClick={() => navigate('/website/pages')}>
-            <ArrowLeft size={14} className="mr-1" /> {t('website.nav.pages')}
-          </Button>
+          <PageBack onBack={() => navigate('/website/pages')}>
+            <Button size="sm" variant="secondary" onClick={() => navigate('/website/pages')}>
+              <ArrowLeft size={14} className="mr-1" /> {t('website.nav.pages')}
+            </Button>
+          </PageBack>
           <div className="min-w-0">
             <p className="font-black text-fg-default truncate leading-tight">{page.title}</p>
             <p className="text-[11px] font-mono text-slate-400 leading-tight">{page.path}</p>

@@ -86,6 +86,8 @@ export interface QueryExecutionError {
 export interface QueryResults {
   /** Resultados por nombre de query. Si una falla, se omite y se loguea en `errors`. */
   byName: Record<string, unknown[]>;
+  /** Columnas de cada consulta: se saben aunque no devuelva ninguna fila. */
+  columns: Record<string, string[]>;
   errors: QueryExecutionError[];
 }
 
@@ -180,9 +182,10 @@ export async function runTemplateQueries(
   restrictToSchema?: string,
 ): Promise<QueryResults> {
   const byName: Record<string, unknown[]> = {};
+  const columns: Record<string, string[]> = {};
   const errors: QueryExecutionError[] = [];
 
-  if (!queries || queries.length === 0) return { byName, errors };
+  if (!queries || queries.length === 0) return { byName, columns, errors };
   if (restrictToSchema && !SAFE_SCHEMA_NAME.test(restrictToSchema)) {
     throw new Error(`Nombre de schema inválido: ${restrictToSchema}`);
   }
@@ -209,16 +212,19 @@ ${prepared.replace(/;\s*$/, '')}
         ) AS _template_query
         LIMIT ${MAX_ROWS}
       `;
-      const rows = await tenantClient.transaction(async (tx: any) => {
+      const result: any = await tenantClient.transaction(async (tx: any) => {
         await tx.execute(sql.raw(`SET LOCAL transaction_read_only = ON`));
         await tx.execute(sql.raw(`SET LOCAL statement_timeout = ${STATEMENT_TIMEOUT_MS}`));
         if (restrictToSchema) {
           await tx.execute(sql.raw(`SET LOCAL search_path TO "${restrictToSchema}"`));
         }
-        const result: any = await tx.execute(sql.raw(wrapped));
-        return (result?.rows ?? result ?? []) as unknown[];
+        return tx.execute(sql.raw(wrapped));
       });
+      const rows = (result?.rows ?? result ?? []) as unknown[];
       byName[name] = Array.isArray(rows) ? rows : [];
+      columns[name] = Array.isArray(result?.fields)
+        ? result.fields.map((f: { name: string }) => f.name)
+        : Object.keys((byName[name][0] as object) ?? {});
     } catch (err: any) {
       // Drizzle envuelve el error de pg en `Failed query: <sql>` ocultando la
       // causa real (relación inexistente, columna mal escrita, tipo inválido…).
@@ -233,5 +239,5 @@ ${prepared.replace(/;\s*$/, '')}
     }
   }
 
-  return { byName, errors };
+  return { byName, columns, errors };
 }

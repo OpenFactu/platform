@@ -8,6 +8,7 @@ import { ResponsiveActions } from '@/components/common/ResponsiveActions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import {
+  Alert,
   Table,
   Card,
   Button,
@@ -25,17 +26,7 @@ import type { RowAction } from '@openfactu/ui';
 import { useAuth } from '@/context/AuthContext';
 import { CloneDocumentActions } from '@/components/common/CloneDocumentActions';
 import { useTabs, useCurrentTab } from '@/context/TabsContext';
-import {
-  FileStack,
-  Plus,
-  Save,
-  FileText,
-  AlertCircle,
-  Copy,
-  Download,
-  CreditCard,
-  Eye,
-} from 'lucide-react';
+import { FileStack, Plus, Save, FileText, AlertCircle, Copy, CreditCard, Eye } from 'lucide-react';
 import { DocumentActionBar } from '../components/DocumentActionBar';
 import { DocumentDetailLayout } from '../components/DocumentDetailLayout';
 import { MobileLineCards } from '../components/MobileLineCards';
@@ -45,7 +36,7 @@ import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import { buildDetailLineColumns, statusBadgeProps } from '../components/documentLineCells';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
-import { downloadPdf } from '@/utils/downloadPdf';
+import { openPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
 import { useTheme } from '@/context/ThemeContext';
 import { formatDocCode } from '@/utils/docCode';
@@ -53,14 +44,18 @@ import { BatchSelectionModal } from '@/modules/inventory/components/BatchSelecti
 import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssignmentPanel';
 
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
-import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDocument } from '../hooks/useDocument';
 import { useDocumentScanner } from '@/hooks/useDocumentScanner';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
 import { InternalOrderChip } from '@/modules/analytics/components/InternalOrderChip';
 
 import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
 import { PaymentStatusBadge } from '../components/payments/PaymentStatusBadge';
+import { InvoiceCreditChip } from '../components/documents/InvoiceCreditChip';
+import { invoiceRemaining } from '../domain/creditNote';
 import { RegisterPaymentModal } from '../components/payments/RegisterPaymentModal';
+import { CreditNoteActions } from '../components/documents/CreditNoteActions';
 import { DocumentFiscalPanel } from '../components/documents/DocumentFiscalPanel';
 import { SendInvoiceModal } from '../components/documents/SendInvoiceModal';
 import { InvoicePaymentsList } from '../components/payments/InvoicePaymentsList';
@@ -90,7 +85,7 @@ const InvoiceList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`/api/purchases/invoices/${id}/pdf`);
+      await openPdf(`/api/purchases/invoices/${id}/pdf`);
     } catch (e) {
       toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
@@ -131,7 +126,10 @@ const InvoiceList: React.FC<{
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+            <InvoiceCreditChip invoice={item} />
+          </span>
           <span className="text-[10px] text-fg-subtle font-mono mt-1 uppercase tracking-tighter">
             {t('doc.common.idShort', { id: item.id.substring(0, 8) })}
           </span>
@@ -166,9 +164,9 @@ const InvoiceList: React.FC<{
       header: t('doc.invoices.fromDeliveryNote'),
       cell: (item: any) =>
         item.baseDocCode ? (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-500/5 border border-indigo-100 dark:border-indigo-500/30 text-[10px] font-black text-indigo-700 dark:text-indigo-200 uppercase tracking-tight">
+          <Badge variant="info">
             <FileText size={11} /> {item.baseDocCode}
-          </span>
+          </Badge>
         ) : (
           <span className="text-[10px] text-fg-subtle font-bold italic">
             {t('doc.invoices.direct')}
@@ -182,7 +180,7 @@ const InvoiceList: React.FC<{
       sortAccessor: (item: any) => Number(item.withholdingAmount) || 0,
       cell: (item: any) =>
         Number(item.withholdingAmount) > 0 ? (
-          <span className="text-rose-600 dark:text-rose-400 font-bold text-xs tabular-nums">
+          <span className="text-danger font-bold text-xs tabular-nums">
             −{fmt.money(item.withholdingAmount)}
             {Number(item.withholdingRate) > 0 && (
               <span className="ml-1 text-[10px] opacity-70">({item.withholdingRate}%)</span>
@@ -219,9 +217,12 @@ const InvoiceList: React.FC<{
       align: 'center' as const,
       sortable: true,
       sortAccessor: (item: any) => item.paymentStatus || 'pending',
-      cell: (item: any) => (
-        <PaymentStatusBadge status={item.paymentStatus} isLocked={item.isLocked} compact />
-      ),
+      cell: (item: any) =>
+        item.status === 'O' ? (
+          <PaymentStatusBadge status={item.paymentStatus} isLocked={item.isLocked} compact />
+        ) : (
+          <span className="text-fg-subtle text-xs">—</span>
+        ),
     },
   ];
 
@@ -232,7 +233,7 @@ const InvoiceList: React.FC<{
     { label: t('doc.invoices.view'), icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: t('doc.actions.downloadPdf'),
-      icon: <Download size={14} />,
+      icon: <FileText size={14} />,
       onClick: () => handleQuickPdf(item.id),
     },
   ];
@@ -245,14 +246,7 @@ const InvoiceList: React.FC<{
         icon={<FileStack size={18} />}
         size="lg"
         divider
-        toolbar={
-          mastersError ? (
-            <div className="flex items-center gap-2 p-3 bg-warning-bg border border-warning rounded-lg text-warning-fg text-xs font-bold animate-in slide-in-from-top">
-              <AlertCircle size={16} />
-              {mastersError}
-            </div>
-          ) : undefined
-        }
+        toolbar={mastersError ? <Alert tone="warning">{mastersError}</Alert> : undefined}
         actions={
           <div className="flex items-center gap-3">
             {doc.state.canWrite && onCreateFromClone && (
@@ -418,7 +412,7 @@ const InvoiceForm: React.FC<{
             : t('doc.purchaseInvoices.newTitle')
         }
         subtitle={t('doc.purchaseInvoices.formSubtitle')}
-        submitLabel={t('doc.invoices.post')}
+        submitLabel={t('doc.invoices.saveDraft')}
         onSubmit={() => onSubmit()}
         isSubmitting={state.isSubmitting}
         canSubmit={!state.seriesError && state.canWrite}
@@ -446,7 +440,7 @@ const InvoiceForm: React.FC<{
                   <PartnerField
                     label={t('doc.purchaseOrders.supplierCreditor')}
                     value={state.partnerId}
-                    onChange={setState.setPartnerId}
+                    onChange={actions.selectPartner}
                     partners={masters.partners}
                     placeholder={t('doc.common.selectSupplier')}
                   />
@@ -454,7 +448,7 @@ const InvoiceForm: React.FC<{
                     label={t('doc.invoices.date')}
                     required
                     value={state.date}
-                    onChange={(v) => setState.setDate(v ?? '')}
+                    onChange={(v) => actions.selectDate(v ?? '')}
                   />
                   <Input
                     label={t('doc.purchaseInvoices.supplierInvoiceNo')}
@@ -519,7 +513,18 @@ const InvoiceDetail: React.FC<{
   masters: any;
   setViewingBatch: (l: any) => void;
   canDelete?: boolean;
-}> = ({ invoice, onBack, onCancel, onPost, isPosting, masters, setViewingBatch, canDelete }) => {
+  canWrite?: boolean;
+}> = ({
+  invoice,
+  onBack,
+  onCancel,
+  onPost,
+  isPosting,
+  masters,
+  setViewingBatch,
+  canDelete,
+  canWrite,
+}) => {
   const { t, locale } = useI18n();
   const fmt = useFormat();
   const isMobile = useIsMobile();
@@ -554,7 +559,7 @@ const InvoiceDetail: React.FC<{
   const [payModalOpen, setPayModalOpen] = React.useState(false);
   const [emailModalOpen, setEmailModalOpen] = React.useState(false);
   const [paymentsRefreshKey, setPaymentsRefreshKey] = React.useState(0);
-  const remaining = Math.max(0, Number(invoice.total || 0) - Number(invoice.amountPaid || 0));
+  const remaining = invoiceRemaining(invoice);
   const docCode = formatDocCode(invoice);
 
   const columns = useMemo(
@@ -575,6 +580,8 @@ const InvoiceDetail: React.FC<{
       onBack={onBack}
       breadcrumb={t('doc.purchaseInvoices.breadcrumb')}
       title={formatDocCode(invoice)}
+      cancelledAt={invoice.cancelledAt}
+      cancelReason={invoice.cancelReason}
       status={statusBadgeProps(invoice.status, DocKind.Invoice)}
       actions={
         <DocumentActionBar
@@ -583,7 +590,7 @@ const InvoiceDetail: React.FC<{
           docId={invoice.id}
           docCode={docCode}
           onCancel={() => onCancel(invoice.id)}
-          showCancel={(invoice.status === 'O' || invoice.status === 'D') && !!canDelete}
+          showCancel={invoice.status === 'D' && !!canDelete}
           onSendEmail={invoice.status === 'O' ? () => setEmailModalOpen(true) : undefined}
           primary={
             invoice.status === 'D' && onPost
@@ -605,8 +612,20 @@ const InvoiceDetail: React.FC<{
       }
     >
       <div className="flex items-center gap-3 mb-4 -mt-2">
-        <PaymentStatusBadge status={invoice.paymentStatus} isLocked={invoice.isLocked} />
+        {invoice.status === 'O' && (
+          <PaymentStatusBadge status={invoice.paymentStatus} isLocked={invoice.isLocked} />
+        )}
         <CloneDocumentActions docType="PINV" doc={invoice} show="copy" size={14} />
+        <CreditNoteActions
+          side="purchase"
+          invoice={invoice}
+          invoiceCode={docCode}
+          canWrite={!!canWrite}
+          onChanged={() => {
+            setPaymentsRefreshKey((v) => v + 1);
+            notifyDocChange(DocType.PurchaseInvoice);
+          }}
+        />
         <TraceabilityButton type="PINV" id={invoice.id} docCode={docCode} />
         <InternalOrderChip internalOrderId={invoice.internalOrderId} />
         {invoice.amountPaid != null && Number(invoice.amountPaid) > 0 && (
@@ -673,19 +692,25 @@ const InvoiceDetail: React.FC<{
             )}
           </div>
           {fromDelivery && (
-            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-lg">
-              <Copy size={14} className="text-blue-600 dark:text-blue-300 shrink-0" />
-              <p className="text-xs text-blue-800 dark:text-blue-200 font-medium leading-tight">
-                {t('doc.purchaseInvoices.fromReceiptsNotice')}
-              </p>
-            </div>
+            <Alert tone="info" icon={<Copy size={14} />}>
+              {t('doc.purchaseInvoices.fromReceiptsNotice')}
+            </Alert>
           )}
-          <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/30 rounded-lg">
-            <FileText size={16} className="text-amber-600 dark:text-amber-300 shrink-0" />
-            <p className="text-xs text-amber-800 dark:text-amber-200 font-medium leading-tight">
-              {t('doc.purchaseInvoices.firmNotice')}
-            </p>
-          </div>
+          {invoice.status === 'D' ? (
+            <Alert tone="info" icon={<FileText size={16} />}>
+              {t(
+                invoice.stockMoved
+                  ? 'doc.purchaseInvoices.draftNoticeMoved'
+                  : 'doc.purchaseInvoices.draftNotice',
+              )}
+            </Alert>
+          ) : (
+            invoice.status === 'O' && (
+              <Alert tone="warning" icon={<FileText size={16} />}>
+                {t('doc.purchaseInvoices.firmNotice')}
+              </Alert>
+            )
+          )}
         </Card>
 
         <Card className="border-border-subtle" bodyClassName="p-6 space-y-4">
@@ -725,7 +750,7 @@ const InvoiceDetail: React.FC<{
                 <dd className="text-sm font-bold text-fg-default truncate flex items-center gap-2">
                   {docType.name}
                   {docType.isRectify && (
-                    <span className="px-1.5 py-0.5 rounded-xs text-[9px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                    <span className="px-1.5 py-0.5 rounded-xs text-[9px] font-black uppercase tracking-wider bg-warning-bg text-warning-fg">
                       {t('doc.invoices.rectifying')}
                     </span>
                   )}
@@ -760,10 +785,10 @@ const InvoiceDetail: React.FC<{
             )}
             {Number(invoice.withholdingRate) > 0 && (
               <div className="flex justify-between items-baseline gap-4">
-                <dt className="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+                <dt className="text-[11px] font-bold text-danger uppercase tracking-wider">
                   {t('doc.totals.withholding')}
                 </dt>
-                <dd className="text-sm font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                <dd className="text-sm font-bold text-danger tabular-nums">
                   {invoice.withholdingRate}% ({fmt.money(invoice.withholdingAmount || 0)})
                 </dd>
               </div>
@@ -1078,6 +1103,7 @@ export const PurchaseInvoices: React.FC = () => {
           masters={doc.masters}
           setViewingBatch={setViewingBatch}
           canDelete={doc.state.canDelete}
+          canWrite={doc.state.canWrite}
         />
         {viewingBatch && (
           <BatchSelectionModal

@@ -213,7 +213,7 @@ export const PriceLists: React.FC = () => {
         ) : (
           <div className="flex items-center gap-3">
             <div
-              className={`p-1.5 rounded-lg transition-colors ${
+              className={`p-1.5 rounded-sm transition-colors ${
                 selectedList?.id === l.id
                   ? 'bg-accent text-accent-fg'
                   : 'bg-bg-muted text-fg-subtle group-hover:text-accent'
@@ -371,7 +371,7 @@ export const PriceLists: React.FC = () => {
                           <td className="px-6 py-3 text-center">
                             {itemPrice ? (
                               <div
-                                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black tracking-tighter border ${diff >= 0 ? 'bg-danger-bg text-danger-fg border-danger/20' : 'bg-success-bg text-success-fg border-success/20'}`}
+                                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-[10px] font-black tracking-tighter border ${diff >= 0 ? 'bg-danger-bg text-danger-fg border-danger/20' : 'bg-success-bg text-success-fg border-success/20'}`}
                               >
                                 {diff >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
                                 {Math.abs(diff).toFixed(1)}%{' '}

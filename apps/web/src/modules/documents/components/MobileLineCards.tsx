@@ -16,12 +16,16 @@ import { useI18n } from '@/i18n/I18nContext';
  * Convenciones heredadas de las columnas:
  * - La primera columna (Artículo) se pinta a ancho completo como cabecera.
  * - Las columnas con header '' son acciones (duplicar/eliminar) → pie de tarjeta.
+ * - Las columnas `card: 'meta'` son el resultado de la línea (su total) → también al pie:
+ *   no se edita, así que en la rejilla dejaba un hueco al lado de un campo más alto.
  */
 
 interface Props<T> {
   columns: TableColumn<T>[];
   lines: T[];
   emptyMessage?: string;
+  /** El número de línea, cuando no es su posición en `lines` (páginas, búsqueda). */
+  lineNumber?: (line: T, idx: number) => number;
 }
 
 function renderCell<T>(col: TableColumn<T>, line: T, idx: number): React.ReactNode {
@@ -31,7 +35,7 @@ function renderCell<T>(col: TableColumn<T>, line: T, idx: number): React.ReactNo
   return null;
 }
 
-export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
+export function MobileLineCards<T>({ columns, lines, emptyMessage, lineNumber }: Props<T>) {
   const { t } = useI18n();
   if (!lines.length) {
     return (
@@ -42,7 +46,8 @@ export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
   }
 
   const [first, ...rest] = columns;
-  const fieldCols = rest.filter((c) => c.header !== '');
+  const fieldCols = rest.filter((c) => c.header !== '' && c.card !== 'meta');
+  const totalCols = rest.filter((c) => c.card === 'meta');
   const actionCols = rest.filter((c) => c.header === '');
 
   return (
@@ -58,7 +63,8 @@ export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-black uppercase tracking-widest text-fg-subtle leading-none mb-1.5">
-                {first?.header || t('doc.lines.item')} · L{idx + 1}
+                {first?.header || t('doc.lines.item')} · L
+                {lineNumber ? lineNumber(line, idx) : idx + 1}
               </p>
               {first && renderCell(first, line, idx)}
             </div>
@@ -75,11 +81,25 @@ export function MobileLineCards<T>({ columns, lines, emptyMessage }: Props<T>) {
               </div>
             ))}
           </div>
-          {actionCols.length > 0 && (
-            <div className="mt-3 flex items-center justify-end gap-1 border-t border-border-subtle pt-2">
-              {actionCols.map((c, i) => (
-                <React.Fragment key={i}>{renderCell(c, line, idx)}</React.Fragment>
-              ))}
+          {(totalCols.length > 0 || actionCols.length > 0) && (
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-border-subtle pt-2">
+              <div className="min-w-0 flex-1">
+                {totalCols.map((col, i) => (
+                  <div key={i} className="flex items-baseline justify-between gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-fg-subtle">
+                      {col.header}
+                    </span>
+                    {renderCell(col, line, idx)}
+                  </div>
+                ))}
+              </div>
+              {actionCols.length > 0 && (
+                <div className="flex shrink-0 items-center gap-1">
+                  {actionCols.map((c, i) => (
+                    <React.Fragment key={i}>{renderCell(c, line, idx)}</React.Fragment>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </Card>

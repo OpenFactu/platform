@@ -161,6 +161,10 @@
       "option": "Opción",
       "attachmentPlaceholder": "URL o id del adjunto",
       "searchRef": "Buscar {table}...",
+      "searchLinked": "Buscar...",
+      "openLinked": "Abrir",
+      "linkedHidden": "Sin acceso",
+      "linkedMissing": "Ya no existe",
       "additional": "Campos Adicionales (Plugins)",
       "enable": "Activar"
     },
@@ -266,6 +270,8 @@
       "thisDocument": "Este documento",
       "current": "(actual)",
       "paymentsAndAccounting": "Cobros y contabilidad",
+      "creditNote": "Abono",
+      "creditApplied": "Abono aplicado",
       "payment": "Cobro / pago",
       "journalEntryLabel": "Asiento contable",
       "emptyHintPopup": "Cuando este documento origine otro o se genere desde uno, aquí aparecerá la cadena completa."
@@ -643,8 +649,8 @@
     },
     "tracking": {
       "copy": {
-        "t0": "En preparación",
-        "t1": "Listo / Despachado",
+        "t0": "Preparando",
+        "t1": "Listo",
         "t2": "En camino",
         "t3": "En reparto",
         "t4": "Entregado",

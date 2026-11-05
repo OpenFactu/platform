@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 import animated from 'tailwindcss-animated';
+import enterAnimations from './tailwind.enter-animations.js';
 import uiPreset from '@openfactu/ui/tailwind-preset';
 
 // Dónde está de verdad el paquete de interfaz que importa esta app.
@@ -34,6 +35,6 @@ export default {
   darkMode: 'class',
   // El preset omite `plugins` a propósito, para no convertir una devDependency
   // de la librería en dependencia dura del consumidor. Las clases animate-in /
-  // fade-in-50 que usa la app vienen de aquí.
-  plugins: [animated],
+  // fade-in que usa la app vienen de `enterAnimations`, no de `animated`.
+  plugins: [animated, enterAnimations],
 };

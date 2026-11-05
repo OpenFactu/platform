@@ -1,5 +1,9 @@
 /** Etiquetas del registro de documentos y textos que acaban en el PDF. Ver `../../index.ts`. */
 export default {
+  Desde: 'From',
+  Hasta: 'To',
+  'Sin datos': 'No data',
+  'Generado {date}': 'Generated {date}',
   // Tipos de documento (DocumentRegistry)
   'Factura de Venta': 'Sales invoice',
   'Facturas de Venta': 'Sales invoices',
@@ -36,4 +40,7 @@ export default {
   BORRADOR: 'DRAFT',
   PAGADA: 'PAID',
   Proyecto: 'Project',
+  // Valores de los campos de una tabla propia
+  Sí: 'Yes',
+  No: 'No',
 } as Record<string, string>;

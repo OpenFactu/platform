@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Loader } from '@openfactu/ui';
+import { Button, Card, Loader } from '@openfactu/ui';
 import { Eye } from 'lucide-react';
 import { useI18n } from '@/i18n/I18nContext';
 
@@ -22,12 +22,9 @@ export const PreviewPane: React.FC<Props> = ({ previewUrl, previewing, onRefresh
           <Eye size={12} /> {t('templates.preview.title')}
           {previewing && <Loader />}
         </div>
-        <button
-          onClick={onRefresh}
-          className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 uppercase tracking-widest"
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={onRefresh}>
           {t('templates.preview.refresh')}
-        </button>
+        </Button>
       </div>
       <div className="flex-1 min-h-0 bg-bg-card border border-border-default rounded-lg overflow-hidden relative">
         {previewUrl ? (

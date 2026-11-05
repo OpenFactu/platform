@@ -10,8 +10,8 @@ import {
   type ButtonProps,
   useToast,
 } from '@openfactu/ui';
-import { Download, ChevronDown, FileCode } from 'lucide-react';
-import { downloadPdf } from '@/utils/downloadPdf';
+import { FileText, ChevronDown, FileCode } from 'lucide-react';
+import { openPdf } from '@/utils/downloadPdf';
 import { useI18n } from '@/i18n/I18nContext';
 
 interface Template {
@@ -22,7 +22,7 @@ interface Template {
 }
 
 /**
- * Plantillas PDF de un tipo de documento y su descarga. Lo comparten el botón
+ * Plantillas PDF de un tipo de documento y su apertura en una pestaña nueva. Lo comparten el botón
  * de escritorio (desplegable) y el botón flotante de móvil (modal).
  */
 export function usePdfTemplates(docType: string, pdfUrl: string) {
@@ -48,7 +48,7 @@ export function usePdfTemplates(docType: string, pdfUrl: string) {
     setDownloading(true);
     try {
       const url = templateId ? `${pdfUrl}?templateId=${encodeURIComponent(templateId)}` : pdfUrl;
-      await downloadPdf(url);
+      await openPdf(url);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('templates.printPdf.downloadError'));
     } finally {
@@ -56,7 +56,7 @@ export function usePdfTemplates(docType: string, pdfUrl: string) {
     }
   };
 
-  /** Con una plantilla (o ninguna) descarga y devuelve `null`; con varias, la lista para elegir. */
+  /** Con una plantilla (o ninguna) lo abre y devuelve `null`; con varias, la lista para elegir. */
   const start = async (): Promise<Template[] | null> => {
     try {
       const list = await ensure();
@@ -126,7 +126,7 @@ interface Props {
 }
 
 /**
- * Descarga del PDF. Con una sola plantilla descarga directamente; con varias,
+ * Abre el PDF en una pestaña nueva. Con una sola plantilla va directo; con varias,
  * el primer clic las carga y despliega un `DropdownMenu` para elegir. Antes el
  * desplegable era un `absolute` hecho a mano y se recortaba dentro de un modal.
  */
@@ -154,7 +154,7 @@ export const PrintTemplateButton: React.FC<Props> = ({
       isLoading={pdf.downloading || pdf.loading}
       className="flex items-center gap-2 h-10"
     >
-      <Download size={16} />
+      <FileText size={16} />
       <span>{label}</span>
       {multiple && <ChevronDown size={14} className="opacity-70" />}
     </Button>

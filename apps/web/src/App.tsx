@@ -14,6 +14,7 @@ import { MessagingProvider } from '@/modules/messaging/context/MessagingContext'
 import { MessagingHost } from '@/modules/messaging/components/MessagingHost';
 import { DebugPanel } from './components/DebugPanel';
 
+import { PDF_VIEWER_PATH } from './utils/downloadPdf';
 const SetupWizard = lazy(() =>
   import('./pages/SetupWizard').then((m) => ({ default: m.SetupWizard })),
 );
@@ -33,6 +34,9 @@ const GuestCallPage = lazy(() =>
 );
 const PublicFormPage = lazy(() =>
   import('./pages/public/PublicFormPage').then((m) => ({ default: m.PublicFormPage })),
+);
+const PdfViewerPage = lazy(() =>
+  import('./pages/PdfViewerPage').then((m) => ({ default: m.PdfViewerPage })),
 );
 const KioskMode = lazy(() =>
   import('@/modules/hr/pages/KioskMode').then((m) => ({ default: m.KioskMode })),
@@ -143,6 +147,11 @@ function App() {
         <DebugPanel />
       </>
     );
+  }
+
+  // Pestaña con un PDF, sin el menú del ERP (ver `openPdf`).
+  if (window.location.pathname === PDF_VIEWER_PATH) {
+    return <PdfViewerPage />;
   }
 
   return (

@@ -23,13 +23,14 @@ import {
   FormGrid,
 } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
-import { Plus, ArrowLeft, Download, Eye } from 'lucide-react';
-import { useDocument, useDataTable, DocType, decomposeDocType } from '@openfactu/common';
+import { Plus, ArrowLeft, Download, Eye, FileText } from 'lucide-react';
+import { useDataTable, DocType, decomposeDocType } from '@openfactu/common';
+import { useDocument } from '../hooks/useDocument';
 import { getDocTypeConfig } from '../domain/docTypeConfig';
 import { useDocTypes } from '../domain/docTypeRegistry';
 import { useAuth } from '@/context/AuthContext';
 import { useFormat } from '@/hooks/useFormat';
-import { downloadPdf } from '@/utils/downloadPdf';
+import { openPdf } from '@/utils/downloadPdf';
 import { formatDocCode } from '@/utils/docCode';
 import { buildDetailLineColumns, statusBadgeProps } from '../components/documentLineCells';
 import { MobileLineCards } from '../components/MobileLineCards';
@@ -38,6 +39,7 @@ import { useI18n } from '@/i18n/I18nContext';
 
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
 import { docsApi } from '../api';
+import { PageBack } from '@/components/common/PageBack';
 
 // ── LISTADO ────────────────────────────────────────────────────────
 
@@ -59,7 +61,7 @@ const DocumentList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`${config.apiEndpoint}/${id}/pdf`);
+      await openPdf(`${config.apiEndpoint}/${id}/pdf`);
     } catch (e) {
       toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
@@ -119,7 +121,7 @@ const DocumentList: React.FC<{
       accessor: (item: any) => (
         <div>
           <p className="font-bold text-fg-body">{item.partnerName}</p>
-          <p className="text-[10px] text-slate-400 uppercase mt-1">
+          <p className="text-[10px] text-fg-subtle uppercase mt-1">
             {t('doc.generic.partnerIdShort', { id: item.partnerId?.substring(0, 6) ?? '' })}
           </p>
         </div>
@@ -157,7 +159,7 @@ const DocumentList: React.FC<{
     { label: t('doc.common.view'), icon: <Eye size={14} />, onClick: () => onDetail(item) },
     {
       label: t('doc.actions.downloadPdf'),
-      icon: <Download size={14} />,
+      icon: <FileText size={14} />,
       onClick: () => handleQuickPdf(item.id),
     },
   ];
@@ -266,7 +268,7 @@ const DocumentForm: React.FC<{
                 <PartnerField
                   label={config.partnerLabel}
                   value={state.partnerId}
-                  onChange={setState.setPartnerId}
+                  onChange={actions.selectPartner}
                   partners={masters.partners}
                   placeholder={config.partnerPlaceholder}
                 />
@@ -274,7 +276,7 @@ const DocumentForm: React.FC<{
                   label={t('doc.common.date')}
                   required
                   value={state.date}
-                  onChange={(v) => setState.setDate(v ?? '')}
+                  onChange={(v) => actions.selectDate(v ?? '')}
                 />
                 {masters.warehouses.length > 0 && (
                   <Field label={t('doc.lines.warehouse')}>
@@ -323,7 +325,7 @@ const DocumentDetail: React.FC<{
   const handlePdf = async () => {
     setDownloading(true);
     try {
-      await downloadPdf(`${config.apiEndpoint}/${doc.id}/pdf`);
+      await openPdf(`${config.apiEndpoint}/${doc.id}/pdf`);
     } catch {
     } finally {
       setDownloading(false);
@@ -332,14 +334,16 @@ const DocumentDetail: React.FC<{
 
   return (
     <div className="p-4 space-y-6">
-      <Button type="button" variant="ghost" size="sm" onClick={onBack} className="gap-2">
-        <ArrowLeft size={16} /> {t('doc.common.back')}
-      </Button>
+      <PageBack onBack={onBack}>
+        <Button type="button" variant="ghost" size="sm" onClick={onBack} className="gap-2">
+          <ArrowLeft size={16} /> {t('doc.common.back')}
+        </Button>
+      </PageBack>
       <Card className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div>
             <h2 className="text-xl font-bold">{config.label}</h2>
-            <p className="text-sm text-slate-500">{doc.docCode || doc.id}</p>
+            <p className="text-sm text-fg-muted">{doc.docCode || doc.id}</p>
           </div>
           <Button variant="secondary" onClick={handlePdf} isLoading={downloading} className="gap-2">
             <Download size={14} /> PDF
@@ -347,14 +351,14 @@ const DocumentDetail: React.FC<{
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
-            <span className="text-slate-500">{t('doc.common.status')}:</span>{' '}
+            <span className="text-fg-muted">{t('doc.common.status')}:</span>{' '}
             <Badge>{doc.status}</Badge>
           </div>
           <div>
-            <span className="text-slate-500">{t('doc.common.date')}:</span> {doc.date}
+            <span className="text-fg-muted">{t('doc.common.date')}:</span> {doc.date}
           </div>
           <div>
-            <span className="text-slate-500">{t('doc.lines.total')}:</span>{' '}
+            <span className="text-fg-muted">{t('doc.lines.total')}:</span>{' '}
             <span className="font-bold">{fmt.money(doc.total)}</span>
           </div>
         </div>

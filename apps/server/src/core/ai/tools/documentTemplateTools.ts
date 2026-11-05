@@ -34,7 +34,7 @@ import {
 } from '../../documents/visualTemplateOptions';
 import type { ChatToolContext } from './util';
 
-export const TEMPLATE_DOC_TYPE_IDS = ['SINV', 'PINV', 'SO', 'PO', 'SDN', 'PDN'] as const;
+export const TEMPLATE_DOC_TYPE_IDS = ['SINV', 'PINV', 'SO', 'PO', 'SDN', 'PDN', 'SQ'] as const;
 
 // El esquema de opciones vive en core/documents/visualTemplateOptions.ts — lo
 // comparten estas tools y el generador de la página de plantillas

@@ -93,6 +93,8 @@
       "documentType": "Document type",
       "paymentMethodLong": "Payment method",
       "withholding": "Withholding %",
+      "defaultTax": "Default {tax}",
+      "defaultTaxHelp": "Takes priority over the item's when adding lines.",
       "bank": "Bank",
       "name": "Name",
       "type": "Type"
@@ -183,6 +185,21 @@
       "codePlaceholder": "Code (e.g. VIP)",
       "namePlaceholder": "Group Name",
       "prefixPlaceholder": "Prefix (e.g. V)"
+    },
+    "credit": {
+      "title": "Credit and reminders",
+      "hint": "How much this customer can owe, and what they owe now.",
+      "limit": "Credit limit",
+      "limitHint": "Empty: no limit. Zero: nothing on credit.",
+      "limitNoPermission": "Changing it requires the permission to exceed the credit limit.",
+      "usedOf": "{used} of {limit}",
+      "invoices": "Unpaid invoices",
+      "deliveryNotes": "Uninvoiced delivery notes",
+      "orders": "Orders to fulfil",
+      "balance": "Balance in their favour",
+      "used": "Used",
+      "available": "Available",
+      "excluded": "Do not chase overdue invoices for this customer"
     }
   }
 }

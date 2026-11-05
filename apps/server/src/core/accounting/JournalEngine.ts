@@ -9,6 +9,7 @@
  * para decidir qué cuenta usar para cada concepto (cliente, proveedor,
  * impuestos, caja, banco, ventas, compras, etc.).
  */
+import { isOpenPeriod, openPeriodsFor } from './periodRules';
 import crypto from 'crypto';
 import { and, eq, desc } from 'drizzle-orm';
 import * as schema from '../../db/schema';
@@ -59,6 +60,23 @@ function toNum(v: number | string | undefined | null): number {
 function round4(n: number): number {
   return Math.round(n * 10000) / 10000;
 }
+
+/** Un abono es la factura en negativo: se asienta la positiva y se cambian los lados. */
+function positiveInvoice(invoice: any): { positive: any; sign: 1 | -1 } {
+  if (toNum(invoice.subtotal) >= 0) return { positive: invoice, sign: 1 };
+  return {
+    positive: {
+      ...invoice,
+      subtotal: -toNum(invoice.subtotal),
+      taxTotal: -toNum(invoice.taxTotal),
+      total: -toNum(invoice.total),
+    },
+    sign: -1,
+  };
+}
+
+const swapSides = (lines: JournalLineInput[]): JournalLineInput[] =>
+  lines.map((line) => ({ ...line, debit: line.credit, credit: line.debit }));
 
 export class JournalEngine {
   /**
@@ -156,6 +174,15 @@ export class JournalEngine {
     if (entry.status === 'reversed') {
       throw new Error('No se puede postear un asiento reversado');
     }
+    const [period] = await db
+      .select()
+      .from(schema.accountingPeriods)
+      .where(eq(schema.accountingPeriods.id, entry.periodId));
+    if (period && !isOpenPeriod(period)) {
+      const err: any = new Error(`El periodo ${period.name} está cerrado: no admite asientos.`);
+      err.statusCode = 409;
+      throw err;
+    }
 
     // Revalidar balance en el momento del posteo — las líneas pueden haber
     // cambiado desde create().
@@ -223,9 +250,28 @@ export class JournalEngine {
       .from(schema.journalEntryLines)
       .where(eq(schema.journalEntryLines.entryId, entryId));
 
+    // Lo cerrado no se toca: la reversión va a un periodo abierto de hoy.
+    const today = new Date();
+    const [ownPeriod] = await db
+      .select()
+      .from(schema.accountingPeriods)
+      .where(eq(schema.accountingPeriods.id, entry.periodId));
+    let periodId = entry.periodId;
+    if (ownPeriod && !isOpenPeriod(ownPeriod)) {
+      const [open] = await openPeriodsFor(db, today);
+      if (!open) {
+        const err: any = new Error(
+          `No hay un periodo abierto para revertir el asiento ${entry.number}.`,
+        );
+        err.statusCode = 409;
+        throw err;
+      }
+      periodId = open.id;
+    }
+
     const reversal = await this.create(db, {
-      date: new Date(),
-      periodId: entry.periodId,
+      date: today,
+      periodId,
       description: description || `Reversión de asiento ${entry.number}`,
       source: 'reversal',
       sourceDocumentId: entry.id,
@@ -307,10 +353,11 @@ export class JournalEngine {
     invoice: any,
     docTable: string,
     side: 'sales' | 'purchase',
+    sign: 1 | -1 = 1,
   ): Promise<JournalLineInput[]> {
     const docNum = invoice.docNum || '';
     const rows = await TaxEngine.loadDocumentTaxes(db, docTable, invoice.id);
-    const summary = summarizeTaxesByAccount(rows);
+    const summary = summarizeTaxesByAccount(rows).map((g) => ({ ...g, amount: sign * g.amount }));
 
     const distribute = (groups: Array<{ accountKind: string; amount: number }>, total: number) => {
       let remaining = total;
@@ -402,8 +449,9 @@ export class JournalEngine {
       return null;
     }
 
-    const subtotal = round4(toNum(invoice.subtotal));
-    const total = round4(toNum(invoice.total));
+    const { positive, sign } = positiveInvoice(invoice);
+    const subtotal = round4(toNum(positive.subtotal));
+    const total = round4(toNum(positive.total));
 
     const journalLines: JournalLineInput[] = [
       {
@@ -426,7 +474,7 @@ export class JournalEngine {
         internalOrderId: invoice.internalOrderId || null,
       },
     ];
-    journalLines.push(...(await this.invoiceTaxLines(db, invoice, docTable, 'sales')));
+    journalLines.push(...(await this.invoiceTaxLines(db, positive, docTable, 'sales', sign)));
 
     return this.create(db, {
       date: invoice.date,
@@ -435,7 +483,7 @@ export class JournalEngine {
       source: 'sales_invoice',
       sourceDocumentId: invoice.id,
       createdBy: userId,
-      lines: journalLines,
+      lines: sign < 0 ? swapSides(journalLines) : journalLines,
     });
   }
 
@@ -456,8 +504,10 @@ export class JournalEngine {
     direction: 'sales' | 'purchase',
     userId?: string | null,
   ): Promise<{ id: string } | null> {
-    const amount = round4(toNum(payment.amount));
-    if (amount <= 0) return null;
+    const signed = round4(toNum(payment.amount));
+    if (signed === 0) return null;
+    // Un importe negativo es una devolución: el asiento del cobro al revés.
+    const amount = Math.abs(signed);
 
     // Cuenta de contrapartida (tesorería): caja si método es 'cash', si no banco.
     const methodKey = payment.paymentMethodId ? `method:${payment.paymentMethodId}` : null;
@@ -510,7 +560,7 @@ export class JournalEngine {
       source: 'payment',
       sourceDocumentId: payment.id,
       createdBy: userId,
-      lines,
+      lines: signed < 0 ? swapSides(lines) : lines,
     });
   }
 
@@ -644,8 +694,9 @@ export class JournalEngine {
     );
     if (!payable || !expense) return null;
 
-    const subtotal = round4(toNum(invoice.subtotal));
-    const total = round4(toNum(invoice.total));
+    const { positive, sign } = positiveInvoice(invoice);
+    const subtotal = round4(toNum(positive.subtotal));
+    const total = round4(toNum(positive.total));
 
     const journalLines: JournalLineInput[] = [
       {
@@ -665,7 +716,7 @@ export class JournalEngine {
         description: `Factura compra ${invoice.docNum || ''}`,
       },
     ];
-    journalLines.push(...(await this.invoiceTaxLines(db, invoice, docTable, 'purchase')));
+    journalLines.push(...(await this.invoiceTaxLines(db, positive, docTable, 'purchase', sign)));
 
     return this.create(db, {
       date: invoice.date,
@@ -674,7 +725,7 @@ export class JournalEngine {
       source: 'purchase_invoice',
       sourceDocumentId: invoice.id,
       createdBy: userId,
-      lines: journalLines,
+      lines: sign < 0 ? swapSides(journalLines) : journalLines,
     });
   }
 }

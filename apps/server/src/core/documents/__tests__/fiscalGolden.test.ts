@@ -100,6 +100,45 @@ test('documento: la retención de cabecera gana sobre las de línea', () => {
   assert.equal(byAmount.docWithholding, 12);
 });
 
+test('línea en negativo: el inverso exacto, con descuento y retención', () => {
+  const byRate = engine.computeLineAmounts(lineOf({ quantity: -2, discountRate: 10 }), TAX_RATES);
+  assert.equal(byRate.bruto, -100);
+  assert.equal(byRate.discount, -10);
+  assert.equal(byRate.neto, -90);
+  assert.equal(byRate.taxAmount, -18.9);
+
+  const byAmount = engine.computeLineAmounts(
+    lineOf({ quantity: -2, discountAmount: -25 }),
+    TAX_RATES,
+  );
+  assert.equal(byAmount.neto, -75);
+  assert.equal(byAmount.taxAmount, -15.75);
+
+  const withheld = engine.computeLineAmounts(
+    lineOf({ quantity: -2, withholdingRate: 15 }),
+    TAX_RATES,
+  );
+  assert.equal(withheld.withholding, -15);
+  const withheldByAmount = engine.computeLineAmounts(
+    lineOf({ quantity: -2, withholdingAmount: -12 }),
+    TAX_RATES,
+  );
+  assert.equal(withheldByAmount.withholding, -12);
+});
+
+test('documento en negativo: la retención de cabecera también va en negativo', () => {
+  const byAmount = engine.computePreliminaryTotals(
+    { withholdingAmount: -12, lines: [lineOf({ quantity: -2 })] },
+    TAX_RATES,
+  );
+  assert.equal(byAmount.docWithholding, -12);
+  const byRate = engine.computePreliminaryTotals(
+    { withholdingRate: 15, lines: [lineOf({ quantity: -2 })] },
+    TAX_RATES,
+  );
+  assert.equal(byRate.docWithholding, -15);
+});
+
 /**
  * Prepara JournalEngine para un test sin BD: cada kind de mapeo resuelve a una
  * cuenta conocida y `create` valida y captura el asiento en vez de insertarlo.
@@ -167,6 +206,88 @@ test('asiento de venta sin retención', async (t) => {
     { account: '477000', debit: 0, credit: 21 },
   ]);
   assert.equal(captured[0].source, 'sales_invoice');
+});
+
+const creditNote = {
+  ...invoice,
+  subtotal: '-100.0000',
+  taxTotal: '-21.0000',
+  total: '-121.0000',
+};
+
+test('asiento de un abono de venta: el de la factura con los lados cambiados', async (t) => {
+  const captured = captureJournal(t, ACCOUNTS);
+  await JournalEngine.createFromSalesInvoice(noTaxRows, creditNote, []);
+  assert.deepEqual(summarize(captured[0]), [
+    { account: '430000', debit: 0, credit: 121 },
+    { account: '700000', debit: 100, credit: 0 },
+    { account: '477000', debit: 21, credit: 0 },
+  ]);
+  assert.equal(captured[0].source, 'sales_invoice');
+});
+
+test('asiento de un abono de compra: el de la factura con los lados cambiados', async (t) => {
+  const captured = captureJournal(t, ACCOUNTS);
+  await JournalEngine.createFromPurchaseInvoice(noTaxRows, creditNote, []);
+  assert.deepEqual(summarize(captured[0]), [
+    { account: '600000', debit: 0, credit: 100 },
+    { account: '400000', debit: 121, credit: 0 },
+    { account: '472000', debit: 0, credit: 21 },
+  ]);
+});
+
+test('asiento de un abono con retención: cuadra con la retención al revés', async (t) => {
+  const captured = captureJournal(t, ACCOUNTS);
+  await JournalEngine.createFromSalesInvoice(
+    noTaxRows,
+    { ...creditNote, total: '-106.0000', withholdingAmount: '-15.0000' },
+    [],
+  );
+  assert.deepEqual(summarize(captured[0]), [
+    { account: '430000', debit: 0, credit: 106 },
+    { account: '700000', debit: 100, credit: 0 },
+    { account: '477000', debit: 21, credit: 0 },
+    { account: '473000', debit: 0, credit: 15 },
+  ]);
+});
+
+test('asiento de un abono con varios impuestos: una línea por cuenta', async (t) => {
+  const captured = captureJournal(t, { ...ACCOUNTS, tax_reduced: '477100' });
+  const rows = [
+    { accountKind: 'tax_output', amount: '-21', isWithholding: false },
+    { accountKind: 'tax_reduced', amount: '-10', isWithholding: false },
+  ];
+  const db = { select: () => ({ from: () => ({ where: async () => rows }) }) };
+  await JournalEngine.createFromSalesInvoice(
+    db,
+    { ...creditNote, subtotal: '-200.0000', taxTotal: '-31.0000', total: '-231.0000' },
+    [],
+  );
+  assert.deepEqual(summarize(captured[0]), [
+    { account: '430000', debit: 0, credit: 231 },
+    { account: '700000', debit: 200, credit: 0 },
+    { account: '477000', debit: 21, credit: 0 },
+    { account: '477100', debit: 10, credit: 0 },
+  ]);
+});
+
+test('devolver un cobro: el asiento del cobro con los lados cambiados', async (t) => {
+  const captured = captureJournal(t, ACCOUNTS);
+  await JournalEngine.createFromPayment(
+    {},
+    { id: 'p1', amount: '-50', date: new Date('2026-01-20'), paymentMethodId: null },
+    { id: 'f1', partnerId: 'bp', periodId: 'p1', docNum: 1 },
+    'sales',
+  );
+  const lines = summarize(captured[0]);
+  assert.deepEqual(
+    lines.map((l: any) => [l.debit, l.credit]),
+    [
+      [0, 50],
+      [50, 0],
+    ],
+  );
+  assert.equal(lines[1].account, '430000');
 });
 
 test('asiento de compra sin retención', async (t) => {

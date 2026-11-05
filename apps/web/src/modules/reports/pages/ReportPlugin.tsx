@@ -1,8 +1,10 @@
+import { useGoBack } from '@/hooks/useGoBack';
+import { PageBack } from '@/components/common/PageBack';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Card, DatePicker, PageHeader, Table } from '@openfactu/ui';
 import type { TableColumn } from '@openfactu/ui';
 import { ArrowLeft, Download, RefreshCw, Receipt } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useI18n } from '@/i18n/I18nContext';
 import { useFormat } from '@/hooks/useFormat';
 import { reportsApi } from '../api';
@@ -32,7 +34,7 @@ export const ReportPlugin: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { t } = useI18n();
   const fmt = useFormat();
-  const navigate = useNavigate();
+  const goBack = useGoBack();
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [data, setData] = useState<PluginReportData | null>(null);
@@ -85,9 +87,11 @@ export const ReportPlugin: React.FC = () => {
         icon={<Receipt size={18} />}
         size="md"
         breadcrumbs={
-          <Button type="button" variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
-          </Button>
+          <PageBack onBack={goBack}>
+            <Button type="button" variant="ghost" size="sm" onClick={goBack}>
+              <ArrowLeft size={12} className="mr-1" /> {t('reports.common.back')}
+            </Button>
+          </PageBack>
         }
         actions={
           <div className="flex items-center gap-2">
@@ -102,7 +106,7 @@ export const ReportPlugin: React.FC = () => {
             <Button
               type="button"
               onClick={() =>
-                reportsApi.downloadPdf(`/api/reports/plugin/${id}/pdf?${query()}`, `${id}.pdf`)
+                reportsApi.openPdf(`/api/reports/plugin/${id}/pdf?${query()}`, `${id}.pdf`)
               }
               className="flex items-center gap-2"
             >

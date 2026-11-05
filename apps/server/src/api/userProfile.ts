@@ -13,6 +13,7 @@
  * `globalUsers.signatureImageUrl`/`avatarImageUrl` (apuntando al endpoint GET
  * correspondiente de este router).
  */
+import { isKnownLocale } from '../i18n';
 import { Router } from 'express';
 import multer from 'multer';
 import fs from 'fs';
@@ -71,7 +72,7 @@ router.patch('/me', async (req: any, res) => {
     if ('signatureName' in req.body) payload.signatureName = req.body.signatureName?.trim() || null;
     if ('signatureRole' in req.body) payload.signatureRole = req.body.signatureRole?.trim() || null;
     if ('locale' in req.body) {
-      payload.locale = req.body.locale === 'en' || req.body.locale === 'es' ? req.body.locale : null;
+      payload.locale = isKnownLocale(req.body.locale) ? req.body.locale : null;
     }
     try {
       Object.assign(payload, parseThemePatch(req.body));

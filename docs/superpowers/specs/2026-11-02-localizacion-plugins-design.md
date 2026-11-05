@@ -21,7 +21,7 @@ Visión de producto, sin un país concreto a la vista: aplicar cualquier legisla
 - Sin plugin instalado, las facturas siguen funcionando con los datos de la empresa; lo que desaparece son reglas e informes legales, con aviso claro.
 - Un paquete de prueba **solo en tests** (impuesto compuesto, plan contable no español) para demostrar la neutralidad. No es China ni UE y no se distribuye.
 - El formato neutro sustituye al de fábrica **en todas las empresas**: `resyncDefaultTemplates` lo aplicará al reiniciar en las que usen la plantilla de fábrica. Las plantillas personalizadas no se tocan.
-- El logo de la empresa se mantiene, pero en escala de grises; `company_invoice_color` no afecta al formato neutro y sigue valiendo para plantillas personalizadas.
+- El logo de la empresa se mantiene, pero en escala de grises. El color de un PDF se elige en su plantilla; `company_invoice_color` no lo leía ningún PDF y se retiró de Ajustes.
 - Los plugins aportan terminología y textos legales, no diseño: el formato es el mismo en todos los países.
 - El trabajo va en rama propia desde un worktree, porque `feature/messaging` tiene muchos cambios sin commitear que tocan `server.ts` y `admin.ts`.
 

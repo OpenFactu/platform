@@ -8,6 +8,7 @@ interface Props {
   defaultExpanded?: boolean;
   children: React.ReactNode;
   subtle?: boolean;
+  hidden?: boolean;
 }
 
 export const Section: React.FC<Props> = ({
@@ -16,8 +17,10 @@ export const Section: React.FC<Props> = ({
   defaultExpanded = false,
   children,
   subtle = false,
+  hidden = false,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  if (hidden) return null;
   return (
     <div
       className={cn(

@@ -49,7 +49,8 @@ export function useInternalOrderLineColumn(
           ]}
           value={line.internalOrderId || ''}
           onChange={(v) => updateLine(idx, 'internalOrderId', v || null)}
-          className="min-w-[200px]"
+          // En la tabla pide su ancho; en la tarjeta del móvil, el de su sitio.
+          className="w-full md:min-w-[200px]"
           ariaLabel={t('app.lines.project')}
         />
       ),

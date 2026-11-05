@@ -316,6 +316,7 @@ CREATE TABLE IF NOT EXISTS "PluginField" (
 	"readRoles" jsonb,
 	"writeRoles" jsonb,
 	"validation" jsonb,
+	"refObject" text,
 	"refTable" text,
 	"refDisplayField" text,
 	"isManaged" boolean DEFAULT true NOT NULL,
@@ -361,6 +362,8 @@ ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "readRoles" jsonb;
 ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "writeRoles" jsonb;
 
 ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "validation" jsonb;
+
+ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "refObject" text;
 
 ALTER TABLE "PluginField" ADD COLUMN IF NOT EXISTS "refTable" text;
 
@@ -409,6 +412,19 @@ ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "displayField" text;
 ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "description" text;
 
 ALTER TABLE "PluginTable" ADD COLUMN IF NOT EXISTS "createdAt" timestamp DEFAULT now() NOT NULL;
+
+CREATE TABLE IF NOT EXISTS "ShipmentToken" (
+	"token" text PRIMARY KEY NOT NULL,
+	"tenantId" text NOT NULL,
+	"shipmentId" text NOT NULL,
+	"kind" text NOT NULL
+);
+
+ALTER TABLE "ShipmentToken" ADD COLUMN IF NOT EXISTS "tenantId" text;
+
+ALTER TABLE "ShipmentToken" ADD COLUMN IF NOT EXISTS "shipmentId" text;
+
+ALTER TABLE "ShipmentToken" ADD COLUMN IF NOT EXISTS "kind" text;
 
 CREATE TABLE IF NOT EXISTS "TenantPlugin" (
 	"id" text PRIMARY KEY NOT NULL,

@@ -158,6 +158,10 @@
       "item": "Artículo",
       "loading": "Cargando…",
       "margin": "Margen",
+      "cost": "Coste",
+      "noCost": "Sin coste",
+      "marginRate": "% margen",
+      "uncostedNotice": "Hay ventas sin coste registrado: su margen sale más alto de lo real.",
       "name": "Nombre",
       "net": "Neto",
       "noRows": "Ningún registro cumple los filtros actuales.",
@@ -305,8 +309,11 @@
     },
     "stockValuation": {
       "title": "Valoración de inventario",
-      "subtitle": "Stock × precio medio. Valor total: {total}",
-      "unitPrice": "Precio ud",
+      "subtitle": "Stock × coste medio. Valor total: {total}",
+      "subtitleNoCost": "Unidades en stock.",
+      "unitPrice": "Coste medio",
+      "noCost": "Sin coste",
+      "uncostedNotice": "Hay artículos con stock y sin coste: no suman en el valor total.",
       "value": "Valor"
     },
     "trialBalance": {

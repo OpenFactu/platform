@@ -34,7 +34,7 @@
     "@libsql/client": "^0.17.2",
     "@openfactu/cli": "^0.1.2",
     "@openfactu/common": "^0.2.1",
-    "@openfactu/pdf": "^0.2.0",
+    "@openfactu/pdf": "^0.4.0",
     "drizzle-orm": "^0.45.2",
     "plugin-sdk": "^0.2.0",
     "react-is": "^19.2.6"

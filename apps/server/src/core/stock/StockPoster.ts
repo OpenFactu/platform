@@ -18,6 +18,7 @@
 import { eq, and, sql } from 'drizzle-orm';
 import crypto from 'crypto';
 import * as schema from '../../db/schema';
+import { recordCostEntry } from './itemCost';
 
 /** Upsert en itemWarehouseStocks sumando `delta`. */
 async function addWarehouseStock(client: any, itemId: string, warehouseId: string, delta: number) {
@@ -251,6 +252,18 @@ export async function postReceipt(client: any, receiptId: string) {
     .from(schema.goodsReceiptLines)
     .where(eq(schema.goodsReceiptLines.receiptId, receiptId));
   for (const l of lines) {
+    // Con coste recalcula la media; sin él, la mercancía entra a la que haya.
+    if (l.unitCost != null) {
+      await recordCostEntry(client, {
+        itemId: l.itemId,
+        kind: doc.sourceDocId ? 'sales_return' : 'receipt',
+        quantity: Number(l.quantity),
+        unitCost: Number(l.unitCost),
+        docType: 'GoodsReceipt',
+        docId: receiptId,
+        lineId: l.id,
+      });
+    }
     await applyDelta(client, l.itemId, doc.warehouseId, l.zoneId || null, Number(l.quantity));
     if (l.batchNum) {
       await ensureBatch(client, l.itemId, l.batchNum, Number(l.quantity));
@@ -271,6 +284,16 @@ export async function postIssue(client: any, issueId: string) {
     .from(schema.goodsIssueLines)
     .where(eq(schema.goodsIssueLines.issueId, issueId));
   for (const l of lines) {
+    const [item] = await client
+      .select({ averageCost: schema.items.averageCost })
+      .from(schema.items)
+      .where(eq(schema.items.id, l.itemId));
+    if (Number(item?.averageCost) > 0) {
+      await client
+        .update(schema.goodsIssueLines)
+        .set({ unitCost: item.averageCost })
+        .where(eq(schema.goodsIssueLines.id, l.id));
+    }
     await applyDelta(client, l.itemId, doc.warehouseId, l.zoneId || null, -Number(l.quantity));
     if (l.batchNum) {
       await addBatchStock(client, l.itemId, l.batchNum, doc.warehouseId, -Number(l.quantity));

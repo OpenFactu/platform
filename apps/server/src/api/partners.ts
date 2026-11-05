@@ -11,6 +11,7 @@ import { HookManager } from '../core/plugins/HookManager';
 import { PluginFieldManager } from '../core/plugins/PluginFieldManager';
 import { TenantPluginCache } from '../core/plugins/TenantPluginCache';
 import { validateIban, normalizeIban } from '../utils/ibanValidation';
+import { resolveCreditLimitChange } from '../core/partners/creditLimit';
 
 const router = Router();
 
@@ -194,6 +195,14 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
       restBody.iban = normalizeIban(restBody.iban);
     }
 
+    if (restBody.creditLimit !== undefined) {
+      restBody.creditLimit = await resolveCreditLimitChange(restBody.creditLimit, null, {
+        user: req.user,
+        tenantId: req.tenantId,
+        apiToken: req.apiToken,
+      });
+    }
+
     let finalCode = code;
 
     if (groupId) {
@@ -251,7 +260,7 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
     // Auditoría
     logAudit({
       tenantClient: req.tenantClient,
-      tenantId: req.headers['x-tenant-id'] || '',
+      tenantId: req.tenantId || '',
       userId: req.user?.id,
       entityType: 'BusinessPartner',
       entityId: id,
@@ -262,6 +271,7 @@ router.post('/', requireScope('write:maestros'), async (req: any, res) => {
     // Drizzle envuelve el error de pg en `Failed query: ...` ocultando la
     // causa real. Extraemos `error.cause.message` cuando existe para devolver
     // un mensaje útil ("duplicate key", "null violates not-null", etc.).
+    if (error?.statusCode) return res.status(error.statusCode).json({ error: error.message });
     const detail =
       (error?.cause?.detail as string | undefined) ||
       (error?.cause?.message as string | undefined) ||
@@ -298,6 +308,14 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
       if (!ibanCheck.ok)
         return res.status(400).json({ error: `IBAN inválido: ${ibanCheck.reason}` });
       restBody.iban = normalizeIban(restBody.iban);
+    }
+
+    if (restBody.creditLimit !== undefined) {
+      restBody.creditLimit = await resolveCreditLimitChange(
+        restBody.creditLimit,
+        oldPartner?.creditLimit,
+        { user: req.user, tenantId: req.tenantId, apiToken: req.apiToken },
+      );
     }
 
     const pluginValues = await extractPluginFields(req);
@@ -340,7 +358,7 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
     // Auditoría
     logAudit({
       tenantClient: req.tenantClient,
-      tenantId: req.headers['x-tenant-id'] || '',
+      tenantId: req.tenantId || '',
       userId: req.user?.id,
       entityType: 'BusinessPartner',
       entityId: id,
@@ -349,7 +367,7 @@ router.patch('/:id', requireScope('write:maestros'), async (req: any, res) => {
       newValue: partner,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -372,7 +390,7 @@ router.delete('/:id', requireScope('write:maestros'), async (req: any, res) => {
     if (oldPartner) {
       logAudit({
         tenantClient: req.tenantClient,
-        tenantId: req.headers['x-tenant-id'] || '',
+        tenantId: req.tenantId || '',
         userId: req.user?.id,
         entityType: 'BusinessPartner',
         entityId: id,

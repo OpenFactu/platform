@@ -13,6 +13,7 @@ import {
 } from '@openfactu/pdf';
 import { DocumentRegistry, type DocumentTypeConfig } from '../documents/DocumentRegistry';
 import { seedDefaults } from './seedDefaults';
+import { hasDesignedElements } from '../documents/templateFactory';
 
 /**
  * HTML de plantilla de fábrica para un tipo. Los 6 core van SIN overrides
@@ -225,6 +226,15 @@ export class MigrationManager {
             eq(schema.documentTemplates.isFactoryDefault, true),
           ),
         );
+      // Un diseño sobre la estándar es de la empresa aunque siga marcada de fábrica: lo
+      // dejaba así el diseñador antes de quitar esa marca al guardar.
+      const designed = !!existing && hasDesignedElements(existing.canvasLayout);
+      if (designed) {
+        await db
+          .update(schema.documentTemplates)
+          .set({ isFactoryDefault: false })
+          .where(eq(schema.documentTemplates.id, existing.id));
+      }
       const html = factoryTemplateHtml(config);
       const hasSignature = html.includes('signature-block');
       if (!hasSignature) {
@@ -232,10 +242,16 @@ export class MigrationManager {
           `[Templates] ⚠ Plantilla ${docType} sin bloque signature-block — revisa @openfactu/pdf dist`,
         );
       }
-      if (existing) {
+      if (existing && !designed) {
+        // `canvasLayout`: un lienzo vacío lo dejaba el autoguardado con solo abrir el diseñador.
         await db
           .update(schema.documentTemplates)
-          .set({ html, name: getDefaultTemplateName(docType, config.label) })
+          .set({
+            html,
+            name: getDefaultTemplateName(docType, config.label),
+            canvasLayout: null,
+            legacyHtml: true,
+          })
           .where(eq(schema.documentTemplates.id, existing.id));
       } else {
         // No hay fila de fábrica para este docType (tenant nuevo, o backfill

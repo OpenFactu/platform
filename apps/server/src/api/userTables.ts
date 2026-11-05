@@ -17,6 +17,7 @@
  *   POST   /:name/rows       · inserta fila (valida via PluginFieldManager)
  *   PATCH  /:name/rows/:id   · actualiza fila
  *   DELETE /:name/rows/:id   · borra fila
+ *   GET    /:name/rows/:id/pdf · PDF del registro (solo tablas de tipo documento)
  */
 import { Router } from 'express';
 import { and, eq, sql } from 'drizzle-orm';
@@ -25,6 +26,8 @@ import { ClientFactory } from '../core/tenant/ClientFactory';
 import * as schema from '../db/schema';
 import { PluginFieldManager } from '../core/plugins/PluginFieldManager';
 import { logAudit } from '../utils/audit';
+import { UserDocTypes, isUserDocType } from '../core/documents/UserDocTypes';
+import { renderDocumentPdf } from '../core/documents/renderDocumentPdf';
 
 const router = Router();
 
@@ -51,6 +54,41 @@ async function ensureTenant(req: any) {
   if (!t) throw new Error('Tenant no encontrado.');
   return { db, tenantId, schemaName: t.schemaName };
 }
+
+const physicalName = (name: string) => (name.startsWith('pt_') ? name : `pt_${name}`);
+
+const tableRef = (schemaName: string, table: string) =>
+  sql`${sql.identifier(schemaName)}.${sql.identifier(table)}`;
+
+/** Valor de un campo como parámetro de SQL: lo que no es escalar va en JSON. */
+const toParam = (value: unknown) =>
+  value !== null && typeof value === 'object' ? JSON.stringify(value) : value;
+
+// Toda ruta con nombre de tabla pasa por aquí: ese nombre acaba en una consulta, así
+// que solo vale el de una tabla propia registrada de esta empresa.
+router.param('name', async (req: any, res, next, name: string) => {
+  try {
+    const { db, tenantId } = await ensureTenant(req);
+    const prefixed = physicalName(name);
+    const [table] = isUserDocType(prefixed)
+      ? await db
+          .select({ id: schema.pluginTables.id })
+          .from(schema.pluginTables)
+          .where(
+            and(
+              eq(schema.pluginTables.pluginId, USER_PLUGIN_ID),
+              eq(schema.pluginTables.tenantId, tenantId),
+              eq(schema.pluginTables.tableName, prefixed),
+            ),
+          )
+      : [];
+    if (!table) return res.status(404).json({ error: 'Tabla no encontrada.' });
+    req.userTable = prefixed;
+    next();
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 async function tableExistsInSchema(schemaName: string, tableName: string) {
   const db = ClientFactory.getClient(schemaName);
@@ -163,6 +201,9 @@ router.post('/', requireAdmin, async (req: any, res) => {
       description: description || null,
     });
 
+    const docType = await UserDocTypes.find(tenantId, prefixed);
+    if (docType) await UserDocTypes.ensureTemplate(tenantDb, docType);
+
     logAudit({
       tenantClient: db,
       tenantId,
@@ -182,8 +223,8 @@ router.post('/', requireAdmin, async (req: any, res) => {
 // ── PATCH /:name — actualizar metadatos ────────────────────
 router.patch('/:name', requireAdmin, async (req: any, res) => {
   try {
-    const { db, tenantId } = await ensureTenant(req);
-    const prefixed = req.params.name.startsWith('pt_') ? req.params.name : `pt_${req.params.name}`;
+    const { db, tenantId, schemaName } = await ensureTenant(req);
+    const prefixed = req.userTable;
     const patch: any = {};
     for (const k of ['label', 'kind', 'iconName', 'menuModule', 'displayField', 'description']) {
       if (k in (req.body || {})) patch[k] = req.body[k];
@@ -198,6 +239,9 @@ router.patch('/:name', requireAdmin, async (req: any, res) => {
           eq(schema.pluginTables.tableName, prefixed),
         ),
       );
+    // Al pasar a documento o cambiar de nombre, su plantilla estándar lo recoge.
+    const docType = await UserDocTypes.find(tenantId, prefixed);
+    if (docType) await UserDocTypes.ensureTemplate(ClientFactory.getClient(schemaName), docType);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -208,11 +252,21 @@ router.patch('/:name', requireAdmin, async (req: any, res) => {
 router.delete('/:name', requireAdmin, async (req: any, res) => {
   try {
     const { db, tenantId, schemaName } = await ensureTenant(req);
-    const prefixed = req.params.name.startsWith('pt_') ? req.params.name : `pt_${req.params.name}`;
+    const prefixed = req.userTable;
 
     const tenantDb = ClientFactory.getClient(schemaName);
-    await tenantDb.execute(sql.raw(`DROP TABLE IF EXISTS "${schemaName}"."${prefixed}"`));
-    await db.delete(schema.pluginFields).where(eq(schema.pluginFields.tableName, prefixed));
+    await tenantDb.execute(sql`DROP TABLE IF EXISTS ${tableRef(schemaName, prefixed)}`);
+    await UserDocTypes.dropTemplates(tenantDb, prefixed);
+    // Otra empresa puede tener una tabla con el mismo nombre: sus campos no se tocan.
+    await db
+      .delete(schema.pluginFields)
+      .where(
+        and(
+          eq(schema.pluginFields.pluginId, USER_PLUGIN_ID),
+          eq(schema.pluginFields.tenantId, tenantId),
+          eq(schema.pluginFields.tableName, prefixed),
+        ),
+      );
     await db
       .delete(schema.pluginTables)
       .where(
@@ -240,10 +294,10 @@ router.delete('/:name', requireAdmin, async (req: any, res) => {
 router.get('/:name/rows', async (req: any, res) => {
   try {
     const { schemaName } = await ensureTenant(req);
-    const prefixed = req.params.name.startsWith('pt_') ? req.params.name : `pt_${req.params.name}`;
+    const prefixed = req.userTable;
     const tenantDb = ClientFactory.getClient(schemaName);
     const r: any = await tenantDb.execute(
-      sql.raw(`SELECT * FROM "${schemaName}"."${prefixed}" ORDER BY "createdAt" DESC LIMIT 500`),
+      sql`SELECT * FROM ${tableRef(schemaName, prefixed)} ORDER BY "createdAt" DESC LIMIT 500`,
     );
     res.json(r.rows || []);
   } catch (err: any) {
@@ -255,12 +309,10 @@ router.get('/:name/rows', async (req: any, res) => {
 router.get('/:name/rows/:id', async (req: any, res) => {
   try {
     const { schemaName } = await ensureTenant(req);
-    const prefixed = req.params.name.startsWith('pt_') ? req.params.name : `pt_${req.params.name}`;
+    const prefixed = req.userTable;
     const tenantDb = ClientFactory.getClient(schemaName);
     const r: any = await tenantDb.execute(
-      sql.raw(
-        `SELECT * FROM "${schemaName}"."${prefixed}" WHERE "id" = '${String(req.params.id).replace(/'/g, "''")}'`,
-      ),
+      sql`SELECT * FROM ${tableRef(schemaName, prefixed)} WHERE "id" = ${String(req.params.id)}`,
     );
     const row = r.rows?.[0];
     if (!row) return res.status(404).json({ error: 'No encontrado.' });
@@ -270,11 +322,35 @@ router.get('/:name/rows/:id', async (req: any, res) => {
   }
 });
 
+// ── GET /:name/rows/:id/pdf ────────────────────────────────
+router.get('/:name/rows/:id/pdf', async (req: any, res) => {
+  try {
+    const { tenantId, schemaName } = await ensureTenant(req);
+    const prefixed = req.userTable;
+    const docType = await UserDocTypes.find(tenantId, prefixed);
+    if (!docType) {
+      return res.status(404).json({ error: 'Esta tabla no es de tipo documento.' });
+    }
+    const tenantDb = ClientFactory.getClient(schemaName);
+    await UserDocTypes.ensureTemplate(tenantDb, docType);
+    await renderDocumentPdf(
+      prefixed,
+      req.params.id,
+      req.query.templateId ? String(req.query.templateId) : undefined,
+      tenantDb,
+      res,
+      tenantId,
+    );
+  } catch (err: any) {
+    res.status(err.statusCode ?? 500).json({ error: err.message });
+  }
+});
+
 // ── POST /:name/rows ───────────────────────────────────────
 router.post('/:name/rows', async (req: any, res) => {
   try {
     const { tenantId, schemaName } = await ensureTenant(req);
-    const prefixed = req.params.name.startsWith('pt_') ? req.params.name : `pt_${req.params.name}`;
+    const prefixed = req.userTable;
     const values = await PluginFieldManager.validateAndExtract(
       prefixed,
       req.body || {},
@@ -286,27 +362,19 @@ router.post('/:name/rows', async (req: any, res) => {
     const id = crypto.randomUUID();
     const tenantDb = ClientFactory.getClient(schemaName);
 
+    // Los nombres de columna salen de las definiciones de campos de la tabla, no del cuerpo.
     const cols = ['id', 'createdAt', 'updatedAt', ...Object.keys(values)];
     const vals = [
-      `'${id}'`,
-      'CURRENT_TIMESTAMP',
-      'CURRENT_TIMESTAMP',
-      ...Object.values(values).map((v) =>
-        v === null
-          ? 'NULL'
-          : typeof v === 'number'
-            ? String(v)
-            : typeof v === 'boolean'
-              ? v
-                ? 'TRUE'
-                : 'FALSE'
-              : `'${String(v).replace(/'/g, "''")}'`,
-      ),
+      sql`${id}`,
+      sql`CURRENT_TIMESTAMP`,
+      sql`CURRENT_TIMESTAMP`,
+      ...Object.values(values).map((v) => sql`${toParam(v)}`),
     ];
     await tenantDb.execute(
-      sql.raw(
-        `INSERT INTO "${schemaName}"."${prefixed}" (${cols.map((c) => `"${c}"`).join(',')}) VALUES (${vals.join(',')})`,
-      ),
+      sql`INSERT INTO ${tableRef(schemaName, prefixed)} (${sql.join(
+        cols.map((c) => sql.identifier(c)),
+        sql`, `,
+      )}) VALUES (${sql.join(vals, sql`, `)})`,
     );
     res.json({ id });
   } catch (err: any) {
@@ -318,7 +386,7 @@ router.post('/:name/rows', async (req: any, res) => {
 router.patch('/:name/rows/:id', async (req: any, res) => {
   try {
     const { tenantId, schemaName } = await ensureTenant(req);
-    const prefixed = req.params.name.startsWith('pt_') ? req.params.name : `pt_${req.params.name}`;
+    const prefixed = req.userTable;
     const values = await PluginFieldManager.validateAndExtract(
       prefixed,
       req.body || {},
@@ -327,24 +395,10 @@ router.patch('/:name/rows/:id', async (req: any, res) => {
       schemaName,
     );
     const tenantDb = ClientFactory.getClient(schemaName);
-    const sets = Object.entries(values).map(([k, v]) => {
-      const safe =
-        v === null
-          ? 'NULL'
-          : typeof v === 'number'
-            ? String(v)
-            : typeof v === 'boolean'
-              ? v
-                ? 'TRUE'
-                : 'FALSE'
-              : `'${String(v).replace(/'/g, "''")}'`;
-      return `"${k}" = ${safe}`;
-    });
-    sets.push(`"updatedAt" = CURRENT_TIMESTAMP`);
+    const sets = Object.entries(values).map(([k, v]) => sql`${sql.identifier(k)} = ${toParam(v)}`);
+    sets.push(sql`"updatedAt" = CURRENT_TIMESTAMP`);
     await tenantDb.execute(
-      sql.raw(
-        `UPDATE "${schemaName}"."${prefixed}" SET ${sets.join(', ')} WHERE "id" = '${String(req.params.id).replace(/'/g, "''")}'`,
-      ),
+      sql`UPDATE ${tableRef(schemaName, prefixed)} SET ${sql.join(sets, sql`, `)} WHERE "id" = ${String(req.params.id)}`,
     );
     res.json({ ok: true });
   } catch (err: any) {
@@ -356,12 +410,10 @@ router.patch('/:name/rows/:id', async (req: any, res) => {
 router.delete('/:name/rows/:id', async (req: any, res) => {
   try {
     const { schemaName } = await ensureTenant(req);
-    const prefixed = req.params.name.startsWith('pt_') ? req.params.name : `pt_${req.params.name}`;
+    const prefixed = req.userTable;
     const tenantDb = ClientFactory.getClient(schemaName);
     await tenantDb.execute(
-      sql.raw(
-        `DELETE FROM "${schemaName}"."${prefixed}" WHERE "id" = '${String(req.params.id).replace(/'/g, "''")}'`,
-      ),
+      sql`DELETE FROM ${tableRef(schemaName, prefixed)} WHERE "id" = ${String(req.params.id)}`,
     );
     res.json({ ok: true });
   } catch (err: any) {

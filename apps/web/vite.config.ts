@@ -43,6 +43,15 @@ const pwaManifest: Partial<ManifestOptions> = {
 
 let shellScripts = new Set<string>();
 
+/** Servidor de teselas propio, si se configura con `VITE_MAP_TILE_URL`. */
+const mapTilesHost = (() => {
+  try {
+    return new URL(process.env.VITE_MAP_TILE_URL || '').hostname;
+  } catch {
+    return '';
+  }
+})();
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -120,14 +129,15 @@ export default defineConfig({
             },
           },
           {
-            // Tiles de MapLibre (Carto Positron) — cachea 7 días.
+            // Teselas de los mapas, con caché propia: como imágenes llenarían la general.
             urlPattern: ({ url }) =>
-              url.hostname === 'basemaps.cartocdn.com' ||
-              url.hostname.endsWith('.tile.openstreetmap.org'),
+              url.hostname === 'tile.openstreetmap.org' ||
+              url.hostname === 'server.arcgisonline.com' ||
+              url.hostname === mapTilesHost,
             handler: 'CacheFirst',
             options: {
               cacheName: 'map-tiles',
-              expiration: { maxEntries: 300, maxAgeSeconds: 7 * 24 * 3600 },
+              expiration: { maxEntries: 800, maxAgeSeconds: 7 * 24 * 3600 },
             },
           },
           {
@@ -204,6 +214,9 @@ export default defineConfig({
       // Subruta propia: los gráficos viven aparte porque arrastran recharts
       // (peerDependency opcional), y Vite la prebundlea como entrada distinta.
       '@openfactu/ui/charts',
+      // Sin prebundlear, el kit de IA se sirve desde el repo enlazado con su propia copia del
+      // catálogo de textos: en desarrollo no veía el inglés que registra la app.
+      '@openfactu/ui/ai',
       '@openfactu/plugin-sdk',
       '@zxing/browser',
       '@zxing/library',

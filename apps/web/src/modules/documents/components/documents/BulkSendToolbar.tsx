@@ -73,7 +73,7 @@ export const BulkSendToolbar: React.FC<Props> = ({
             {t('doc.bulk.selected', { count: selectedKeys.size })}
           </span>
           {withoutEmail > 0 && (
-            <span className="text-[11px] text-amber-700 dark:text-amber-300">
+            <span className="text-[11px] text-warning-fg">
               · {t('doc.bulk.withoutEmail', { n: withoutEmail })}
             </span>
           )}

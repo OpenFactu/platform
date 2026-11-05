@@ -161,6 +161,10 @@
       "option": "Option",
       "attachmentPlaceholder": "Attachment URL or id",
       "searchRef": "Search {table}...",
+      "searchLinked": "Search...",
+      "openLinked": "Open",
+      "linkedHidden": "No access",
+      "linkedMissing": "No longer exists",
       "additional": "Additional fields (plugins)",
       "enable": "Enable"
     },
@@ -266,6 +270,8 @@
       "thisDocument": "This document",
       "current": "(current)",
       "paymentsAndAccounting": "Payments and accounting",
+      "creditNote": "Credit note",
+      "creditApplied": "Credit applied",
       "payment": "Collection / payment",
       "journalEntryLabel": "Journal entry",
       "emptyHintPopup": "When this document originates another or is generated from one, the full chain will appear here."
@@ -644,7 +650,7 @@
     "tracking": {
       "copy": {
         "t0": "Being prepared",
-        "t1": "Ready / Dispatched",
+        "t1": "Ready",
         "t2": "On the way",
         "t3": "Out for delivery",
         "t4": "Delivered",

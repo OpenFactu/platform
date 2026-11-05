@@ -8,6 +8,9 @@ const ShipmentDetail = lazy(() =>
   import('./pages/ShipmentDetail').then((m) => ({ default: m.ShipmentDetail })),
 );
 const DriverApp = lazy(() => import('./pages/DriverApp').then((m) => ({ default: m.DriverApp })));
+const LogisticsSettings = lazy(() =>
+  import('./pages/LogisticsSettings').then((m) => ({ default: m.LogisticsSettings })),
+);
 const CarriersSettings = lazy(() =>
   import('./pages/CarriersSettings').then((m) => ({ default: m.CarriersSettings })),
 );
@@ -23,13 +26,15 @@ export const logisticsModule: ModuleManifest = {
     description: 'logistics.nav.description',
     category: 'Logística',
     subTabs: [
-      { id: 'logistics-hub', label: 'logistics.nav.hub', path: '/logistics', status: 'beta' },
+      { id: 'logistics-hub', label: 'logistics.nav.hub', path: '/logistics' },
+      { id: 'driver-home', label: 'logistics.nav.myRoute', path: '/driver' },
       {
         id: 'carriers',
         label: 'logistics.nav.carriers',
         path: '/settings/carriers',
         status: 'beta',
       },
+      { id: 'logistics-settings', label: 'logistics.nav.settings', path: '/logistics/settings' },
     ],
   },
   routes: [
@@ -38,6 +43,13 @@ export const logisticsModule: ModuleManifest = {
       Component: LogisticsHub,
       title: 'logistics.nav.label',
       iconName: 'Truck',
+      permissionPath: '/logistics',
+    },
+    {
+      pattern: '/logistics/settings',
+      Component: LogisticsSettings,
+      title: 'logistics.nav.settings',
+      iconName: 'Settings',
       permissionPath: '/logistics',
     },
     {
@@ -52,6 +64,7 @@ export const logisticsModule: ModuleManifest = {
       Component: DriverApp,
       title: 'logistics.nav.myRoute',
       iconName: 'Navigation',
+      permissionPath: '/driver',
     },
     {
       pattern: '/settings/carriers',

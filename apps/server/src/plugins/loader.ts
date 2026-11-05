@@ -18,7 +18,9 @@ import { TaxIdValidators } from '../core/geo/TaxIdValidators';
 import { PayrollCalculators } from '../core/hr/payrollCalculation';
 import { PluginReports } from '../core/reports/PluginReports';
 import { FiscalConnectors } from '../core/fiscal/FiscalConnectors';
+import { LinkableObjects } from '../core/customFields/linkableObjects';
 import { PluginLifecycle } from '../core/plugins/PluginLifecycle';
+import { PluginTranslations } from '../core/plugins/PluginTranslations';
 import { unregisterPluginContributions } from '../core/plugins/TenantScopedRegistry';
 import { pluginDbOperators } from './dbOperators';
 import * as schema from '../db/schema';
@@ -221,8 +223,15 @@ function buildPluginContext(pluginId: string): PluginContext {
     reports: {
       register: (definition) => PluginReports.register(pluginId, definition),
     },
+    linkableObjects: {
+      register: (object) => LinkableObjects.register(pluginId, object),
+    },
     fiscal: {
       registerConnector: (connector) => FiscalConnectors.register(pluginId, connector),
+    },
+    i18n: {
+      t: (locale, key, vars) => PluginTranslations.textOf(pluginId, locale, key, vars),
+      register: (locale, catalog) => PluginTranslations.register(pluginId, locale, catalog),
     },
     lifecycle: {
       onActivate: (handler) => PluginLifecycle.onActivate(pluginId, handler),
@@ -269,6 +278,10 @@ export const loadPlugins = async (app: Express) => {
         }
 
         // 2. Cargar Módulo de Servidor
+        const hasTranslations = PluginTranslations.loadFromDirectory(
+          folder,
+          path.join(pluginPath, 'i18n'),
+        );
         const hasPack = registerPluginPack(folder, pluginPath);
 
         const pluginEntry = resolvePluginEntry(pluginPath);
@@ -284,10 +297,10 @@ export const loadPlugins = async (app: Express) => {
           await initFn(context);
           setPluginActive(folder, true);
           console.log(`[Plugins] Plugin cargado y activado exitosamente: ${folder}`);
-        } else if (hasPack) {
-          // Un plugin solo de datos es válido: una normativa no necesita código.
+        } else if (hasPack || hasTranslations) {
+          // Un plugin solo de datos es válido: ni una normativa ni un idioma necesitan código.
           setPluginActive(folder, true);
-          console.log(`[Plugins] Paquete de localización cargado: ${folder}`);
+          console.log(`[Plugins] Plugin de datos cargado: ${folder}`);
         } else {
           console.warn(`[Plugins] El plugin ${folder} no exporta una función 'init'.`);
         }
@@ -333,6 +346,7 @@ export async function reloadPlugin(
     AiToolRegistry.unregisterPlugin(pluginId);
     unregisterPluginContributions(pluginId);
     PluginLifecycle.removePlugin(pluginId);
+    PluginTranslations.removePlugin(pluginId);
 
     // 2. Limpiar require.cache. Con la ruta real: si el plugin es un junction a
     // su propio repositorio, Node guarda los módulos bajo el destino del enlace.
@@ -359,6 +373,10 @@ export async function reloadPlugin(
     }
 
     // 4. Re-ejecutar init()
+    const hasTranslations = PluginTranslations.loadFromDirectory(
+      pluginId,
+      path.join(pluginPath, 'i18n'),
+    );
     const hasPack = registerPluginPack(pluginId, pluginPath);
     const pluginEntry = resolvePluginEntry(pluginPath);
     const pluginModule: any = pluginEntry ? require(pluginEntry) : null;
@@ -372,7 +390,7 @@ export async function reloadPlugin(
       // Un reload con init() exitoso equivale a la carga del arranque: entra en
       // activePlugins aunque hubiera fallado en el boot o sea un plugin nuevo.
       setPluginActive(pluginId, true);
-    } else if (hasPack) {
+    } else if (hasPack || hasTranslations) {
       setPluginActive(pluginId, true);
     } else {
       setPluginActive(pluginId, false);

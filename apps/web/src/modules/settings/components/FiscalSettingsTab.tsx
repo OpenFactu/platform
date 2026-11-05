@@ -1,6 +1,6 @@
 import { coreApi } from '@/shared/api';
 import React, { useEffect, useState } from 'react';
-import { Card, Input, Button, Checkbox, ColorInput, FileDropzone, useToast } from '@openfactu/ui';
+import { Card, Input, Button, Checkbox, FileDropzone, useToast } from '@openfactu/ui';
 import {
   Landmark,
   Coins,
@@ -18,20 +18,6 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { useLocalization } from '@/context/LocalizationContext';
 import { validateIban, validateSwift, formatIban } from '@/utils/bankValidation';
-
-/** Paleta de arranque para el color principal del PDF. */
-const PDF_COLOR_PRESETS = [
-  '#0D9488',
-  '#2563EB',
-  '#7C3AED',
-  '#DB2777',
-  '#DC2626',
-  '#EA580C',
-  '#CA8A04',
-  '#16A34A',
-  '#0F172A',
-  '#64748B',
-];
 
 /**
  * Pestaña "Fiscal" dentro de Configuración de Empresa. Gestiona los
@@ -60,7 +46,6 @@ export const FiscalSettingsTab: React.FC = () => {
     company_bank_swift: '',
     company_fiscal_regime: '',
     company_invoice_footer: '',
-    company_invoice_color: '#0D9488',
     signature_name: '',
     signature_role: '',
     signature_image_url: '',
@@ -109,7 +94,7 @@ export const FiscalSettingsTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* ─── Datos bancarios + régimen + color ─── */}
+      {/* ─── Datos bancarios + régimen ─── */}
       <Card>
         <h3 className="text-sm font-bold text-fg-default mb-2">
           {t('app.localization.activePacks')}
@@ -175,14 +160,6 @@ export const FiscalSettingsTab: React.FC = () => {
                 placeholder={t('settingsCompany.fiscal.invoiceFooterPlaceholder')}
               />
             </div>
-            {/* ColorInput ya trae muestra + campo hex; el par de controles
-                (selector de color nativo + Input) que había aquí era eso a mano. */}
-            <ColorInput
-              label={t('settingsCompany.fiscal.pdfColor')}
-              value={bank.company_invoice_color}
-              onChange={(v) => setBank({ ...bank, company_invoice_color: v })}
-              presets={PDF_COLOR_PRESETS}
-            />
           </div>
           <div className="flex flex-col items-end gap-2">
             {!isAdmin && (

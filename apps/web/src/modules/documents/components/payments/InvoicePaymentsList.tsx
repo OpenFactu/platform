@@ -151,21 +151,19 @@ export const InvoicePaymentsList: React.FC<Props> = ({
                 key={p.id}
                 className="py-2.5 flex items-center gap-3 group hover:bg-line-2/30 dark:hover:bg-ink-800/30 -mx-2 px-2 rounded-xs transition-colors"
               >
-                <div className="p-1.5 rounded-xs bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                <div className="p-1.5 rounded-xs bg-success-bg text-success-fg">
                   <CreditCard size={14} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold font-mono text-ink-900 dark:text-slate-100">
+                    <span className="text-sm font-bold font-mono text-fg-default">
                       {fmt.money(Number(p.amount))}
                     </span>
                     <span className="text-[10px] font-mono text-ink-400">·</span>
-                    <span className="text-xs text-ink-700 dark:text-slate-200">
-                      {methodName(p.paymentMethodId)}
-                    </span>
+                    <span className="text-xs text-fg-body">{methodName(p.paymentMethodId)}</span>
                     {p.source && p.source !== 'manual' && (
                       <span className="text-[9px] font-bold uppercase tracking-wider bg-accent/10 text-accent px-1.5 py-0.5 rounded-xs">
-                        {p.source}
+                        {p.source === 'credit_note' ? t('payment.fromCreditNote') : p.source}
                       </span>
                     )}
                   </div>
@@ -184,26 +182,29 @@ export const InvoicePaymentsList: React.FC<Props> = ({
                     <div className="text-[10px] text-ink-400 italic truncate mt-0.5">{p.notes}</div>
                   )}
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(p)}
-                    className="h-8 w-8 p-0 text-ink-400 hover:text-accent hover:bg-accent/10"
-                    title={t('payment.edit')}
-                  >
-                    <Pencil size={13} />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(p)}
-                    className="h-8 w-8 p-0 text-ink-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                    title={t('payment.delete')}
-                  >
-                    <Trash2 size={13} />
-                  </Button>
-                </div>
+                {/* Cruzar un abono no es un cobro: se deshace cancelando el abono. */}
+                {p.source !== 'credit_note' && (
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEdit(p)}
+                      className="h-8 w-8 p-0 text-ink-400 hover:text-accent hover:bg-accent/10"
+                      title={t('payment.edit')}
+                    >
+                      <Pencil size={13} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(p)}
+                      className="h-8 w-8 p-0 text-ink-400 hover:text-danger hover:bg-danger-bg"
+                      title={t('payment.delete')}
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -255,22 +256,16 @@ const EditPaymentForm: React.FC<EditPaymentFormProps> = ({
         />
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-wider text-ink-500 dark:text-ink-400 mb-1">
-            {t('payment.referenceNo')} <span className="text-rose-600 font-black">*</span>
+            {t('payment.referenceNo')} <span className="text-danger font-black">*</span>
           </label>
           <Input
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             required
-            className={
-              !reference.trim()
-                ? 'border-rose-400 dark:border-rose-500/60 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                : ''
-            }
+            className={!reference.trim() ? 'border-danger focus:border-danger' : ''}
           />
           {!reference.trim() && (
-            <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-400 font-medium">
-              {t('payment.requiredField')}
-            </p>
+            <p className="mt-1 text-[11px] text-danger font-medium">{t('payment.requiredField')}</p>
           )}
         </div>
       </div>

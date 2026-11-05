@@ -5,6 +5,7 @@ export interface Item {
   name: string;
   uomId?: string | null;
   categoryId?: string | null;
+  taxGroupId?: string | null;
   basePrice?: number | string;
   /** 'N' sin gestión · 'B' por lote · 'S' por número de serie. */
   manageBy?: string | null;
@@ -16,6 +17,9 @@ export interface Item {
   boxTareWeightKg?: number | null;
   defaultWarehouseId?: string | null;
   defaultZoneId?: string | null;
+  webVisible?: boolean | null;
+  webDescription?: string | null;
+  webImages?: string[] | null;
   stock?: number;
   committed?: number;
   ordered?: number;

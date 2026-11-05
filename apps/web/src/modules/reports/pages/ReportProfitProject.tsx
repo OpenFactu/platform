@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { reportsApi } from '../api';
 import { useFormat } from '@/hooks/useFormat';
+import { hasCosts } from '../domain/itemCosts';
 
 export const ReportProfitProject: React.FC = () => {
   const { user } = useAuth();
@@ -30,6 +31,9 @@ export const ReportProfitProject: React.FC = () => {
       { key: 'budget', label: t('reports.profitProject.budget'), format: (v: any) => fmt.money(v) },
       { key: 'income', label: t('reports.common.income'), format: (v: any) => fmt.money(v) },
       { key: 'expense', label: t('reports.common.expenses'), format: (v: any) => fmt.money(v) },
+      ...(hasCosts(rows)
+        ? [{ key: 'cost', label: t('reports.common.cost'), format: (v: any) => fmt.money(v) }]
+        : []),
       { key: 'margin', label: t('reports.common.margin'), format: (v: any) => fmt.money(v) },
       {
         key: 'deviation',
@@ -37,7 +41,7 @@ export const ReportProfitProject: React.FC = () => {
         format: (v: any) => (Number(v) === 0 ? '—' : `${Number(v).toFixed(1)} %`),
       },
     ],
-    [fmt, t],
+    [fmt, t, rows],
   );
 
   return (

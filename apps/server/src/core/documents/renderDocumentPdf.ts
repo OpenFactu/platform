@@ -4,6 +4,7 @@ import * as schema from '../../db/schema';
 import {
   PdfRenderer,
   extractMetaFromHtml,
+  isMonochrome,
   DEFAULT_VISUAL_OPTIONS,
   type DocType,
   type VisualOptions,
@@ -87,6 +88,7 @@ export async function renderDocumentPdf(
     tenantClient,
     locale,
     tenantId,
+    (res.req as any)?.user?.role,
   );
 
   // 2.b Ejecutar las consultas SQL guardadas en la plantilla (canvasLayout.queries)
@@ -130,14 +132,14 @@ export async function renderDocumentPdf(
         watermark: {
           ...baseOpts.watermark,
           enabled: true,
-          text: baseOpts.watermark?.text || tr(locale, 'BORRADOR'),
+          text: tr(locale, baseOpts.watermark?.text || 'BORRADOR'),
         },
       };
       finalHtml = injectWatermark(template.html, finalOpts.watermark);
     } else if (flags.watermarkPaid && (payload as any).doc?.paymentStatus === 'paid') {
       // Si la factura está totalmente pagada, marca de agua "PAGADA": en verde
-      // salvo en el formato neutro, que no lleva color.
-      const neutral = baseOpts.style === 'neutral';
+      // salvo en un documento sin color.
+      const neutral = isMonochrome(baseOpts);
       finalOpts = {
         ...baseOpts,
         watermark: {
@@ -186,7 +188,8 @@ export async function renderDocumentPdf(
   const buffer = await PdfRenderer.render(finalHtml, payload, renderOptions);
 
   // 4. Responder
-  const filename = `${payload.doc.docCode || documentId}.pdf`;
+  // En una tabla propia el código es texto libre, y una cabecera no admite cualquier cosa.
+  const filename = `${String(payload.doc.docCode || documentId).replace(/[^\w.\- ]+/g, '_')}.pdf`;
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.end(buffer);

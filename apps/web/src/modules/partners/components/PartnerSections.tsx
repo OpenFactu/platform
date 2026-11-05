@@ -6,6 +6,7 @@ import { useGeo } from '@/hooks/useGeo';
 import { TaxIdInput } from '@/components/geo/TaxIdInput';
 import { PostalCodeInput } from '@/components/geo/PostalCodeInput';
 import { PhoneInput } from '@/components/geo/PhoneInput';
+import { useTaxGroupOptions } from '@/hooks/useTaxGroupOptions';
 import { validateIban, validateSwift, formatIban } from '@/utils/bankValidation';
 import type { PartnerForm, LookupRow } from '../hooks/usePartnerForm';
 import { MunicipalitySearch } from './MunicipalitySearch';
@@ -145,6 +146,7 @@ export const PartnerContactFields: React.FC<SectionProps> = ({ form, disabled })
 export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) => {
   const { t } = useI18n();
   const { data, set, lookups } = form;
+  const taxGroupOptions = useTaxGroupOptions();
   return (
     <div className="space-y-5">
       <div>
@@ -175,6 +177,16 @@ export const PartnerFiscalFields: React.FC<SectionProps> = ({ form, disabled }) 
             onChange={(v) => set('defaultPaymentTermId', v)}
             options={lookupOptions(lookups.paymentTerms)}
             placeholder="—"
+            clearable
+            disabled={disabled}
+          />
+          <SearchableSelect
+            label={t('partners.fields.defaultTax')}
+            value={data.defaultTaxGroupId}
+            onChange={(v) => set('defaultTaxGroupId', v)}
+            options={taxGroupOptions}
+            placeholder="—"
+            helperText={t('partners.fields.defaultTaxHelp')}
             clearable
             disabled={disabled}
           />

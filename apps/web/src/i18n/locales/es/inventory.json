@@ -142,6 +142,30 @@
       "new": "Nueva Categoría",
       "empty": "No hay categorías definidas todavía."
     },
+    "itemCost": {
+      "average": "Coste medio",
+      "last": "Última compra",
+      "stockValue": "Valor del stock",
+      "noCost": "Sin coste",
+      "noCostNotice": "Este artículo aún no tiene coste: lo tendrá con su primera compra o con una entrada manual con coste. Hasta entonces sus ventas salen sin coste y su margen parece mayor.",
+      "noHistory": "El coste todavía no ha cambiado.",
+      "cols": {
+        "date": "Fecha",
+        "reason": "Motivo",
+        "quantity": "Cantidad",
+        "unitCost": "Coste de la entrada",
+        "after": "Coste medio"
+      },
+      "kind": {
+        "opening": "Coste inicial",
+        "purchase": "Compra",
+        "receipt": "Entrada manual",
+        "sales_return": "Devolución de cliente",
+        "purchase_return": "Devolución a proveedor",
+        "undo_exit": "Salida anulada",
+        "undo_entry": "Entrada anulada"
+      }
+    },
     "itemDetail": {
       "manageBy": {
         "N": "Estándar",
@@ -166,6 +190,8 @@
       "sections": {
         "general": "General",
         "generalSubtitle": "Identificación, categoría, unidad y precio.",
+        "costs": "Coste",
+        "costsSubtitle": "Precio medio ponderado en toda la empresa, en moneda base.",
         "logistics": "Logística",
         "logisticsSubtitle": "Tipo, trazabilidad y ubicación por defecto.",
         "web": "Web",
@@ -194,6 +220,9 @@
       "noCategory": "-- Sin Categoría --",
       "baseUnit": "Unidad Base",
       "select": "-- Seleccionar --",
+      "taxGroup": "{tax}",
+      "noTaxGroup": "Sin {tax}",
+      "taxGroupHelp": "Pasa a la línea al elegir el artículo, salvo que el interlocutor tenga el suyo. Sin asignar, la línea entra al 0 %.",
       "basePrice": "Precio Base",
       "kindLabel": "Tipo de artículo",
       "kind": {
@@ -324,6 +353,8 @@
       "close": "Cerrar"
     },
     "stockMovements": {
+      "unitCost": "Coste unitario",
+      "unitCostHint": "Opcional. Con coste, recalcula el coste medio del artículo.",
       "kinds": {
         "transfer": {
           "label": "Traspasos",

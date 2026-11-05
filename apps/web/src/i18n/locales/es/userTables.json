@@ -16,7 +16,9 @@
       "viewEdit": "Ver / Editar",
       "kindDocument": "Documento",
       "kindMaster": "Maestro",
-      "new": "Nuevo"
+      "new": "Nuevo",
+      "pdf": "Ver PDF",
+      "pdfError": "No se pudo generar el PDF"
     },
     "detail": {
       "saveError": "Error al guardar",

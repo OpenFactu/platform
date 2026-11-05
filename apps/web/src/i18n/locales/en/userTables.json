@@ -16,7 +16,9 @@
       "viewEdit": "View / Edit",
       "kindDocument": "Document",
       "kindMaster": "Master data",
-      "new": "New"
+      "new": "New",
+      "pdf": "View PDF",
+      "pdfError": "Could not generate the PDF"
     },
     "detail": {
       "saveError": "Error saving",

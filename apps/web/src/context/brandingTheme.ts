@@ -56,39 +56,14 @@ function withMode(theme: ThemeInput, mode: 'light' | 'dark'): ThemeInput {
 }
 
 /**
- * El tema de un usuario sobre el de la empresa. Con preset propio se usa el
- * preset tal cual, sin los retoques de la empresa (fuente, radio, densidad…),
- * para que se vea igual en todas sus empresas; con solo el modo, se sigue viendo
- * el de la empresa en ese modo. Un preset desconocido (de un plugin que ya no
- * está) cuenta como no elegido.
+ * Los ajustes de apariencia encima de un tema: lo elegido gana siempre al tema, y
+ * «Del tema» deja el suyo. Elegir carácter de movimiento quita además lo que el
+ * tema retocara del suyo (muelles sueltos, cadencia), o seguiría pareciéndose.
  */
-export function userThemeToInput(branding: BrandingConfig, userTheme: UserTheme): ThemeInput {
-  const preset = userTheme.preset ? getThemePreset(userTheme.preset) : undefined;
-  const base = preset ? preset.theme : brandingToThemeInput(branding);
-  return userTheme.mode ? withMode(base, userTheme.mode) : base;
-}
-
-/**
- * Traduce el branding guardado de la empresa al tema de @openfactu/ui.
- *
- * Con preset se parte del tema completo del preset (superficies, radios,
- * sombras, cristal, tipografía…); sin él, de los dos colores y el modo. Encima
- * van los ajustes finos del branding, que solo pisan al preset si tienen valor.
- */
-export function brandingToThemeInput(branding: BrandingConfig): ThemeInput {
-  const preset = branding.themePreset ? getThemePreset(branding.themePreset) : undefined;
-  const base: ThemeInput = preset
-    ? preset.theme
-    : {
-        mode: branding.themeMode,
-        colors: { primary: branding.colorPrimary, accent: branding.colorAccent },
-      };
-
+function withAdjustments(base: ThemeInput, branding: BrandingConfig): ThemeInput {
   const typography = { ...base.typography };
-  // 'sans' es la fuente de marca por defecto: con ella manda la del preset, si
-  // trae una. Cualquier otra elección de la empresa gana siempre. Hay que quitar
-  // `sans`/`display` del preset porque, si no, ganan sobre `fontFamily`.
-  if (branding.fontFamily && branding.fontFamily !== 'sans') {
+  if (branding.fontFamily) {
+    // `sans`/`display` del preset ganarían sobre `fontFamily`.
     delete typography.sans;
     delete typography.display;
     typography.fontFamily = branding.fontFamily;
@@ -98,6 +73,10 @@ export function brandingToThemeInput(branding: BrandingConfig): ThemeInput {
   const motion = { ...base.motion };
   if (branding.motionCharacter && branding.motionCharacter in MOTION_CHARACTERS) {
     motion.character = branding.motionCharacter as keyof typeof MOTION_CHARACTERS;
+    delete motion.springs;
+    delete motion.stagger;
+    delete motion.enterScale;
+    delete motion.enterBlur;
   }
   if (branding.motionSpeed) motion.speed = branding.motionSpeed;
 
@@ -108,4 +87,35 @@ export function brandingToThemeInput(branding: BrandingConfig): ThemeInput {
     ...(branding.radius ? { radius: branding.radius } : {}),
     ...(branding.density ? { density: branding.density } : {}),
   };
+}
+
+/**
+ * El tema de un usuario sobre el de la empresa. Su preset pone colores y superficies;
+ * los ajustes de apariencia de la empresa se aplican también encima, porque quien los
+ * cambia espera verlos. Con solo el modo, es el de la empresa en ese modo. Un preset
+ * desconocido (de un plugin que ya no está) cuenta como no elegido.
+ */
+export function userThemeToInput(branding: BrandingConfig, userTheme: UserTheme): ThemeInput {
+  const preset = userTheme.preset ? getThemePreset(userTheme.preset) : undefined;
+  const base = preset ? withAdjustments(preset.theme, branding) : brandingToThemeInput(branding);
+  return userTheme.mode ? withMode(base, userTheme.mode) : base;
+}
+
+/**
+ * Traduce el branding guardado de la empresa al tema de @openfactu/ui.
+ *
+ * Con preset se parte del tema completo del preset (superficies, radios,
+ * sombras, cristal, tipografía…); sin él, de los dos colores y el modo. Encima
+ * van los ajustes de apariencia.
+ */
+export function brandingToThemeInput(branding: BrandingConfig): ThemeInput {
+  const preset = branding.themePreset ? getThemePreset(branding.themePreset) : undefined;
+  const base: ThemeInput = preset
+    ? preset.theme
+    : {
+        mode: branding.themeMode,
+        colors: { primary: branding.colorPrimary, accent: branding.colorAccent },
+      };
+
+  return withAdjustments(base, branding);
 }

@@ -12,6 +12,7 @@ import { buildFormSteps, formStepStatus } from '../domain/formSteps';
 import { ResponsiveActions } from '@/components/common/ResponsiveActions';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Table,
   Card,
   Button,
@@ -38,9 +39,10 @@ import {
   Copy,
   ShoppingCart,
   AlertCircle,
-  Download,
   Eye,
   PackageSearch,
+  FileText,
+  Undo2,
 } from 'lucide-react';
 import { DocumentActionBar } from '../components/DocumentActionBar';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
@@ -57,7 +59,7 @@ import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import { buildDetailLineColumns, statusBadgeProps } from '../components/documentLineCells';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
-import { downloadPdf } from '@/utils/downloadPdf';
+import { openPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
 import { BatchSelectionModal } from '@/modules/inventory/components/BatchSelectionModal';
 import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssignmentPanel';
@@ -65,7 +67,12 @@ import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssign
 import { useZonesWithStock } from '@/hooks/useZonesWithStock';
 
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
-import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDocument } from '../hooks/useDocument';
+import { useCancelReason } from '../hooks/useCancelReason';
+import { useCreditSubmit } from '../hooks/useCreditLimit';
+import { newExposure } from '../domain/sales';
+import { PartnerCreditNotice } from '../components/documents/PartnerCreditNotice';
 import { useDocumentScanner } from '@/hooks/useDocumentScanner';
 import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
 import { docsApi } from '../api';
@@ -100,7 +107,7 @@ const SDNList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`/api/sales/delivery-notes/${id}/pdf`);
+      await openPdf(`/api/sales/delivery-notes/${id}/pdf`);
     } catch (e) {
       toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
@@ -140,7 +147,9 @@ const SDNList: React.FC<{
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="font-bold text-fg-default leading-tight whitespace-normal md:leading-none md:whitespace-nowrap">
+            {formatDocCode(item)}
+          </span>
           <span className="text-[10px] text-fg-subtle font-mono mt-1">
             {t('doc.common.idShort', { id: item.id.substring(0, 8) })}
           </span>
@@ -191,7 +200,7 @@ const SDNList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => item.status || '',
       cell: (item: any) => (
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex flex-col items-end gap-1 md:flex-row md:flex-wrap md:items-center md:gap-1.5">
           {item.status === 'O' && <Badge variant="warning">{t('doc.status.open')}</Badge>}
           {item.status === 'C' && <Badge variant="success">{t('doc.status.invoiced')}</Badge>}
           {item.status === 'X' && <Badge variant="error">{t('doc.status.cancelled')}</Badge>}
@@ -211,7 +220,10 @@ const SDNList: React.FC<{
       header: t('doc.common.actions'),
       align: 'right' as const,
       cell: (item: any) =>
-        item.status === 'O' && !item.hasActiveShipment && flags.logisticsEnabled ? (
+        item.status === 'O' &&
+        !item.hasActiveShipment &&
+        !item.fullyReturned &&
+        flags.logisticsEnabled ? (
           <div onClick={(e) => e.stopPropagation()} className="inline-flex">
             <PreparationButton docType="SDN" docId={item.id} compact />
           </div>
@@ -231,10 +243,10 @@ const SDNList: React.FC<{
     },
     {
       label: t('doc.actions.downloadPdf'),
-      icon: <Download size={14} />,
+      icon: <FileText size={14} />,
       onClick: () => handleQuickPdf(item.id),
     },
-    ...(item.status === 'O'
+    ...(item.status === 'O' && !item.fullyReturned
       ? [
           {
             label: t('doc.deliveryNotes.invoice'),
@@ -274,10 +286,7 @@ const SDNList: React.FC<{
         divider
         toolbar={
           doc.state.mastersError ? (
-            <div className="flex items-center gap-2 p-3 bg-warning-bg border border-warning rounded-lg text-warning-fg text-xs font-bold animate-in slide-in-from-top">
-              <AlertCircle size={16} />
-              {doc.state.mastersError}
-            </div>
+            <Alert tone="warning">{doc.state.mastersError}</Alert>
           ) : undefined
         }
         actions={
@@ -460,7 +469,7 @@ const SDNForm: React.FC<{
                   <PartnerField
                     label={t('doc.partner.customer')}
                     value={state.partnerId}
-                    onChange={setState.setPartnerId}
+                    onChange={actions.selectPartner}
                     partners={masters.partners}
                     placeholder={t('doc.common.selectCustomer')}
                   />
@@ -483,9 +492,15 @@ const SDNForm: React.FC<{
                     label={t('doc.deliveryNotes.date')}
                     required
                     value={state.date}
-                    onChange={(v) => setState.setDate(v ?? '')}
+                    onChange={(v) => actions.selectDate(v ?? '')}
                   />
                   <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
+                  <div className="sm:col-span-2 empty:hidden">
+                    <PartnerCreditNotice
+                      partnerId={state.partnerId}
+                      amount={newExposure(state.lines, computations.total)}
+                    />
+                  </div>
                 </FormGrid>
               }
               side={
@@ -596,7 +611,8 @@ const SDNDetail: React.FC<{
   masters: any;
   zones: any[];
   setViewingBatch: (l: any) => void;
-}> = ({ sdn, onBack, onCancel, onCopyToInvoice, masters, zones, setViewingBatch }) => {
+  canWrite: boolean;
+}> = ({ sdn, onBack, onCancel, onCopyToInvoice, masters, zones, setViewingBatch, canWrite }) => {
   const { t, locale } = useI18n();
   const fmt = useFormat();
   const isMobile = useIsMobile();
@@ -611,6 +627,18 @@ const SDNDetail: React.FC<{
       window.location.href = path;
     }
   };
+
+  const openReturn = () => {
+    (tabs as any).openTab(`/sales/delivery-notes/${sdn.id}/return`, {
+      title: t('doc.deliveryReturn.tabTitle', { code: formatDocCode(sdn) }),
+    });
+  };
+  // Con el envío en marcha la mercancía aún no ha llegado; entregado, sí puede volver una parte.
+  const canReturn =
+    canWrite &&
+    sdn.status === 'O' &&
+    !sdn.fullyReturned &&
+    (!sdn.hasActiveShipment || sdn.activeShipmentStatus === 'delivered');
 
   const columns = useMemo(
     () =>
@@ -631,6 +659,8 @@ const SDNDetail: React.FC<{
       onBack={onBack}
       breadcrumb={t('doc.salesDeliveryNotes.breadcrumb')}
       title={formatDocCode(sdn)}
+      cancelledAt={sdn.cancelledAt}
+      cancelReason={sdn.cancelReason}
       status={statusBadgeProps(sdn.status, DocKind.DeliveryNote)}
       actions={
         <DocumentActionBar
@@ -641,20 +671,53 @@ const SDNDetail: React.FC<{
           onCancel={() => onCancel(sdn.id)}
           showCancel={sdn.status === 'O'}
           primary={
-            sdn.status === 'O'
+            sdn.status === 'O' && !sdn.fullyReturned
               ? { label: t('doc.deliveryNotes.invoice'), icon: Copy, onClick: onCopyToInvoice }
               : undefined
           }
         />
       }
     >
+      {sdn.returnReceipts?.length > 0 && (
+        <Alert tone="info" className="mb-4">
+          {t(
+            sdn.fullyReturned ? 'doc.deliveryNotes.returned' : 'doc.deliveryNotes.partlyReturned',
+            {
+              codes: sdn.returnReceipts.map((receipt: any) => receipt.code).join(', '),
+            },
+          )}
+        </Alert>
+      )}
       <div className="flex items-center gap-3 mb-4 -mt-2 flex-wrap">
         <CloneDocumentActions docType="SDN" doc={sdn} show="copy" size={14} />
         <TraceabilityButton type="SDN" id={sdn.id} docCode={formatDocCode(sdn)} />
         <InternalOrderChip internalOrderId={sdn.internalOrderId} />
-        {sdn.status === 'O' && !sdn.hasActiveShipment && flags.logisticsEnabled && (
-          <PreparationButton docType="SDN" docId={sdn.id} />
-        )}
+        {sdn.status === 'O' &&
+          !sdn.hasActiveShipment &&
+          !sdn.returnReceipts?.length &&
+          flags.logisticsEnabled && <PreparationButton docType="SDN" docId={sdn.id} />}
+        <ResponsiveActions
+          source="secondary:return"
+          actions={
+            canReturn
+              ? [
+                  {
+                    id: 'return',
+                    label: t('doc.deliveryNotes.returnGoods'),
+                    icon: <Undo2 size={19} />,
+                    onClick: openReturn,
+                  },
+                ]
+              : []
+          }
+        >
+          {canReturn && (
+            <Button variant="secondary" className="gap-2" onClick={openReturn}>
+              <Undo2 size={14} />
+              <span>{t('doc.deliveryNotes.returnGoods')}</span>
+            </Button>
+          )}
+        </ResponsiveActions>
         <ResponsiveActions
           source="secondary:shipment"
           actions={
@@ -693,14 +756,11 @@ const SDNDetail: React.FC<{
             )}
           </div>
           {sdn.orderId && (
-            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-lg">
-              <ShoppingCart size={14} className="text-blue-600 dark:text-blue-300 shrink-0" />
-              <p className="text-xs font-bold text-blue-800 dark:text-blue-200 leading-tight">
-                {t('doc.deliveryNotes.fromOrderCode', {
-                  code: `${sdn.orderPrefix}-${sdn.periodCode}-${String(sdn.orderDocNum).padStart(6, '0')}`,
-                })}
-              </p>
-            </div>
+            <Alert tone="info" icon={<ShoppingCart size={14} />}>
+              {t('doc.deliveryNotes.fromOrderCode', {
+                code: `${sdn.orderPrefix}-${sdn.periodCode}-${String(sdn.orderDocNum).padStart(6, '0')}`,
+              })}
+            </Alert>
           )}
         </Card>
 
@@ -763,6 +823,7 @@ export const SalesDeliveryNotes: React.FC = () => {
   const params = useParams();
   const toast = useToast();
   const popup = usePopup();
+  const cancelReason = useCancelReason();
   const { openTab } = useTabs();
   const currentTab = useCurrentTab();
 
@@ -893,36 +954,46 @@ export const SalesDeliveryNotes: React.FC = () => {
       doc.setState.setWarehouseId(order.warehouseId);
       if (order.internalOrderId) setInternalOrderId(order.internalOrderId);
       doc.setState.setLines(
-        order.lines.map((l: any) => ({
-          itemId: l.itemId,
-          quantity: Number(l.orderedQty) - Number(l.deliveredQty),
-          price: l.price,
-          taxGroupId: l.taxGroupId,
-          warehouseId: l.warehouseId || order.warehouseId,
-          zoneId: l.zoneId || '',
-          baseLine: l.lineNum,
-          lineNum: l.lineNum,
-          uomId: l.uomId,
-          uomFactor: l.uomFactor != null ? Number(l.uomFactor) : undefined,
-          // Desglose fiscal heredado del pedido.
-          description: l.description,
-          discountRate: l.discountRate != null ? Number(l.discountRate) : undefined,
-          discountAmount: l.discountAmount != null ? Number(l.discountAmount) : undefined,
-          withholdingRate: l.withholdingRate != null ? Number(l.withholdingRate) : undefined,
-          withholdingAmount: l.withholdingAmount != null ? Number(l.withholdingAmount) : undefined,
-          costCenterId: l.costCenterId,
-          profitCenterId: l.profitCenterId,
-          internalOrderId: l.internalOrderId,
-        })),
+        order.lines
+          .filter((l: any) => Number(l.orderedQty) > Number(l.deliveredQty))
+          .map((l: any) => ({
+            itemId: l.itemId,
+            quantity: Number(l.orderedQty) - Number(l.deliveredQty),
+            price: l.price,
+            taxGroupId: l.taxGroupId,
+            warehouseId: l.warehouseId || order.warehouseId,
+            zoneId: l.zoneId || '',
+            baseLine: l.lineNum,
+            lineNum: l.lineNum,
+            uomId: l.uomId,
+            uomFactor: l.uomFactor != null ? Number(l.uomFactor) : undefined,
+            // Desglose fiscal heredado del pedido.
+            description: l.description,
+            discountRate: l.discountRate != null ? Number(l.discountRate) : undefined,
+            discountAmount: l.discountAmount != null ? Number(l.discountAmount) : undefined,
+            withholdingRate: l.withholdingRate != null ? Number(l.withholdingRate) : undefined,
+            withholdingAmount:
+              l.withholdingAmount != null ? Number(l.withholdingAmount) : undefined,
+            costCenterId: l.costCenterId,
+            profitCenterId: l.profitCenterId,
+            internalOrderId: l.internalOrderId,
+          })),
       );
     } catch (e) {
       console.error('Error parsing copy_order_source', e);
     }
   }, [isCreate]);
 
+  const creditSubmit = useCreditSubmit();
+
   const handleSubmit = async (e: any) => {
     try {
-      const data = await doc.actions.submitDocument({ orderId, internalOrderId });
+      const data = await creditSubmit(
+        doc.state.partnerId,
+        newExposure(doc.state.lines, doc.computations.total),
+        (credit) => doc.actions.submitDocument({ orderId, internalOrderId, ...credit }),
+      );
+      if (!data) return;
       toast.success(t('doc.deliveryNotes.created', { num: data.docNum }));
       notifyDocChange(DocType.SalesDeliveryNote);
       currentTab.close();
@@ -932,16 +1003,12 @@ export const SalesDeliveryNotes: React.FC = () => {
   };
 
   const handleCancel = async (id: string) => {
-    const reason = window.prompt(t('doc.deliveryNotes.cancelReasonPrompt'), '');
-    if (reason === null) return;
-    const ok = await popup.confirm({
+    const reason = await cancelReason.ask({
       title: t('doc.deliveryNotes.cancelTitle'),
       message: t('doc.salesDeliveryNotes.cancelMessage'),
-      tone: 'danger',
       confirmLabel: t('doc.deliveryNotes.cancelTitle'),
-      cancelLabel: t('doc.common.back'),
     });
-    if (!ok) return;
+    if (reason === null) return;
     const doCall = (force: boolean) =>
       apiClient.post<any>(`/api/sales/delivery-notes/${id}/cancel`, {
         reason: reason || null,
@@ -1023,7 +1090,9 @@ export const SalesDeliveryNotes: React.FC = () => {
     }
     return (
       <>
+        {cancelReason.dialog}
         <SDNDetail
+          canWrite={doc.state.canWrite}
           sdn={selectedDelivery}
           onBack={() => currentTab.close()}
           onCancel={handleCancel}

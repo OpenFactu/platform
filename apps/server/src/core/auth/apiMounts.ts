@@ -21,6 +21,7 @@ import type { Express, RequestHandler, Response, NextFunction } from 'express';
 import {
   AUTHORIZED,
   markAuthorized,
+  requireAnyPermission,
   requirePermission,
   type PermissionAction,
 } from '../../api/middleware/requirePermission';
@@ -87,6 +88,23 @@ export function mountApiWithAction(
   }
   mounts.push({ path, kind: 'permission', permission });
   app.use(path, requirePermission(permission, action), ...handlers);
+}
+
+/** Un router al que se entra con cualquiera de esos permisos, o con uno de esos roles. */
+export function mountApiAny(
+  app: Express,
+  path: string,
+  permissions: string[],
+  roles: string[],
+  ...handlers: RequestHandler[]
+): void {
+  for (const permission of permissions) {
+    if (!isKnownPermission(permission)) {
+      throw new Error(`[Permisos] El montaje ${path} pide "${permission}", que no está en el catálogo.`);
+    }
+  }
+  mounts.push({ path, kind: 'permission', permission: permissions[0] });
+  app.use(path, requireAnyPermission(permissions, roles), ...handlers);
 }
 
 /**

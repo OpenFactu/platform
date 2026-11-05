@@ -3,6 +3,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -16,7 +17,8 @@ import { useCurrentTabId } from './TabsContext';
  * En móvil las acciones de un documento (asentar, PDF, enviar, cancelar…) no van
  * en filas de botones bajo el título: cada componente las registra aquí y
  * `MobileActionButton` las pinta en su único `FloatingActionButton`, junto a
- * «Escanear» y «Buscar». Uno solo, porque dos FAB en la misma esquina se tapan.
+ * «Escanear» si la pantalla lo admite. Uno solo, porque dos FAB en la misma esquina
+ * se tapan.
  *
  * Se guardan por pestaña (varias pueden estar montadas a la vez, ver TabsHost)
  * y, dentro de ella, por `source`, para que varios componentes aporten las suyas.
@@ -26,6 +28,9 @@ type Registry = Record<string, Record<string, FloatingAction[]>>;
 interface Ctx {
   registry: Registry;
   set: (tabId: string, source: string, actions: FloatingAction[] | null) => void;
+  /** Pestañas cuya pantalla no quiere botón flotante. */
+  hiddenTabs: string[];
+  setHidden: (tabId: string, hidden: boolean) => void;
 }
 
 const MobilePageActionsCtx = createContext<Ctx | null>(null);
@@ -46,7 +51,19 @@ export const MobilePageActionsProvider: React.FC<{ children: React.ReactNode }> 
       }),
     [],
   );
-  const value = useMemo<Ctx>(() => ({ registry, set }), [registry, set]);
+  const [hiddenTabs, setHiddenTabs] = useState<string[]>([]);
+  const setHidden = useCallback<Ctx['setHidden']>(
+    (tabId, hidden) =>
+      setHiddenTabs((prev) => {
+        const rest = prev.filter((id) => id !== tabId);
+        return hidden ? [...rest, tabId] : rest;
+      }),
+    [],
+  );
+  const value = useMemo<Ctx>(
+    () => ({ registry, set, hiddenTabs, setHidden }),
+    [registry, set, hiddenTabs, setHidden],
+  );
   return <MobilePageActionsCtx.Provider value={value}>{children}</MobilePageActionsCtx.Provider>;
 };
 
@@ -65,6 +82,26 @@ export function useMobilePageActionsFor(tabId: string | null | undefined): Float
   return Object.keys(tab)
     .sort((a, b) => rank(a) - rank(b))
     .flatMap((source) => tab[source]);
+}
+
+/** Si la pantalla de esa pestaña ha pedido ir sin botón flotante. */
+export function useFloatingButtonHidden(tabId: string | null | undefined): boolean {
+  const ctx = useContext(MobilePageActionsCtx);
+  return !!tabId && !!ctx?.hiddenTabs.includes(tabId);
+}
+
+/**
+ * Esta pantalla va sin botón flotante mientras esté montada. Antes de pintar, para que no
+ * asome al entrar.
+ */
+export function useHideFloatingButton(): void {
+  const setHidden = useContext(MobilePageActionsCtx)?.setHidden;
+  const tabId = useCurrentTabId();
+  useLayoutEffect(() => {
+    if (!setHidden || !tabId) return;
+    setHidden(tabId, true);
+    return () => setHidden(tabId, false);
+  }, [setHidden, tabId]);
 }
 
 /**

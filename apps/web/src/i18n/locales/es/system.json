@@ -14,7 +14,10 @@
       "actions": {
         "CREATE": "Creación",
         "UPDATE": "Edición",
-        "DELETE": "Borrado"
+        "DELETE": "Borrado",
+        "OVERRIDE": "Límite superado",
+        "CANCEL": "Cancelación",
+        "RETURN": "Devolución"
       },
       "field": "Campo",
       "previous": "Anterior",

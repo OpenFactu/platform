@@ -8,6 +8,10 @@ import { notifyShipmentStageChange } from '../../core/logistics/shipmentNotifica
 import { dispatchEvent } from '../../core/webhooks/WebhookQueue';
 import { DocumentEngine } from '../../core/documents/DocumentEngine';
 import { DocumentRegistry } from '../../core/documents/DocumentRegistry';
+import { contextOf } from '../logistics/shared';
+import { cancelLinkedShipment } from '../../core/logistics/shipmentActions';
+import { runEffects, type Effect } from '../../core/logistics/shipmentTransitions';
+import { statusError } from '../../core/documents/documentRules';
 
 const router = Router();
 const config = DocumentRegistry.get('PDN');
@@ -47,38 +51,39 @@ router.get('/', async (req: any, res) => {
 
     // Idéntico al SDN: enriquecer con info del shipment de recepción vivo.
     const ids = results.map((r: any) => r.id);
-    let shipmentMap = new Map<string, string>();
+    const shipmentMap = new Map<string, string>();
+    const shipmentStatusMap = new Map<string, string>();
     if (ids.length > 0) {
       const active = await req.tenantClient
         .select({
           id: schema.shipments.id,
           sourceDocId: schema.shipments.sourceDocId,
+          preparationStatus: schema.shipments.preparationStatus,
         })
         .from(schema.shipments)
         .where(
           and(
             eq(schema.shipments.sourceDocType, 'PDN'),
             inArray(schema.shipments.sourceDocId, ids),
-            notInArray(schema.shipments.preparationStatus, [
-              'cancelled',
-              'delivered',
-              'received',
-              'returned',
-            ]),
+            notInArray(schema.shipments.preparationStatus, ['cancelled', 'returned']),
           ),
         );
       for (const s of active as any[]) {
-        if (s.sourceDocId) shipmentMap.set(s.sourceDocId, s.id);
+        if (s.sourceDocId) {
+          shipmentMap.set(s.sourceDocId, s.id);
+          shipmentStatusMap.set(s.sourceDocId, s.preparationStatus);
+        }
       }
     }
     const enriched = results.map((r: any) => ({
       ...r,
       hasActiveShipment: shipmentMap.has(r.id),
       activeShipmentId: shipmentMap.get(r.id) || null,
+      activeShipmentStatus: shipmentStatusMap.get(r.id) || null,
     }));
     res.json(enriched);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -145,9 +150,29 @@ router.get('/:id', async (req: any, res) => {
       }),
     );
 
-    res.json({ ...headerData, lines: linesWithBatches });
+    const [activeShipment] = await req.tenantClient
+      .select({
+        id: schema.shipments.id,
+        preparationStatus: schema.shipments.preparationStatus,
+      })
+      .from(schema.shipments)
+      .where(
+        and(
+          eq(schema.shipments.sourceDocType, 'PDN'),
+          eq(schema.shipments.sourceDocId, req.params.id),
+          notInArray(schema.shipments.preparationStatus, ['cancelled', 'returned']),
+        ),
+      );
+
+    res.json({
+      ...headerData,
+      lines: linesWithBatches,
+      hasActiveShipment: !!activeShipment,
+      activeShipmentId: activeShipment?.id || null,
+      activeShipmentStatus: activeShipment?.preparationStatus || null,
+    });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -164,7 +189,7 @@ router.get('/:id/pdf', async (req: any, res) => {
     );
   } catch (error: any) {
     console.error('[PurchaseDeliveryNote PDF] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -204,7 +229,7 @@ router.post('/', async (req: any, res) => {
     });
   } catch (error: any) {
     console.error('Error en Albarán de Compra:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -238,15 +263,18 @@ async function cancelPurchaseDeliveryNote(req: any, res: any) {
       }
     }
 
+    const logisticsContext = await contextOf(req);
+    const logisticsEffects: Effect[] = [];
     const result = await req.tenantClient.transaction(async (tx: any) => {
       // 1. Obtener cabecera y líneas para revertir
       const [header] = await tx
         .select()
         .from(schema.purchaseDeliveryNotes)
         .where(eq(schema.purchaseDeliveryNotes.id, req.params.id));
-      if (!header) throw new Error('Albarán no encontrado');
-      if (header.status === 'X') throw new Error('El albarán ya está cancelado');
-      if (header.status === 'C') throw new Error('No se puede cancelar un albarán ya facturado');
+      if (!header) throw statusError(404, 'Albarán no encontrado');
+      if (header.status === 'X') throw statusError(409, 'El albarán ya está cancelado');
+      if (header.status === 'C')
+        throw statusError(409, 'No se puede cancelar un albarán ya facturado');
 
       // Revierte stock (global/almacén/zona/lotes), marca 'X' y decrementa el
       // fulfillment del Pedido de Compra origen — todo vía DocumentEngine
@@ -266,41 +294,26 @@ async function cancelPurchaseDeliveryNote(req: any, res: any) {
           hooks: config.hooks,
         },
         req.params.id,
+        { reason: body.reason },
       );
 
-      // 2b. Cascada al shipment de recepción + picking tasks asociados.
+      // Parar también la operación logística: envío, paradas y tareas.
       if (activeShipment) {
-        await tx
-          .update(schema.shipments)
-          .set({
-            status: 'cancelled',
-            preparationStatus: 'cancelled',
-            updatedAt: new Date(),
-          })
-          .where(eq(schema.shipments.id, activeShipment.id));
-        await tx.insert(schema.shipmentEvents).values({
-          id: crypto.randomUUID(),
-          shipmentId: activeShipment.id,
-          kind: 'status_change',
-          status: 'cancelled',
-          description: body.reason
+        await cancelLinkedShipment(
+          logisticsContext,
+          tx,
+          logisticsEffects,
+          activeShipment,
+          body.reason
             ? `Cancelado al anular el albarán: ${body.reason}`
             : 'Cancelado al anular el albarán de compra',
-        });
-        try {
-          await tx
-            .update(schema.pickingTasks)
-            .set({ status: 'cancelled' })
-            .where(
-              sql`${schema.pickingTasks.shipmentId} = ${activeShipment.id} AND ${schema.pickingTasks.status} IN ('pending','in_progress')`,
-            );
-        } catch {
-          /* opcional */
-        }
+        );
       }
 
       return { success: true };
     });
+
+    await runEffects(logisticsEffects);
 
     res.json({
       ...result,
@@ -313,7 +326,7 @@ async function cancelPurchaseDeliveryNote(req: any, res: any) {
       userId: req.user?.id,
       entityType: 'PurchaseDeliveryNote',
       entityId: req.params.id,
-      action: 'DELETE',
+      action: 'CANCEL',
       newValue: { reason: body.reason || null, force: !!body.force },
     });
 
@@ -330,7 +343,7 @@ async function cancelPurchaseDeliveryNote(req: any, res: any) {
       }).catch(() => {});
     }
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 }
 

@@ -14,6 +14,7 @@
  *   /api/goods-issues       (draft → posted)
  */
 
+import { PageBack } from '@/components/common/PageBack';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Card,
@@ -52,6 +53,8 @@ import type { StockDocKind } from '../domain/stockMovement';
 import type { Warehouse, Zone } from '../domain/warehouse';
 import type { Item } from '../domain/item';
 import type { Uom } from '../domain/uom';
+import { canSeeItemCosts, canSetItemCosts } from '../domain/itemCost';
+import { useFormat } from '@/hooks/useFormat';
 import { useI18n } from '@/i18n/I18nContext';
 import { intlLocale } from '@/i18n/i18n';
 
@@ -112,6 +115,8 @@ interface LineInput {
   zoneId: string;
   batchNum: string;
   uomId: string;
+  /** Solo en entradas, y opcional: sin él, la mercancía entra a la media que haya. */
+  unitCost: string;
 }
 
 const emptyLine = (): LineInput => ({
@@ -122,6 +127,7 @@ const emptyLine = (): LineInput => ({
   zoneId: '',
   batchNum: '',
   uomId: '',
+  unitCost: '',
 });
 
 /** Fecha corta; vacía si falta o no es válida (new Date(null) daría 1/1/1970). */
@@ -133,6 +139,9 @@ const shortDate = (value: unknown): string => {
 
 export const StockMovements: React.FC = () => {
   const { user } = useAuth();
+  const fmt = useFormat();
+  const canSeeCost = canSeeItemCosts(user);
+  const canSetCost = canSetItemCosts(user);
   const toast = useToast();
   const popup = usePopup();
   const { t } = useI18n();
@@ -422,6 +431,7 @@ export const StockMovements: React.FC = () => {
       zoneId: string | null;
       batchNum: string | null;
       uomId: string | null;
+      unitCost: number | null;
     }> = [];
 
     for (let i = 0; i < withItem.length; i++) {
@@ -470,6 +480,7 @@ export const StockMovements: React.FC = () => {
         zoneId: l.zoneId || null,
         batchNum: l.batchNum.trim() || null,
         uomId: l.uomId || null,
+        unitCost: kind === 'receipt' && l.unitCost !== '' ? Number(l.unitCost) : null,
       });
     }
 
@@ -609,6 +620,15 @@ export const StockMovements: React.FC = () => {
         align: 'right',
         cell: (l) => <span className="font-mono">{l.quantity}</span>,
       },
+      ...(canSeeCost && kind !== 'transfer'
+        ? [
+            {
+              header: t('inventory.stockMovements.unitCost'),
+              align: 'right' as const,
+              cell: (l: any) => (l.unitCost != null ? fmt.money(l.unitCost) : '—'),
+            },
+          ]
+        : []),
       {
         header: t('inventory.stockMovements.uom'),
         cell: (l) => {
@@ -630,7 +650,7 @@ export const StockMovements: React.FC = () => {
       },
       ...zoneCols,
     ];
-  }, [kind, itemsById, uomsById, zones, t]);
+  }, [kind, itemsById, uomsById, zones, t, canSeeCost, fmt]);
 
   return (
     <div className="p-4 space-y-4 animate-in fade-in duration-300">
@@ -659,16 +679,18 @@ export const StockMovements: React.FC = () => {
         className="pb-3"
         breadcrumbs={
           (creating || viewing) && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={creating ? cancelCreate : closeView}
-              title={t('inventory.stockMovements.backToList')}
-              className="w-fit"
-            >
-              <ArrowLeft size={14} />
-            </Button>
+            <PageBack onBack={creating ? cancelCreate : closeView}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={creating ? cancelCreate : closeView}
+                title={t('inventory.stockMovements.backToList')}
+                className="w-fit"
+              >
+                <ArrowLeft size={14} />
+              </Button>
+            </PageBack>
           )
         }
         actions={
@@ -1165,6 +1187,22 @@ export const StockMovements: React.FC = () => {
                               {uom ? uom.code : '—'}
                             </div>
                           </div>
+                          {kind === 'receipt' && canSetCost && (
+                            <div className="sm:col-span-4 md:col-span-2">
+                              <label className="text-[9px] font-bold uppercase tracking-wider text-fg-muted block mb-0.5">
+                                {t('inventory.stockMovements.unitCost')}
+                              </label>
+                              <Input
+                                type="number"
+                                step="any"
+                                min={0}
+                                value={l.unitCost}
+                                onChange={(e) => updateLine(i, { unitCost: e.target.value })}
+                                placeholder="—"
+                                title={t('inventory.stockMovements.unitCostHint')}
+                              />
+                            </div>
+                          )}
                           {batchRequired && (
                             <div className="sm:col-span-4 md:col-span-3">
                               <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">

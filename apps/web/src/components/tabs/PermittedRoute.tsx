@@ -16,6 +16,8 @@ export const PermittedRoute: React.FC<PermittedRouteProps> = ({ path, children }
     return user?.role === 'SUPERUSER' ? children : <Navigate to="/" replace />;
   }
   if (user?.role === 'SUPERUSER' || user?.role === 'ADMIN') return children;
+  // El rol de conductor ya implica su app, como en el servidor.
+  if (normalizedPath === '/driver' && user?.role === 'DRIVER') return children;
   if (user?.permissions?.[normalizedPath]?.read) return children;
   return <Navigate to="/" replace />;
 };

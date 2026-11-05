@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, type FloatingAction } from '@openfactu/ui';
-import { Download, Trash2, Tag, Mail, type LucideIcon } from 'lucide-react';
+import { Trash2, Tag, Mail, type LucideIcon, FileText } from 'lucide-react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useI18n } from '@/i18n/I18nContext';
 import { useMobilePageActions } from '@/context/MobilePageActionsContext';
@@ -83,7 +83,7 @@ export const DocumentActionBar: React.FC<Props> = ({
     {
       id: 'pdf',
       label: t('doc.actions.downloadPdf'),
-      icon: <Download size={19} />,
+      icon: <FileText size={19} />,
       onClick: async () => {
         if (await pdf.start()) setPickerOpen(true);
       },

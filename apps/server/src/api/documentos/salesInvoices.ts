@@ -1,12 +1,15 @@
 import { Router } from 'express';
+import { creditNoteRoutes } from './creditNoteRoutes';
 import { eq, sql, desc } from 'drizzle-orm';
 import * as schema from '../../db/schema';
 import { DocumentEngine } from '../../core/documents/DocumentEngine';
 import { DocumentRegistry } from '../../core/documents/DocumentRegistry';
 import { renderDocumentPdf } from '../../core/documents/renderDocumentPdf';
 import { logAudit } from '../../utils/audit';
+import { statusError } from '../../core/documents/documentRules';
 
 const router = Router();
+router.use(creditNoteRoutes('sales'));
 const config = DocumentRegistry.get('SINV');
 
 // GET all invoices
@@ -26,6 +29,11 @@ router.get('/', async (req: any, res) => {
         paymentStatus: schema.salesInvoices.paymentStatus,
         amountPaid: schema.salesInvoices.amountPaid,
         isLocked: schema.salesInvoices.isLocked,
+        rectifiesInvoiceId: schema.salesInvoices.rectifiesInvoiceId,
+        creditNoteCount: sql<number>`(
+          SELECT COUNT(*)::int FROM "SalesInvoice" note
+          WHERE note."rectifiesInvoiceId" = ${schema.salesInvoices.id} AND note."status" <> 'X'
+        )`,
         dueDate: schema.salesInvoices.dueDate,
         externalRef: schema.salesInvoices.externalRef,
         baseDocCode: sql<string | null>`(
@@ -49,7 +57,7 @@ router.get('/', async (req: any, res) => {
       .orderBy(desc(schema.salesInvoices.date));
     res.json(results);
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -109,7 +117,7 @@ router.get('/:id', async (req: any, res) => {
       });
     }
     const rawHeader: any = await req.tenantClient.execute(
-      sql.raw(`SELECT * FROM "${schemaName}"."SalesInvoice" WHERE "id" = '${req.params.id}'`),
+      sql`SELECT * FROM ${sql.identifier(schemaName)}."SalesInvoice" WHERE "id" = ${req.params.id}`,
     );
     const rawHeaderRow = rawHeader.rows?.[0] || {};
     const pluginCols: Record<string, any> = {};
@@ -147,7 +155,7 @@ router.get('/:id', async (req: any, res) => {
       })),
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -164,7 +172,7 @@ router.get('/:id/pdf', async (req: any, res) => {
     );
   } catch (error: any) {
     console.error('[SalesInvoice PDF] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 
@@ -201,7 +209,7 @@ router.post('/', async (req: any, res) => {
     });
   } catch (error: any) {
     console.error('[SalesInvoice API] Error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message, ...error.body });
   }
 });
 
@@ -243,8 +251,8 @@ async function cancelSalesInvoice(req: any, res: any) {
         .select()
         .from(schema.salesInvoices)
         .where(eq(schema.salesInvoices.id, req.params.id));
-      if (!header) throw new Error('No encontrado');
-      if (header.status === 'X') throw new Error('Ya está cancelado');
+      if (!header) throw statusError(404, 'No encontrado');
+      if (header.status === 'X') throw statusError(409, 'Ya está cancelado');
 
       // Revierte stock (global/almacén/zona/lotes) solo para líneas directas
       // (si vino de un SDN, la factura nunca movió stock, solo reabre el SDN
@@ -275,11 +283,11 @@ async function cancelSalesInvoice(req: any, res: any) {
         userId: req.user?.id,
         entityType: 'SalesInvoice',
         entityId: req.params.id,
-        action: 'DELETE',
+        action: 'CANCEL',
         oldValue: { status: old.status },
       });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    res.status(error.statusCode || 500).json({ error: error.message, code: error.code });
   }
 }
 

@@ -1,4 +1,5 @@
 import { apiClient, type QueryParams } from '@/shared/http';
+import { openPdf } from '@/utils/downloadPdf';
 
 /**
  * Adaptador genérico de informes. Los informes son de solo lectura y todos
@@ -8,14 +9,13 @@ import { apiClient, type QueryParams } from '@/shared/http';
 export const reportsApi = {
   get: <T = unknown>(path: string, query?: QueryParams) => apiClient.get<T>(path, { query }),
 
-  /** Descarga el PDF de un informe y dispara la descarga en el navegador. */
-  async downloadPdf(path: string, fallbackName: string, query?: QueryParams): Promise<void> {
-    const { blob, filename } = await apiClient.getBlob(path, { query });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename || fallbackName;
-    a.click();
-    URL.revokeObjectURL(url);
+  /** Abre el PDF de un informe en una pestaña nueva. */
+  async openPdf(path: string, fallbackName: string, query?: QueryParams): Promise<void> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query ?? {})) {
+      if (value !== undefined && value !== null && value !== '') params.set(key, String(value));
+    }
+    const qs = params.toString();
+    await openPdf(qs ? `${path}${path.includes('?') ? '&' : '?'}${qs}` : path, fallbackName);
   },
 };

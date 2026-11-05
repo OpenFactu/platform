@@ -3,12 +3,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Table, Button, Loader, PageHeader, useToast, usePopup, Badge } from '@openfactu/ui';
 import type { RowAction } from '@openfactu/ui';
-import { Plus, Trash2, Eye, Table as TableIcon } from 'lucide-react';
+import { Plus, Trash2, Eye, FileText, Table as TableIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTabs } from '@/context/TabsContext';
 import { useFormat } from '@/hooks/useFormat';
 import { usePluginFields, PluginFieldValue } from '@/components/plugin-fields';
 import { useI18n } from '@/i18n/I18nContext';
+import { openPdf } from '@/utils/downloadPdf';
 
 interface TableMeta {
   tableName: string;
@@ -50,7 +51,7 @@ export const UserTableList: React.FC = () => {
       const tables = mRes.data;
       const m = (Array.isArray(tables) ? tables : []).find((t: any) => t.tableName === tblName);
       setMeta(m || null);
-      setRows(rRes.data);
+      setRows(Array.isArray(rRes.data) ? rRes.data : []);
     } finally {
       setLoading(false);
     }
@@ -134,6 +135,14 @@ export const UserTableList: React.FC = () => {
     } else toast.error(t('userTables.list.deleteError'));
   };
 
+  const downloadRowPdf = async (r: any) => {
+    try {
+      await openPdf(`/api/user-tables/${tblName}/rows/${r.id}/pdf`, `${tblName}.pdf`);
+    } catch {
+      toast.error(t('userTables.list.pdfError'));
+    }
+  };
+
   const allColumns = [...baseCols, ...pluginCols];
 
   // Un solo sitio para las acciones de fila: la Table las ofrece en el botón ⋯
@@ -145,6 +154,15 @@ export const UserTableList: React.FC = () => {
       icon: <Eye size={14} />,
       onClick: () => openTab(`/u/${name}/${r.id}`),
     },
+    ...(meta?.kind === 'document'
+      ? [
+          {
+            label: t('userTables.list.pdf'),
+            icon: <FileText size={14} />,
+            onClick: () => downloadRowPdf(r),
+          },
+        ]
+      : []),
     {
       label: t('userTables.list.delete'),
       icon: <Trash2 size={14} />,

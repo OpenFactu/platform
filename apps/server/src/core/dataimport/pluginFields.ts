@@ -14,6 +14,7 @@
  * ese tenant.
  */
 
+import { effectiveRefObject } from '../customFields/linkableObjects';
 import { eq } from 'drizzle-orm';
 import { ClientFactory } from '../tenant/ClientFactory';
 import { TenantPluginCache } from '../plugins/TenantPluginCache';
@@ -56,11 +57,12 @@ function toImportField(def: any): ImportFieldDef | null {
 
   if (type === 'ref' && def.refTable) {
     const display = def.refDisplayField || 'name';
+    // Un documento se identifica por su número; lo demás, por lo que se enseña y, además,
+    // por código: en un fichero de migración lo normal es que venga el código.
+    const isDocument = String(effectiveRefObject(def) ?? '').startsWith('doc:');
     field.ref = {
       table: def.refTable,
-      // Se busca por lo que se enseña y, además, por código: en un fichero de
-      // migración lo normal es que venga el código, no el nombre bonito.
-      matchBy: [...new Set([display, 'code', 'name'])],
+      matchBy: isDocument ? [display] : [...new Set([display, 'code', 'name'])],
       label: def.label || def.refTable,
     };
   }

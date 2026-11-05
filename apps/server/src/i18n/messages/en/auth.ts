@@ -41,6 +41,9 @@ export default {
   // Etiquetas de PERMISSION_CATALOG: rellenan el hueco de los mensajes de
   // permiso de arriba (el `{0}` se traduce recursivamente).
   Artículos: 'Items',
+  'Costes de artículos': 'Item costs',
+  'Ver el coste medio y los márgenes; con escritura, poner coste en una entrada manual.':
+    'See the average cost and margins; with write access, set a cost on a manual receipt.',
   Categorías: 'Categories',
   'Unidades de medida': 'Units of measure',
   Impuestos: 'Taxes',

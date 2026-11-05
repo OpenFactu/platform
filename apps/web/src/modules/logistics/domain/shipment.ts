@@ -15,7 +15,26 @@ export interface Shipment {
   lastLng?: number | null;
   lastLocationAt?: string | null;
   estimatedDelivery?: string | null;
+  /** Del enlace que recibe el cliente: solo sirve para mirar. */
   reportToken: string;
+  /** Del dispositivo que envía la posición. */
+  trackerToken: string;
+  archivedAt?: string | null;
+  /** Número del envío (ENV-2026-00042). */
+  code?: string | null;
+  timeWindowFrom?: string | null;
+  timeWindowTo?: string | null;
+  /** Estado único y lo que añade el listado del servidor. */
+  state?: string;
+  direction?: 'out' | 'in' | 'pickup';
+  documentNumber?: string | null;
+  counterparty?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+  routeId?: string | null;
+  routeCode?: string | null;
+  routeDriver?: string | null;
+  routeVehicle?: string | null;
   createdAt?: string;
   updatedAt?: string;
   recipientName?: string | null;
@@ -60,8 +79,68 @@ export interface ClientIncident {
   recipientName: string | null;
 }
 
+export interface ShipmentDetailPackage {
+  id: string;
+  code: string;
+  status: string;
+  weightKg: number | null;
+  lines: Array<{ quantity: number; itemCode: string | null; itemName: string | null }>;
+}
+
+export interface ShipmentDetailStop {
+  handover?: string | null;
+  id: string;
+  status: string;
+  sequence: number;
+  arrivedAt: string | null;
+  departedAt: string | null;
+  recipientName: string | null;
+  recipientDocument: string | null;
+  signatureImage: string | null;
+  photoImage: string | null;
+  podNotes: string | null;
+  routeId: string;
+  routeCode: string;
+  routeName: string;
+  plannedDate: string;
+  driverName: string | null;
+  vehiclePlate: string | null;
+}
+
+export interface ShipmentDetailData {
+  shipment: Shipment;
+  events: ShipmentEvent[];
+  packages: ShipmentDetailPackage[];
+  stops: ShipmentDetailStop[];
+}
+
+export interface TodaySummary {
+  counts: {
+    toPrepare: number;
+    readyForRoute: number;
+    onRoute: number;
+    incidents: number;
+    late: number;
+    staleRoutes: number;
+    deliveredToday: number;
+  };
+  late: Shipment[];
+  incidents: Shipment[];
+  readyForRoute: Shipment[];
+  staleRoutes: Array<{
+    id: string;
+    code: string;
+    name: string;
+    plannedDate: string;
+    status: string;
+    driverName: string | null;
+  }>;
+}
+
 export interface ShipmentListParams {
   q?: string;
+  direction?: string;
+  includeArchived?: string;
   status?: string;
   preparationStatus?: string;
   routeId?: string;

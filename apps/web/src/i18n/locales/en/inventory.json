@@ -142,6 +142,30 @@
       "new": "New category",
       "empty": "No categories defined yet."
     },
+    "itemCost": {
+      "average": "Average cost",
+      "last": "Last purchase",
+      "stockValue": "Stock value",
+      "noCost": "No cost",
+      "noCostNotice": "This item has no cost yet: it will get one with its first purchase or a manual receipt with a cost. Until then its sales carry no cost and its margin looks higher.",
+      "noHistory": "The cost has not changed yet.",
+      "cols": {
+        "date": "Date",
+        "reason": "Reason",
+        "quantity": "Quantity",
+        "unitCost": "Entry cost",
+        "after": "Average cost"
+      },
+      "kind": {
+        "opening": "Opening cost",
+        "purchase": "Purchase",
+        "receipt": "Manual receipt",
+        "sales_return": "Customer return",
+        "purchase_return": "Return to supplier",
+        "undo_exit": "Issue cancelled",
+        "undo_entry": "Receipt cancelled"
+      }
+    },
     "itemDetail": {
       "manageBy": {
         "N": "Standard",
@@ -166,6 +190,8 @@
       "sections": {
         "general": "General",
         "generalSubtitle": "Identification, category, unit and price.",
+        "costs": "Cost",
+        "costsSubtitle": "Weighted average across the whole company, in base currency.",
         "logistics": "Logistics",
         "logisticsSubtitle": "Type, traceability and default location.",
         "web": "Web",
@@ -194,6 +220,9 @@
       "noCategory": "-- No category --",
       "baseUnit": "Base unit",
       "select": "-- Select --",
+      "taxGroup": "{tax}",
+      "noTaxGroup": "No {tax}",
+      "taxGroupHelp": "Goes to the line when the item is chosen, unless the partner has its own. If unset, the line starts at 0 %.",
       "basePrice": "Base price",
       "kindLabel": "Item type",
       "kind": {
@@ -324,6 +353,8 @@
       "close": "Close"
     },
     "stockMovements": {
+      "unitCost": "Unit cost",
+      "unitCostHint": "Optional. With a cost, it recalculates the item's average cost.",
       "kinds": {
         "transfer": {
           "label": "Transfers",

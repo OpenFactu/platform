@@ -8,11 +8,12 @@
  * Fuentes de datos:
  *   - `GET /api/logistics/shipments?status=exception` (paginado)
  *   - Para cada incidencia, el último `ShipmentEvent` con la descripción
- *     que escribió el conductor (o el `routeStop.podNotes`).
+ * que escribió el conductor (o el `routeStop.podNotes`).
  *   - `GET /api/logistics/incidents/client-reported` (últimos 30 días)
  */
 
 import { incidentsApi, shipmentsApi } from '../api';
+import { useReturnFollowUp } from '../hooks/useReturnFollowUp';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Badge, Loader, Button, Textarea, Modal, useToast } from '@openfactu/ui';
 import { AlertTriangle, CheckCircle2, MessageCircle, RefreshCw, RotateCcw } from 'lucide-react';
@@ -82,17 +83,18 @@ export const IncidentsTab: React.FC = () => {
   });
 
   /** Escala una incidencia de cliente: el envío pasa a `exception` y entra
-   *  en la lista clásica con sus acciones (resolver / devolución). */
+   * en la lista clásica con sus acciones (resolver / devolución). */
   const escalate = async (ci: ClientIncident) => {
     try {
-      await shipmentsApi.update(ci.shipmentId, {
-        status: 'exception',
-        reason: ci.description || 'Incidencia reportada por el cliente',
-      });
+      await shipmentsApi.reportIncident(
+        ci.shipmentId,
+        ci.description || t('logistics.incidents.clientIncidentReason'),
+      );
       toast.success(t('logistics.incidents.escalated'));
       load();
-    } catch {
-      toast.error(t('logistics.incidents.escalateError'));
+    } catch (err) {
+      const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
+      toast.error(msg || t('logistics.incidents.escalateError'));
     }
   };
 
@@ -101,6 +103,7 @@ export const IncidentsTab: React.FC = () => {
   // en móvil, donde los diálogos nativos del navegador son horribles).
   const [resolveModal, setResolveModal] = useState<Incident | null>(null);
   const [returnModal, setReturnModal] = useState<Incident | null>(null);
+  const offerCreditNote = useReturnFollowUp();
   const [returnReason, setReturnReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -108,7 +111,7 @@ export const IncidentsTab: React.FC = () => {
     if (!resolveModal) return;
     setActionLoading(true);
     try {
-      await shipmentsApi.update(resolveModal.shipment.id, { status: 'in_transit' });
+      await shipmentsApi.resolveIncident(resolveModal.shipment.id);
       toast.success(t('logistics.incidents.resolved'));
       setResolveModal(null);
       load();
@@ -134,6 +137,7 @@ export const IncidentsTab: React.FC = () => {
       setReturnModal(null);
       setReturnReason('');
       load();
+      await offerCreditNote(d);
     } catch (err) {
       const msg = err instanceof ApiError ? (err.body as any)?.error : undefined;
       toast.error(msg || t('logistics.incidents.returnError'));
@@ -146,7 +150,7 @@ export const IncidentsTab: React.FC = () => {
     <div className="w-full space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="text-rose-500" size={18} />
+          <AlertTriangle className="text-danger" size={18} />
           <span className="text-sm text-fg-body">
             {incidents.length === 0
               ? t('logistics.incidents.noneActive')
@@ -164,11 +168,11 @@ export const IncidentsTab: React.FC = () => {
         </div>
       ) : incidents.length === 0 ? (
         <Card bodyClassName="py-16 text-center">
-          <CheckCircle2 size={40} className="mx-auto text-emerald-500 mb-2" />
+          <CheckCircle2 size={40} className="mx-auto text-success mb-2" />
           <div className="text-sm font-bold text-fg-body">
             {t('logistics.incidents.emptyTitle')}
           </div>
-          <div className="text-xs text-slate-500 mt-0.5">{t('logistics.incidents.emptyHint')}</div>
+          <div className="text-xs text-fg-muted mt-0.5">{t('logistics.incidents.emptyHint')}</div>
         </Card>
       ) : (
         <Card bodyClassName="p-0">
@@ -178,8 +182,8 @@ export const IncidentsTab: React.FC = () => {
               return (
                 <li key={s.id} className="border-b border-border-subtle last:border-0 px-4 py-3">
                   <div className="flex items-start gap-3 flex-wrap">
-                    <div className="shrink-0 w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center">
-                      <AlertTriangle size={18} className="text-rose-500" />
+                    <div className="shrink-0 w-10 h-10 rounded-full bg-danger-bg flex items-center justify-center">
+                      <AlertTriangle size={18} className="text-danger" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -190,13 +194,13 @@ export const IncidentsTab: React.FC = () => {
                           </code>
                         )}
                         {s.driverName && (
-                          <span className="text-[11px] text-slate-500">
+                          <span className="text-[11px] text-fg-muted">
                             {t('logistics.incidents.reportedBy')} <b>{s.driverName}</b>
                             {s.vehiclePlate ? ` · ${s.vehiclePlate}` : ''}
                           </span>
                         )}
                         {inc.reportedAt && (
-                          <span className="text-[11px] text-slate-400 ml-auto">
+                          <span className="text-[11px] text-fg-subtle ml-auto">
                             {formatDateTime(inc.reportedAt)}
                           </span>
                         )}
@@ -205,12 +209,12 @@ export const IncidentsTab: React.FC = () => {
                         <div className="text-sm text-fg-body mt-0.5 truncate">
                           {s.destinationAddress}
                           {s.recipientName && (
-                            <span className="text-slate-500 text-xs"> · {s.recipientName}</span>
+                            <span className="text-fg-muted text-xs"> · {s.recipientName}</span>
                           )}
                         </div>
                       )}
                       {inc.reason && (
-                        <div className="mt-1 rounded-md bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 px-2.5 py-1.5 text-xs text-rose-800 dark:text-rose-200">
+                        <div className="mt-1 rounded-md bg-danger-bg border border-danger px-2.5 py-1.5 text-xs text-danger ">
                           <b>{t('logistics.incidents.reason')}</b> {inc.reason}
                         </div>
                       )}
@@ -238,7 +242,7 @@ export const IncidentsTab: React.FC = () => {
                         setReturnReason('');
                         setReturnModal(inc);
                       }}
-                      className="flex items-center gap-1.5 !text-amber-700"
+                      className="flex items-center gap-1.5 !text-warning"
                     >
                       <RotateCcw size={13} /> {t('logistics.incidents.convertToReturn')}
                     </Button>
@@ -262,11 +266,11 @@ export const IncidentsTab: React.FC = () => {
       {clientReported.length > 0 && (
         <>
           <div className="flex items-center gap-2 pt-2">
-            <MessageCircle size={16} className="text-amber-500" />
+            <MessageCircle size={16} className="text-warning" />
             <span className="text-sm font-bold text-fg-body">
               {t('logistics.incidents.clientReported')}
             </span>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-fg-subtle">
               {t('logistics.incidents.clientReportedHint')}
             </span>
           </div>
@@ -281,8 +285,8 @@ export const IncidentsTab: React.FC = () => {
                     className="border-b border-border-subtle last:border-0 px-4 py-3"
                   >
                     <div className="flex items-start gap-3 flex-wrap">
-                      <div className="shrink-0 w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center">
-                        <MessageCircle size={18} className="text-amber-500" />
+                      <div className="shrink-0 w-10 h-10 rounded-full bg-warning-bg flex items-center justify-center">
+                        <MessageCircle size={18} className="text-warning" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -290,7 +294,7 @@ export const IncidentsTab: React.FC = () => {
                           {escalated && (
                             <Badge variant="error">{t('logistics.incidents.escalatedBadge')}</Badge>
                           )}
-                          <span className="text-[11px] text-slate-400 ml-auto">
+                          <span className="text-[11px] text-fg-subtle ml-auto">
                             {formatDateTime(ci.createdAt)}
                           </span>
                         </div>
@@ -298,12 +302,12 @@ export const IncidentsTab: React.FC = () => {
                           <div className="text-sm text-fg-body mt-0.5 truncate">
                             {ci.destinationAddress}
                             {ci.recipientName && (
-                              <span className="text-slate-500 text-xs"> · {ci.recipientName}</span>
+                              <span className="text-fg-muted text-xs"> · {ci.recipientName}</span>
                             )}
                           </div>
                         )}
                         {ci.description && (
-                          <div className="mt-1 rounded-md bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 px-2.5 py-1.5 text-xs text-amber-800 dark:text-amber-200">
+                          <div className="mt-1 rounded-md bg-warning-bg border border-warning px-2.5 py-1.5 text-xs text-warning ">
                             {ci.description}
                           </div>
                         )}
@@ -327,7 +331,7 @@ export const IncidentsTab: React.FC = () => {
                           variant="secondary"
                           size="sm"
                           onClick={() => escalate(ci)}
-                          className="flex items-center gap-1.5 !text-rose-700"
+                          className="flex items-center gap-1.5 !text-danger"
                         >
                           <AlertTriangle size={13} /> {t('logistics.incidents.escalate')}
                         </Button>
@@ -362,7 +366,7 @@ export const IncidentsTab: React.FC = () => {
             {t('logistics.incidents.resolveModal.after')}
           </div>
           {resolveModal?.reason && (
-            <div className="rounded-md bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 px-3 py-2 text-xs text-rose-800 dark:text-rose-200">
+            <div className="rounded-md bg-danger-bg border border-danger px-3 py-2 text-xs text-danger ">
               <b>{t('logistics.incidents.originalReason')}</b> {resolveModal.reason}
             </div>
           )}
@@ -405,7 +409,7 @@ export const IncidentsTab: React.FC = () => {
             {t('logistics.incidents.returnModal.after')}
           </div>
           {returnModal?.reason && (
-            <div className="rounded-md bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/30 px-3 py-2 text-xs text-rose-800 dark:text-rose-200">
+            <div className="rounded-md bg-danger-bg border border-danger px-3 py-2 text-xs text-danger ">
               <b>{t('logistics.incidents.originalReason')}</b> {returnModal.reason}
             </div>
           )}

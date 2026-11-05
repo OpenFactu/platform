@@ -4,7 +4,7 @@ export type ScanHandler = (code: string) => void;
 
 interface ScannerContextType {
   /** Registra un handler que recibe los códigos escaneados. Devuelve unsubscribe. */
-  subscribe: (handler: ScanHandler) => () => void;
+  subscribe: (handler: ScanHandler, tabId?: string | null) => () => void;
   /** Dispara manualmente un código (usado por el modal de cámara). */
   dispatch: (code: string) => void;
   /** Abre el modal de cámara (si está montado). */
@@ -12,6 +12,8 @@ interface ScannerContextType {
   /** Hook interno para que `CameraModal` se registre como único consumidor de `openCamera`. */
   registerCameraOpener: (fn: (() => void) | null) => void;
   hasActiveHandler: boolean;
+  /** Pestañas con algo que reciba lo escaneado: en las demás no se ofrece escanear. */
+  handlerTabs: string[];
 }
 
 const ScannerContext = createContext<ScannerContextType | undefined>(undefined);
@@ -28,15 +30,29 @@ const ScannerContext = createContext<ScannerContextType | undefined>(undefined);
  */
 export const ScannerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const handlersRef = useRef<ScanHandler[]>([]);
+  const tabsRef = useRef<Array<string | null>>([]);
   const cameraOpenerRef = useRef<(() => void) | null>(null);
   const [hasActiveHandler, setHasActiveHandler] = useState(false);
+  const [handlerTabs, setHandlerTabs] = useState<string[]>([]);
 
-  const subscribe = useCallback((handler: ScanHandler) => {
+  const subscribe = useCallback((handler: ScanHandler, tabId: string | null = null) => {
+    const publishTabs = () => {
+      const next = [...new Set(tabsRef.current.filter((t): t is string => !!t))].sort();
+      // Una pantalla se vuelve a suscribir en cada cambio: sin esto, repintaría todo.
+      setHandlerTabs((prev) => (prev.join() === next.join() ? prev : next));
+    };
     handlersRef.current.push(handler);
+    tabsRef.current.push(tabId);
     setHasActiveHandler(handlersRef.current.length > 0);
+    publishTabs();
     return () => {
-      handlersRef.current = handlersRef.current.filter((h) => h !== handler);
+      const at = handlersRef.current.indexOf(handler);
+      if (at >= 0) {
+        handlersRef.current.splice(at, 1);
+        tabsRef.current.splice(at, 1);
+      }
       setHasActiveHandler(handlersRef.current.length > 0);
+      publishTabs();
     };
   }, []);
 
@@ -127,7 +143,14 @@ export const ScannerProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   return (
     <ScannerContext.Provider
-      value={{ subscribe, dispatch, openCamera, registerCameraOpener, hasActiveHandler }}
+      value={{
+        subscribe,
+        dispatch,
+        openCamera,
+        registerCameraOpener,
+        hasActiveHandler,
+        handlerTabs,
+      }}
     >
       {children}
     </ScannerContext.Provider>

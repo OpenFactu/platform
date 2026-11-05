@@ -10,7 +10,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import { Button, Card, Input, Spinner } from '@openfactu/ui';
+import { MessageCircle, X, Send } from 'lucide-react';
 import { Markdown } from '@/modules/ai/components/Markdown';
 import { useI18n } from '@/i18n/I18nContext';
 
@@ -45,36 +46,40 @@ export const TrackingChatWidget: React.FC<{ token: string }> = ({ token }) => {
 
   if (!open) {
     return (
-      <button
+      <Button
+        className="fixed bottom-5 right-5 z-30 shadow-xl"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-30 w-14 h-14 rounded-full bg-slate-900 text-white shadow-xl flex items-center justify-center active:scale-95 transition hover:bg-slate-800"
         aria-label={t('app.trackingChat.open')}
       >
-        <MessageCircle size={22} />
-      </button>
+        <MessageCircle size={20} />
+      </Button>
     );
   }
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-96">
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl border border-slate-200 shadow-2xl flex flex-col max-h-[80vh] sm:max-h-[560px] overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-900 text-white sm:rounded-t-3xl">
+      <Card
+        noPadding
+        className="flex flex-col max-h-[80vh] sm:max-h-[560px] overflow-hidden shadow-2xl"
+      >
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-default">
           <div>
-            <div className="text-sm font-black leading-none">Keiro</div>
-            <div className="text-[11px] text-white/70 mt-0.5">{t('app.trackingChat.subtitle')}</div>
+            <div className="text-sm font-bold text-fg-default">Keiro</div>
+            <div className="text-xs text-fg-muted">{t('app.trackingChat.subtitle')}</div>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setOpen(false)}
-            className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center"
             aria-label={t('app.trackingChat.close')}
           >
             <X size={16} />
-          </button>
+          </Button>
         </div>
 
         <div ref={listRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-[240px]">
           {messages.length === 0 && (
-            <p className="text-xs text-slate-400 text-center py-6">{t('app.trackingChat.empty')}</p>
+            <p className="text-xs text-fg-subtle text-center py-6">{t('app.trackingChat.empty')}</p>
           )}
           {messages.map((m) => {
             const text = m.parts
@@ -88,8 +93,8 @@ export const TrackingChatWidget: React.FC<{ token: string }> = ({ token }) => {
                 <div
                   className={
                     isUser
-                      ? 'max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-slate-900 text-white'
-                      : 'max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-slate-100 text-slate-800'
+                      ? 'max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-accent text-accent-fg'
+                      : 'max-w-[85%] rounded-2xl px-3 py-2 text-sm bg-bg-muted text-fg-default'
                   }
                 >
                   {isUser ? text : <Markdown>{text}</Markdown>}
@@ -98,32 +103,32 @@ export const TrackingChatWidget: React.FC<{ token: string }> = ({ token }) => {
             );
           })}
           {busy && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl px-3 py-2 bg-slate-100 text-slate-400 inline-flex items-center gap-1.5 text-xs">
-                <Loader2 size={12} className="animate-spin" /> {t('app.trackingChat.typing')}
-              </div>
+            <div className="flex items-center gap-1.5 text-xs text-fg-muted">
+              <Spinner size="xs" tone="muted" /> {t('app.trackingChat.typing')}
             </div>
           )}
         </div>
 
-        <form onSubmit={submit} className="flex items-center gap-2 p-3 border-t border-slate-100">
-          <input
+        <form
+          onSubmit={submit}
+          className="flex items-center gap-2 p-3 border-t border-border-default"
+        >
+          <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={t('app.trackingChat.placeholder')}
             maxLength={1000}
-            className="flex-1 text-sm rounded-full border border-slate-200 px-3.5 py-2 outline-none focus:border-slate-400"
+            containerClassName="flex-1"
           />
-          <button
+          <Button
             type="submit"
             disabled={busy || !input.trim()}
-            className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition shrink-0"
             aria-label={t('app.trackingChat.send')}
           >
             <Send size={15} />
-          </button>
+          </Button>
         </form>
-      </div>
+      </Card>
     </div>
   );
 };

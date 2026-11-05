@@ -1,3 +1,5 @@
+import { useGoBack } from '@/hooks/useGoBack';
+import { PageBack } from '@/components/common/PageBack';
 import { coreApi } from '@/shared/api';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -59,6 +61,7 @@ export const NewCompany: React.FC = () => {
   const toast = useToast();
   const { t } = useI18n();
   const navigate = useNavigate();
+  const goBack = useGoBack();
   const [data, setData] = useState<FormState>(EMPTY);
   const [saving, setSaving] = useState(false);
 
@@ -98,16 +101,18 @@ export const NewCompany: React.FC = () => {
         icon={<Building size={18} />}
         size="md"
         breadcrumbs={
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => navigate(-1)}
-            title={t('settings.newCompany.back')}
-            className="w-fit"
-          >
-            <ArrowLeft size={18} />
-          </Button>
+          <PageBack onBack={goBack}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={goBack}
+              title={t('settings.newCompany.back')}
+              className="w-fit"
+            >
+              <ArrowLeft size={18} />
+            </Button>
+          </PageBack>
         }
       />
 
@@ -250,7 +255,7 @@ export const NewCompany: React.FC = () => {
       </Card>
 
       <div className="flex justify-end gap-2">
-        <Button variant="secondary" onClick={() => navigate(-1)} disabled={saving}>
+        <Button variant="secondary" onClick={goBack} disabled={saving}>
           {t('settings.newCompany.cancel')}
         </Button>
         <Button onClick={handleSubmit} disabled={saving}>

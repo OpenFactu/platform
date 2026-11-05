@@ -1,49 +1,16 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
-import { Button } from '@openfactu/ui';
 import { DriverApp } from '@/modules/logistics/pages/DriverApp';
-import { useAuth } from '@/context/AuthContext';
-import { useI18n } from '@/i18n/I18nContext';
 
 /**
- * Layout mínimo para usuarios con rol DRIVER. Sin sidebar ni tabs.
- * Solo la app del repartidor con un pequeño header para cerrar sesión.
+ * Para usuarios con rol DRIVER: solo su app, sin barra lateral ni pestañas. La pantalla
+ * la pone `DriverScreen` y cerrar sesión está en sus ajustes.
  */
-export const DriverLayout: React.FC = () => {
-  const { user, logout } = useAuth();
-  const { t } = useI18n();
-
-  useEffect(() => {
-    // Si en algún momento el driver llega con una URL distinta de /driver,
-    // el router interno la reduce al inicio.
-  }, []);
-
-  return (
-    <div className="min-h-screen bg-bg-muted flex flex-col">
-      <header className="flex items-center justify-between px-4 py-2 bg-bg-card border-b border-border-default">
-        <div className="text-xs">
-          <span className="font-bold text-fg-default">{user?.username}</span>{' '}
-          <span className="text-slate-500">· {t('logistics.driverLayout.role')}</span>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={logout}
-          title={t('logistics.driverLayout.logout')}
-        >
-          <LogOut size={14} /> {t('logistics.driverLayout.exit')}
-        </Button>
-      </header>
-      <div className="flex-1 min-h-0">
-        <MemoryRouter initialEntries={['/driver']}>
-          <Routes>
-            <Route path="/driver" element={<DriverApp />} />
-            <Route path="*" element={<Navigate to="/driver" replace />} />
-          </Routes>
-        </MemoryRouter>
-      </div>
-    </div>
-  );
-};
+export const DriverLayout: React.FC = () => (
+  <MemoryRouter initialEntries={['/driver']}>
+    <Routes>
+      <Route path="/driver" element={<DriverApp />} />
+      <Route path="*" element={<Navigate to="/driver" replace />} />
+    </Routes>
+  </MemoryRouter>
+);

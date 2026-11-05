@@ -11,8 +11,8 @@ import { useI18n } from '@/i18n/I18nContext';
  *
  * Para cada consulta definida ejecuta `/test-query` (admin) y deriva las
  * columnas del resultado, exponiéndolas como `queries.<nombre>.0.<columna>`
- * (acceso a la primera fila). Si una consulta devuelve 0 filas no se pueden
- * derivar columnas → se omite (el usuario siempre puede escribir la ruta a mano).
+ * (acceso a la primera fila). Los placeholders se llenan con el último documento
+ * de ese tipo y los parámetros de prueba.
  *
  * Añade además un grupo "Parámetros" con las claves de `testParams`
  * (`params.<clave>`).
@@ -22,6 +22,8 @@ export interface QueryFields {
   fieldGroups: FieldGroup[];
   /** Columnas por consulta, para usarlas como paths RELATIVOS en una tabla de líneas. */
   queryColumns: Record<string, string[]>;
+  /** Por qué falla cada consulta que no se ha podido lanzar. */
+  queryErrors: Record<string, string>;
 }
 
 export function useQueryFields(
@@ -29,30 +31,45 @@ export function useQueryFields(
   testParams: Record<string, unknown> | undefined,
   headers: Record<string, string>,
   enabled: boolean,
+  docType?: string,
 ): QueryFields {
   const { t } = useI18n();
   const [queryGroups, setQueryGroups] = useState<FieldGroup[]>([]);
   const [queryColumns, setQueryColumns] = useState<Record<string, string[]>>({});
+  const [queryErrors, setQueryErrors] = useState<Record<string, string>>({});
 
   // Firma estable de las consultas para no re-disparar el efecto en cada render.
-  const sig = JSON.stringify((queries ?? []).map((q) => [q.name, q.sql]));
+  const sig = JSON.stringify([
+    (queries ?? []).map((q) => [q.name, q.sql]),
+    testParams ?? {},
+    docType,
+  ]);
 
   useEffect(() => {
     if (!enabled || !queries || queries.length === 0) {
       setQueryGroups([]);
       setQueryColumns({});
+      setQueryErrors({});
       return;
     }
     let cancelled = false;
     (async () => {
       const groups: FieldGroup[] = [];
       const colsByQuery: Record<string, string[]> = {};
+      const errors: Record<string, string> = {};
       for (const q of queries) {
         try {
-          const body: any = await templatesApi.testQuery({ name: q.name, sql: q.sql });
-          if (body?.ok === false) continue;
-          const rows = (body.rows ?? []) as Record<string, unknown>[];
-          const cols = rows[0] ? Object.keys(rows[0]) : [];
+          const body: any = await templatesApi.testQuery({
+            name: q.name,
+            sql: q.sql,
+            sampleDocType: docType,
+            params: testParams ?? {},
+          });
+          if (body?.ok === false) {
+            errors[q.name] = body.error;
+            continue;
+          }
+          const cols: string[] = body.columns ?? [];
           if (cols.length === 0) continue;
           colsByQuery[q.name] = cols;
           groups.push({
@@ -67,13 +84,15 @@ export function useQueryFields(
               }),
             ),
           });
-        } catch {
-          /* silencio: el catálogo sigue funcionando sin esta consulta */
+        } catch (e) {
+          // El catálogo sigue funcionando sin esta consulta.
+          errors[q.name] = e instanceof Error ? e.message : String(e);
         }
       }
       if (!cancelled) {
         setQueryGroups(groups);
         setQueryColumns(colsByQuery);
+        setQueryErrors(errors);
       }
     })();
     return () => {
@@ -102,5 +121,6 @@ export function useQueryFields(
   return {
     fieldGroups: paramsGroup ? [...queryGroups, paramsGroup] : queryGroups,
     queryColumns,
+    queryErrors,
   };
 }

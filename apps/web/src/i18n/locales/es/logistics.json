@@ -1,12 +1,21 @@
 {
   "logistics": {
+    "returnFollowUp": {
+      "alreadyReturned": "Esta mercancía ya había vuelto con un abono: no se ha creado otra entrada.",
+      "create": "Crear el abono",
+      "draft": "La factura {code} sigue en borrador. Como la mercancía ha vuelto, cancélala si ya no procede.",
+      "issued": "La mercancía vuelve con su entrada, pero la factura {code} sigue entera. Falta el abono, que corrige el dinero sin volver a meter el stock.",
+      "later": "Ahora no",
+      "title": "Devolución registrada"
+    },
     "nav": {
       "label": "Logística",
       "description": "Envíos, rutas de reparto y seguimiento en tiempo real.",
       "hub": "Centro logístico",
       "carriers": "Transportistas",
       "shipment": "Envío",
-      "myRoute": "Mi ruta"
+      "myRoute": "Mi ruta",
+      "settings": "Configuración"
     },
     "hub": {
       "title": "Centro logístico",
@@ -19,7 +28,11 @@
         "vehicles": "Vehículos",
         "packages": "Paquetes",
         "staging": "Acopios",
-        "platforms": "Plataformas"
+        "platforms": "Plataformas",
+        "today": "Hoy",
+        "reports": "Informes",
+        "flow": "Cómo se reparte",
+        "appReports": "Reportes de la app"
       }
     },
     "driverLayout": {
@@ -73,7 +86,9 @@
       "placeholder": "Buscar dirección…",
       "clear": "Limpiar",
       "houseNumber": "nº {n}",
-      "noResultsFor": "Sin resultados para"
+      "noResultsFor": "Sin resultados para",
+      "typeToSearch": "Escribe la dirección para buscarla",
+      "useText": "Usar «{term}»"
     },
     "pod": {
       "validationToast": "Introduce el documento de identidad o una firma",
@@ -121,6 +136,7 @@
       "markResolved": "Marcar resuelta",
       "clientReported": "Reportadas por clientes",
       "clientReportedHint": "vía chat de seguimiento · últimos 30 días",
+      "clientIncidentReason": "Incidencia reportada por el cliente",
       "customer": "Cliente",
       "escalatedBadge": "Escalada",
       "shipment": "Envío",
@@ -187,7 +203,21 @@
       "boxShipped": "La caja ya ha salido — el contenido no se puede modificar.",
       "emptyBox": "Caja vacía.",
       "totalLines": "Total líneas:",
-      "totalUnits": "Total unidades:"
+      "totalUnits": "Total unidades:",
+      "columns": {
+        "box": "Caja y peso",
+        "code": "Código",
+        "shipment": "Envío",
+        "status": "Estado"
+      },
+      "label": "Imprimir etiqueta",
+      "status": {
+        "open": "Abierto",
+        "sealed": "Precintado",
+        "shipped": "En reparto",
+        "delivered": "Entregado",
+        "returned": "Devuelto"
+      }
     },
     "picking": {
       "markedMissing": "Marcada como no disponible",
@@ -214,7 +244,16 @@
       "current": "actual",
       "serialNumber": "Nº de serie",
       "batch": "Lote",
-      "notes": "Notas"
+      "notes": "Notas",
+      "missingTitle": "Marcar como falta",
+      "missingMessage": "Faltan {missing} de {requested}. El albarán se corregirá y el stock se ajustará. No se puede deshacer.",
+      "status": {
+        "pending": "Pendiente",
+        "partial": "Parcial",
+        "done": "Hecho",
+        "missing": "Falta",
+        "cancelled": "Cancelada"
+      }
     },
     "platforms": {
       "nameRequired": "El nombre es obligatorio.",
@@ -300,7 +339,8 @@
       "updated": "Ruta actualizada",
       "created": "Ruta creada",
       "deleteTitle": "Eliminar ruta",
-      "deleteMessage": "¿Eliminar la ruta? También se borran sus paradas.",
+      "deleteMessage": "Si la ruta ya tiene actividad se archiva y conserva sus paradas y pruebas de entrega.",
+      "archived": "(archivado)",
       "new": "Nueva ruta",
       "empty": "Sin rutas.",
       "driver": "Conductor:",
@@ -312,10 +352,25 @@
       "unassigned": "— sin asignar —",
       "driverHint": "Aparecen todos los empleados activos. Los marcados con ⚠ no tienen cuenta de usuario y no podrán loguearse en la app del repartidor.",
       "vehicle": "Vehículo",
-      "archived": "(archivado)",
       "registeredPlate": "Matrícula registrada:",
       "statusLabel": "Estado",
-      "sketch": "Croquis — envíos sin ruta"
+      "sketch": "Croquis — envíos sin ruta",
+      "archive": "Archivar",
+      "columns": {
+        "code": "Código",
+        "date": "Fecha",
+        "driver": "Conductor",
+        "progress": "Avance"
+      },
+      "driverBusy": "Ese conductor ya tiene ese día: {routes}",
+      "finish": "Finalizar ruta",
+      "finishTitle": "Finalizar la ruta",
+      "finishMessage": "Quedan {count} paradas sin cerrar. Pasarán a aplazadas y sus envíos volverán a planificarse.",
+      "noStops": "Sin paradas",
+      "overCapacity": "Lleva {load} kg y el vehículo admite {capacity} kg",
+      "sheet": "Hoja de ruta",
+      "stopsProgress": "{closed} de {total} paradas",
+      "showArchived": "Ver archivadas"
     },
     "vehicles": {
       "status": {
@@ -359,9 +414,10 @@
       "pickupAddressRequired": "La dirección de recogida es obligatoria.",
       "destinationAddressRequired": "La dirección de destino es obligatoria.",
       "returnWarehouseRequired": "Selecciona el almacén de destino al devolverlo.",
-      "created": "Envío creado (token {token}…)",
+      "created": "Envío {code} creado",
       "deleteTitle": "Eliminar envío",
-      "deleteMessage": "Se eliminará el envío y su seguimiento. Esta acción no se puede deshacer.",
+      "deleteMessage": "Si el envío ya tiene historia se archiva y conserva su seguimiento. Si está en marcha, cancélalo antes.",
+      "archived": "Envío archivado: conserva su historial y su enlace de seguimiento.",
       "emailQueued": "Email enfilado",
       "sendError": "No se pudo enviar",
       "ownFleet": "Propio (flota interna)",
@@ -372,7 +428,13 @@
         "carrier": "Transportista",
         "driver": "Conductor",
         "destination": "Destino",
-        "lastPosition": "Última posición"
+        "lastPosition": "Última posición",
+        "counterparty": "Cliente",
+        "direction": "Tipo",
+        "document": "Albarán",
+        "estimated": "Previsto",
+        "number": "Número",
+        "route": "Ruta"
       },
       "liveHint": "Reportando posición ahora",
       "actions": {
@@ -420,8 +482,19 @@
         "additionalDetails": "Detalles adicionales",
         "estimatedDelivery": "Fecha estimada de entrega",
         "internalNotes": "Notas internas",
-        "notesPlaceholder": "Instrucciones para el conductor, observaciones, etc."
-      }
+        "notesPlaceholder": "Instrucciones para el conductor, observaciones, etc.",
+        "windowFrom": "Disponible desde",
+        "windowTo": "Disponible hasta"
+      },
+      "archivedFilter": "Archivados",
+      "direction": {
+        "out": "Salida",
+        "in": "Entrada",
+        "pickup": "Recogida"
+      },
+      "from": "Desde",
+      "to": "Hasta",
+      "includeArchived": "Incluir archivados"
     },
     "staging": {
       "updated": "Acopio actualizado",
@@ -545,13 +618,13 @@
       "accountCreated": "Cuenta creada",
       "deleteAccountTitle": "Eliminar cuenta",
       "deleteAccountMessage": "¿Eliminar la cuenta del transportista?",
-      "testOk": "OK — tracking de prueba: {tracking}",
+      "testOk": "Conexión correcta",
       "none": "(ninguno)",
       "testManual": "Carrier manual — sin conexión que probar",
       "testFailed": "Fallo al probar",
       "noAdapter": "— sin adapter (manual) —",
       "title": "Transportistas",
-      "subtitle": "Da de alta cualquier transportista. Si existe un adapter en el core puedes conectarlo; si no, queda como gestión manual.",
+      "subtitle": "Da de alta cualquier transportista. Si hay una integración instalada puedes conectarlo; si no, al despachar escribirás su número a mano.",
       "new": "Nuevo",
       "empty": "Sin transportistas. Crea el primero — puede ser de cualquier empresa.",
       "inactive": "Inactivo",
@@ -631,7 +704,7 @@
       },
       "backToHub": "Volver al centro logístico",
       "driverLabel": "Conductor: {name}",
-      "carrierLabel": "Transportista: {name}",
+      "carrierLabel": "Etiqueta del transportista",
       "trackingLabel": "Tracking: {code}",
       "moreActions": "Más acciones",
       "noPinTitle": "Sin pin de destino.",
@@ -687,7 +760,134 @@
         "returnWarehouse": "Almacén de retorno",
         "autoWarehouse": "Automático (almacén del albarán origen)",
         "chooseWarehouse": "— elige almacén —"
-      }
+      },
+      "actions": {
+        "dispatch": "Poner en ruta",
+        "ready": "Marcar como listo",
+        "deliver": "Marcar entregado",
+        "postpone": "Aplazar",
+        "incident": "Reportar incidencia",
+        "resolve": "Resolver incidencia",
+        "return": "Devolver",
+        "pickup": "Programar recogida",
+        "cancel": "Cancelar envío",
+        "receive": "Confirmar recepción",
+        "carrier": "Enviar con transportista"
+      },
+      "archivedNotice": "Este envío está archivado: ya no sale en los listados.",
+      "copyPositionUrl": "Copiar dirección de posición",
+      "copyTrackingLink": "Copiar enlace del cliente",
+      "done": {
+        "deliver": "Envío entregado",
+        "ready": "Envío listo para salir",
+        "receive": "Recepción confirmada",
+        "resolve": "Incidencia resuelta",
+        "dispatch": "Envío puesto en ruta",
+        "postpone": "Envío aplazado",
+        "incident": "Incidencia registrada",
+        "return": "Devolución registrada",
+        "pickup": "Recogida programada: añádela a una ruta",
+        "cancel": "Envío cancelado",
+        "carrier": "Envío entregado al transportista",
+        "carrierRefresh": "Estado consultado"
+      },
+      "eventKind": {
+        "note": "Nota",
+        "incident": "Incidencia del cliente",
+        "shortage": "Falta al preparar",
+        "photo": "Foto",
+        "status_change": "Cambio de estado"
+      },
+      "facts": {
+        "carrier": "Transporte",
+        "customer": "Cliente",
+        "document": "Albarán",
+        "driver": "Conductor",
+        "email": "Correo",
+        "estimated": "Fecha prevista",
+        "notes": "Notas",
+        "phone": "Teléfono",
+        "route": "Ruta",
+        "supplier": "Proveedor",
+        "trackingNumber": "Nº del transportista",
+        "vehicle": "Vehículo",
+        "window": "Franja horaria"
+      },
+      "history": "Historial",
+      "labels": "Etiquetas",
+      "modals": {
+        "cancel": {
+          "title": "Cancelar envío",
+          "subtitle": "El envío deja de estar activo y se saca de su ruta."
+        },
+        "dispatch": {
+          "title": "Poner en ruta",
+          "subtitle": "Elige la ruta en la que saldrá. Si es un reintento, se crea una parada nueva.",
+          "choose": "Elige una ruta"
+        },
+        "incident": {
+          "title": "Reportar incidencia",
+          "subtitle": "Cuenta qué ha pasado: quedará en el historial."
+        },
+        "pickup": {
+          "title": "Programar recogida",
+          "subtitle": "El conductor irá a esa dirección a recoger el paquete."
+        },
+        "postpone": {
+          "title": "Aplazar",
+          "subtitle": "El envío queda pendiente de volver a planificarse."
+        },
+        "return": {
+          "title": "Devolver envío",
+          "subtitle": "Se crea una recepción en borrador con lo que vuelve al almacén."
+        },
+        "carrier": {
+          "title": "Enviar con transportista",
+          "subtitle": "Si está integrado, el envío se crea allí y se guardan su número y su etiqueta.",
+          "account": "Cuenta",
+          "trackingNumber": "Número de seguimiento",
+          "manualHint": "Este transportista no está integrado: escribe el número que te ha dado.",
+          "noAccounts": "No hay cuentas de transportista. Créalas en Ajustes → Transportistas."
+        }
+      },
+      "moveHint": "Toca en el mapa el nuevo destino.",
+      "movePin": "Mover chincheta",
+      "noPackages": "Este envío aún no tiene paquetes.",
+      "packages_one": "{count} paquete",
+      "packages_other": "{count} paquetes",
+      "packingList": "Packing list",
+      "pod": {
+        "at": "Entregado el",
+        "document": "Documento",
+        "notes": "Observaciones",
+        "photo": "Foto",
+        "receivedBy": "Recibido por",
+        "signature": "Firma",
+        "handover": "Dejado en"
+      },
+      "progress": {
+        "preparing": "Preparando",
+        "ready": "Listo",
+        "in_transit": "En camino",
+        "out_for_delivery": "En reparto",
+        "delivered": "Entregado",
+        "pickedUp": "Recogido",
+        "receiving": "Recibiendo",
+        "received": "Recibido"
+      },
+      "restore": "Recuperar",
+      "routes": "Rutas",
+      "stopStatus": {
+        "pending": "Pendiente",
+        "en_route": "De camino",
+        "arrived": "Ha llegado",
+        "delivered": "Entregada",
+        "postponed": "Aplazada",
+        "exception": "Incidencia",
+        "cancelled": "Cancelada"
+      },
+      "technical": "Datos técnicos",
+      "carrierRefresh": "Consultar al transportista"
     },
     "driver": {
       "stopStatus": {
@@ -700,7 +900,8 @@
         "cancelled": "Cancelado"
       },
       "noGeolocation": "Este dispositivo no soporta geolocalización",
-      "gpsError": "GPS: {message}",
+      "gpsDenied": "Sin permiso de ubicación: actívalo para que el cliente vea por dónde vas",
+      "gpsUnavailable": "No se puede leer el GPS ahora mismo. Se seguirá intentando",
       "qrUnrecognized": "QR no reconocido",
       "packageReadError": "No se pudo leer el paquete",
       "qrInvalidArea": "QR no válido para un acopio",
@@ -750,7 +951,8 @@
         "middle_other": "parada(s) pendiente(s) como",
         "arrived": "llegadas",
         "after": "con la hora actual.",
-        "confirm": "Marcar como llegadas"
+        "confirm": "Marcar como llegadas",
+        "message": "Se marcarán {count} paradas como \"he llegado\"."
       },
       "postponeModal": {
         "title": "Aplazar entrega",
@@ -817,7 +1019,294 @@
       "arrived": "Llegué",
       "collectedAction": "Recogí",
       "deliveredAction": "Entregué",
-      "incident": "Incidencia"
+      "incident": "Incidencia",
+      "eta": "Hacia las {time}",
+      "window": "Franja {window}",
+      "progress": "{done} de {total} entregadas",
+      "outbox": {
+        "full": "No se ha podido guardar en el móvil. Inténtalo otra vez cuando tengas cobertura.",
+        "pending": "Sin cobertura: {count} acciones pendientes de enviar. Se enviarán solas.",
+        "rejected": "El servidor ha rechazado {count} acciones que tenías guardadas. Revisa la ruta.",
+        "saved": "Sin cobertura: se ha guardado y se enviará sola.",
+        "sent": "Enviadas {count} acciones que estaban guardadas."
+      },
+      "settings": "Ajustes",
+      "more": "Más opciones",
+      "views": "Vistas de la ruta",
+      "now": "Ahora",
+      "stops_one": "{count} parada",
+      "stops_other": "{count} paradas",
+      "map": "Mapa",
+      "stopOf": "Parada {n} de {total}",
+      "packagesCount_one": "{count} bulto",
+      "packagesCount_other": "{count} bultos",
+      "howToGet": "Cómo llegar",
+      "deliverNow": "Entregar",
+      "collectNow": "Recoger",
+      "cantDeliver": "No se puede",
+      "cantCollect": "No se puede",
+      "doneStops": "Hechas ({count})",
+      "goToStop": "Ir a esta parada",
+      "allDoneTitle": "Has terminado las paradas",
+      "allDoneHint": "Finaliza la ruta para cerrarla.",
+      "routeClosedTitle": "Esta ruta ya está cerrada",
+      "setupTitle": "Antes de salir",
+      "settingsModal": {
+        "language": "Idioma",
+        "shareLocation": "Compartir mi ubicación con el cliente",
+        "fullscreen": "Pantalla completa",
+        "installHint": "Para usarla siempre sin la barra del navegador, añádela a la pantalla de inicio del móvil.",
+        "backToErp": "Volver a Keirost"
+      },
+      "problems": {
+        "title": "¿Qué ha pasado?",
+        "nobody": "No hay nadie",
+        "otherDay": "El cliente lo quiere otro día",
+        "noTime": "No me da tiempo hoy",
+        "wrongAddress": "La dirección está mal",
+        "refused": "El cliente lo rechaza",
+        "damaged": "Bulto dañado",
+        "missingPackage": "Falta un bulto",
+        "other": "Otro motivo",
+        "otherPlaceholder": "Cuéntalo en pocas palabras",
+        "confirm": "Confirmar"
+      },
+      "loadOut": {
+        "progress": "Cargados {done} de {total} bultos",
+        "noArea": "Sin acopio",
+        "scan": "Escanear bultos",
+        "missing_one": "Falta {count} bulto por cargar",
+        "missing_other": "Faltan {count} bultos por cargar",
+        "notHere": "Este bulto no va en esta ruta"
+      },
+      "drop": {
+        "title": "Dejar bultos en un acopio",
+        "titleFinishing": "¿Dónde dejas lo que queda?",
+        "hint": "Lo que dejes queda aplazado y se puede volver a poner en ruta.",
+        "area": "Acopio",
+        "confirm_one": "Dejar {count} envío",
+        "confirm_other": "Dejar {count} envíos",
+        "skip": "Seguir sin dejarlos",
+        "done": "Bultos dejados en el acopio",
+        "noAreas": "No hay acopios dados de alta. Pídelo en la oficina."
+      }
+    },
+    "today": {
+      "allClear": "Todo en orden: no hay nada pendiente de mirar.",
+      "deliveredToday": "Entregados hoy",
+      "incidents": "Incidencias",
+      "incidentsTitle": "Incidencias ({count})",
+      "late": "Van tarde ({count})",
+      "loadError": "No se ha podido cargar el resumen del día.",
+      "onRoute": "En reparto",
+      "readyForRoute": "Por planificar",
+      "readyTitle": "Por planificar ({count})",
+      "review": "Revisar",
+      "staleRoutes_one": "Hay {count} ruta abierta de otro día",
+      "staleRoutes_other": "Hay {count} rutas abiertas de otros días",
+      "toPrepare": "Por preparar"
+    },
+    "reports": {
+      "period": "Periodo",
+      "deliveries": "Entregas",
+      "onTimeRate": "A tiempo",
+      "onTime": "A tiempo",
+      "late": "Con retraso",
+      "unknown": "Sin fecha prevista",
+      "noPromise": "Ninguna entrega tenía fecha prevista",
+      "byDriver": "Reparto por conductor",
+      "byCause": "Incidencias por causa",
+      "driver": "Conductor",
+      "stops": "Paradas",
+      "delivered": "Entregadas",
+      "postponed": "Aplazadas",
+      "incidents": "Incidencias",
+      "cause": "Causa",
+      "count": "Veces",
+      "noDriver": "Sin conductor",
+      "noCause": "Sin indicar",
+      "noData": "No hay rutas en estas fechas",
+      "noIncidents": "No hay incidencias en estas fechas"
+    },
+    "wizard": {
+      "stepOf": "Paso {n} de {total}",
+      "back": "Atrás",
+      "next": "Siguiente",
+      "discard": {
+        "title": "¿Salir de la entrega?",
+        "message": "Se perderá lo que has puesto hasta ahora.",
+        "confirm": "Salir"
+      },
+      "packages": {
+        "title": "Comprueba los bultos",
+        "titlePickup": "Comprueba lo que recoges",
+        "all": "Están todos",
+        "allPickup": "Están todos",
+        "missing": "Falta algún bulto",
+        "scan": "Escanear bultos"
+      },
+      "recipient": {
+        "title": "¿Quién lo recibe?",
+        "titlePickup": "¿Quién te lo da?",
+        "other": "Otra persona",
+        "name": "Nombre"
+      },
+      "signature": {
+        "title": "Que firme aquí",
+        "redo": "Volver a firmar",
+        "cantSign": "No puede firmar",
+        "canSign": "Sí puede firmar",
+        "skip": "Seguir sin firma"
+      },
+      "photo": {
+        "title": "Haz una foto",
+        "skip": "Seguir sin foto",
+        "again": "Repetir la foto",
+        "error": "No se ha podido leer la foto",
+        "required": "Tu empresa pide una foto para esta entrega."
+      },
+      "confirm": {
+        "title": "Revisa y confirma",
+        "packages": "Bultos",
+        "recipient": "Recibe",
+        "recipientPickup": "Entrega",
+        "submit": "Confirmar entrega",
+        "submitPickup": "Confirmar recogida",
+        "sending": "Enviando…"
+      },
+      "done": {
+        "title": "¡Entregado!",
+        "titlePickup": "¡Recogido!",
+        "next": "Siguiente parada",
+        "last": "Era la última parada",
+        "navigate": "Ir a la siguiente",
+        "backToRoute": "Volver a la ruta"
+      },
+      "handover": {
+        "other": "Otra persona",
+        "concierge": "Portería",
+        "neighbor": "Un vecino",
+        "safePlace": "Sitio seguro",
+        "safePlaceHint": "No hace falta firma, pero sí una foto de dónde lo dejas."
+      }
+    },
+    "appReports": {
+      "newTitle": "Reportar un problema de la app",
+      "newHint": "Para lo que falla en la aplicación. Lo del reparto va en cada parada.",
+      "category": {
+        "bug": "Algo no funciona",
+        "idea": "Tengo una idea",
+        "other": "Otra cosa"
+      },
+      "message": "Cuéntanos qué ha pasado",
+      "messagePlaceholder": "Qué estabas haciendo y qué ha pasado",
+      "addPhoto": "Añadir una captura",
+      "send": "Enviar",
+      "sent": "Reporte enviado. Gracias.",
+      "sendError": "No se ha podido enviar el reporte",
+      "empty": "No hay reportes",
+      "filterOpen": "Abiertos",
+      "filterAll": "Todos",
+      "statusOpen": "Abierto",
+      "statusResolved": "Resuelto",
+      "resolve": "Marcar resuelto",
+      "reopen": "Reabrir",
+      "details": "Detalles",
+      "unknownUser": "Usuario desconocido",
+      "context": {
+        "path": "Pantalla",
+        "screen": "Tamaño",
+        "userAgent": "Dispositivo",
+        "locale": "Idioma",
+        "online": "Con señal",
+        "routeId": "Ruta"
+      },
+      "yes": "Sí",
+      "no": "No"
+    },
+    "flow": {
+      "save": "Guardar",
+      "saved": "Configuración guardada",
+      "saveError": "No se ha podido guardar",
+      "intro": "Lo que se le pide al conductor en esta empresa. Se aplica en su próxima entrega.",
+      "off": "No pedir",
+      "check": "Marcar",
+      "scan": "Escanear",
+      "optional": "Opcional",
+      "required": "Obligatoria",
+      "sectionLoad": "Antes de salir",
+      "loadOut": "Cargar los bultos en el acopio",
+      "loadOutHint": "Escanear exige leer la etiqueta de cada bulto.",
+      "loadOutRequired": "No dejar salir sin cargarlos todos",
+      "sectionDeliver": "Al entregar",
+      "packageCheck": "Comprobar los bultos en la puerta",
+      "arrive": "Ofrecer el botón «Llegué»",
+      "handover": "A quién o dónde se puede dejar",
+      "handoverOptions": {
+        "customer": "Al cliente",
+        "other": "A otra persona",
+        "concierge": "En portería",
+        "neighbor": "A un vecino",
+        "safePlace": "En un sitio seguro, con foto"
+      },
+      "signature": "Firma",
+      "allowDocument": "Si no puede firmar, vale su documento",
+      "photo": "Foto de la entrega",
+      "sectionProblems": "Cuando no se puede entregar",
+      "problemsHint": "Aplazar deja el pedido pendiente; una incidencia avisa a la oficina.",
+      "postpone": "Aplaza",
+      "incident": "Incidencia",
+      "addReason": "Añadir un motivo",
+      "reasonLabel": "Motivo",
+      "reasonKind": "Qué hace",
+      "add": "Añadir",
+      "remove": "Quitar",
+      "sectionStaging": "Acopios",
+      "stagingDrop": "Permitir dejar bultos en un acopio durante la ruta o al terminarla",
+      "sectionMap": "Mapas",
+      "provider": "Mapa que se usa",
+      "providers": {
+        "standard": "Normal",
+        "light": "Claro",
+        "dark": "Oscuro",
+        "mono": "Blanco y negro",
+        "custom": "Proveedor externo o servidor propio"
+      },
+      "mapPreset": "Proveedor",
+      "mapPresetOwn": "Otro o servidor propio",
+      "tileUrl": "Dirección de los mapas",
+      "tileUrlHint": "Con https y con {z}, {x} e {y}. Si pide clave, pon {key} donde vaya. Por ejemplo: https://mapas.ejemplo.com/{z}/{x}/{y}.png?key={key}",
+      "apiKey": "API key",
+      "apiKeyHint": "La da el proveedor en su panel. Va en la dirección, donde esté {key}.",
+      "apiKeyWarning": "La clave viaja al navegador de quien ve el mapa, también en la página pública de seguimiento. Restríngela a tu dominio en el panel del proveedor.",
+      "satelliteUrl": "Dirección de la vista de satélite",
+      "satelliteUrlHint": "Opcional. Vacía, se usa la de serie.",
+      "maxZoom": "Zoom máximo",
+      "maxZoomHint": "Opcional. Si los mapas se quedan en blanco al acercarte, pon hasta dónde llega el proveedor.",
+      "mapErrors": {
+        "tileUrl": "La dirección de los mapas tiene que empezar por https:// y llevar {z}, {x} e {y}",
+        "satelliteUrl": "La dirección del satélite tiene que empezar por https:// y llevar {z}, {x} e {y}",
+        "apiKey": "Esta dirección lleva {key}: falta la API key",
+        "keyHole": "Has puesto una API key, pero ninguna dirección lleva {key}"
+      },
+      "attribution": "Atribución que pide el proveedor",
+      "satellite": "Ofrecer la vista de satélite",
+      "defaultStyle": "Los mapas se abren con",
+      "styles": {
+        "standard": "Mapa",
+        "satellite": "Satélite"
+      },
+      "navigationApp": "El conductor navega con",
+      "apps": {
+        "google": "Google Maps",
+        "waze": "Waze",
+        "apple": "Apple Maps"
+      },
+      "navigationHint": "Waze y Apple Maps no admiten varias paradas: navegar la ruta lleva a la siguiente."
+    },
+    "settingsPage": {
+      "title": "Configuración de logística",
+      "subtitle": "Cómo se reparte, vehículos, acopios, plataformas y lo que cuentan los conductores de la aplicación."
     }
   }
 }

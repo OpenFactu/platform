@@ -8,6 +8,7 @@
  */
 import { t } from '@/i18n/i18n';
 import { findFirstIncompleteBatchLine } from '../components/documentLineCells';
+import { coversDate, isOpenPeriod } from './periods';
 
 export type FormStepId = 'header' | 'lines' | 'fiscal' | 'review';
 
@@ -82,6 +83,17 @@ export function headerProblem(state: FormStepState, req: HeaderRequirements = {}
   return null;
 }
 
+/** Si el periodo elegido admite el documento con esa fecha. */
+function periodProblem(state: FormStepState, periods?: any[]): string | null {
+  const period = periods?.find((p) => p.id === state.periodId);
+  if (!period || !state.date) return null;
+  if (!isOpenPeriod(period)) return t('doc.steps.periodClosed', { period: period.name });
+  if (!coversDate(period, state.date)) {
+    return t('doc.steps.dateOutOfPeriod', { period: period.name });
+  }
+  return null;
+}
+
 /** Primer problema de las líneas, o null si están completas. */
 export function linesProblem(
   lines: any[],
@@ -93,6 +105,12 @@ export function linesProblem(
   if (filled.length === 0) return { message: t('doc.steps.addLine') };
   const noQty = lines.findIndex((l) => l.itemId && !(Number(l.quantity) > 0));
   if (noQty !== -1) return { message: t('doc.steps.lineNoQty', { n: noQty + 1 }) };
+  // Una línea de descuento va con el precio en negativo, pero el total no puede quedar así.
+  const net = filled.reduce((sum, l) => {
+    const gross = Number(l.quantity) * Number(l.price || 0);
+    return sum + gross - (gross * Number(l.discountRate || 0)) / 100;
+  }, 0);
+  if (net < -0.01) return { message: t('doc.steps.negativeTotal') };
   const batch = batches ? findFirstIncompleteBatchLine(lines, masters) : null;
   if (batch !== null) {
     return {
@@ -106,11 +124,14 @@ export function linesProblem(
 /** Qué pasos están completos y cuál es el primer problema. */
 export function formStepStatus(
   state: FormStepState,
-  masters: { items: any[] },
+  masters: { items: any[]; periods?: any[] },
   req: HeaderRequirements = {},
-  opts: { batches?: boolean } = {},
+  /** `period: false` si la fecha de la cabecera no es la del documento (una recurrente). */
+  opts: { batches?: boolean; period?: boolean } = {},
 ): { complete: Record<FormStepId, boolean>; problem: FormStepProblem | null } {
-  const header = headerProblem(state, req);
+  const header =
+    headerProblem(state, req) ??
+    (opts.period === false ? null : periodProblem(state, masters.periods));
   const lines = linesProblem(state.lines ?? [], masters, opts.batches ?? true);
   const problem: FormStepProblem | null = header
     ? { step: 'header', message: header }

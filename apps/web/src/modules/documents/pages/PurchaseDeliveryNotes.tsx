@@ -13,6 +13,7 @@ import { ResponsiveActions } from '@/components/common/ResponsiveActions';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import {
+  Alert,
   Table,
   Card,
   Button,
@@ -36,9 +37,9 @@ import {
   ShoppingCart,
   Copy,
   AlertCircle,
-  Download,
   Eye,
   PackageSearch,
+  FileText,
 } from 'lucide-react';
 import { DocumentActionBar } from '../components/DocumentActionBar';
 import { InternalOrderHeaderField } from '@/modules/analytics/components/InternalOrderHeaderField';
@@ -55,7 +56,7 @@ import { TraceabilityButton } from '@/components/common/TraceabilityButton';
 import { DocumentTotalsBlock } from '../components/DocumentTotalsBlock';
 import { buildDetailLineColumns, statusBadgeProps } from '../components/documentLineCells';
 import { notifyDocChange, useDataVersion } from '@/utils/dataRefresh';
-import { downloadPdf } from '@/utils/downloadPdf';
+import { openPdf } from '@/utils/downloadPdf';
 import { useFormat } from '@/hooks/useFormat';
 import { useTheme } from '@/context/ThemeContext';
 import { formatDocCode } from '@/utils/docCode';
@@ -63,7 +64,9 @@ import { BatchSelectionModal } from '@/modules/inventory/components/BatchSelecti
 import { BatchAssignmentPanel } from '@/modules/inventory/components/BatchAssignmentPanel';
 
 import { PluginFieldsPanel } from '@/components/PluginFieldsPanel';
-import { useDocument, useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDataTable, DocType, DocKind, DocSide } from '@openfactu/common';
+import { useDocument } from '../hooks/useDocument';
+import { useCancelReason } from '../hooks/useCancelReason';
 import { useDocumentScanner } from '@/hooks/useDocumentScanner';
 import { BulkSendToolbar } from '../components/documents/BulkSendToolbar';
 import { docsApi } from '../api';
@@ -100,7 +103,7 @@ const PDNList: React.FC<{
   const handleQuickPdf = async (id: string) => {
     setDownloadingId(id);
     try {
-      await downloadPdf(`/api/purchases/delivery-notes/${id}/pdf`);
+      await openPdf(`/api/purchases/delivery-notes/${id}/pdf`);
     } catch (e) {
       toast.error((e instanceof Error ? e.message : undefined) || t('doc.common.pdfError'));
     } finally {
@@ -140,7 +143,9 @@ const PDNList: React.FC<{
       sortAccessor: (item: any) => formatDocCode(item),
       accessor: (item: any) => (
         <div className="flex flex-col">
-          <span className="font-bold text-fg-default leading-none">{formatDocCode(item)}</span>
+          <span className="font-bold text-fg-default leading-tight whitespace-normal md:leading-none md:whitespace-nowrap">
+            {formatDocCode(item)}
+          </span>
           <span className="text-[10px] text-fg-subtle font-mono mt-1">
             {t('doc.common.idShort', { id: item.id.substring(0, 8) })}
           </span>
@@ -191,11 +196,14 @@ const PDNList: React.FC<{
       sortable: true,
       sortAccessor: (item: any) => item.status || '',
       cell: (item: any) => (
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex flex-col items-end gap-1 md:flex-row md:flex-wrap md:items-center md:gap-1.5">
           {item.status === 'O' && <Badge variant="warning">{t('doc.status.open')}</Badge>}
           {item.status === 'C' && <Badge variant="success">{t('doc.status.invoiced')}</Badge>}
           {item.status === 'X' && <Badge variant="error">{t('doc.status.cancelled')}</Badge>}
-          {item.hasActiveShipment && (
+          {item.hasActiveShipment && item.activeShipmentStatus === 'received' && (
+            <Badge variant="success">{t('doc.purchaseDeliveryNotes.received')}</Badge>
+          )}
+          {item.hasActiveShipment && item.activeShipmentStatus !== 'received' && (
             <Badge variant="info">{t('doc.purchaseDeliveryNotes.inReceipt')}</Badge>
           )}
         </div>
@@ -228,7 +236,7 @@ const PDNList: React.FC<{
     },
     {
       label: t('doc.actions.downloadPdf'),
-      icon: <Download size={14} />,
+      icon: <FileText size={14} />,
       onClick: () => handleQuickPdf(item.id),
     },
     ...(item.status === 'O'
@@ -250,7 +258,7 @@ const PDNList: React.FC<{
               const path = `/logistics/shipments/${item.activeShipmentId}`;
               if (tabs && (tabs as any).openTab) {
                 (tabs as any).openTab(path, {
-                  title: t('doc.purchaseDeliveryNotes.receiptInProgress'),
+                  title: t('doc.purchaseDeliveryNotes.viewReceipt'),
                 });
               } else {
                 window.location.href = path;
@@ -271,10 +279,7 @@ const PDNList: React.FC<{
         divider
         toolbar={
           doc.state.mastersError ? (
-            <div className="flex items-center gap-2 p-3 bg-warning-bg border border-warning rounded-lg text-warning-fg text-xs font-bold animate-in slide-in-from-top">
-              <AlertCircle size={16} />
-              {doc.state.mastersError}
-            </div>
+            <Alert tone="warning">{doc.state.mastersError}</Alert>
           ) : undefined
         }
         actions={
@@ -463,7 +468,7 @@ const PDNForm: React.FC<{
                   <PartnerField
                     label={t('doc.partner.supplier')}
                     value={state.partnerId}
-                    onChange={setState.setPartnerId}
+                    onChange={actions.selectPartner}
                     partners={masters.partners}
                     placeholder={t('doc.common.selectSupplier')}
                   />
@@ -486,7 +491,7 @@ const PDNForm: React.FC<{
                     label={t('doc.deliveryNotes.date')}
                     required
                     value={state.date}
-                    onChange={(v) => setState.setDate(v ?? '')}
+                    onChange={(v) => actions.selectDate(v ?? '')}
                   />
                   <InternalOrderHeaderField value={internalOrderId} onChange={setInternalOrderId} />
                 </FormGrid>
@@ -597,6 +602,7 @@ const PDNDetail: React.FC<{
   zones: any[];
   setViewingBatch: (l: any) => void;
 }> = ({ pdn, onBack, onCancel, onCopyToInvoice, masters, zones, setViewingBatch }) => {
+  const { openTab } = useTabs();
   const { t, locale } = useI18n();
   const fmt = useFormat();
   const isMobile = useIsMobile();
@@ -622,6 +628,8 @@ const PDNDetail: React.FC<{
       onBack={onBack}
       breadcrumb={t('doc.purchaseDeliveryNotes.breadcrumb')}
       title={formatDocCode(pdn)}
+      cancelledAt={pdn.cancelledAt}
+      cancelReason={pdn.cancelReason}
       status={statusBadgeProps(pdn.status, DocKind.DeliveryNote)}
       actions={
         <DocumentActionBar
@@ -643,8 +651,21 @@ const PDNDetail: React.FC<{
         <CloneDocumentActions docType="PDN" doc={pdn} show="copy" size={14} />
         <TraceabilityButton type="PDN" id={pdn.id} docCode={formatDocCode(pdn)} />
         <InternalOrderChip internalOrderId={pdn.internalOrderId} />
-        {pdn.status === 'O' && flags.logisticsEnabled && (
+        {pdn.status === 'O' && !pdn.hasActiveShipment && flags.logisticsEnabled && (
           <PreparationButton docType="PDN" docId={pdn.id} />
+        )}
+        {pdn.hasActiveShipment && pdn.activeShipmentId && (
+          <Button
+            variant="secondary"
+            onClick={() =>
+              openTab(`/logistics/shipments/${pdn.activeShipmentId}`, {
+                title: t('doc.purchaseDeliveryNotes.viewReceipt'),
+              })
+            }
+          >
+            <PackageSearch size={16} className="mr-2" />
+            {t('doc.purchaseDeliveryNotes.viewReceipt')}
+          </Button>
         )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -663,14 +684,11 @@ const PDNDetail: React.FC<{
             )}
           </div>
           {pdn.orderId && (
-            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/30 rounded-lg">
-              <ShoppingCart size={14} className="text-blue-600 dark:text-blue-300 shrink-0" />
-              <p className="text-xs font-bold text-blue-800 dark:text-blue-200 leading-tight">
-                {t('doc.deliveryNotes.fromOrderCode', {
-                  code: `${pdn.orderPrefix}-${pdn.periodCode}-${String(pdn.orderDocNum).padStart(6, '0')}`,
-                })}
-              </p>
-            </div>
+            <Alert tone="info" icon={<ShoppingCart size={14} />}>
+              {t('doc.deliveryNotes.fromOrderCode', {
+                code: `${pdn.orderPrefix}-${pdn.periodCode}-${String(pdn.orderDocNum).padStart(6, '0')}`,
+              })}
+            </Alert>
           )}
         </Card>
 
@@ -732,6 +750,7 @@ export const PurchaseDeliveryNotes: React.FC = () => {
   const { flags } = useTheme();
   const toast = useToast();
   const popup = usePopup();
+  const cancelReason = useCancelReason();
   const params = useParams();
   const location = useLocation();
   const { openTab } = useTabs();
@@ -864,27 +883,30 @@ export const PurchaseDeliveryNotes: React.FC = () => {
       doc.setState.setWarehouseId(order.warehouseId);
       if (order.internalOrderId) setInternalOrderId(order.internalOrderId);
       doc.setState.setLines(
-        order.lines.map((l: any) => ({
-          itemId: l.itemId,
-          quantity: Number(l.orderedQty) - Number(l.receivedQty),
-          price: l.price,
-          taxGroupId: l.taxGroupId,
-          warehouseId: l.warehouseId || order.warehouseId,
-          zoneId: l.zoneId || '',
-          batchNum: l.batchNum,
-          baseLine: l.lineNum,
-          lineNum: l.lineNum,
-          uomId: l.uomId,
-          uomFactor: l.uomFactor != null ? Number(l.uomFactor) : undefined,
-          description: l.description,
-          discountRate: l.discountRate != null ? Number(l.discountRate) : undefined,
-          discountAmount: l.discountAmount != null ? Number(l.discountAmount) : undefined,
-          withholdingRate: l.withholdingRate != null ? Number(l.withholdingRate) : undefined,
-          withholdingAmount: l.withholdingAmount != null ? Number(l.withholdingAmount) : undefined,
-          costCenterId: l.costCenterId,
-          profitCenterId: l.profitCenterId,
-          internalOrderId: l.internalOrderId,
-        })),
+        order.lines
+          .filter((l: any) => Number(l.orderedQty) > Number(l.receivedQty))
+          .map((l: any) => ({
+            itemId: l.itemId,
+            quantity: Number(l.orderedQty) - Number(l.receivedQty),
+            price: l.price,
+            taxGroupId: l.taxGroupId,
+            warehouseId: l.warehouseId || order.warehouseId,
+            zoneId: l.zoneId || '',
+            batchNum: l.batchNum,
+            baseLine: l.lineNum,
+            lineNum: l.lineNum,
+            uomId: l.uomId,
+            uomFactor: l.uomFactor != null ? Number(l.uomFactor) : undefined,
+            description: l.description,
+            discountRate: l.discountRate != null ? Number(l.discountRate) : undefined,
+            discountAmount: l.discountAmount != null ? Number(l.discountAmount) : undefined,
+            withholdingRate: l.withholdingRate != null ? Number(l.withholdingRate) : undefined,
+            withholdingAmount:
+              l.withholdingAmount != null ? Number(l.withholdingAmount) : undefined,
+            costCenterId: l.costCenterId,
+            profitCenterId: l.profitCenterId,
+            internalOrderId: l.internalOrderId,
+          })),
       );
     } catch (e) {
       console.error('Error parsing copy_order_source', e);
@@ -903,19 +925,12 @@ export const PurchaseDeliveryNotes: React.FC = () => {
   };
 
   const handleCancel = async (id: string) => {
-    const reason = window.prompt(t('doc.purchaseDeliveryNotes.cancelReasonPrompt'), '');
+    const reason = await cancelReason.ask({
+      title: t('doc.deliveryNotes.cancelTitle'),
+      message: t('doc.purchaseDeliveryNotes.cancelMessage'),
+      confirmLabel: t('doc.deliveryNotes.cancelTitle'),
+    });
     if (reason === null) return;
-    // El flag de la empresa decide si se pide confirmación — no se toca.
-    if (flags.confirmBeforeCancel) {
-      const ok = await popup.confirm({
-        title: t('doc.deliveryNotes.cancelTitle'),
-        message: t('doc.purchaseDeliveryNotes.cancelMessage'),
-        tone: 'danger',
-        confirmLabel: t('doc.deliveryNotes.cancelTitle'),
-        cancelLabel: t('doc.common.back'),
-      });
-      if (!ok) return;
-    }
     const doCall = (force: boolean) =>
       apiClient.post<any>(`/api/purchases/delivery-notes/${id}/cancel`, {
         reason: reason || null,
@@ -1013,6 +1028,7 @@ export const PurchaseDeliveryNotes: React.FC = () => {
     }
     return (
       <>
+        {cancelReason.dialog}
         <PDNDetail
           pdn={selectedDelivery}
           onBack={() => currentTab.close()}

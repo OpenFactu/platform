@@ -1,19 +1,21 @@
 import { Router } from 'express';
-import { getRequestLocale } from '../i18n';
+import { getRequestLocale, tr } from '../i18n';
 import crypto from 'crypto';
 import fs from 'fs';
-import Handlebars from 'handlebars';
 import { eq, and, asc, sql } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import {
   PdfRenderer,
-  ALL_DOC_TYPES,
+  PdfHandlebars as Handlebars,
   buildVisualTemplate,
   extractMetaFromHtml,
   type DocType,
 } from '@openfactu/pdf';
 import { MigrationManager } from '../core/tenant/MigrationManager';
 import { PdfPayloadBuilder } from '../core/documents/PdfPayloadBuilder';
+import { UserDocTypes, isTemplateDocType, isUserDocType } from '../core/documents/UserDocTypes';
+import { isFactoryTemplateEdit } from '../core/documents/templateFactory';
+import { renderTemplatePieces } from '../core/documents/templatePieces';
 import {
   runTemplateQueries,
   validateQuery,
@@ -41,10 +43,8 @@ function isAdminUser(req: any): boolean {
 }
 
 /**
- * Registra los helpers qrCode/barcode en el Handlebars compartido por
- * @openfactu/pdf. Se hace aquí (y no solo en el paquete) para que funcione
- * de inmediato sin necesidad de publicar una nueva versión del paquete ni
- * reiniciar el servidor tras tocar sus fuentes.
+ * Registra en el Handlebars de @openfactu/pdf los helpers que usan las plantillas
+ * del diseñador y que el paquete no trae.
  */
 let canvasHelpersRegistered = false;
 export function registerCanvasHelpers() {
@@ -123,22 +123,101 @@ function escapeHtmlSafe(s: unknown): string {
 
 const router = Router();
 
-/**
- * Tipos de documento aceptados por el endpoint de plantillas. Además de los
- * tipos estándar de @openfactu/pdf (SINV/PINV/...), permitimos `FREE` para
- * plantillas libres (etiquetas de artículos, recibos genéricos) que no
- * requieren un documento ligado y se renderizan sólo con `queries`.
- */
-const isValidDocType = (t: any): t is DocType =>
-  ALL_DOC_TYPES.includes(t) || t === 'FREE' || t === 'LABEL';
-
 /** True si la plantilla es de tipo "libre" — sin payload de documento (FREE o LABEL). */
 const isFreeDocType = (t: any): boolean => t === 'FREE' || t === 'LABEL';
+
+/**
+ * Los datos con los que se prueba una plantilla: el documento pedido, el último de ese
+ * tipo o unos inventados. Probarla nunca debe dar 500 por falta o fallo de esos datos.
+ * Para las plantillas FREE no hay payload de documento, solo `queries`.
+ */
+async function samplePayload(req: any, docType: string, sampleDocId?: string): Promise<any> {
+  if (isFreeDocType(docType)) return {};
+  const locale = getRequestLocale(req);
+  if (isUserDocType(docType)) {
+    const id =
+      sampleDocId ?? (await PdfPayloadBuilder.findLatestSampleId(docType, req.tenantClient));
+    return PdfPayloadBuilder.buildUserDocument(
+      docType,
+      id,
+      req.tenantClient,
+      locale,
+      req.tenantId,
+      req.user?.role,
+    );
+  }
+  try {
+    if (sampleDocId) {
+      return await PdfPayloadBuilder.build(
+        docType,
+        sampleDocId,
+        req.tenantClient,
+        locale,
+        req.tenantId,
+      );
+    }
+    const latestId = req.tenantClient
+      ? await PdfPayloadBuilder.findLatestSampleId(docType, req.tenantClient).catch(() => null)
+      : null;
+    return latestId
+      ? await PdfPayloadBuilder.build(
+          docType,
+          latestId,
+          req.tenantClient,
+          locale,
+          req.tenantId,
+        ).catch(() => PdfPayloadBuilder.fixture(docType))
+      : PdfPayloadBuilder.fixture(docType);
+  } catch (err) {
+    console.warn('[DocumentTemplates] preview payload fallback to fixture:', err);
+    return PdfPayloadBuilder.fixture(docType);
+  }
+}
+
+/**
+ * Datos de prueba más el resultado de las consultas SQL de la plantilla, bajo
+ * `queries.<name>`. Las consultas solo las lanza un admin: de otro rol se ignoran. Para
+ * FREE aceptamos `params` arbitrarios (`:itemId`, `:lote`, ...) como contexto de prueba.
+ */
+async function templateContext(
+  req: any,
+  docType: string,
+  options: { sampleDocId?: string; queries?: unknown; params?: unknown },
+): Promise<any> {
+  const payload = await samplePayload(req, docType, options.sampleDocId);
+  const safeQueries: TemplateQuery[] =
+    Array.isArray(options.queries) && isAdminUser(req) ? options.queries : [];
+  const extraParams = (
+    options.params && typeof options.params === 'object' ? options.params : {}
+  ) as Record<string, unknown>;
+  const queryResults = await runTemplateQueries(req.tenantClient, safeQueries, {
+    docId: payload?.doc?.id ?? options.sampleDocId ?? null,
+    partnerId: payload?.partner?.id ?? null,
+    companyId: payload?.company?.id ?? null,
+    tenantId: req.tenantId ?? null,
+    ...extraParams,
+  } as any);
+  if (queryResults.errors.length > 0) {
+    console.warn(
+      '[DocumentTemplates] preview queries with errors:',
+      JSON.stringify(queryResults.errors),
+    );
+  }
+  return {
+    ...payload,
+    params: extraParams,
+    queries: queryResults.byName,
+    generatedAt: payload?.generatedAt ?? new Date().toLocaleString('es-ES'),
+  };
+}
 
 // GET / — lista (opcional filtro por ?docType=SINV)
 router.get('/', async (req: any, res) => {
   try {
     const { docType } = req.query;
+    // Una tabla propia de tipo documento tiene su plantilla estándar desde el primer momento.
+    const userTypes = await UserDocTypes.ensureTemplates(req.tenantId, req.tenantClient);
+    const userDocTypes = new Set(userTypes.map((t) => t.docType));
     const where = docType ? eq(schema.documentTemplates.docType, String(docType)) : undefined;
     const query = req.tenantClient
       .select({
@@ -146,7 +225,11 @@ router.get('/', async (req: any, res) => {
         docType: schema.documentTemplates.docType,
         name: schema.documentTemplates.name,
         isDefault: schema.documentTemplates.isDefault,
+        isFactoryDefault: schema.documentTemplates.isFactoryDefault,
         updatedAt: schema.documentTemplates.updatedAt,
+        // Con qué se editó: el lienzo, el formulario visual o el HTML a mano. Una plantilla
+        // de HTML libre también usa `canvasLayout`, pero solo para guardar sus consultas.
+        editor: sql<string>`CASE WHEN "canvasLayout"->>'version' = '1' OR ("docType" = 'LABEL' AND "canvasLayout" IS NULL) THEN 'designer' WHEN "html" LIKE '%OPENFACTU-META:%' THEN 'visual' ELSE 'html' END`,
       })
       .from(schema.documentTemplates);
     const rows = where
@@ -157,7 +240,18 @@ router.get('/', async (req: any, res) => {
           asc(schema.documentTemplates.docType),
           asc(schema.documentTemplates.name),
         );
-    res.json(rows);
+    // Si la tabla dejó de ser de tipo documento, sus plantillas se quedan sin tipo.
+    res.json(rows.filter((r: any) => !isUserDocType(r.docType) || userDocTypes.has(r.docType)));
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /user-doc-types — tablas propias de tipo documento de esta empresa. DEBE ir
+// antes de `/:id`, igual que `/schema-info`.
+router.get('/user-doc-types', async (req: any, res) => {
+  try {
+    res.json(await UserDocTypes.list(req.tenantId));
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -194,8 +288,10 @@ router.get('/:id', async (req: any, res) => {
 // POST / — crear
 router.post('/', async (req: any, res) => {
   try {
-    const { docType, name, html, isDefault } = req.body;
-    if (!isValidDocType(docType)) return res.status(400).json({ error: 'docType inválido' });
+    const { docType, name, html, isDefault, canvasLayout, legacyHtml } = req.body;
+    if (!(await isTemplateDocType(req.tenantId, docType))) {
+      return res.status(400).json({ error: 'docType inválido' });
+    }
     if (!name || !html) return res.status(400).json({ error: 'name y html son obligatorios' });
 
     const id = crypto.randomUUID();
@@ -212,6 +308,8 @@ router.post('/', async (req: any, res) => {
         name,
         html,
         isDefault: !!isDefault,
+        ...(canvasLayout ? { canvasLayout } : {}),
+        ...(typeof legacyHtml === 'boolean' ? { legacyHtml } : {}),
       });
     });
     PdfRenderer.invalidateCache();
@@ -263,6 +361,15 @@ router.put('/:id', async (req: any, res) => {
       if (typeof isDefault === 'boolean') updates.isDefault = isDefault;
       if (canvasLayout !== undefined) updates.canvasLayout = canvasLayout;
       if (typeof legacyHtml === 'boolean') updates.legacyHtml = legacyHtml;
+      // La estándar se regenera sola: al editarla pasa a ser de la empresa, y el sistema
+      // crea otra limpia. Si no, el cambio se perdería al reiniciar.
+      if (isFactoryTemplateEdit(existing, { html, canvasLayout })) {
+        updates.isFactoryDefault = false;
+        // Con el mismo nombre no se distinguirían de la estándar nueva.
+        if ((updates.name ?? existing.name) === existing.name) {
+          updates.name = tr(getRequestLocale(req), '{0} (editada)', { 0: existing.name });
+        }
+      }
 
       await tx
         .update(schema.documentTemplates)
@@ -389,80 +496,25 @@ router.post('/preview', async (req: any, res) => {
   try {
     const { html, docType, sampleDocId, queries, params } = req.body;
     if (!html) return res.status(400).json({ error: 'html es obligatorio' });
-    if (!isValidDocType(docType)) return res.status(400).json({ error: 'docType inválido' });
-
-    // Consultas SQL: solo admins. Si se envían desde un rol no admin, las ignoramos.
-    const safeQueries: TemplateQuery[] = Array.isArray(queries) && isAdminUser(req) ? queries : [];
-
-    // Resolución del payload: priorizar sampleDocId, luego último documento
-    // del tenant, y si cualquier paso explota, fallback a fixture. Un preview
-    // nunca debe dar 500 por ausencia/fallo de datos de muestra.
-    // Para plantillas FREE no hay payload de documento — solo `queries`.
-    let payload: any;
-    if (isFreeDocType(docType)) {
-      payload = {};
-    } else {
-      try {
-        if (sampleDocId) {
-          payload = await PdfPayloadBuilder.build(
-            docType,
-            sampleDocId,
-            req.tenantClient,
-            getRequestLocale(req),
-            req.tenantId,
-          );
-        } else {
-          const latestId = req.tenantClient
-            ? await PdfPayloadBuilder.findLatestSampleId(docType, req.tenantClient).catch(
-                () => null,
-              )
-            : null;
-          payload = latestId
-            ? await PdfPayloadBuilder.build(
-                docType,
-                latestId,
-                req.tenantClient,
-                getRequestLocale(req),
-                req.tenantId,
-              ).catch(() => PdfPayloadBuilder.fixture(docType))
-            : PdfPayloadBuilder.fixture(docType);
-        }
-      } catch (err) {
-        console.warn('[DocumentTemplates] preview payload fallback to fixture:', err);
-        payload = PdfPayloadBuilder.fixture(docType);
-      }
+    if (!(await isTemplateDocType(req.tenantId, docType))) {
+      return res.status(400).json({ error: 'docType inválido' });
     }
-
-    // Ejecuta consultas SQL de la plantilla (si las hay y el usuario es admin)
-    // e inyecta resultados bajo `queries.<name>` antes de renderizar. Para
-    // FREE aceptamos `params` arbitrarios (`:itemId`, `:lote`, ...) que el
-    // diseñador envía como contexto de prueba.
-    const extraParams = (params && typeof params === 'object' ? params : {}) as Record<
-      string,
-      unknown
-    >;
-    const queryResults = await runTemplateQueries(req.tenantClient, safeQueries, {
-      docId: (payload as any)?.doc?.id ?? sampleDocId ?? null,
-      partnerId: (payload as any)?.partner?.id ?? null,
-      companyId: (payload as any)?.company?.id ?? null,
-      tenantId: req.tenantId ?? null,
-      ...extraParams,
-    } as any);
-    const enrichedPayload = {
-      ...payload,
-      queries: queryResults.byName,
-      generatedAt: (payload as any)?.generatedAt ?? new Date().toLocaleString('es-ES'),
-    } as any;
-    if (queryResults.errors.length > 0) {
-      console.warn(
-        '[DocumentTemplates] preview queries with errors:',
-        JSON.stringify(queryResults.errors),
-      );
-    }
+    const enrichedPayload = await templateContext(req, docType, {
+      sampleDocId,
+      queries,
+      params,
+    });
 
     registerCanvasHelpers();
     const meta = extractMetaFromHtml(html);
     const renderOptions = meta ? PdfRenderer.renderOptionsFromVisual(meta) : {};
+    // Igual que al imprimir el documento de verdad (renderDocumentPdf).
+    if (meta && (meta.showDocQr || meta.showDocBarcode) && enrichedPayload.doc) {
+      renderOptions.pageFooter = PdfRenderer.pageFooterFromPayload(
+        enrichedPayload,
+        meta.footer.text,
+      );
+    }
     // Invalida cache de plantillas compiladas por si el HTML cambió con nuevos
     // helpers registrados después de una compilación previa.
     PdfRenderer.invalidateCache();
@@ -482,6 +534,32 @@ router.post('/preview', async (req: any, res) => {
       /* ignore */
     }
     res.status(500).json({ error: e?.message || 'Error al renderizar el preview' });
+  }
+});
+
+// POST /render-elements — el HTML de cada elemento del lienzo, resuelto con los mismos
+// datos y helpers que la vista previa: lo que se ve al diseñar es lo que sale en el PDF.
+router.post('/render-elements', async (req: any, res) => {
+  try {
+    const { docType, pieces, sampleDocId, queries, params } = req.body ?? {};
+    if (!Array.isArray(pieces) || pieces.some((piece) => typeof piece !== 'string')) {
+      return res.status(400).json({ error: 'pieces es obligatorio' });
+    }
+    if (!(await isTemplateDocType(req.tenantId, docType))) {
+      return res.status(400).json({ error: 'docType inválido' });
+    }
+    // Se pide a cada cambio: las consultas solo se lanzan si algún elemento las usa.
+    const usesQueries = pieces.some((piece: string) => piece.includes('queries.'));
+    const context = await templateContext(req, docType, {
+      sampleDocId,
+      queries: usesQueries ? queries : [],
+      params,
+    });
+    registerCanvasHelpers();
+    res.json({ html: renderTemplatePieces(pieces, context) });
+  } catch (e: any) {
+    console.error('[DocumentTemplates] render-elements error:', e?.stack || e);
+    res.status(500).json({ error: e?.message || 'Error al pintar los elementos' });
   }
 });
 
@@ -609,8 +687,8 @@ router.post('/test-query', async (req: any, res) => {
     // ejecuta con nulls — útil para queries que no dependan de contexto.
     let ctxPayload: any = null;
     try {
-      if (sampleDocId && isValidDocType(sampleDocType)) {
-        ctxPayload = await PdfPayloadBuilder.build(sampleDocType, sampleDocId, req.tenantClient, getRequestLocale(req));
+      if (sampleDocType && (await isTemplateDocType(req.tenantId, sampleDocType))) {
+        ctxPayload = await samplePayload(req, sampleDocType, sampleDocId);
       }
     } catch {
       /* sin contexto */
@@ -636,6 +714,7 @@ router.post('/test-query', async (req: any, res) => {
       ok: true,
       rows: rows.slice(0, 50),
       rowCount: rows.length,
+      columns: result.columns[key] ?? [],
       truncated: rows.length >= 1000,
     });
   } catch (e: any) {
@@ -695,7 +774,10 @@ async function generateVisualTemplate(opts: {
     abortSignal: AbortSignal.timeout(180_000),
   });
 
-  const visualOptions = mergeVisualOptions(generation.object.visualOptions);
+  const merged = mergeVisualOptions(generation.object.visualOptions);
+  const visualOptions = isUserDocType(opts.docType)
+    ? { ...merged, layout: 'record' as const }
+    : merged;
   return {
     html: buildVisualTemplate(opts.docType, visualOptions),
     visualOptions,
@@ -735,7 +817,9 @@ router.post('/generate', async (req: any, res) => {
     }
     const { docType, description, currentHtml, currentQueries, currentVisualOptions, feedback } =
       req.body ?? {};
-    if (!isValidDocType(docType)) return res.status(400).json({ error: 'docType inválido' });
+    if (!(await isTemplateDocType(req.tenantId, docType))) {
+      return res.status(400).json({ error: 'docType inválido' });
+    }
     if (typeof description !== 'string' || !description.trim()) {
       return res.status(400).json({ error: 'description es obligatoria' });
     }

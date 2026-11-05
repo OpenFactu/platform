@@ -122,6 +122,21 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
     }
   };
 
+  /** Marcar una falta corrige el albarán y devuelve el stock: no tiene vuelta atrás. */
+  const markMissing = async (task: PickingTask) => {
+    const picked = Number(task.pickedQty) || 0;
+    const ok = await popup.confirm({
+      title: t('logistics.picking.missingTitle'),
+      message: t('logistics.picking.missingMessage', {
+        missing: Number(task.requestedQty) - picked,
+        requested: task.requestedQty,
+      }),
+      tone: 'danger',
+      confirmLabel: t('logistics.picking.missing'),
+    });
+    if (ok) patchTask(task.id, { status: 'missing', pickedQty: picked });
+  };
+
   const itemMap = new Map(items.map((i) => [i.id, i] as const));
 
   const total = tasks.length;
@@ -162,7 +177,7 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
   return (
     <div className="space-y-3">
       <div>
-        <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
+        <div className="flex items-center justify-between text-[11px] text-fg-muted mb-1">
           <span>
             {t('logistics.picking.progress')} <b>{done}</b> / {total}
           </span>
@@ -184,7 +199,7 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
       </div>
 
       {tasks.length === 0 ? (
-        <Card bodyClassName="py-8 text-center text-sm text-slate-500">
+        <Card bodyClassName="py-8 text-center text-sm text-fg-muted">
           {t('logistics.picking.empty')}
         </Card>
       ) : (
@@ -198,7 +213,9 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
               return (
                 <li key={task.id} className="px-4 py-2 border-b border-border-subtle last:border-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant={STATUS_BADGE[task.status] || 'neutral'}>{task.status}</Badge>
+                    <Badge variant={STATUS_BADGE[task.status] || 'neutral'}>
+                      {t(`logistics.picking.status.${task.status}`)}
+                    </Badge>
                     <code className="px-1.5 py-0.5 bg-bg-muted text-[11px] font-mono rounded">
                       {it?.code || task.itemId || '—'}
                     </code>
@@ -207,7 +224,7 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                     </span>
                     {hasBatch && (
                       <span
-                        className="inline-flex items-center gap-1.5 h-6 pl-1.5 pr-2 rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 text-[10px] font-black uppercase tracking-[0.1em]"
+                        className="inline-flex items-center gap-1.5 h-6 pl-1.5 pr-2 rounded-lg border border-info bg-info-bg text-info text-[10px] font-black uppercase tracking-[0.1em]"
                         title={
                           manageBy === 'S'
                             ? t('logistics.picking.serialAssigned')
@@ -221,7 +238,7 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                       </span>
                     )}
                     <span className="flex-1" />
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-[11px] text-fg-muted">
                       {t('logistics.picking.requested')} <b>{task.requestedQty}</b>
                     </span>
                     {/* `pickedQty` ya es number en PickingTask (el servidor lo
@@ -265,7 +282,8 @@ export const PickingTasksPanel: React.FC<Props> = ({ shipmentId, onAllDone }) =>
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => patchTask(task.id, { status: 'missing' })}
+                      disabled={task.shortageQty != null}
+                      onClick={() => markMissing(task)}
                       title={t('logistics.picking.missing')}
                     >
                       <X size={14} />
