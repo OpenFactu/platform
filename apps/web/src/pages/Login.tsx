@@ -14,6 +14,8 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { apiClient, ApiError } from '@/shared/http';
 import { login as loginRequest, type LoginResult } from './login/loginApi';
 import { MfaStepContainer } from './login/LoginMfaStep';
+import { EmailCodeContainer } from './login/LoginEmailCodeStep';
+import { useLoginMethods } from './login/useLoginMethods';
 import { usePasskeyLogin } from './login/usePasskeyLogin';
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -54,6 +56,8 @@ export const Login: React.FC = () => {
     user: { name?: string; email?: string; avatarImageUrl?: string | null };
   } | null>(null);
   const twoFactorRequired = !!mfa;
+  // Entrar con un código por correo: el usuario ya está escrito y se pasa a su paso.
+  const [emailCodeFor, setEmailCodeFor] = useState<string | null>(null);
 
   // Acceso rápido: cuentas que ya entraron en este navegador. Elegir una
   // rellena usuario y empresa; la contraseña (y el 2FA) se siguen pidiendo.
@@ -82,6 +86,7 @@ export const Login: React.FC = () => {
   };
 
   const { login } = useAuth();
+  const methods = useLoginMethods(selectedTenant);
   const navigate = useNavigate();
   const { t } = useI18n();
 
@@ -158,8 +163,22 @@ export const Login: React.FC = () => {
     if (!openMfaIfNeeded(data)) finishLogin(data);
   });
 
+  const startEmailCode = () => {
+    if (!email.trim()) {
+      setError(t('auth.email.needEmail'));
+      return;
+    }
+    if (tenants.length > 1 && !selectedTenant) {
+      setError(t('app.login.pickCompanyError'));
+      return;
+    }
+    setError(null);
+    setEmailCodeFor(email.trim());
+  };
+
   const handleMfaExpired = useCallback(() => {
     setMfa(null);
+    setEmailCodeFor(null);
     setPassword('');
     setError(t('auth.mfa.expired'));
   }, [t]);
@@ -217,13 +236,15 @@ export const Login: React.FC = () => {
               <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-fg-default">
                 {twoFactorRequired
                   ? t('auth.mfa.title')
-                  : showPicker
-                    ? t('app.login.pickAccountTitle')
-                    : picked
-                      ? t('app.login.hello', { name: picked.name })
-                      : t('app.login.title')}
+                  : emailCodeFor
+                    ? t('auth.email.title')
+                    : showPicker
+                      ? t('app.login.pickAccountTitle')
+                      : picked
+                        ? t('app.login.hello', { name: picked.name })
+                        : t('app.login.title')}
               </h1>
-              {!twoFactorRequired && (
+              {!twoFactorRequired && !emailCodeFor && (
                 <p className="text-sm text-fg-muted">
                   {showPicker
                     ? t('app.login.pickAccountHint')
@@ -251,7 +272,20 @@ export const Login: React.FC = () => {
                 onExpired={handleMfaExpired}
                 onNotYou={() => {
                   setMfa(null);
+                  setEmailCodeFor(null);
                   setPassword('');
+                  setError(null);
+                }}
+              />
+            ) : emailCodeFor ? (
+              <EmailCodeContainer
+                email={emailCodeFor}
+                tenantId={selectedTenant}
+                onDone={(data) => {
+                  if (!openMfaIfNeeded(data)) finishLogin(data);
+                }}
+                onBack={() => {
+                  setEmailCodeFor(null);
                   setError(null);
                 }}
               />
@@ -351,7 +385,7 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            {!showPicker && !mfa && (
+            {!showPicker && !mfa && !emailCodeFor && (
               <Button
                 type="submit"
                 size="lg"
@@ -364,7 +398,21 @@ export const Login: React.FC = () => {
               </Button>
             )}
 
-            {!mfa && passkeyLogin.supported && (
+            {!mfa && !emailCodeFor && !showPicker && methods.emailCode && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                className="w-full gap-2"
+                disabled={isSubmitting}
+                onClick={startEmailCode}
+              >
+                <Mail size={16} />
+                {t('auth.email.button')}
+              </Button>
+            )}
+
+            {!mfa && !emailCodeFor && passkeyLogin.supported && (
               <div className="space-y-3">
                 {passkeyLogin.error && (
                   <Alert tone="danger" role="alert">

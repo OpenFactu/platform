@@ -25,6 +25,9 @@ const ForgotPassword = lazy(() =>
 const ResetPassword = lazy(() =>
   import('./pages/ResetPassword').then((m) => ({ default: m.ResetPassword })),
 );
+const LoginEmailLink = lazy(() =>
+  import('./pages/LoginEmailLink').then((m) => ({ default: m.LoginEmailLink })),
+);
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
 const TrackingPage = lazy(() =>
   import('./pages/public/TrackingPage').then((m) => ({ default: m.TrackingPage })),
@@ -143,8 +146,24 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/login/email" element={<LoginEmailLink />} />
             <Route path="/que-es-keirost" element={<AboutPage />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </BrowserRouter>
+        <DebugPanel />
+      </>
+    );
+  }
+
+  // El enlace del correo también se abre en un navegador con sesión: ahí aprueba el acceso de
+  // otro dispositivo. Sin el menú del ERP.
+  if (window.location.pathname === '/login/email') {
+    return (
+      <>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login/email" element={<LoginEmailLink />} />
           </Routes>
         </BrowserRouter>
         <DebugPanel />
