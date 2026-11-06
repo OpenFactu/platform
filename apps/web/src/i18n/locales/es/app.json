@@ -169,6 +169,9 @@
       "enable": "Activar"
     },
     "tenant": {
+      "changedElsewhereTitle": "Empresa cambiada en otra pestaña",
+      "changedElsewhereBody": "Esta pestaña sigue con la empresa anterior. Recárgala para seguir en la nueva.",
+      "reload": "Recargar",
       "loadError": "No se pudieron cargar las empresas",
       "switched": "Empresa cambiada",
       "switchError": "Error al cambiar de empresa",

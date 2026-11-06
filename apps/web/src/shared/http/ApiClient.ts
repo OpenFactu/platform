@@ -7,9 +7,9 @@ import { clientHeaderValue } from '../auth/clientKind';
 const TOKEN_KEY = 'openfactu_token';
 
 /** Decodifica el payload de un JWT sin verificarlo (solo para leer tenantId localmente). */
-function decodeTenantId(token: string): string | null {
+export function decodeTenantId(token: string): string | null {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
     return payload?.tenantId || null;
   } catch {
     return null;
@@ -53,6 +53,7 @@ export class ApiClient {
   private token: string | null;
   private tenantId: string | null;
   private onUnauthorized: (() => void) | null = null;
+  private onTenantMismatch: (() => void) | null = null;
 
   constructor() {
     this.token = localStorage.getItem(TOKEN_KEY);
@@ -68,6 +69,14 @@ export class ApiClient {
   /** AuthContext registra aquí el logout para el manejo global de 401. */
   setOnUnauthorized(handler: (() => void) | null): void {
     this.onUnauthorized = handler;
+  }
+
+  /**
+   * 403 SWITCH_TENANT_REQUIRED: la sesión (compartida entre pestañas) ya está en otra empresa
+   * porque se cambió desde otra pestaña. AuthContext avisa y recarga.
+   */
+  setOnTenantMismatch(handler: (() => void) | null): void {
+    this.onTenantMismatch = handler;
   }
 
   get<T>(path: string, opts?: RequestOptions): Promise<T> {
@@ -193,6 +202,12 @@ export class ApiClient {
       parsed = text ? JSON.parse(text) : null;
     } catch {
       parsed = text;
+    }
+    if (
+      res.status === 403 &&
+      (parsed as { code?: string } | null)?.code === 'SWITCH_TENANT_REQUIRED'
+    ) {
+      this.onTenantMismatch?.();
     }
     throw new ApiError(res.status, parsed, extractErrorMessage(res.status, parsed));
   }

@@ -1,8 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { apiClient, ApiError } from '@/shared/http';
+import { apiClient, ApiError, decodeTenantId } from '@/shared/http';
 import { authApi } from '@/shared/api';
 import { t as tNow, setLocale } from '@/i18n/i18n';
 import { msUntilRefresh } from '@/shared/auth/sessionToken';
+import { TenantChangedNotice } from '@/components/TenantChangedNotice';
 
 /** Entre renovaciones, y tras un fallo de red, no se vuelve a intentar antes de esto. */
 const MIN_REFRESH_DELAY_MS = 30_000;
@@ -46,6 +47,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(localStorage.getItem('openfactu_token'));
   const [loading, setLoading] = useState(true);
   const [retry, setRetry] = useState(0);
+  // La sesión es una por navegador: si otra pestaña cambia de empresa, esta sigue pidiendo la
+  // vieja y el servidor contesta 403 SWITCH_TENANT_REQUIRED. Se avisa y se recarga en la nueva.
+  const [tenantChangedElsewhere, setTenantChangedElsewhere] = useState(false);
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -125,6 +129,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const { token: fresh } = await authApi.refresh();
           if (cancelled || !fresh) return;
+          const freshTenant = decodeTenantId(fresh);
+          if (user?.tenantId && freshTenant && freshTenant !== user.tenantId) {
+            setTenantChangedElsewhere(true);
+            return;
+          }
           localStorage.setItem('openfactu_token', fresh);
           apiClient.setAuth(fresh, null);
           setToken(fresh);
@@ -141,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [token, retry, clearSession]);
+  }, [token, retry, clearSession, user?.tenantId]);
 
   // El idioma va con la persona: si lo eligió en su perfil, manda sobre el del navegador.
   useEffect(() => {
@@ -159,6 +168,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     apiClient.setOnUnauthorized(() => clearSession());
     return () => apiClient.setOnUnauthorized(null);
   }, [clearSession]);
+
+  useEffect(() => {
+    apiClient.setOnTenantMismatch(() => setTenantChangedElsewhere(true));
+    return () => apiClient.setOnTenantMismatch(null);
+  }, []);
+
+  // Otra pestaña guardó un token de otra empresa: avisar antes de que esta pida nada.
+  useEffect(() => {
+    const current = user?.tenantId;
+    if (!current) return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'openfactu_token' || !e.newValue) return;
+      const next = decodeTenantId(e.newValue);
+      if (next && next !== current) setTenantChangedElsewhere(true);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [user?.tenantId]);
 
   const switchTenant = async (tenantId: string) => {
     if (!token) throw new Error(tNow('app.common.notAuthenticated'));
@@ -186,6 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }}
     >
       {children}
+      <TenantChangedNotice open={tenantChangedElsewhere} />
     </AuthContext.Provider>
   );
 };

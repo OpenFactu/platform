@@ -169,6 +169,9 @@
       "enable": "Enable"
     },
     "tenant": {
+      "changedElsewhereTitle": "Company changed in another tab",
+      "changedElsewhereBody": "This tab is still on the previous company. Reload it to continue in the new one.",
+      "reload": "Reload",
       "loadError": "Could not load companies",
       "switched": "Company switched",
       "switchError": "Error switching company",
