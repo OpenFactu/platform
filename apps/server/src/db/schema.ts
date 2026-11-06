@@ -10,6 +10,7 @@ import {
   jsonb,
   bigint,
   date,
+  index,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -58,6 +59,8 @@ export const globalUsers = pgTable('GlobalUser', {
   totpSecret: text('totpSecret'),
   totpEnabled: boolean('totpEnabled').default(false).notNull(),
   totpBackupCodes: text('totpBackupCodes'), // JSON con hashes SHA-256 de un solo uso
+  // Último paso TOTP aceptado: impide reutilizar un código dentro de su ventana.
+  totpLastStep: integer('totpLastStep'),
   // Idioma de la interfaz ('es' | 'en'). Null = el del navegador.
   locale: text('locale'),
   // Tema personal: va con la persona, no con la empresa. Null = el de la empresa.
@@ -83,6 +86,121 @@ export const userTenantMemberships = pgTable(
     updatedAt: timestamp('updatedAt').defaultNow().notNull(),
   },
   (t) => ({ unq: unique().on(t.userId, t.tenantId) }),
+);
+
+// ---------------------------------------------------------------------------
+// Seguridad del acceso: sesiones, freno, retos, historial, passkeys y SSO.
+// ---------------------------------------------------------------------------
+
+/** Sesión revocable: el JWT lleva su id y se comprueba contra esta fila. */
+export const userSessions = pgTable(
+  'UserSession',
+  {
+    id: text('id').primaryKey(),
+    userId: text('userId')
+      .notNull()
+      .references(() => globalUsers.id, { onDelete: 'cascade' }),
+    tenantId: text('tenantId'),
+    createdAt: timestamp('createdAt').defaultNow().notNull(),
+    lastSeenAt: timestamp('lastSeenAt').defaultNow().notNull(),
+    expiresAt: timestamp('expiresAt').notNull(),
+    absoluteExpiresAt: timestamp('absoluteExpiresAt').notNull(),
+    revokedAt: timestamp('revokedAt'),
+    revokedReason: text('revokedReason'),
+    method: text('method'), // password | passkey | email_code | sso ...
+    mfa: boolean('mfa').default(false).notNull(),
+    restricted: text('restricted'), // nulo = sesión normal
+    clientKind: text('clientKind'),
+    deviceId: text('deviceId'),
+    userAgent: text('userAgent'),
+    ip: text('ip'),
+  },
+  (t) => ({ byUser: index('UserSession_userId_idx').on(t.userId) }),
+);
+
+/** Contador de fallos por clave (usuario, IP...) para frenar la fuerza bruta. */
+export const authThrottles = pgTable('AuthThrottle', {
+  key: text('key').primaryKey(),
+  failures: integer('failures').default(0).notNull(),
+  windowStart: timestamp('windowStart').defaultNow().notNull(),
+  lockedUntil: timestamp('lockedUntil'),
+  lockCount: integer('lockCount').default(0).notNull(),
+});
+
+/** Reto de un solo uso: MFA, traspaso, código por correo, SSO, WebAuthn. */
+export const authChallenges = pgTable('AuthChallenge', {
+  id: text('id').primaryKey(),
+  /** `mfa` | `handoff` | `email_code` | `sso_ticket` | `sso_state` | `webauthn`. */
+  kind: text('kind').notNull(),
+  secretHash: text('secretHash').unique().notNull(),
+  userId: text('userId'),
+  expiresAt: timestamp('expiresAt').notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  /** `pending` | `approved` | `consumed`. */
+  status: text('status').default('pending').notNull(),
+  data: text('data'), // JSON
+});
+
+/** Historial de accesos y cambios de seguridad. */
+export const authEvents = pgTable(
+  'AuthEvent',
+  {
+    id: text('id').primaryKey(),
+    userId: text('userId'),
+    at: timestamp('at').defaultNow().notNull(),
+    kind: text('kind').notNull(),
+    ok: boolean('ok').default(true).notNull(),
+    method: text('method'),
+    ip: text('ip'),
+    userAgent: text('userAgent'),
+    clientKind: text('clientKind'),
+    deviceId: text('deviceId'),
+    detail: text('detail'), // JSON
+  },
+  (t) => ({ byUserAt: index('AuthEvent_userId_at_idx').on(t.userId, t.at) }),
+);
+
+export const userPasskeys = pgTable('UserPasskey', {
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull(),
+  credentialId: text('credentialId').unique().notNull(),
+  publicKey: text('publicKey').notNull(), // base64url
+  counter: integer('counter').default(0).notNull(),
+  transports: text('transports'), // JSON
+  rpId: text('rpId').notNull(),
+  name: text('name'),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  lastUsedAt: timestamp('lastUsedAt'),
+});
+
+/** Proveedor de identidad externo (OIDC) configurado por la empresa. */
+export const authProviders = pgTable('AuthProvider', {
+  id: text('id').primaryKey(),
+  kind: text('kind').notNull(),
+  name: text('name').notNull(),
+  issuer: text('issuer'),
+  clientId: text('clientId'),
+  clientSecretEnc: text('clientSecretEnc'), // cifrado en reposo
+  scopes: text('scopes'),
+  enabled: boolean('enabled').default(true).notNull(),
+  allowedDomains: text('allowedDomains'), // JSON
+  trustProviderMfa: boolean('trustProviderMfa').default(false).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().notNull(),
+});
+
+/** Cuenta externa enlazada a un usuario. */
+export const userIdentities = pgTable(
+  'UserIdentity',
+  {
+    id: text('id').primaryKey(),
+    userId: text('userId').notNull(),
+    providerId: text('providerId').notNull(),
+    subject: text('subject').notNull(),
+    email: text('email'),
+    linkedAt: timestamp('linkedAt').defaultNow().notNull(),
+  },
+  (t) => ({ unq: unique().on(t.providerId, t.subject) }),
 );
 
 export const pluginFields = pgTable('PluginField', {
