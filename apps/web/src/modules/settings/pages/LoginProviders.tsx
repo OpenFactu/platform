@@ -38,7 +38,9 @@ export const LoginProviders: React.FC = () => {
   const { t } = useI18n();
   const toast = useToast();
   const { user } = useAuth();
-  const { items, loading, error, busy, save, remove, messageFor } = useProviders();
+  const { items, loading, error, busy, save, remove, messageFor } = useProviders(
+    user?.role === 'SUPERUSER',
+  );
   // `null` cerrado; `'new'` alta; un proveedor, su edición.
   const [editing, setEditing] = useState<AuthProvider | 'new' | null>(null);
   const [form, setForm] = useState<ProviderForm>(emptyProviderForm);

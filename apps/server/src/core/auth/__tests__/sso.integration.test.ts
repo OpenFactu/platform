@@ -590,7 +590,12 @@ describe('SSO con OIDC', { skip: !authTestDatabaseUrl }, () => {
     }
     const m = await call('GET', '/api/auth/methods');
     const mine = m.body.sso.find((p: any) => p.id === providerId);
-    assert.deepEqual(mine, { id: providerId, name: 'Pruebas', kind: 'oidc' });
+    assert.deepEqual(mine, {
+      id: providerId,
+      name: 'Pruebas',
+      kind: 'oidc',
+      startUrl: `${base}/api/auth/sso/${providerId}/start`,
+    });
   });
 
   it('proveedores: solo un SUPERUSER de la base, y el secreto nunca sale', async () => {

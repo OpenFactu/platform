@@ -9,17 +9,25 @@ export function safeReturnPath(value: string | null | undefined): string | null 
   return value;
 }
 
-/** Dirección que arranca el SSO en el servidor. */
+/**
+ * Dirección que arranca el SSO: la `startUrl` absoluta que da el servidor (su origen público) más
+ * `return` o `handoff`. Devuelve null si no es http(s).
+ */
 export function ssoStartUrl(
-  providerId: string,
+  startUrl: string,
   opts: { returnTo?: string | null; handoffId?: string } = {},
-): string {
-  const q = new URLSearchParams();
+): string | null {
+  let url: URL;
+  try {
+    url = new URL(startUrl);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
   const ret = safeReturnPath(opts.returnTo);
-  if (ret) q.set('return', ret);
-  if (opts.handoffId) q.set('handoff', opts.handoffId);
-  const qs = q.toString();
-  return `/api/auth/sso/${encodeURIComponent(providerId)}/start${qs ? `?${qs}` : ''}`;
+  if (ret) url.searchParams.set('return', ret);
+  if (opts.handoffId) url.searchParams.set('handoff', opts.handoffId);
+  return url.toString();
 }
 
 const KNOWN_ERRORS = [
@@ -38,6 +46,7 @@ const KNOWN_ERRORS = [
   'METHOD_NOT_ALLOWED',
   'SSO_REQUIRED',
   'TICKET_INVALID',
+  'TOO_MANY_ATTEMPTS',
 ] as const;
 
 /** Clave de i18n del código de error del SSO; los desconocidos caen en el genérico. */

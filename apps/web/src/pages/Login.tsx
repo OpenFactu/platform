@@ -473,7 +473,7 @@ export const Login: React.FC = () => {
                 busyId={sso.busyId}
                 disabled={isSubmitting || passkeyLogin.busy}
                 error={sso.error}
-                onStart={(id) => void sso.start(id)}
+                onStart={(p) => void sso.start(p)}
               />
             )}
           </form>

@@ -18,6 +18,16 @@ router.get('/methods', async (req, res) => {
     if (tenantId) allowed = (await readPolicy(tenantId)).allowedMethods;
     const ok = (m: string) => !allowed || allowed.includes(m);
 
+    // `startUrl` es absoluta, en el origen público: la cookie de atadura del SSO y el `redirect_uri`
+    // viven ahí, y el escritorio (cuya web es un proxy local) tiene que abrir esa dirección.
+    const origin = webOrigin();
+    const sso =
+      origin && ok('sso')
+        ? (await listEnabledProviders()).map((p) => ({
+            ...p,
+            startUrl: `${origin}/api/auth/sso/${encodeURIComponent(p.id)}/start`,
+          }))
+        : [];
     const emailCode = !!process.env.WEB_ORIGIN && ok('email_code') && (await anyTenantHasSmtp());
     res.json({
       // Siempre: un SUPERUSER no depende de `allowedMethods` y el gate del login rechaza a los demás.
@@ -25,7 +35,7 @@ router.get('/methods', async (req, res) => {
       passkey: rpFor(req.headers.origin as string | undefined) !== null && ok('passkey'),
       emailCode,
       // Sin secretos: lo justo para pintar el botón y llamar a `/sso/:id/start`.
-      sso: webOrigin() && ok('sso') ? await listEnabledProviders() : [],
+      sso,
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

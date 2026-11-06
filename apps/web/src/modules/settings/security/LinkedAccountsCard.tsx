@@ -14,7 +14,8 @@ import { ProviderLogo } from '@/components/login/ProviderLogo';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/i18n/I18nContext';
 import { formatDate } from '@/i18n/format';
-import { readQueryParam, ssoErrorKey, stripQueryParams } from '@/pages/login/ssoModel';
+import { ssoErrorKey } from '@/pages/login/ssoModel';
+import { consumeSecurityNotice, peekSecurityNotice } from '@/shared/auth/securityNotice';
 import { useIdentities } from './useIdentities';
 
 /** «Cuentas enlazadas»: entrar con Google, Microsoft u otro proveedor; enlazar y desenlazar. */
@@ -27,12 +28,14 @@ export const LinkedAccountsCard: React.FC = () => {
   );
   const [toUnlink, setToUnlink] = useState<string | null>(null);
   // Resultado de volver del proveedor tras enlazar (`?linked=1` o `?ssoError=`).
-  const [returned] = useState(() => ({
-    linked: readQueryParam('linked') === '1',
-    errorCode: readQueryParam('ssoError'),
-  }));
+  // Capturado antes de montar React (`securityNotice`); se gasta en el efecto por StrictMode.
+  const [returned] = useState(
+    () => peekSecurityNotice() ?? { linked: false, errorCode: null as string | null },
+  );
   const [returnedShown, setReturnedShown] = useState(true);
-  useEffect(() => stripQueryParams('linked', 'ssoError'), []);
+  useEffect(() => {
+    consumeSecurityNotice();
+  }, []);
 
   // Sin proveedores configurados ni cuentas enlazadas no hay nada que enseñar.
   if (!loading && !error && items.length === 0 && available.length === 0 && !returned.errorCode) {

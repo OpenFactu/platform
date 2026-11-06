@@ -33,7 +33,11 @@ export function useSsoTicket(onSession: (data: LoginResult) => void) {
       })
       .catch((err) => {
         const code =
-          err instanceof ApiError ? (err.body as { code?: string } | null)?.code : undefined;
+          err instanceof ApiError && err.status === 429
+            ? 'TOO_MANY_ATTEMPTS'
+            : err instanceof ApiError
+              ? (err.body as { code?: string } | null)?.code
+              : undefined;
         setState({ kind: 'error', code: code ?? 'SSO_FAILED' });
       });
     // `onSession` solo se llama una vez, con el resultado del primer canje.

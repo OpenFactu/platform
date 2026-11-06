@@ -14,7 +14,7 @@ const providersApi = {
 };
 
 /** Proveedores de acceso único de la instalación (solo SUPERUSER): listar, guardar y borrar. */
-export function useProviders() {
+export function useProviders(enabled = true) {
   const { t } = useI18n();
   const [items, setItems] = useState<AuthProvider[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +33,8 @@ export function useProviders() {
   }, []);
 
   useEffect(() => {
+    // Sin permiso no se pregunta: el servidor respondería 403.
+    if (!enabled) return;
     let live = true;
     providersApi
       .list()
@@ -42,7 +44,7 @@ export function useProviders() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [enabled]);
 
   /** Mensaje de un fallo al guardar: el del servidor si es de validación, o uno genérico. */
   const messageFor = useCallback(

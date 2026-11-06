@@ -10,7 +10,7 @@ interface Props {
   busyId: string | null;
   disabled?: boolean;
   error?: string;
-  onStart: (providerId: string) => void;
+  onStart: (provider: LoginMethods['sso'][number]) => void;
 }
 
 export const LoginSsoButtons: React.FC<Props> = ({
@@ -38,7 +38,7 @@ export const LoginSsoButtons: React.FC<Props> = ({
           className="w-full min-w-0 gap-2"
           isLoading={busyId === p.id}
           disabled={disabled || busyId !== null}
-          onClick={() => onStart(p.id)}
+          onClick={() => onStart(p)}
         >
           {busyId !== p.id && <ProviderLogo kind={p.kind} />}
           <span className="truncate">{t('auth.sso.continueWith', { provider: p.name })}</span>

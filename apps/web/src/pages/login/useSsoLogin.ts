@@ -22,7 +22,7 @@ export function useSsoLogin({ onDone }: Params) {
   const [error, setError] = useState<string | undefined>();
 
   const start = useCallback(
-    async (providerId: string) => {
+    async (provider: { id: string; startUrl: string }) => {
       setError(undefined);
       let returnTo: string | null = null;
       try {
@@ -31,18 +31,18 @@ export function useSsoLogin({ onDone }: Params) {
         returnTo = null;
       }
       if (getClientKind() !== 'desktop') {
-        window.location.assign(ssoStartUrl(providerId, { returnTo }));
+        const url = ssoStartUrl(provider.startUrl, { returnTo });
+        if (url) window.location.assign(url);
+        else setError(t('auth.sso.startFailed'));
         return;
       }
-      setBusyId(providerId);
+      setBusyId(provider.id);
       try {
         const ticket = await createHandoff();
         setHandoff(ticket);
-        const url = new URL(
-          ssoStartUrl(providerId, { handoffId: ticket.handoffId }),
-          window.location.origin,
-        );
-        await openExternal(url.toString());
+        const url = ssoStartUrl(provider.startUrl, { handoffId: ticket.handoffId });
+        if (!url) throw new Error('startUrl');
+        await openExternal(url);
       } catch {
         setHandoff(null);
         setError(t('auth.sso.startFailed'));

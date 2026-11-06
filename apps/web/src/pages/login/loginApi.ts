@@ -68,7 +68,8 @@ export interface LoginMethods {
   password: boolean;
   passkey: boolean;
   emailCode: boolean;
-  sso: Array<{ id: string; name: string; kind: string }>;
+  /** `startUrl`: absoluta, en el origen público del servidor (donde vive la cookie del SSO). */
+  sso: Array<{ id: string; name: string; kind: string; startUrl: string }>;
 }
 
 export const methods = (tenantId?: string) =>
