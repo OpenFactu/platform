@@ -866,6 +866,21 @@ EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
+  ALTER TABLE "UserIdentity" ADD CONSTRAINT "UserIdentity_userId_GlobalUser_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."GlobalUser"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "UserIdentity" ADD CONSTRAINT "UserIdentity_providerId_AuthProvider_id_fk" FOREIGN KEY ("providerId") REFERENCES "public"."AuthProvider"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "UserPasskey" ADD CONSTRAINT "UserPasskey_userId_GlobalUser_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."GlobalUser"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+
+DO $$ BEGIN
   ALTER TABLE "UserSession" ADD CONSTRAINT "UserSession_userId_GlobalUser_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."GlobalUser"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
@@ -880,6 +895,6 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
-CREATE INDEX "AuthEvent_userId_at_idx" ON "AuthEvent" USING btree ("userId","at");
+CREATE INDEX IF NOT EXISTS "AuthEvent_userId_at_idx" ON "AuthEvent" USING btree ("userId","at");
 
-CREATE INDEX "UserSession_userId_idx" ON "UserSession" USING btree ("userId");
+CREATE INDEX IF NOT EXISTS "UserSession_userId_idx" ON "UserSession" USING btree ("userId");

@@ -162,7 +162,9 @@ export const authEvents = pgTable(
 
 export const userPasskeys = pgTable('UserPasskey', {
   id: text('id').primaryKey(),
-  userId: text('userId').notNull(),
+  userId: text('userId')
+    .notNull()
+    .references(() => globalUsers.id, { onDelete: 'cascade' }),
   credentialId: text('credentialId').unique().notNull(),
   publicKey: text('publicKey').notNull(), // base64url
   counter: integer('counter').default(0).notNull(),
@@ -194,8 +196,12 @@ export const userIdentities = pgTable(
   'UserIdentity',
   {
     id: text('id').primaryKey(),
-    userId: text('userId').notNull(),
-    providerId: text('providerId').notNull(),
+    userId: text('userId')
+      .notNull()
+      .references(() => globalUsers.id, { onDelete: 'cascade' }),
+    providerId: text('providerId')
+      .notNull()
+      .references(() => authProviders.id, { onDelete: 'cascade' }),
     subject: text('subject').notNull(),
     email: text('email'),
     linkedAt: timestamp('linkedAt').defaultNow().notNull(),

@@ -99,6 +99,12 @@ function idempotente(sentencia, tabla) {
     return [protegida(sentencia)];
   }
 
+  // Un índice suelto se aplica en cada arranque: sin IF NOT EXISTS, la segunda
+  // vez fallaría y deshacería el fichero entero.
+  if (/^\s*CREATE (UNIQUE )?INDEX\s+"/i.test(sentencia)) {
+    return [sentencia.replace(/^\s*CREATE (UNIQUE )?INDEX\s+"/i, 'CREATE $1INDEX IF NOT EXISTS "')];
+  }
+
   const cuerpo = sentencia.match(/CREATE TABLE "[^"]+" \(([\s\S]*)\)\s*$/);
   const creacion = sentencia.replace(/^CREATE TABLE\s+"/i, 'CREATE TABLE IF NOT EXISTS "');
   if (!cuerpo) return [creacion];

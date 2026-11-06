@@ -21,6 +21,11 @@ test('publicSchema: trae las tablas del acceso', () => {
   }
 });
 
+test('publicSchema: todo índice es idempotente', () => {
+  const sueltos = sql.match(/CREATE (UNIQUE )?INDEX(?! IF NOT EXISTS)[^\n]*/gi) ?? [];
+  assert.deepEqual(sueltos, []);
+});
+
 test('publicSchema: GlobalUser trae totpLastStep', () => {
   assert.ok(sql.includes('"totpLastStep"'));
 });
