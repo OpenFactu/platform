@@ -19,6 +19,8 @@ export interface SubTab {
   icon?: string;
   /** Si es true, solo se muestra en el menú para usuarios ADMIN/SUPERUSER. */
   adminOnly?: boolean;
+  /** Si es true, solo se muestra en el menú para usuarios SUPERUSER (ni siquiera ADMIN). */
+  superuserOnly?: boolean;
   /** Si se pasa, el sub-tab solo se renderiza si `flags[featureFlag] === true`. */
   featureFlag?: string;
   /** Etiqueta de grupo: tabs con el mismo `group` se colapsan en un

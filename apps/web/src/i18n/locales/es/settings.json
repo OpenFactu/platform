@@ -23,7 +23,8 @@
         "integrations": "Integraciones",
         "devicesSystem": "Dispositivos y sistema"
       },
-      "securityPolicy": "Seguridad del acceso"
+      "securityPolicy": "Seguridad del acceso",
+      "loginProviders": "Inicio de sesión"
     },
     "devices": {
       "loadError": "No se pudieron cargar los kioscos de esta empresa.",

@@ -8,6 +8,8 @@ const KINDS = [
   'mfa_change',
   'password_change',
   'new_device_notice',
+  'sso_link',
+  'sso_unlink',
 ];
 const METHODS = ['password', 'passkey', 'email_code', 'handoff', 'factuapi', 'totp', 'backup'];
 

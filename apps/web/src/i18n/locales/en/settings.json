@@ -23,7 +23,8 @@
         "integrations": "Integrations",
         "devicesSystem": "Devices and system"
       },
-      "securityPolicy": "Access security"
+      "securityPolicy": "Access security",
+      "loginProviders": "Sign-in providers"
     },
     "devices": {
       "loadError": "Could not load this company's kiosks.",

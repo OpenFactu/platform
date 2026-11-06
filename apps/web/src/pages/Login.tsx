@@ -14,10 +14,14 @@ import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { apiClient, ApiError } from '@/shared/http';
 import { login as loginRequest, type LoginResult } from './login/loginApi';
 import { MfaStepContainer } from './login/LoginMfaStep';
+import { LoginHandoffWait } from './login/LoginHandoffWait';
+import { LoginSsoButtons } from './login/LoginSsoButtons';
+import { readQueryParam, ssoErrorKey, stripQueryParams } from './login/ssoModel';
+import { useSsoLogin } from './login/useSsoLogin';
 import { EmailCodeContainer } from './login/LoginEmailCodeStep';
 import { useLoginMethods } from './login/useLoginMethods';
 import { usePasskeyLogin } from './login/usePasskeyLogin';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Avatar, Button, Input, PasswordInput, Select } from '@openfactu/ui';
 import { ArrowRight, Building, KeyRound, Mail } from 'lucide-react';
@@ -56,6 +60,10 @@ export const Login: React.FC = () => {
     user: { name?: string; email?: string; avatarImageUrl?: string | null };
   } | null>(null);
   const twoFactorRequired = !!mfa;
+  // Código con el que el servidor devolvió de un proveedor de acceso único (`?ssoError=`).
+  const [ssoErrorCode] = useState(() => readQueryParam('ssoError'));
+  const [ssoErrorShown, setSsoErrorShown] = useState(true);
+  useEffect(() => stripQueryParams('ssoError'), []);
   // Entrar con un código por correo: el usuario ya está escrito y se pasa a su paso.
   const [emailCodeFor, setEmailCodeFor] = useState<string | null>(null);
 
@@ -163,6 +171,12 @@ export const Login: React.FC = () => {
     if (!openMfaIfNeeded(data)) finishLogin(data);
   });
 
+  const sso = useSsoLogin({
+    onDone: (data) => {
+      if (!openMfaIfNeeded(data)) finishLogin(data);
+    },
+  });
+
   const startEmailCode = () => {
     if (!email.trim()) {
       setError(t('auth.email.needEmail'));
@@ -261,7 +275,26 @@ export const Login: React.FC = () => {
               </Alert>
             )}
 
-            {mfa ? (
+            {ssoErrorCode && ssoErrorShown && !error && (
+              <Alert tone="danger" role="alert" onDismiss={() => setSsoErrorShown(false)}>
+                {t(ssoErrorKey(ssoErrorCode))}
+              </Alert>
+            )}
+
+            {sso.handoff ? (
+              <>
+                {sso.error && (
+                  <Alert tone="danger" role="alert">
+                    {sso.error}
+                  </Alert>
+                )}
+                <LoginHandoffWait
+                  confirmCode={sso.handoff.confirmCode}
+                  description={t('auth.sso.desktopHint')}
+                  onCancel={sso.cancel}
+                />
+              </>
+            ) : mfa ? (
               <MfaStepContainer
                 challenge={mfa.challenge}
                 methods={mfa.methods}
@@ -385,7 +418,7 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            {!showPicker && !mfa && !emailCodeFor && (
+            {!showPicker && !mfa && !emailCodeFor && !sso.handoff && (
               <Button
                 type="submit"
                 size="lg"
@@ -398,7 +431,7 @@ export const Login: React.FC = () => {
               </Button>
             )}
 
-            {!mfa && !emailCodeFor && !showPicker && methods.emailCode && (
+            {!mfa && !emailCodeFor && !showPicker && !sso.handoff && methods.emailCode && (
               <Button
                 type="button"
                 variant="secondary"
@@ -412,7 +445,7 @@ export const Login: React.FC = () => {
               </Button>
             )}
 
-            {!mfa && !emailCodeFor && passkeyLogin.supported && (
+            {!mfa && !emailCodeFor && !sso.handoff && passkeyLogin.supported && (
               <div className="space-y-3">
                 {passkeyLogin.error && (
                   <Alert tone="danger" role="alert">
@@ -432,6 +465,16 @@ export const Login: React.FC = () => {
                   {t('auth.passkey.signIn')}
                 </Button>
               </div>
+            )}
+
+            {!mfa && !emailCodeFor && !sso.handoff && (
+              <LoginSsoButtons
+                providers={methods.sso}
+                busyId={sso.busyId}
+                disabled={isSubmitting || passkeyLogin.busy}
+                error={sso.error}
+                onStart={(id) => void sso.start(id)}
+              />
             )}
           </form>
         </div>

@@ -69,6 +69,29 @@ export const passkeysApi = {
   remove: (id: string) => apiClient.delete<void>(`/api/auth/passkeys/${encodeURIComponent(id)}`),
 };
 
+export interface IdentityInfo {
+  id: string;
+  providerId: string;
+  providerName: string;
+  kind: string;
+  email: string | null;
+  linkedAt: string;
+}
+
+/** Cuentas externas (Google, Microsoft, OIDC) enlazadas a la cuenta propia. */
+export const identitiesApi = {
+  list: async (): Promise<IdentityInfo[]> =>
+    (await apiClient.get<{ identities: IdentityInfo[] }>('/api/auth/identities')).identities,
+  /** Devuelve la dirección del proveedor a la que hay que navegar. */
+  link: async (providerId: string): Promise<string> =>
+    (
+      await apiClient.post<{ url: string }>(
+        `/api/auth/identities/link/${encodeURIComponent(providerId)}`,
+      )
+    ).url,
+  unlink: (id: string) => apiClient.delete<void>(`/api/auth/identities/${encodeURIComponent(id)}`),
+};
+
 export const securityApi = {
   listSessions: async (): Promise<SessionInfo[]> =>
     (await apiClient.get<{ sessions: SessionInfo[] }>('/api/auth/sessions')).sessions,

@@ -122,3 +122,7 @@ export const redeemEmailLink = (token: string) =>
 
 export const approveEmailLink = (token: string) =>
   apiClient.post<{ approved: boolean }>('/api/auth/email-link/approve', { token }, { auth: false });
+
+/** Canjea el ticket con el que el servidor devuelve de un proveedor de acceso único. */
+export const redeemSsoTicket = (body: { ticket: string; tenantId?: string }) =>
+  apiClient.post<LoginResult>('/api/auth/sso/ticket', body, { auth: false });

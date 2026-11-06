@@ -86,6 +86,7 @@ export function canRead(user: NavUser | null | undefined, permissionPath?: strin
 /** ¿Puede ver esta entrada del menú? */
 export function canSeeSubTab(sub: SubTab, ctx: NavContext): boolean {
   if (sub.adminOnly && !isAdminRole(ctx.user?.role)) return false;
+  if (sub.superuserOnly && ctx.user?.role !== 'SUPERUSER') return false;
   if (sub.featureFlag && !flagOn(ctx.flags, sub.featureFlag)) return false;
   if (ALWAYS_ALLOWED.has(sub.path)) return true;
   return canRead(ctx.user, permissionPathFor(sub.path));

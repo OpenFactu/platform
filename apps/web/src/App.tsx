@@ -28,6 +28,7 @@ const ResetPassword = lazy(() =>
 const LoginEmailLink = lazy(() =>
   import('./pages/LoginEmailLink').then((m) => ({ default: m.LoginEmailLink })),
 );
+const LoginSso = lazy(() => import('./pages/LoginSso').then((m) => ({ default: m.LoginSso })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
 const TrackingPage = lazy(() =>
   import('./pages/public/TrackingPage').then((m) => ({ default: m.TrackingPage })),
@@ -147,6 +148,7 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/login/email" element={<LoginEmailLink />} />
+            <Route path="/login/sso" element={<LoginSso />} />
             <Route path="/que-es-keirost" element={<AboutPage />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>

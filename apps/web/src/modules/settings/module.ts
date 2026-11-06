@@ -16,6 +16,9 @@ const CompanySettings = lazy(() =>
 const SecurityPolicy = lazy(() =>
   import('./pages/SecurityPolicy').then((m) => ({ default: m.SecurityPolicy })),
 );
+const LoginProviders = lazy(() =>
+  import('./pages/LoginProviders').then((m) => ({ default: m.LoginProviders })),
+);
 const Users = lazy(() => import('./pages/Users').then((m) => ({ default: m.Users })));
 const CustomFields = lazy(() =>
   import('./pages/CustomFields').then((m) => ({ default: m.CustomFields })),
@@ -50,6 +53,13 @@ export const settingsModule: ModuleManifest = {
         id: 'security-policy',
         label: 'settings.nav.securityPolicy',
         path: '/settings/security',
+      },
+      // Solo un SUPERUSER: Google, Microsoft u OIDC para entrar (a nivel de instalación).
+      {
+        id: 'login-providers',
+        label: 'settings.nav.loginProviders',
+        path: '/settings/login-providers',
+        superuserOnly: true,
       },
       { id: 'users', label: 'settings.nav.users', path: '/users' },
       // Cómo se ven y qué campos llevan los datos y documentos de la empresa.
@@ -160,6 +170,13 @@ export const settingsModule: ModuleManifest = {
       title: 'settings.nav.securityPolicy',
       iconName: 'Key',
       permissionPath: '/settings/security',
+    },
+    {
+      pattern: '/settings/login-providers',
+      Component: LoginProviders,
+      title: 'settings.nav.loginProviders',
+      iconName: 'Key',
+      permissionPath: '/settings/login-providers',
     },
     {
       pattern: '/users',
