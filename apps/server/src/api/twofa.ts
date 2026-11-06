@@ -27,6 +27,15 @@ const router = Router();
 const ISSUER = 'Keirost';
 
 /**
+ * Los respaldos se guardan como `XXXX-XXXX`; quien teclea puede omitir el guion, usar
+ * minúsculas o separar con espacios. Solo se reformatea si quedan 8 caracteres.
+ */
+export function normalizeBackupCode(code: string): string {
+  const clean = (code || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  return clean.length === 8 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
+}
+
+/**
  * Verifica un código de 2FA contra el secreto TOTP o, si no coincide, contra los
  * códigos de respaldo (consumiéndolo). Devuelve `{ ok, usedBackup }` y, si se usó
  * un backup, la lista de hashes restante para persistir.
@@ -65,7 +74,7 @@ export function verifyTwoFactor(
   if (backupCodesJson) {
     try {
       const hashes: string[] = JSON.parse(backupCodesJson);
-      const incoming = hashCode(code);
+      const incoming = hashCode(normalizeBackupCode(code));
       const idx = hashes.indexOf(incoming);
       if (idx !== -1) {
         const remaining = hashes.filter((_, i) => i !== idx);

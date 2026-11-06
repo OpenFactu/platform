@@ -2,7 +2,7 @@ import { afterEach, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { authenticator } from 'otplib';
 import { verifyTwoFactor } from '../../../api/twofa';
-import { encryptSecret } from '../totpCrypto';
+import { encryptSecret, hashCode } from '../totpCrypto';
 
 const secret = authenticator.generateSecret();
 const enc = encryptSecret(secret);
@@ -45,4 +45,21 @@ describe('TOTP de un solo uso', () => {
     assert.equal(now.ok, true);
     assert.equal(verify(tokenAt(at(-1)), T0, now.step!).ok, false);
   });
+
+  for (const [name, typed] of [
+    ['sin guion', 'D0D28DC9'],
+    ['con guion', 'D0D2-8DC9'],
+    ['en minúsculas', 'd0d2-8dc9'],
+    ['con espacios', 'd0d2 8dc9'],
+  ]) {
+    it(`código de respaldo ${name}: vale una vez`, () => {
+      const stored = JSON.stringify([hashCode('D0D2-8DC9'), hashCode('AAAA-BBBB')]);
+      const first = verifyTwoFactor(typed, enc, stored, null);
+      assert.equal(first.ok, true);
+      assert.equal(first.usedBackup, true);
+      assert.equal(first.remainingBackups!.length, 1);
+      const again = verifyTwoFactor(typed, enc, JSON.stringify(first.remainingBackups), null);
+      assert.equal(again.ok, false);
+    });
+  }
 });
