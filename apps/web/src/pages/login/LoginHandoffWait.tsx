@@ -44,11 +44,12 @@ export const LoginHandoffWait: React.FC<Props> = ({
         <span>{t('auth.handoff.waiting')}</span>
       </div>
 
-      {children}
-
-      <Button type="button" variant="link" size="sm" className="px-0" onClick={onCancel}>
-        {t('auth.handoff.cancel')}
-      </Button>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        {children}
+        <Button type="button" variant="link" size="sm" className="px-0" onClick={onCancel}>
+          {t('auth.handoff.cancel')}
+        </Button>
+      </div>
     </div>
   );
 };

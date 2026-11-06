@@ -63,7 +63,16 @@ export function useSsoLogin({ onDone }: Params) {
     setError(t('auth.handoff.expired'));
   }, [t]);
 
-  useHandoffWait({ handoff, onApproved: onDone, onExpired: handleExpired });
+  // Aprobado: fuera la espera, o tapa el paso siguiente (el 2FA si hace falta).
+  const handleApproved = useCallback(
+    (data: LoginResult) => {
+      setHandoff(null);
+      onDone(data);
+    },
+    [onDone],
+  );
+
+  useHandoffWait({ handoff, onApproved: handleApproved, onExpired: handleExpired });
 
   return { handoff, busyId, error, start, cancel };
 }

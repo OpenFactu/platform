@@ -90,7 +90,16 @@ export function useEmailCode({ email, tenantId, onDone }: Params) {
     setError(t('auth.handoff.expired'));
   }, [t]);
 
-  useHandoffWait({ handoff, onApproved: onDone, onExpired: handleExpired });
+  // Aprobado: fuera la espera antes de seguir (el 2FA, si hace falta).
+  const handleApproved = useCallback(
+    (data: LoginResult) => {
+      setHandoff(null);
+      onDone(data);
+    },
+    [onDone],
+  );
+
+  useHandoffWait({ handoff, onApproved: handleApproved, onExpired: handleExpired });
 
   const submit = useCallback(
     async (value?: string) => {
