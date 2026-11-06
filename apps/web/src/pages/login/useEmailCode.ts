@@ -50,6 +50,14 @@ export function useEmailCode({ email, tenantId, onDone }: Params) {
   const [sending, setSending] = useState(false);
   const started = useRef(false);
 
+  // Al acabar un bloqueo las casillas se remontan y el foco vuelve a la primera.
+  const locked = lockedFor > 0;
+  const wasLocked = useRef(false);
+  useEffect(() => {
+    if (wasLocked.current && !locked) setResetKey((k) => k + 1);
+    wasLocked.current = locked;
+  }, [locked]);
+
   /** Pide el correo (y, en el escritorio, un handoff nuevo que sustituye al anterior). */
   const send = useCallback(async () => {
     setSending(true);

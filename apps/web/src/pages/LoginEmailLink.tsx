@@ -30,7 +30,9 @@ export const LoginEmailLink: React.FC = () => {
     [login, navigate],
   );
   const { state, approve, deny } = useEmailLink(token, onSession);
-  const toLogin = () => navigate('/login');
+  // Recarga completa: en un navegador con sesión esta pantalla va fuera del router del ERP,
+  // que no se entera de un `navigate`.
+  const toLogin = () => window.location.assign('/login');
 
   return (
     <div className="min-h-dvh w-full flex flex-col bg-bg-app">

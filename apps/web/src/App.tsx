@@ -164,6 +164,7 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login/email" element={<LoginEmailLink />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
         <DebugPanel />

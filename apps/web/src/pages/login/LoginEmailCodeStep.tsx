@@ -35,6 +35,23 @@ const ResendButton: React.FC<Pick<ViewProps, 'canResend' | 'resendIn' | 'resend'
 export const LoginEmailCodeStep: React.FC<ViewProps> = (p) => {
   const { t } = useI18n();
 
+  if (p.desktop && !p.handoff && !p.sending) {
+    // Sin solicitud viva (caducó o no se pudo crear): nada que esperar, solo pedir otra.
+    return (
+      <div className="space-y-4">
+        <Alert tone="danger" role="alert">
+          {p.error ?? t('auth.handoff.expired')}
+        </Alert>
+        <Button type="button" size="lg" className="w-full" onClick={() => void p.resend()}>
+          {t('auth.handoff.again')}
+        </Button>
+        <Button type="button" variant="link" size="sm" className="px-0" onClick={p.onBack}>
+          {t('auth.handoff.cancel')}
+        </Button>
+      </div>
+    );
+  }
+
   if (p.desktop) {
     return (
       <div className="space-y-4">
