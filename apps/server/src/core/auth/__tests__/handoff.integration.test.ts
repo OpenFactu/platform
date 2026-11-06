@@ -10,6 +10,7 @@ import authRouter from '../../../api/auth';
 import { approveHandoff, createHandoff, handoffInfo, ipHint, pollHandoff } from '../handoff';
 
 const testIp = `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 254) + 1}`;
+const otherIp = `172.${16 + Math.floor(Math.random() * 16)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 254) + 1}`;
 const client = { ip: '203.0.113.9', userAgent: 'Mozilla/5.0 test', clientKind: 'web' as const };
 
 describe('entrega de login entre dispositivos', { skip: !authTestDatabaseUrl }, () => {
@@ -31,16 +32,16 @@ describe('entrega de login entre dispositivos', { skip: !authTestDatabaseUrl }, 
     await new Promise((r) => (server ? server.close(r) : r(null)));
     if (t) {
       await t.publicDb.execute(
-        sql`DELETE FROM public."AuthThrottle" WHERE key LIKE ${'%:ip:' + testIp}`,
+        sql`DELETE FROM public."AuthThrottle" WHERE key LIKE ${'%:ip:' + testIp} OR key LIKE ${'%:ip:' + otherIp}`,
       );
       await t.drop();
     }
   });
 
-  const post = async (path: string, body?: any) => {
+  const post = async (path: string, body?: any, ip = testIp) => {
     const res = await fetch(base + path, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-forwarded-for': testIp },
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': ip },
       body: JSON.stringify(body ?? {}),
     });
     return { status: res.status, body: await res.json() };
@@ -103,8 +104,14 @@ describe('entrega de login entre dispositivos', { skip: !authTestDatabaseUrl }, 
     const u = await t.createUser();
     const h = await createHandoff(client);
     await approveHandoff(h.handoffId, u.id, 'sso:google', 'sso');
-    assert.deepEqual(await pollHandoff(h.handoffId, 'otro-secreto'), { status: 'pending' });
-    assert.deepEqual(await pollHandoff('no-existe', h.pollSecret), { status: 'pending' });
+    assert.deepEqual(await pollHandoff(h.handoffId, 'otro-secreto'), {
+      status: 'pending',
+      unknown: true,
+    });
+    assert.deepEqual(await pollHandoff('no-existe', h.pollSecret), {
+      status: 'pending',
+      unknown: true,
+    });
     const ok: any = await pollHandoff(h.handoffId, h.pollSecret);
     assert.equal(ok.status, 'approved');
     assert.equal(ok.mfaDone, 'sso');
@@ -179,5 +186,20 @@ describe('entrega de login entre dispositivos', { skip: !authTestDatabaseUrl }, 
     });
     assert.ok(r2.body.token);
     assert.equal(r2.body.mfaRequired, undefined);
+  });
+
+  it('50 sondeos con secreto ajeno desde una IP dan 429; otra IP con uno correcto sigue en 200', async () => {
+    const c = await post('/api/auth/handoff', {}, testIp);
+    const bad = { handoffId: c.body.handoffId, pollSecret: 'ajeno' };
+    for (let i = 0; i < 50; i++) {
+      assert.equal((await post('/api/auth/handoff/poll', bad, otherIp)).status, 200);
+    }
+    const blocked = await post('/api/auth/handoff/poll', bad, otherIp);
+    assert.equal(blocked.status, 429);
+    // Sondeos legítimos que esperan no cuentan, y otra IP no se ve afectada.
+    const good = { handoffId: c.body.handoffId, pollSecret: c.body.pollSecret };
+    const ok = await post('/api/auth/handoff/poll', good, testIp);
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.body, { status: 'pending' });
   });
 });

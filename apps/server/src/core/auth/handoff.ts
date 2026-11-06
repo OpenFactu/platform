@@ -84,11 +84,15 @@ export async function handoffInfo(handoffId: string) {
     confirmCode: String(d.confirmCode ?? ''),
     clientKind: String(d.clientKind ?? 'web'),
     userAgent: String(d.userAgent ?? ''),
-    ipHint: String(d.ipHint ?? 'local'),
+    ipHint: String(d.ipHint ?? 'unknown'),
     expiresAt: row.expiresAt,
   };
 }
 
+/**
+ * Aprueba un relevo pendiente y vivo. Quien la llame tiene que haber autenticado antes al
+ * que aprueba y pasar un `mfaDone` honesto: el sondeo lo da por bueno y salta el segundo factor.
+ */
 export async function approveHandoff(
   handoffId: string,
   userId: string,
@@ -102,7 +106,7 @@ export async function approveHandoff(
 }
 
 export type PollResult =
-  | { status: 'pending' }
+  | { status: 'pending'; unknown?: true }
   | { status: 'approved'; userId: string; method: string; mfaDone: string | null }
   | { status: 'expired' };
 
@@ -111,7 +115,7 @@ export async function pollHandoff(handoffId: string, pollSecret: string): Promis
   const a = Buffer.from(sha256(String(pollSecret ?? '')));
   const b = Buffer.from(row?.secretHash ?? sha256(''));
   // Id desconocido o secreto ajeno: indistinguible de un relevo que sigue esperando.
-  if (!row || !crypto.timingSafeEqual(a, b)) return { status: 'pending' };
+  if (!row || !crypto.timingSafeEqual(a, b)) return { status: 'pending', unknown: true };
   if (row.status === 'consumed' || row.expiresAt.getTime() <= Date.now()) {
     return { status: 'expired' };
   }
