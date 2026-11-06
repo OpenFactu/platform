@@ -242,6 +242,36 @@ describe(
       assert.equal((await call('DELETE', `/api/users/${su.id}/sessions`, asSu)).status, 200);
     });
 
+    it('PATCH /api/users/:id con contraseña nueva cierra sus sesiones y deja evento', async () => {
+      const u = await member();
+      const token = (await login(u)).body.token;
+      const r = await call('PATCH', `/api/users/${u.id}`, {
+        body: { password: `Nueva-${crypto.randomBytes(6).toString('hex')}` },
+      });
+      assert.equal(r.status, 200);
+      assert.equal((await call('GET', '/api/auth/events', { token })).status, 401);
+      const events = await eventsOf(u.id, 2);
+      assert.ok(events.some((e) => e.kind === 'password_change'));
+    });
+
+    it('PATCH /api/users/:id que apaga el 2FA cierra sus sesiones', async () => {
+      const u = await member();
+      const token = (await login(u)).body.token;
+      const r = await call('PATCH', `/api/users/${u.id}`, { body: { totpEnabled: false } });
+      assert.equal(r.status, 200);
+      assert.equal((await call('GET', '/api/auth/events', { token })).status, 401);
+      const events = await eventsOf(u.id, 2);
+      assert.ok(events.some((e) => e.kind === 'mfa_change'));
+    });
+
+    it('PATCH /api/users/:id sin contraseña ni 2FA no cierra nada', async () => {
+      const u = await member();
+      const token = (await login(u)).body.token;
+      const r = await call('PATCH', `/api/users/${u.id}`, { body: { locale: 'en' } });
+      assert.equal(r.status, 200);
+      assert.equal((await call('GET', '/api/auth/events', { token })).status, 200);
+    });
+
     it('DELETE /api/users/:id/sessions pide escritura de /users; con solo lectura, 403', async () => {
       const target = await member();
       const reader = await t.createUser();

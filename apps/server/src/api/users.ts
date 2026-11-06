@@ -220,6 +220,28 @@ router.patch('/:id', async (req: any, res) => {
       .set(updateData)
       .where(eq(schema.globalUsers.id, id))
       .returning();
+    // Contraseña nueva o 2FA apagado: lo que abría sus sesiones ya no vale, se cierran todas.
+    // Si es el propio administrador, conserva la sesión desde la que lo hace.
+    const reason = password
+      ? 'password_change'
+      : userData.totpEnabled === false
+        ? 'mfa_change'
+        : null;
+    if (user && reason) {
+      try {
+        const exceptSid = req.user?.id === id ? req.session?.id : undefined;
+        const revoked = await revokeAllForUser(id, reason, exceptSid);
+        await recordAuthEvent({
+          userId: id,
+          kind: reason,
+          ok: true,
+          client: clientInfo(req),
+          detail: { byAdmin: req.user?.id, revoked },
+        });
+      } catch (e: any) {
+        console.error('[users] No se pudieron cerrar las sesiones:', e?.message);
+      }
+    }
     const { password: _, ...safeUser } = user;
     res.json(safeUser);
     if (req.tenantId) {
@@ -253,6 +275,9 @@ router.delete('/:id', async (req: any, res) => {
   try {
     const db = ClientFactory.getClient('public');
     const [old] = await db.select().from(schema.globalUsers).where(eq(schema.globalUsers.id, id));
+    // Antes de borrar: así se avisa a las demás instancias y se cierran sus sockets. Las filas
+    // caerían igual en cascada, pero una sesión en caché seguiría viva unos segundos.
+    if (old) await revokeAllForUser(id, 'admin');
     await db.delete(schema.globalUsers).where(eq(schema.globalUsers.id, id));
     res.json({ success: true });
     if (req.tenantId && old) {
