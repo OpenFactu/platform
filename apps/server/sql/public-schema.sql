@@ -898,6 +898,8 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
+CREATE INDEX IF NOT EXISTS "AuthChallenge_kind_userId_idx" ON "AuthChallenge" USING btree ("kind","userId");
+
 CREATE INDEX IF NOT EXISTS "AuthEvent_userId_at_idx" ON "AuthEvent" USING btree ("userId","at");
 
 CREATE INDEX IF NOT EXISTS "UserSession_userId_idx" ON "UserSession" USING btree ("userId");

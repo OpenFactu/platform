@@ -129,18 +129,23 @@ export const authThrottles = pgTable('AuthThrottle', {
 });
 
 /** Reto de un solo uso: MFA, traspaso, código por correo, SSO, WebAuthn. */
-export const authChallenges = pgTable('AuthChallenge', {
-  id: text('id').primaryKey(),
-  /** `mfa` | `handoff` | `email_code` | `sso_ticket` | `sso_state` | `webauthn`. */
-  kind: text('kind').notNull(),
-  secretHash: text('secretHash').unique().notNull(),
-  userId: text('userId'),
-  expiresAt: timestamp('expiresAt').notNull(),
-  attempts: integer('attempts').default(0).notNull(),
-  /** `pending` | `approved` | `consumed`. */
-  status: text('status').default('pending').notNull(),
-  data: text('data'), // JSON
-});
+export const authChallenges = pgTable(
+  'AuthChallenge',
+  {
+    id: text('id').primaryKey(),
+    /** `mfa` | `handoff` | `email_code` | `sso_ticket` | `sso_state` | `webauthn`. */
+    kind: text('kind').notNull(),
+    secretHash: text('secretHash').unique().notNull(),
+    userId: text('userId'),
+    expiresAt: timestamp('expiresAt').notNull(),
+    attempts: integer('attempts').default(0).notNull(),
+    /** `pending` | `approved` | `consumed`. */
+    status: text('status').default('pending').notNull(),
+    data: text('data'), // JSON
+  },
+  // El código por correo busca el último reto de un usuario por tipo.
+  (t) => ({ byKindUser: index('AuthChallenge_kind_userId_idx').on(t.kind, t.userId) }),
+);
 
 /** Historial de accesos y cambios de seguridad. */
 export const authEvents = pgTable(
