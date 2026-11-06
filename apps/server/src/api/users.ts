@@ -8,6 +8,12 @@ import { logAudit } from '../utils/audit';
 import { listAuthEvents, recordAuthEvent } from '../core/auth/authEvents';
 import { listSessions, revokeAllForUser } from '../core/auth/sessions';
 import { clientInfo } from '../core/auth/clientInfo';
+import {
+  PASSWORD_MESSAGES,
+  passwordProblem,
+  readPolicy,
+  strictestPasswordRules,
+} from '../core/auth/policy';
 
 const router = Router();
 
@@ -160,6 +166,12 @@ router.post('/', async (req: any, res) => {
     const db = ClientFactory.getClient('public');
     const { password, ...userData } = req.body;
     const id = crypto.randomUUID();
+    // El usuario nuevo aún no tiene empresas: rige la política de la que lo crea.
+    if (req.tenantId) {
+      const problem = passwordProblem(password, (await readPolicy(req.tenantId)).passwordRules);
+      if (problem)
+        return res.status(400).json({ error: PASSWORD_MESSAGES[problem], code: problem });
+    }
     const hashedPassword = await AuthService.hashPassword(password);
     const [user] = await db
       .insert(schema.globalUsers)
@@ -196,7 +208,12 @@ router.patch('/:id', async (req: any, res) => {
     const db = ClientFactory.getClient('public');
     const { password, ...userData } = req.body;
     const updateData: any = { ...userData, updatedAt: new Date() };
-    if (password) updateData.password = await AuthService.hashPassword(password);
+    if (password) {
+      const problem = passwordProblem(password, await strictestPasswordRules(id));
+      if (problem)
+        return res.status(400).json({ error: PASSWORD_MESSAGES[problem], code: problem });
+      updateData.password = await AuthService.hashPassword(password);
+    }
     const [old] = await db.select().from(schema.globalUsers).where(eq(schema.globalUsers.id, id));
     const [user] = await db
       .update(schema.globalUsers)

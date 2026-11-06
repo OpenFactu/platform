@@ -43,14 +43,31 @@ async function ensurePublicTables(publicDb: any) {
   await publicDb.execute(sql.raw(fs.readFileSync(file, 'utf8')));
 }
 
-export async function createTestTenant(): Promise<TestTenant> {
-  if (!testDatabaseUrl || !/logistics_test/.test(new URL(testDatabaseUrl).pathname)) {
-    throw new Error('LOGISTICS_TEST_DATABASE_URL tiene que apuntar a una base *logistics_test*.');
+export interface TestTenantOptions {
+  /** Otra base de pruebas (por defecto, la de logística). Su nombre tiene que casar con `guard`. */
+  url?: string;
+  guard?: RegExp;
+  /** El esquema `public` ya lo aplicó quien llama (con su propio candado): no se toca. */
+  publicSchemaReady?: boolean;
+  /** `drop()` solo borra lo suyo y deja las conexiones y colas a quien llama. */
+  keepConnections?: boolean;
+}
+
+export async function createTestTenant(opts: TestTenantOptions = {}): Promise<TestTenant> {
+  const url = opts.url ?? testDatabaseUrl;
+  const guard = opts.guard ?? /logistics_test/;
+  if (!url || !guard.test(new URL(url).pathname)) {
+    throw new Error(
+      opts.url
+        ? `La URL de pruebas tiene que apuntar a una base que case con ${guard}.`
+        : 'LOGISTICS_TEST_DATABASE_URL tiene que apuntar a una base *logistics_test*.',
+    );
   }
 
-  await ClientFactory.setBaseUrl(testDatabaseUrl);
+  // Quien ya dejó la base lista no quiere que se cierren sus conexiones.
+  if (!opts.publicSchemaReady) await ClientFactory.setBaseUrl(url);
   const publicDb = ClientFactory.getClient('public');
-  await ensurePublicTables(publicDb);
+  if (!opts.publicSchemaReady) await ensurePublicTables(publicDb);
 
   const suffix = crypto.randomBytes(5).toString('hex');
   const schemaName = `tenant_lt_${suffix}`;
@@ -77,6 +94,7 @@ export async function createTestTenant(): Promise<TestTenant> {
     );
     await publicDb.execute(sql`DELETE FROM public."GlobalUser" WHERE id LIKE ${`%-${suffix}`}`);
     await publicDb.execute(sql`DELETE FROM public."Tenant" WHERE id = ${tenantId}`);
+    if (opts.keepConnections) return;
     await ClientFactory.disconnectAll();
     // Arrancan solas al importarlas y, con ellas vivas, el proceso de la prueba no acaba.
     webhookQueue.stop();

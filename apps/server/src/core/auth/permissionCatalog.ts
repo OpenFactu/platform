@@ -376,6 +376,7 @@ export const PERMISSION_CATALOG: PermissionEntry[] = [
   { path: '/dashboard-widgets', label: 'Widgets del panel', group: 'Configuración' },
   { path: '/settings/webhooks', label: 'Webhooks', group: 'Configuración' },
   { path: '/settings/api-tokens', label: 'Tokens de API', group: 'Configuración' },
+  { path: '/settings/security', label: 'Seguridad del acceso', group: 'Configuración' },
   { path: '/automations', label: 'Automatizaciones', group: 'Configuración' },
   { path: '/data-import', label: 'Importación de datos', group: 'Configuración' },
   { path: '/apps', label: 'Aplicaciones y plugins', group: 'Configuración' },

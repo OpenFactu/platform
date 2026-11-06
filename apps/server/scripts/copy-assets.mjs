@@ -31,3 +31,10 @@ copyMatching(join(root, 'src/seed-data'), join(root, 'dist/seed-data'));
 // `generate-public-schema.mjs` desde schema.ts: sin él, el servidor arranca
 // contra una base que puede estar incompleta y falla al consultarla.
 copyMatching(join(root, 'sql'), join(root, 'dist/sql'), (name) => name.endsWith('.sql'));
+
+// La lista de contraseñas comunes que lee `core/auth/policy.ts`.
+copyMatching(
+  join(root, 'src/core/auth'),
+  join(root, 'dist/core/auth'),
+  (name) => name === 'commonPasswords.txt',
+);

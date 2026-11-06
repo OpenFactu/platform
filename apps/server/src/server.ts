@@ -152,6 +152,8 @@ import documentRouter from './api/documentos/documentRouter';
 import inventoryCountsRouter from './api/inventoryCounts';
 import replenishmentRouter from './api/replenishment';
 import { tenantContextMiddleware } from './api/middleware/tenantContext';
+import { restrictedSession } from './api/middleware/restrictedSession';
+import settingsSecurityRouter from './api/settingsSecurity';
 import { hideItemCosts } from './api/middleware/hideItemCosts';
 import { i18nMiddleware } from './i18n';
 import { MigrationManager } from './core/tenant/MigrationManager';
@@ -243,11 +245,14 @@ app.use('/api', apiTokenMiddleware);
 
 // 2. Middleware de Contexto (Inyecta Prisma Tenant en req)
 app.use('/api', tenantContextMiddleware);
+// Una sesión que debe configurar su 2FA no llega a nada más.
+app.use('/api', restrictedSession);
 // Sin el permiso de costes, ninguna respuesta los lleva.
 app.use('/api', hideItemCosts);
 
 // 2b. Gestión de tokens de API (solo admins).
 mountApi(app, '/api/admin/api-tokens', '/settings/api-tokens', apiTokensRouter);
+mountApi(app, '/api/settings/security', '/settings/security', settingsSecurityRouter);
 
 // 3. Rutas de Plugins, Dev Keys y Negocio
 // `/api/plugins` sirve además los componentes de plugin que carga CUALQUIER

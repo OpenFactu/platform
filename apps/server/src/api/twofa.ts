@@ -15,7 +15,7 @@ import QRCode from 'qrcode';
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { ClientFactory } from '../core/tenant/ClientFactory';
-import { revokeAllForUser } from '../core/auth/sessions';
+import { revokeAllForUser, setSessionTenant } from '../core/auth/sessions';
 import { recordAuthEvent } from '../core/auth/authEvents';
 import { clientInfo } from '../core/auth/clientInfo';
 import {
@@ -187,6 +187,10 @@ router.post('/enable', async (req: any, res) => {
       client: clientInfo(req),
       detail: { enabled: true },
     });
+    // Con el segundo factor ya puesto, la sesión deja de estar restringida.
+    if (req.session?.restricted) {
+      await setSessionTenant(req.session.id, req.session.tenantId ?? null, null);
+    }
     res.json({ enabled: true, backupCodes });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Error' });

@@ -14,6 +14,15 @@ import {
   setSessionTenant,
 } from '../core/auth/sessions';
 import { clientInfo } from '../core/auth/clientInfo';
+import {
+  PASSWORD_MESSAGES,
+  passwordProblem,
+  policyGate,
+  readPolicy,
+  sessionLimits,
+  strictestPasswordRules,
+  userHasMfa,
+} from '../core/auth/policy';
 import sessionRoutes, { requireSession } from './auth/sessionRoutes';
 import eventRoutes from './auth/eventRoutes';
 import { recordAuthEvent } from '../core/auth/authEvents';
@@ -206,7 +215,19 @@ router.post('/switch-tenant', async (req, res) => {
     if (!t) return res.status(404).json({ error: 'Empresa no encontrada' });
 
     // Misma sesión (mismo sid), otra empresa activa.
-    const updated = await setSessionTenant(session.id, tenantId, null);
+    // La política de la empresa a la que se pasa: si exige 2FA y no lo tiene, queda restringida;
+    // si no, se levanta la restricción de la anterior. Además fija la duración de la sesión.
+    const policy = await readPolicy(tenantId);
+    const gate = policyGate(
+      policy,
+      { role: finalRole, hasMfa: await userHasMfa(user) },
+      session.method,
+    );
+    const limits = sessionLimits(policy);
+    const updated = await setSessionTenant(session.id, tenantId, gate.restricted, {
+      idleHours: limits.slidingHours,
+      maxDays: limits.maxDays,
+    });
     const newToken = issueToken(updated, {
       id: user.id,
       email: user.email,
@@ -237,6 +258,7 @@ router.post('/switch-tenant', async (req, res) => {
         locale: user.locale ?? null,
         themePreset: user.themePreset ?? null,
         themeMode: user.themeMode ?? null,
+        restricted: updated.restricted ?? null,
       },
     });
   } catch (error: any) {
@@ -314,6 +336,7 @@ router.get('/me', async (req, res) => {
       locale: user.locale ?? null,
       themePreset: user.themePreset ?? null,
       themeMode: user.themeMode ?? null,
+      restricted: session.restricted ?? null,
     });
   } catch (e) {
     res.status(401).json({ error: 'No autorizado' });
@@ -456,6 +479,11 @@ router.post('/reset-password', async (req, res) => {
     if (!user) {
       await recordAttempt('reset', ipKeys, false);
       return res.status(400).json({ error: 'El enlace no es válido o ha caducado' });
+    }
+
+    const problem = passwordProblem(newPassword, await strictestPasswordRules(user.id));
+    if (problem) {
+      return res.status(400).json({ error: PASSWORD_MESSAGES[problem], code: problem });
     }
 
     const hashed = await AuthService.hashPassword(newPassword);

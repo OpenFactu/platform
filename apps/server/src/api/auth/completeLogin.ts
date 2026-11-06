@@ -10,6 +10,13 @@ import { createSession, issueToken } from '../../core/auth/sessions';
 import { clientInfo } from '../../core/auth/clientInfo';
 import { hasPreviousLogin, isKnownDevice, recordAuthEvent } from '../../core/auth/authEvents';
 import { maybeNotifyNewDevice } from '../../core/auth/newDeviceNotice';
+import {
+  DEFAULT_POLICY,
+  policyGate,
+  readPolicy,
+  sessionLimits,
+  userHasMfa,
+} from '../../core/auth/policy';
 
 export interface CompleteLoginOpts {
   method: string;
@@ -87,6 +94,19 @@ export async function completeLogin(
         ? JSON.parse(finalPermissions)
         : {};
 
+  // La política de la empresa en la que se entra (sin empresa, la de fábrica).
+  const policy = finalTenantId ? await readPolicy(finalTenantId) : DEFAULT_POLICY;
+  const gate = policyGate(policy, { role: finalRole, hasMfa: await userHasMfa(user) }, opts.method);
+  if (!gate.allowed) {
+    const error =
+      gate.code === 'SSO_REQUIRED'
+        ? 'Tu empresa exige entrar con el acceso único (SSO)'
+        : 'Tu empresa no permite entrar de esta forma';
+    res.status(403).json({ error, code: gate.code });
+    return;
+  }
+  const limits = sessionLimits(policy);
+
   const client = clientInfo(req);
   // Antes de apuntar este login: lo que cuenta es lo que había hasta ahora.
   let newDevice = false;
@@ -100,7 +120,10 @@ export async function completeLogin(
     tenantId: finalTenantId,
     method: opts.method,
     mfa: opts.mfa,
+    restricted: gate.restricted,
     client,
+    slidingHours: limits.slidingHours,
+    maxDays: limits.maxDays,
   });
   await recordAuthEvent({
     userId: user.id,
@@ -132,6 +155,7 @@ export async function completeLogin(
       locale: user.locale ?? null,
       themePreset: user.themePreset ?? null,
       themeMode: user.themeMode ?? null,
+      restricted: session.restricted ?? null,
     },
   });
 }

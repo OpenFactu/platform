@@ -201,10 +201,27 @@ export async function setSessionTenant(
   sid: string,
   tenantId: string | null,
   restricted: string | null,
+  limits?: { idleHours: number; maxDays: number },
 ): Promise<SessionRow> {
+  const patch: Record<string, unknown> = { tenantId, restricted };
+  if (limits) {
+    // Otra empresa, otra política: la ventana se renueva, y el máximo absoluto solo se acorta.
+    const [cur] = await db().select().from(userSessions).where(eq(userSessions.id, sid));
+    if (cur) {
+      const absolute = Math.min(
+        cur.absoluteExpiresAt.getTime(),
+        cur.createdAt.getTime() + limits.maxDays * 86_400_000,
+      );
+      patch.idleHours = limits.idleHours;
+      patch.absoluteExpiresAt = new Date(absolute);
+      patch.expiresAt = new Date(
+        Math.min(cur.expiresAt.getTime(), absolute, Date.now() + limits.idleHours * 3_600_000),
+      );
+    }
+  }
   const [row] = await db()
     .update(userSessions)
-    .set({ tenantId, restricted })
+    .set(patch)
     .where(eq(userSessions.id, sid))
     .returning();
   cache.delete(sid);
