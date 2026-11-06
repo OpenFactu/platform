@@ -16,6 +16,7 @@ import { login as loginRequest, type LoginResult } from './login/loginApi';
 import { MfaStepContainer } from './login/LoginMfaStep';
 import { LoginHandoffWait } from './login/LoginHandoffWait';
 import { LoginSsoButtons } from './login/LoginSsoButtons';
+import { LoginDivider } from './login/LoginDivider';
 import { readQueryParam, ssoErrorKey, stripQueryParams } from './login/ssoModel';
 import { useSsoLogin } from './login/useSsoLogin';
 import { useCanOpenSystemBrowser } from '@/shared/auth/openExternal';
@@ -25,7 +26,7 @@ import { usePasskeyLogin } from './login/usePasskeyLogin';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Avatar, Button, Input, PasswordInput, Select } from '@openfactu/ui';
-import { ArrowRight, Building, KeyRound, Mail } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building, KeyRound, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
 import { AuroraBackdrop } from '../components/login/AuroraBackdrop';
@@ -83,6 +84,13 @@ export const Login: React.FC = () => {
     setLoginAvatarUrl(a.avatarUrl ?? null);
     setPassword('');
     setError(null);
+  };
+  // Olvidar se hace con la cuenta ya elegida, no con una X en la lista: es raro y fácil de tocar sin querer.
+  const forgetPickedAccount = () => {
+    if (!picked) return;
+    forgetAccount(picked);
+    setRemembered(loadRememberedAccounts());
+    leavePickedAccount();
   };
   const leavePickedAccount = () => {
     setPicked(null);
@@ -232,10 +240,17 @@ export const Login: React.FC = () => {
 
   const tenantName = tenants.length === 1 ? tenants[0].name : null;
 
+  // Otras formas de entrar, bajo una línea «o»: no dependen de la cuenta de arriba.
+  const onMainStep = !mfa && !emailCodeFor && !sso.handoff;
+  const showEmailCode = onMainStep && !showPicker && !!methods.emailCode;
+  const showPasskey = onMainStep && passkeyLogin.supported;
+  const ssoProviders = onMainStep && canOpenBrowser ? methods.sso : [];
+  const hasAlternatives = showEmailCode || showPasskey || ssoProviders.length > 0;
+
   return (
     <div className="min-h-dvh w-full flex bg-bg-app">
       {/* ── Formulario ── */}
-      <main className="flex-1 lg:flex-none lg:w-[480px] flex flex-col bg-bg-card lg:border-r border-border-default">
+      <main className="min-w-0 flex-1 lg:flex-none lg:w-[480px] flex flex-col bg-bg-card lg:border-r border-border-default">
         <header className="flex items-center gap-2.5 px-6 pt-6 sm:px-10 sm:pt-8">
           <KeirostLogo size={28} className="text-fg-default" />
           <span className="font-display text-base font-bold tracking-tight text-fg-default">
@@ -270,6 +285,22 @@ export const Login: React.FC = () => {
                       : t('app.login.subtitle')}
                 </p>
               )}
+              {otherAccount &&
+                !picked &&
+                remembered.length > 0 &&
+                !twoFactorRequired &&
+                !emailCodeFor && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="gap-1 px-0"
+                    onClick={() => setOtherAccount(false)}
+                  >
+                    <ArrowLeft size={14} />
+                    {t('app.login.backToAccounts')}
+                  </Button>
+                )}
             </div>
 
             {error && (
@@ -329,10 +360,6 @@ export const Login: React.FC = () => {
               <RememberedAccountPicker
                 accounts={remembered}
                 onPick={pickAccount}
-                onForget={(a) => {
-                  forgetAccount(a);
-                  setRemembered(loadRememberedAccounts());
-                }}
                 onOtherAccount={() => setOtherAccount(true)}
               />
             ) : (
@@ -407,7 +434,20 @@ export const Login: React.FC = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
                   />
-                  <div className="flex justify-end">
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                    {picked ? (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="px-0 text-fg-muted"
+                        onClick={forgetPickedAccount}
+                      >
+                        {t('app.login.forgetThisAccount')}
+                      </Button>
+                    ) : (
+                      <span />
+                    )}
                     <Button
                       type="button"
                       variant="link"
@@ -434,50 +474,53 @@ export const Login: React.FC = () => {
               </Button>
             )}
 
-            {!mfa && !emailCodeFor && !showPicker && !sso.handoff && methods.emailCode && (
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                className="w-full gap-2"
-                disabled={isSubmitting}
-                onClick={startEmailCode}
-              >
-                <Mail size={16} />
-                {t('auth.email.button')}
-              </Button>
-            )}
-
-            {!mfa && !emailCodeFor && !sso.handoff && passkeyLogin.supported && (
+            {hasAlternatives && (
               <div className="space-y-3">
-                {passkeyLogin.error && (
-                  <Alert tone="danger" role="alert">
-                    {passkeyLogin.error}
-                  </Alert>
+                <LoginDivider
+                  label={showPicker ? t('app.login.orWithoutAccount') : t('app.login.or')}
+                />
+                {showEmailCode && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="lg"
+                    className="w-full gap-2"
+                    disabled={isSubmitting}
+                    onClick={startEmailCode}
+                  >
+                    <Mail size={16} />
+                    {t('auth.email.button')}
+                  </Button>
                 )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="lg"
-                  className="w-full gap-2"
-                  isLoading={passkeyLogin.busy}
-                  disabled={passkeyLogin.busy || isSubmitting}
-                  onClick={() => void passkeyLogin.start(selectedTenant)}
-                >
-                  {!passkeyLogin.busy && <KeyRound size={16} />}
-                  {t('auth.passkey.signIn')}
-                </Button>
+                {showPasskey && (
+                  <>
+                    {passkeyLogin.error && (
+                      <Alert tone="danger" role="alert">
+                        {passkeyLogin.error}
+                      </Alert>
+                    )}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="lg"
+                      className="w-full gap-2"
+                      isLoading={passkeyLogin.busy}
+                      disabled={passkeyLogin.busy || isSubmitting}
+                      onClick={() => void passkeyLogin.start(selectedTenant)}
+                    >
+                      {!passkeyLogin.busy && <KeyRound size={16} />}
+                      {t('auth.passkey.signIn')}
+                    </Button>
+                  </>
+                )}
+                <LoginSsoButtons
+                  providers={ssoProviders}
+                  busyId={sso.busyId}
+                  disabled={isSubmitting || passkeyLogin.busy}
+                  error={sso.error}
+                  onStart={(p) => void sso.start(p)}
+                />
               </div>
-            )}
-
-            {!mfa && !emailCodeFor && !sso.handoff && (
-              <LoginSsoButtons
-                providers={canOpenBrowser ? methods.sso : []}
-                busyId={sso.busyId}
-                disabled={isSubmitting || passkeyLogin.busy}
-                error={sso.error}
-                onStart={(p) => void sso.start(p)}
-              />
             )}
           </form>
         </div>

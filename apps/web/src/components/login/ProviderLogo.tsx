@@ -1,6 +1,6 @@
 /** Logo del proveedor de acceso único: Google y Microsoft en SVG propio, el resto un icono. */
 import React from 'react';
-import { KeyRound } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 
 export const ProviderLogo: React.FC<{ kind: string; size?: number }> = ({ kind, size = 18 }) => {
   if (kind === 'google') {
@@ -35,5 +35,6 @@ export const ProviderLogo: React.FC<{ kind: string; size?: number }> = ({ kind, 
       </svg>
     );
   }
-  return <KeyRound size={size} aria-hidden="true" />;
+  // OIDC genérico: el acceso de la organización (la llave es la de la passkey).
+  return <Building2 size={size} aria-hidden="true" />;
 };

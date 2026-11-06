@@ -347,7 +347,10 @@
     },
     "login": {
       "rememberedAccounts": "Cuentas recordadas en este navegador",
-      "forgetAccount": "Olvidar {name} en este navegador",
+      "forgetThisAccount": "Olvidar esta cuenta en este navegador",
+      "or": "o",
+      "backToAccounts": "Volver a mis cuentas",
+      "orWithoutAccount": "o, sin elegir cuenta",
       "useOtherAccount": "Usar otra cuenta",
       "pickCompanyError": "Elige la empresa a la que quieres entrar",
       "invalid2fa": "Código 2FA inválido",

@@ -347,7 +347,10 @@
     },
     "login": {
       "rememberedAccounts": "Accounts remembered in this browser",
-      "forgetAccount": "Forget {name} in this browser",
+      "forgetThisAccount": "Forget this account on this browser",
+      "or": "or",
+      "backToAccounts": "Back to my accounts",
+      "orWithoutAccount": "or, without picking an account",
       "useOtherAccount": "Use another account",
       "pickCompanyError": "Choose the company you want to sign in to",
       "invalid2fa": "Invalid 2FA code",
