@@ -17,6 +17,7 @@ export const LoginMfaStep: React.FC<Props> = ({
   mode,
   setMode,
   canBackup,
+  resetKey,
   code,
   setCode,
   error,
@@ -50,30 +51,39 @@ export const LoginMfaStep: React.FC<Props> = ({
       )}
 
       {mode === 'totp' ? (
-        <OtpInput
-          key="totp"
-          length={6}
-          groupSize={3}
-          autoFocus
-          value={code}
-          onChange={setCode}
-          onComplete={submit}
-          error={error}
-          disabled={lockedFor > 0}
-        />
+        // La celda se encoge para caber en la columna (320 px de pantalla → 272 px de columna);
+        // 44 px como mucho. 58 px son los huecos y el separador.
+        <div className="[container-type:inline-size] [&_.k-otp]:[--k-cell:min(44px,calc((100cqw_-_58px)/6))]">
+          <OtpInput
+            key={`totp-${resetKey}`}
+            length={6}
+            groupSize={3}
+            autoFocus
+            value={code}
+            onChange={setCode}
+            onComplete={submit}
+            error={error}
+            disabled={lockedFor > 0 || submitting}
+          />
+        </div>
       ) : (
-        <OtpInput
-          key="backup"
-          length={8}
-          groupSize={4}
-          mode="alphanumeric"
-          autoFocus
-          value={code}
-          onChange={setCode}
-          onComplete={submit}
-          error={error}
-          disabled={lockedFor > 0}
-        />
+        // Ocho casillas no caben a tamaño normal en la columna del formulario: la celda se
+        // encoge hasta ocuparla (36 px como mucho; 60 px son los huecos y el separador).
+        <div className="[container-type:inline-size] [&_.k-otp]:[--k-cell:min(36px,calc((100cqw_-_60px)/8))]">
+          <OtpInput
+            key={`backup-${resetKey}`}
+            length={8}
+            groupSize={4}
+            mode="alphanumeric"
+            size="sm"
+            autoFocus
+            value={code}
+            onChange={setCode}
+            onComplete={submit}
+            error={error}
+            disabled={lockedFor > 0 || submitting}
+          />
+        </div>
       )}
 
       <Button

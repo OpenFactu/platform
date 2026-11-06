@@ -128,7 +128,11 @@ export const Login: React.FC = () => {
         tenantName: tenants.find((t) => t.id === tenantId)?.name || data.user?.tenantName,
       });
     }
-    login(data.token!, data.user as unknown as Parameters<typeof login>[1]);
+    if (!data.token) {
+      setError(t('app.login.connectionError'));
+      return;
+    }
+    login(data.token, data.user as unknown as Parameters<typeof login>[1]);
     navigate('/');
   };
 

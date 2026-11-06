@@ -24,14 +24,24 @@ export function useMfaStep({ challenge, methods, onDone, onExpired }: MfaStepPar
   const [error, setError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [lockedFor, setLockedFor] = useState(0);
+  // Sube al vaciar el código tras un fallo: la vista remonta las casillas y el foco vuelve a la primera.
+  const [resetKey, setResetKey] = useState(0);
 
   const canBackup = methods.includes('backup');
 
-  const setMode = useCallback((m: MfaMode) => {
-    setModeState(m);
+  const clearCode = useCallback(() => {
     setCode('');
-    setError(undefined);
+    setResetKey((k) => k + 1);
   }, []);
+
+  const setMode = useCallback(
+    (m: MfaMode) => {
+      setModeState(m);
+      clearCode();
+      setError(undefined);
+    },
+    [clearCode],
+  );
 
   // Cuenta atrás: un tic por segundo mientras haya bloqueo.
   const locked = lockedFor > 0;
@@ -57,15 +67,15 @@ export function useMfaStep({ challenge, methods, onDone, onExpired }: MfaStepPar
             : null;
         if (err instanceof ApiError && err.status === 429) {
           setLockedFor(Math.max(1, Number(body?.retryAfter) || 1));
-          setCode('');
+          clearCode();
         } else if (body?.code === 'MFA_CHALLENGE_EXPIRED') {
           onExpired();
         } else if (body?.code === 'MFA_INVALID') {
           setError(t('auth.mfa.invalid'));
-          setCode('');
+          clearCode();
         } else if (err instanceof ApiError && err.status !== 0) {
           setError(body?.error || t('auth.mfa.invalid'));
-          setCode('');
+          clearCode();
         } else {
           setError(t('app.login.connectionError'));
         }
@@ -73,10 +83,21 @@ export function useMfaStep({ challenge, methods, onDone, onExpired }: MfaStepPar
         setSubmitting(false);
       }
     },
-    [challenge, code, lockedFor, mode, onDone, onExpired, submitting, t],
+    [challenge, clearCode, code, lockedFor, mode, onDone, onExpired, submitting, t],
   );
 
-  return { mode, setMode, canBackup, code, setCode, error, submitting, lockedFor, submit };
+  return {
+    mode,
+    setMode,
+    canBackup,
+    resetKey,
+    code,
+    setCode,
+    error,
+    submitting,
+    lockedFor,
+    submit,
+  };
 }
 
 export type MfaStepState = ReturnType<typeof useMfaStep>;
