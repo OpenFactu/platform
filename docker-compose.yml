@@ -36,6 +36,12 @@ services:
       # Los mensajes entran en las copias: los exporta el servicio de mensajería.
       - MESSAGING_URL=http://messaging:3100
       - DATABASE_URL=postgresql://${POSTGRES_USER:-openfactu}:${POSTGRES_PASSWORD:-openfactu_pass}@db:5432/${POSTGRES_DB:-openfactudb}
+      # Se llega por el nginx de `web`, que pasa la IP del cliente en X-Forwarded-For. Se confía
+      # solo en saltos de red privada (el nginx, y el proxy de delante si lo hay: Traefik de
+      # Dokploy, Caddy...): así el freno por IP y el historial ven la IP real. Es seguro mientras
+      # el puerto 3000 siga publicado solo en 127.0.0.1 (BIND_ADDR): si se abre hacia fuera,
+      # cualquiera podría falsear la cabecera. Se cambia con TRUST_PROXY en .env.
+      - 'TRUST_PROXY=${TRUST_PROXY:-loopback, linklocal, uniquelocal}'
     networks:
       - openfactu_net
 

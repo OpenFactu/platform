@@ -113,6 +113,21 @@ sudo docker exec openfactu-db-1 pg_dump -U openfactu openfactudb > backup.sql
 sudo docker exec -i openfactu-db-1 psql -U openfactu openfactudb < backup.sql
 ```
 
+## IP del cliente detrás del proxy (`TRUST_PROXY`)
+
+El servidor frena los intentos de acceso por IP y guarda la IP en el historial de accesos. Detrás
+de un proxy (el nginx de `web`, y delante el de Dokploy) solo ve la IP del proxy, salvo que se le
+diga en qué saltos confiar para leer `X-Forwarded-For`:
+
+- `docker-compose.yml` ya pone `TRUST_PROXY=loopback, linklocal, uniquelocal` en `server`:
+  confía en los saltos de red privada (nginx, Traefik) y no en los de Internet.
+- Sin eso, todas las peticiones parecen venir del mismo contenedor y el freno por IP bloquea a
+  todo el mundo a la vez.
+- No publiques el puerto 3000 del servidor hacia fuera (`BIND_ADDR` en `127.0.0.1`): quien llegue
+  directo podría falsear la cabecera y esquivar el freno.
+- Si el proxy de delante no está en una red privada, pon en `TRUST_PROXY` su IP o el número de
+  saltos (`2`: Dokploy + nginx).
+
 ## Troubleshooting
 
 | Problema | Solución |
