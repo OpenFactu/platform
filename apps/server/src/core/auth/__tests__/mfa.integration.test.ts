@@ -10,6 +10,9 @@ import { encryptSecret } from '../totpCrypto';
 import { approveChallenge, consumeChallenge, createChallenge, findChallenge } from '../challenges';
 import authRouter from '../../../api/auth';
 
+// IP propia de esta ejecución: los contadores de otras pruebas no se tocan ni nos afectan.
+const testIp = `10.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 254) + 1}`;
+
 describe('segundo factor con reto', { skip: !authTestDatabaseUrl }, () => {
   let t: Awaited<ReturnType<typeof useAuthTestDb>>;
   let server: http.Server;
@@ -17,9 +20,9 @@ describe('segundo factor con reto', { skip: !authTestDatabaseUrl }, () => {
 
   before(async () => {
     t = await useAuthTestDb();
-    // Los fallos por IP (127.0.0.1) de ejecuciones anteriores bloquearían a todas las pruebas.
-    await t.publicDb.execute(sql`DELETE FROM public."AuthThrottle"`);
     const app = express();
+    // Solo en esta app de prueba: la IP del cliente sale de x-forwarded-for.
+    app.set('trust proxy', true);
     app.use(express.json());
     // Mismo orden que server.ts: /api/auth no pasa por el contexto de empresa.
     app.use('/api/auth', authRouter);
@@ -30,7 +33,10 @@ describe('segundo factor con reto', { skip: !authTestDatabaseUrl }, () => {
   after(async () => {
     await new Promise((r) => (server ? server.close(r) : r(null)));
     if (t) {
-      await t.publicDb.execute(sql`DELETE FROM public."AuthThrottle"`);
+      // Solo las claves de la IP de esta ejecución.
+      await t.publicDb.execute(
+        sql`DELETE FROM public."AuthThrottle" WHERE key LIKE ${'%:ip:' + testIp}`,
+      );
       await t.drop();
     }
   });
@@ -38,7 +44,7 @@ describe('segundo factor con reto', { skip: !authTestDatabaseUrl }, () => {
   const post = async (path: string, body: any) => {
     const res = await fetch(base + path, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': testIp },
       body: JSON.stringify(body),
     });
     const text = await res.text();
