@@ -15,10 +15,20 @@ export type SessionRow = typeof userSessions.$inferSelect;
 
 const CHANNEL = 'keirost_sessions';
 // Identifica a esta instancia en los avisos, para no reaccionar a su propio eco.
-const INSTANCE_ID = crypto.randomUUID();
+export const INSTANCE_ID = crypto.randomUUID();
 const CACHE_MS = 15_000;
 const cache = new Map<string, { session: SessionRow; at: number }>();
 const revokeListeners: Array<(sid: string, userId: string) => void> = [];
+
+function fire(sid: string, userId: string) {
+  for (const cb of revokeListeners) {
+    try {
+      cb(sid, userId);
+    } catch (e: any) {
+      console.error('[sessions] Un aviso de revocación falló:', e?.message ?? e);
+    }
+  }
+}
 
 const db = () => ClientFactory.getClient('public');
 
@@ -48,6 +58,8 @@ export async function createSession(input: {
       id: crypto.randomBytes(24).toString('base64url'),
       userId: input.userId,
       tenantId: input.tenantId,
+      createdAt: new Date(now),
+      lastSeenAt: new Date(now),
       expiresAt,
       absoluteExpiresAt,
       method: input.method,
@@ -105,15 +117,28 @@ export async function resolveSession(
   return { payload, session };
 }
 
-/** Desliza la caducidad desde ahora, sin pasar nunca del máximo absoluto. */
+/**
+ * Desliza la caducidad desde ahora, sin pasar nunca del máximo absoluto ni revivir una sesión
+ * ya caducada o revocada. Las fechas se calculan aquí y no con `now()` de Postgres: las
+ * columnas son `timestamp` sin zona y guardan la hora UTC de JS.
+ */
 export async function touchSession(sid: string): Promise<void> {
+  const [cur] = await db().select().from(userSessions).where(eq(userSessions.id, sid));
+  if (!cur) return;
+  const now = new Date();
+  const expiresAt = new Date(
+    Math.min(now.getTime() + cur.idleHours * 3_600_000, cur.absoluteExpiresAt.getTime()),
+  );
   const [row] = await db()
     .update(userSessions)
-    .set({
-      lastSeenAt: sql`now()`,
-      expiresAt: sql`LEAST(now() + "idleHours" * interval '1 hour', "absoluteExpiresAt")`,
-    })
-    .where(and(eq(userSessions.id, sid), isNull(userSessions.revokedAt)))
+    .set({ lastSeenAt: now, expiresAt })
+    .where(
+      and(
+        eq(userSessions.id, sid),
+        isNull(userSessions.revokedAt),
+        gt(userSessions.expiresAt, now),
+      ),
+    )
     .returning();
   if (row) cache.set(sid, { session: row, at: Date.now() });
 }
@@ -135,7 +160,7 @@ export async function revokeSession(sid: string, reason: string): Promise<void> 
   cache.delete(sid);
   if (!row) return;
   await notify({ origin: INSTANCE_ID, userId: row.userId, sids: [sid] });
-  for (const cb of revokeListeners) cb(sid, row.userId);
+  fire(sid, row.userId);
 }
 
 export async function revokeAllForUser(
@@ -154,7 +179,7 @@ export async function revokeAllForUser(
   if (rows.length) {
     await notify({ origin: INSTANCE_ID, userId, sids: rows.map((r: SessionRow) => r.id) });
   }
-  for (const r of rows) for (const cb of revokeListeners) cb(r.id, userId);
+  for (const r of rows) fire(r.id, userId);
   return rows.length;
 }
 
@@ -184,6 +209,8 @@ export async function setSessionTenant(
     .returning();
   cache.delete(sid);
   if (!row) throw new Error('Sesión no encontrada');
+  // Las demás instancias tienen la fila vieja en caché: se les avisa sin revocar nada.
+  await notify({ origin: INSTANCE_ID, userId: row.userId, sids: [sid], kind: 'update' });
   return row;
 }
 
@@ -197,7 +224,8 @@ let listener: Client | null = null;
 let listenerStopped = true;
 let retryTimer: NodeJS.Timeout | null = null;
 
-function handleNotification(payload?: string) {
+/** Lo que llega por NOTIFY; se exporta para probar la rama de otra instancia. */
+export function handleNotification(payload?: string) {
   let msg: any;
   try {
     msg = JSON.parse(payload || '');
@@ -208,7 +236,7 @@ function handleNotification(payload?: string) {
   if (msg.origin === INSTANCE_ID || !Array.isArray(msg.sids)) return;
   for (const sid of msg.sids) {
     cache.delete(sid);
-    for (const cb of revokeListeners) cb(sid, msg.userId);
+    if (msg.kind !== 'update') fire(sid, msg.userId);
   }
 }
 

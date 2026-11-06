@@ -1,11 +1,13 @@
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { authTestDatabaseUrl, useAuthTestDb } from './authTestDb';
 import { AuthService } from '../AuthService';
 import { userSessions } from '../../../db/schema';
 import {
   createSession,
+  handleNotification,
+  setSessionTenant,
   issueToken,
   listSessions,
   onSessionRevoked,
@@ -138,5 +140,76 @@ describe('sessions', { skip: !authTestDatabaseUrl }, () => {
     await revokeAllForUser(u.id, 'test');
     await new Promise((r) => setTimeout(r, 400)); // espera al eco del NOTIFY
     assert.deepEqual([...calls].sort(), [s.id, s2.id, s3.id].sort());
+  });
+
+  it('touch no revive una sesión caducada', async () => {
+    const { s, user } = await mk();
+    const token = issueToken(s, user);
+    await t.publicDb
+      .update(userSessions)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(userSessions.id, s.id));
+    await touchSession(s.id);
+    assert.deepEqual(await resolveSession(token), { error: 'SESSION_EXPIRED' });
+  });
+
+  it('touch no depende de la zona horaria de la conexión', async () => {
+    const u = await t.createUser();
+    const s = await createSession({
+      userId: u.id,
+      tenantId: null,
+      method: 'password',
+      mfa: null,
+      client,
+      slidingHours: 2,
+    });
+    await t.publicDb.execute(sql`SET TIME ZONE 'America/New_York'`);
+    await touchSession(s.id);
+    const [row] = await t.publicDb.select().from(userSessions).where(eq(userSessions.id, s.id));
+    const diff = row.expiresAt.getTime() - Date.now();
+    assert.ok(diff > 119 * 60_000 && diff <= 121 * 60_000, `diff=${diff}`);
+    assert.ok(Math.abs(row.lastSeenAt.getTime() - Date.now()) < 5000);
+  });
+
+  it('un aviso de otra instancia: update vacía la caché sin avisar; revoke avisa una vez por sid', async () => {
+    const { u, user, s } = await mk();
+    const s2 = await open(u.id);
+    const token = issueToken(s, user);
+    await resolveSession(token); // llena la caché
+    // otra instancia cambia la empresa directamente en la base
+    await t.publicDb
+      .update(userSessions)
+      .set({ tenantId: 'otra' })
+      .where(eq(userSessions.id, s.id));
+    const calls: string[] = [];
+    onSessionRevoked((sid) => calls.push(sid));
+    handleNotification(
+      JSON.stringify({ origin: 'otra-instancia', userId: u.id, sids: [s.id], kind: 'update' }),
+    );
+    assert.deepEqual(calls, []);
+    const r: any = await resolveSession(token);
+    assert.equal(r.session.tenantId, 'otra');
+    handleNotification(
+      JSON.stringify({ origin: 'otra-instancia', userId: u.id, sids: [s.id, s2.id] }),
+    );
+    assert.deepEqual(calls, [s.id, s2.id]);
+  });
+
+  it('setSessionTenant cambia la empresa y la restricción', async () => {
+    const { s } = await mk();
+    const r = await setSessionTenant(s.id, 'emp', 'mfa_setup');
+    assert.equal(r.tenantId, 'emp');
+    assert.equal(r.restricted, 'mfa_setup');
+  });
+
+  it('un aviso que lanza no impide los demás ni rompe la revocación', async () => {
+    const { s } = await mk();
+    const calls: string[] = [];
+    onSessionRevoked(() => {
+      throw new Error('falla a propósito');
+    });
+    onSessionRevoked((sid) => calls.push(sid));
+    await revokeSession(s.id, 'test');
+    assert.ok(calls.includes(s.id));
   });
 });
