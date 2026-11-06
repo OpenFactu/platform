@@ -35,7 +35,8 @@ export function verifyTwoFactor(
   code: string,
   encryptedSecret: string | null,
   backupCodesJson: string | null,
-): { ok: boolean; usedBackup: boolean; remainingBackups?: string[] } {
+  lastStep: number | null = null,
+): { ok: boolean; usedBackup: boolean; remainingBackups?: string[]; step?: number } {
   const clean = (code || '').replace(/\s|-/g, '');
   if (!clean) return { ok: false, usedBackup: false };
 
@@ -43,8 +44,16 @@ export function verifyTwoFactor(
   if (encryptedSecret) {
     try {
       const secret = decryptSecret(encryptedSecret);
-      if (authenticator.verify({ token: clean, secret })) {
-        return { ok: true, usedBackup: false };
+      // Instancia propia: la ventana de ±1 paso no se filtra a las opciones globales.
+      const auth = authenticator.clone({ window: 1 });
+      const delta = auth.checkDelta(clean, secret);
+      if (delta !== null && delta !== undefined) {
+        const epoch = Number(auth.allOptions().epoch ?? Date.now());
+        const step = Math.floor(epoch / 1000 / 30) + delta;
+        // Un código ya usado (o más viejo que el último aceptado) no vale otra vez.
+        if (lastStep == null || step > lastStep) {
+          return { ok: true, usedBackup: false, step };
+        }
       }
     } catch {
       /* secreto corrupto → cae a backup */
@@ -185,7 +194,12 @@ router.post('/disable', async (req: any, res) => {
       return res.status(400).json({ error: 'El 2FA no está activo' });
     }
 
-    const check = verifyTwoFactor(String(code), user.totpSecret, user.totpBackupCodes);
+    const check = verifyTwoFactor(
+      String(code),
+      user.totpSecret,
+      user.totpBackupCodes,
+      user.totpLastStep ?? null,
+    );
     if (!check.ok) return res.status(400).json({ error: 'Código incorrecto' });
 
     await publicDb

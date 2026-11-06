@@ -4,7 +4,7 @@ import { AuthService } from '../core/auth/AuthService';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import * as schema from '../db/schema';
 import { eq, or, and, gt } from 'drizzle-orm';
-import { verifyTwoFactor } from './twofa';
+import bcrypt from 'bcrypt';
 import { hashCode } from '../core/auth/totpCrypto';
 import { enqueueMail } from '../core/email/MailQueue';
 import {
@@ -15,11 +15,21 @@ import {
 } from '../core/auth/sessions';
 import { clientInfo } from '../core/auth/clientInfo';
 import sessionRoutes, { requireSession } from './auth/sessionRoutes';
+import mfaRoutes, { consumeUserCode, startMfaOrComplete } from './auth/mfaRoutes';
+import { completeLogin } from './auth/completeLogin';
+import {
+  checkThrottle,
+  normalizeAccount,
+  recordAttempt,
+  sendThrottled,
+} from '../core/auth/throttle';
 
 const router = Router();
 
 // logout, refresh y sesiones abiertas.
 router.use(sessionRoutes);
+// Segundo factor con reto.
+router.use(mfaRoutes);
 
 /**
  * GET /api/auth/avatar-for-login?email=X — foto de perfil a mostrar en el
@@ -66,13 +76,25 @@ router.get('/tenants', async (req, res) => {
   }
 });
 
+// Hash fijo para gastar el mismo tiempo con un usuario que no existe.
+const DUMMY_HASH = bcrypt.hashSync('keirost-sin-usuario', 10);
+
+const BAD_CREDENTIALS = { error: 'Credenciales inválidas' };
+
 /**
  * POST /api/auth/login
  */
 router.post('/login', async (req, res) => {
-  const { email, password, selectedTenantId, totpCode } = req.body;
+  const { email, password, selectedTenantId, totpCode } = req.body || {};
 
   try {
+    const account = normalizeAccount(String(email ?? ''));
+    const keys = { account: account || undefined, ip: clientInfo(req).ip };
+
+    // Primero el freno: bloqueado no se comprueba nada ni se apunta nada.
+    const gate = await checkThrottle('login', keys);
+    if (gate.blocked) return sendThrottled(res, gate.retryAfter);
+
     const db = ClientFactory.getClient('public');
 
     // Buscar usuario por email o username
@@ -81,134 +103,33 @@ router.post('/login', async (req, res) => {
       .from(schema.globalUsers)
       .where(or(eq(schema.globalUsers.email, email), eq(schema.globalUsers.username, email)));
 
-    if (!user) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
+    // Con o sin usuario se hace una comparación de bcrypt, y la respuesta es idéntica.
+    const isMatch = user
+      ? await AuthService.verifyPassword(password, user.password)
+      : (await bcrypt.compare(String(password ?? ''), DUMMY_HASH), false);
+    if (!user || !isMatch) {
+      await recordAttempt('login', keys, false);
+      return res.status(401).json(BAD_CREDENTIALS);
+    }
+    await recordAttempt('login', keys, true);
+
+    // Atajo compatible: el código del segundo factor en el mismo cuerpo. Pasa por la misma
+    // comprobación de un solo uso que `/mfa`.
+    if (user.totpEnabled && totpCode) {
+      const mfaKeys = { account: user.id, ip: keys.ip };
+      const mfaGate = await checkThrottle('mfa', mfaKeys);
+      if (mfaGate.blocked) return sendThrottled(res, mfaGate.retryAfter);
+      const used = await consumeUserCode(user, String(totpCode));
+      await recordAttempt('mfa', mfaKeys, used.ok);
+      if (!used.ok) return res.status(401).json({ error: 'Código 2FA inválido' });
+      return completeLogin(req, res, user, {
+        method: 'password',
+        mfa: used.mfa,
+        tenantId: selectedTenantId,
+      });
     }
 
-    const isMatch = await AuthService.verifyPassword(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
-    }
-
-    let mfa: string | null = null;
-
-    // ── Segundo factor (2FA/TOTP) ──────────────────────────────────────────
-    // Si el usuario lo tiene activo, exigimos el código antes de emitir el JWT.
-    if (user.totpEnabled) {
-      if (!totpCode) {
-        // Contraseña correcta pero falta el 2FA: no emitimos token todavía.
-        return res.json({ twoFactorRequired: true });
-      }
-      const check = verifyTwoFactor(String(totpCode), user.totpSecret, user.totpBackupCodes);
-      if (!check.ok) {
-        return res.status(401).json({ error: 'Código 2FA inválido' });
-      }
-      mfa = check.usedBackup ? 'backup' : 'totp';
-      // Si se consumió un código de respaldo, persistimos la lista restante.
-      if (check.usedBackup) {
-        await db
-          .update(schema.globalUsers)
-          .set({
-            totpBackupCodes: JSON.stringify(check.remainingBackups || []),
-            updatedAt: new Date(),
-          })
-          .where(eq(schema.globalUsers.id, user.id));
-      }
-    }
-
-    // Resolución de tenant/rol/permisos en 3 niveles
-    let finalRole = user.role;
-    let finalTenantId: string | null = null;
-    let finalPermissions: string | null = null;
-
-    if (user.role === 'SUPERUSER') {
-      // SUPERUSER bypassa memberships: accede a cualquier tenant
-      finalTenantId = selectedTenantId || null;
-    } else {
-      // Nivel 1: buscar membership exacta para el tenant seleccionado
-      if (selectedTenantId) {
-        const [membership] = await db
-          .select()
-          .from(schema.userTenantMemberships)
-          .where(
-            and(
-              eq(schema.userTenantMemberships.userId, user.id),
-              eq(schema.userTenantMemberships.tenantId, selectedTenantId),
-            ),
-          );
-
-        if (membership) {
-          finalTenantId = membership.tenantId;
-          finalRole = membership.role;
-          finalPermissions = membership.permissions;
-        } else if (user.tenantId === selectedTenantId) {
-          // Nivel 2: fallback legacy — el usuario tiene ese tenant asignado directamente
-          finalTenantId = user.tenantId;
-          finalPermissions = user.permissions;
-        } else {
-          return res.status(403).json({ error: 'No tienes acceso a esta empresa' });
-        }
-      } else {
-        // Sin selectedTenantId: usar tenantId legacy
-        finalTenantId = user.tenantId;
-        finalPermissions = user.permissions;
-      }
-    }
-
-    let tenantName = null;
-    if (finalTenantId) {
-      const [t] = await db
-        .select()
-        .from(schema.tenants)
-        .where(eq(schema.tenants.id, finalTenantId));
-      tenantName = t?.name;
-    }
-
-    // ADMIN y SUPERUSER ignoran siempre permissions granulares — tienen acceso
-    // total, y eso es lo que significa `null`.
-    //
-    // Un usuario normal SIN permisos configurados recibe `{}`, no `null`: son
-    // dos cosas distintas y confundirlas es peligroso. Antes ambos casos
-    // devolvían `null`, y bastaba con que alguien escribiera
-    // `if (permissions === null) → acceso total` para regalarle la empresa
-    // entera a un usuario recién creado.
-    const effectivePermissions =
-      finalRole === 'SUPERUSER' || finalRole === 'ADMIN'
-        ? null
-        : finalPermissions
-          ? JSON.parse(finalPermissions)
-          : {};
-
-    const session = await createSession({
-      userId: user.id,
-      tenantId: finalTenantId,
-      method: 'password',
-      mfa,
-      client: clientInfo(req),
-    });
-    const token = issueToken(session, {
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      role: finalRole,
-    });
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        role: finalRole,
-        tenantId: finalTenantId,
-        tenantName,
-        permissions: effectivePermissions,
-        avatarImageUrl: user.avatarImageUrl,
-        locale: user.locale ?? null,
-        themePreset: user.themePreset ?? null,
-        themeMode: user.themeMode ?? null,
-      },
-    });
+    await startMfaOrComplete(req, res, user, { method: 'password', tenantId: selectedTenantId });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -403,6 +324,13 @@ router.post('/forgot-password', async (req, res) => {
 
   try {
     if (!email) return ok();
+    // Cada petición cuenta como un fallo: la respuesta es siempre la misma, así que lo
+    // único que limita el correo que se puede mandar a una cuenta es el ritmo.
+    const account = normalizeAccount(String(email));
+    const keys = { account: account || undefined, ip: clientInfo(req).ip };
+    const gate = await checkThrottle('forgot', keys);
+    if (gate.blocked) return sendThrottled(res, gate.retryAfter);
+    await recordAttempt('forgot', keys, false);
     const db = ClientFactory.getClient('public');
     const [user] = await db
       .select()
@@ -488,6 +416,10 @@ router.post('/reset-password', async (req, res) => {
     if (String(newPassword).length < 6) {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
     }
+    // Adivinar el enlace se frena solo por IP: no hay cuenta que atribuir.
+    const ipKeys = { ip: clientInfo(req).ip };
+    const gate = await checkThrottle('forgot', ipKeys);
+    if (gate.blocked) return sendThrottled(res, gate.retryAfter);
     const db = ClientFactory.getClient('public');
     const tokenHash = hashCode(token);
     const [user] = await db
@@ -500,6 +432,7 @@ router.post('/reset-password', async (req, res) => {
         ),
       );
     if (!user) {
+      await recordAttempt('forgot', ipKeys, false);
       return res.status(400).json({ error: 'El enlace no es válido o ha caducado' });
     }
 
