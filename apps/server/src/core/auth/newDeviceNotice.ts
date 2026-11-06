@@ -7,11 +7,12 @@
  */
 import { and, eq, gt } from 'drizzle-orm';
 import { ClientFactory } from '../tenant/ClientFactory';
-import { authEvents, userTenantMemberships } from '../../db/schema';
+import { authEvents, globalUsers } from '../../db/schema';
 import { enqueueMail } from '../email/MailQueue';
 import { tr } from '../../i18n';
 import { recordAuthEvent } from './authEvents';
 import type { ClientInfo } from './clientInfo';
+import { soleMailTenantId } from './emailCode';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -52,23 +53,25 @@ export function simplifyUserAgent(ua: string): string {
 export async function maybeNotifyNewDevice(
   user: { id: string; email?: string | null; locale?: string | null; tenantId?: string | null },
   client: ClientInfo,
-  tenantId?: string | null,
+  _loginTenantId?: string | null,
 ): Promise<void> {
   try {
     const db = ClientFactory.getClient('public');
-    let tenant = tenantId || user.tenantId || null;
-    if (!tenant) {
-      const [m] = await db
-        .select({ tenantId: userTenantMemberships.tenantId })
-        .from(userTenantMemberships)
-        .where(eq(userTenantMemberships.userId, user.id))
-        .limit(1);
-      tenant = m?.tenantId ?? null;
-    }
+    // La empresa del login no decide por dónde sale: el correo va por el SMTP de la
+    // empresa, que controla su ADMIN. Solo a quien no es SUPERUSER y está en una sola empresa.
+    const [row] = await db
+      .select({ role: globalUsers.role, tenantId: globalUsers.tenantId })
+      .from(globalUsers)
+      .where(eq(globalUsers.id, user.id));
+    const tenant = await soleMailTenantId({
+      id: user.id,
+      role: row?.role ?? null,
+      tenantId: row?.tenantId ?? user.tenantId ?? null,
+    });
     const origin = (process.env.WEB_ORIGIN || '').replace(/\/$/, '');
-    if (!tenant || !origin || !user.email) {
+    if (!origin || !user.email) {
       console.warn(
-        `[auth] Dispositivo nuevo de ${user.id}: sin empresa, correo o WEB_ORIGIN, no se envía el aviso.`,
+        `[auth] Dispositivo nuevo de ${user.id}: sin correo o WEB_ORIGIN, no se envía el aviso.`,
       );
       return;
     }
@@ -89,6 +92,18 @@ export async function maybeNotifyNewDevice(
       )
       .limit(1);
     if (recent.length) return;
+
+    if (!tenant) {
+      // SUPERUSER, varias empresas o ninguna: no hay SMTP de confianza. Queda en el historial.
+      await recordAuthEvent({
+        userId: user.id,
+        kind: 'new_device_notice',
+        ok: false,
+        client,
+        detail: { skipped: 'no_trusted_smtp' },
+      });
+      return;
+    }
 
     const locale = user.locale === 'en' ? 'en' : 'es';
     const t = (text: string) => tr(locale, text);

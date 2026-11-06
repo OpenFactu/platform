@@ -16,16 +16,11 @@ import crypto from 'crypto';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { Issuer, generators, type Client } from 'openid-client';
 import { ClientFactory } from '../tenant/ClientFactory';
-import {
-  authProviders,
-  globalUsers,
-  userIdentities,
-  userSessions,
-  userTenantMemberships,
-} from '../../db/schema';
+import { authProviders, globalUsers, userIdentities, userSessions } from '../../db/schema';
 import { consumeChallenge, createChallenge, findChallenge, parseData } from './challenges';
 import { decryptSecret } from './totpCrypto';
 import { recordAuthEvent } from './authEvents';
+import { soleMailTenantId } from './emailCode';
 import { clientInfo } from './clientInfo';
 import { enqueueMail } from '../email/MailQueue';
 import { tr } from '../../i18n';
@@ -430,17 +425,13 @@ async function notifyLinked(userId: string, provider: ProviderRow, linkedEmail: 
     const [user] = await db().select().from(globalUsers).where(eq(globalUsers.id, userId));
     const origin = webOrigin();
     if (!user?.email || !origin) return;
-    let tenant = user.tenantId ?? null;
+    // Solo a quien no es SUPERUSER y está en una sola empresa: el correo sale por el SMTP de la
+    // empresa, que controla su ADMIN (ver `soleMailTenantId`). El evento `sso_link` ya quedó.
+    const tenant = await soleMailTenantId(user);
     if (!tenant) {
-      const [m] = await db()
-        .select({ tenantId: userTenantMemberships.tenantId })
-        .from(userTenantMemberships)
-        .where(eq(userTenantMemberships.userId, user.id))
-        .limit(1);
-      tenant = m?.tenantId ?? null;
-    }
-    if (!tenant) {
-      console.warn(`[auth] Cuenta enlazada a ${user.id} sin empresa: no se envía el aviso.`);
+      console.warn(
+        `[auth] Cuenta enlazada a ${user.id}: SUPERUSER, varias empresas o ninguna; no se envía el aviso.`,
+      );
       return;
     }
     const locale = user.locale === 'en' ? 'en' : 'es';

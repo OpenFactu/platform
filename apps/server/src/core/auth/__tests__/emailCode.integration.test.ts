@@ -237,6 +237,55 @@ describe('código y enlace por correo', { skip: !authTestDatabaseUrl }, () => {
     assert.equal(r.status, 200, 'las peticiones no cuentan contra la cuenta de los códigos');
   });
 
+  // El correo sale por el SMTP de la empresa, que controla su ADMIN: un SUPERUSER o quien está
+  // en varias empresas no puede recibir por ahí un código con el que otro entraría.
+  it('un SUPERUSER no recibe código por correo', async () => {
+    const u = await t.createUser({ role: 'SUPERUSER' });
+    await t.publicDb.execute(
+      sql`INSERT INTO public."UserTenantMembership" (id, "userId", "tenantId", role)
+          VALUES (${crypto.randomUUID()}, ${u.id}, ${tenant.tenantId}, 'ADMIN')`,
+    );
+    const r = await call('POST', '/api/auth/email-code', { email: u.email });
+    assert.equal(r.status, 202);
+    await new Promise((r) => setTimeout(r, 400));
+    assert.equal(enqueue.mock.callCount(), 0);
+  });
+
+  it('quien está en dos empresas no recibe código por correo', async () => {
+    const u = await member();
+    const otherId = `ec-${crypto.randomBytes(5).toString('hex')}`;
+    await t.publicDb.execute(
+      sql`INSERT INTO public."Tenant" (id, name, "schemaName") VALUES (${otherId}, ${otherId}, ${'tenant_' + otherId})`,
+    );
+    try {
+      await t.publicDb.execute(
+        sql`INSERT INTO public."UserTenantMembership" (id, "userId", "tenantId", role)
+            VALUES (${crypto.randomUUID()}, ${u.id}, ${otherId}, 'USER')`,
+      );
+      const r = await call('POST', '/api/auth/email-code', { email: u.email });
+      assert.equal(r.status, 202);
+      await new Promise((r) => setTimeout(r, 400));
+      assert.equal(enqueue.mock.callCount(), 0);
+    } finally {
+      await t.publicDb.execute(sql`DELETE FROM public."Tenant" WHERE id = ${otherId}`);
+    }
+  });
+
+  it('la empresa heredada y la misma pertenencia cuentan como una sola', async () => {
+    const u = await member();
+    await t.publicDb.execute(
+      sql`UPDATE public."GlobalUser" SET "tenantId" = ${tenant.tenantId} WHERE id = ${u.id}`,
+    );
+    try {
+      await call('POST', '/api/auth/email-code', { email: u.email });
+      assert.equal(await mailsAfter(1), 1);
+    } finally {
+      await t.publicDb.execute(
+        sql`UPDATE public."GlobalUser" SET "tenantId" = NULL WHERE id = ${u.id}`,
+      );
+    }
+  });
+
   it('approve con un enlace sin handoff responde 401, y mirar un enlace de handoff no lo gasta', async () => {
     const u = await member();
     await call('POST', '/api/auth/email-code', { email: u.email });

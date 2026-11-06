@@ -55,15 +55,28 @@ async function findUser(account: string) {
   return user ?? null;
 }
 
-/** La empresa por la que sale el correo: la heredada del usuario o su primera pertenencia. */
-async function userTenantId(user: { id: string; tenantId?: string | null }) {
-  if (user.tenantId) return user.tenantId;
-  const [m] = await db()
+/**
+ * La empresa por la que puede salir un correo de acceso de este usuario, o `null` si no se le
+ * puede mandar ninguno.
+ *
+ * El correo sale por el SMTP de la empresa, y ese servidor lo controla su ADMIN: podría leer el
+ * código o el enlace. Por eso solo se envía a quien NO es SUPERUSER y está en UNA sola empresa
+ * (la heredada en `GlobalUser.tenantId` más sus pertenencias, sin repetir): ese ADMIN ya
+ * gobierna toda la cuenta. A un SUPERUSER o a quien está en varias, nunca.
+ */
+export async function soleMailTenantId(user: {
+  id: string;
+  role?: string | null;
+  tenantId?: string | null;
+}): Promise<string | null> {
+  if (user.role === 'SUPERUSER') return null;
+  const rows = await db()
     .select({ tenantId: userTenantMemberships.tenantId })
     .from(userTenantMemberships)
-    .where(eq(userTenantMemberships.userId, user.id))
-    .limit(1);
-  return m?.tenantId ?? null;
+    .where(eq(userTenantMemberships.userId, user.id));
+  const ids = new Set(rows.map((r: { tenantId: string }) => r.tenantId));
+  if (user.tenantId) ids.add(user.tenantId);
+  return ids.size === 1 ? [...ids][0] : null;
 }
 
 /** ¿Tiene esa empresa el correo saliente configurado y encendido? */
@@ -133,7 +146,8 @@ export async function requestEmailCode(
 
   const user = await findUser(email);
   if (!user?.email) return;
-  const tenantId = await userTenantId(user);
+  // Un SUPERUSER o quien está en varias empresas: en silencio, como si no hubiera SMTP.
+  const tenantId = await soleMailTenantId(user);
   if (!tenantId || !(await tenantHasSmtp(tenantId))) return;
   if (!(await claimSendSlot(user.id))) return;
 
