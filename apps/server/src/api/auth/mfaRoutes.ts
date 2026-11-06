@@ -13,6 +13,7 @@ import {
   failChallenge,
   findChallenge,
   parseData,
+  reserveAttempt,
 } from '../../core/auth/challenges';
 import { checkThrottle, recordAttempt, sendThrottled } from '../../core/auth/throttle';
 import { clientInfo } from '../../core/auth/clientInfo';
@@ -127,12 +128,10 @@ export async function consumeUserCode(
 }
 
 const expired = (res: any) =>
-  res
-    .status(401)
-    .json({
-      error: 'El paso de verificación ha caducado. Vuelve a entrar.',
-      code: 'MFA_CHALLENGE_EXPIRED',
-    });
+  res.status(401).json({
+    error: 'El paso de verificación ha caducado. Vuelve a entrar.',
+    code: 'MFA_CHALLENGE_EXPIRED',
+  });
 
 /**
  * POST /api/auth/mfa { challenge, code?, passkey? }
@@ -143,16 +142,19 @@ router.post('/mfa', async (req, res) => {
     const row = typeof challenge === 'string' ? await findChallenge('mfa', challenge) : null;
     if (!row || !row.userId) return expired(res);
 
-    const keys = { account: row.userId, ip: clientInfo(req).ip };
-    const gate = await checkThrottle('mfa', keys);
-    if (gate.blocked) return sendThrottled(res, gate.retryAfter);
-
     if (passkey !== undefined) {
       return res.status(400).json({ error: 'Passkey no disponible todavía' });
     }
     if (!code || typeof code !== 'string') {
       return res.status(400).json({ error: 'Falta el código' });
     }
+
+    // El intento se reserva antes de mirar el código: lo que acota los fallos es el reto.
+    if (!(await reserveAttempt(row.id))) return expired(res);
+
+    const keys = { account: row.userId, ip: clientInfo(req).ip };
+    const gate = await checkThrottle('mfa', keys);
+    if (gate.blocked) return sendThrottled(res, gate.retryAfter);
 
     const db = ClientFactory.getClient('public');
     const [user] = await db
@@ -164,6 +166,7 @@ router.post('/mfa', async (req, res) => {
     const used = await consumeUserCode(user, code);
     if (!used.ok) {
       await recordAttempt('mfa', keys, false);
+      // El intento ya está contado; si era el último, el reto se agota.
       await failChallenge(row.id);
       return res.status(401).json({ error: 'Código no válido', code: 'MFA_INVALID' });
     }

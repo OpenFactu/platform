@@ -20,6 +20,7 @@ export type ChallengeKind =
 export type ChallengeRow = typeof authChallenges.$inferSelect;
 
 const db = () => ClientFactory.getClient('public');
+// sha256 propio y no `hashCode` de totpCrypto: ese pasa a mayúsculas y los secretos base64url distinguen.
 const hashSecret = (secret: string) => crypto.createHash('sha256').update(secret).digest('hex');
 
 export function parseData(row: { data: string | null }): Record<string, any> {
@@ -44,6 +45,7 @@ export async function createChallenge(
       secretHash: hashSecret(secret),
       userId: opts.userId ?? null,
       expiresAt: new Date(Date.now() + opts.ttlMs),
+      status: 'pending',
       attempts: 0,
       // El máximo de fallos viaja en `data` (`__max`): la tabla solo cuenta los hechos.
       data: JSON.stringify({ ...(opts.data ?? {}), __max: opts.maxAttempts ?? 5 }),
@@ -71,20 +73,39 @@ export async function findChallenge(
   return row ?? null;
 }
 
-/** Suma un intento fallido; al llegar al máximo el reto se consume y `exhausted` es true. */
-export async function failChallenge(id: string): Promise<{ exhausted: boolean }> {
+/**
+ * Reserva un intento ANTES de comprobar el código: un solo UPDATE condicional, así que
+ * peticiones en paralelo no pasan del máximo. `null` si el reto ya no admite más.
+ */
+export async function reserveAttempt(id: string): Promise<ChallengeRow | null> {
   const [row] = await db()
     .update(authChallenges)
     .set({ attempts: sql`${authChallenges.attempts} + 1` })
-    .where(eq(authChallenges.id, id))
+    .where(
+      and(
+        eq(authChallenges.id, id),
+        ne(authChallenges.status, 'consumed'),
+        gt(authChallenges.expiresAt, new Date()),
+        sql`${authChallenges.attempts} < COALESCE((${authChallenges.data}::jsonb->>'__max')::int, 5)`,
+      ),
+    )
     .returning();
-  if (!row) return { exhausted: true };
-  const max = Number(parseData(row).__max ?? 5);
-  if (row.attempts >= max) {
-    await db().update(authChallenges).set({ status: 'consumed' }).where(eq(authChallenges.id, id));
-    return { exhausted: true };
-  }
-  return { exhausted: false };
+  return row ?? null;
+}
+
+/** Tras un intento fallido ya reservado: si era el último, el reto se agota (se consume). */
+export async function failChallenge(id: string): Promise<{ exhausted: boolean }> {
+  const rows = await db()
+    .update(authChallenges)
+    .set({ status: 'consumed' })
+    .where(
+      and(
+        eq(authChallenges.id, id),
+        sql`${authChallenges.attempts} >= COALESCE((${authChallenges.data}::jsonb->>'__max')::int, 5)`,
+      ),
+    )
+    .returning({ id: authChallenges.id });
+  return { exhausted: rows.length > 0 };
 }
 
 /** Atómico: `false` si ya estaba consumido. */
@@ -97,12 +118,27 @@ export async function consumeChallenge(id: string): Promise<boolean> {
   return rows.length > 0;
 }
 
-export async function approveChallenge(id: string, userId: string, data?: object): Promise<void> {
-  const [row] = await db().select().from(authChallenges).where(eq(authChallenges.id, id));
-  if (!row) return;
-  const merged = { ...parseData(row), ...(data ?? {}) };
-  await db()
+/** Aprueba un reto pendiente y vivo, mezclando `data` en la misma sentencia. `false` si no cambió. */
+export async function approveChallenge(
+  id: string,
+  userId: string,
+  data?: object,
+): Promise<boolean> {
+  const patch = JSON.stringify(data ?? {});
+  const rows = await db()
     .update(authChallenges)
-    .set({ status: 'approved', userId, data: JSON.stringify(merged) })
-    .where(eq(authChallenges.id, id));
+    .set({
+      status: 'approved',
+      userId,
+      data: sql`(COALESCE(${authChallenges.data}, '{}')::jsonb || ${patch}::jsonb)::text`,
+    })
+    .where(
+      and(
+        eq(authChallenges.id, id),
+        eq(authChallenges.status, 'pending'),
+        gt(authChallenges.expiresAt, new Date()),
+      ),
+    )
+    .returning({ id: authChallenges.id });
+  return rows.length > 0;
 }

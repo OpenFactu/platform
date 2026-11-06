@@ -9,7 +9,7 @@ import { inArray, eq } from 'drizzle-orm';
 import { ClientFactory } from '../tenant/ClientFactory';
 import { authThrottles } from '../../db/schema';
 
-export type ThrottleAction = 'login' | 'mfa' | 'forgot' | 'email_code' | 'handoff';
+export type ThrottleAction = 'login' | 'mfa' | 'forgot' | 'reset' | 'email_code' | 'handoff';
 
 export interface ThrottleState {
   failures: number;

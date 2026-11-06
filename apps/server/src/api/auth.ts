@@ -418,7 +418,7 @@ router.post('/reset-password', async (req, res) => {
     }
     // Adivinar el enlace se frena solo por IP: no hay cuenta que atribuir.
     const ipKeys = { ip: clientInfo(req).ip };
-    const gate = await checkThrottle('forgot', ipKeys);
+    const gate = await checkThrottle('reset', ipKeys);
     if (gate.blocked) return sendThrottled(res, gate.retryAfter);
     const db = ClientFactory.getClient('public');
     const tokenHash = hashCode(token);
@@ -432,7 +432,7 @@ router.post('/reset-password', async (req, res) => {
         ),
       );
     if (!user) {
-      await recordAttempt('forgot', ipKeys, false);
+      await recordAttempt('reset', ipKeys, false);
       return res.status(400).json({ error: 'El enlace no es válido o ha caducado' });
     }
 

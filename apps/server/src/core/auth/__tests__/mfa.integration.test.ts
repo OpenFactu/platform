@@ -7,6 +7,7 @@ import { sql } from 'drizzle-orm';
 import { authenticator } from 'otplib';
 import { authTestDatabaseUrl, useAuthTestDb } from './authTestDb';
 import { encryptSecret } from '../totpCrypto';
+import { approveChallenge, consumeChallenge, createChallenge, findChallenge } from '../challenges';
 import authRouter from '../../../api/auth';
 
 describe('segundo factor con reto', { skip: !authTestDatabaseUrl }, () => {
@@ -133,5 +134,58 @@ describe('segundo factor con reto', { skip: !authTestDatabaseUrl }, () => {
     const sixth = await post('/api/auth/login', { email: u.email, password: u.password });
     assert.equal(sixth.status, 429);
     assert.ok(sixth.body.retryAfter > 0);
+  });
+
+  it('10 envíos erróneos en paralelo: como mucho 5 MFA_INVALID y el resto caducado', async () => {
+    const u = await totpUser();
+    const challenge = await startMfa(u);
+    const rs = await Promise.all(
+      Array.from({ length: 10 }, () => post('/api/auth/mfa', { challenge, code: '000000' })),
+    );
+    const invalid = rs.filter((r) => r.body.code === 'MFA_INVALID').length;
+    const expired = rs.filter((r) => r.body.code === 'MFA_CHALLENGE_EXPIRED').length;
+    assert.ok(invalid <= 5, `MFA_INVALID: ${invalid}`);
+    assert.equal(invalid + expired, 10);
+    const [row] = (
+      await t.publicDb.execute(
+        sql`SELECT attempts FROM public."AuthChallenge" WHERE "userId" = ${u.id}`,
+      )
+    ).rows;
+    assert.ok(Number(row.attempts) <= 5);
+  });
+
+  it('approveChallenge: no resucita un reto consumido y no vale dos veces', async () => {
+    const u = await t.createUser();
+    const a = await createChallenge('handoff', { userId: u.id, ttlMs: 60_000, data: { x: 1 } });
+    assert.equal(await approveChallenge(a.id, u.id, { y: 2 }), true);
+    assert.equal(await approveChallenge(a.id, u.id, { y: 3 }), false);
+    const row = await findChallenge('handoff', a.secret);
+    assert.equal(row?.status, 'approved');
+    assert.equal(JSON.parse(row!.data!).y, 2);
+    assert.equal(JSON.parse(row!.data!).x, 1);
+
+    const b = await createChallenge('handoff', { userId: u.id, ttlMs: 60_000 });
+    assert.equal(await consumeChallenge(b.id), true);
+    assert.equal(await approveChallenge(b.id, u.id), false);
+    assert.equal(await findChallenge('handoff', b.secret), null);
+  });
+
+  it('el atajo totpCode de /login rechaza un código repetido', async () => {
+    const u = await totpUser();
+    const code = authenticator.generate(u.secret);
+    const first = await post('/api/auth/login', {
+      email: u.email,
+      password: u.password,
+      totpCode: code,
+    });
+    assert.equal(first.status, 200);
+    assert.ok(first.body.token);
+    const again = await post('/api/auth/login', {
+      email: u.email,
+      password: u.password,
+      totpCode: code,
+    });
+    assert.equal(again.status, 401);
+    assert.equal(again.body.token, undefined);
   });
 });

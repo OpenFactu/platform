@@ -45,10 +45,11 @@ export function verifyTwoFactor(
     try {
       const secret = decryptSecret(encryptedSecret);
       // Instancia propia: la ventana de ±1 paso no se filtra a las opciones globales.
-      const auth = authenticator.clone({ window: 1 });
+      // Un solo reloj para comprobar el código y para calcular su paso.
+      const epoch = Number(authenticator.allOptions().epoch ?? Date.now());
+      const auth = authenticator.clone({ window: 1, epoch });
       const delta = auth.checkDelta(clean, secret);
       if (delta !== null && delta !== undefined) {
-        const epoch = Number(auth.allOptions().epoch ?? Date.now());
         const step = Math.floor(epoch / 1000 / 30) + delta;
         // Un código ya usado (o más viejo que el último aceptado) no vale otra vez.
         if (lastStep == null || step > lastStep) {
