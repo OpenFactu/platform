@@ -16,7 +16,7 @@ import { login as loginRequest, type LoginResult } from './login/loginApi';
 import { MfaStepContainer } from './login/LoginMfaStep';
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, Avatar, Badge, Button, Input, PasswordInput, Select } from '@openfactu/ui';
+import { Alert, Avatar, Button, Input, PasswordInput, Select } from '@openfactu/ui';
 import { ArrowRight, Building, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { KeirostLogo } from '../components/branding/KeirostLogo';
@@ -297,9 +297,15 @@ export const Login: React.FC = () => {
                   </div>
                 )}
                 {tenantName && !picked && (
-                  <Badge variant="neutral" className="gap-1.5">
-                    <Building size={12} /> {tenantName}
-                  </Badge>
+                  <div className="flex items-center gap-2.5 text-sm">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-[var(--k-radius-md)] bg-bg-muted text-fg-muted">
+                      <Building size={16} />
+                    </span>
+                    <p className="min-w-0 truncate text-fg-muted">
+                      {t('app.login.enteringCompany')}{' '}
+                      <span className="font-medium text-fg-default">{tenantName}</span>
+                    </p>
+                  </div>
                 )}
 
                 <div className="space-y-1.5">
