@@ -1,6 +1,8 @@
 import { ApiError, extractErrorMessage } from './ApiError';
 import { buildQuery, type QueryParams } from './queryString';
 import { getLocale, t } from '../../i18n/i18n';
+import { getDeviceId } from '../auth/deviceId';
+import { clientHeaderValue } from '../auth/clientKind';
 
 const TOKEN_KEY = 'openfactu_token';
 
@@ -22,6 +24,8 @@ export interface RequestOptions {
    * handler global (un login fallido es un 401 normal). Default: true.
    */
   auth?: boolean;
+  /** Si es true, un 401 no dispara el handler global (el logout y el refresh se ocupan solos). */
+  skipUnauthorizedHandler?: boolean;
   /** Headers extra puntuales (casos raros; los de auth los pone el cliente). */
   headers?: Record<string, string>;
 }
@@ -156,7 +160,12 @@ export class ApiClient {
   ): Promise<Response> {
     const useAuth = opts?.auth !== false;
     const isForm = body instanceof FormData;
-    const headers: Record<string, string> = { 'Accept-Language': getLocale(), ...opts?.headers };
+    const headers: Record<string, string> = {
+      'Accept-Language': getLocale(),
+      'x-keirost-client': clientHeaderValue(),
+      'x-keirost-device': getDeviceId(),
+      ...opts?.headers,
+    };
     if (useAuth && this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
       if (this.tenantId) headers['x-tenant-id'] = this.tenantId;
@@ -175,7 +184,9 @@ export class ApiClient {
 
   private async throwIfNotOk(res: Response, opts?: RequestOptions): Promise<void> {
     if (res.ok) return;
-    if (res.status === 401 && opts?.auth !== false) this.onUnauthorized?.();
+    if (res.status === 401 && opts?.auth !== false && !opts?.skipUnauthorizedHandler) {
+      this.onUnauthorized?.();
+    }
     let parsed: unknown = null;
     const text = await res.text().catch(() => '');
     try {

@@ -4,6 +4,9 @@ import type { ModuleManifest } from '../types';
 const UserProfile = lazy(() =>
   import('./pages/UserProfile').then((m) => ({ default: m.UserProfile })),
 );
+const AccountSecurity = lazy(() =>
+  import('./pages/AccountSecurity').then((m) => ({ default: m.AccountSecurity })),
+);
 const PhysicalDevices = lazy(() =>
   import('./pages/PhysicalDevices').then((m) => ({ default: m.PhysicalDevices })),
 );
@@ -38,6 +41,7 @@ export const settingsModule: ModuleManifest = {
     icon: 'SlidersHorizontal',
     subTabs: [
       { id: 'profile', label: 'settings.nav.profile', path: '/profile' },
+      { id: 'security', label: 'settings.nav.security', path: '/profile/security' },
       { id: 'company', label: 'settings.nav.company', path: '/settings/company' },
       { id: 'users', label: 'settings.nav.users', path: '/users' },
       // Cómo se ven y qué campos llevan los datos y documentos de la empresa.
@@ -128,6 +132,12 @@ export const settingsModule: ModuleManifest = {
       Component: UserProfile,
       title: 'settings.nav.profile',
       iconName: 'UserCircle',
+    },
+    {
+      pattern: '/profile/security',
+      Component: AccountSecurity,
+      title: 'settings.nav.security',
+      iconName: 'Key',
     },
     {
       pattern: '/settings/company',

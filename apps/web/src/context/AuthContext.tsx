@@ -2,6 +2,12 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { apiClient, ApiError } from '@/shared/http';
 import { authApi } from '@/shared/api';
 import { t as tNow, setLocale } from '@/i18n/i18n';
+import { msUntilRefresh } from '@/shared/auth/sessionToken';
+
+/** Entre renovaciones, y tras un fallo de red, no se vuelve a intentar antes de esto. */
+const MIN_REFRESH_DELAY_MS = 30_000;
+/** setTimeout no admite más de 2^31 ms. */
+const MAX_TIMER_MS = 2_000_000_000;
 
 interface User {
   id: string;
@@ -37,6 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('openfactu_token'));
   const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -89,11 +96,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(userData);
   };
 
-  const logout = useCallback(() => {
+  // Cierre local: borra el token sin avisar al servidor (su sesión ya está revocada o caducada).
+  const clearSession = useCallback(() => {
     localStorage.removeItem('openfactu_token');
     setToken(null);
     setUser(null);
   }, []);
+
+  // Cierre voluntario: primero revoca la sesión en el servidor y luego borra el token.
+  // Si el servidor no contesta, el cierre local se hace igual.
+  const logout = useCallback(() => {
+    void authApi
+      .logout()
+      .catch(() => undefined)
+      .finally(clearSession);
+  }, [clearSession]);
+
+  // Renueva el token al pasar la mitad de su vida; la sesión del servidor se desliza.
+  useEffect(() => {
+    if (!token) return;
+    const wait = msUntilRefresh(token);
+    if (wait === null) return;
+    let cancelled = false;
+    const timer = window.setTimeout(
+      async () => {
+        try {
+          const { token: fresh } = await authApi.refresh();
+          if (cancelled || !fresh) return;
+          localStorage.setItem('openfactu_token', fresh);
+          apiClient.setAuth(fresh, null);
+          setToken(fresh);
+        } catch (err) {
+          if (cancelled) return;
+          if (err instanceof ApiError && err.status === 401) clearSession();
+          // Sin red u otro fallo: se reintenta en el siguiente ciclo (token sin cambios).
+          else setRetry((n) => n + 1);
+        }
+      },
+      Math.min(Math.max(wait, MIN_REFRESH_DELAY_MS), MAX_TIMER_MS),
+    );
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [token, retry, clearSession]);
 
   // El idioma va con la persona: si lo eligió en su perfil, manda sobre el del navegador.
   useEffect(() => {
@@ -105,11 +151,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     apiClient.setAuth(token, user?.tenantId ?? null);
   }, [token, user?.tenantId]);
 
-  // Manejo global de 401: cualquier petición autenticada que devuelva 401 cierra sesión.
+  // Manejo global de 401 (SESSION_REVOKED, SESSION_EXPIRED, token inválido): cierre local,
+  // sin llamar al servidor.
   useEffect(() => {
-    apiClient.setOnUnauthorized(() => logout());
+    apiClient.setOnUnauthorized(() => clearSession());
     return () => apiClient.setOnUnauthorized(null);
-  }, [logout]);
+  }, [clearSession]);
 
   const switchTenant = async (tenantId: string) => {
     if (!token) throw new Error(tNow('app.common.notAuthenticated'));
