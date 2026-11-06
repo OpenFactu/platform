@@ -166,6 +166,7 @@ import { notifyTenant } from './core/realtime/notifyTenant';
 import { HookManager } from './core/plugins/HookManager';
 import { invalidateDashboardCache } from './api/dashboard';
 import { bootstrapAdmin } from './core/auth/bootstrap';
+import { startSessionListener } from './core/auth/sessions';
 import { ClientFactory } from './core/tenant/ClientFactory';
 import { seedGeo } from './core/geo/seedGeo';
 import { PdfRenderer } from '@openfactu/pdf';
@@ -619,6 +620,9 @@ const start = async () => {
 
     // Con empresas migradas y plugins cargados: cada empresa recibe su normativa.
     await bootstrapLocalization();
+
+    // Revocar una sesión en otra instancia corta aquí su caché y sus websockets.
+    await startSessionListener();
 
     // Cierre por defecto. Va DESPUÉS de los plugins a propósito: ellos también
     // montan rutas y hacerlo antes las dejaría inalcanzables. Cualquier

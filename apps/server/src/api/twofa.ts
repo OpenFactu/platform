@@ -15,6 +15,7 @@ import QRCode from 'qrcode';
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema';
 import { ClientFactory } from '../core/tenant/ClientFactory';
+import { revokeAllForUser } from '../core/auth/sessions';
 import {
   encryptSecret,
   decryptSecret,
@@ -196,6 +197,9 @@ router.post('/disable', async (req: any, res) => {
         updatedAt: new Date(),
       })
       .where(eq(schema.globalUsers.id, userId));
+
+    // Sin segundo factor, las demás sesiones dejan de ser de confianza; la actual sigue.
+    await revokeAllForUser(userId, 'mfa_disabled', req.session?.id);
 
     res.json({ enabled: false });
   } catch (e: any) {

@@ -135,7 +135,9 @@ describe('sessions', { skip: !authTestDatabaseUrl }, () => {
     const s2 = await open(u.id);
     const s3 = await open(u.id);
     const calls: string[] = [];
-    onSessionRevoked((sid) => calls.push(sid));
+    // Otras pruebas en paralelo avisan por el mismo canal: solo cuentan los sid de esta.
+    const mine = new Set([s.id, s2.id, s3.id]);
+    onSessionRevoked((sid) => mine.has(sid) && calls.push(sid));
     await revokeSession(s.id, 'test');
     await revokeAllForUser(u.id, 'test');
     await new Promise((r) => setTimeout(r, 400)); // espera al eco del NOTIFY
@@ -182,7 +184,7 @@ describe('sessions', { skip: !authTestDatabaseUrl }, () => {
       .set({ tenantId: 'otra' })
       .where(eq(userSessions.id, s.id));
     const calls: string[] = [];
-    onSessionRevoked((sid) => calls.push(sid));
+    onSessionRevoked((sid) => [s.id, s2.id].includes(sid) && calls.push(sid));
     handleNotification(
       JSON.stringify({ origin: 'otra-instancia', userId: u.id, sids: [s.id], kind: 'update' }),
     );
@@ -208,7 +210,9 @@ describe('sessions', { skip: !authTestDatabaseUrl }, () => {
     onSessionRevoked(() => {
       throw new Error('falla a propósito');
     });
-    onSessionRevoked((sid) => calls.push(sid));
+    // Otras pruebas en paralelo avisan por el mismo canal: solo cuentan los sid de esta.
+    const mine = new Set([s.id]);
+    onSessionRevoked((sid) => mine.has(sid) && calls.push(sid));
     await revokeSession(s.id, 'test');
     assert.ok(calls.includes(s.id));
   });

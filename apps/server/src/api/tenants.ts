@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { eq, or } from 'drizzle-orm';
-import { AuthService } from '../core/auth/AuthService';
+import { resolveSession } from '../core/auth/sessions';
 import { ClientFactory } from '../core/tenant/ClientFactory';
 import { SchemaManager } from '../core/tenant/SchemaManager';
 import { setCompanyConfig } from '../core/config/companyConfig';
@@ -17,13 +17,16 @@ interface AuthPayload {
   tenantId?: string | null;
 }
 
-function requireAuth(req: any, res: Response, next: NextFunction) {
+async function requireAuth(req: any, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'No autorizado' });
   const token = authHeader.split(' ')[1];
-  const payload: AuthPayload | null = AuthService.verifyToken(token);
-  if (!payload) return res.status(401).json({ error: 'Token inválido' });
-  req.authPayload = payload;
+  const resolved = await resolveSession(token);
+  if ('error' in resolved) {
+    const code = resolved.error === 'INVALID' ? 'UNAUTHORIZED' : resolved.error;
+    return res.status(401).json({ error: 'Token inválido', code });
+  }
+  req.authPayload = resolved.payload as AuthPayload;
   next();
 }
 

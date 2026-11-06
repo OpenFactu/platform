@@ -7,8 +7,19 @@ import { eq, or, and, gt } from 'drizzle-orm';
 import { verifyTwoFactor } from './twofa';
 import { hashCode } from '../core/auth/totpCrypto';
 import { enqueueMail } from '../core/email/MailQueue';
+import {
+  createSession,
+  issueToken,
+  revokeAllForUser,
+  setSessionTenant,
+} from '../core/auth/sessions';
+import { clientInfo } from '../core/auth/clientInfo';
+import sessionRoutes, { requireSession } from './auth/sessionRoutes';
 
 const router = Router();
+
+// logout, refresh y sesiones abiertas.
+router.use(sessionRoutes);
 
 /**
  * GET /api/auth/avatar-for-login?email=X — foto de perfil a mostrar en el
@@ -79,6 +90,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
+    let mfa: string | null = null;
+
     // ── Segundo factor (2FA/TOTP) ──────────────────────────────────────────
     // Si el usuario lo tiene activo, exigimos el código antes de emitir el JWT.
     if (user.totpEnabled) {
@@ -90,6 +103,7 @@ router.post('/login', async (req, res) => {
       if (!check.ok) {
         return res.status(401).json({ error: 'Código 2FA inválido' });
       }
+      mfa = check.usedBackup ? 'backup' : 'totp';
       // Si se consumió un código de respaldo, persistimos la lista restante.
       if (check.usedBackup) {
         await db
@@ -165,12 +179,18 @@ router.post('/login', async (req, res) => {
           ? JSON.parse(finalPermissions)
           : {};
 
-    const token = AuthService.generateToken({
+    const session = await createSession({
       userId: user.id,
+      tenantId: finalTenantId,
+      method: 'password',
+      mfa,
+      client: clientInfo(req),
+    });
+    const token = issueToken(session, {
+      id: user.id,
       email: user.email,
       username: user.username,
       role: finalRole,
-      tenantId: finalTenantId,
     });
 
     res.json({
@@ -199,14 +219,10 @@ router.post('/login', async (req, res) => {
  * Cambia el tenant activo del usuario autenticado y devuelve un JWT nuevo.
  */
 router.post('/switch-tenant', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No autorizado' });
+  const session = requireSession(req, res);
+  if (!session) return;
 
   try {
-    const token = authHeader.split(' ')[1];
-    const payload: any = AuthService.verifyToken(token);
-    if (!payload) return res.status(401).json({ error: 'Token inválido' });
-
     const { tenantId } = req.body || {};
     if (!tenantId) return res.status(400).json({ error: 'tenantId es obligatorio' });
 
@@ -214,7 +230,7 @@ router.post('/switch-tenant', async (req, res) => {
     const [user] = await db
       .select()
       .from(schema.globalUsers)
-      .where(eq(schema.globalUsers.id, payload.userId));
+      .where(eq(schema.globalUsers.id, session.userId));
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
     let finalRole = user.role;
@@ -246,12 +262,13 @@ router.post('/switch-tenant', async (req, res) => {
     const [t] = await db.select().from(schema.tenants).where(eq(schema.tenants.id, tenantId));
     if (!t) return res.status(404).json({ error: 'Empresa no encontrada' });
 
-    const newToken = AuthService.generateToken({
-      userId: user.id,
+    // Misma sesión (mismo sid), otra empresa activa.
+    const updated = await setSessionTenant(session.id, tenantId, null);
+    const newToken = issueToken(updated, {
+      id: user.id,
       email: user.email,
       username: user.username,
       role: finalRole,
-      tenantId,
     });
 
     // Igual que en el login: `null` es "admin, acceso total"; un usuario sin
@@ -288,23 +305,19 @@ router.post('/switch-tenant', async (req, res) => {
  * GET /api/auth/me
  */
 router.get('/me', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No autorizado' });
+  const session = requireSession(req, res);
+  if (!session) return;
 
   try {
-    const token = authHeader.split(' ')[1];
-    const payload: any = AuthService.verifyToken(token);
-    if (!payload) return res.status(401).json({ error: 'Token inválido' });
-
     const db = ClientFactory.getClient('public');
     const [user] = await db
       .select()
       .from(schema.globalUsers)
-      .where(eq(schema.globalUsers.id, payload.userId));
+      .where(eq(schema.globalUsers.id, session.userId));
 
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    const activeTenantId = payload.tenantId || user.tenantId;
+    const activeTenantId = session.tenantId || user.tenantId;
     // El rol global debe salir SIEMPRE de la BD, no del JWT — si promueves a
     // alguien a SUPERUSER a mano, el JWT viejo todavía dice ADMIN y lo
     // estaríamos propagando indefinidamente hasta que cerrase sesión.
@@ -344,9 +357,7 @@ router.get('/me', async (req, res) => {
     // `null` solo para admins. Un usuario normal sin nada configurado va con
     // `{}`, que es "no puede nada" y no "puede todo".
     const effectivePermissions =
-      resolvedRole === 'SUPERUSER' || resolvedRole === 'ADMIN'
-        ? null
-        : (resolvedPermissions ?? {});
+      resolvedRole === 'SUPERUSER' || resolvedRole === 'ADMIN' ? null : (resolvedPermissions ?? {});
 
     res.json({
       id: user.id,
@@ -502,6 +513,9 @@ router.post('/reset-password', async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(schema.globalUsers.id, user.id));
+
+    // Quien tuviera la contraseña vieja (o se la hubiera robado) pierde todas sus sesiones.
+    await revokeAllForUser(user.id, 'password_change');
 
     res.json({ ok: true });
   } catch (error: any) {
