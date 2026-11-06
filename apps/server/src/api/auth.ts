@@ -276,7 +276,10 @@ router.get('/me', async (req, res) => {
 
     if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    const activeTenantId = session.tenantId || user.tenantId;
+    // La empresa de la sesión: es la que la web manda en `x-tenant-id`, y otra distinta daría
+    // 403 SWITCH_TENANT_REQUIRED. Solo un SUPERUSER cae a la heredada.
+    const activeTenantId =
+      user.role === 'SUPERUSER' ? session.tenantId || user.tenantId : session.tenantId;
     // El rol global debe salir SIEMPRE de la BD, no del JWT — si promueves a
     // alguien a SUPERUSER a mano, el JWT viejo todavía dice ADMIN y lo
     // estaríamos propagando indefinidamente hasta que cerrase sesión.

@@ -102,6 +102,12 @@ async function loadSession(sid: string): Promise<SessionRow | undefined> {
   return row;
 }
 
+/** La fila de la base, saltándose la caché (otra instancia puede haberla cambiado). */
+export async function reloadSession(sid: string): Promise<SessionRow | undefined> {
+  cache.delete(sid);
+  return loadSession(sid);
+}
+
 export async function resolveSession(
   token: string,
 ): Promise<
