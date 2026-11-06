@@ -3,6 +3,8 @@ import { ApiError } from '@/shared/http';
 import { methods } from '@/pages/login/loginApi';
 import { ssoErrorKey } from '@/pages/login/ssoModel';
 import { useI18n } from '@/i18n/I18nContext';
+import { getClientKind } from '@/shared/auth/clientKind';
+import { openExternal, useCanOpenSystemBrowser } from '@/shared/auth/openExternal';
 import { identitiesApi, type IdentityInfo } from './api';
 
 export interface LinkableProvider {
@@ -22,6 +24,8 @@ export function useIdentities(tenantId?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // En el escritorio, enlazar solo si la app sabe abrir el navegador del sistema.
+  const canLink = useCanOpenSystemBrowser();
 
   const reload = useCallback(async () => {
     try {
@@ -63,6 +67,12 @@ export function useIdentities(tenantId?: string) {
     try {
       const url = await identitiesApi.link(providerId);
       if (!isNavigableUrl(url)) throw new Error('bad url');
+      if (getClientKind() === 'desktop') {
+        // Dentro de WebView2 Google lo bloquea: se termina en el navegador del sistema.
+        await openExternal(url);
+        setBusy(false);
+        return;
+      }
       window.location.assign(url);
     } catch (err) {
       setBusy(false);
@@ -84,7 +94,7 @@ export function useIdentities(tenantId?: string) {
   );
 
   const linkedIds = new Set(items.map((i) => i.providerId));
-  const available = providers.filter((p) => !linkedIds.has(p.id));
+  const available = canLink ? providers.filter((p) => !linkedIds.has(p.id)) : [];
 
   return { items, available, loading, error, busy, link, unlink, messageFor };
 }

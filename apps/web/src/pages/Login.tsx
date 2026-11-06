@@ -18,6 +18,7 @@ import { LoginHandoffWait } from './login/LoginHandoffWait';
 import { LoginSsoButtons } from './login/LoginSsoButtons';
 import { readQueryParam, ssoErrorKey, stripQueryParams } from './login/ssoModel';
 import { useSsoLogin } from './login/useSsoLogin';
+import { useCanOpenSystemBrowser } from '@/shared/auth/openExternal';
 import { EmailCodeContainer } from './login/LoginEmailCodeStep';
 import { useLoginMethods } from './login/useLoginMethods';
 import { usePasskeyLogin } from './login/usePasskeyLogin';
@@ -171,6 +172,8 @@ export const Login: React.FC = () => {
     if (!openMfaIfNeeded(data)) finishLogin(data);
   });
 
+  // En el escritorio, el SSO solo si la app sabe abrir el navegador del sistema.
+  const canOpenBrowser = useCanOpenSystemBrowser();
   const sso = useSsoLogin({
     onDone: (data) => {
       if (!openMfaIfNeeded(data)) finishLogin(data);
@@ -469,7 +472,7 @@ export const Login: React.FC = () => {
 
             {!mfa && !emailCodeFor && !sso.handoff && (
               <LoginSsoButtons
-                providers={methods.sso}
+                providers={canOpenBrowser ? methods.sso : []}
                 busyId={sso.busyId}
                 disabled={isSubmitting || passkeyLogin.busy}
                 error={sso.error}
