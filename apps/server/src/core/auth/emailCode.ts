@@ -77,7 +77,18 @@ export async function tenantHasSmtp(tenantId: string): Promise<boolean> {
 }
 
 /** ¿Hay SMTP en alguna empresa? Para ofrecer o no «código por correo» antes de saber quién entra. */
+let smtpCache: { at: number; value: boolean } | null = null;
+export function resetSmtpCache() {
+  smtpCache = null;
+}
 export async function anyTenantHasSmtp(): Promise<boolean> {
+  // En memoria 60 s: la pantalla de acceso lo pregunta sin sesión y recorre todas las empresas.
+  if (smtpCache && Date.now() - smtpCache.at < 60_000) return smtpCache.value;
+  const value = await computeAnySmtp();
+  smtpCache = { at: Date.now(), value };
+  return value;
+}
+async function computeAnySmtp(): Promise<boolean> {
   const rows = await db().select({ id: tenants.id }).from(tenants);
   for (const r of rows) {
     if (await tenantHasSmtp(r.id)) return true;
@@ -116,8 +127,9 @@ export async function requestEmailCode(
   // Cada petición cuenta, exista o no la cuenta: lo único que acota el correo que se puede
   // mandar a alguien (además del hueco de 60 s) es el ritmo.
   const keys = { account: normalizeAccount(email) || undefined, ip: client.ip };
-  if ((await checkThrottle('email_code', keys)).blocked) return;
-  await recordAttempt('email_code', keys, false);
+  // Acción aparte de la de los códigos malos: pedir códigos no puede bloquear a la víctima.
+  if ((await checkThrottle('email_request', keys)).blocked) return;
+  await recordAttempt('email_request', keys, false);
 
   const user = await findUser(email);
   if (!user?.email) return;
@@ -143,7 +155,8 @@ export async function requestEmailCode(
     ttlMs: EMAIL_CODE_TTL_MS,
     maxAttempts: EMAIL_CODE_MAX_ATTEMPTS,
     data: {
-      codeHash: hashCode(code),
+      // Con handoff no hay código: la única vía es el enlace con su aprobación explícita.
+      ...(handoffId && typeof handoffId === 'string' ? {} : { codeHash: hashCode(code) }),
       ...(handoffId && typeof handoffId === 'string' ? { handoffId } : {}),
     },
   });
@@ -151,24 +164,51 @@ export async function requestEmailCode(
   const locale = user.locale === 'en' ? 'en' : 'es';
   const t = (text: string) => tr(locale, text);
   const link = `${origin}/login/email?token=${secret}`;
+  const handoff = !!(handoffId && typeof handoffId === 'string');
+  const ignore = t('Si no lo has pedido tú, ignora este correo.');
+  const btn = (label: string) =>
+    `<p style="margin:24px 0;"><a href="${escapeHtml(link)}" style="background:#0D9488;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:700;display:inline-block;">${escapeHtml(label)}</a></p>`;
+  const frame = (inner: string) =>
+    `<div style="font-family:system-ui,sans-serif;padding:24px;max-width:520px;background:#FAFBFC;border:1px solid #E2E8F0;border-radius:4px;">${inner}<p style="color:#94A3B8;font-size:12px;">${escapeHtml(ignore)}</p></div>`;
+
+  if (handoff) {
+    // Cualquiera puede pedir esto para un correo ajeno: no se parece a un acceso normal.
+    const subject = t('Keirost — Alguien quiere entrar en tu cuenta');
+    const body = t(
+      'Se está iniciando sesión en tu cuenta desde otro dispositivo. Abre el enlace solo si has sido tú y comprueba que el código que verás coincide con el de ese dispositivo.',
+    );
+    enqueueMail(tenantId, {
+      to: user.email,
+      subject,
+      text: `${body}
+
+${link}
+
+${ignore}`,
+      html: frame(
+        `<h2 style="margin:0 0 12px 0;color:#0A1628;">${escapeHtml(t('Alguien quiere entrar en tu cuenta'))}</h2><p style="color:#2D3A4A;line-height:1.6;">${escapeHtml(body)}</p>${btn(t('Revisar la solicitud'))}`,
+      ),
+    });
+    return;
+  }
+
   const subject = t('Keirost — Tu código de acceso');
   const intro = t('Usa este código para entrar. Caduca en 10 minutos:');
   const linkIntro = t('O entra directamente con este enlace:');
-  const ignore = t('Si no lo has pedido tú, ignora este correo.');
-
   enqueueMail(tenantId, {
     to: user.email,
     subject,
-    text: `${intro}\n\n${code}\n\n${linkIntro}\n${link}\n\n${ignore}`,
-    html: `
-        <div style="font-family:system-ui,sans-serif;padding:24px;max-width:520px;background:#FAFBFC;border:1px solid #E2E8F0;border-radius:4px;">
-          <h2 style="margin:0 0 12px 0;color:#0A1628;">${escapeHtml(t('Tu código de acceso'))}</h2>
-          <p style="color:#2D3A4A;line-height:1.6;">${escapeHtml(intro)}</p>
-          <p style="font-size:28px;letter-spacing:6px;font-weight:700;color:#0A1628;margin:16px 0;">${escapeHtml(code)}</p>
-          <p style="color:#2D3A4A;line-height:1.6;">${escapeHtml(linkIntro)}</p>
-          <p style="margin:24px 0;"><a href="${escapeHtml(link)}" style="background:#0D9488;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:700;display:inline-block;">${escapeHtml(t('Entrar'))}</a></p>
-          <p style="color:#94A3B8;font-size:12px;">${escapeHtml(ignore)}</p>
-        </div>`,
+    text: `${intro}
+
+${code}
+
+${linkIntro}
+${link}
+
+${ignore}`,
+    html: frame(
+      `<h2 style="margin:0 0 12px 0;color:#0A1628;">${escapeHtml(t('Tu código de acceso'))}</h2><p style="color:#2D3A4A;line-height:1.6;">${escapeHtml(intro)}</p><p style="font-size:28px;letter-spacing:6px;font-weight:700;color:#0A1628;margin:16px 0;">${escapeHtml(code)}</p><p style="color:#2D3A4A;line-height:1.6;">${escapeHtml(linkIntro)}</p>${btn(t('Entrar'))}`,
+    ),
   });
 }
 

@@ -19,7 +19,8 @@ router.get('/methods', async (req, res) => {
 
     const emailCode = !!process.env.WEB_ORIGIN && ok('email_code') && (await anyTenantHasSmtp());
     res.json({
-      password: ok('password'),
+      // Siempre: un SUPERUSER no depende de `allowedMethods` y el gate del login rechaza a los demás.
+      password: true,
       passkey: rpFor(req.headers.origin as string | undefined) !== null && ok('passkey'),
       emailCode,
       // Lo llena la tarea de SSO.

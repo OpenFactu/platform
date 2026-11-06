@@ -16,6 +16,7 @@ export type ThrottleAction =
   | 'forgot'
   | 'reset'
   | 'email_code'
+  | 'email_request'
   | 'handoff'
   | 'handoff_poll';
 

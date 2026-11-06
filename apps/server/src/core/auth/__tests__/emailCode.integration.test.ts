@@ -204,11 +204,62 @@ describe('código y enlace por correo', { skip: !authTestDatabaseUrl }, () => {
     assert.equal((await call('POST', '/api/auth/email-link', { token })).status, 401);
   });
 
+  it('el correo de una entrega no parece un acceso ni lleva código', async () => {
+    const u = await member();
+    const h = await createHandoff({ ip: testIp, userAgent: 'x', clientKind: 'desktop' });
+    await call('POST', '/api/auth/email-code', { email: u.email, handoffId: h.handoffId });
+    await mailsAfter(1);
+    const mail = lastMail();
+    assert.match(mail.subject, /Alguien quiere entrar/);
+    assert.doesNotMatch((mail.text + mail.html).replace(/token=[w-]+/g, ''), /d{6}/, 'sin código');
+    assert.doesNotMatch(mail.text + mail.html, /entra directamente|Tu código de acceso/);
+    assert.match(mail.html, /Revisar la solicitud/);
+    assert.doesNotMatch(mail.html, />Entrar</);
+    // Sin código, el verify no puede abrir nada con ese reto.
+    for (const code of ['000000', '123456']) {
+      const r = await call('POST', '/api/auth/email-code/verify', { email: u.email, code });
+      assert.equal(r.status, 401);
+    }
+  });
+
+  it('pedir códigos no bloquea los códigos de la víctima', async () => {
+    const u = await member();
+    await call('POST', '/api/auth/email-code', { email: u.email });
+    await mailsAfter(1);
+    const code = codeOf(lastMail());
+    for (let i = 0; i < 6; i++) await call('POST', '/api/auth/email-code', { email: u.email });
+    await new Promise((r) => setTimeout(r, 300));
+    const r = await call('POST', '/api/auth/email-code/verify', { email: u.email, code });
+    assert.equal(r.status, 200, 'las peticiones no cuentan contra la cuenta de los códigos');
+  });
+
+  it('approve con un enlace sin handoff responde 401, y mirar un enlace de handoff no lo gasta', async () => {
+    const u = await member();
+    await call('POST', '/api/auth/email-code', { email: u.email });
+    await mailsAfter(1);
+    const plain = tokenOf(lastMail());
+    assert.equal(
+      (await call('POST', '/api/auth/email-link/approve', { token: plain })).status,
+      401,
+    );
+    // El enlace sigue sirviendo para entrar: approve no lo gastó.
+    assert.equal((await call('POST', '/api/auth/email-link', { token: plain })).status, 200);
+
+    const v = await member();
+    const h = await createHandoff({ ip: testIp, userAgent: 'x', clientKind: 'desktop' });
+    await call('POST', '/api/auth/email-code', { email: v.email, handoffId: h.handoffId });
+    await mailsAfter(2);
+    const token = tokenOf(lastMail());
+    assert.equal((await call('POST', '/api/auth/email-link', { token })).status, 200);
+    assert.equal((await call('POST', '/api/auth/email-link', { token })).status, 200);
+    assert.equal((await call('POST', '/api/auth/email-link/approve', { token })).status, 200);
+  });
+
   it('methods: refleja passkey, correo y la política de la empresa', async () => {
     const all = await call('GET', '/api/auth/methods');
     assert.equal(all.status, 200);
     assert.deepEqual(all.body, { password: true, passkey: true, emailCode: true, sso: [] });
-    await writePolicy(tenant.db, { ...DEFAULT_POLICY, allowedMethods: ['password'] });
+    await writePolicy(tenant.db, { ...DEFAULT_POLICY, allowedMethods: ['sso'] });
     const some = await call('GET', `/api/auth/methods?tenantId=${tenant.tenantId}`);
     assert.deepEqual(some.body, { password: true, passkey: false, emailCode: false, sso: [] });
   });

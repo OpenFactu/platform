@@ -19,4 +19,10 @@ export default {
   'O entra directamente con este enlace:': 'Or sign in directly with this link:',
   'Si no lo has pedido tú, ignora este correo.': 'If you did not request this, ignore this email.',
   Entrar: 'Sign in',
+  'Keirost — Alguien quiere entrar en tu cuenta':
+    'Keirost — Someone wants to sign in to your account',
+  'Alguien quiere entrar en tu cuenta': 'Someone wants to sign in to your account',
+  'Se está iniciando sesión en tu cuenta desde otro dispositivo. Abre el enlace solo si has sido tú y comprueba que el código que verás coincide con el de ese dispositivo.':
+    'Someone is signing in to your account from another device. Open the link only if it was you, and check that the code you will see matches the one on that device.',
+  'Revisar la solicitud': 'Review the request',
 };
