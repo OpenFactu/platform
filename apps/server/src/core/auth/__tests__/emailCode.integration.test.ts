@@ -211,7 +211,7 @@ describe('código y enlace por correo', { skip: !authTestDatabaseUrl }, () => {
     await mailsAfter(1);
     const mail = lastMail();
     assert.match(mail.subject, /Alguien quiere entrar/);
-    assert.doesNotMatch((mail.text + mail.html).replace(/token=[w-]+/g, ''), /d{6}/, 'sin código');
+    assert.doesNotMatch((mail.text + mail.html).replace(/token=[\w-]+/g, ''), /\d{6}/,'sin código');
     assert.doesNotMatch(mail.text + mail.html, /entra directamente|Tu código de acceso/);
     assert.match(mail.html, /Revisar la solicitud/);
     assert.doesNotMatch(mail.html, />Entrar</);
